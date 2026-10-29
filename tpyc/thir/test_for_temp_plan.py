@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from . import nodes as th
+from .frame import HolderRole, THIRFrameHolder
 from .lower import functions as function_lowering
 from .temp_plan import prepare_temporaries, validate_plan
 from .testutil import _compile, _entry
@@ -205,7 +206,8 @@ def test_range_head_arguments_leave_body_unplanned(functions: dict[str, th.THIRF
 @pytest.mark.parametrize("field,value", [
     ("consuming", True), ("hoisted_step", th.THIRLent(1, th.THIRTempRead(None, read_id=1))),
     ("str_literal_iterable", True),
-    ("frame_src_field", "source"), ("iterable_lvalue", False),
+    ("frame_src_field", THIRFrameHolder(HolderRole.LOOP, "__for_src_0", "S")),
+    ("iterable_lvalue", False),
 ])
 def test_unhandled_native_metadata_leaves_body_unplanned(
         functions: dict[str, th.THIRFunction], field: str, value: object) -> None:

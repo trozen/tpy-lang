@@ -24,8 +24,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
 
-from ...codegen_cpp import resumable_cfg as rcfg
-from ...codegen_cpp.gen_async import collect_frame_nested_defs
 from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
                                   is_plain_nonvalue, loop_binding_kind,
                                   is_ptr_variant_union,
@@ -95,6 +93,8 @@ from ..source import BindingRefinement as R
 from ..source import MoveRow as M
 from . import checks as _checks
 from . import predicates as _p
+from ..frame import frame_ptr_slot_name
+from .frame_cfg import collect_frame_nested_defs
 from ...sema.call_lends import MayLend
 from .context import (BindingTableError,
                       FrameLocalClass, ValueOptKind, _LowerCtx,
@@ -4181,10 +4181,10 @@ def rebind_ptr_frame_value(init: TpyExpr, vtype: TpyType, lc: '_LowerCtx',
 
 def rebind_ptr_frame_field(lc: '_LowerCtx', site: object,
                            reason: str) -> str:
-    """The frame field the ptr-slot prescan reserved for an OWN write to a
-    REBIND_PTR frame local at `site`; a site it reserved none for
-    rejects."""
-    fld = rcfg.ptr_slot_field(lc.func, site)
+    """The C++ member of the frame field the ptr-slot prescan reserved for
+    an OWN write to a REBIND_PTR frame local at `site`; a site it reserved
+    none for rejects."""
+    fld = frame_ptr_slot_name(lc.frame, site)
     if fld is None:
         note_detail("res.rebind_ptr_slot")
         raise ThirUnsupported(reason)

@@ -8994,7 +8994,7 @@ Send/Sync rules for built-in types:
   `finally` itself is parked in a shared return-value slot and emitted
   after the finally body completes -- a return-in-finally also
   swallows any captured in-flight exception, per Python semantics). The lowering uses a localized CFG
-  built per async def body (`tpyc/codegen_cpp/resumable_cfg.py`); each
+  built per async def body (THIR's resumable frame, `tpyc/thir/lower/frame_cfg.py`); each
   suspension is a CFG yield-edge and the state machine emits
   `while (true) switch (state)` with each resume case body wrapped in
   the source-level try/except/finally stack active at that suspension
@@ -9450,7 +9450,7 @@ Send/Sync rules for built-in types:
   Remains the path for user-defined awaitable protocols; asyncio's
   own cancellable APIs (`run` / `create_task` / `wait_for`) have
   since moved to `Own[Cancellable[T]]` (@dynamic) via the
-  `OWNED_VALUE` `_CoroParamKind` -- different codegen path, same
+  `OWNED_VALUE` `FrameCaptureKind` -- different codegen path, same
   user surface.
 - **Working**: Pointer-form `T | None` (pointer-repr Optional) async
   coroutine parameters. Factory signature and frame slot emit as

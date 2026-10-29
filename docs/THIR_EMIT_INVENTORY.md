@@ -62,22 +62,25 @@ flat F3+ field form-rungs; the remaining gates are the generics frontier
 It lands with the rest, not before.
 
 **3. "Already a pointer?" has TWO spellings; picking the wrong one is silent.**
-Codegen asks it two ways and they are not interchangeable. `is_indirect_name`
-covers pointer locals/globals/`self`/imports -- names whose *rendering* is `T*`.
-`is_already_pointer_source` is that OR a `PtrType` sema type. A `Ptr[T]` source
-never enters `lc.pointers` (the `_eligible_ptr_value` family owns it), so a
-lowering arm that spells the question as bare `name in lc.pointers` answers
-"not a pointer" for exactly the type that most obviously is one -- and then
-lifts `&(...)` into a `T*` slot, spelling `T**`.
+The question is asked two ways and they are not interchangeable. A name's
+pointer binding record (`lc.binding(name).pointer`, plus the `self` receiver
+whose `this` is a pointer) covers names whose *rendering* is `T*`.
+`_already_pointer_source(expr, lc)` (predicates.py) is that OR a `PtrType`
+sema type. A `Ptr[T]` source never gets a pointer record (the
+`_eligible_ptr_value` family owns it), so an arm that spells the question as
+the bare record test answers "not a pointer" for exactly the type that most
+obviously is one -- and then lifts `&(...)` into a `T*` slot, spelling `T**`.
+(The codegen predicates the two once mirrored, `is_indirect_name` and
+`is_already_pointer_source`, are gone; a resumable frame's printer reads the
+second answer as `THIRResumableLeaves.pointer_sources`.)
 
-When porting an arm, check WHICH predicate its AST counterpart calls:
+When writing an arm, ask which question its render answers:
 
-- counterpart calls `is_already_pointer_source` -> use
-  `_already_pointer_source(expr, lc)` (predicates.py). It takes an EXPRESSION,
-  so subscript and field sources are covered, not just names.
-- counterpart calls `is_indirect_name` (e.g. anything reached through
-  `gen_expr_deref`, which does NOT deref a `Ptr[T]`) -> the name-membership
-  spelling is CORRECT; widening it to the `Ptr[T]` disjunct is wrong.
+- it binds or lifts the source as a pointer -> use
+  `_already_pointer_source(expr, lc)`. It takes an EXPRESSION, so subscript
+  and field sources are covered, not just names.
+- it dereferences a name's rendering (which does NOT deref a `Ptr[T]`) ->
+  the record test is CORRECT; widening it to the `Ptr[T]` disjunct is wrong.
 
 Also check WHERE the test sits, because the cost of getting it wrong differs.
 At a RENDER decision (lift or don't) a wrong answer is a miscompile. At an

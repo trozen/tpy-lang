@@ -4,7 +4,7 @@ Phase A of the generator -> resumable-frame migration makes the CFG
 builder suspension-generic: a `yield` statement is now a suspension
 point alongside `await`, the lazy-decomposition predicate
 (`_stmt_has_any_suspension`) treats both uniformly, and a top-level
-`yield` lowers to a `Yield` terminator carrying a `YieldPayload`. These
+`yield` lowers to a `Yield` terminator carrying a `THIRYieldSuspension`. These
 tests exercise that wiring at the CFG level, before any generator emit
 exists (the builder runs on raw parsed `TpyStmt` bodies, no sema/codegen
 needed).
@@ -12,10 +12,9 @@ needed).
 import pytest
 
 from ..parse import Parser
-from .resumable_cfg import (
-    CFGBuilder, YieldPayload, AwaitPayload, MatchDispatch,
-    _stmt_has_any_suspension,
-)
+from .frame import THIRAwaitSuspension, THIRMatchDispatch, THIRYieldSuspension
+from ..identity_map import IdentityMap
+from .lower.frame_cfg import CFGBuilder, _stmt_has_any_suspension
 
 
 def _gen_body(src: str):
@@ -41,8 +40,8 @@ class TestYieldDispatch:
         )
         assert len(cfg.yield_sites) == 2
         for y in cfg.yield_sites:
-            assert isinstance(y.payload, YieldPayload)
-            assert not isinstance(y.payload, AwaitPayload)
+            assert isinstance(y.payload, THIRYieldSuspension)
+            assert not isinstance(y.payload, THIRAwaitSuspension)
             # A non-bare yield always carries its value expression.
             assert y.payload.value_expr is not None
         # Suspension indices are assigned in source order.
@@ -62,7 +61,7 @@ class TestYieldDispatch:
             "        i += 1\n"
         )
         assert len(cfg.yield_sites) == 1
-        assert isinstance(cfg.yield_sites[0].payload, YieldPayload)
+        assert isinstance(cfg.yield_sites[0].payload, THIRYieldSuspension)
         # Loop decomposition produces several BBs (check/body/exit + ...),
         # not the single block a non-decomposed leaf body would yield.
         assert len(cfg.blocks) > 1
@@ -128,13 +127,13 @@ class TestLoopElseSupported:
             "        yield -1\n"
         )
         for_stmt = body[0]
-        cfg = CFGBuilder(for_uid_map={id(for_stmt): 0}).build(body)
+        cfg = CFGBuilder(for_uid_map=IdentityMap([(for_stmt, 0)])).build(body)
         assert len(cfg.yield_sites) == 2
 
 
 class TestMatchDecomposition:
     # H1: a `match` carrying a suspension is decomposed by the builder into
-    # a single `MatchDispatch` terminator (the suspension-free, type-aware
+    # a single `THIRMatchDispatch` terminator (the suspension-free, type-aware
     # dispatch is reused at emit) plus one BB per arm body, so the nested
     # yields are real CFG yield sites rather than silently-dropped leaves.
     def test_yield_in_match_decomposes(self):
@@ -154,7 +153,7 @@ class TestMatchDecomposition:
         # yield 1 / yield 99 / yield 0 / yield 3 are all real suspensions.
         assert len(cfg.yield_sites) == 4
         dispatches = [bb.terminator for bb in cfg.blocks.values()
-                      if isinstance(bb.terminator, MatchDispatch)]
+                      if isinstance(bb.terminator, THIRMatchDispatch)]
         assert len(dispatches) == 1
         # One arm BB per case; a reachable join (the trailing `yield 3`).
         assert len(dispatches[0].arm_bbs) == 2
@@ -177,6 +176,3 @@ class TestMatchDecomposition:
             "    yield 3\n"
         )
         assert len(cfg.yield_sites) == 2
-
-
-

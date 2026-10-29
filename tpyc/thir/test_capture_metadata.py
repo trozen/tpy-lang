@@ -276,10 +276,9 @@ def generator(x: int32) -> Iterator[int32]:
     nodes = {"guarded": closures(guarded)}
     for function, body in ctx.thir_resumables.items():
         found: list[th.THIRLambda] = []
-        for table in (body.leaves, body.return_values, body.yield_values):
-            for value in table.values():
-                for root in value if isinstance(value, tuple) else (value,):
-                    found.extend(n for n in walk(root) if isinstance(n, th.THIRLambda))
+        for value in body.leaves.values():
+            for root in value if isinstance(value, tuple) else (value,):
+                found.extend(n for n in walk(root) if isinstance(n, th.THIRLambda))
         nodes[function.name] = found
     assert set(nodes) == {"guarded", "asynchronous", "generator"}
     for name, captures in nodes.items():

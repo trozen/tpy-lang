@@ -45,7 +45,7 @@ from .protocols import (
     has_method_or_field, member_def, record_emitted_members,
 )
 from .int_literals import render_int_literal_value
-from .resumable_cfg import ResumableShape
+from ..resumable_shape import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..type_def_registry import (
     is_span_iter,
@@ -60,7 +60,6 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .functions import FunctionGenerator, MethodEmitMode
     from .gen_async import AsyncCoroCodegen
-    from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
 
 
@@ -164,7 +163,6 @@ class RecordGenerator:
         self.types = types
         self.protocols = protocols
         self.functions = functions
-        self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
         self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
         self._def_plans: IdentityMap[TpyRecord, _RecordDefPlan] = IdentityMap()
 

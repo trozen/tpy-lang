@@ -4494,8 +4494,8 @@ class TypeRegistrar:
         the frame stores the params that can lend (`param_type_can_lend`) by
         reference or as views, so the generator object borrows those
         arguments -- except `str` / `bytes`, which the frame captures OWNED
-        (is_owned_in_coro_frame; codegen routes them to
-        _CoroParamKind.OWNED_COPY), and a callable, which the frame holds by
+        (is_owned_in_coro_frame; the frame builder routes them to
+        FrameCaptureKind.OWNED_COPY), and a callable, which the frame holds by
         value. Signature-derived, so it is exact at registration time --
         callers analyzed before the generator's body still see the right
         facts."""

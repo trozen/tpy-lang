@@ -1585,8 +1585,8 @@ prove still apply to the committed-snapshot oracle that replaced them.
   then rejects (or vice versa) is a latent divergence.
 - The `gen_body` THIR interception keys on `id(func)`, so **any** callable in a multi-entry
   overload set must be rejected (each stub emits the shared impl with per-stub dead-branch
-  facts). Resumable bodies key `THIRResumableBody` by `id()` of skeleton-held AST nodes for
-  the same reason.
+  facts). A resumable body's leaves (`THIRResumableLeaves`) are keyed by the frame's own
+  leaf slots, not by AST nodes.
 
 **Branch-scoped state: one registry, one pop.**
 
@@ -1636,21 +1636,29 @@ prove still apply to the committed-snapshot oracle that replaced them.
 
 **Resumable frames (async / generators).**
 
-- The resumable state-machine **skeleton** (`resumable_cfg` + `gen_async`: CFG, frame struct,
-  case labels, region replay, suspend/resume) stays **shared** machinery for both paths -- like
-  signatures and structural emission -- justified by MIR OQ6 and the dual-maintenance cost of
-  a 4.1k-line evolving emitter. Only the user-source **leaves** route through THIR, via a seam
-  at the skeleton's ~25 delegation sites; per-body all-or-nothing, and a routed body's missing
-  leaf is a hard error. `lower_resumable` is the only seam lowering: the single-yield lambda
-  peephole that once took the same leaf-seam shape (`lower_simple_generator` ->
+- **The resumable CFG is THIR proper (2026-10-28).** The frame's decisions -- capture kinds,
+  the await-lift / argument-seat pre-pass, placement, holders, the coarse CFG with region
+  stacks, case entries, abandonment cleanup, embedding edges -- are made by the frame builder
+  (`thir/lower/frame.py`, `frame_cfg.py`) and published as `THIRResumableFrame`
+  (`thir/frame.py`) where the body is first needed; its leaves follow as `THIRResumableLeaves`,
+  keyed by the frame's `THIRLeafSlot`s, and the machinery fields are `THIRFrameHolder`s;
+  `gen_async` prints from both. Validator rules (`validate_resumable_frame`,
+  `validate_resumable_leaves`, each leaf at its position's flush right) and `--dump-thir` (each
+  block with its leaves) cover them. Still open: the print-time reads of the body emitter's
+  scope (TODO.md "The resumable frame is THIR").
+- The resumable state-machine **printer** (`gen_async`: frame struct, case labels, region
+  replay, suspend/resume) is codegen's: it renders the published frame and its leaves and holds
+  no frame decision, only emit-order state keyed by the frame's objects. Every user-source
+  position renders through its slot's leaf; a lowered body leaves no slot the printer renders
+  through a leaf empty (the validator's coverage rule). `lower_resumable` is the only
+  resumable lowering: the single-yield lambda peephole (`lower_simple_generator` ->
   `THIRSimpleGenBody` -> `SimpleGenLeafEmitter`) was deleted on 2026-09-12. Foreach CALLERS
   over generator factories / user-iterator names route via `THIRForIterProto` (the universal
-  `::tpy::__iter__` loop), with generator callees admitted by the call classifiers only in iterable position.
-- **End state (post-AST-deletion):** the leaf seam is the byte-diff-safe transition, not the
-  destination. Once the AST body emitters are deleted, the resumable skeleton + seams fold
-  into the IR: the resumable CFG becomes IR proper, async lowering an IR-to-IR transform, and
-  the emitter a printer (the Rust-style shape). The region-transparent leaf seam (Design A of
-  the region/loop multi-seam) is the step toward that trajectory, not a permanent boundary.
+  `::tpy::__iter__` loop), with generator callees admitted by the call classifiers only in
+  iterable position.
+- **End state:** the resumable CFG is THIR proper (`THIRResumableFrame`); what remains is
+  async lowering as an IR-to-IR transform and MIR reading the frame's blocks (TODO.md "The
+  resumable frame is THIR").
 
 **Ctor frontier.**
 
@@ -1870,8 +1878,8 @@ Terminator
 ```
 
 `Yield` suspends the generator, returning a value to the caller. On resume, execution
-continues at the `resume` block. This supports the existing state-machine codegen for
-generator functions (`gen_generators.py`).
+continues at the `resume` block. This supports the resumable frame generators share with
+coroutines (`THIRResumableFrame`, printed by `gen_async.py`).
 
 `Invoke` is used for return-tier `@error_return(E)` calls: if the callee returns an
 error via `std::expected`, control flows to `err`; otherwise to `ok`. `err_local`
@@ -2756,8 +2764,11 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    once Phase 2 is complete. The MIR pass pipeline can be shortened for debug builds
    (skip optimization passes).
 
-6. **Generator functions in MIR.** Generator functions are currently lowered to state-
-   machine structs in codegen (`gen_generators.py`). Should this transformation happen
+6. **Generator functions in MIR.** Generator functions are lowered to state-machine structs
+   by codegen's printer from the frame THIR publishes (`THIRResumableFrame`: a coarse CFG
+   whose suspensions are `THIRSuspend` terminators, with region stacks and case entries), so
+   MIR can lower a frame without a second CFG builder. Should the state-machine
+   transformation happen
    during THIR -> MIR lowering (generators become explicit state machines in MIR), or
    should MIR represent generators with `Yield` terminators and defer the state-machine
    transform to MIR -> C++ codegen? Recommendation: `Yield` terminators in MIR --

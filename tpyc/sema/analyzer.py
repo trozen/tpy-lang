@@ -3540,8 +3540,8 @@ class SemanticAnalyzer:
         self.ctx.global_scope.define(local_name, var_info.type)
         self.ctx.global_ns.bind_variable(local_name, var_info.type)
         # Install into the attribute table so use-site checks that read
-        # `module_attributes` (e.g. `is_indirect_name`, `pointer_globals`)
-        # find non-value imports and emit the right deref / pointer
+        # `module_attributes` (e.g. the imported-global seeding of THIR's
+        # global scope, `pointer_globals`) find non-value imports and emit the right deref / pointer
         # qualification. Without this, a non-value-typed implicit-stdlib
         # variable would lose its `(*x)` indirection at use sites.
         install_binding(

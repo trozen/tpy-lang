@@ -309,11 +309,12 @@ def _callee(program: MIRProgram, identity: th.THIRFunctionIdentity) -> _Callee |
     if definition is None:
         return None
     source = definition[1]
+    names = tuple(p.name for p in th.effective_params(source))
     if isinstance(source, th.THIRConstructor):
-        return _Callee(tuple(p.name for p in source.params), source.record_name,
+        return _Callee(names, source.record_name,
                        (identity.name, constructor_record_qname(identity)))
     owner = identity.owner.rsplit(".", 1)[-1] if identity.owner is not None else None
-    return _Callee(tuple(p.name for p in th.effective_params(source)),
+    return _Callee(names,
                    f"{owner}.{identity.name}" if owner is not None else identity.name,
                    (identity.name, identity.owner))
 

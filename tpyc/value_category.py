@@ -1104,6 +1104,151 @@ def call_result_const(call: TpyMethodCall, type_of: "ExprTypeOf",
     return follows and receiver_const(call.obj, type_of, place_const, const_referent)
 
 
+def const_storage_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr, *,
+                         root_const: Callable[[str], bool],
+                         name_const: Callable[[str], bool]) -> bool:
+    """True when `expr` reads from a const-bound storage location, so
+    element addresses derived from it come out `const T*`: an lvalue chain
+    (field / subscript, arbitrarily deep) rooted at a name `root_const`
+    answers for (a const receiver, param or local), a bare name
+    `name_const` answers for, or a call whose result is const
+    (`call_result_const`) and lends storage: a borrowing view, or a
+    reference.
+
+    The name sets are the caller's environment: the body emitter's scope
+    and a resumable frame's builder bind different ones, and this is the
+    one rule both read."""
+    if const_place(expr, analyzer.get_expr_type, lambda e, stepped: (
+            stepped and isinstance(e, TpyName) and root_const(e.name))):
+        return True
+    declared = declared_call_const(analyzer, expr)
+    if declared is not None:
+        return declared
+    if isinstance(expr, TpyMethodCall) and expr.obj is not None:
+        fi = expr.resolved_function_info
+        # A `@property` getter over a container field is the member read
+        # one spelling over (`property_access_returns_cpp_ref`: storage-ref
+        # Optional / union returns are references into the field too).
+        lends = fi is not None and (
+            is_borrowing_view_type(unwrap_ref_type(fi.return_type))
+            or property_access_returns_cpp_ref(analyzer, expr)
+            or call_returns_cpp_ref(analyzer, fi))
+        return (declared_result_readonly(fi)
+                or lends and call_result_const(
+                    expr, analyzer.get_expr_type,
+                    lambda e: const_storage_source(
+                        analyzer, e, root_const=root_const,
+                        name_const=name_const)))
+    if isinstance(expr, TpyName):
+        return name_const(expr.name)
+    return False
+
+
+def const_indirect_local(analyzer: ValueCategoryAnalyzer,
+                         target_type: TpyType | None,
+                         init: TpyExpr | None, stmt: Any = None, *,
+                         storage_const: Callable[[TpyExpr], bool],
+                         name_const: Callable[[str], bool]) -> bool:
+    """Whether a local should use const indirection (const T* or const T&):
+    it is derived from a ReadonlyType source -- an Optional whose inner is
+    readonly (None-seeded from a readonly param), an init sema types
+    readonly, an annotated Optional local sema's var_types holds readonly --
+    or from const storage (`storage_const`, the caller's
+    `const_storage_source`), or it aliases a name `name_const` answers for.
+    The name sets are the caller's environment (see
+    `const_storage_source`)."""
+    if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
+        return True
+    if init is not None:
+        sema_type = analyzer.get_expr_type(init)
+        if isinstance(sema_type, ReadonlyType):
+            return True
+    # For annotated Optional locals, sema var_types may hold
+    # OptionalType(ReadonlyType(T)) even when stmt.type is plain Optional[T].
+    if stmt is not None:
+        sema_var_type = analyzer.var_types.get(stmt)
+        if (isinstance(sema_var_type, OptionalType)
+                and isinstance(sema_var_type.inner, ReadonlyType)):
+            return True
+    # A call's result access is its callee's declared one (the raw sema type
+    # above); one whose callee declares that its whole result follows the
+    # receiver is const on a const receiver, which C++ overload resolution
+    # picks whichever clone sema resolved. An element of a const-rooted
+    # container is const storage.
+    if isinstance(init, TpyMethodCall):
+        return call_result_const(init, analyzer.get_expr_type, storage_const)
+    if isinstance(init, TpySubscript) and receiver_const(
+            init.obj, analyzer.get_expr_type, storage_const):
+        return True
+    # An alias of a const-inferred source must also bind const, else a
+    # mutable reference/pointer would be taken from a const source. Sound
+    # because a const source implies the alias is never written through --
+    # a write would have marked the source mutated via the borrow chain.
+    # Covers the pointer-local (Optional) branch, which the T&-branch
+    # call-site propagation does not reach.
+    return isinstance(init, TpyName) and name_const(init.name)
+
+
+def unpack_source_const_slots(value: TpyExpr,
+                              name_const: Callable[[str], bool]) -> bool:
+    """True when a tuple unpack's source has const-typed borrow slots: a
+    name `name_const` answers for (a deep-const-inferred param, a
+    synthesized for-loop tuple iterating a const-bound source). Drives the
+    unpacked locals' `const T*` / `const T&` spelling, which binding from a
+    const slot needs. The name set is the caller's environment."""
+    return isinstance(value, TpyName) and name_const(value.name)
+
+
+def is_value_emit_rvalue(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Rvalue source that renders as a value (not a `T*`), so a
+    pointer-form Optional sink needs to materialize a named slot before
+    taking address. Container/comprehension/generator literals plus
+    rvalue field accesses (`temp.field` on a moved-from object) are the
+    exhaustive set under the pointer-repr-Optional outer guard at the
+    pointer-local init and rebind sites.
+    """
+    return isinstance(expr, CONTAINER_LITERAL_NODES) or (
+        isinstance(expr, TpyFieldAccess) and is_rvalue_source(analyzer, expr))
+
+
+def is_temporary_expr(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Check if an expression produces a temporary (rvalue).
+
+    Temporaries can't bind to non-const lvalue references, so they need
+    to be stored in a temp variable when passed to mutable ref params.
+
+    Lvalues (don't need temps): variable names, field access
+    Rvalues (need temps): literals, binary/unary ops, calls, coercions, subscripts on records
+    """
+    # Scalar literals: 1, 3.14, "x", True, None
+    if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
+        return True
+    # Container literals, comprehensions, generator expressions.
+    if isinstance(expr, CONTAINER_LITERAL_NODES):
+        return True
+    # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
+    if isinstance(expr, TpyCoerce):
+        # Pointer dereference is an lvalue, not a temporary
+        if isinstance(expr.actual_type, PtrType):
+            return False
+        return True
+    # Binary and unary ops always produce temporaries
+    if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
+        return True
+    if isinstance(expr, TpyMethodCall):
+        return is_rvalue_source(analyzer, expr)
+    # Subscript on user records returns by value (rvalue)
+    # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
+    if isinstance(expr, TpySubscript):
+        raw_ct = analyzer.get_expr_type(expr.obj)
+        container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
+        if isinstance(container_type, NominalType) and container_type.is_user_record:
+            return True
+    if isinstance(expr, TpyCall):
+        return is_rvalue_source(analyzer, expr)
+    return False
+
+
 def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     """Whether this expression MATERIALIZES a fresh object whose lifetime the
     enclosing statement bounds -- `is_temporary_expr` restricted to the shapes
@@ -1332,6 +1477,43 @@ def _collect_tuple_literal_elems(lit: TpyTupleLiteral, bare: TupleType,
 
 
 ExprTypeOf = Callable[[TpyExpr], "TpyType | None"]
+
+
+def slot_declared_type(expr: TpyExpr, local_type: Callable[[str], "TpyType | None"],
+                       type_of: ExprTypeOf, record_of: Callable[[NominalType], Any]
+                       ) -> "TpyType | None":
+    """The declared type of the C++ slot a name or field access reads: a
+    name's local or parameter type (`local_type`; a module global is None),
+    a field's declaration on its record, which may be Optional where sema
+    narrowed the read. None for every other expression.
+
+    Unlike lowering's `_declared_type`, a name falls back to nothing, not
+    to sema's type: callers ask whether the slot itself is declared so."""
+    if isinstance(expr, TpyName):
+        return local_type(expr.name)
+    if not isinstance(expr, TpyFieldAccess):
+        return None
+    obj_type = slot_declared_type(expr.obj, local_type, type_of, record_of)
+    if obj_type is None:
+        obj_type = type_of(expr.obj)
+    if obj_type is None:
+        return None
+    actual_type = unwrap_readonly(obj_type)
+    if isinstance(actual_type, PtrType):
+        actual_type = actual_type.pointee
+    elif isinstance(actual_type, OwnType):
+        actual_type = actual_type.wrapped
+    elif isinstance(actual_type, OptionalType):
+        if actual_type.inner.is_value_type():
+            return None
+        actual_type = actual_type.inner
+    if isinstance(actual_type, NominalType) and actual_type.is_record:
+        record = record_of(actual_type)
+        if record:
+            for f in record.fields:
+                if f.name == expr.field:
+                    return f.type
+    return None
 
 
 class LentOperand(NamedTuple):

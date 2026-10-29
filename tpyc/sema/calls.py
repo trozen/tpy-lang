@@ -3120,7 +3120,7 @@ class CallAnalyzer:
         #     is not detected here; see TODO.md.
         # Generator methods are NOT rejected: they share the resumable frame
         # with `async def` (which already supports isinstance(self, Sub)), and
-        # `polymorphic_cast_arg` emits the correct `&__self` cast input there.
+        # the resume-case extraction casts through `&__self` there.
         if (isinstance(first_arg, TpyName) and first_arg.name == "self"
                 and polymorphic_source is not None
                 and isinstance(self.ctx.func.current_function, TpyFunction)):

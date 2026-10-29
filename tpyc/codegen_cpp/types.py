@@ -21,7 +21,8 @@ from ..typesys import (
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyCoerce, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name, enum_cpp_name
-from . import resumable_cfg as rcfg
+from .frame_names import frame_struct_qualname
+from ..resumable_shape import ResumableShape
 from ..compilation_context import get_current_compiler
 from ..type_def_registry import (
     is_list,
@@ -30,6 +31,7 @@ from ..type_def_registry import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from .context import CodeGenContext
     from .protocols import ProtocolGenerator
 
@@ -86,6 +88,15 @@ class TypeResolver:
         self.protocols = protocols
 
     def get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
+        """`resolved_type_in` over the body scope's name-keyed types."""
+        return self.resolved_type_in(expr, self.ctx.var_types,
+                                     self.ctx.protocol_narrowings,
+                                     target_type)
+
+    def resolved_type_in(self, expr: TpyExpr,
+                         var_types: 'Mapping[str, TpyType]',
+                         protocol_narrowings: 'Mapping[str, TpyType]',
+                         target_type: TpyType | None = None) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
 
         PendingListType is used during semantic analysis but should be resolved
@@ -101,16 +112,16 @@ class TypeResolver:
         # narrows x from a union parameter to the protocol type within the
         # branch. Surface the narrower type so for-loop dispatch, `in`
         # operator, etc. pick the right peephole.
-        if isinstance(expr, TpyName) and expr.name in self.ctx.protocol_narrowings:
-            return unwrap_readonly(self.ctx.protocol_narrowings[expr.name])
+        if isinstance(expr, TpyName) and expr.name in protocol_narrowings:
+            return unwrap_readonly(protocol_narrowings[expr.name])
         # Check for codegen-overridden types (e.g., loop variables). The entry
         # may still hold a deferred type (a tuple-unpack target keeps its
         # PendingStrType), so resolve it here too -- a caller receiving the
         # pending type reads as neither view nor owned, and every view-form
         # predicate keyed on this answer silently says "not a view".
-        if isinstance(expr, TpyName) and expr.name in self.ctx.var_types:
+        if isinstance(expr, TpyName) and expr.name in var_types:
             return self.resolve_type(
-                unwrap_readonly(self.ctx.var_types[expr.name]))
+                unwrap_readonly(var_types[expr.name]))
         if isinstance(expr, TpyCoerce):
             return expr.expected_type
 
@@ -118,8 +129,8 @@ class TypeResolver:
         # so deductions like string_view propagate through (e.g. a if c else b).
         if isinstance(expr, TpyIfExpr):
             typ = self.ctx.analyzer.get_expr_type(expr)
-            then_resolved = self.get_resolved_type(expr.then_expr)
-            else_resolved = self.get_resolved_type(expr.else_expr)
+            then_resolved = self.resolved_type_in(expr.then_expr, var_types, protocol_narrowings)
+            else_resolved = self.resolved_type_in(expr.else_expr, var_types, protocol_narrowings)
             if then_resolved == else_resolved:
                 return then_resolved
             # Branches differ -- resolve pending view types so the view->owned
@@ -142,8 +153,8 @@ class TypeResolver:
                 typ = self.ctx.analyzer.get_expr_type(expr)
                 if is_bool_type(typ):
                     return unwrap_readonly(typ)
-                left_resolved = self.get_resolved_type(expr.left)
-                right_resolved = self.get_resolved_type(expr.right)
+                left_resolved = self.resolved_type_in(expr.left, var_types, protocol_narrowings)
+                right_resolved = self.resolved_type_in(expr.right, var_types, protocol_narrowings)
                 if left_resolved == right_resolved:
                     return left_resolved
                 # Operands differ (e.g. one is string_view, other is string).
@@ -155,8 +166,8 @@ class TypeResolver:
                 return ret
 
             # First pass without context to detect int32 operands
-            left_raw = self.get_resolved_type(expr.left)
-            right_raw = self.get_resolved_type(expr.right)
+            left_raw = self.resolved_type_in(expr.left, var_types, protocol_narrowings)
+            right_raw = self.resolved_type_in(expr.right, var_types, protocol_narrowings)
             # The numeric rules below (div -> float, float precedence, fixed-int
             # and BigInt propagation) are only valid when BOTH operands are
             # numeric scalars. With a record operand the binop resolved to a
@@ -187,8 +198,8 @@ class TypeResolver:
                 elif is_fixed_int_type(right_raw) and not right_is_literal:
                     fixed_ctx = right_raw
                 # Second pass with context for proper literal resolution
-                left_type = self.get_resolved_type(expr.left, fixed_ctx)
-                right_type = self.get_resolved_type(expr.right, fixed_ctx)
+                left_type = self.resolved_type_in(expr.left, var_types, protocol_narrowings, fixed_ctx)
+                right_type = self.resolved_type_in(expr.right, var_types, protocol_narrowings, fixed_ctx)
                 # If target is fixed-int and both operands are literals, result is that type
                 if is_fixed_int_type(fixed_ctx) and left_is_literal and right_is_literal:
                     return fixed_ctx
@@ -364,13 +375,14 @@ class TypeResolver:
         # subtypes -- must precede the protocol branch below.
         # Own[ConcreteCoro] is the storage form: std::optional<frame>.
         if isinstance(typ, ConcreteFrameType):
-            return rcfg.frame_struct_qualname(
-                self, typ.frame_owner, typ.frame_func_name,
+            return frame_struct_qualname(
+                typ.frame_owner, typ.frame_func_name,
                 typ.frame_inferred_type_args,
+                analyzer=self.ctx.analyzer, type_to_cpp=self.type_to_cpp,
                 module_qual=typ.frame_module_qual,
-                shape=(rcfg.ResumableShape.ASYNC
+                shape=(ResumableShape.ASYNC
                        if isinstance(typ, ConcreteCoroType)
-                       else rcfg.ResumableShape.GENERATOR))
+                       else ResumableShape.GENERATOR))
         if isinstance(typ, OwnType):
             own_inner = unwrap_readonly(typ.wrapped)
             if isinstance(own_inner, ConcreteCoroType):

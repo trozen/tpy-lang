@@ -1041,8 +1041,8 @@ def is_owned_in_coro_frame(t: "TpyType") -> bool:
     storage -- `std::string` / `tpy::bytes`, wrapped in `std::optional` for the
     nullable forms -- at frame construction), not stored as a borrow that would
     dangle across a suspension. Single source of truth so the consumers can't
-    drift: codegen routes these to `_CoroParamKind.OWNED_COPY` (gen_async
-    `_classify_params`) / an owned init-capture (gen_generators), copying in via
+    drift: the frame builder's `classify_param_kind` routes these to
+    `FrameCaptureKind.OWNED_COPY` (an owned init-capture), copying in via
     `view_owned_copy_init`, and sema excludes them from a generator's
     result-borrow set (`generator_borrow_param_indices`). Explicit view types
     (`StrView`, `BytesView`, `Span[T]`) have no owned counterpart, so they are
@@ -1093,7 +1093,7 @@ def view_owned_copy_init(t: "TpyType", arg: str) -> str:
     present (the nullable borrow `optional<view>` -> owned `optional<owned>`),
     since `span -> vector` / `string_view -> string` is not implicit through
     `std::optional`. Only valid for `is_owned_in_coro_frame` types. Single source
-    so gen_async and gen_generators share the spelling."""
+    so the frame builder and gen_async share the spelling."""
     from tpyc.typesys import OptionalType
     if isinstance(t, OptionalType):
         conv = view_to_owned_conv(t.inner)

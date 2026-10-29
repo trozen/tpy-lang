@@ -61,15 +61,33 @@ def module_global_binding(module: str, name: str, typ: TpyType,
     return THIRGlobalBinding(module, cell.binding.canonical_name, typ)
 
 
-def borrowed_record(typ: TpyType, readonly: bool,
+def record_receiver(typ: TpyType, readonly: bool,
                     analyzer: 'SemanticAnalyzer') -> THIRBorrowedRecord | None:
+    """The borrow of a named record (not a protocol) a value of `typ` read
+    at `readonly` access is: a resumable frame's receiver, which spells its
+    `__self` field from it for every record a method frame can be on, a
+    generic one and one whose hierarchy MIR does not model included."""
     typ = unwrap_readonly(unwrap_ref_type(typ))
-    if not isinstance(typ, NominalType) or typ.type_args or typ.is_protocol:
+    if not isinstance(typ, NominalType) or typ.is_protocol:
         return None
-    info = analyzer.registry.get_record_for_type(typ)
-    if info is None or modeled_hierarchy(info) is None:
+    if analyzer.registry.get_record_for_type(typ) is None:
         return None
     return THIRBorrowedRecord(typ, readonly)
+
+
+def borrowed_record(typ: TpyType, readonly: bool,
+                    analyzer: 'SemanticAnalyzer') -> THIRBorrowedRecord | None:
+    """The borrow of a record MIR models, for a value of `typ` read at
+    `readonly` access: a `record_receiver` that is not generic and whose
+    hierarchy MIR models."""
+    bare = unwrap_readonly(unwrap_ref_type(typ))
+    if isinstance(bare, NominalType) and bare.type_args:
+        return None
+    reference = record_receiver(typ, readonly, analyzer)
+    if (reference is None or modeled_hierarchy(
+            analyzer.registry.get_record_for_type(reference.type)) is None):
+        return None
+    return reference
 
 
 def native_container(typ: TpyType, readonly: bool,

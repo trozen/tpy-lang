@@ -17,10 +17,10 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    NominalType, OwnType, RecordInfo, TpyType, init_is_default_ctor, record_construction_fields, record_owner,
-    return_representation, unwrap_readonly,
+    NominalType, RecordInfo, TpyType, init_is_default_ctor, record_construction_fields, record_owner,
+    unwrap_readonly,
 )
-from .call_contract import MIRParameterBinding, param_type
+from .call_contract import MIRParameterBinding
 from .coverage import MIRUnsupported, plain, require
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape,
@@ -289,14 +289,8 @@ def constructor_callee(ctor: th.THIRConstructor) -> th.THIRResolvedCallee:
     the caller its record by value (`Own[R]`), built where the caller
     receives it. Its identity is the record's, function-shaped (no owner:
     no receiver parameter)."""
-    typ = ctor.record_layout.type
-    result = OwnType(typ)
-    passings = tuple(p.passing for p in ctor.params)
-    signature = th.THIRCallableSignature(
-        tuple(param_type(p) for p in ctor.params), result,
-        passings=passings if all(p is not None for p in passings) else None,
-        return_representation=return_representation(result))
-    return th.THIRResolvedCallee(constructor_identity(typ), signature)
+    return th.THIRResolvedCallee(constructor_identity(ctor.record_layout.type),
+                                 th.constructor_signature(ctor))
 
 
 def constructor_identity(typ: NominalType) -> th.THIRFunctionIdentity:
@@ -315,7 +309,8 @@ def constructor_function(ctor: th.THIRConstructor) -> th.THIRFunction:
     """A constructor's declaration as the function it is: its parameters,
     its body, its `Own[R]` result and its callee (`constructor_callee`)."""
     callee = constructor_callee(ctor)
-    return th.THIRFunction(f"{ctor.record_name}.__init__", ctor.params, callee.signature.return_type, ctor.body,
+    header = th.body_header(ctor)
+    return th.THIRFunction(header.name, header.params, callee.signature.return_type, ctor.body,
                            th.THIRFunctionLayout(), signature=callee.signature, resolved_callee=callee,
                            temp_plan=ctor.temp_plan, storage_facts=ctor.storage_facts)
 

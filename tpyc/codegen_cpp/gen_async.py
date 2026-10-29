@@ -1,7 +1,7 @@
 """Code generation for `async def` functions (state-machine struct conforming
 to Awaitable[T]).
 
-Mirrors gen_generators.py but with the resumable-frame shape from
+The printer of the resumable frame THIR publishes, with the shape from
 docs/ASYNC_DESIGN.md: each async def lowers to a struct with a
 `poll(Waker) -> Poll<T>` method instead of `__next__() -> std::expected`.
 
@@ -18,45 +18,25 @@ Implementation status:
 from __future__ import annotations
 
 import contextlib
-import copy
 import io
-from dataclasses import dataclass, field, fields, is_dataclass, replace as dc_replace
+from dataclasses import dataclass, field
 from enum import IntEnum
 from functools import partial
-from typing import NoReturn, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from ..identity_map import IdentityMap
-from ..prescan import loop_bindings_of
 from ..namespace import Namespace
 from ..parse.nodes import (
-    RebindStorage, SourceLocation, read_names,
-    TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyAugAssign, TpyVarDecl,
-    TpyReturn,
-    TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWhile, TpyWith, TpyWithItem,
-    TpyTupleUnpack, TpyNestedDef, TpySubscript,
-    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
-    TpyNoneLiteral, TpyCoerce,
+    SourceLocation, read_names,
+    TpyFunction, TpyStmt,
+    TpyName, TpyExpr, TpyCall,
+    TpyMethodCall, TpyForEach, TpyWith, TpyWithItem,
+    TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
-    TpyMatch, is_stable_address_lvalue, iter_capture_bindings,
     walrus_bindings,
 )
 
-
-def collect_frame_nested_defs(stmts: 'list[TpyStmt]') -> 'list[TpyNestedDef]':
-    """Nested defs anywhere in a resumable body, in source order. Each is
-    emitted as a member function of the frame struct (locals are frame
-    fields a lambda cannot capture, and a member is callable from every
-    resume case). Nested-in-nested defs are rejected by sema."""
-    out: 'list[TpyNestedDef]' = []
-    for s in stmts:
-        if isinstance(s, TpyNestedDef):
-            out.append(s)
-        else:
-            for body in s.sub_bodies():
-                out.extend(collect_frame_nested_defs(body))
-    return out
 
 # Collection literals / comprehensions have no concrete C++ type at a
 # protocol-typed call site (the param is a concept) and no frame storage to
@@ -67,105 +47,40 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
-                       returns_cpp_reference_shape, yield_borrow_slot_cpp)
-from ..sema.storage_policy import first_binding_storage
-from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership, body_function_info, body_method_info
+                       yield_borrow_slot_cpp)
+from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType
 from ..value_category import (async_return_form, AsyncReturnForm,
-                              declared_call_const,
-                              for_source_is_rvalue, frame_factory_callee,
-                              iterator_source_callee,
-                              materializing_temp_source, peel_coerce)
-from .gen_generators import GeneratorCodegen, GeneratorForInfo
-from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
-                                  is_bytes_type,
-                                  is_bytes_category, is_owned_in_coro_frame,
-                                  is_str_view_type, is_bytes_view_type,
-                                  is_free_copy_scalar, view_owned_copy_init)
+                              for_source_is_rvalue)
+from ..type_def_registry import (is_str_type, is_big_int_type,
+                                  view_owned_copy_init)
 from . import emit_prims
-from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext,
-                      FrameSourceUnnameable, qualified_cpp_name,
-                      ternary_iterable_lends_storage)
+from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext)
 from .protocols import protocol_param_template_name, fn_param_template_name, signature_is_template
 from .functions import default_to_cpp, default_emittable
-from . import resumable_cfg as rcfg
+from ..resumable_shape import ResumableShape
+from ..thir.frame import (
+    AsyncWithKind, AwaitKind, AwaitMode, FrameCaptureKind, FrameLocalKind,
+    FrameLocalLayout, FrameLoopOwner, GeneratorForInfo,
+    THIRAsyncWithSetup, THIRAwaitSuspension, THIRBranch,
+    THIRExceptRegion, THIRFall, THIRFinallyExit, THIRFinallyRegion,
+    THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
+    THIRLoopSourceRegion, THIRMatchDispatch, THIRRegion, THIRResumableFrame,
+    THIRSuspend, THIRTryRegion, THIRUnreachable,
+    THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
+)
+from ..thir.lower.frame import (
+    FrameBuildDeps, build_resumable_frame, frame_function_info,
+)
+from ..thir.frame import region_cleanups
+from .frame_names import frame_struct_name, sub_struct_qualname
 from .frame_fields import FrameField, order_frame_fields
 
 
-def _bound_local(stmt: TpyStmt) -> str | None:
-    """The local a statement binds, when it binds a plain name."""
-    return stmt.name if isinstance(stmt, TpyVarDecl) else None
-
-
 _OWNING_FRAME_KINDS = frozenset((
-    rcfg.FrameLocalKind.VALUE, rcfg.FrameLocalKind.OWNED_STR,
-    rcfg.FrameLocalKind.FRAME_SLOT, rcfg.FrameLocalKind.OWNING_TUPLE_SLOT))
+    FrameLocalKind.VALUE, FrameLocalKind.OWNED_STR,
+    FrameLocalKind.FRAME_SLOT, FrameLocalKind.OWNING_TUPLE_SLOT))
 
 
-@dataclass
-class _FrameFormInputs:
-    """The name sets one frame local's field FORM is read off.
-
-    `_frame_form_inputs` fills the half that is settled before the for and
-    with prescans run; `_frame_layout` adds what those decide. Split so both
-    the layout and the for prescan read one classifier
-    (`_frame_local_form`)."""
-    owning_tuple_locals: 'dict[str, TpyType | None]'
-    # The locals the storage policy holds as a pointer over storage of
-    # their own (`first_binding_storage`): the REBIND_PTR form.
-    rebound_ref_names: 'frozenset[str]'
-    pointer_form_names: 'set[str]'
-    # The pointer tuples (`CodeGenContext.frame_pointer_tuples`).
-    pointer_tuples: 'dict[str, TpyType | None]' = field(default_factory=dict)
-    borrow_tuple_names: 'set[str]' = field(default_factory=set)
-    owning_str: 'set[str]' = field(default_factory=set)
-    source_form_fields: 'dict[str, str]' = field(default_factory=dict)
-    pointer_payloads: 'dict[str, str]' = field(default_factory=dict)
-    # The `with ... as` targets among `source_form_fields`, and those of them
-    # whose enter type is a type parameter.
-    with_targets: 'set[str]' = field(default_factory=set)
-    with_generic_targets: 'set[str]' = field(default_factory=set)
-
-
-# The pointer-form frame locals a `with ... as` target aims at its enter
-# result through.
-_WITH_POINTER_KINDS = frozenset({rcfg.FrameLocalKind.PTR_ALIAS,
-                                 rcfg.FrameLocalKind.REBIND_PTR})
-
-
-def _cannot_hold_a_borrow(t: 'TpyType') -> bool:
-    """Whether a value of `t` is PROVABLY self-contained: it can carry no
-    reference to storage outside itself.
-
-    Only the scalar family and the owned string buffers qualify. Everything
-    else -- a view, a `Ptr`, a record (whose fields may be pointers), a
-    container, a tuple, a union, anything unknown -- is treated as able to
-    hold a borrow, because the answer here decides how long the storage a
-    binding may point into is kept alive."""
-    bare = unwrap_readonly(unwrap_own(unwrap_ref_type(t)))
-    return (is_free_copy_scalar(bare) or is_big_int_type(bare)
-            or is_str_type(bare) or is_bytes_type(bare))
-
-
-def _loop_bound_names(analyzer, loop: 'TpyForEach') -> 'frozenset[str]':
-    """Every name `loop` can BIND -- its own target, and what a pass binds.
-    An over-approximation on purpose: the caller turns "this name could hold
-    an element" into a lifetime decision, so a missed binding is a dangling
-    read while a spurious one only costs a frame field."""
-    facts = loop_bindings_of(analyzer.loop_bindings, loop,
-                             analyzer.ctx.write_summaries)
-    return facts.body | facts.target
-
-
-def _stmts_have_return(stmts: "list[TpyStmt]") -> bool:
-    """Recursively check whether any TpyReturn appears in a statement list."""
-    for stmt in stmts:
-        if isinstance(stmt, TpyReturn):
-            return True
-        if hasattr(stmt, "sub_bodies"):
-            for body in stmt.sub_bodies():
-                if _stmts_have_return(body):
-                    return True
-    return False
 
 
 def _regions_have_pending_cleanup(regions: tuple) -> bool:
@@ -176,15 +91,15 @@ def _regions_have_pending_cleanup(regions: tuple) -> bool:
     cleanup (with.__exit__ or finally helpers), the stop-check must wait
     until those later states have run their cleanup."""
     for r in regions:
-        if isinstance(r, rcfg.WithRegion):
+        if isinstance(r, THIRWithRegion):
             return True
-        if isinstance(r, rcfg.FinallyRegion):
+        if isinstance(r, THIRFinallyRegion):
             # BBs inside a CFG-based finally body: the finally body itself
             # is the pending cleanup; don't stop before it runs.
             return True
-        if isinstance(r, rcfg.TryRegion) and r.finally_helper_name is not None:
+        if isinstance(r, THIRTryRegion) and r.finally_helper_name is not None:
             return True
-        if isinstance(r, rcfg.ExceptRegion) and r.parent_finally is not None:
+        if isinstance(r, THIRExceptRegion) and r.parent_finally is not None:
             return True
     return False
 
@@ -192,10 +107,13 @@ def _regions_have_pending_cleanup(regions: tuple) -> bool:
 if TYPE_CHECKING:
     from collections.abc import Callable
     from io import TextIO
-    from ..typesys import FunctionInfo, TpyType
+    from ..typesys import TpyType
     from .context import CodeGenContext
     from .types import TypeMapper
     from .functions import FunctionGenerator
+    from ..thir.frame import THIRLeafSlot
+    from ..parse.nodes import TpyMatchCase
+    from ..thir.nodes import THIRResumableReturn
 
     # Saved (narrowed_vars, protocol_narrowings, literal_facts) snapshots that
     # _restore_resume_narrowings reverts after a narrowed scope is emitted.
@@ -205,87 +123,16 @@ if TYPE_CHECKING:
 
 
 
-class _CoroParamKind(IntEnum):
-    """Storage form for a coro-struct captured param.
 
-    REF: non-value type bound by reference; field is `T&`, ctor takes `T&`,
-        init binds the reference. Caller must keep the source alive across
-        polls.
-    VALUE: value type (or string view) stored by value; field is `T`,
-        ctor takes `T x_` and the init moves into the field.
-    POINTER: a param whose borrow form is made of pointers -- a
-        pointer-form Optional[NonValue] (`T*` / `const T*`), a pointer-variant
-        union, a borrow tuple (`std::tuple<..., T*>`); field and ctor take
-        that form. Init is a direct copy -- pointers are trivially copyable,
-        so std::move would just add noise.
-    TYPE_PARAM: TypeParamRef param whose value-vs-reference resolution
-        happens at instantiation; field is `::tpy::val_or_ref_t<T>` (T for
-        value types, T& for object types), ctor takes
-        `::tpy::param_val_or_ref_t<T>` (const T& or T&), init directly
-        binds/copies. No std::move (the param is already a reference).
-    STATIC_PROTOCOL: static-protocol-typed param (e.g. `Own[Awaitable[T]]`)
-        whose concrete type is deduced as an extra template arg `T_<pname>`
-        with a concept constraint -- mirrors `gen_params_with_protocols`
-        in `functions.py`. Field stores by value (the concrete deduced
-        type); ctor takes `T_<pname>&&` (forwarding ref) and moves in;
-        the factory forwards the same way.
-    OWNED_VALUE: `Own[T]` non-value, non-static-protocol type (e.g.
-        `Own[Cancellable[T]]` -- a @dynamic protocol, so the C++ shape is
-        `unique_ptr<P>`, not a deduced template arg). Field stores by
-        value; ctor takes `T&&` and moves in; the factory forwards via
-        `std::move(name)`. Parallels STATIC_PROTOCOL minus the
-        template-arg dance.
-    FN: `Fn[[...], R]` callable param. Concrete callable type is deduced
-        as an extra template arg `F_<pname>` (declared bare in the coro
-        template header); field stores it by value, ctor takes
-        `F_<pname>&&` and forwards. Identical mechanics to STATIC_PROTOCOL,
-        only the template-header constraint differs (a plain `typename`
-        vs a concept) -- mirrors the non-generator Fn handling in
-        `functions.py`.
-    OWNED_TUPLE: an ownership-transfer tuple that also holds borrowed
-        elements (`tuple[Own[A], B]`, `param_takes_ownership`). The field is
-        the mixed render `std::tuple<A, B*>` (`const B*` per the same const
-        verdict POINTER reads); like OWNED_VALUE the ctor takes `&&` and
-        moves in and the factory forwards via `std::move(name)`, and like
-        POINTER it borrows: its pointers alias the caller's objects.
-    CAPTURE: a lexical capture of a genexpr's function -- an enclosing name
-        the body reads. The same deduced `F_<pname>&&` forwarding slot as FN,
-        but what it is handed is always an LVALUE, so `F_<pname>` deduces a
-        reference and the field aliases the enclosing variable, whatever C++
-        type that variable has. Never a movable local: the frame does not own
-        what it points at.
-    OWNED_COPY: a `str` / `bytes` param (is_owned_in_coro_frame). The field is
-        the owned storage type (`std::string` / `tpy::bytes`), but the
-        factory/ctor take the borrow form (`std::string_view` / `BytesView`) --
-        the form the call site passes -- and the init copies it into the owned
-        field at frame construction (`std::string(...)` / `Bytes(...)`, the
-        per-type `owned_copy_conv`). This OWNS the value, so it can't dangle
-        across a suspension when the arg is a temporary; the cost is one copy
-        at capture. `_param_borrows` excludes it (no caller storage held), and
-        sema's `generator_borrow_param_indices` excludes the same set so the
-        borrow-vs-own decision stays in one place. Explicit view types
-        (`StrView`, `BytesView`, `Span[T]`) have no owned counterpart and stay
-        borrow-form -- see BUGS.md.
-    """
-    REF = 0
-    VALUE = 1
-    POINTER = 2
-    TYPE_PARAM = 3
-    STATIC_PROTOCOL = 4
-    OWNED_VALUE = 5
-    FN = 6
-    OWNED_COPY = 7
-    CAPTURE = 8
-    OWNED_TUPLE = 9
 
 
 # The kinds whose C++ type is a deduced template arg taken by forwarding
 # reference (`X&&` in the ctor and the factory, `std::forward` into the field).
-_DEDUCED_SLOT_KINDS = (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN,
-                       _CoroParamKind.CAPTURE)
+_DEDUCED_SLOT_KINDS = (FrameCaptureKind.STATIC_PROTOCOL, FrameCaptureKind.FN,
+                       FrameCaptureKind.CAPTURE)
 # The kinds the caller hands over by ownership transfer: the ctor takes `&&`
 # and moves into the field, the factory forwards with `std::move`.
-_MOVED_IN_KINDS = (_CoroParamKind.OWNED_VALUE, _CoroParamKind.OWNED_TUPLE)
+_MOVED_IN_KINDS = (FrameCaptureKind.OWNED_VALUE, FrameCaptureKind.OWNED_TUPLE)
 
 
 @dataclass(frozen=True)
@@ -293,14 +140,14 @@ class _CoroParam:
     cpp_name: str
     field_type: str  # type spelling for the frame-field declaration
     ctor_param_type: str  # type spelling for the constructor's parameter
-    kind: _CoroParamKind
+    kind: FrameCaptureKind
     # OWNED_COPY only: the ctor-init RHS expression copying the borrow param into
     # the owned field (`::tpy::Bytes(b_)`, or the optional-aware form for
     # `str|None` / `bytes|None`). Built via view_owned_copy_init.
     owned_copy_init: str = ""
 
     def field_decl(self) -> str:
-        if self.kind is _CoroParamKind.REF:
+        if self.kind is FrameCaptureKind.REF:
             return f"{self.field_type}& {self.cpp_name}"
         return f"{self.field_type} {self.cpp_name}"
 
@@ -309,7 +156,7 @@ class _CoroParam:
         # param (matters for TYPE_PARAM, where it's `param_val_or_ref_t<T>`
         # rather than the field's `val_or_ref_t<T>`), but with the bare
         # name -- the factory body forwards by bare name.
-        if self.kind is _CoroParamKind.REF:
+        if self.kind is FrameCaptureKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}"
@@ -320,7 +167,7 @@ class _CoroParam:
         return f"{self.ctor_param_type} {self.cpp_name}"
 
     def ctor_param_decl(self) -> str:
-        if self.kind is _CoroParamKind.REF:
+        if self.kind is FrameCaptureKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
@@ -331,9 +178,9 @@ class _CoroParam:
         return f"{self.ctor_param_type} {self.cpp_name}_"
 
     def ctor_init(self) -> str:
-        if self.kind is _CoroParamKind.REF:
+        if self.kind is FrameCaptureKind.REF:
             return f"{self.cpp_name}({self.cpp_name})"
-        if self.kind in (_CoroParamKind.POINTER, _CoroParamKind.TYPE_PARAM):
+        if self.kind in (FrameCaptureKind.POINTER, FrameCaptureKind.TYPE_PARAM):
             # POINTER: raw pointer, trivially copyable -- std::move is noise.
             # TYPE_PARAM: `param_val_or_ref_t<T>` is already a reference type;
             # std::move on it yields an rvalue that won't bind to the field
@@ -346,23 +193,13 @@ class _CoroParam:
             # value and lvalue-ref cases; a bare std::move breaks the latter.
             return (f"{self.cpp_name}("
                     f"std::forward<{self.ctor_param_type}>({self.cpp_name}_))")
-        if self.kind is _CoroParamKind.OWNED_COPY:
+        if self.kind is FrameCaptureKind.OWNED_COPY:
             # Copy the borrow-form param into the owned field at construction,
             # so the value survives suspensions without aliasing the caller
             # (std::string(view) for str, ::tpy::Bytes(view) for bytes; the
             # nullable forms copy the inner only when present).
             return f"{self.cpp_name}({self.owned_copy_init})"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
-
-
-@dataclass(frozen=True)
-class _LoopFieldOwner:
-    """The loop a frame field belongs to: the statement, its strategy info
-    (None for a loop the CFG keeps whole, whose only field is its source),
-    and the alias the field is spelled off (None for range counters)."""
-    stmt: TpyForEach
-    info: 'GeneratorForInfo | None'
-    alias: 'str | None'
 
 
 @dataclass(frozen=True)
@@ -448,13 +285,16 @@ POLL_VOID_READY_RETURN = (
 )
 
 
-def _same_elements(a: list, b: list) -> bool:
-    """True iff `a` and `b` have identical length and element-by-element
-    identity. Used by the async lift pre-pass to decide whether a
-    sub-body actually changed -- distinct list objects with all-`is`
-    elements are treated as unchanged so the parent stmt's id stays
-    stable."""
-    return len(a) == len(b) and all(x is y for x, y in zip(a, b))
+@dataclass
+class _FramePrint:
+    """The printer's per-frame state: emit-order caches and the
+    constructor's loop seed, which the body printer consults."""
+    case_entries: 'dict[int, _StateLabel] | None' = None
+    redispatch: 'dict[int, int | None]' = field(default_factory=dict)
+    resume_to_yield: 'dict[int, THIRSuspend] | None' = None
+    frame_fields: 'list[FrameField] | None' = None
+    # The loop whose iterator setup the constructor already ran.
+    ctor_seeded_uid: 'int | None' = None
 
 
 class AsyncCoroCodegen:
@@ -469,20 +309,22 @@ class AsyncCoroCodegen:
         self.ctx = ctx
         self.types = types
         self.functions = functions
-        # Set by CodeGenerator after init; the resumable for-loop emit reuses
-        # the legacy strategy analysis (`_analyze_for_strategy`).
-        self.gen_generators: GeneratorCodegen
+        # Generators defined in the module being emitted, keyed
+        # (name, owner_record): the frame builder resolves a same-module
+        # delegated source through it. Filled per module before any emit.
+        self.same_module_generators: dict[
+            tuple[str, str | None], TpyFunction] = {}
         # Resumable-shape discriminator read by the `_resumable_*` policy
         # seams. ASYNC (await -> __poll__ -> Poll<T>) is the default; the
         # GENERATOR shape (yield -> __next__ -> expected<T, StopIteration>)
         # is selected transiently via `_resumable_shape`.
-        self._shape: rcfg.ResumableShape = rcfg.ResumableShape.ASYNC
+        self._shape: ResumableShape = ResumableShape.ASYNC
         # Set while a body is emitted as one plain loop (`_emit_single_loop`);
         # the state-transition sites read it.
         self._loop_form: '_LoopForm | None' = None
 
     @contextlib.contextmanager
-    def _resumable_shape(self, shape: 'rcfg.ResumableShape'):
+    def _resumable_shape(self, shape: 'ResumableShape'):
         """Temporarily select the resumable shape (async / generator) the
         policy seams emit for, restoring the prior shape on exit."""
         prev = self._shape
@@ -493,7 +335,7 @@ class AsyncCoroCodegen:
             self._shape = prev
 
     def _is_generator_shape(self) -> bool:
-        return self._shape is rcfg.ResumableShape.GENERATOR
+        return self._shape is ResumableShape.GENERATOR
 
     def gen_struct_name(self, func: TpyFunction,
                         record_name: str | None = None) -> str:
@@ -503,78 +345,9 @@ class AsyncCoroCodegen:
         async shape -- so the struct name reflects what it is (the
         `operator<<` repr uses the same `__gen_` convention). The grammar
         itself lives in
-        `rcfg.frame_struct_name`, shared with every call site that embeds
+        `frame_struct_name`, shared with every call site that embeds
         someone else's frame."""
-        return rcfg.frame_struct_name(func.name, record_name, self._shape)
-
-    def _frame_deep_const_verdict(
-            self, func: TpyFunction,
-            record_name: 'str | None') -> 'frozenset[int] | None':
-        """The per-param deep-const verdict off the RAW fi of `func`'s body."""
-        fi = self._frame_fi(func, record_name)
-        return fi.const_borrow_params if fi is not None else None
-
-    def _frame_fi(self, func: TpyFunction,
-                  record_name: 'str | None') -> 'FunctionInfo | None':
-        """The registry FunctionInfo of the generator / coroutine `func`, or
-        None for a nested def (it lives in its enclosing body's namespace)."""
-        if record_name:
-            return body_method_info(self.ctx.analyzer.registry.get_record(record_name), func)
-        return body_function_info(self.ctx.analyzer.registry, func)
-
-    def _frame_capture_const_names(
-            self, func: TpyFunction,
-            record_name: 'str | None') -> 'tuple[set[str], set[str]]':
-        """The frame's per-capture const verdict by NAME: `(const_ref, deep)`.
-
-        The ONE reading of the const-borrow verdict for a resumable frame: the
-        captured field spelling, the const sets the prescan types alias locals
-        against, and the frame's const bindings all take it from here, so one
-        capture cannot come out const in one of them and mutable in another.
-        `readonly[T]` is the explicit half of the same verdict. A capture that
-        holds no borrow (`Own[T]`, an owned view copy, a deduced template arg)
-        is excluded whatever the verdict says; the pointer-repr forms carry
-        their const inside the spelling, so they join `deep` only.
-
-        Recorded as the frame's const bindings on the way out (the loop and
-        alias prescans add theirs as they classify).
-        """
-        const_ref: set[str] = set()
-        deep: set[str] = set()
-        # A `*args` pack binds const storage without the CAPTURE being a const
-        # borrow: sema flips an unmutated pack to `varargs[readonly[T]]` and
-        # the pack's own spelling carries it, so the field stays as it was and
-        # only the lifts rooted at it turn const.
-        pack: set[str] = set()
-        if func.is_readonly and (record_name is not None or func.is_method):
-            const_ref.add("self")
-        verdict = self._frame_deep_const_verdict(func, record_name)
-        for pidx, (pname, ptype) in enumerate(func.params):
-            if varargs_is_readonly(unwrap_ref_type(ptype)):
-                pack.add(pname)
-                continue
-            outer = unwrap_send_sync(unwrap_ref_type(ptype))
-            if is_readonly_ptr(outer):
-                # `Ptr[readonly[T]]` captures as `const T*` whatever the param
-                # verdict says -- its const is on the POINTEE, so like the
-                # other pointer-repr forms it joins `deep` only.
-                deep.add(pname)
-                continue
-            explicit = isinstance(unwrap_ref_type(ptype), ReadonlyType)
-            if not explicit and (verdict is None or pidx not in verdict):
-                continue
-            kind = self._classify_param_kind(ptype)
-            if explicit or kind is _CoroParamKind.REF:
-                const_ref.add(pname)
-                deep.add(pname)
-                continue
-            bare = unwrap_readonly(unwrap_ref_type(ptype))
-            if ((isinstance(bare, TupleType) and bare.has_pointer_repr_element())
-                    or self.ctx.is_ptr_variant_union(bare)):
-                deep.add(pname)
-        rcfg.mark_frame_const(rcfg.resumable_state(func), *const_ref, *deep,
-                              *pack)
-        return const_ref, deep
+        return frame_struct_name(func.name, record_name, self._shape)
 
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None) -> list[_CoroParam]:
@@ -586,11 +359,9 @@ class AsyncCoroCodegen:
         capture their receiver -- parallels `GeneratorCodegen`
         self-capture.
 
-        `record_name` is NOT defaulted: it selects the owning `FunctionInfo`
-        that `_frame_capture_const_names` memoizes the frame's const-capture
-        verdict from, so a silent None on a method would record the frame's
-        const bindings off the free-function lookup. Free-function callers
-        pass None explicitly.
+        The capture kinds and const verdicts are the published frame's
+        (`THIRResumableFrame.captures` / `const_params`); this only spells
+        them.
 
         Generic params (`T` as TypeParamRef) use the
         `param_val_or_ref_t<T>` / `val_or_ref_t<T>` trait so each
@@ -601,47 +372,37 @@ class AsyncCoroCodegen:
         non-template ref path).
 
         str / bytes params are captured OWNED in the frame
-        (_CoroParamKind.OWNED_COPY -- the view is copied into std::string /
+        (FrameCaptureKind.OWNED_COPY -- the view is copied into std::string /
         tpy::bytes at construction) so they survive a suspension even when the
         arg is a temporary. Explicit view params (StrView/Span) stay borrow
         form (the caller opted into view semantics).
         """
         out: list[_CoroParam] = []
-        # The per-capture const verdict (addr-escape / readonly aware). An
-        # inferred-readonly method does NOT wrap its params in ReadonlyType, so
-        # the factory field must consult the verdict, not just the param type,
-        # to match the call site + body.
-        _const_ref, _deep_const = self._frame_capture_const_names(
-            func, record_name)
+        frame = self.resumable_frame(func, record_name)
         if record_name:
             # The bare class name of a generic class in a type position
             # outside the class body is ill-formed: spell `Box<T>`.
             cpp_record = self.functions.protocols.record_cpp_qualifier(record_name)
-            const_prefix = "const " if func.is_readonly else ""
+            const_prefix = "const " if frame.receiver.readonly else ""
             recv_type = f"{const_prefix}{cpp_record}"
             out.append(_CoroParam(
                 cpp_name="__self",
                 field_type=recv_type,
                 ctor_param_type=recv_type,
-                kind=_CoroParamKind.REF,
+                kind=FrameCaptureKind.REF,
             ))
-        for pname, ptype in func.params:
+        for param, kind in zip(frame.params, frame.captures):
+            pname, ptype = param.name, param.type
+            const = pname in frame.const_params
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
-            kind = self._classify_param_kind(ptype)
-            if func.is_capture(pname):
-                # A lexical capture: the deduced-type forwarding slot, which an
-                # lvalue argument makes a REFERENCE field of whatever C++ type
-                # the enclosing variable has (its storage form is the enclosing
-                # body's business, and a rebind there must stay visible here).
-                kind = _CoroParamKind.CAPTURE
             owned_init = ""
-            if kind is _CoroParamKind.VALUE:
+            if kind is FrameCaptureKind.VALUE:
                 # Value types (incl. explicit views like StrView) store their
                 # own C++ type by value; str/bytes are OWNED_COPY, not here.
                 field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
-            elif kind is _CoroParamKind.OWNED_COPY:
+            elif kind is FrameCaptureKind.OWNED_COPY:
                 # Owned storage field, but the factory/ctor take the borrow form
                 # the call site passes (string_view / BytesView, or their
                 # nullable optional<view>); ctor_init copies it in via
@@ -653,13 +414,13 @@ class AsyncCoroCodegen:
                 # str|None / bytes|None forms are already owned via type_to_cpp.
                 field_type = ("std::string" if is_str_type(ptype_inner)
                               else self.types.type_to_cpp(ptype_inner))
-            elif kind is _CoroParamKind.TYPE_PARAM:
+            elif kind is FrameCaptureKind.TYPE_PARAM:
                 # to_cpp_return / to_cpp_param_type already encode the
                 # val_or_ref_t<T> / param_val_or_ref_t<T> traits (and
                 # collapse to std::size_t for INT-kind params).
                 field_type = ptype_inner.to_cpp_return()
                 ctor_type = ptype_inner.to_cpp_param_type()
-            elif kind is _CoroParamKind.STATIC_PROTOCOL:
+            elif kind is FrameCaptureKind.STATIC_PROTOCOL:
                 # Static-protocol param (e.g. `Own[Awaitable[T]]`): the
                 # concrete operand type is deduced as an extra template
                 # arg `T_<pname>` with a concept constraint, declared in
@@ -673,12 +434,12 @@ class AsyncCoroCodegen:
                 # Using `cpp_name` here would diverge when `pname`
                 # collides with a C++ keyword (e.g. `class` -> `class_`).
                 field_type = ctor_type = protocol_param_template_name(pname)
-            elif kind in (_CoroParamKind.FN, _CoroParamKind.CAPTURE):
+            elif kind in (FrameCaptureKind.FN, FrameCaptureKind.CAPTURE):
                 # Concrete callable type deduced as `F_<pname>` (declared in
                 # `_emit_template_header`); stored by value, forwarded via
                 # `F_<pname>&&` -- same shape as STATIC_PROTOCOL.
                 field_type = ctor_type = fn_param_template_name(pname)
-            elif kind in (_CoroParamKind.POINTER, _CoroParamKind.OWNED_TUPLE):
+            elif kind in (FrameCaptureKind.POINTER, FrameCaptureKind.OWNED_TUPLE):
                 if pointer_repr_optional(actual) is not None:
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
                 elif isinstance(actual, TupleType):
@@ -690,7 +451,7 @@ class AsyncCoroCodegen:
                     # sync signature + call site; yield-escaped params are
                     # excluded by the verdict itself).
                     spell = ptype_inner
-                    if spell is actual and pname in _deep_const:
+                    if spell is actual and const:
                         spell = ReadonlyType(actual)
                     field_type = ctor_type = spell.to_cpp_return()
                 else:
@@ -703,8 +464,7 @@ class AsyncCoroCodegen:
                     # field would be the lone divergence. Deep-const when the
                     # param is `readonly[...]` OR the const verdict deep-consts
                     # it (matches the call site + body, addr-escape aware).
-                    is_readonly_param = ((actual is not ptype_inner)
-                                         or pname in _deep_const)
+                    is_readonly_param = (actual is not ptype_inner) or const
                     field_type = ctor_type = (
                         self.types.type_to_cpp_const_ptr_variant(actual)
                         if is_readonly_param
@@ -717,7 +477,7 @@ class AsyncCoroCodegen:
                 # verdict the sync twin's signature reads, so a caller holding
                 # its own const borrow can drive the factory. OWNED_VALUE
                 # (`Own[T]`) is excluded: it owns its payload, not a borrow.
-                if kind is _CoroParamKind.REF and pname in _const_ref:
+                if kind is FrameCaptureKind.REF and const:
                     field_type = ctor_type = f"const {field_type}"
             out.append(_CoroParam(
                 cpp_name=cpp_name,
@@ -727,138 +487,6 @@ class AsyncCoroCodegen:
                 owned_copy_init=owned_init,
             ))
         return out
-
-    def _classify_param_kind(self, ptype: 'TpyType') -> _CoroParamKind:
-        """Decide the coro-frame storage kind for an async-def param.
-
-        Single source of truth for the kind cascade: `_classify_params`
-        derives the C++ spelling from it, and `_param_borrows` reads it to
-        decide whether an rvalue-temporary arg bound to this param must be
-        hoisted into the awaiter's frame (see `_lift_borrowed_rvalue_args`).
-        """
-        ptype_inner = unwrap_ref_type(ptype)
-        actual = unwrap_readonly(ptype_inner)
-        # str / bytes are captured owned in the frame (copied at construction)
-        # so the view doesn't dangle across a suspension when the arg is a
-        # temporary -- see is_owned_in_coro_frame (the sema borrow set excludes
-        # the same set). Explicit view params (StrView/Span) stay borrow-form.
-        if is_owned_in_coro_frame(ptype_inner):
-            return _CoroParamKind.OWNED_COPY
-        # `readonly[T]` is the same slot seen through the const wrapper, so it
-        # takes the same per-instantiation traits: a literal `const T&` field
-        # would hold a reference at a VALUE instantiation too, where the frame
-        # outlives the temporary the factory call materialized.
-        if isinstance(actual, TypeParamRef):
-            return _CoroParamKind.TYPE_PARAM
-        # Checked before the OptionalType-pointer-repr branch so
-        # `Own[Awaitable[T]] | None` isn't mis-routed to POINTER --
-        # `_protocol_template_parts` rejects the nullable shape instead.
-        if self.functions.protocols.is_static_protocol_param(ptype):
-            return _CoroParamKind.STATIC_PROTOCOL
-        # Fn callable: concrete type is deduced as an `F_<pname>` template arg
-        # (like a static protocol). Checked before is_value_type() -- a
-        # CallableType would otherwise route through type_to_cpp(), which a
-        # template-mode Fn cannot answer.
-        if is_fn_type(actual):
-            return _CoroParamKind.FN
-        # A generic `T | None` slot lands here too, and the arm's spelling is
-        # what it wants: `to_cpp_param_type()` renders the runtime's
-        # per-instantiation form, which owns at a value T and points at a
-        # reference one. Only the KIND's name is a pointer -- the borrow
-        # question is answered per instantiation, on the substituted slot the
-        # call site passes to `_param_borrows`.
-        if pointer_repr_optional(actual) is not None:
-            return _CoroParamKind.POINTER
-        if self.ctx.is_ptr_variant_union(actual):
-            return _CoroParamKind.POINTER
-        # A borrow-form tuple param (std::tuple<..., T*>) is held in the frame
-        # by value-of-pointers so it aliases the caller across suspensions; a
-        # VALUE-kind field would store the storage form (std::tuple<..., T>)
-        # and silently copy the element where CPython shares it.
-        if isinstance(actual, TupleType) and actual.has_pointer_repr_element():
-            return (_CoroParamKind.OWNED_TUPLE if param_takes_ownership(ptype)
-                    else _CoroParamKind.POINTER)
-        # Own[T] checked before is_value_type(): `OwnType.is_value_type()` is
-        # True (Own[T] uses T&& at param boundaries) but the move-only
-        # semantics need explicit forwarding, so it can't ride the VALUE path.
-        if isinstance(ptype_inner, OwnType):
-            return _CoroParamKind.OWNED_VALUE
-        if ptype_inner.is_value_type():
-            return _CoroParamKind.VALUE
-        return _CoroParamKind.REF
-
-    def _param_borrows(self, ptype: 'TpyType') -> bool:
-        """True iff a param of this type is captured in the coro frame as a
-        borrow (a reference/pointer into the arg) rather than by value -- the
-        REF / POINTER / OWNED_TUPLE kinds. An rvalue-temporary arg bound to
-        such a param dangles once the suspending `case` block exits unless it
-        is hoisted into a frame field that outlives the sub-coro.
-
-        TYPE_PARAM (generic-async) is intentionally not treated as borrowing
-        here: its value-vs-reference form resolves only at instantiation, so
-        the borrowing rvalue-arg dangle for an object-typed `T` is left to the
-        generic-async dangle tracked in BUGS.md (#292 M7).
-
-        A generic `T | None` slot needs no such carve-out: its only caller
-        (`_hoist_borrowed_args`) asks about the resolved callee's SUBSTITUTED
-        slot, which is a value Optional at a value T (no hoist) and a
-        pointer-repr one at a reference T (hoisted), so the answer is already
-        per instantiation."""
-        return self._classify_param_kind(ptype) in (
-            _CoroParamKind.REF, _CoroParamKind.POINTER,
-            _CoroParamKind.OWNED_TUPLE)
-
-    def _frame_temp_slot(self, ptype: 'TpyType',
-                         arg: 'TpyExpr') -> 'TpyType | None':
-        """The OWNED type a TEMPORARY argument of the awaited sub-coro hoists
-        into a slot of THIS frame, or None when nothing is owed.
-
-        A frame never receives a temporary, so this is the same question the
-        sync call sites ask and it is the same predicate:
-        `frame_temp_arg_slot` decides. `_param_borrows` cannot answer for a
-        borrowing-VIEW slot: the view's frame field is a VALUE-kind capture,
-        so the kind cascade says by-value while the aliasing says borrow."""
-        from ..thir.lower import frame_temp_arg_slot
-        return frame_temp_arg_slot(arg, ptype, self.ctx.analyzer)
-
-    def _seat_frame_temp_elems(self, func: TpyFunction, fi, i: int,
-                               arg: TpyExpr, pre: list[TpyStmt], *,
-                               shared: bool, binds: str | None) -> None:
-        """Seat every temporary ELEMENT of a tuple-literal argument `i` that
-        the callee's frame would borrow on a local of THIS frame, rewriting
-        the element to the seat's name -- the element half of the argument
-        seat, from the same plan the lowering row hoists (`frame_temp_elem_
-        slots`). The tuple stays in place: the callee's frame copies its
-        pointers, and what they point at is now storage this frame holds."""
-        from ..thir.lower import frame_temp_elem_slots
-        for entry in frame_temp_elem_slots(arg, fi.params[i].type,
-                                           self.ctx.analyzer):
-            k = entry.path[-1]
-            source = entry.holder.elements[k]
-            if shared:
-                self._reject_shared_loop_seat(
-                    fi, source,
-                    f"an element of argument '{fi.params[i].name}'",
-                    ", or declare the parameter 'Own[...]' so the callee "
-                    "owns its copy")
-            entry.holder.elements[k] = self._frame_local_for(
-                func, source, entry.owned, pre, binds=binds)
-
-    def _view_backing_coerce(self, ptype: 'TpyType',
-                             arg: 'TpyExpr') -> 'TpyCoerce | None':
-        """The coerce node the lift re-seats when a hoisted temporary argument
-        arrived through one (`::tpy::as_mut_span(<source>)`): the coerce keeps
-        its render and only its SOURCE moves onto the frame slot.
-
-        A STACKED coerce is safe by the lift's own shape rather than by
-        witness: `_hoist_borrowed_args` captures `host.expr` BEFORE re-seating,
-        so the hoisted decl's init is the inner coerce whole and only the
-        outermost source name is replaced. No two-layer coerce at a view
-        argument could be built to observe it, so the claim is reasoned from
-        that capture, not pinned by a case."""
-        if not isinstance(arg, TpyCoerce):
-            return None
-        return arg if self._frame_temp_slot(ptype, arg) is not None else None
 
     def _protocol_template_parts(self, func: TpyFunction) -> list[str]:
         """Return template-header parts for any static-protocol-typed
@@ -989,9 +617,9 @@ class AsyncCoroCodegen:
         cparams = self._classify_params(func, record_name)
         # Order must match `_emit_template_header`: protocol args then Fn args.
         extras = [p.field_type for p in cparams
-                  if p.kind is _CoroParamKind.STATIC_PROTOCOL]
+                  if p.kind is FrameCaptureKind.STATIC_PROTOCOL]
         extras += [p.field_type for p in cparams
-                   if p.kind in (_CoroParamKind.FN, _CoroParamKind.CAPTURE)]
+                   if p.kind in (FrameCaptureKind.FN, FrameCaptureKind.CAPTURE)]
         all_args = (list(self.functions.protocols.record_template_args(record_name))
                     + list(func.type_params) + extras)
         if not all_args:
@@ -1119,1017 +747,12 @@ class AsyncCoroCodegen:
 
     # -- Body partitioning ----------------------------------------------------
 
-    def _effective_body(self, func: TpyFunction) -> list[TpyStmt]:
-        """Return the function body with the await-lift pass applied so
-        awaits embedded in expressions become top-level vardecls. The
-        CFG builder treats compound statements (including any
-        wrapping try/finally) uniformly, so no unwrap is needed here.
-
-        Cached on the TpyFunction node so multiple codegen passes
-        (struct emission + poll body) see the same rewrite.
-        """
-        state = rcfg.resumable_state(func)
-        if state.lifted_body is not None:
-            return state.lifted_body
-        lifted = self._lift_nested_awaits(func, func.body)
-        # Runs on the await-normalized body: every await now sits in a
-        # top-level statement, so each INLINE await's call args are in a
-        # known position to hoist (a nested-await arg has already become a
-        # stable hoisted-local name and is left alone).
-        lifted = self._lift_borrowed_rvalue_args(func, lifted)
-        state.lifted_body = lifted
-        return lifted
-
-    def _lift_nested_awaits(self, func: TpyFunction,
-                             body: list[TpyStmt]) -> list[TpyStmt]:
-        """Rewrite each statement that has awaits buried in expressions
-        into a sequence of statements where every await is at top level.
-
-        Recurses into compound statement bodies (if/while/for/try/with)
-        so awaits buried inside loop/branch bodies are also lifted.
-
-        Example:
-            x = (await a()) + (await b())
-        becomes:
-            __await_lift_0 = await a()
-            __await_lift_1 = await b()
-            x = __await_lift_0 + __await_lift_1
-
-        Each lifted name is registered as a hoisted local so the bind
-        slot is a frame field.
-        """
-        out: list[TpyStmt] = []
-        for stmt in body:
-            top_await = rcfg._top_level_await_in(stmt)
-            new_stmts = self._lift_awaits_in_stmt(func, stmt, top_await)
-            # Recurse compound bodies AFTER the surface lift so a
-            # substituted TpyName isn't re-scanned. The surface lift
-            # mutates `stmt` in place (see BUGS.md "Await lifter
-            # mutates parse AST"); the compound recurse returns a
-            # shallow copy so nested bodies don't.
-            new_stmts = [
-                self._lift_compound_subbodies(func, s) for s in new_stmts
-            ]
-            out.extend(new_stmts)
-        return out
-
-    def _lift_compound_subbodies(self, func: TpyFunction,
-                                    stmt: TpyStmt) -> TpyStmt:
-        """If `stmt` is a compound (if/while/for/try/with) and any of
-        its sub-bodies needs lifting, return a shallow copy with the
-        sub-body lists replaced by lifted versions. Otherwise return
-        `stmt` unchanged. Does not mutate the input."""
-        return self._map_compound_subbodies(func, stmt, self._lift_nested_awaits)
-
-    def _map_compound_subbodies(
-            self, func: TpyFunction, stmt: TpyStmt,
-            transform: 'Callable[[TpyFunction, list[TpyStmt]], list[TpyStmt]]',
-    ) -> TpyStmt:
-        """Apply `transform(func, body)` to each statement-list sub-body of a
-        compound `stmt` (its dataclass fields plus try-handler bodies). Return
-        `stmt` unchanged when nothing moved -- preserving its id for the
-        analyzer's id(stmt)-keyed tables -- or a shallow copy with the
-        rewritten sub-bodies otherwise. Does not mutate the input."""
-        if not hasattr(stmt, "sub_bodies"):
-            return stmt
-        if not is_dataclass(stmt):
-            return stmt
-        # Preserve the original stmt object (and its id) when sub-body
-        # lifting produced no actual changes -- any analyzer-side
-        # id(stmt)-keyed dict (e.g. if_branch_decls) would otherwise be
-        # orphaned by a spurious clone.
-        replacements: dict[str, list[TpyStmt]] = {}
-        for f in fields(stmt):
-            v = getattr(stmt, f.name, None)
-            if isinstance(v, list) and v and isinstance(v[0], TpyStmt):
-                lifted = transform(func, v)
-                if not _same_elements(lifted, v):
-                    replacements[f.name] = lifted
-        # TpyTry: handlers list isn't TpyStmt-typed but each handler
-        # carries its own body. Build new handler instances if any
-        # handler body needed lifting.
-        new_handlers: list[TpyExceptHandler] | None = None
-        if isinstance(stmt, TpyTry) and stmt.handlers:
-            rebuilt: list[TpyExceptHandler] = []
-            any_changed = False
-            for h in stmt.handlers:
-                lifted_body = transform(func, h.body) if h.body else h.body
-                if not _same_elements(lifted_body, h.body):
-                    rebuilt.append(dc_replace(h, body=lifted_body))
-                    any_changed = True
-                else:
-                    rebuilt.append(h)
-            if any_changed:
-                new_handlers = rebuilt
-        if not replacements and new_handlers is None:
-            return stmt
-        new_stmt = copy.copy(stmt)
-        for fname, lifted in replacements.items():
-            setattr(new_stmt, fname, lifted)
-        if new_handlers is not None:
-            new_stmt.handlers = new_handlers
-        return new_stmt
-
-    def _lift_awaits_in_stmt(self, func: TpyFunction, stmt: TpyStmt,
-                              top_await: 'TpyAwait | None') -> list[TpyStmt]:
-        """Lift any TpyAwait inside `stmt`'s expressions out into preceding
-        VarDecls. The top-level await (if any) stays in place. Returns the
-        new statement list; if no rewrite needed, returns [stmt].
-        """
-        # Collect nested awaits (excluding the top-level one).
-        lifts: list[TpyAwait] = []
-        self._collect_nested_awaits(stmt, top_await, lifts)
-        if not lifts:
-            return [stmt]
-        new_stmts: list[TpyStmt] = []
-        for await_node in lifts:
-            name = f"__await_lift_{self._next_lift_id(func)}"
-            self._bump_lift_id(func)
-            # One-shot by construction: created here, consumed by `stmt` (the
-            # single replacement below). Records it as a movable source so a
-            # tuple-unpack reading it moves elements out instead of copying.
-            # INVARIANT: only OWNED results may be added here -- an await
-            # result is always owned, and `owning_generator_tuple_locals`
-            # relies on that to give a reference-element lift tuple owning
-            # (not borrow) frame storage. Do not add a borrow/aliasing source.
-            rcfg.resumable_state(func).one_shot_lift_names.add(name)
-            await_t = self.ctx.get_expr_type(await_node)
-            if await_t is None:
-                raise CodeGenError(
-                    "await result has no analyzed type (lift)", loc=stmt.loc)
-            await_t = unwrap_ref_type(await_t)
-            new_decl = TpyVarDecl(
-                name=name, type=await_t, init=await_node, loc=stmt.loc)
-            new_stmts.append(new_decl)
-            # Register as hoisted local; codegen emits a frame field.
-            # Append in place to avoid an O(N) copy per lift (which,
-            # paired with _next_lift_id's linear scan, would otherwise
-            # be O(N^2) over nested awaits in one function).
-            if func.generator_locals is None:
-                func.generator_locals = []
-            func.generator_locals.append((name, await_t))
-            # Replace the await in `stmt`'s expression tree with a
-            # TpyName referring to the lifted local. Use the analyzer's
-            # set_expr_type so codegen's get_expr_type sees it.
-            replacement = TpyName(name=name, loc=await_node.loc)
-            self.ctx.analyzer.ctx.set_expr_type(replacement, await_t)
-            self._replace_expr_in_stmt(stmt, await_node, replacement)
-        new_stmts.append(stmt)
-        return new_stmts
-
-    def _collect_nested_awaits(self, stmt: TpyStmt, top_await: 'TpyAwait | None',
-                                out: list[TpyAwait]) -> None:
-        """Walk stmt's expressions; collect TpyAwait nodes that are NOT the
-        top-level await (which is handled by region partitioning). Skips
-        nested defs / sub_bodies."""
-
-        def walk_expr(e):
-            if e is None:
-                return
-            if isinstance(e, TpyAwait):
-                if e is not top_await:
-                    out.append(e)
-                # Don't recurse into the await's own value; that becomes
-                # the call processed by the lifted VarDecl.
-                return
-            for c in (e.children() if hasattr(e, "children") else ()):
-                walk_expr(c)
-
-        if hasattr(stmt, "exprs"):
-            for e in stmt.exprs():
-                walk_expr(e)
-
-    def _next_lift_id(self, func: TpyFunction) -> int:
-        """Return the next free index for __await_lift_<n> names.
-        Tracked as a per-function counter so the lift pass is linear
-        in the total number of lifts."""
-        return rcfg.resumable_state(func).next_lift_id
-
-    def _bump_lift_id(self, func: TpyFunction) -> None:
-        rcfg.resumable_state(func).next_lift_id += 1
-
     # -- Borrowed-rvalue-arg lift (runs after the await-lift pass) ------------
-
-    def _lift_borrowed_rvalue_args(self, func: TpyFunction,
-                                    body: list[TpyStmt],
-                                    in_loop: bool = False) -> list[TpyStmt]:
-        """Hoist rvalue-temporary arguments of INLINE-mode await calls into
-        frame-backed hoisted locals so the sub-coro's borrow doesn't dangle
-        across the suspension.
-
-            await f(Dog("x"))          # f(a: Dog | Cat)
-        becomes
-            __coro_arg_0 = Dog("x")
-            await f(__coro_arg_0)
-
-        The sub-coro frame's `variant<Cat*, Dog*>` (or `T*` for pointer-form
-        Optional, or `T&` for a plain non-value ref param) then points at
-        `__coro_arg_0` -- a frame field outliving the sub-coro -- instead of
-        a `__tmp` flushed inside the suspending `case` block, which dies at
-        the `continue`. Without the lift the pointer/variant shapes are
-        silent UB and the plain-ref shape is a hard C++ error.
-
-        A stable-lvalue arg (a name or field chain) is left in place: its
-        address already persists across the suspension, and copying it would
-        break mutation-through-borrow and reject @nocopy elements.
-
-        Runs after `_lift_nested_awaits`, so every await is already in a
-        top-level statement; recursion into compound sub-bodies mirrors that
-        pass. The await half is self-gating for generators (no awaits -> no
-        INLINE calls); `_hoist_frame_factory_args` then covers every OTHER
-        generator/coro factory call in the body -- a `for` head, a handle bound
-        to a local, the escaping `create_task(f(rvalue))` form -- whose
-        argument the uniform frame-temp rule would otherwise have named in the
-        state's `case` block, which the handle outlives.
-
-        A `Task` that outlives the whole enclosing frame is a further hazard
-        this pass cannot answer (`BUGS.md#create-task-ref-param-escape`): a
-        frame field is as long-lived as this body, no longer.
-
-        `in_loop` says whether the statements can RE-EXECUTE within one run of
-        this body. One field per call SITE is only enough while at most one
-        handle built there is alive at a time, so a site whose handle outlives
-        the iteration is rejected instead of seated (see
-        `_hoist_frame_factory_args`)."""
-        out: list[TpyStmt] = []
-        for stmt in body:
-            hoisted = self._hoist_borrowed_args(func, stmt)
-            # The factory hoist runs on the await hoist's OUTPUT: an inline
-            # await's arguments are already frame-local names by then, so the
-            # two passes never name the same argument twice.
-            out.extend(hoisted[:-1])
-            out.extend(
-                self._hoist_frame_factory_args(func, hoisted[-1], in_loop))
-            # Recurse compound bodies AFTER the surface hoists: they mutate
-            # only the host statement's own call arg lists, never sub-bodies,
-            # so the passes never touch the same node. A loop's OWN head was
-            # hoisted at the enclosing depth just above; only its sub-bodies
-            # re-execute.
-            sub_in_loop = in_loop or isinstance(out[-1], (TpyForEach, TpyWhile))
-            out[-1] = self._map_compound_subbodies(
-                func, out[-1],
-                partial(self._lift_borrowed_rvalue_args, in_loop=sub_in_loop))
-        return out
-
-    def _hoist_borrowed_args(self, func: TpyFunction,
-                              stmt: TpyStmt) -> list[TpyStmt]:
-        """If `stmt` hosts a top-level INLINE await call, hoist its borrowed
-        rvalue args into preceding vardecls (mutating the call's arg list in
-        place to reference the hoisted names). Returns [preceding vardecls...,
-        stmt]; [stmt] when nothing to hoist."""
-        await_node = rcfg._top_level_await_in(stmt)
-        if await_node is None or await_node.awaited_async_func_name is None:
-            return [stmt]
-        call = await_node.value
-        if not isinstance(call, (TpyCall, TpyMethodCall)):
-            return [stmt]
-        fi = call.resolved_function_info
-        if fi is None:
-            return [stmt]
-        pre: list[TpyStmt] = []
-        for i, arg in enumerate(call.args):
-            # Varargs (arg_index past the declared params) are a separate
-            # dangle class tracked in BUGS.md; leave them for the *args path.
-            if i >= len(fi.params):
-                break
-            self._seat_frame_temp_elems(func, fi, i, arg, pre, shared=False,
-                                        binds=_bound_local(stmt))
-            # A BORROWING-VIEW slot is passed by value, but the value IS a
-            # borrow the sub-coro's frame keeps for its whole life -- the same
-            # standing the REF / POINTER kinds have. What must outlive the
-            # suspension is then the STORAGE the view aliases, so the lift
-            # targets the coerce's source and leaves the view built over the
-            # hoisted local (`::tpy::as_mut_span((*__coro_arg_0))`).
-            host = self._view_backing_coerce(fi.params[i].type, arg)
-            temp_slot = self._frame_temp_slot(fi.params[i].type, arg)
-            if (host is None and temp_slot is None
-                    and not self._param_borrows(fi.params[i].type)):
-                continue
-            source = host.expr if host is not None else arg
-            # `None` lowers to nullptr (pointer-form Optional) or
-            # `std::monostate` (pointer-variant union) -- a by-value slot, not
-            # a borrow, so there is no temp to outlive the suspension.
-            if isinstance(source, TpyNoneLiteral):
-                continue
-            if not (self.ctx.is_rvalue_source(source)
-                    or self.ctx.is_temporary_expr(source)):
-                continue
-            # The frame slot takes the source's OWNED type where the uniform
-            # frame-temp rule named one (a str/bytes argument owns its buffer
-            # in the slot however the param spells it).
-            arg_t = (temp_slot if temp_slot is not None
-                     else self.ctx.get_expr_type(source))
-            if arg_t is None:
-                raise CodeGenError(
-                    "await arg has no analyzed type (borrowed-arg lift)",
-                    loc=stmt.loc)
-            self._seat_arg_on_frame_local(func, call, i, fi.params[i].type,
-                                          source, host, arg_t, pre,
-                                          binds=_bound_local(stmt))
-        pre.append(stmt)
-        return pre
-
-    def _seat_arg_on_frame_local(self, func: TpyFunction, call, i: int,
-                                 ptype: 'TpyType', source: TpyExpr,
-                                 host: 'TpyCoerce | None', arg_t: 'TpyType',
-                                 pre: list[TpyStmt], *,
-                                 binds: str | None) -> None:
-        """Move `source` onto a `__coro_arg_N` local of THIS frame
-        (`_frame_local_for`) and point argument `i` of `call` at it.
-
-        A coerce-shaped argument keeps its coerce and only its SOURCE moves
-        (`::tpy::as_mut_span(__coro_arg_0)`); an argument with no coerce
-        becomes the local itself."""
-        arg_t = unwrap_ref_type(arg_t)
-        # A tuple arg's analyzed type can carry IntLiteral elements and
-        # per-element Own provenance, which would demote the hoisted frame
-        # field to a value tuple (or fail to render). The hoisted local
-        # exists to back the param's borrow, so give it the declared param
-        # slot shape -- the frame field then takes the borrow form and the
-        # sub-coro's pointer slots stay valid across the suspension.
-        lift_ptype = unwrap_readonly(unwrap_ref_type(ptype))
-        if isinstance(arg_t, TupleType) and isinstance(lift_ptype, TupleType):
-            arg_t = lift_ptype
-        replacement = self._frame_local_for(func, source, arg_t, pre,
-                                            binds=binds)
-        if host is not None:
-            host.expr = replacement
-        else:
-            call.args[i] = replacement
-
-    def _frame_local_for(self, func: TpyFunction, source: TpyExpr,
-                         local_t: 'TpyType', pre: list[TpyStmt], *,
-                         binds: str | None) -> TpyName:
-        """Declare `source` as a fresh `__coro_arg_N` local of THIS frame and
-        return the name that reads it back.
-
-        The local is registered in `generator_locals`, so its storage is a
-        field of the enclosing frame and lives as long as the frame does --
-        which is what a hoist inside a resumable body has to mean. A local of
-        the enclosing BLOCK would be a `case`-block local, and every handle
-        this hoist exists to feed (a sub-coro field, a `__for_src` slot, a
-        `Task`) outlives that block."""
-        name = f"__coro_arg_{rcfg.resumable_state(func).next_arg_lift_id}"
-        rcfg.resumable_state(func).next_arg_lift_id += 1
-        # loc=None: the hoisted decl is a synthesized sub-step of the host
-        # statement, not its own source line, so it must not re-emit the
-        # host's source comment (which the host statement still emits).
-        pre.append(TpyVarDecl(name=name, type=local_t, init=source, loc=None))
-        if func.generator_locals is None:
-            func.generator_locals = []
-        # Declared with its statement: ahead of the local the statement binds,
-        # else after every local. The field order proper follows the borrow
-        # edges recorded here (`_frame_fields`): the lift borrows what its
-        # expression reads, and the handle `binds` names borrows the lift.
-        names = [n for n, _ in func.generator_locals]
-        if binds is not None and binds in names:
-            func.generator_locals.insert(names.index(binds), (name, local_t))
-        else:
-            func.generator_locals.append((name, local_t))
-        rcfg.resumable_state(func).arg_lifts[name] = (source, binds)
-        replacement = TpyName(name=name, loc=source.loc)
-        self.ctx.analyzer.ctx.set_expr_type(replacement, local_t)
-        return replacement
-
-    def _frame_factory_calls(
-            self, func: TpyFunction,
-            stmt: TpyStmt) -> 'list[tuple[TpyExpr, bool]]':
-        """The generator/coroutine FACTORY calls in `stmt` that run
-        unconditionally and exactly once when control reaches the statement,
-        each paired with whether its HANDLE can outlive the statement.
-
-        That is the whole admission for the hoist below: a preceding decl
-        preserves evaluation order only where the call was going to run anyway,
-        once. So the descent starts at the statement slots evaluated on entry
-        (a `for` head, an init, an assigned value, a discarded expression) and
-        walks only through coercions, `await` operands and ARGUMENT lists --
-        never into a ternary arm, a `bool` operator's right side, a
-        comprehension body or a nested def, where the sub-expression is
-        conditional or repeated. A `return` / `yield` value is out for a
-        different reason: the handle LEAVES this frame, so seating its argument
-        here would pin the argument to a frame that dies first.
-
-        The callee test is the one the lowering row uses (`frame_factory_
-        callee`, plus an async def), so the hoist and the row cannot disagree
-        about which callee keeps an argument past the statement.
-
-        The paired flag is what the ONE-FIELD-PER-SITE seat below needs: the
-        field is safe to re-emplace only where no handle built at this site is
-        still alive. The positions that consume the handle where it stands are
-        a `for` head (the loop statement drains and destroys the iterator), an
-        `await` operand (the statement runs the coroutine to completion), a
-        bare discard (the temporary dies at the semicolon), and a bind whose
-        name is only ever drained -- one slot, re-assigned, so at most one
-        handle is live. Every other position -- an argument of another call
-        (`create_task(...)`, and through it `tasks.append(...)`), a bind whose
-        name is copied elsewhere -- hands the handle on."""
-        # The BIND answer walks the whole body, so it is a thunk: only a root
-        # that turns out to host a factory call ever asks for it.
-        root: 'TpyExpr | None' = None
-        bind_escapes: 'Callable[[], bool]' = lambda: False
-        # At the head of a loop whose source the FRAME holds -- one that
-        # suspends, or one that lends an element out of a fresh source (the
-        # prescan's `non_suspending` verdict, asked the same way here) -- a
-        # lazy combinator keeps its arguments exactly as a factory keeps its
-        # own (`iterator_source_callee`). A loop the frame does not hold
-        # keeps its source in its own block, and so its arguments' lifetimes
-        # as CPython has them.
-        retains = frame_factory_callee
-        if isinstance(stmt, TpyForEach):
-            root = stmt.iterable
-            if (stmt.is_async or rcfg._stmts_have_any_suspension(stmt.body)
-                    or rcfg._stmts_have_any_suspension(stmt.orelse)
-                    or (for_source_is_rvalue(stmt, self.ctx.analyzer)
-                        and self._loop_lends_element_out(
-                            func, _loop_bound_names(self.ctx.analyzer,
-                                                    stmt)))):
-                retains = iterator_source_callee
-        elif isinstance(stmt, TpyVarDecl):
-            root = stmt.init
-            bind_escapes = partial(self._handle_name_escapes, func, stmt.name)
-        elif isinstance(stmt, TpyAssign):
-            root = stmt.value
-            target = peel_coerce(stmt.target)
-            bind_escapes = (
-                partial(self._handle_name_escapes, func, target.name)
-                if isinstance(target, TpyName) else (lambda: True))
-        elif isinstance(stmt, TpyTupleUnpack):
-            root = stmt.value
-            targets = stmt.targets
-            bind_escapes = lambda: any(
-                t is None or self._handle_name_escapes(func, t)
-                for t in targets)
-        elif isinstance(stmt, TpyExprStmt):
-            root = stmt.expr
-        # `None` in a pair means "whatever the bind answers"; a nested position
-        # has already decided (an argument hands the handle on, an `await`
-        # consumes it) and overrides the bind either way.
-        found: 'list[tuple[TpyExpr, bool | None]]' = []
-
-        def visit(e: 'TpyExpr | None', escapes: 'bool | None') -> None:
-            if e is None:
-                return
-            if isinstance(e, TpyCoerce):
-                visit(e.expr, escapes)
-                return
-            if isinstance(e, TpyAwait):
-                visit(e.value, False)
-                return
-            if not isinstance(e, (TpyCall, TpyMethodCall)):
-                return
-            fi = e.resolved_function_info
-            if fi is not None and (retains(fi) or fi.is_async):
-                found.append((e, escapes))
-            if isinstance(e, TpyMethodCall):
-                visit(e.obj, escapes)
-            for a in e.args:
-                visit(a, True)
-
-        visit(root, None)
-        if not any(e is None for _, e in found):
-            return [(c, bool(e)) for c, e in found]
-        bound = bind_escapes()
-        return [(c, bound if e is None else e) for c, e in found]
-
-    def _handle_name_escapes(self, func: TpyFunction, name: str) -> bool:
-        """Whether a generator/coroutine handle bound to `name` can be carried
-        out of the statement that builds it.
-
-        The bind itself is not: `name` is ONE slot, so a rebind on the next
-        iteration destroys the previous handle and at most one is ever live --
-        which is exactly what one hoisted field per call site can serve. What
-        carries a handle out is a use that copies or moves it somewhere
-        longer-lived (an argument, a container element, a return). The two
-        DRAINING uses -- `await name` and `for ... in name` -- consume the
-        handle where it stands, so they are not escapes; a rebind of `name`
-        itself is not one either."""
-
-        def expr_escapes(e: 'TpyExpr | None') -> bool:
-            if e is None:
-                return False
-            if isinstance(e, TpyName):
-                return e.name == name
-            if isinstance(e, TpyAwait):
-                inner = peel_coerce(e.value)
-                if isinstance(inner, TpyName) and inner.name == name:
-                    return False
-            return any(expr_escapes(c)
-                       for c in (e.children() if hasattr(e, "children") else ()))
-
-        def body_escapes(body: 'list[TpyStmt]') -> bool:
-            for s in body:
-                skip: 'TpyExpr | None' = None
-                if isinstance(s, TpyForEach):
-                    head = peel_coerce(s.iterable)
-                    if isinstance(head, TpyName) and head.name == name:
-                        skip = s.iterable
-                elif isinstance(s, TpyAssign):
-                    target = peel_coerce(s.target)
-                    if isinstance(target, TpyName) and target.name == name:
-                        skip = s.target
-                for e in (s.exprs() if hasattr(s, "exprs") else ()):
-                    if e is not skip and expr_escapes(e):
-                        return True
-                if any(body_escapes(b) for b in s.sub_bodies()):
-                    return True
-                if isinstance(s, TpyTry):
-                    for h in s.handlers:
-                        if body_escapes(h.body):
-                            return True
-            return False
-
-        return body_escapes(func.body)
-
-    def _hoist_frame_factory_args(self, func: TpyFunction, stmt: TpyStmt,
-                                  in_loop: bool = False) -> list[TpyStmt]:
-        """Seat every temporary argument of a generator/coro factory call in
-        `stmt` on a frame local, and return [decls..., stmt].
-
-        The uniform frame-temp rule names such an argument at the enclosing
-        statement's flush point; inside a resumable body that flush point is
-        the state's `case` block, which the handle the factory returns
-        outlives -- so the name has to be a frame field instead. Same shape
-        predicate as the lowering row (`frame_temp_arg_slot`), so an argument
-        named here is exactly one the row would otherwise have flushed into the
-        `case` block, and the row then sees a plain name and does nothing.
-
-        There is one field per call SITE, so a site that can re-execute while
-        an earlier handle is still alive would hand every one of those handles
-        the LAST value written. That is the `create_task(f(temp))`-in-a-loop
-        shape, and no per-site field can serve it -- the seat is refused
-        instead of silently aliasing (`_reject_shared_loop_seat`)."""
-        pre: list[TpyStmt] = []
-        for call, escapes in self._frame_factory_calls(func, stmt):
-            fi = call.resolved_function_info
-            shared = in_loop and escapes
-            recv = self._factory_receiver_to_seat(func, call)
-            if recv is not None:
-                if shared:
-                    self._reject_shared_loop_seat(
-                        fi, recv, "the receiver",
-                        ", or call the method on a named receiver")
-                recv_t = self._frame_seat_type(recv)
-                call.obj = self._frame_local_for(func, recv, recv_t, pre,
-                                                 binds=_bound_local(stmt))
-            for i, arg in enumerate(call.args):
-                # Varargs (past the declared params) are a separate dangle
-                # class tracked in BUGS.md; leave them for the *args path.
-                if i >= len(fi.params):
-                    break
-                ptype = fi.params[i].type
-                self._seat_frame_temp_elems(func, fi, i, arg, pre,
-                                            shared=shared,
-                                            binds=_bound_local(stmt))
-                temp_slot = self._frame_temp_slot(ptype, arg)
-                if temp_slot is None:
-                    continue
-                inner = peel_coerce(arg)
-                if (not frame_factory_callee(fi)
-                        and isinstance(inner, (TpyCall, TpyMethodCall))
-                        and iterator_source_callee(
-                            inner.resolved_function_info)):
-                    # A combinator OWNS an iterator handed to it as an rvalue
-                    # (`enumerate(reversed(xs))`); seating the inner one
-                    # would hand the outer a reference instead. The inner's
-                    # own arguments were visited on their own.
-                    continue
-                host = self._view_backing_coerce(ptype, arg)
-                source = host.expr if host is not None else arg
-                if shared:
-                    self._reject_shared_loop_seat(
-                        fi, source, f"argument '{fi.params[i].name}'",
-                        ", or declare the parameter 'Own[...]' so the callee "
-                        "owns its copy")
-                self._seat_arg_on_frame_local(func, call, i, ptype, source,
-                                              host, temp_slot, pre,
-                                              binds=_bound_local(stmt))
-        pre.append(stmt)
-        return pre
-
-    def _reject_shared_loop_seat(self, fi, source: TpyExpr, what: str,
-                                 remedy: str) -> 'NoReturn':
-        """Refuse a temporary whose seat would be shared by several live
-        handles of the same loop.
-
-        The seat is a field of the enclosing frame, one per call site, so the
-        next iteration overwrites it while the handle the previous iteration
-        handed on (a `Task`, a stored generator) still borrows it. Naming the
-        temporary in the loop body does not help -- a local of a resumable
-        body is a frame field too -- so the remedy the message gives is
-        storage that outlives the loop."""
-        raise CodeGenError(
-            f"cannot use a temporary as {what} of '{fi.name}' here: the "
-            f"handle this call creates outlives the loop iteration, so every "
-            f"handle the loop creates would borrow one shared slot of the "
-            f"enclosing frame and see the last iteration's value. Keep each "
-            f"value in storage that outlives the loop (append it to a list "
-            f"declared before the loop and pass that element)" + remedy,
-            loc=getattr(source, "loc", None))
-
-    def _roots_at_temp(self, e: TpyExpr) -> bool:
-        """Whether `e` reads a field / element out of a TEMPORARY -- storage
-        the enclosing statement destroys. A chain rooted at a name (or at a
-        subscript of one) is not: only the root's own lifetime is in
-        question, and the access itself borrows into it."""
-        root = peel_coerce(e)
-        while isinstance(root, (TpyFieldAccess, TpySubscript)):
-            root = peel_coerce(root.obj)
-        return (root is not peel_coerce(e)
-                and materializing_temp_source(root, self.ctx.analyzer))
-
-    def _frame_seat_type(self, recv: TpyExpr) -> 'TpyType':
-        """The frame-field type a seated factory receiver takes."""
-        recv_t = self.ctx.analyzer.get_expr_type(recv)
-        if recv_t is None:
-            raise CodeGenError(
-                "factory receiver has no analyzed type (receiver lift)",
-                loc=getattr(recv, "loc", None))
-        return unwrap_own(unwrap_readonly(
-            unwrap_ref_type(unwrap_send_sync(recv_t))))
-
-    def _factory_receiver_to_seat(self, func: TpyFunction,
-                                  call) -> 'TpyExpr | None':
-        """The TEMPORARY RECEIVER of a generator/coro factory method that must
-        be seated on a frame local -- the receiver twin of the argument hoist
-        above. `None` when the receiver already outlives the frame.
-
-        The frame keeps the receiver as `<Class>&` for the handle's whole
-        life, exactly as it keeps a borrowed argument, so one invariant covers
-        both: a frame never receives a temporary. Inside a resumable body the
-        receiver would otherwise be named in the state's `case` block
-        (`Summer __tmp_1 = Summer(200);` -- the `method.gen_recv_temp` row,
-        which materializes at the CONSUMING position) or not named at all (the
-        async route binds `const Summer&` straight to the prvalue), and the
-        handle outlives both.
-
-        Admission is the shape the CONSUMING route already accepts, so the
-        hoist removes a dangle without moving the accepted set: the ctor-rvalue
-        slice for a generator factory -- hoisting a broader shape would make
-        `for v in make_summer(1).pair(xs)` compile here while the identical
-        line still rejects in a sync caller -- and any materializing rvalue for
-        an async one, whose route gates no receiver shape at all (every rvalue
-        receiver there compiles today and dangles). The hoisted receiver is a
-        NAME, so the `gen_recv_temp` row no longer fires and no second temp is
-        built.
-
-        A receiver the seat cannot take but that BORROWS INTO a temporary --
-        `make_pair(a, b).left`, a field or element read out of an owner the
-        statement destroys -- is rejected on the async route rather than left
-        to bind `const Summer&` to the dying owner. Seating the owner instead
-        would widen what the language accepts (the generator route rejects the
-        same receiver at lowering, `method.fi_kind`, and sema rejects it at the
-        bound and awaited positions), so the routes are made to agree on the
-        reject. A chain rooted at a NAME is untouched: its storage already
-        outlives the statement."""
-        if not isinstance(call, TpyMethodCall):
-            return None
-        analyzer = self.ctx.analyzer
-        recv = call.obj
-        fi = call.resolved_function_info
-        is_async = fi is not None and fi.is_async
-        if not materializing_temp_source(recv, analyzer):
-            if is_async and self._roots_at_temp(recv):
-                raise CodeGenError(
-                    f"receiver of the async method '{fi.name}' must be a "
-                    f"stable lvalue (a local, parameter, or field chain "
-                    f"rooted at one) or a temporary this frame can seat -- "
-                    f"the coroutine captures it by reference for the handle's "
-                    f"whole life, and this one reads out of a temporary that "
-                    f"dies at the end of the statement. Bind the owner to a "
-                    f"local first: `r = <expr>; ... r.field.{fi.name}(...)`",
-                    loc=getattr(recv, "loc", None))
-            return None
-        if not is_async:
-            from ..thir.lower import gen_recv_ctor_temp
-            if not gen_recv_ctor_temp(recv, analyzer):
-                return None
-        return recv
-
-    def _replace_expr_in_stmt(self, stmt: TpyStmt, old_expr,
-                                new_expr) -> None:
-        """Walk stmt's dataclass fields and replace `old_expr` with
-        `new_expr` (by identity). Catches both primary-expression slots
-        (init/value/expr/condition for if/while/etc.) and nested
-        expression children."""
-        if not is_dataclass(stmt):
-            return
-        for f in fields(stmt):
-            v = getattr(stmt, f.name, None)
-            if v is old_expr:
-                setattr(stmt, f.name, new_expr)
-                return
-            if isinstance(v, list):
-                for i, item in enumerate(v):
-                    if item is old_expr:
-                        v[i] = new_expr
-                        return
-                    if hasattr(item, "children"):
-                        self._replace_in_expr(item, old_expr, new_expr)
-            elif hasattr(v, "children"):
-                self._replace_in_expr(v, old_expr, new_expr)
-
-    def _replace_in_expr(self, expr, old_expr, new_expr) -> None:
-        """Recursively replace `old_expr` with `new_expr` inside `expr`."""
-        if not hasattr(expr, "children") or not is_dataclass(expr):
-            return
-        for f in fields(expr):
-            v = getattr(expr, f.name, None)
-            if v is old_expr:
-                setattr(expr, f.name, new_expr)
-                return
-            if isinstance(v, list):
-                for i, item in enumerate(v):
-                    if item is old_expr:
-                        v[i] = new_expr
-                        return
-                    if hasattr(item, "children"):
-                        self._replace_in_expr(item, old_expr, new_expr)
-            elif hasattr(v, "children"):
-                self._replace_in_expr(v, old_expr, new_expr)
 
     # -- Frame-local placement -------------------------------------------------
 
-    def _rebound_ref_names(self, func: TpyFunction) -> 'frozenset[str]':
-        """The frame locals the storage policy holds as a pointer over
-        storage of their own, from the name facts a plain body's bindings
-        read (`first_binding_storage`)."""
-        from ..thir.lower.bindings import body_rebound_names
-        state = rcfg.resumable_state(func)
-        if state.rebound_ref_names is None:
-            scan = self.ctx.analyzer.function_scan_results.get(func)
-            rebound = body_rebound_names(
-                func.body, scan.reassigned if scan is not None else set())
-            state.rebound_ref_names = frozenset(
-                n for n, t in (func.generator_locals or [])
-                if first_binding_storage("frame", t, rebound=n in rebound,
-                                         hoisted=False).pointer)
-        return state.rebound_ref_names
-
-    def _frame_form_inputs(self, func: TpyFunction) -> '_FrameFormInputs':
-        """The name sets a frame local's field FORM is read off, minus the
-        ones the for and with prescans fill in.
-
-        Split out of `_frame_layout` so the for prescan -- which runs before
-        those -- can ask the SAME classifier whether a local's field lends
-        storage instead of growing a second answer to that question."""
-        return _FrameFormInputs(
-            owning_tuple_locals=self.ctx.owning_generator_tuple_locals(func),
-            pointer_tuples=self.ctx.frame_pointer_tuples(func),
-            rebound_ref_names=self._rebound_ref_names(func),
-            # Statement-level borrow aliases (single-assign / tuple-unpack)
-            # get a `T*` field rather than an owning frame_slot<T>: a `T*`
-            # field kept live across suspensions.
-            pointer_form_names=set(self._classify_pointer_alias_locals(func)),
-        )
-
-    def _loop_lends_element_out(self, func: TpyFunction,
-                                bound_names: 'frozenset[str]') -> bool:
-        """Whether this loop can bind something out of its elements into
-        frame storage that may point back at an element.
-
-        Such a binding is read after the loop's own block is gone, so
-        whatever it may point into has to outlive that block. The question is
-        answered off the bound name's TYPE, conservatively: only a provably
-        self-contained type (`_cannot_hold_a_borrow`) is a copy that needs
-        nothing kept alive. A name that is not a frame local at all dies with
-        the block and cannot be read later.
-
-        Leans on the rejects that stop a borrow from travelling FURTHER than
-        a frame local: into a field (`assign.field_write_shape`) or into a
-        container (`method.arg_shape`), and on the borrow checker's
-        "reference to 'x' may outlive its storage". Without those this
-        question would have to be asked of the whole body, not of its
-        bindings.
-        """
-        frame_types = dict(func.generator_locals or [])
-        for name in bound_names:
-            if name not in frame_types:
-                continue
-            ltype = frame_types[name]
-            if ltype is None or not _cannot_hold_a_borrow(ltype):
-                return True
-        return False
-
-    def _holds_rebound_ref(self, lname: str, ltype_inner: 'TpyType',
-                           inp: '_FrameFormInputs') -> bool:
-        """Whether the storage policy holds frame local `lname` as a
-        pointer over storage of its own (`rebound_ref_names`) and its type
-        has that form: a plain reference type, not a `@dynamic` handle (an
-        erased coroutine, a single-use object whose rebind drops the old
-        one)."""
-        bare = unwrap_own(ltype_inner)
-        return (lname in inp.rebound_ref_names
-                and emit_prims.is_plain_nonvalue(self.ctx, bare)
-                and not is_dyn_protocol(unwrap_readonly(bare)))
-
-    def _frame_local_form(
-            self, lname: str, ltype_inner: 'TpyType',
-            inp: '_FrameFormInputs',
-    ) -> 'tuple[rcfg.FrameLocalKind, str | None, TpyType | None]':
-        """One frame local's field form, plus the payload spelling and
-        effective type the form needs.
-
-        Arm PRECEDENCE is load-bearing: pointer-form is checked before
-        `is_value_type` because a pointer-form `__for_tup` holder is itself a
-        value tuple; borrow-tuple excludes `__for_tup_*` holders (their form
-        is the loop machinery's call) unless the loop classified them
-        borrow-tuple explicitly.
-        """
-        source_form_fields = inp.source_form_fields
-        pointer_form_names = inp.pointer_form_names
-        borrow_tuple_names = inp.borrow_tuple_names
-        owning_str = inp.owning_str
-        owning_tuple_locals = inp.owning_tuple_locals
-        pointer_payloads = inp.pointer_payloads
-        payload: str | None = None
-        effective_type: 'TpyType | None' = None
-        # A protocol-typed local has no concrete C++ backing -- only
-        # captured params carry the deduced template arg `T_<pname>`. A
-        # *single-assignment* alias of a bare protocol param (`xs = it`)
-        # is forwarded to that param by sema (see
-        # `_extract_proto_param_forwarding`) and never reaches here.
-        # What lands here is the unforwarded remainder -- chiefly a
-        # *reassigned* alias -- which has no single backing param. The
-        # verdict is a kind (not an error) so non-frame consumers can
-        # classify; rendering a frame FIELD for it raises at the struct
-        # emit.
-        if self.functions.protocols.is_static_protocol_param(ltype_inner):
-            kind = rcfg.FrameLocalKind.PROTOCOL
-        elif inp.pointer_tuples.get(lname) is not None:
-            # A pointer tuple: each owned element is the scalar reference
-            # local, its object in a per-site field of its own, so the
-            # field is the borrow-form tuple of the plain body's local.
-            kind = rcfg.FrameLocalKind.BORROW_TUPLE
-            effective_type = inp.pointer_tuples[lname]
-        elif (lname in source_form_fields
-                and lname in inp.with_targets
-                and lname not in inp.with_generic_targets
-                and self._holds_rebound_ref(lname, ltype_inner, inp)):
-            # A rebound `with ... as` target (the storage policy): a pointer
-            # its rebinds re-point, at a lent `__enter__()` result or at the
-            # item's own field over a by-value one; const over a `readonly`
-            # result (`_record_with_target_payloads`).
-            kind = rcfg.FrameLocalKind.REBIND_PTR
-        elif lname in source_form_fields:
-            # Loop var whose alias-vs-own choice belongs to C++: the
-            # payload is spelled from the source's iteration protocol,
-            # and frame_slot's specializations supply either form. Comes
-            # before the type-directed arms below -- they would re-derive
-            # a form from the TPy element type, which is exactly what
-            # this field exists to stop doing.
-            kind = rcfg.FrameLocalKind.SOURCE_FORM_SLOT
-            payload = source_form_fields[lname]
-        elif lname in owning_str:
-            # `with X() as label:` -- `__enter__` returns by value;
-            # storing the view across suspensions would dangle. Use
-            # owning storage. See `_prescan_with_stmts`.
-            kind = rcfg.FrameLocalKind.OWNED_STR
-        elif lname in pointer_form_names:
-            # Pointer-form alias: a for-loop var (non-value element
-            # over a stable source) or a tuple-unpack target bound to
-            # a non-value container member. Stored as `T*` (alias the
-            # live element) rather than `frame_slot<T>` (value-copy),
-            # so mutations propagate and resume preserves aliasing;
-            # also works for @nocopy / move-only elements. Bound by
-            # address in `_emit_async_for_advance` / the tuple-unpack
-            # emit.
-            kind = rcfg.FrameLocalKind.PTR_ALIAS
-            payload = pointer_payloads.get(lname)
-        elif lname in owning_tuple_locals:
-            # OWNING pointer-repr tuple local: the frame must hold the
-            # element storage (emplace writes, `(*name)` reads) -- a
-            # borrow `std::tuple<..., T*>` field can't own, and the
-            # owning rvalue can't be address-taken into it. A MIXED tuple
-            # has no fully-owned storage form to hold: its borrowed
-            # element must keep pointing at the caller's object, so its
-            # payload is the mixed render.
-            #
-            # The ownership axis reads off the EFFECTIVE type: a literal
-            # init's per-element verdict carries no `Own` in the declared
-            # type (there is no user spelling for it), so the oracle hands
-            # the Own-wrapped image back and every arm below keys on that.
-            eff = owning_tuple_locals[lname] or ltype_inner
-            effective_type = eff
-            if isinstance(eff, TupleType) and eff.is_mixed_own():
-                kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
-                payload = self.types.tuple_borrow_cpp(eff)
-            else:
-                kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
-        elif (isinstance(ltype_inner, TupleType)
-                and ltype_inner.has_pointer_repr_element()
-                and (not lname.startswith("__for_tup_")
-                     or lname in borrow_tuple_names)):
-            # Borrow-form tuple local (std::tuple<..., T*>): a value-form
-            # field would copy the element across the suspension (the
-            # silent-copy divergence). Pointers default-construct to
-            # null, so no frame_slot wrapper is needed.
-            kind = rcfg.FrameLocalKind.BORROW_TUPLE
-        elif self._holds_rebound_ref(lname, ltype_inner, inp):
-            # A rebound reference local keeps each object for its aliases,
-            # which an owning `frame_slot<T>` cannot: the local goes
-            # pointer-form over per-site materialization fields, and its
-            # IN_PLACE rebinds assign through the pointer. A `@dynamic`
-            # handle (an erased coroutine) is a single-use object whose
-            # rebind drops the old one: its own arm below.
-            kind = rcfg.FrameLocalKind.REBIND_PTR
-        elif (isinstance(ltype_inner, OwnType)
-                and not unwrap_own(ltype_inner).is_value_type()
-                and not is_dyn_protocol(
-                    unwrap_readonly(ltype_inner.wrapped))):
-            # `Own[T]` over a REFERENCE type reports as a value here, but the
-            # object it names is built at the BINDING, later than the frame.
-            # A bare field would default-construct at frame creation and then
-            # assign -- which is not the object's real constructor, and is
-            # deleted outright once T holds a non-default-constructible
-            # member (a `Box`, `Rc`, `Mutex`). The slot's placement-new runs
-            # the actual constructor at the actual construction point.
-            #
-            # A coroutine/adapter handle is the exception: `Own[@dynamic P]`
-            # renders as a `std::optional<coro>` / `unique_ptr` that already
-            # default-constructs empty and takes the value by assignment, so
-            # a slot around it would just double-wrap.
-            kind = rcfg.FrameLocalKind.FRAME_SLOT
-        elif ltype_inner.is_value_type():
-            kind = rcfg.FrameLocalKind.VALUE
-        elif pointer_repr_optional(ltype_inner) is not None:
-            # Pointer-repr Optional: bare `T* = nullptr` aliases the
-            # source and uses nullptr as both "uninitialized" and
-            # "None"; no outer `std::optional<...>` wrap. A `readonly`
-            # element (a loop var over a readonly container) is the same
-            # pointer, const through the frame's const bindings.
-            kind = rcfg.FrameLocalKind.OPT_PTR
-        else:
-            kind = rcfg.FrameLocalKind.FRAME_SLOT
-        return (kind, payload, effective_type)
-
-    def _frame_layout(self, func: TpyFunction) -> 'rcfg.FrameLayoutPlan':
-        """Get-or-build the frame-local placement plan for this body: one
-        `FrameLocalLayout` verdict per `func.generator_locals` name.
-
-        Must run after the for/with/alias prescans and the await/arg lifting
-        have populated `ResumableFuncState` (every caller sits downstream of
-        `_build_resumable_cfg`) -- but only the LOOP-VAR and with-target arms
-        depend on those; the rest is `_frame_form_inputs`.
-        """
-        state = rcfg.resumable_state(func)
-        if state.frame_layout is not None:
-            return state.frame_layout
-
-        inp = self._frame_form_inputs(func)
-        inp.owning_str.update(state.with_owning_str_targets)
-        # Loop vars whose field payload is spelled from the iteration
-        # source; the trait decides alias-vs-own, so no TPy-side form.
-        # A name bound by several loops has one field: its pointee is the
-        # loops' payloads joined, const if any of them is.
-        payloads: dict[str, list[str]] = {}
-        for info in state.for_loop_info.values():
-            if info.pointer_form_loop_var is not None:
-                inp.pointer_form_names.add(info.pointer_form_loop_var)
-            inp.pointer_form_names.update(info.pointer_form_unpack_targets)
-            for name, payload in info.pointer_payloads.items():
-                if payload not in payloads.setdefault(name, []):
-                    payloads[name].append(payload)
-            if info.loop_var_field is not None:
-                name, payload = info.loop_var_field
-                inp.source_form_fields[name] = payload
-            if info.borrow_tuple_loop_var is not None:
-                inp.borrow_tuple_names.add(info.borrow_tuple_loop_var)
-        for name, forms in payloads.items():
-            inp.pointer_payloads[name] = (
-                forms[0] if len(forms) == 1
-                else f"::tpy::const_join_t<{', '.join(forms)}>")
-        # A `with ... as t` target joins the same family for the same reason: its
-        # payload is spelled from `__enter__()` (`with_enter_t<CM>`) because
-        # alias-vs-own is not decidable here either.
-        inp.source_form_fields.update(state.with_target_payloads)
-        inp.with_targets.update(state.with_target_payloads)
-        inp.with_generic_targets.update(state.with_generic_targets)
-
-        bindings: dict[str, rcfg.FrameLocalLayout] = {}
-        for lname, ltype in (func.generator_locals or []):
-            kind, payload, effective_type = self._frame_local_form(
-                lname, unwrap_ref_type(ltype), inp)
-            bindings[lname] = rcfg.FrameLocalLayout(
-                kind=kind,
-                # A pointer into const storage needs `const T*`. The binding's
-                # const-ness is the frame's own verdict (`const_frame_bindings`,
-                # recorded where each binding is classified); only the pointer
-                # kinds can carry it in their spelling (a borrow tuple carries
-                # it inside its element pointers).
-                const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
-                                rcfg.FrameLocalKind.OPT_PTR,
-                                rcfg.FrameLocalKind.REBIND_PTR,
-                                rcfg.FrameLocalKind.BORROW_TUPLE)
-                       and lname in state.const_frame_bindings),
-                payload=payload,
-                effective_type=effective_type)
-
-        state.frame_layout = rcfg.FrameLayoutPlan(
-            bindings=bindings, pointer_tuples=frozenset(inp.pointer_tuples))
-        return state.frame_layout
-
     def _for_source_aliases(self, func: TpyFunction, record_name: str | None,
-                            cfg: 'rcfg.CFG') -> 'list[_ForSourceAlias]':
+                            cfg: 'THIRResumableFrame') -> 'list[_ForSourceAlias]':
         """The `using __for_src_<n>_t = ...;` each `for` loop of this frame
         spells its fields off: `decltype` of the loop's own source render,
         stripped to the owned value where the frame holds a fresh source.
@@ -2141,14 +764,15 @@ class AsyncCoroCodegen:
         statement to declare it in. The names the render reads are recorded
         so the struct can order the alias after the fields it names.
         """
-        state = rcfg.resumable_state(func)
-        loops: list[tuple[TpyForEach, str, str | None]] = []
+        state = self._frame_of(func)
+        loops: 'list[tuple[TpyForEach, str, THIRLeafSlot | None, str | None]]' = []
         for s, info in state.for_loop_info.items():
             if info.src_alias is not None:
-                loops.append((s, info.src_alias, None))
+                loops.append((s, info.src_alias,
+                              state.for_setup(info.uid).iterable, None))
         for s, held in state.for_src_fields.items():
             if held is not None:
-                loops.append((s, held[1], held[0]))
+                loops.append((s, held.cpp_type, None, held))
         if not loops:
             return []
         from ..thir.emit import UnevaluatedTemps
@@ -2157,12 +781,12 @@ class AsyncCoroCodegen:
         aliases: list[_ForSourceAlias] = []
         with self._resumable_frame_ctx(func, record_name):
             with self._thir_leaf_scope(leaf):
-                for s, alias, held_field in loops:
-                    cpp = leaf.render_for_source(s, temps=temps,
+                for s, alias, iterable, held_field in loops:
+                    cpp = leaf.render_for_source(iterable, temps=temps,
                                                  frame_src_field=held_field)
-                    cpp = emit_prims.maybe_unwrap_narrowed_optional(
-                        self.ctx, s.iterable, cpp,
-                        self.ctx.is_indirect_name(s.iterable))
+                    if (iterable is not None
+                            and iterable in leaf.published.unwrapped_sources):
+                        cpp = f"(*{cpp})"
                     rhs = f"decltype(({cpp}))"
                     if for_source_is_rvalue(s, self.ctx.analyzer):
                         rhs = f"::tpy::for_source_t<{rhs}>"
@@ -2177,11 +801,11 @@ class AsyncCoroCodegen:
 
     # Field kinds that point into other storage and own nothing.
     _BORROWING_FRAME_KINDS = frozenset((
-        rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR,
-        rcfg.FrameLocalKind.REBIND_PTR, rcfg.FrameLocalKind.BORROW_TUPLE))
+        FrameLocalKind.PTR_ALIAS, FrameLocalKind.OPT_PTR,
+        FrameLocalKind.REBIND_PTR, FrameLocalKind.BORROW_TUPLE))
 
     def _frame_fields(self, func: TpyFunction, record_name: str | None,
-                      cfg: 'rcfg.CFG') -> 'list[FrameField]':
+                      cfg: 'THIRResumableFrame') -> 'list[FrameField]':
         """Every field of this frame, in declaration order (see
         `frame_fields`). Cached on the frame's resumable state.
 
@@ -2193,17 +817,17 @@ class AsyncCoroCodegen:
         late because it borrows other fields and its destructor may run a
         pending `finally` over them; an edge only ever pulls it earlier, next
         to the loop whose source type is spelled off it."""
-        state = rcfg.resumable_state(func)
-        if state.frame_fields is not None:
-            return state.frame_fields
-        locals_ = list(func.generator_locals or [])
-        layout = self._frame_layout(func) if locals_ else None
-        local_types = dict(locals_)
+        state = self._frame_of(func)
+        printed = self._print_state(state)
+        if printed.frame_fields is not None:
+            return printed.frame_fields
+        locals_ = state.locals
         # A local no field can back is this frame's own located diagnostic;
         # it goes before the alias renders lower the body, whose reject for
         # the same local would otherwise be the one reported.
-        for lname, _ in locals_:
-            if layout.bindings[lname].kind is rcfg.FrameLocalKind.PROTOCOL:
+        for loc in locals_:
+            lname = loc.name
+            if loc.placement.kind is FrameLocalKind.PROTOCOL:
                 raise CodeGenError(
                     f"local {lname!r} of protocol type aliasing a "
                     "protocol-typed parameter is only supported across a "
@@ -2223,9 +847,7 @@ class AsyncCoroCodegen:
                 names.append(info.loop_var_field[0])
             for name in names:
                 aliases_of_local.setdefault(name, set()).add(info.src_alias)
-        loop_fields = self._loop_field_owners(func)
-        borrows, untraced = self._frame_local_borrows(func, layout, local_types,
-                                                      loop_fields)
+        borrows, untraced = self._frame_local_borrows(func)
 
         def render(emit: 'Callable[[TextIO], None]') -> str:
             buf = io.StringIO()
@@ -2234,10 +856,10 @@ class AsyncCoroCodegen:
 
         local_fields: list[FrameField] = []
         frame_objects: list[FrameField] = []
-        for lname, ltype in locals_:
-            verdict = layout.bindings[lname]
+        for loc in locals_:
+            lname, ltype, verdict = loc.name, loc.type, loc.placement
             drops = (verdict.kind not in self._BORROWING_FRAME_KINDS
-                     and verdict.kind is not rcfg.FrameLocalKind.OWNED_STR
+                     and verdict.kind is not FrameLocalKind.OWNED_STR
                      and unwrap_ref_type(ltype).drop_runs_user_code())
             ff = FrameField(
                 name=lname,
@@ -2265,11 +887,10 @@ class AsyncCoroCodegen:
         # out. frame_loop_slot has frame_slot's storage but unchecked reads:
         # only this loop's own emitted code reads them, after its init.
         loop_machinery: list[FrameField] = []
-        for fname, ftype in state.for_fields:
-            owner = loop_fields.get(fname)
-            # An `async for` iterator has no strategy info: whatever
-            # `__aiter__` built.
-            drops = owner is None or self._loop_field_drops(fname, owner)
+        for holder in state.for_fields:
+            fname, ftype = holder.name, holder.cpp_type
+            owner = holder.loop
+            drops = holder.drop_runs_user_code
             loop_machinery.append(FrameField(
                 name=fname,
                 decl=f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n",
@@ -2281,18 +902,19 @@ class AsyncCoroCodegen:
                 drop_runs_user_code=drops))
 
         # Per-write-site materialization slots for rvalue writes into
-        # pointer-form frame locals (see _prescan_resumable_ptr_slots). Each
+        # pointer-form frame locals (the frame builder's pointer-slot prescan). Each
         # follows the local it backs, so the frame destroys it in that
         # local's turn rather than after every other field.
         site_slots: dict[str, list[FrameField]] = {}
         for slot in state.ptr_slot_fields:
-            target_t = local_types.get(slot.local)
+            target_loc = state.local(slot.local)
+            target_t = target_loc.type if target_loc is not None else None
             if isinstance(target_t, OptionalType):
                 target_t = target_t.inner
             drops = (target_t is None
                      or unwrap_ref_type(target_t).drop_runs_user_code())
             slot_field = FrameField(
-                name=slot.name, decl=f"{INDENT}{slot.cpp} {slot.name};\n",
+                name=slot.name, decl=f"{INDENT}{slot.cpp_type} {slot.name};\n",
                 borrows=frozenset(read_names(slot.value)),
                 drop_runs_user_code=drops)
             if any(f.name == slot.local for f in local_fields):
@@ -2307,11 +929,12 @@ class AsyncCoroCodegen:
         # by-value manager, or a `T*` borrow for a reference-type lvalue
         # manager (so __enter__/__exit__ act on the original, not a copy).
         with_items = self._with_field_items(func)
-        for fname, ftype in state.with_fields:
+        for holder in state.with_fields:
+            fname, ftype = holder.name, holder.cpp_type
             item = with_items.get(fname)
             reads = (frozenset(read_names(item.context_expr))
                      if item is not None else frozenset())
-            if fname in state.with_borrowed_fields:
+            if holder.borrowed:
                 loop_machinery.append(FrameField(
                     name=fname, decl=f"{INDENT}{ftype}* {fname} = nullptr;\n",
                     borrows=reads))
@@ -2332,7 +955,8 @@ class AsyncCoroCodegen:
         # = false. Value slots take the placeholder initializer the
         # prescan recorded with them.
         is_gen = self._is_generator_shape()
-        for fname, ftype, finit in state.try_finally_fields:
+        for holder in state.try_finally_fields:
+            fname, ftype, finit = holder.name, holder.cpp_type, holder.init
             # Generators always return StopIteration; no pending-return value
             # slot is needed. The field may be allocated by the prescan when
             # the trial build ran under the async shape -- skip it here.
@@ -2352,43 +976,11 @@ class AsyncCoroCodegen:
 
         fields_ = (local_fields + alias_fields + loop_machinery
                    + frame_objects + sub_futures)
-        state.frame_fields = order_frame_fields(fields_)
-        return state.frame_fields
-
-    def _loop_field_owners(
-            self, func: TpyFunction) -> 'dict[str, _LoopFieldOwner]':
-        """Each loop field -> the loop it belongs to."""
-        state = rcfg.resumable_state(func)
-        owners: dict[str, _LoopFieldOwner] = {}
-        for s, info in state.for_loop_info.items():
-            for fname, _ in info.fields:
-                owners[fname] = _LoopFieldOwner(s, info, info.src_alias)
-        for s, held in state.for_src_fields.items():
-            if held is not None:
-                # A kept-whole loop's field is spelled as the alias itself.
-                owners[held[0]] = _LoopFieldOwner(s, None, held[1])
-        return owners
-
-    def _loop_field_drops(self, fname: str, owner: _LoopFieldOwner) -> bool:
-        """Whether destroying this loop field may run user code: the source
-        holds the iterable, the step result an element, and a derived
-        iterator is whatever `__iter__` returned -- not known here."""
-        stmt, info = owner.stmt, owner.info
-        if info is None or fname == f"__for_src_{info.uid}":
-            src_t = self.types.get_resolved_type(stmt.iterable)
-            return (src_t is None
-                    or unwrap_ref_type(src_t).drop_runs_user_code())
-        if info.strategy in ("range", "begin_end"):
-            return False
-        if fname == f"__for_r_{info.uid}":
-            elem = stmt.elem_type
-            if isinstance(elem, IntLiteralType):
-                return False
-            return elem is None or unwrap_ref_type(elem).drop_runs_user_code()
-        return True
+        printed.frame_fields = order_frame_fields(fields_)
+        return printed.frame_fields
 
     def _loop_field_borrows(self, fname: str,
-                            owner: _LoopFieldOwner) -> 'frozenset[str]':
+                            owner: FrameLoopOwner) -> 'frozenset[str]':
         """The source holds what its expression reads; every other loop field
         points into the source, held or named."""
         stmt, info = owner.stmt, owner.info
@@ -2404,27 +996,29 @@ class AsyncCoroCodegen:
     def _with_field_items(self, func: TpyFunction) -> 'dict[str, TpyWithItem]':
         """Each `__with_ctx_<n>` field -> the `with` item whose manager it
         holds."""
-        state = rcfg.resumable_state(func)
+        state = self._frame_of(func)
         out: dict[str, TpyWithItem] = {}
 
         def walk(stmts: 'list[TpyStmt]') -> None:
             for s in stmts:
                 if isinstance(s, TpyWith):
-                    per_item = (state.with_uid_map.get(id(s))
-                                or state.with_owned_ctx_map.get(s) or ())
-                    for item, n in zip(s.items, per_item):
-                        if n is not None:
-                            out[f"__with_ctx_{n}"] = item
+                    decomposed = state.with_uid_map.get(s)
+                    if decomposed is not None:
+                        homes = [f"__with_ctx_{n}" for n in decomposed]
+                    else:
+                        homes = [h.name if h is not None else None
+                                 for h in state.with_owned_ctx_map.get(s, ())]
+                    for item, home in zip(s.items, homes):
+                        if home is not None:
+                            out[home] = item
                 for b in s.sub_bodies():
                     walk(b)
 
-        walk(self._effective_body(func))
+        walk(self._frame_of(func).lifted_body)
         return out
 
     def _frame_local_borrows(
-            self, func: TpyFunction, layout: 'rcfg.FrameLayoutPlan | None',
-            local_types: 'dict[str, TpyType]',
-            loop_fields: 'dict[str, _LoopFieldOwner]',
+            self, func: TpyFunction,
     ) -> 'tuple[dict[str, set[str]], set[str]]':
         """The LIFETIME edges out of each local's field -- the fields (and
         other names) whose storage it may point into -- plus the locals whose
@@ -2439,10 +1033,10 @@ class AsyncCoroCodegen:
         * A loop var (or unpack target) bound into its loop's storage points
           into the loop's fields and what the loop iterates.
         * A `with` target points into its manager."""
-        state = rcfg.resumable_state(func)
+        state = self._frame_of(func)
         out: dict[str, set[str]] = {}
         untraced: set[str] = set()
-        if layout is None:
+        if not state.locals:
             return out, untraced
 
         def edge(src: str, dst: 'str | None') -> None:
@@ -2455,8 +1049,9 @@ class AsyncCoroCodegen:
             if binds is not None:
                 edge(binds, lift)
         roots_of = self.ctx.analyzer.function_frame_local_roots.get(func, {})
-        for lname, ltype in local_types.items():
-            if not self._holds_frame_by_value(ltype, layout.bindings[lname]):
+        for loc in state.locals:
+            lname = loc.name
+            if not self._holds_frame_by_value(loc.type, loc.placement):
                 continue
             fact = roots_of.get(lname)
             if fact is None:
@@ -2473,8 +1068,9 @@ class AsyncCoroCodegen:
             for target in targets:
                 edge(target, root)
         by_loop: dict[int, list[str]] = {}
-        for fname, owner in loop_fields.items():
-            by_loop.setdefault(id(owner.stmt), []).append(fname)
+        for holder in state.for_fields:
+            if holder.loop is not None:
+                by_loop.setdefault(id(holder.loop.stmt), []).append(holder.name)
         for s, info in state.for_loop_info.items():
             bound = set(info.pointer_payloads) | set(
                 info.pointer_form_unpack_targets)
@@ -2493,10 +1089,10 @@ class AsyncCoroCodegen:
         for s, held in state.for_src_fields.items():
             if held is None:
                 continue
-            for n in _loop_bound_names(self.ctx.analyzer, s):
-                v = layout.bindings.get(n)
-                if v is not None and v.kind not in _OWNING_FRAME_KINDS:
-                    edge(n, held[0])
+            for n in held.loop.bound_names:
+                loc = state.local(n)
+                if loc is not None and loc.placement.kind not in _OWNING_FRAME_KINDS:
+                    edge(n, held.name)
         with_items = self._with_field_items(func)
         manager_of = {id(item): fname for fname, item in with_items.items()}
 
@@ -2514,62 +1110,62 @@ class AsyncCoroCodegen:
                 for b in s.sub_bodies():
                     with_targets(b)
 
-        with_targets(self._effective_body(func))
+        with_targets(self._frame_of(func).lifted_body)
         return out, untraced
 
     @staticmethod
     def _holds_frame_by_value(ltype: TpyType,
-                              verdict: 'rcfg.FrameLocalLayout') -> bool:
+                              verdict: 'FrameLocalLayout') -> bool:
         inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ltype)))
         return (isinstance(inner, ConcreteFrameType)
-                and verdict.kind not in (rcfg.FrameLocalKind.PTR_ALIAS,
-                                         rcfg.FrameLocalKind.REBIND_PTR))
+                and verdict.kind not in (FrameLocalKind.PTR_ALIAS,
+                                         FrameLocalKind.REBIND_PTR))
 
     def _emit_frame_local_field(self, out: "TextIO", lname: str, ltype,
-                                verdict: 'rcfg.FrameLocalLayout',
+                                verdict: 'FrameLocalLayout',
                                 func: TpyFunction) -> None:
         """Render one hoisted local's field per its placement verdict. The
-        classification itself lives in `_frame_layout` (shared with the
+        classification itself lives in the frame builder's `_frame_layout` (shared with the
         body-context seeding and THIR admission)."""
         ltype_inner = unwrap_ref_type(ltype)
         cpp_name = escape_cpp_name(lname)
         kind = verdict.kind
         const_pfx = "const " if verdict.const else ""
-        if kind is rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
+        if kind is FrameLocalKind.SOURCE_FORM_SLOT:
             # The payload spelling came from the iteration source at
             # classification; frame_slot's specializations supply
             # either the alias or the owning form.
             out.write(f"{INDENT}::tpy::frame_slot<"
                       f"{verdict.payload}> {cpp_name};\n")
-        elif kind is rcfg.FrameLocalKind.OWNED_STR:
+        elif kind is FrameLocalKind.OWNED_STR:
             out.write(f"{INDENT}std::string {cpp_name};\n")
-        elif kind is rcfg.FrameLocalKind.PTR_ALIAS:
+        elif kind is FrameLocalKind.PTR_ALIAS:
             # A payload is spelled from the source and carries its
             # own const.
             inner_cpp = (verdict.payload
                          or const_pfx + self.types.type_to_cpp(ltype_inner))
             out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
-        elif kind is rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
+        elif kind is FrameLocalKind.OWNING_TUPLE_SLOT:
             storage_cpp = ltype_inner.to_cpp_stored()
             out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
-        elif kind is rcfg.FrameLocalKind.MIXED_TUPLE_SLOT:
+        elif kind is FrameLocalKind.MIXED_TUPLE_SLOT:
             out.write(
                 f"{INDENT}::tpy::frame_slot<{verdict.payload}> {cpp_name};\n")
-        elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
+        elif kind is FrameLocalKind.BORROW_TUPLE:
             bt = verdict.effective_type or ltype_inner
             cpp_type = self.types.tuple_borrow_cpp(bt, const=verdict.const)
             init = emit_prims.placeholder_init(bt, cpp_type)
             out.write(f"{INDENT}{cpp_type} {cpp_name}{init};\n")
-        elif kind is rcfg.FrameLocalKind.VALUE:
+        elif kind is FrameLocalKind.VALUE:
             cpp_type = self.types.type_to_cpp(ltype_inner)
             init = emit_prims.placeholder_init(ltype_inner, cpp_type)
             out.write(f"{INDENT}{cpp_type} {cpp_name}{init};\n")
-        elif kind is rcfg.FrameLocalKind.OPT_PTR:
+        elif kind is FrameLocalKind.OPT_PTR:
             inner_cpp = self.types.type_to_cpp(
                 unwrap_readonly(unwrap_readonly(ltype_inner).inner))
             out.write(
                 f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
-        elif kind is rcfg.FrameLocalKind.REBIND_PTR:
+        elif kind is FrameLocalKind.REBIND_PTR:
             inner_cpp = self.types.type_to_cpp(
                 unwrap_readonly(unwrap_own(ltype_inner)))
             out.write(f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
@@ -2590,8 +1186,8 @@ class AsyncCoroCodegen:
         """
         struct_name = self.gen_struct_name(func, record_name)
         ctor_params = self._classify_params(func, record_name)
-        cfg = self._build_resumable_cfg(func, record_name)
-        yields = cfg.yield_sites
+        cfg = self.resumable_frame(func, record_name)
+        yields = cfg.suspensions
 
         self.ctx.emit_declaration_echo(out, func.loc)
         self._emit_template_header(out, func, record_name=record_name)
@@ -2621,8 +1217,7 @@ class AsyncCoroCodegen:
         # Generators with helper-based finallies that contain a `return` need a
         # stop flag: the helper sets it so `__next__()` emits StopIteration
         # instead of re-throwing (Python: `return` in `finally` suppresses exc).
-        if is_gen and any(_stmts_have_return(body)
-                          for _, body in cfg.finally_helpers):
+        if is_gen and cfg.finally_helpers_return:
             out.write(f"{INDENT}bool __finally_stop = false;\n")
 
         out.write(f"\n")
@@ -2654,8 +1249,7 @@ class AsyncCoroCodegen:
         init_parts.extend(p.ctor_init() for p in ctor_params)
         seeded = self._constructor_loop_seed(func)
         ctor_seed = seeded[1] if seeded is not None else None
-        rcfg.resumable_state(func).ctor_loop_seed = ctor_seed
-        rcfg.resumable_state(func).ctor_seeded_uid = (
+        self._print_state(self._frame_of(func)).ctor_seeded_uid = (
             seeded[0] if seeded is not None else None)
         ctor_body = " ".join(ctor_seed or ())
         ctor_body = f"{{ {ctor_body} }}" if ctor_body else "{}"
@@ -2685,7 +1279,7 @@ class AsyncCoroCodegen:
             # actions the destructor runs (no per-action fact exists).
             self._emit_frame_dtor(
                 out, struct_name, dtor_cases,
-                emit_prims.defer_signals_cpp(self._frame_fi(func, record_name)))
+                emit_prims.defer_signals_cpp(frame_function_info(self.ctx.analyzer, func, record_name)))
 
         # Body-method forward declaration + per-shape extra methods.
         out.write(f"{INDENT}{self._resumable_body_method_fwd_decl(func)};\n")
@@ -2698,7 +1292,7 @@ class AsyncCoroCodegen:
 
         # Nested defs become frame member functions (callable from every
         # resume case; frame-field access via implicit this).
-        for nd in collect_frame_nested_defs(func.body):
+        for nd in (slot.source for slot in cfg.nested_defs):
             params_str, nd_ret = emit_prims.nested_def_signature(
                 self.types, nd.func)
             ret_str = nd_ret if nd_ret is not None else "void"
@@ -2748,7 +1342,7 @@ class AsyncCoroCodegen:
         if not func.is_genexpr:
             return False
         cparams = self._classify_params(func, None)
-        return bool(cparams) and cparams[0].kind is _CoroParamKind.STATIC_PROTOCOL
+        return bool(cparams) and cparams[0].kind is FrameCaptureKind.STATIC_PROTOCOL
 
     def _in_place_factory_parts(self, func: TpyFunction) -> tuple[str, str, str, str]:
         """The genexpr factory overload that builds the source in place:
@@ -2834,9 +1428,6 @@ class AsyncCoroCodegen:
         old_optional_fields = self.ctx.generator_optional_fields
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_borrow_form_loop_vars = self.ctx.generator_borrow_form_loop_vars
-        old_for_info = self.ctx.generator_for_loop_info
-        old_with_owned_ctx = self.ctx.generator_with_owned_ctx
-        old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
         old_frame_const_bindings = self.ctx.frame_const_bindings
         old_self_ref = self.ctx.generator_self_ref
         old_in_method = self.ctx.in_method
@@ -2852,31 +1443,20 @@ class AsyncCoroCodegen:
         old_type_param_bounds = self.ctx.current_type_param_bounds
 
         # Reset frame-specific fields before setup_body_scope, since the
-        # `setup_resumable_frame_locals` call inside it reads
-        # `generator_for_loop_info` and writes to `generator_optional_fields`.
+        # `setup_resumable_frame_locals` call inside it writes to
+        # `generator_optional_fields`.
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_frame_slot_locals = set()
         self.ctx.generator_borrow_form_loop_vars = set()
-        # Populated by `_prescan_resumable_for_loops`; carries
-        # `pointer_form_loop_var` so `setup_resumable_frame_locals` (called
-        # inside `setup_body_scope` below) seeds non-value loop vars into
-        # `pointer_locals`. Empty for bodies with no CFG-decomposed for-loop.
-        self.ctx.generator_for_loop_info = rcfg.resumable_state(func).for_loop_info
-        self.ctx.generator_with_owned_ctx = (
-            rcfg.resumable_state(func).with_owned_ctx_map)
-        # Seeds pointer_locals inside setup_resumable_frame_locals (called by
-        # setup_body_scope below) so borrow-alias frame locals get a `T*` slot.
-        self.ctx.generator_pointer_alias_locals = (
-            self._classify_pointer_alias_locals(func))
-        self.ctx.frame_const_bindings = (
-            rcfg.resumable_state(func).const_frame_bindings)
+        self.ctx.frame_const_bindings = set(
+            self._frame_of(func).const_bindings)
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
 
-        # NOT the frame's capture verdict (`_frame_capture_const_names`), and
+        # NOT the frame's capture verdict (`frame_capture_const_names`), and
         # the two are not interchangeable: this pair is what the BODY's
         # signature model assumes per param, so it names value captures the
         # frame holds by copy (a scalar, an owned `str`) which never produce a
@@ -2908,7 +1488,7 @@ class AsyncCoroCodegen:
         # Nested defs are frame members: register their names up front so
         # call sites in any resume case (and finally-helper bodies) render
         # the unqualified member call.
-        for nd in collect_frame_nested_defs(func.body):
+        for nd in (slot.source for slot in self._frame_of(func).nested_defs):
             self.ctx.nested_def_locals.add(nd.func.name)
             self.ctx.local_scope_names.add(nd.func.name)
         if record_name:
@@ -2918,9 +1498,8 @@ class AsyncCoroCodegen:
             self.ctx.generator_self_ref = None
         for pname, _ in func.params:
             self.ctx.generator_field_names.add(pname)
-        if func.generator_locals:
-            for lname, _ltype in func.generator_locals:
-                self.ctx.generator_field_names.add(lname)
+        for loc in self._frame_of(func).locals:
+            self.ctx.generator_field_names.add(loc.name)
         # Forwarded proto-param aliases have no field of their own, but they
         # are still frame-resident names (storage resolves to the backing
         # param) -- register them so the field-name membership tests fire and
@@ -2939,9 +1518,6 @@ class AsyncCoroCodegen:
             self.ctx.generator_optional_fields = old_optional_fields
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_borrow_form_loop_vars = old_borrow_form_loop_vars
-            self.ctx.generator_for_loop_info = old_for_info
-            self.ctx.generator_with_owned_ctx = old_with_owned_ctx
-            self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.frame_const_bindings = old_frame_const_bindings
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.in_method = old_in_method
@@ -2959,9 +1535,8 @@ class AsyncCoroCodegen:
         frame member so it is callable from any resume case and reaches
         frame-field locals via implicit this). No-op when neither exists.
         """
-        cfg = self._build_resumable_cfg(func, record_name)
-        nested_defs = collect_frame_nested_defs(func.body)
-        if not cfg.finally_helpers and not nested_defs:
+        cfg = self.resumable_frame(func, record_name)
+        if not cfg.finally_helpers and not cfg.nested_defs:
             return
         struct_name = self._struct_name_templated(func, record_name)
         # Helper-finally statements come from the same lowering attempt as the
@@ -2971,18 +1546,19 @@ class AsyncCoroCodegen:
 
         with self._resumable_frame_ctx(func, record_name):
             with self._thir_leaf_scope(leaf):
-                for helper_name, body_stmts in cfg.finally_helpers:
+                for helper_name, helper_slots in cfg.finally_helpers:
                     self._emit_template_header(
                         out, func, record_name=record_name)
                     out.write(f"void {struct_name}::{helper_name}() {{\n")
                     self.ctx.indent_level = 1
                     with self._generator_finally_helper_scope():
-                        for stmt in body_stmts:
+                        for slot in helper_slots:
                             leaf.emit_leaf_stmt(
-                                out, stmt, self.ctx.indent_level)
+                                out, slot, self.ctx.indent_level)
                     self.ctx.indent_level = 0
                     out.write(f"}}\n")
-            for nd in nested_defs:
+            for nd_slot in cfg.nested_defs:
+                nd = nd_slot.source
                 params_str, nd_ret = emit_prims.nested_def_signature(
                     self.types, nd.func)
                 ret_str = nd_ret if nd_ret is not None else "void"
@@ -2993,7 +1569,7 @@ class AsyncCoroCodegen:
                 # The member body was lowered under the member scope at
                 # frame lowering; a missing entry is a lowering/seam
                 # disagreement.
-                leaf.emit_nested_def_body(out, nd.func, self.ctx.indent_level)
+                leaf.emit_nested_def_body(out, nd_slot, self.ctx.indent_level)
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 
@@ -3159,7 +1735,7 @@ class AsyncCoroCodegen:
 
     def _protocol_template_args_by_suspension(
             self, func: TpyFunction, record_name: str | None,
-            cfg: 'rcfg.CFG') -> 'dict[int, list[str]]':
+            cfg: 'THIRResumableFrame') -> 'dict[int, list[str]]':
         """The `T_<pname>` template args each suspension's sub-coro struct
         name needs, keyed by suspension index.
 
@@ -3180,7 +1756,7 @@ class AsyncCoroCodegen:
         nodes, so the capture type has to be read from the same author or the
         two spellings can only agree by accident.
         """
-        pending = [y for y in cfg.yield_sites
+        pending = [y for y in cfg.suspensions
                    if y.payload.prebuilt_slot is None
                    and self._protocol_param_positions(y.payload.operand_expr)]
         if not pending:
@@ -3190,14 +1766,13 @@ class AsyncCoroCodegen:
         with self._resumable_frame_ctx(func, record_name):
             with self._thir_leaf_scope(leaf):
                 for y in pending:
-                    extra = self._extra_template_args_for_await(
-                        y.payload.operand_expr)
+                    extra = self._extra_template_args_for_await(y.payload)
                     if extra:
                         args[y.suspension_index] = extra
         return args
 
     def _resumable_sub_future_fields(
-            self, func: TpyFunction, cfg: 'rcfg.CFG',
+            self, func: TpyFunction, cfg: 'THIRResumableFrame',
             record_name: str | None = None
     ) -> 'list[tuple[str, str, frozenset[str], bool]]':
         """Sub-future frame fields -- async-only (policy seam), as (name,
@@ -3212,12 +1787,12 @@ class AsyncCoroCodegen:
         if self._is_generator_shape():
             return []
         fields: 'list[tuple[str, str, frozenset[str], bool]]' = []
-        state = rcfg.resumable_state(func)
+        state = self._frame_of(func)
         struct_names = state.async_with_struct_names
         for_struct_names = state.async_for_struct_names
         protocol_args = self._protocol_template_args_by_suspension(
             func, record_name, cfg)
-        for y in cfg.yield_sites:
+        for y in cfg.suspensions:
             p = y.payload
             if p.prebuilt_slot is not None:
                 # Bound-coroutine await: polls the handle's own frame
@@ -3236,7 +1811,7 @@ class AsyncCoroCodegen:
             if p.async_with_kind is not None and p.async_with_ctx_n is not None:
                 entry = struct_names.get(p.async_with_ctx_n)
                 if entry is not None:
-                    sub_cpp = entry[0] if p.async_with_kind is rcfg.AsyncWithKind.AENTER else entry[1]
+                    sub_cpp = entry[0] if p.async_with_kind is AsyncWithKind.AENTER else entry[1]
             elif p.async_for_uid is not None:
                 entry = for_struct_names.get(p.async_for_uid)
                 if entry is not None:
@@ -3244,7 +1819,7 @@ class AsyncCoroCodegen:
             name = f"__sub_{y.suspension_index}"
             reads = (frozenset(read_names(p.operand_expr))
                      if p.operand_expr is not None else frozenset())
-            if p.mode is rcfg.AwaitMode.BORROWED:
+            if p.mode is AwaitMode.BORROWED:
                 fields.append((name, f"{INDENT}{sub_cpp}* {name} = nullptr;\n",
                                reads, False))
             else:
@@ -3266,7 +1841,7 @@ class AsyncCoroCodegen:
                                       struct_name: str) -> None:
         """Per-shape inline methods on the frame struct. Async emits
         `cancel()`; the generator emits `__iter__()` (returns `*this`, so
-        the frame is its own iterator -- parallels gen_generators)."""
+        the frame is its own iterator)."""
         if self._is_generator_shape():
             out.write(f"{INDENT}{struct_name}& __iter__() "
                       f"{{ return *this; }}\n")
@@ -3288,8 +1863,8 @@ class AsyncCoroCodegen:
         -- so a caller that places the definition by size never has to take
         the rendered text apart to add one."""
         struct_name = self._struct_name_templated(func, record_name)
-        cfg = self._build_resumable_cfg(func, record_name)
-        has_yields = bool(cfg.yield_sites)
+        cfg = self.resumable_frame(func, record_name)
+        has_yields = bool(cfg.suspensions)
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
         self.ctx.emit_definition_echo(out, func.loc, markers=self._resume_markers(cfg))
@@ -3302,7 +1877,7 @@ class AsyncCoroCodegen:
         # is the resumable-shape policy's responsibility.
         has_finally_stop = (
             self._is_generator_shape()
-            and any(_stmts_have_return(body) for _, body in cfg.finally_helpers))
+            and cfg.finally_helpers_return)
         with self._generator_finally_stop_scope(has_finally_stop):
             with self._resumable_frame_ctx(func, record_name):
                 with self._resumable_return_lowering(func):
@@ -3317,7 +1892,7 @@ class AsyncCoroCodegen:
         out.write(f"}}\n")
 
     # -- THIR resumable seam ----------------------------------------------
-    # The state-machine skeleton (this module + resumable_cfg) is SHARED
+    # The state-machine skeleton (this module + the published frame) is SHARED
     # machinery, like signatures and struct layout; only the user-source
     # LEAVES route through THIR. A routed body swaps every leaf-delegation
     # site (BB leaf stmts, RaiseT stmts, Branch conds, emplace args, the
@@ -3326,7 +1901,7 @@ class AsyncCoroCodegen:
 
     def _thir_resumable_attempt(self, func: TpyFunction,
                                 record_name: str | None,
-                                cfg: 'rcfg.CFG'):
+                                cfg: 'THIRResumableFrame'):
         """Attempt-once THIR leaf lowering for this frame body, cached so a
         re-entered frame lowers exactly once."""
         cache = self.ctx.thir_resumables
@@ -3336,19 +1911,9 @@ class AsyncCoroCodegen:
                                    reject_attempt)
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
-        # The case-label set (cached on the CFG) doubles as the lowering's
-        # narrowing-alias boundary: case entries re-establish the extraction
-        # alias under the name lowering picked (`narrow_aliases`).
-        case_entry_ids = frozenset(self._compute_case_entries(cfg))
-        # The frame-layout plan is the skeleton's own placement decision;
-        # handing it to lowering (vs re-deriving) keeps the skeleton and the
-        # lowered leaves on one frame-field form decision.
-        rb = lower_resumable(func, self.ctx.analyzer, self.types.type_to_cpp,
-                             cfg, record_name=record_name,
+        rb = lower_resumable(cfg, self.ctx.analyzer, self.types.type_to_cpp,
                              render_type_stored=self.types.type_to_cpp_stored,
-                             case_entry_ids=case_entry_ids,
-                             native_globals=self.ctx.native_global_names,
-                             frame_layout=self._frame_layout(func))
+                             native_globals=self.ctx.native_global_names)
         cache[func] = rb
         if rb is None:
             reject_attempt("resumable", func)
@@ -3357,17 +1922,17 @@ class AsyncCoroCodegen:
 
     def _thir_resumable_leaf_emitter(self, func: TpyFunction,
                                      record_name: str | None,
-                                     cfg: 'rcfg.CFG'):
+                                     cfg: 'THIRResumableFrame'):
         """The body's leaf renderer bound to the live ctx sinks."""
         rb = self._thir_resumable_attempt(func, record_name, cfg)
         from ..thir.emit import (ModuleCounter, CtxIterCounter,
                                  TempSink, ResumableLeafEmitter)
 
-        def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
-            # Nested leaf return: the same scaffolding a ReturnT terminator
-            # gets. The value render inside re-enters the leaf seam's
-            # return_values table via _async_return_value_cpp.
-            return self._resumable_return_code(stmt, INDENT * indent_level)
+        def _return_hook(ret: 'THIRResumableReturn',
+                         indent_level: int) -> str:
+            # Nested leaf return: the same scaffolding a return terminator
+            # gets, rendered from the node's own value and recipe.
+            return self._resumable_return_code(ret, INDENT * indent_level)
 
         return ResumableLeafEmitter(
             rb,
@@ -3414,16 +1979,18 @@ class AsyncCoroCodegen:
     # `return` inside a resumable frame body (shape-dispatched scaffolding).
     # =====================================================================
 
-    def _resumable_return_code(self, stmt: TpyReturn, indent: str) -> str:
-        """Lower a source-level `return` for the frame shape currently being
-        emitted -- the flags `_resumable_return_lowering` and the generator
-        finally-helper scope set around the whole body emission."""
+    def _resumable_return_code(self, ret: 'THIRResumableReturn',
+                               indent: str) -> str:
+        """Lower a source-level `return` (its lowered `THIRResumableReturn`)
+        for the frame shape currently being emitted -- the flags
+        `_resumable_return_lowering` and the generator finally-helper scope
+        set around the whole body emission."""
         if self.ctx.in_async_coro_body:
-            return self._make_async_return(stmt, indent)
+            return self._make_async_return(ret, indent)
         if self.ctx.in_generator_resumable_body:
             # Generator on the resumable frame: bare return / end ->
             # StopIteration done, via the while/switch (no __done label).
-            return self._make_generator_resumable_return(stmt, indent)
+            return self._make_generator_resumable_return(ret, indent)
         if self.ctx.in_generator_finally_helper:
             # return inside a helper-based finally body: set the stop flag
             # and void-return; __next__() checks __finally_stop after the
@@ -3434,7 +2001,7 @@ class AsyncCoroCodegen:
         raise CodeGenError(
             "internal: resumable return outside a resumable body emission")
 
-    def _async_return_value_cpp(self, stmt: TpyReturn, ret_type,
+    def _async_return_value_cpp(self, ret: 'THIRResumableReturn', ret_type,
                                 *, to_borrow: bool,
                                 allow_move: bool = False) -> str:
         """The value render for `_make_async_return`'s three scaffolding
@@ -3451,11 +2018,11 @@ class AsyncCoroCodegen:
         # covered at lowering for each admitted return shape. Serves ReturnT
         # terminators AND nested leaf returns (THIRResumableReturn's emit hook
         # re-enters _make_async_return, which lands back here). Widening the
-        # return-shape gate must revisit this seam -- see the
-        # THIRResumableBody return_values contract.
-        return self._leaf.render_return_value(stmt, allow_move=allow_move)
+        # return-shape gate must revisit this seam.
+        return self._leaf.render_return_value(ret, allow_move=allow_move)
 
-    def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
+    def _make_async_return(self, ret: 'THIRResumableReturn',
+                           indent: str) -> str:
         """Lower `return v` inside an `async def` body. When a CFG-based
         finally is active, ctx state routes the return through the
         pending-return slot: save value + flag, walk finally frames
@@ -3472,7 +2039,7 @@ class AsyncCoroCodegen:
             target_state = self.ctx.async_pending_return_target_state
             boundary = self.ctx.async_pending_return_boundary
             assert target_state is not None
-            if pending_slot is not None and stmt.value is not None:
+            if pending_slot is not None and ret.has_operand:
                 # The pending slot is typed as the Poll payload (`ret_cpp`),
                 # so a borrow-form return stores its pointer here -- alias-
                 # correct through the suspending finally. For STORAGE
@@ -3483,7 +2050,7 @@ class AsyncCoroCodegen:
                 # move is NOT the fix (an alias in the finally would read a
                 # gutted object); the deferral needs a parked discriminant
                 # at AsyncFinallyExit -- tracked in BUGS.md.
-                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                expr_cpp = self._async_return_value_cpp(ret, ret_type,
                                                         to_borrow=True)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
@@ -3503,13 +2070,13 @@ class AsyncCoroCodegen:
         ret_tmp: str | None = None
         deferred_materialize: str | None = None
         ret_cpp = self.ctx.async_coro_return_cpp or "void"
-        if (not isinstance(ret_type, VoidType) and stmt.value is not None
+        if (not isinstance(ret_type, VoidType) and ret.has_operand
                 and self.ctx.finally_stack):
             recipe = None
-            if stmt.finally_deferred_capture:
+            if ret.deferred is not None:
                 # A stamped return ALWAYS has a recipe: lowering rejects the
                 # whole body when it cannot build one.
-                recipe = self._leaf.render_deferred_return(stmt)
+                recipe = self._leaf.render_deferred_return(ret)
             if recipe is not None:
                 captures, deferred_materialize = recipe
                 chain = io.StringIO()
@@ -3520,7 +2087,7 @@ class AsyncCoroCodegen:
                     out.write(f"{indent}{maybe_unused}{line}\n")
                 out.write(chain.getvalue())
             else:
-                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                expr_cpp = self._async_return_value_cpp(ret, ret_type,
                                                         to_borrow=True)
                 ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
                 self.ctx.iter_counter += 1
@@ -3544,7 +2111,7 @@ class AsyncCoroCodegen:
         if isinstance(ret_type, VoidType):
             out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
         else:
-            if stmt.value is None:
+            if not ret.has_operand:
                 # Non-void async def with bare return -- sema should have
                 # caught this; emit a panic as a guardrail.
                 out.write(
@@ -3558,7 +2125,7 @@ class AsyncCoroCodegen:
                 if ret_tmp is None:
                     # Direct ready: no finally chain follows, so this is the
                     # one site where a last-use move is unconditionally safe.
-                    expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                    expr_cpp = self._async_return_value_cpp(ret, ret_type,
                                                             to_borrow=True,
                                                             allow_move=True)
                     # Bind to a local first so `std::move` has a typed source:
@@ -3571,7 +2138,7 @@ class AsyncCoroCodegen:
                     f"std::move({ret_tmp}));\n")
         return out.getvalue()
 
-    def _make_generator_resumable_return(self, stmt: TpyReturn,
+    def _make_generator_resumable_return(self, ret: 'THIRResumableReturn',
                                          indent: str) -> str:
         """Lower a `return` inside a generator body lowered onto the
         resumable frame. Generators reject return-with-value (sema), so
@@ -3617,646 +2184,54 @@ class AsyncCoroCodegen:
     # CFG-based state-machine emitter (replaces _emit_switch_body).
     # =====================================================================
 
-    def _build_resumable_cfg(self, func: TpyFunction,
-                             record_name: str | None = None) -> 'rcfg.CFG':
-        """Apply the await-lift pre-pass, then build the CFG. The CFG
-        builder handles any wrapping try/finally uniformly with all
-        other compound statements -- no special unwrap-and-rewrap pass
-        is needed.
+    def resumable_frame(self, func: TpyFunction,
+                        record_name: str | None = None) -> THIRResumableFrame:
+        """The frame THIR publishes for `func`, built at its first request.
 
-        A `_CFGNotYetSupported` (a shape the resumable lowering can't yet
-        handle) is turned into a `CodeGenError` at the offending location.
-        This is the authoritative backstop so no unsupported shape silently
-        miscompiles. The result is cached on the func for the emit pass.
+        `record_name` (the enclosing record, for a method) selects the
+        owning record's method when the per-param const verdict is looked
+        up, so a generator method must pass it too: without it the lookup
+        answers None, or worse resolves off a same-named free function.
+        The build reads the current resumable shape (the emitter's default
+        ASYNC one at the generator gate, which is a known quirk)."""
+        frames = self.ctx.thir_resumable_frames
+        frame = frames.get(func)
+        if frame is None:
+            frame = build_resumable_frame(func, record_name, self._shape,
+                                          self._frame_deps())
+            frames[func] = frame
+        return frame
 
-        `record_name` (the enclosing coro's record, for a method) lets the
-        sub-future field-type computation render await-arg expressions with
-        the same body name-context the emplace uses (`self`->`__self`,
-        `frame_slot` deref) -- otherwise the field-type and emplace spellings
-        diverge. It also selects the owning record's method when looking up
-        the per-param const verdict, so a generator method must pass it too:
-        without it the lookup answers None, or worse resolves off a same-named
-        free function.
-        """
-        state = rcfg.resumable_state(func)
-        if state.cfg is not None:
-            return state.cfg
-        body = self._effective_body(func)
-        # The for-loop prescan resolves each loop's iterable type via the
-        # name-keyed `var_types`, which on entry still holds the
-        # previously-emitted function's locals/params -- so a second generator
-        # whose param shares a name inherits the stale type (e.g. a protocol
-        # param's `Iterable[T]` leaking onto a concrete `list` param of the
-        # same name). Seed `var_types` with THIS function's own params for the
-        # prescan window; `_resumable_frame_ctx` resets scope again for build.
-        saved_var_types = self.ctx.var_types
-        self.ctx.var_types = {pname: unwrap_ref_type(ptype)
-                              for pname, ptype in func.params}
-        # The strategy analysis also consults the const sets (a const-rooted
-        # iterable needs a const_iterator frame slot), which on entry still
-        # hold the previous function's values -- seed FRAME-CAPTURE constness,
-        # which is what the body's alias locals must type against. Every
-        # capture whose field `_classify_params` const-qualifies belongs in
-        # the window; a capture that keeps its mutable spelling (a
-        # pointer-repr Optional, an owned value) does not, or alias locals
-        # would type against a field that isn't const.
-        saved_crp = self.ctx.const_ref_params
-        saved_dcbp = self.ctx.deep_const_borrow_params
-        saved_cil = self.ctx.const_indirect_locals
-        crp, dcbp = self._frame_capture_const_names(func, record_name)
-        self.ctx.const_ref_params = crp
-        self.ctx.deep_const_borrow_params = dcbp
-        # Local const-ness is name-keyed and belongs to whichever body was
-        # emitted last, so it must not answer for THIS one: a same-named const
-        # loop var in an earlier generator would make a mutable local here read
-        # as const. This frame's own locals answer through
-        # `frame_const_bindings` below.
-        self.ctx.const_indirect_locals = set()
-        # The frame's const bindings are shared BY REFERENCE for the whole
-        # window: the alias and for prescans below add to them as they
-        # classify, and each one's slot spelling reads what the previous ones
-        # decided (a nested loop over a const loop var, an alias off one).
-        saved_alias = self.ctx.generator_pointer_alias_locals
-        saved_frame_const = self.ctx.frame_const_bindings
-        self.ctx.frame_const_bindings = (
-            rcfg.resumable_state(func).const_frame_bindings)
-        # Classify borrow-alias locals under the seeded const sets (the
-        # classification is memoized, so it must not first run against a
-        # stale context).
-        self.ctx.generator_pointer_alias_locals = (
-            self._classify_pointer_alias_locals(func))
-        try:
-            for_uid_map = self._prescan_resumable_for_loops(
-                func, body, record_name)
-            with_uid_map = self._prescan_with_stmts(func, body)
-            # Both of these build the frame layout, so they must follow the
-            # for/with prescans whose outputs it reads (for_loop_info,
-            # with_owning_str_targets, with_target_payloads). Neither's own
-            # output feeds the layout, so building it here is not circular.
-            self._prescan_with_manager_homes(func, body)
-            self._prescan_resumable_ptr_slots(func, body)
-            try_finally_uid_map = self._prescan_resumable_try_finally(func, body)
-            state.loop_close_fields = self._loop_close_fields(func, body)
-            builder = rcfg.CFGBuilder(
-                payload_factory=self._make_await_payload,
-                for_uid_map=for_uid_map,
-                with_uid_map=with_uid_map,
-                try_finally_uid_map=try_finally_uid_map,
-                func_returns_void=self._is_void_return(func),
-                loop_close_fields=state.loop_close_fields,
-            )
-            # Build inside the resumable-frame body context so the payload
-            # factory's field-type render (`_extra_template_args_for_await`)
-            # applies the `self`->`__self` rewrite and `frame_slot` deref,
-            # matching the emplace site. `setup_body_scope` is side-effect-free
-            # state setup, so entering it here (build) and again at emit is
-            # safe; the CFG is cached, so this runs once.
-            with self._resumable_frame_ctx(func, record_name):
-                cfg = builder.build(body)
-        except rcfg._CFGNotYetSupported as e:
-            raise CodeGenError(e.msg, loc=e.loc)
-        finally:
-            self.ctx.var_types = saved_var_types
-            self.ctx.const_ref_params = saved_crp
-            self.ctx.deep_const_borrow_params = saved_dcbp
-            self.ctx.const_indirect_locals = saved_cil
-            self.ctx.generator_pointer_alias_locals = saved_alias
-            self.ctx.frame_const_bindings = saved_frame_const
-        # Stash the builder so callers (emit) can look up handler
-        # entries via builder.get_handler_entry().
-        state.cfg_builder = builder
-        # Inline awaits resolve their callee in the payload factory during the
-        # build, so their edges ride the payload; the `async with` / `async for`
-        # and `iter_next` embeddings are recorded by the prescans above. Between
-        # them the frame's by-value embeddings are covered without re-walking
-        # the AST, which cannot see the `async with`/`async for` sub-futures at
-        # all -- they carry no TpyAwait node.
-        for _y in cfg.yield_sites:
-            _dep = getattr(_y.payload, "dep_unit", None)
-            if _dep is not None:
-                state.frame_dep_units.append(_dep)
-        state.cfg = cfg
-        return cfg
+    def _frame_of(self, func: TpyFunction) -> THIRResumableFrame:
+        """The already-published frame of `func`."""
+        return self.ctx.thir_resumable_frames[func]
 
-    def _loop_close_fields(
-            self, func: TpyFunction,
-            body: 'list[TpyStmt]') -> 'dict[int, tuple[str, ...]]':
-        """Per decomposed loop, the fields it releases when control leaves it
-        (`rcfg.LoopSourceRegion`), in release order: the ones whose
-        destruction may run user code -- a source generator whose `finally`
-        CPython runs as the loop exits, an iterator `__iter__` built.
+    def _frame_deps(self) -> FrameBuildDeps:
+        return FrameBuildDeps(
+            analyzer=self.ctx.analyzer,
+            type_to_cpp=self.types.type_to_cpp,
+            tuple_borrow_cpp=self.types.tuple_borrow_cpp,
+            resolve_type=self.types.resolve_type,
+            resolved_type_in=self.types.resolved_type_in,
+            is_static_protocol_param=(
+                self.functions.protocols.is_static_protocol_param),
+            same_module_generators=self.same_module_generators,
+            cycle_peers=self.ctx.cycle_peers, ret_cpp=self._ret_cpp)
 
-        None for a loop that lends an element out: a name bound in it may
-        still point into the source after the loop, so the source lives on
-        with the frame. None for the body's last statement too: leaving it
-        ends the body, and the frame keeps its locals to its destruction
-        anyway (BUGS.md#finished-frame-keeps-locals), so a release there
-        would only add states and a destructor."""
-        state = rcfg.resumable_state(func)
-        owners = self._loop_field_owners(func)
-        out: dict[int, tuple[str, ...]] = {}
-        for s, info in state.for_loop_info.items():
-            if s.is_async or (body and body[-1] is s):
-                continue
-            fields = [fn for fn, _ in info.fields
-                      if fn in owners and self._loop_field_drops(fn, owners[fn])]
-            if not fields or self._loop_lends_element_out(
-                    func, _loop_bound_names(self.ctx.analyzer, s)):
-                continue
-            out[id(s)] = tuple(reversed(fields))
-        return out
+    def _print_state(self, frame: THIRResumableFrame) -> '_FramePrint':
+        """The printer's own per-frame state (emit-order caches, the
+        constructor's loop seed), keyed by the frame object."""
+        state = self.ctx.resumable_print.get(frame)
+        if state is None:
+            state = self.ctx.resumable_print[frame] = _FramePrint()
+        return state
 
-    def _prescan_resumable_for_loops(
-            self, func: TpyFunction,
-            body: list[TpyStmt],
-            record_name: str | None = None) -> dict[int, int]:
-        """Find for-loops whose body contains await OR are `async for`
-        (M6). For each, allocate a uid, register frame-field declarations
-        and register the loop variable as a hoisted local so it persists
-        across suspensions.
-
-        Sync for-with-await (M3.1): two slots,
-        `(__for_itr_N: iter_type_t<S>, __for_r_N: iter_result_t<S>)`.
-
-        Async-for (M6): one slot, `__for_itr_N: aiter_type_t<S>`. No `__for_r_N` slot --
-        the advance is a Yield(await __anext__()) and the unwrapped
-        value goes straight to the loop var via the standard resume-bind
-        path. Also populates `state.async_for_struct_names[uid]` with
-        the C++ name of the `__anext__` sub-coro struct so the Yield
-        emit can size `__sub_<i>` and emplace it.
-
-        Returns {id(TpyForEach) -> uid} for the CFG builder. Frame fields
-        live on `state.for_fields` as `[(name, cpp_type)]` consumed
-        by gen_coro_struct (see `ResumableFuncState`).
-        """
-        state = rcfg.resumable_state(func)
-        if state.for_prescanned:
-            return state.for_uid_map
-        # Storage that outlives the frame: the params the frame BORROWS (a
-        # reference, a pointer, a capture aliasing an enclosing variable) and
-        # the receiver. A param stored in the frame by value (`Own[T]`, a
-        # deduced slot, an owned `str` copy) is a sibling field, which a frame
-        # move would leave behind. An iterator source reached from a borrowed
-        # root can be held by reference across advances.
-        # A `val_or_ref_t<T>` slot is caller storage at every reference
-        # instantiation, which is what its monomorphic twin is; the value
-        # instantiation shares the latent frame-move hazard the `begin_end`
-        # iterators into such a field already carry.
-        borrowed_kinds = (_CoroParamKind.REF, _CoroParamKind.POINTER,
-                          _CoroParamKind.OWNED_TUPLE, _CoroParamKind.CAPTURE,
-                          _CoroParamKind.TYPE_PARAM)
-        classified = self._classify_params(func, record_name)
-        if record_name:
-            classified = classified[1:]
-        pinned_roots = frozenset(
-            [pname for (pname, _), p in zip(func.params, classified)
-             if p.kind in borrowed_kinds]
-            + (["self"] if func.is_method else []))
-        # A genexpr's deduced source slot has one instantiation, its creation
-        # site's; only the nested-def stand-in for an unsettled literal type
-        # is open.
-        deduced_concrete = (func.is_genexpr
-                            and not func.genexpr_container_by_protocol)
-        uid_map: dict[int, int] = {}
-        fields_out: list[tuple[str, str]] = []
-        struct_names_out: dict[int, str] = {}
-        # Same-module frame structs this loop machinery embeds by value; like
-        # local_hoists below, committed to the state only after the walk
-        # completes so a mid-walk `_CFGNotYetSupported` leaves nothing behind.
-        dep_units_out: list[tuple[str, str | None]] = []
-        # {TpyForEach -> GeneratorForInfo}: carries pointer_form_loop_var
-        # so `setup_resumable_frame_locals` + the struct field emit render a
-        # non-value loop var as an aliasing `T*` rather than a `frame_slot<T>`
-        # value copy.
-        for_loop_info: IdentityMap = IdentityMap()
-        info_by_uid: dict[int, GeneratorForInfo] = {}
-        counter = [0]
-        # Loop-var hoists are accumulated here and applied to
-        # func.generator_locals only after the walk completes, so a mid-walk
-        # `_CFGNotYetSupported` (an unsupported for-loop shape) leaves no
-        # partially-appended loop-var entries behind -- they would emit as
-        # duplicate frame fields.
-        local_hoists: list[tuple[str, "TpyType"]] = []
-        # Non-suspending loops whose FRESH source the frame owns:
-        # {TpyForEach -> (field name, its C++ type)}. Separate from `uid_map`,
-        # which the CFG builder reads as "decompose this loop".
-        src_fields: IdentityMap = IdentityMap()
-
-        def mark_loop_var_const(s: TpyForEach, info: GeneratorForInfo) -> None:
-            # A loop var bound into const storage joins the frame's const
-            # bindings BEFORE this loop's body is walked, so a nested loop, an
-            # alias or a view slot inside it spells itself against the
-            # constness its source actually has. The unpack targets ride the
-            # same holder -- a `T*` loop var or the proxy-ref borrow tuple
-            # (`d.items()`), which carries the const inside its element
-            # pointers.
-            holder = (info.pointer_form_loop_var
-                      or info.borrow_tuple_loop_var
-                      or info.opt_ptr_loop_var)
-            if holder is not None:
-                if info.pointer_form_is_const:
-                    rcfg.mark_frame_const(state, holder,
-                                          *info.pointer_form_unpack_targets)
-            elif info.loop_var_field is not None and info.source_is_const:
-                # The slot's payload is spelled from the const source, so the
-                # element it lends is const too.
-                rcfg.mark_frame_const(state, s.var)
-
-        def non_suspending(s: TpyForEach) -> None:
-            """A loop whose body does not suspend keeps its block-local
-            iterators and every peephole the sync route gives it. The frame
-            takes its source only where the source is FRESH and the body can
-            bind something out of an element into frame storage that is not
-            provably self-contained: a temporary iterable lives as long as
-            anything bound from its elements might point into it, and no
-            longer.
-
-            Where the frame can name no slot type for such a source (a
-            delegated generator in a module that imports this one back),
-            the holder stays in the block, as on the sync route.
-
-            This is also the only pass that sees such a loop at all, so the
-            element's constness reaches the frame's const bindings from here
-            (`docs/PITFALLS.md#const-source-const-loop-var`); that half is
-            about the ELEMENT and applies to an lvalue source too."""
-            try:
-                info = self.gen_generators._analyze_for_strategy(
-                    s, counter[0], pinned_roots=pinned_roots,
-                    deduced_source_concrete=deduced_concrete)
-            except FrameSourceUnnameable:
-                # Discriminated from the strategy analysis by its own type so
-                # an unrelated located diagnostic is not swallowed here.
-                info = None
-            if info is not None:
-                mark_loop_var_const(s, info)
-            if info is None or not (
-                    for_source_is_rvalue(s, self.ctx.analyzer)
-                    and self._loop_lends_element_out(
-                        func, _loop_bound_names(self.ctx.analyzer, s))):
-                # Existing storage outlives the loop by itself, and a loop
-                # that lends nothing out needs nothing kept: either way the
-                # holder stays where the sync route puts it, in the block.
-                src_fields[s] = None
-                return
-            src = next((f for f in info.fields
-                        if f[0] == f"__for_src_{counter[0]}"), None)
-            if src is not None:
-                counter[0] += 1
-                fields_out.append(src)
-                # Only the source is embedded, so only its own emit-ordering
-                # deps are.
-                dep_units_out.extend(info.dep_units)
-            src_fields[s] = src
-
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                suspends = isinstance(s, TpyForEach) and (
-                    s.is_async
-                    or rcfg._stmts_have_any_suspension(s.body)
-                    or rcfg._stmts_have_any_suspension(s.orelse))
-                if isinstance(s, TpyForEach) and not suspends:
-                    non_suspending(s)
-                if suspends:
-                    cur_uid = counter[0]
-                    counter[0] += 1
-                    uid_map[id(s)] = cur_uid
-                    if s.is_async:
-                        # async-for (M6): one `__aiter__` iterator slot; the
-                        # advance is a Yield(await __anext__), not a strategy.
-                        iter_t = self.types.get_resolved_type(s.iterable)
-                        if iter_t is None:
-                            raise CodeGenError(
-                                "for-loop iterable has no resolved type "
-                                "(async for pre-scan)", loc=s.loc)
-                        src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
-                        iter_field_type = f"::tpy::aiter_type_t<{src_cpp}>"
-                        fields_out.append(
-                            (f"__for_itr_{cur_uid}", iter_field_type))
-                        if s.async_aiter_type is None:
-                            raise CodeGenError(
-                                "async-for missing resolved aiter type "
-                                "(internal: sema didn't populate "
-                                "stmt.async_aiter_type)", loc=s.loc)
-                        struct_names_out[cur_uid] = self._sub_struct_qualname(
-                            s.async_aiter_type, "__anext__", loc=s.loc)
-                        _anext_dep = rcfg.same_module_dep_unit(
-                            s.async_aiter_type, "__anext__",
-                            self.ctx.analyzer.ctx.module_name)
-                        if _anext_dep is not None:
-                            dep_units_out.append(_anext_dep)
-                        info = GeneratorForInfo(
-                            uid=cur_uid, strategy="async_for", fields=[])
-                    else:
-                        if (ternary_iterable_lends_storage(
-                                    s.iterable,
-                                    self.ctx.analyzer.registry.get_record,
-                                    self.types.get_resolved_type)
-                                and any(self.ctx.is_rvalue_source(arm)
-                                        for arm in (s.iterable.then_expr,
-                                                    s.iterable.else_expr))):
-                            # One arm lends storage the frame must not own and
-                            # the other is fresh storage it must: no single
-                            # capture holds both. Asked of the ARMS, since the
-                            # whole head reads as an lvalue once one arm is.
-                            # Two arms that agree are fine -- both lend, or
-                            # both are fresh.
-                            raise CodeGenError(
-                                "iterating a conditional whose arms are an "
-                                "existing object and a fresh one is not "
-                                "supported: the loop would have to borrow "
-                                "and own the same source. Write the loop "
-                                "once in each branch of an `if` instead",
-                                loc=s.loc)
-                        # Sync for-loop: reuse the legacy strategy analysis so
-                        # range / begin_end peepholes (a plain counter / begin-
-                        # end iterators) carry over instead of the slower
-                        # universal `__iter__`/`__next__` shape. The fields it
-                        # returns are emitted as `tpy::frame_slot<T>` in
-                        # gen_coro_struct (matching hoisted user locals).
-                        info = self.gen_generators._analyze_for_strategy(
-                            s, cur_uid, pinned_roots=pinned_roots,
-                            deduced_source_concrete=deduced_concrete)
-                        if info is None:
-                            raise rcfg._CFGNotYetSupported(
-                                "yield inside this for-loop shape is not yet "
-                                "supported on the resumable path.", loc=s.loc)
-                        fields_out.extend(info.fields)
-                        dep_units_out.extend(info.dep_units)
-                    for_loop_info[s] = info
-                    info_by_uid[cur_uid] = info
-                    mark_loop_var_const(s, info)
-                    elem_t = (unwrap_ref_type(s.elem_type)
-                              if s.elem_type else None)
-                    if elem_t is None:
-                        raise CodeGenError(
-                            "for-with-suspension: loop var has no "
-                            "resolved elem_type", loc=s.loc)
-                    local_hoists.append((s.var, elem_t))
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
-
-        walk(body)
-        # Walk succeeded: commit the loop-var hoists.
-        if local_hoists:
-            if func.generator_locals is None:
-                func.generator_locals = []
-            existing = {n for n, _ in func.generator_locals}
-            for name, elem_t in local_hoists:
-                if name not in existing:
-                    func.generator_locals.append((name, elem_t))
-                    existing.add(name)
-        state.frame_dep_units.extend(dep_units_out)
-        state.for_uid_map = uid_map
-        state.for_fields = fields_out
-        state.async_for_struct_names = struct_names_out
-        state.for_loop_info = for_loop_info
-        state.for_info_by_uid = info_by_uid
-        state.for_src_fields = src_fields
-        state.for_prescanned = True
-        return uid_map
-
-    def _classify_pointer_alias_locals(self, func: TpyFunction) -> 'set[str]':
-        """Frame locals that are borrow ALIASES of existing storage, so their
-        frame field must be a `T*` (aliasing the source) rather than an owning
-        `frame_slot<T>` (which would copy across the suspension -- a silent
-        reference-copy divergence from CPython).
-
-        Three binding shapes, mirroring how sync codegen renders them as
-        references (`Box& a = items[0]` / `auto&& a = tuple_elem_ref(...)`):
-          - single-assign `a = <lvalue>` of a plain non-value type,
-          - tuple-unpack borrow targets (`stmt.is_ref[i]`), and
-          - a walrus `(a := <lvalue>)`, which sema already classified as a
-            statement-level borrow.
-
-        Const sources (readonly params, const tuple elements) join the frame's
-        `const_frame_bindings` so the field is `const T*`; a source whose own
-        const verdict is settled later (a loop var, proven const by the for
-        prescan that runs after this pass) is reached through the borrow edge
-        recorded for the binding. Exception-
-        handler bindings are excluded: the caught exception is only live inside
-        the handler, so aliasing it across a suspension could dangle -- they
-        keep the safe owning copy. Owning bindings (`a = Box(1)`, Own[T]
-        elements, value types) also keep the owning frame_slot path.
-
-        Cached on the resumable state; consumed by `gen_coro_struct` (field
-        type) and `setup_resumable_frame_locals` (pointer_locals membership).
-        Idempotent across the struct + body passes.
-        """
-        state = rcfg.resumable_state(func)
-        if state.pointer_alias_prescanned:
-            return state.pointer_alias_locals
-        state.pointer_alias_prescanned = True
-        if not func.generator_locals:
-            return state.pointer_alias_locals
-        frame_local_types = {n: t for n, t in func.generator_locals}
-        aliases = state.pointer_alias_locals
-        body = self._effective_body(func)
-        # Read per-function off the analyzer, not off ctx: this prescan runs at
-        # struct-emit time, before the body scope that would seed ctx with it.
-        analyzer = self.ctx.analyzer
-        borrow_decls = analyzer.function_stmt_borrow_decls.get(func, {})
-
-        exc_bindings: set[str] = set()
-
-        def collect_exc(stmts: 'list[TpyStmt]') -> None:
-            for s in stmts:
-                if isinstance(s, TpyTry):
-                    for h in s.handlers:
-                        if h.binding is not None:
-                            exc_bindings.add(h.binding)
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        collect_exc(b)
-
-        collect_exc(body)
-
-        def root_name(expr: 'TpyExpr | None') -> 'str | None':
-            # Walk `.obj` (field access / subscript) down to the base name.
-            cur = expr
-            while cur is not None and not isinstance(cur, TpyName):
-                cur = getattr(cur, "obj", None)
-            return cur.name if isinstance(cur, TpyName) else None
-
-        def borrows_from(target: str, src: 'TpyExpr | None') -> None:
-            # A binding whose storage comes out of `src` is const whenever
-            # `src` is, however late that is settled (a loop var's own verdict
-            # lands in the for prescan, which runs after this pass). A
-            # borrow-declared call's const-ness is its lenders', which sema
-            # already folded into the result type -- its receiver may not lend.
-            if declared_call_const(self.ctx.analyzer, src) is not None:
-                return
-            rcfg.record_const_source_edge(state, target, root_name(src))
-
-        def aliases_live_storage(ltype_bare: 'TpyType | None',
-                                 init: 'TpyExpr') -> bool:
-            # The one rule every binding form takes: a plain reference local
-            # bound to an lvalue is a `T*` alias of it, whether or not sema
-            # moved a last-use name source -- the frame keeps the source
-            # alive, so nothing is copied. A source rooted at an
-            # exception-handler binding (`e`, `e.inner`, ...) is handler-
-            # scoped and may not survive a suspension stably, so the frame
-            # keeps the owning copy; an owned-erased (Own[dyn P]) local moves
-            # on binding.
-            return (root_name(init) not in exc_bindings
-                    and not isinstance(ltype_bare, OwnType)
-                    and emit_prims.is_plain_nonvalue(self.ctx, ltype_bare)
-                    and not self.ctx.is_rvalue_source(init))
-
-        def walk(stmts: 'list[TpyStmt]') -> None:
-            for s in stmts:
-                if isinstance(s, TpyVarDecl):
-                    ltype = frame_local_types.get(s.name)
-                    # Exclude any source rooted at an exception-handler binding
-                    # (`e`, `e.inner`, ...): the caught exception is handler-
-                    # scoped and may not survive a suspension stably, so a frame
-                    # pointer into it could dangle -- keep the owning copy.
-                    src_is_exc = root_name(s.init) in exc_bindings
-                    # Owned-erased (Own[dyn P]) locals move on binding --
-                    # never a borrow alias of the source.
-                    ltype_bare = unwrap_ref_type(ltype) if ltype is not None else None
-                    # is_const_storage_source: a field chain rooted at a
-                    # const receiver (self.field in a readonly method)
-                    # renders const; sync locals pick that up via auto
-                    # deduction, but the frame field must spell it. An
-                    # element read off a deep-const-verdict param (the
-                    # seeded name set) is a const source too -- the frame
-                    # field spells the verdict, so the alias must match.
-                    def init_is_const(s=s, ltype_bare=ltype_bare):
-                        if (emit_prims.is_const_indirect(
-                                    self.ctx, ltype_bare, s.init, s)
-                                or self.ctx.is_const_storage_source(s.init)):
-                            return True
-                        src = s.init
-                        if isinstance(src, TpyCoerce):
-                            src = src.expr
-                        if not (isinstance(src, TpySubscript)
-                                and isinstance(src.obj, TpyName)
-                                and src.obj.name
-                                in self.ctx.deep_const_borrow_params):
-                            return False
-                        root_t = self.ctx.var_types.get(src.obj.name)
-                        return isinstance(
-                            unwrap_readonly(unwrap_ref_type(root_t)),
-                            TupleType) if root_t is not None else False
-                    if (ltype is not None and s.init is not None
-                            and aliases_live_storage(ltype_bare, s.init)):
-                        aliases.add(s.name)
-                        borrows_from(s.name, s.init)
-                        if init_is_const():
-                            rcfg.mark_frame_const(state, s.name)
-                    elif (ltype is not None and s.init is not None
-                            and not src_is_exc
-                            and pointer_repr_optional(ltype_bare) is not None):
-                        # Pointer-repr Optional locals get their bare `T*`
-                        # frame field on their own emission branch (not via
-                        # `aliases`); only the const fact is recorded here,
-                        # where the initializing decl is in hand. A value
-                        # that fills the frame's own slot borrows nothing
-                        # from its receiver.
-                        if not emit_prims.ptr_write_fills_slot(
-                                self.ctx, s.init):
-                            borrows_from(s.name, s.init)
-                        if init_is_const():
-                            rcfg.mark_frame_const(state, s.name)
-                elif isinstance(s, TpyMatch):
-                    # A capture is bound out of the SUBJECT's storage, so a
-                    # const subject makes every pointer-form capture a
-                    # `const T*`. The binding is the arm's pattern, not a
-                    # VarDecl, so the arm above never sees it -- and the
-                    # subject is only in hand here. Captures bound by value
-                    # snapshot the element and carry no pointer to qualify.
-                    for case in s.cases:
-                        for cap in iter_capture_bindings(case.pattern):
-                            if cap.bind_by_value:
-                                continue
-                            cap_t = frame_local_types.get(cap.name)
-                            if cap_t is None:
-                                continue
-                            cap_bare = unwrap_ref_type(cap_t)
-                            if (cap.name in aliases
-                                    or pointer_repr_optional(cap_bare) is not None):
-                                borrows_from(cap.name, s.subject)
-                                if self.ctx.is_const_storage_source(s.subject):
-                                    rcfg.mark_frame_const(state, cap.name)
-                elif isinstance(s, TpyWith) and s.is_async:
-                    # An `async with ... as t` whose __aenter__ result is a
-                    # borrow (pointer Poll payload): the as-binding must
-                    # alias, not copy -- same rule as the await-init
-                    # VarDecl arm above. Gated on the item's own
-                    # enter_type, not frame_local_types: the with-prescan
-                    # appends the as-target to generator_locals only
-                    # later, at struct emission.
-                    for it in s.items:
-                        if (it.target is not None
-                                and it.aenter_result_is_borrow
-                                and it.enter_type is not None
-                                and emit_prims.is_plain_nonvalue(
-                                    self.ctx,
-                                    unwrap_ref_type(it.enter_type))):
-                            aliases.add(it.target)
-                            if it.aenter_result_is_const:
-                                rcfg.mark_frame_const(state, it.target)
-                elif isinstance(s, TpyTupleUnpack):
-                    # For-loop element unpacks (`idx, it = __for_tup`) already
-                    # get pointer-form slots via the loop machinery's
-                    # pointer_form_unpack_targets; skip them here so they keep
-                    # that path (and the `&std::get` emit) unchanged.
-                    src_is_loop_holder = (
-                        isinstance(s.value, TpyName)
-                        and s.value.name.startswith("__for_tup_"))
-                    # A frame `T*` alias is sound only when the source resolves
-                    # to storage outliving the frame: a stable lvalue (name /
-                    # field, bound by-ref) or a call/method-call returning a
-                    # borrow tuple (`std::tuple<T*, ...>` -- pointers to external
-                    # storage). A value-tuple rvalue temp (a tuple literal ->
-                    # `std::tuple<T, ...>`) would leave the alias pointing into
-                    # a destroyed stack temporary across the suspension, so it
-                    # falls back to the owning-copy path instead.
-                    src_safe_to_alias = (
-                        not self.ctx.is_rvalue_source(s.value)
-                        or isinstance(s.value, (TpyCall, TpyMethodCall)))
-                    if not src_is_loop_holder and src_safe_to_alias:
-                        # The element pointers are taken off the SOURCE, so
-                        # they are const exactly when it is -- a borrow-tuple
-                        # capture, a const-bound holder, or (the lvalue lift)
-                        # a chain rooted at a const frame binding. The lift
-                        # spelling in the THIR lowering reads the same answer.
-                        src_const = (
-                            emit_prims.unpack_source_has_const_slots(
-                                self.ctx, s)
-                            or self.ctx.is_const_storage_source(s.value))
-                        for i, tname in enumerate(s.targets):
-                            if (tname is not None and tname in frame_local_types
-                                    and i < len(s.is_ref) and s.is_ref[i]
-                                    and emit_prims.is_plain_nonvalue(
-                                        self.ctx,
-                                        unwrap_ref_type(frame_local_types[tname]))):
-                                aliases.add(tname)
-                                borrows_from(tname, s.value)
-                                elem_const = src_const or (
-                                    i < len(s.is_const_ref) and s.is_const_ref[i])
-                                if elem_const:
-                                    rcfg.mark_frame_const(state, tname)
-                # A walrus binds in expression position, so it is invisible to
-                # the statement arms above; it takes the declaration's rule.
-                for ne in walrus_bindings(s):
-                    ltype = frame_local_types.get(ne.target)
-                    if ltype is None:
-                        continue
-                    if not aliases_live_storage(unwrap_ref_type(ltype),
-                                                ne.value):
-                        continue
-                    aliases.add(ne.target)
-                    borrows_from(ne.target, ne.value)
-                    if borrow_decls.get(ne.target, False):
-                        rcfg.mark_frame_const(state, ne.target)
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
-
-        walk(body)
-        return aliases
+    def _resume_to_yield(self, frame: THIRResumableFrame) -> 'dict[int, THIRSuspend]':
+        """`resume block -> suspension` map, built once per frame."""
+        state = self._print_state(frame)
+        if state.resume_to_yield is None:
+            state.resume_to_yield = {y.resume_bb: y for y in frame.suspensions}
+        return state.resume_to_yield
 
     def _sub_struct_qualname(
             self, owner: 'NominalType | None', method: str,
@@ -4284,7 +2259,8 @@ class AsyncCoroCodegen:
         callee's struct.
         """
         return sub_struct_qualname(
-            self.types, owner, method, inferred_type_args,
+            owner, method, inferred_type_args,
+            analyzer=self.ctx.analyzer, type_to_cpp=self.types.type_to_cpp,
             module_qual=module_qual,
             extra_template_args=extra_template_args, loc=loc)
 
@@ -4305,7 +2281,8 @@ class AsyncCoroCodegen:
         return [i for i, p in enumerate(fi.params)
                 if self.functions.protocols.is_static_protocol_param(p.type)]
 
-    def _extra_template_args_for_await(self, call: TpyExpr) -> list[str]:
+    def _extra_template_args_for_await(
+            self, payload: 'THIRAwaitSuspension') -> list[str]:
         """Compute the per-static-protocol `T_<pname>` template-arg
         spellings for the sub-coro struct of an inline await.
 
@@ -4328,6 +2305,7 @@ class AsyncCoroCodegen:
         as `std::declval` of its type (`UnevaluatedTemps`): decltype doesn't
         evaluate, and the same args re-render at emplace time.
         """
+        call = payload.operand_expr
         positions = self._protocol_param_positions(call)
         if not positions:
             return []
@@ -4359,786 +2337,60 @@ class AsyncCoroCodegen:
         # argument temporary in: it renders as `std::declval` of its type.
         from ..thir.emit import UnevaluatedTemps
         rendered = self._leaf.render_await_args(
-            call, temps=UnevaluatedTemps(self.ctx))
+            payload.args, temps=UnevaluatedTemps(self.ctx))
         # `await_arg_capture_t` models the callee factory's `T&&` deduction:
         # lvalue arg -> `U&` (borrow), rvalue -> `U` (own). `decltype((arg))`
         # (double parens) carries the value category.
         return [f"::tpy::await_arg_capture_t<decltype(({rendered[i]}))>"
                 for i in positions]
 
-
-    def _record_with_target_payloads(self, func: TpyFunction, stmt: TpyWith,
-                                     state: 'rcfg.ResumableState') -> None:
-        """Record the C++ payload each `as`-target's frame field is spelled
-        from: `::tpy::with_enter_t<CM>`, the element form of `CM::__enter__()`.
-
-        Whether the target aliases the manager or owns a fresh value is not
-        decidable here -- a generic or inherited manager instantiates either way
-        -- so the choice goes to C++, exactly as a for-loop element's does.
-
-        Skipped when the enter type answers the question by itself, leaving the
-        plain field its sibling value locals use: a value type has no aliasing
-        question; `Own[T]` (which `is_value_type` reports as a value) returns by
-        value, so the target owns; and a view-family (`str` / `bytes`) target is
-        given owning storage by the `OWNED_STR` arm instead, which a source-form
-        payload would override (it is tested first).
-
-        A target the storage policy holds as a pointer over storage of its own
-        takes the pointer form at the payload's row (`_frame_local_form`),
-        const over a `readonly` result, unless its enter type is a type
-        parameter, which only the payload's instantiation can answer.
-
-        Sync `with` only: an `async with` target is bound from `__aenter__`'s Poll
-        payload, not from `__enter__` (which such a manager need not even
-        define), and its field already takes the aliasing pointer form.
-        """
-        if stmt.is_async:
-            return
-        for item in stmt.items:
-            if item.target is None or item.enter_type is None:
-                continue
-            enter_t = unwrap_ref_type(item.enter_type)
-            resolved_enter = self.types.resolve_type(enter_t)
-            if (resolved_enter.is_value_type()
-                    or is_str_category(resolved_enter)
-                    or is_bytes_category(resolved_enter)):
-                # `with_owning_str_targets` already claims the whole view family
-                # for owning storage, keyed on the str/bytes CATEGORY rather than
-                # on what `__enter__` actually lends -- so a `-> StrView` target
-                # owns as much as a `-> str` one, and nothing is left to defer.
-                continue
-            if pointer_repr_optional(resolved_enter) is not None:
-                # A pointer-repr Optional answers alias-vs-own by itself (the
-                # null pointer doubles as None) and has its own field kind; a
-                # source-form payload would win the earlier arm and render
-                # `frame_slot<T*>`, whose reads deref one level short.
-                continue
-            ctx_t = self.types.get_resolved_type(item.context_expr)
-            if ctx_t is None:
-                continue
-            ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
-            state.with_target_payloads[item.target] = (
-                f"::tpy::with_enter_t<{ctx_cpp}>")
-            if isinstance(resolved_enter, TypeParamRef):
-                state.with_generic_targets.add(item.target)
-            elif (item.target in self._rebound_ref_names(func)
-                    and isinstance(unwrap_send_sync(enter_t), ReadonlyType)):
-                rcfg.mark_frame_const(state, item.target)
-
-    def _prescan_with_manager_homes(self, func: TpyFunction,
-                                    body: list[TpyStmt]) -> None:
-        """Give an OWNED manager a frame field when its `as`-target's field points
-        INTO it.
-
-        Such a field holds a pointer or view into whatever `__enter__()` returned,
-        so the manager has to outlive the FRAME, not the statement. A borrowed
-        manager already does -- it aliases a frame-resident local -- but an owned
-        one is a per-invocation local, so a read of the target after any later
-        suspension would dangle. Only for a non-decomposed region: a decomposed
-        one allocates the field regardless.
-
-        Runs after `_prescan_with_stmts` so it can ask the frame-layout PLAN what
-        each target's field actually is, rather than re-deriving it from the enter
-        type's spelling -- an enumeration of spellings cannot close that set (a
-        borrow-form tuple and a `Span` are value types holding pointers), and
-        every miss is a use-after-free. The plan never reads this pass's output,
-        so building it here is not circular.
-        """
-        state = rcfg.resumable_state(func)
-        if state.with_manager_homes_prescanned:
-            return
-        state.with_manager_homes_prescanned = True
-        layout = self._frame_layout(func)
-        local_types = dict(func.generator_locals or [])
-        counter = [state.with_ctx_counter]
-        fields_out: list[tuple[str, str]] = []
-
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                if (isinstance(s, TpyWith) and not s.is_async
-                        and not rcfg._stmts_have_any_suspension(s.body)):
-                    per_item: list[int | None] = []
-                    for item in s.items:
-                        ctx_t = (self.types.get_resolved_type(item.context_expr)
-                                 if item.target is not None
-                                 and not item.manager_borrowed
-                                 and item.manager_owns_enter_result
-                                 and self._with_field_points_into_manager(
-                                     item.target, layout, local_types)
-                                 else None)
-                        if ctx_t is None:
-                            per_item.append(None)
-                            continue
-                        cur_n = counter[0]
-                        counter[0] += 1
-                        fields_out.append(
-                            (f"__with_ctx_{cur_n}",
-                             self.types.type_to_cpp(unwrap_ref_type(ctx_t))))
-                        per_item.append(cur_n)
-                    if any(n is not None for n in per_item):
-                        state.with_owned_ctx_map[s] = per_item
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
-
-        walk(body)
-        state.with_fields = list(state.with_fields) + fields_out
-        state.with_ctx_counter = counter[0]
-
-    # Frame-field kinds whose storage is entirely its own: nothing in the field
-    # points at the manager, so an owned manager may stay a case-block local.
-    _SELF_CONTAINED_FRAME_KINDS = frozenset({
-        rcfg.FrameLocalKind.OWNED_STR,
-        rcfg.FrameLocalKind.OWNING_TUPLE_SLOT,
-        rcfg.FrameLocalKind.FRAME_SLOT,
-    })
-
-    def _with_field_points_into_manager(
-            self, target: str, layout: 'rcfg.FrameLayoutPlan',
-            local_types: 'dict[str, TpyType]') -> bool:
-        """Does the target's frame field hold a pointer or view INTO the manager?
-
-        Defaults to YES for any kind not provably self-contained: a miss in this
-        direction is a use-after-free, while a false positive only keeps the
-        manager alive longer than strictly needed.
-        """
-        verdict = layout.bindings.get(target)
-        if verdict is None:
-            return False  # not frame-resident: no field to point with
-        if verdict.kind in self._SELF_CONTAINED_FRAME_KINDS:
-            return False
-        if verdict.kind is not rcfg.FrameLocalKind.VALUE:
-            # PTR_ALIAS / OPT_PTR (pointer), BORROW_TUPLE / MIXED_TUPLE_SLOT
-            # (pointer elements), SOURCE_FORM_SLOT (alias when the trait picks
-            # the borrow form).
-            return True
-        # A bare VALUE field is self-contained only for the owning value
-        # families; the rest (views, `Span`, `Ptr`, a user ValueType holding
-        # either) carry a pointer inside a value type.
-        ltype = local_types.get(target)
-        if ltype is None:
-            return True
-        t = self.types.resolve_type(unwrap_ref_type(ltype))
-        if is_free_copy_scalar(t) or is_big_int_type(t) or isinstance(t, OwnType):
-            return False
-        if is_str_category(t) and not is_str_view_type(t):
-            return False
-        if is_bytes_category(t) and not is_bytes_view_type(t):
-            return False
-        return True
-
-    def _prescan_resumable_ptr_slots(
-            self, func: TpyFunction, body: list[TpyStmt]) -> None:
-        """Reserve one `std::optional<T>` frame field per rvalue write into
-        a pointer-form frame local (decl init or rebind; a walrus of a
-        rebound reference local), and per owned element of a pointer
-        tuple's binding or of a rebound reference local's unpack. The
-        pointer field outlives every case block, so the materialization slot
-        must too -- an inline or hoisted per-call slot dies at the next
-        suspension (or the next `__next__` call) while the pointer still
-        aims at it.
-
-        Which writes need a slot is decided here once, per (write, element)
-        -- None for the scalar: a scalar's is `ptr_slot_field_type`'s call,
-        an element's `ptr_tuple_elem_storage`'s. Fields land on
-        `state.ptr_slot_fields`; the site map (`stmt -> {element ->
-        field}`) on `state.ptr_slot_map`, which the lowering reads
-        (`rcfg.ptr_slot_field`) and rejects a reseat it finds no field for.
-        One field per write sema's alias-rebind verdict does not send in
-        place: an alias holding the previous value keeps a live target.
-        """
-        from ..thir.lower.bindings import ptr_tuple_elem_storage
-        from ..thir.lower.context import binding_source_sites
-        state = rcfg.resumable_state(func)
-        if state.ptr_slots_prescanned:
-            return
-        state.ptr_slots_prescanned = True
-        layout = self._frame_layout(func)
-        ptr_kinds = (rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR,
-                     rcfg.FrameLocalKind.REBIND_PTR)
-        ptr_names = {n for n, v in layout.bindings.items()
-                     if v.kind in ptr_kinds}
-        ptr_tuples = {n: v.effective_type for n, v in layout.bindings.items()
-                      if v.kind is rcfg.FrameLocalKind.BORROW_TUPLE
-                      and n in layout.pointer_tuples
-                      and v.effective_type is not None}
-        if not ptr_names and not ptr_tuples:
-            return
-        local_types = dict(func.generator_locals or [])
-        owned_masks = self.ctx.analyzer.ctx.tuple_elem_owned
-        elem_verdicts = self.ctx.analyzer.ctx.tuple_elem_storage
-        fields: list[rcfg.PtrSlotField] = []
-        uid_map: IdentityMap = IdentityMap()
-
-        def reserve(stmt: 'TpyStmt | TpyExpr', elem: 'int | None',
-                    field_cpp: str, local: str, value: TpyExpr) -> None:
-            fname = f"__ptr_slot_f{len(fields)}"
-            fields.append(rcfg.PtrSlotField(fname, field_cpp, local, value))
-            uid_map.setdefault(stmt, {})[elem] = fname
-
-        def visit_tuple(stmt: TpyStmt, name: str, init: TpyExpr) -> None:
-            ptt = ptr_tuples[name]
-            # Visited even where every element is written in place: the
-            # lowering refuses a binding the prescan never saw.
-            uid_map.setdefault(stmt, {})
-            mask = owned_masks.get(stmt) or ()
-            const = name in state.const_frame_bindings
-            for i, et in enumerate(ptt.element_types):
-                if not (i < len(mask) and mask[i]):
-                    continue
-                if ptr_tuple_elem_storage(
-                        elem_verdicts.get(stmt), i, et, first=False,
-                        const=const) is RebindStorage.IN_PLACE:
-                    continue
-                pointee = unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(unwrap_own(et))))
-                reserve(stmt, i,
-                        f"std::optional<{self.types.type_to_cpp(pointee)}>",
-                        name, init)
-
-        def visit(stmt: 'TpyStmt | TpyExpr', name: str,
-                  init: 'TpyExpr | None') -> None:
-            if init is None:
-                return
-            if name in ptr_tuples:
-                visit_tuple(stmt, name, init)
-                return
-            if name not in ptr_names:
-                return
-            # An IN_PLACE rebind assigns through the pointer into the
-            # storage it already aims at: no field of its own. The reseat
-            # lowering keys on the same verdict.
-            if getattr(stmt, "rebind_storage", None) is RebindStorage.IN_PLACE:
-                return
-            target_type = local_types.get(name)
-            inner = (target_type.inner
-                     if isinstance(target_type, OptionalType) else target_type)
-            cpp_type = (self.types.type_to_cpp(unwrap_ref_type(inner))
-                        if inner is not None else "auto")
-            field_cpp = emit_prims.ptr_slot_field_type(
-                self.ctx, init, target_type, cpp_type)
-            if field_cpp is None:
-                return
-            reserve(stmt, None, field_cpp, name, init)
-
-        rebind_names = {n for n, v in layout.bindings.items()
-                        if v.kind is rcfg.FrameLocalKind.REBIND_PTR}
-
-        def visit_unpack(stmt: TpyTupleUnpack) -> None:
-            # A rebound reference local taking an element over (sema's
-            # `is_owned`, the verdict that makes a rebind of it a site) lands
-            # it in a field of this site's own, as its assignments do; the
-            # site is never stamped IN_PLACE. The lowering binds exactly the
-            # targets reserved here, moving each out of the holder.
-            for i, name in enumerate(stmt.targets):
-                if (name not in rebind_names
-                        or not stmt.owns_target(i)):
-                    continue
-                pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    unwrap_own(stmt.target_types[i]))))
-                reserve(stmt, i,
-                        f"std::optional<{self.types.type_to_cpp(pointee)}>",
-                        name, stmt.value)
-
-        with_ptr_names = {n for n, v in layout.bindings.items()
-                          if v.kind in _WITH_POINTER_KINDS}
-
-        def visit_with(stmt: TpyWith, item: TpyWithItem, name: str) -> None:
-            # A pointer-form target over a by-value `__enter__` result: the
-            # object lands in this item's field, the pointer aims at it.
-            if (stmt.is_async or name not in with_ptr_names
-                    or not isinstance(item.enter_type, TpyType)
-                    or returns_cpp_reference_shape(item.enter_type)):
-                return
-            pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                unwrap_own(item.enter_type))))
-            reserve(item, None,
-                    f"std::optional<{self.types.type_to_cpp(pointee)}>",
-                    name, item.context_expr)
-
-        unpacks_seen: IdentityMap = IdentityMap()
-        for site in binding_source_sites(body, all_binders=True,
-                                         unpack_targets=True):
-            if isinstance(site.binder, TpyTupleUnpack):
-                if site.binder not in unpacks_seen:
-                    unpacks_seen[site.binder] = None
-                    visit_unpack(site.binder)
-            elif isinstance(site.source, TpyWithItem):
-                visit_with(site.stmt, site.source, site.target)
-            elif isinstance(site.binder, TpyMatch):
-                # A capture aliases the subject (sema refuses its rebind):
-                # no object of its own to land.
-                continue
-            elif not site.is_walrus or site.target in rebind_names:
-                visit(site.binder, site.target, site.source)
-        state.ptr_slot_fields = fields
-        state.ptr_slot_map = uid_map
-
-    def _prescan_with_stmts(
-            self, func: TpyFunction,
-            body: list[TpyStmt]) -> dict[int, list[int]]:
-        """Find `with` stmts whose body contains await. For each, allocate
-        a ctx_n per WithItem, declare a `__with_ctx_<n>` frame field of
-        the context-manager's C++ type, and register any `as` target
-        names as hoisted locals.
-
-        Returns {id(TpyWith) -> [ctx_n_per_item]}; frame fields land on
-        `state.with_fields` as `[(name, cpp_type)]`.
-        """
-        state = rcfg.resumable_state(func)
-        if state.with_prescanned:
-            return state.with_uid_map
-        uid_map: dict[int, list[int]] = {}
-        fields_out: list[tuple[str, str]] = []
-        counter = [0]
-
-        # Async-with sub-coro struct names by ctx_n. Populated alongside
-        # the per-ctx frame field. Emit uses this to size __sub_<i>
-        # slots and to write the inline factory call.
-        struct_names_out: dict[int, tuple[str, str]] = {}
-        # The `__aenter__`/`__aexit__` units whose structs those slots embed.
-        dep_units_out: list[tuple[str, str | None]] = []
-
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                if isinstance(s, TpyWith):
-                    # A TARGET's frame field is NOT gated on the region being
-                    # decomposed: the target outlives its statement (Python
-                    # scoping), so it can be read across a later suspension the
-                    # `with` itself does not contain. Record the payload its
-                    # field is spelled from for every `with`; the manager field
-                    # and state numbering below stay gated.
-                    self._record_with_target_payloads(func, s, state)
-                    # A DECOMPOSED region needs the manager in the frame anyway
-                    # (its states are disjoint). Whether a NON-decomposed one
-                    # needs it depends on the target's field kind, which the frame
-                    # layout has not decided yet -- see
-                    # `_prescan_with_manager_homes`, which runs once this pass has
-                    # fed it the payloads it reads.
-                # The MANAGER needs a frame field only when the region is
-                # decomposed into states: a sync `with` whose body contains an
-                # await (M3.2), or any `async with` (its `__aenter__` /
-                # `__aexit__` are themselves the suspensions).
-                if (isinstance(s, TpyWith)
-                        and (s.is_async
-                             or rcfg._stmts_have_any_suspension(s.body))):
-                    per_item: list[int] = []
-                    for item in s.items:
-                        cur_n = counter[0]
-                        counter[0] += 1
-                        per_item.append(cur_n)
-                        ctx_t = self.types.get_resolved_type(item.context_expr)
-                        if ctx_t is None:
-                            raise CodeGenError(
-                                "with-stmt context manager has no resolved "
-                                "type (async with-with-await pre-scan)",
-                                loc=s.loc)
-                        ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
-                        fields_out.append((f"__with_ctx_{cur_n}", ctx_cpp))
-                        if item.manager_borrowed:
-                            state.with_borrowed_fields.add(f"__with_ctx_{cur_n}")
-                        # For async-with, compute the qualified C++ names
-                        # of the __aenter__ / __aexit__ coro structs so
-                        # struct-emit and _emit_suspend can look them up
-                        # by ctx_n without needing the types helper at
-                        # the CFG layer.
-                        if s.is_async:
-                            ctx_inner = unwrap_ref_type(ctx_t)
-                            if not isinstance(ctx_inner, NominalType):
-                                raise CodeGenError(
-                                    "async-with context manager type is "
-                                    "not a record (internal)",
-                                    loc=s.loc)
-                            # Build the aenter/aexit sub-coro struct
-                            # names using the canonical struct namer
-                            # (same shape as M4 async-method coro
-                            # structs). The C++ namespace is derived
-                            # from the CM's qualified type by
-                            # stripping any template args first (so
-                            # `::ns::Foo<T>` yields a `::ns::` prefix,
-                            # not `::ns::Foo<T>::`). Type args are
-                            # re-attached as a suffix on the coro
-                            # struct reference -- the struct itself is
-                            # templated over the same T as the CM.
-                            # Generic CMs are rejected at sema today (see
-                            # registration.py); the helper handles type_args
-                            # so this prescan stays robust if that lifts.
-                            # Name each sub-coro struct from the method's
-                            # DEFINING record (sema-stamped; an ancestor when
-                            # the manager inherits __aenter__/__aexit__), not
-                            # the manager's subclass type -- the struct exists
-                            # only for the definer. Falls back to the manager
-                            # type for own methods (owner == ctx_inner).
-                            aenter_owner = item.aenter_owner_type or ctx_inner
-                            aexit_owner = item.aexit_owner_type or ctx_inner
-                            struct_names_out[cur_n] = (
-                                self._sub_struct_qualname(
-                                    aenter_owner, "__aenter__", loc=s.loc),
-                                self._sub_struct_qualname(
-                                    aexit_owner, "__aexit__", loc=s.loc),
-                            )
-                            for _dunder, _owner in (("__aenter__", aenter_owner),
-                                                    ("__aexit__", aexit_owner)):
-                                _dep = rcfg.same_module_dep_unit(
-                                    _owner, _dunder,
-                                    self.ctx.analyzer.ctx.module_name)
-                                if _dep is not None:
-                                    dep_units_out.append(_dep)
-                        if item.target is not None:
-                            enter_t = (unwrap_ref_type(item.enter_type)
-                                       if item.enter_type else None)
-                            if enter_t is None:
-                                raise CodeGenError(
-                                    "with-stmt target has no resolved "
-                                    "enter_type", loc=s.loc)
-                            if func.generator_locals is None:
-                                func.generator_locals = []
-                            if not any(n == item.target
-                                       for n, _ in func.generator_locals):
-                                func.generator_locals.append(
-                                    (item.target, enter_t))
-                            # For str-typed as-targets, the C++
-                            # `__enter__()` / `__aenter__()` returns
-                            # `std::string` by value but sema's `str`
-                            # lowers to `std::string_view`. Tracking
-                            # the name here promotes the frame field's
-                            # storage type to `std::string` (owning)
-                            # so the field doesn't alias a temporary
-                            # that dies at the assignment's semicolon.
-                            # Applies to both sync `with` and async
-                            # `with`: the Poll<std::string>::value()
-                            # extraction in async-with's resume case
-                            # produces the same temporary shape as the
-                            # sync __enter__() return.
-                            resolved_enter_t = self.types.resolve_type(enter_t)
-                            if is_str_category(resolved_enter_t):
-                                state.with_owning_str_targets.add(item.target)
-                    uid_map[id(s)] = per_item
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
-
-        walk(body)
-        state.frame_dep_units.extend(dep_units_out)
-        state.with_uid_map = uid_map
-        state.with_fields = fields_out
-        state.with_ctx_counter = counter[0]
-        state.async_with_struct_names = struct_names_out
-        state.with_prescanned = True
-        return uid_map
-
-    def _prescan_resumable_try_finally(
-            self, func: TpyFunction,
-            body: list[TpyStmt]) -> dict[int, int]:
-        """Find try-stmts whose finally body contains an await. For
-        each, allocate a uid and declare:
-          * `__finally_exc_<n>` -- `std::exception_ptr` (always).
-          * `__finally_pending_<n>` -- `bool` (only when try / handler /
-             finally body contains a reachable `return`).
-          * `__finally_ret_<n>` -- function's return type, for the
-             same reason and only when the async def is non-void.
-        Returns {id(TpyTry) -> uid}; field declarations land on
-        `state.try_finally_fields`."""
-        state = rcfg.resumable_state(func)
-        if state.try_finally_prescanned:
-            return state.try_finally_uid_map
-        uid_map: dict[int, int] = {}
-        fields_out: list[tuple[str, str, str]] = []
-        counter = [0]
-        is_void = self._is_void_return(func)
-        ret_cpp = self._ret_cpp(func) if not is_void else None
-        # The pending return is a slot declared before its value.
-        ret_init = (emit_prims.placeholder_init(
-            unwrap_ref_type(func.return_type), ret_cpp)
-            if ret_cpp is not None else "")
-
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                if (isinstance(s, TpyTry)
-                        and s.finally_body
-                        and rcfg._stmts_have_any_suspension(s.finally_body)):
-                    cur_uid = counter[0]
-                    counter[0] += 1
-                    uid_map[id(s)] = cur_uid
-                    fields_out.append(
-                        (f"__finally_exc_{cur_uid}", "std::exception_ptr", ""))
-                    has_return = (rcfg._stmts_have_any_return(s.try_body)
-                                   or any(rcfg._stmts_have_any_return(h.body)
-                                           for h in s.handlers)
-                                   or rcfg._stmts_have_any_return(s.finally_body))
-                    if has_return:
-                        fields_out.append(
-                            (f"__finally_pending_{cur_uid}", "bool", ""))
-                        # Generator pending returns are always StopIteration;
-                        # no value slot needed (_ret_cpp would give Iterator[T]).
-                        if ret_cpp is not None and not self._is_generator_shape():
-                            fields_out.append(
-                                (f"__finally_ret_{cur_uid}", ret_cpp,
-                                 ret_init))
-                # `async with` desugars to a try/finally where the
-                # finally body is `await __cm.__aexit__(...)`. The
-                # synthetic finally needs the same set of frame slots
-                # as a user-written try/finally-with-await; allocate
-                # them in the same shared uid pool here.
-                if isinstance(s, TpyWith) and s.is_async:
-                    cur_uid = counter[0]
-                    counter[0] += 1
-                    uid_map[id(s)] = cur_uid
-                    fields_out.append(
-                        (f"__finally_exc_{cur_uid}", "std::exception_ptr", ""))
-                    if rcfg._stmts_have_any_return(s.body):
-                        fields_out.append(
-                            (f"__finally_pending_{cur_uid}", "bool", ""))
-                        if ret_cpp is not None:
-                            fields_out.append(
-                                (f"__finally_ret_{cur_uid}", ret_cpp,
-                                 ret_init))
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
-
-        walk(body)
-        state.try_finally_uid_map = uid_map
-        state.try_finally_fields = fields_out
-        state.try_finally_prescanned = True
-        return uid_map
-
-    def _make_await_payload(self, await_node: TpyAwait, host_stmt: TpyStmt,
-                             kind, bind_target, return_stmt) -> 'rcfg.AwaitPayload':
-        """CFGBuilder payload factory: derives mode + sub_field_cpp_type
-        from the await's sema annotations."""
-        if await_node.awaited_prebuilt_slot is not None:
-            # Bound-coroutine handle: poll the handle's own frame slot in
-            # place (INLINE flavors for reset/poll; no field, no emplace).
-            operand_type = self.ctx.get_expr_type(await_node.value)
-            inner = unwrap_readonly(unwrap_own(unwrap_ref_type(operand_type)))
-            return rcfg.AwaitPayload(
-                mode=rcfg.AwaitMode.INLINE,
-                sub_field_cpp_type=self.types.type_to_cpp(inner),
-                operand_expr=await_node.value,
-                kind=kind,
-                bind_target=bind_target,
-                return_stmt=return_stmt,
-                host_stmt=host_stmt,
-                await_node=await_node,
-                prebuilt_slot=await_node.awaited_prebuilt_slot,
-            )
-        dep_unit: 'tuple[str, str | None] | None' = None
-        module_qual: str | None = None
-        if await_node.awaited_async_func_name is not None:
-            mode = rcfg.AwaitMode.INLINE
-            inferred_type_args = getattr(
-                await_node.value, "inferred_type_args", None)
-            # Cross-module free-function await spelled `mod.func(...)`:
-            # operand is a TpyMethodCall whose receiver is the module
-            # (no class owner). Use the module qualifier to namespace
-            # the sub-coro struct name.
-            if (isinstance(await_node.value, TpyMethodCall)
-                    and await_node.awaited_method_owner_type is None):
-                module_qual = (await_node.value.user_module_call
-                               or await_node.value.builtin_module_call)
-            elif (isinstance(await_node.value, TpyCall)
-                    and await_node.awaited_method_owner_type is None):
-                # Bare `from mod import f; await f()`: qualify the coro struct
-                # with the resolved function's defining module. originating_module
-                # is chain-flattened + shadow-correct (unlike imported_names, which
-                # maps the direct import); same module -> None -> bare name.
-                fi = getattr(await_node.value, "resolved_function_info", None)
-                cur = self.ctx.analyzer.ctx.module_name
-                if (fi is not None and fi.originating_module is not None
-                        and fi.originating_module != cur):
-                    module_qual = fi.originating_module
-            # The `T_<pname>` args for a static-protocol callee are NOT added
-            # here: they must be spelled from the same render the emplace
-            # passes to the ctor, and that render is only decidable under the
-            # body scope (narrowing, move-out) which does not exist yet at CFG
-            # build. Struct emit re-spells the name with them.
-            sub_cpp = self._sub_struct_qualname(
-                await_node.awaited_method_owner_type,
-                await_node.awaited_async_func_name,
-                inferred_type_args,
-                module_qual=module_qual,
-                loc=await_node.loc)
-            # Same-module callee only -- a cross-module struct is already
-            # complete via its header, and the bare-name unit key would match a
-            # same-named local unit. The two forms carry that fact differently:
-            # a method's owner type names its defining module, while for a free
-            # function `module_qual` is the signal (it is only computed when
-            # there is no owner type).
-            _owner = await_node.awaited_method_owner_type
-            if _owner is not None:
-                dep_unit = rcfg.same_module_dep_unit(
-                    _owner, await_node.awaited_async_func_name,
-                    self.ctx.analyzer.ctx.module_name)
-            elif module_qual is None:
-                dep_unit = (await_node.awaited_async_func_name, None)
-        elif await_node.awaited_task_inner is not None:
-            operand_type = self.ctx.get_expr_type(await_node.value)
-            if operand_type is None:
-                raise CodeGenError(
-                    "await operand has no analyzed type",
-                    loc=host_stmt.loc)
-            operand_inner = unwrap_own(unwrap_ref_type(operand_type))
-            sub_cpp = self.types.type_to_cpp(operand_inner)
-            if operand_inner.is_value_type():
-                mode = rcfg.AwaitMode.ERASED
-            elif is_stable_address_lvalue(await_node.value):
-                mode = rcfg.AwaitMode.BORROWED
-            else:
-                mode = rcfg.AwaitMode.ERASED
-        else:
-            raise CodeGenError(
-                "await reached codegen without sema-resolved sub-future shape",
-                loc=host_stmt.loc)
-        return rcfg.AwaitPayload(
-            mode=mode,
-            sub_field_cpp_type=sub_cpp,
-            operand_expr=await_node.value,
-            kind=kind,
-            bind_target=bind_target,
-            return_stmt=return_stmt,
-            host_stmt=host_stmt,
-            await_node=await_node,
-            dep_unit=dep_unit,
-            sub_struct_module_qual=module_qual,
-        )
-
-    def _compute_case_entries(self, cfg: 'rcfg.CFG') -> dict[int, _StateLabel]:
-        """Return mapping bb_id -> StateLabel for every BB that needs its
-        own case label in the emitted switch. Cached on the CFG so the
-        struct-emit and poll-emit passes share the result.
-
-        Rules: a BB is a case entry iff it is
-        - the entry BB (S_INITIAL),
-        - the resume_bb of a Yield (S_RESUME_<i>),
-        - reached via Fall/Branch by 2+ predecessors (multi-pred join), or
-        - reached via Fall/Branch from a predecessor with a different
-          region_stack (region-crossing edge).
-
-        Handler entries (reached only via C++ catch) are inlined into
-        their enclosing try-region's catch and never get a case label.
-        """
-        if cfg._case_entries_cache is not None:
-            return cfg._case_entries_cache
-        case_entries: dict[int, _StateLabel] = {
-            cfg.entry_bb: _StateLabel(_StateKind.INITIAL)
-        }
-        for y in cfg.yield_sites:
-            case_entries[y.resume_bb] = _StateLabel(
-                _StateKind.RESUME, y.suspension_index)
-        # Compute predecessors via Fall/Branch/Yield-resume edges.
-        # Yield.resume_bb already a case entry; tracking helps detect
-        # multi-pred / region-crossing.
-        preds: dict[int, list[int]] = {bid: [] for bid in cfg.blocks}
-        for bid, bb in cfg.blocks.items():
-            t = bb.terminator
-            if isinstance(t, rcfg.Fall):
-                preds[t.next_bb].append(bid)
-            elif isinstance(t, rcfg.Branch):
-                preds[t.then_bb].append(bid)
-                preds[t.else_bb].append(bid)
-            elif isinstance(t, rcfg.AsyncForAdvance):
-                preds[t.has_value_bb].append(bid)
-                preds[t.exhausted_bb].append(bid)
-            elif isinstance(t, rcfg.Yield):
-                preds[t.resume_bb].append(bid)
-        # Multi-pred (excluding yield-resume, which is already case entry).
+    def _compute_case_entries(self, cfg: 'THIRResumableFrame') -> dict[int, _StateLabel]:
+        """Return mapping bb_id -> StateLabel for every block the frame
+        publishes as a case entry (`THIRResumableFrame.case_entries`, in
+        discovery order): S_INITIAL for the entry block, S_RESUME_<i> for a
+        suspension's resume block, S_JOIN_<n> numbered in order for the
+        rest. Cached per frame so the struct-emit and poll-emit passes
+        share the labels."""
+        state = self._print_state(cfg)
+        if state.case_entries is not None:
+            return state.case_entries
+        resume = self._resume_to_yield(cfg)
+        case_entries: dict[int, _StateLabel] = {}
         join_idx = 0
-        for bid, ps in preds.items():
-            if bid in case_entries:
-                continue
-            if len(ps) >= 2:
+        for bid in cfg.case_entries:
+            if bid == cfg.entry_block:
+                case_entries[bid] = _StateLabel(_StateKind.INITIAL)
+            elif bid in resume:
+                case_entries[bid] = _StateLabel(
+                    _StateKind.RESUME, resume[bid].suspension_index)
+            else:
                 case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
                 join_idx += 1
-        # Region-crossing predecessors.
-        for bid, bb in cfg.blocks.items():
-            if bid in case_entries:
-                continue
-            for p in preds.get(bid, ()):
-                p_bb = cfg.blocks[p]
-                if p_bb.region_stack != bb.region_stack:
-                    case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
-                    join_idx += 1
-                    break
-        # WithRegion suppression targets: any with whose __exit__ may
-        # suppress an exception transitions state directly to
-        # post_with_bb from inside the catch (not a normal CFG edge).
-        # Mark every such post_with_bb as a case entry so the catch's
-        # `__state = ...; continue;` lands on a labeled case.
-        with_post_bbs: set[int] = set()
-        for bb in cfg.blocks.values():
-            for r in bb.region_stack:
-                if (isinstance(r, rcfg.WithRegion)
-                        and r.item.exit_can_suppress):
-                    with_post_bbs.add(r.post_with_bb)
-        for bid in with_post_bbs:
-            if bid not in case_entries:
-                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
-                join_idx += 1
-        # CFG-based finally entry BBs: the TryRegion's catch-all
-        # transitions state directly to `finally_entry_bb` from inside
-        # the catch (not a normal CFG edge). The Fall on the normal
-        # exit path region-crosses out of the TryRegion which already
-        # makes this BB a case entry, but mark explicitly to cover the
-        # "try body always raises" case (no Fall predecessor).
-        # Same for CFG-based finally EXIT BBs: a `return` inside the
-        # finally body transitions state directly here without a CFG
-        # edge, so the BB must have a case label even if the
-        # Fall-from-finally-end region-crossing already picked it up.
-        finally_entry_bbs: set[int] = set()
-        finally_exit_bbs: set[int] = set()
-        for bb in cfg.blocks.values():
-            for r in bb.region_stack:
-                if (isinstance(r, rcfg.TryRegion)
-                        and r.finally_entry_bb is not None):
-                    finally_entry_bbs.add(r.finally_entry_bb)
-                elif (isinstance(r, rcfg.FinallyRegion)
-                        and r.finally_exit_bb is not None):
-                    finally_exit_bbs.add(r.finally_exit_bb)
-        for bid in finally_entry_bbs | finally_exit_bbs:
-            if bid not in case_entries:
-                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
-                join_idx += 1
-        # MatchDispatch join BBs: the dispatch transitions to its join
-        # directly (a non-CFG edge from the suspension-free dispatch's
-        # fall-through), and each arm body Falls there. The arm bodies
-        # are INLINED by the dispatch (not their own cases), so arm_bbs
-        # are deliberately NOT marked here; only the shared join needs a
-        # label.
-        match_join_bbs: set[int] = set()
-        for bb in cfg.blocks.values():
-            t = bb.terminator
-            if isinstance(t, rcfg.MatchDispatch) and t.join_bb is not None:
-                match_join_bbs.add(t.join_bb)
-        for bid in match_join_bbs:
-            if bid not in case_entries:
-                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
-                join_idx += 1
-        cfg._case_entries_cache = case_entries
+        state.case_entries = case_entries
         return case_entries
 
-    def _resume_markers(self, cfg: 'rcfg.CFG') -> dict[int, list[str]]:
+    def _resume_markers(self, cfg: 'THIRResumableFrame') -> dict[int, list[str]]:
         """Source line -> the resume states that begin after it, for the
         definition echo above the frame body."""
         markers: dict[int, list[str]] = {}
-        for y in cfg.yield_sites:
+        for y in cfg.suspensions:
             loc = y.payload.source_loc
             if loc is not None:
                 markers.setdefault(loc.line, []).append(f"S_RESUME_{y.suspension_index}")
         return markers
 
-    def _resume_sources(self, cfg: 'rcfg.CFG') -> dict[int, str]:
+    def _resume_sources(self, cfg: 'THIRResumableFrame') -> dict[int, str]:
         """Suspension index -> the source line it resumes after, for the
         case-label notes in the state machine."""
         sources: dict[int, str] = {}
-        for y in cfg.yield_sites:
+        for y in cfg.suspensions:
             text = self.ctx.source_line_text(y.payload.source_loc)
             if text is not None:
                 sources[y.suspension_index] = text
         return sources
 
     def _emit_state_machine(self, out: "TextIO", func: TpyFunction,
-                             cfg: 'rcfg.CFG') -> None:
+                             cfg: 'THIRResumableFrame') -> None:
         """Emit `while (true) switch (state) { ... }` for the CFG.
         For zero-yield async defs the loop is omitted (no state
         transitions can fire, so the switch runs once)."""
@@ -5192,7 +2444,7 @@ class AsyncCoroCodegen:
             if label.kind is _StateKind.RESUME and label.idx in after:
                 return f"  // after: {after[label.idx]}"
             return ""
-        if cfg.yield_sites:
+        if cfg.suspensions:
             out.write(f"{inner}while (true) switch (__state) {{\n")
         else:
             out.write(f"{inner}switch (__state) {{\n")
@@ -5228,7 +2480,7 @@ class AsyncCoroCodegen:
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
 
-    def _single_loop_plan(self, func: TpyFunction, cfg: 'rcfg.CFG',
+    def _single_loop_plan(self, func: TpyFunction, cfg: 'THIRResumableFrame',
                           case_entries: dict[int, _StateLabel],
                           has_dtor: bool) -> '_LoopForm | None':
         """The loop form of a generator whose ONLY resume point is the head of
@@ -5250,13 +2502,13 @@ class AsyncCoroCodegen:
             return None
         if has_dtor or cfg.finally_helpers:
             return None
-        plain = (rcfg.Fall, rcfg.Branch, rcfg.Yield, rcfg.Unreachable,
-                 rcfg.AsyncForAdvance)
+        plain = (THIRFall, THIRBranch, THIRSuspend, THIRUnreachable,
+                 THIRForAdvance)
         if any(bb.region_stack or not isinstance(bb.terminator, plain)
                for bb in cfg.blocks.values()):
             return None
         heads = [bb_id for bb_id, bb in cfg.blocks.items()
-                 if isinstance(bb.terminator, rcfg.AsyncForAdvance)]
+                 if isinstance(bb.terminator, THIRForAdvance)]
         if len(heads) != 1 or heads[0] not in case_entries:
             return None
         loop_bb = heads[0]
@@ -5279,7 +2531,7 @@ class AsyncCoroCodegen:
             return None
         # The entry runs its statements (the seed) and falls into the head.
         last = cfg.blocks[self._fall_chain(cfg, init[0], case_entries)[-1]]
-        if not (isinstance(last.terminator, rcfg.Fall)
+        if not (isinstance(last.terminator, THIRFall)
                 and forwards_to_head(last.terminator.next_bb)):
             return None
         others = [bb_id for bb_id in case_entries
@@ -5296,7 +2548,7 @@ class AsyncCoroCodegen:
         may_hoist = (idempotent and not head.stmts and not head.entry_narrowings
                      and advance.exhausted_bb not in case_entries
                      and not exhausted.stmts
-                     and isinstance(exhausted.terminator, rcfg.Unreachable))
+                     and isinstance(exhausted.terminator, THIRUnreachable))
         loop_label = case_entries[loop_bb].cpp_name()
         return _LoopForm(
             head_labels=frozenset(
@@ -5306,19 +2558,19 @@ class AsyncCoroCodegen:
             may_hoist_test=may_hoist)
 
     @staticmethod
-    def _fall_chain(cfg: 'rcfg.CFG', start_bb: int,
+    def _fall_chain(cfg: 'THIRResumableFrame', start_bb: int,
                     case_entries: dict[int, _StateLabel]) -> list[int]:
         """The blocks one case walks inline from `start_bb` along `Fall`
         edges, up to the next case entry."""
         chain = [start_bb]
         while True:
             t = cfg.blocks[chain[-1]].terminator
-            if not isinstance(t, rcfg.Fall) or t.next_bb in case_entries:
+            if not isinstance(t, THIRFall) or t.next_bb in case_entries:
                 return chain
             chain.append(t.next_bb)
 
     def _emit_single_loop(self, out: "TextIO", func: TpyFunction,
-                          cfg: 'rcfg.CFG',
+                          cfg: 'THIRResumableFrame',
                           case_entries: dict[int, _StateLabel],
                           form: _LoopForm) -> None:
         inner = INDENT
@@ -5396,8 +2648,8 @@ class AsyncCoroCodegen:
             return None
         # Only the source loop: an inner `for` clause's source is evaluated
         # in the body, per outer element, so it is never seeded here.
-        state = rcfg.resumable_state(func)
-        uid = state.for_uid_map.get(id(loop))
+        state = self._frame_of(func)
+        uid = state.for_uid_map.get(loop)
         info = state.for_info_by_uid.get(uid) if uid is not None else None
         if info is None:
             return None
@@ -5410,58 +2662,7 @@ class AsyncCoroCodegen:
         return uid, [f"__for_it_{uid}.emplace({src}.begin());",
                      f"__for_end_{uid}.emplace({src}.end());"]
 
-    def _case_is_no_throw(self, cfg: 'rcfg.CFG', entry_bb: int) -> bool:
-        """True iff the case body that starts at `entry_bb` provably
-        cannot throw anything an in-scope handler would catch.
-        Conservative: requires the BB to consist solely of a Yield
-        terminator with literal / simple-name emplace args, with no
-        user stmts and not a resume entry (resume cases emit a cancel
-        check + sub poll that can both throw)."""
-        bb = cfg.blocks[entry_bb]
-        if bb.stmts:
-            return False
-        if cfg.resume_to_yield().get(entry_bb) is not None:
-            return False
-        t = bb.terminator
-        if not isinstance(t, rcfg.Yield):
-            return False
-        return self._payload_args_no_throw(t.payload)
-
-    def _payload_args_no_throw(self,
-                                 payload: 'rcfg.SuspensionPayload') -> bool:
-        """True if emitting the Yield cannot throw. For a generator yield,
-        the emitted action is `return <value>;` -- no-throw iff the value
-        is a literal / simple name."""
-        if isinstance(payload, rcfg.YieldPayload):
-            return (payload.value_expr is None
-                    or self._expr_is_simple(payload.value_expr))
-        # Async-with synthetic yields emplace from the CM frame slot
-        # (`*__with_ctx_<n>`) plus monostate literals -- provably
-        # no-throw and never touch the payload's `operand_expr`.
-        if payload.async_with_kind is not None:
-            return True
-        if payload.mode is rcfg.AwaitMode.BORROWED:
-            return self._expr_is_simple(payload.operand_expr)
-        if payload.mode is rcfg.AwaitMode.ERASED:
-            return self._expr_is_simple(payload.operand_expr)
-        # INLINE: emplace args are the call's args.
-        call = payload.operand_expr
-        if not isinstance(call, TpyCall):
-            return False
-        return all(self._expr_is_simple(a) for a in call.args)
-
-    @staticmethod
-    def _expr_is_simple(expr: TpyExpr) -> bool:
-        """True for literals, bare names, and shallow coercions of
-        either. These can be emitted without invoking constructors /
-        function calls that could throw."""
-        if isinstance(expr, TpyCoerce):
-            return AsyncCoroCodegen._expr_is_simple(expr.expr)
-        return isinstance(expr, (TpyIntLiteral, TpyFloatLiteral,
-                                   TpyStrLiteral, TpyBoolLiteral,
-                                   TpyNoneLiteral, TpyName))
-
-    def _emit_case(self, out: "TextIO", cfg: 'rcfg.CFG',
+    def _emit_case(self, out: "TextIO", cfg: 'THIRResumableFrame',
                     entry_bb: int, case_entries: dict[int, _StateLabel],
                     func: TpyFunction) -> None:
         """Emit the body of one switch case: wrap in region_stack, then
@@ -5473,7 +2674,7 @@ class AsyncCoroCodegen:
         # (typical setup case). Computed here (not in the try loop below)
         # because the guard pre-allocation and the finally-frame push both
         # need it.
-        no_throw = self._case_is_no_throw(cfg, entry_bb)
+        no_throw = entry_bb in cfg.no_throw_cases
         levels = [] if no_throw else self._unwind_levels(bb.region_stack)
         # Pre-allocate a `bool __fin_ran_N` guard name for each level whose
         # cleanup can run on an exit edge inside its C++ try and be re-run by
@@ -5485,10 +2686,10 @@ class AsyncCoroCodegen:
         for i in levels:
             region = bb.region_stack[i]
             helper = (region.finally_helper_name
-                      if isinstance(region, rcfg.TryRegion)
+                      if isinstance(region, THIRTryRegion)
                       else region.parent_finally
-                      if isinstance(region, rcfg.ExceptRegion) else None)
-            if helper is not None or isinstance(region, rcfg.WithRegion):
+                      if isinstance(region, THIRExceptRegion) else None)
+            if helper is not None or isinstance(region, THIRWithRegion):
                 self.ctx.finally_guard_counter += 1
                 self.ctx.resumable_region_guards[region] = (
                     f"__fin_ran_{self.ctx.finally_guard_counter}")
@@ -5496,7 +2697,7 @@ class AsyncCoroCodegen:
         # body walks the right finally chain via _emit_finally_chain.
         # ExceptRegion contributes its parent try's finally because
         # Python runs finally after the handler completes.
-        helpers = self._finally_helpers_for_region_stack(bb.region_stack)
+        helpers = region_cleanups(bb.region_stack)
         pushed_finally = self._push_finally_helpers(helpers)
         # Pending-return ctx: when this case is inside the try
         # body or handler body of a CFG-based finally, install ctx
@@ -5535,11 +2736,11 @@ class AsyncCoroCodegen:
                 ind = self.ctx.indent()
                 catches = io.StringIO()
                 catches.write(f"{ind}}}")
-                if isinstance(region, rcfg.TryRegion):
+                if isinstance(region, THIRTryRegion):
                     self._emit_try_region_catches(
                         catches, ind, region, cfg, case_entries,
                         entry_bb, func, outer)
-                elif isinstance(region, rcfg.WithRegion):
+                elif isinstance(region, THIRWithRegion):
                     self._emit_with_region_catches(
                         catches, ind, region, case_entries)
                 else:
@@ -5574,37 +2775,6 @@ class AsyncCoroCodegen:
          self.ctx.async_pending_return_target_state,
          self.ctx.async_pending_return_boundary) = snap
 
-    def _finally_helpers_for_region_stack(
-            self, region_stack: tuple) -> list:
-        """The cleanup actions the regions of this stack run when control
-        leaves them -- THE one list every exit reads: a normal edge
-        (`_emit_exit_region_finallies`), a `return` (the finally frames
-        `_push_finally_helpers` makes of it), an exception (the region
-        catches) and abandonment (`_dtor_cleanup_cases`). Each TryRegion /
-        ExceptRegion contributes its finally helper name (called via
-        `this->name()`); each WithRegion its `__exit__`; each
-        LoopSourceRegion the reset of the loop fields it releases. Order:
-        outermost first (innermost ends up on top of the stack).
-
-        Each entry is `(kind, payload, region)`: `region` is the source
-        region the entry came from, so a consumer can recover the region's
-        exit guard from `resumable_region_guards` without a second walk
-        (the frame-dtor consumers ignore it)."""
-        helpers: list = []
-        for region in region_stack:
-            if isinstance(region, rcfg.TryRegion):
-                if region.finally_helper_name is not None:
-                    helpers.append(
-                        ("helper", region.finally_helper_name, region))
-            elif isinstance(region, rcfg.ExceptRegion):
-                if region.parent_finally is not None:
-                    helpers.append(("helper", region.parent_finally, region))
-            elif isinstance(region, rcfg.WithRegion):
-                helpers.append(("with", region, region))
-            elif isinstance(region, rcfg.LoopSourceRegion):
-                helpers.append(("reset", region.fields, region))
-        return helpers
-
     def _emit_cleanup_action(self, out: "TextIO", indent: str, action: tuple,
                              *, exc_val_cpp: str | None = None) -> None:
         """Emit one cleanup action (an entry of
@@ -5620,7 +2790,7 @@ class AsyncCoroCodegen:
             for fname in payload:
                 out.write(f"{indent}{fname}.reset();\n")
 
-    def _active_region_guard(self, region: 'rcfg.Region') -> 'str | None':
+    def _active_region_guard(self, region: 'THIRRegion') -> 'str | None':
         """The region's guard name, but only if some exit edge in this case
         actually set it -- so a catch tests (and _emit_case declares) a guard
         only when it can fire. Returns None for a region whose cleanup never
@@ -5630,7 +2800,7 @@ class AsyncCoroCodegen:
             return guard
         return None
 
-    def _dtor_cleanup_cases(self, cfg: 'rcfg.CFG') -> list[tuple[str, list]]:
+    def _dtor_cleanup_cases(self, cfg: 'THIRResumableFrame') -> list[tuple[str, list]]:
         """Per suspended resume state, the cleanup actions (innermost-
         first) the frame destructor must run when the frame is dropped
         while suspended there -- the C++ analog of CPython closing a
@@ -5638,18 +2808,15 @@ class AsyncCoroCodegen:
         with.__exit__). States with nothing pending are omitted; when the
         result is empty no destructor is emitted at all.
 
-        CFG-based finallies (the finally body itself suspends) cannot run
-        inside a destructor and are skipped here; sema warns at the
-        yield-in-finally site instead.
+        The selection is the frame's (`abandonment_cleanup`); CFG-based
+        finallies (the finally body itself suspends) cannot run inside a
+        destructor and are not in it; sema warns at the yield-in-finally
+        site instead.
         """
         cases: list[tuple[str, list]] = []
-        for y in cfg.yield_sites:
-            bb = cfg.blocks[y.resume_bb]
-            actions = list(reversed(
-                self._finally_helpers_for_region_stack(bb.region_stack)))
-            if actions:
-                label = _StateLabel(_StateKind.RESUME, y.suspension_index)
-                cases.append((label.cpp_name(), actions))
+        for index, actions in cfg.abandonment_cleanup:
+            label = _StateLabel(_StateKind.RESUME, index)
+            cases.append((label.cpp_name(), list(actions)))
         return cases
 
     def _emit_frame_dtor(self, out: "TextIO", struct_name: str,
@@ -5731,7 +2898,7 @@ class AsyncCoroCodegen:
         innermost: 'tuple[str, str | None, int, int] | None' = None
         boundary = 0
         for region in region_stack:
-            if isinstance(region, rcfg.TryRegion):
+            if isinstance(region, THIRTryRegion):
                 if region.pending_return_flag is not None:
                     innermost = (region.pending_return_flag,
                                  region.pending_return_slot,
@@ -5739,7 +2906,7 @@ class AsyncCoroCodegen:
                                  boundary)
                 elif region.finally_helper_name is not None:
                     boundary += 1
-            elif isinstance(region, rcfg.ExceptRegion):
+            elif isinstance(region, THIRExceptRegion):
                 if region.parent_pending_return_flag is not None:
                     innermost = (region.parent_pending_return_flag,
                                  region.parent_pending_return_slot,
@@ -5747,13 +2914,13 @@ class AsyncCoroCodegen:
                                  boundary)
                 elif region.parent_finally is not None:
                     boundary += 1
-            elif isinstance(region, rcfg.FinallyRegion):
+            elif isinstance(region, THIRFinallyRegion):
                 if region.pending_return_flag is not None:
                     innermost = (region.pending_return_flag,
                                  region.pending_return_slot,
                                  region.finally_exit_bb,
                                  boundary)
-            elif isinstance(region, (rcfg.WithRegion, rcfg.LoopSourceRegion)):
+            elif isinstance(region, (THIRWithRegion, THIRLoopSourceRegion)):
                 boundary += 1
         return innermost
 
@@ -5825,10 +2992,10 @@ class AsyncCoroCodegen:
         handlers, `__exit__`s and finallies of the levels outside it."""
         levels: list[int] = []
         for i, r in enumerate(region_stack):
-            if (isinstance(r, (rcfg.TryRegion, rcfg.WithRegion))
-                    or (isinstance(r, rcfg.ExceptRegion)
+            if (isinstance(r, (THIRTryRegion, THIRWithRegion))
+                    or (isinstance(r, THIRExceptRegion)
                         and r.parent_finally is not None)
-                    or (isinstance(r, rcfg.LoopSourceRegion)
+                    or (isinstance(r, THIRLoopSourceRegion)
                         and levels and r.fields)):
                 levels.append(i)
         return levels
@@ -5847,14 +3014,14 @@ class AsyncCoroCodegen:
             (flag, slot, case_entries[finally_entry_bb].cpp_name(), boundary))
 
     def _emit_cleanup_level_catch(self, out: "TextIO", indent: str,
-                                  region: 'rcfg.Region', outer: tuple,
+                                  region: 'THIRRegion', outer: tuple,
                                   case_entries: dict[int, _StateLabel]
                                   ) -> None:
         """The catch-all of a level that only cleans up (an ExceptRegion's
         parent finally, a loop-source release): run the action, rethrow.
         A helper whose normal-exit copy already ran in this case (its
         guard) is not run again."""
-        [(tag, payload, _region)] = self._finally_helpers_for_region_stack(
+        [(tag, payload, _region)] = region_cleanups(
             (region,))
         out.write(" catch (...) {\n")
         self.ctx.indent_level += 1
@@ -5890,7 +3057,7 @@ class AsyncCoroCodegen:
         self.ctx.finally_stack = []
         try:
             self._push_finally_helpers(
-                self._finally_helpers_for_region_stack(outer))
+                region_cleanups(outer))
             self._install_pending_return_ctx(outer, case_entries)
             out.write(f"{indent}if (this->__finally_stop) {{\n")
             if self.ctx.async_pending_return_flag is not None:
@@ -5905,7 +3072,7 @@ class AsyncCoroCodegen:
             self._restore_pending_return_ctx(saved_pending)
 
     def _emit_with_region_catches(self, out: "TextIO", indent: str,
-                                    region: 'rcfg.WithRegion',
+                                    region: 'THIRWithRegion',
                                     case_entries: dict[int, _StateLabel]
                                     ) -> None:
         """Emit `} catch (...) { __exit__(...); throw; }` for a
@@ -5965,8 +3132,8 @@ class AsyncCoroCodegen:
         out.write(f"{indent}}}")
 
     def _emit_try_region_catches(self, out: "TextIO", indent: str,
-                                  region: 'rcfg.TryRegion',
-                                  cfg: 'rcfg.CFG',
+                                  region: 'THIRTryRegion',
+                                  cfg: 'THIRResumableFrame',
                                   case_entries: dict[int, _StateLabel],
                                   case_entry_bb: int,
                                   func: TpyFunction,
@@ -5982,7 +3149,6 @@ class AsyncCoroCodegen:
         `outer` is the case's region stack outside this TryRegion: a
         `return` in this try's finally, run on an exception path, runs
         their cleanups on its way out (`_emit_unwind_return`)."""
-        builder = rcfg.resumable_state(func).cfg_builder
         yield_for_case = self._yield_at_resume(cfg, case_entry_bb)
         # Helpers to invoke on throw from inside the handler body: this
         # region's own finally (the inner ones ran on entry to the handler).
@@ -5997,7 +3163,7 @@ class AsyncCoroCodegen:
             # Reset the in-flight sub-future first action in catch.
             # Generators have no sub-futures; only reset for async shape.
             if (yield_for_case is not None
-                    and isinstance(yield_for_case.payload, rcfg.AwaitPayload)):
+                    and isinstance(yield_for_case.payload, THIRAwaitSuspension)):
                 self._emit_sub_reset(out, catch_indent,
                                       yield_for_case.payload,
                                       yield_for_case.suspension_index)
@@ -6034,14 +3200,14 @@ class AsyncCoroCodegen:
             # that should not apply (e.g. a sibling inner try's finally
             # that has already run on the throw path).
             old_finally_stack = self.ctx.finally_stack
-            handler_entry: int | None = None
-            if builder is not None:
-                handler_entry = builder.get_handler_entry(region, handler)
+            entries = cfg.handler_entries.get(region)
+            handler_entry: int | None = (entries.get(handler)
+                                         if entries is not None else None)
             handler_stack_helpers: list = []
             saved_guards: IdentityMap = IdentityMap()
             if handler_entry is not None:
                 handler_bb = cfg.blocks[handler_entry]
-                handler_stack_helpers = self._finally_helpers_for_region_stack(
+                handler_stack_helpers = region_cleanups(
                     handler_bb.region_stack)
                 # Route the handler's normal-exit finallies (emitted per
                 # region by _emit_exit_region_finallies) at this nested try's
@@ -6153,7 +3319,7 @@ class AsyncCoroCodegen:
         self.ctx.indent_level += 1
         catch_indent = self.ctx.indent()
         if (yield_for_case is not None
-                and isinstance(yield_for_case.payload, rcfg.AwaitPayload)):
+                and isinstance(yield_for_case.payload, THIRAwaitSuspension)):
             self._emit_sub_reset(out, catch_indent,
                                   yield_for_case.payload,
                                   yield_for_case.suspension_index)
@@ -6189,11 +3355,11 @@ class AsyncCoroCodegen:
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
 
-    def _yield_at_resume(self, cfg: 'rcfg.CFG',
-                          resume_bb: int) -> 'rcfg.Yield | None':
-        return cfg.resume_to_yield().get(resume_bb)
+    def _yield_at_resume(self, cfg: 'THIRResumableFrame',
+                          resume_bb: int) -> 'THIRSuspend | None':
+        return self._resume_to_yield(cfg).get(resume_bb)
 
-    def _emit_case_body(self, out: "TextIO", cfg: 'rcfg.CFG',
+    def _emit_case_body(self, out: "TextIO", cfg: 'THIRResumableFrame',
                          entry_bb: int, case_entries: dict[int, _StateLabel],
                          func: TpyFunction, *, tail: bool = False) -> None:
         """Emit the body of a case starting at entry_bb. Begins with the
@@ -6206,7 +3372,7 @@ class AsyncCoroCodegen:
         if y is not None and not self._is_generator_shape():
             self._emit_resume_core(out, body_indent, y.payload,
                                     y.suspension_index, func)
-            if y.payload.kind is rcfg.AwaitKind.RETURN:
+            if y.payload.kind is AwaitKind.RETURN:
                 # Resume core already emitted the return.
                 return
         # A case may be (re-)entered after a suspension that split a
@@ -6237,26 +3403,26 @@ class AsyncCoroCodegen:
         """Whether `_emit_exit_region_finallies` writes anything on this edge."""
         if not from_regions:
             return False
-        if self._finally_helpers_for_region_stack(
+        if region_cleanups(
                 tuple(self._exited_regions(from_regions, to_regions))):
             return True
         return (not _regions_have_pending_cleanup(to_regions)
                 and self._is_generator_shape()
                 and self.ctx.generator_has_finally_stop)
 
-    def _redispatch_target(self, cfg: 'rcfg.CFG', entry_bb: int,
+    def _redispatch_target(self, cfg: 'THIRResumableFrame', entry_bb: int,
                            case_entries: dict[int, _StateLabel],
                            func: TpyFunction) -> 'int | None':
         """The case entry the case at `entry_bb` hands control to when that is
         ALL it does -- it emits no statement, re-establishes nothing it reads,
         and leaves no region with cleanup -- else None. Such a case can share
         its target's label, cannot throw, and reads no narrowed alias."""
-        if entry_bb not in cfg._redispatch_cache:
-            cfg._redispatch_cache[entry_bb] = self._find_redispatch_target(
+        if entry_bb not in self._print_state(cfg).redispatch:
+            self._print_state(cfg).redispatch[entry_bb] = self._find_redispatch_target(
                 cfg, entry_bb, case_entries, func)
-        return cfg._redispatch_cache[entry_bb]
+        return self._print_state(cfg).redispatch[entry_bb]
 
-    def _find_redispatch_target(self, cfg: 'rcfg.CFG', entry_bb: int,
+    def _find_redispatch_target(self, cfg: 'THIRResumableFrame', entry_bb: int,
                                 case_entries: dict[int, _StateLabel],
                                 func: TpyFunction) -> 'int | None':
         is_async = not self._is_generator_shape()
@@ -6271,10 +3437,10 @@ class AsyncCoroCodegen:
             t = bb.terminator
             # An await of a coroutine bound earlier constructs nothing: its
             # suspend step is the transfer to its resume case.
-            if (is_async and isinstance(t, rcfg.Yield)
+            if (is_async and isinstance(t, THIRSuspend)
                     and t.payload.prebuilt_slot is not None):
                 return t.resume_bb
-            if not isinstance(t, rcfg.Fall):
+            if not isinstance(t, THIRFall):
                 return None
             nxt = t.next_bb
             if nxt in case_entries:
@@ -6291,14 +3457,14 @@ class AsyncCoroCodegen:
         """A block statement the walker writes no code for: a leaf that
         lowered to nothing (`pass`, a docstring), or the setup of a loop whose
         source IS its iterator and needs no stash."""
-        if isinstance(stmt, rcfg.AsyncForIterSetup):
+        if isinstance(stmt, THIRForIterSetup):
             if stmt.is_async:
                 return False
             info = self._for_info(func, stmt.uid)
             return (info is not None and info.strategy == "next"
                     and not self._for_has_src_slot(info, stmt.uid))
-        if isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup,
-                             rcfg.AsyncFinallyExit)):
+        if isinstance(stmt, (THIRWithEnter, THIRAsyncWithSetup,
+                             THIRFinallyExit)):
             return False
         return self._leaf.leaf_emits_nothing(stmt)
 
@@ -6323,7 +3489,7 @@ class AsyncCoroCodegen:
         # try's finally (Python semantics); leaving a with-region normally is
         # `__exit__(None, None, None)`.
         for action in reversed(
-                self._finally_helpers_for_region_stack(tuple(exited))):
+                region_cleanups(tuple(exited))):
             # Set the region's guard (if its C++ try is still open in this
             # case) before its cleanup copy runs, so the region's own catch
             # skips re-running a copy that raised.
@@ -6365,7 +3531,8 @@ class AsyncCoroCodegen:
         proto_snap = self.ctx.save_protocol_narrowings()
         nv_saved = emit_prims.emit_isinstance_extractions(
             self.ctx, self.types, self.functions.protocols,
-            out, delta, self._leaf.narrow_aliases, indent_extra=0)
+            out, delta, self._leaf.narrow_aliases,
+            self._leaf.published.resume_extractions, indent_extra=0)
         return (nv_saved, proto_snap, lit_snap)
 
     def _restore_resume_narrowings(self, token: '_NarrowingToken | None') -> None:
@@ -6376,7 +3543,7 @@ class AsyncCoroCodegen:
         self.ctx.restore_protocol_narrowings(proto_snap)
         self.ctx.restore_literal_facts(lit_snap)
 
-    def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
+    def _walk_inline(self, out: "TextIO", cfg: 'THIRResumableFrame',
                      start_bb: int, case_entries: dict[int, _StateLabel],
                      func: TpyFunction,
                      chain_entry: 'dict[str, TpyType] | None' = None,
@@ -6399,22 +3566,22 @@ class AsyncCoroCodegen:
             bb = cfg.blocks[cur]
             # Emit BB statements.
             for stmt in bb.stmts:
-                if isinstance(stmt, rcfg.AsyncForIterSetup):
+                if isinstance(stmt, THIRForIterSetup):
                     self._emit_async_for_iter_setup(out, body_indent, stmt, func)
-                elif isinstance(stmt, rcfg.WithEnter):
+                elif isinstance(stmt, THIRWithEnter):
                     self._emit_with_enter(out, body_indent, stmt, func)
-                elif isinstance(stmt, rcfg.AsyncWithSetup):
+                elif isinstance(stmt, THIRAsyncWithSetup):
                     self._emit_async_with_setup(out, body_indent, stmt)
-                elif isinstance(stmt, rcfg.AsyncFinallyExit):
+                elif isinstance(stmt, THIRFinallyExit):
                     self._emit_async_finally_exit(out, body_indent, stmt)
                 else:
                     self._leaf.emit_leaf_stmt(
                         out, stmt, self.ctx.indent_level)
             t = bb.terminator
-            if isinstance(t, rcfg.Yield):
+            if isinstance(t, THIRSuspend):
                 self._emit_yield_terminator(out, body_indent, t, func)
                 return
-            if isinstance(t, rcfg.ReturnT):
+            if isinstance(t, THIRFrameReturn):
                 # The return maker walks the active finally chain
                 # (ctx.finally_stack) before emitting the Poll<T>::ready(...);
                 # a routed body swaps only the VALUE render inside that
@@ -6423,22 +3590,23 @@ class AsyncCoroCodegen:
                 # minus its top-level line tracking, which is module-init
                 # state and module init never emits a resumable frame.
                 stmt_indent = self.ctx.indent()
-                code = self._resumable_return_code(t.return_stmt, stmt_indent)
+                code = self._resumable_return_code(self._leaf.leaf(t.slot),
+                                                   stmt_indent)
                 # The maker's renders can queue temps; they belong ahead of
                 # the code that reads them, so flush only after it is built.
                 self.ctx.temps.flush(out, stmt_indent)
                 out.write(code)
                 return
-            if isinstance(t, rcfg.RaiseT):
+            if isinstance(t, THIRFrameRaise):
                 # Emit the raise as an ordinary TpyRaise statement; the
                 # finally chain is run via C++ exception unwinding.
                 self._leaf.emit_leaf_stmt(
-                    out, t.raise_stmt, self.ctx.indent_level)
+                    out, t.slot, self.ctx.indent_level)
                 return
-            if isinstance(t, rcfg.Unreachable):
+            if isinstance(t, THIRUnreachable):
                 self._emit_unreachable_tail(out, body_indent, func)
                 return
-            if isinstance(t, rcfg.Fall):
+            if isinstance(t, THIRFall):
                 if t.next_bb in case_entries:
                     self._emit_exit_region_finallies(
                         out, body_indent,
@@ -6450,8 +3618,8 @@ class AsyncCoroCodegen:
                     return
                 cur = t.next_bb
                 continue
-            if isinstance(t, rcfg.Branch):
-                cond_cpp = self._leaf.render_cond(t.cond)
+            if isinstance(t, THIRBranch):
+                cond_cpp = self._leaf.render_expr(t.cond)
                 self.ctx.temps.flush(out, body_indent)
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1
@@ -6474,12 +3642,12 @@ class AsyncCoroCodegen:
                     out.write(else_buf.getvalue())
                 out.write(f"{body_indent}}}\n")
                 return
-            if isinstance(t, rcfg.AsyncForAdvance):
+            if isinstance(t, THIRForAdvance):
                 self._emit_async_for_advance(
                     out, body_indent, cfg, t, case_entries, func, from_bb=cur,
                     tail=tail)
                 return
-            if isinstance(t, rcfg.MatchDispatch):
+            if isinstance(t, THIRMatchDispatch):
                 self._emit_match_dispatch(
                     out, cfg, t, case_entries, func, from_bb=cur)
                 return
@@ -6487,8 +3655,8 @@ class AsyncCoroCodegen:
                 f"internal: unknown terminator {type(t).__name__}",
                 loc=None)
 
-    def _emit_match_dispatch(self, out: "TextIO", cfg: 'rcfg.CFG',
-                              t: 'rcfg.MatchDispatch',
+    def _emit_match_dispatch(self, out: "TextIO", cfg: 'THIRResumableFrame',
+                              t: 'THIRMatchDispatch',
                               case_entries: dict[int, _StateLabel],
                               func: TpyFunction, from_bb: int) -> None:
         """Emit a suspending `match` (H1) by reusing the ordinary
@@ -6511,21 +3679,20 @@ class AsyncCoroCodegen:
                               chain_entry=cfg.blocks[arm_bb].entry_narrowings)
         # The whole dispatch emits through the THIR match tiers; the hook
         # walks each arm's BB chain in place.
-        arm_bb_by_body = {
-            id(case.body): arm_bb
-            for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
-        }
+        arm_bb_by_case = IdentityMap()
+        for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs):
+            arm_bb_by_case[case] = arm_bb
 
-        def arm_hook(body_key: int, lvl: int) -> None:
+        def arm_hook(case: 'TpyMatchCase', lvl: int) -> None:
             # The tier hands the arm-body depth; the walker's renders key off
             # ctx.indent_level, so scope it to the arm.
             old_level = self.ctx.indent_level
             self.ctx.indent_level = lvl
             try:
-                emit_arm(arm_bb_by_body[body_key])
+                emit_arm(arm_bb_by_case[case])
             finally:
                 self.ctx.indent_level = old_level
-        self._leaf.emit_match_dispatch(out, t.match_stmt,
+        self._leaf.emit_match_dispatch(out, t.slot,
                                        self.ctx.indent_level, arm_hook)
         # The dispatch case MUST end in a terminating statement: a switch
         # whose cases all return/continue still "may fall through" to the
@@ -6540,7 +3707,7 @@ class AsyncCoroCodegen:
         else:
             out.write(f"{body_indent}__builtin_unreachable();\n")
 
-    def _walk_inline_or_jump(self, out: "TextIO", cfg: 'rcfg.CFG',
+    def _walk_inline_or_jump(self, out: "TextIO", cfg: 'THIRResumableFrame',
                               target_bb: int,
                               case_entries: dict[int, _StateLabel],
                               func: TpyFunction,
@@ -6567,7 +3734,7 @@ class AsyncCoroCodegen:
             self._restore_resume_narrowings(tok)
 
     def _emit_async_finally_exit(self, out: "TextIO", indent: str,
-                                   stmt: 'rcfg.AsyncFinallyExit') -> None:
+                                   stmt: 'THIRFinallyExit') -> None:
         """Emit the deferred-return check + saved-exception rethrow at
         the dedicated finally exit BB. Both fields are cleared before
         extraction so a re-entry to the same try (e.g. in a loop)
@@ -6653,7 +3820,7 @@ class AsyncCoroCodegen:
         out.write(f"{indent}}}\n")
 
     def _emit_with_enter(self, out: "TextIO", indent: str,
-                         stmt: 'rcfg.WithEnter', func: TpyFunction) -> None:
+                         stmt: 'THIRWithEnter', func: TpyFunction) -> None:
         """Emit the with-stmt setup sequence (manager bind via
         `_emit_with_ctx_bind`, then the `__enter__` call):
             <target> = (*__with_ctx_<n>).__enter__();   # if target
@@ -6664,16 +3831,16 @@ class AsyncCoroCodegen:
         from ..thir.emit import frame_with_pointer_bind
         ctx_n = stmt.ctx_n
         item = stmt.item
-        self._emit_with_ctx_bind(out, indent, ctx_n, item)
+        self._emit_with_ctx_bind(out, indent, stmt)
         if item.target is not None:
             target = escape_cpp_name(item.target)
             enter_call = f"(*__with_ctx_{ctx_n}).__enter__()"
-            if (rcfg.resumable_state(func).frame_layout
-                    .bindings[item.target].kind in _WITH_POINTER_KINDS):
+            if self._frame_of(func).pointer_with_target(item.target):
+                slot = self._frame_of(func).ptr_slot_field(item)
                 out.write(f"{indent}" + frame_with_pointer_bind(
-                    target, enter_call, rcfg.ptr_slot_field(func, item))
-                    + "\n")
-            elif item.target in self.ctx.generator_frame_slot_locals:
+                    target, enter_call,
+                    slot.name if slot is not None else None) + "\n")
+            elif self._frame_of(func).slot_backed(item.target):
                 # A non-value `as`-target hoisted across a yield is backed by
                 # `tpy::frame_slot<T>` (deleted operator=); construct via
                 # emplace, mirroring the var-decl / reassign frame-slot paths.
@@ -6685,23 +3852,25 @@ class AsyncCoroCodegen:
             out.write(f"{indent}(*__with_ctx_{ctx_n}).__enter__();\n")
 
     def _emit_async_with_setup(self, out: "TextIO", indent: str,
-                                 stmt: 'rcfg.AsyncWithSetup') -> None:
+                                 stmt: 'THIRAsyncWithSetup') -> None:
         """Populate the async-with `__with_ctx_<n>` frame field. Subsequent
         Yield BBs (aenter/aexit) emplace `__sub_<i>` with
         `(*__with_ctx_<n>, ...)`."""
-        self._emit_with_ctx_bind(out, indent, stmt.ctx_n, stmt.item)
+        self._emit_with_ctx_bind(out, indent, stmt)
 
-    def _emit_with_ctx_bind(self, out: "TextIO", indent: str, ctx_n: int,
-                            item: TpyWithItem) -> None:
+    def _emit_with_ctx_bind(
+            self, out: "TextIO", indent: str,
+            stmt: 'THIRWithEnter | THIRAsyncWithSetup') -> None:
         """Populate the `__with_ctx_<n>` frame field for a (sync or async)
         with-region: emplace an owned `frame_slot<CM>` manager (whose
         `operator=` is deleted), or bind a borrowed `CM*`. A global manager
         already renders as `CM*`, so the borrowed bind must not re-take its
         address (would double-pointer)."""
-        ctx_expr = self._leaf.render_region_expr(item.context_expr)
+        ctx_n, item = stmt.ctx_n, stmt.item
+        ctx_expr = self._leaf.render_expr(stmt.manager)
         self.ctx.temps.flush(out, indent)
         if item.manager_borrowed:
-            if self.ctx.is_already_pointer_source(item.context_expr):
+            if stmt.manager in self._leaf.published.pointer_sources:
                 out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
             else:
                 out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
@@ -6709,7 +3878,7 @@ class AsyncCoroCodegen:
             out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
 
     def _emit_with_exit(self, out: "TextIO", indent: str,
-                               region: 'rcfg.WithRegion',
+                               region: 'THIRWithRegion',
                                on_exception: bool,
                                exc_val_cpp: str | None = None) -> None:
         """Emit a single `__exit__` call. `on_exception=True` passes the
@@ -6732,10 +3901,10 @@ class AsyncCoroCodegen:
                   f"{{}}, {exc_arg}, {{}});\n")
 
     def _for_info(self, func: TpyFunction, uid: int) -> 'GeneratorForInfo | None':
-        return rcfg.resumable_state(func).for_info_by_uid.get(uid)
+        return self._frame_of(func).for_info_by_uid.get(uid)
 
     def _for_src_store(self, out: "TextIO", indent: str,
-                       iterable_expr: 'TpyExpr', uid: int,
+                       setup: 'THIRForIterSetup', uid: int,
                        info: 'GeneratorForInfo') -> 'tuple[str | None, str]':
         """Move an RVALUE for-loop source into its `__for_src_<uid>` frame
         slot. Returns `(slot access or None, the source render)`; None means
@@ -6745,12 +3914,10 @@ class AsyncCoroCodegen:
         no other owner, so anything the loop lends out of its elements would
         dangle at the first suspension without it."""
         # The leaf hands over a BARE render for every narrowed-optional
-        # iterable it admits, so this unwrap is the single owner of the
-        # narrowed-Optional / indirect-name deref.
-        base_cpp = self._leaf.render_region_expr(iterable_expr)
-        src_cpp = emit_prims.maybe_unwrap_narrowed_optional(
-            self.ctx, iterable_expr, base_cpp,
-            self.ctx.is_indirect_name(iterable_expr))
+        # iterable it admits; the lowering decides this unwrap.
+        src_cpp = self._leaf.render_expr(setup.iterable)
+        if setup.iterable in self._leaf.published.unwrapped_sources:
+            src_cpp = f"(*{src_cpp})"
         self.ctx.temps.flush(out, indent)
         if not self._for_has_src_slot(info, uid):
             return (None, src_cpp)
@@ -6759,7 +3926,7 @@ class AsyncCoroCodegen:
         return (f"(*__for_src_{uid})", src_cpp)
 
     def _for_src_access(self, out: "TextIO", indent: str,
-                        iterable_expr: 'TpyExpr', uid: int,
+                        setup: 'THIRForIterSetup', uid: int,
                         info: 'GeneratorForInfo') -> str:
         """A spelling of the for-loop source that may be READ MORE THAN ONCE,
         naming a single evaluation.
@@ -6771,8 +3938,7 @@ class AsyncCoroCodegen:
         stored pointer would name a sibling frame field and be invalidated by
         a frame move. A caller that reads the source ONCE takes
         `_for_src_store`'s own spelling and needs no binding."""
-        slot, src_cpp = self._for_src_store(out, indent, iterable_expr, uid,
-                                            info)
+        slot, src_cpp = self._for_src_store(out, indent, setup, uid, info)
         if slot is not None:
             return slot
         name = f"__for_obj_{uid}"
@@ -6780,7 +3946,7 @@ class AsyncCoroCodegen:
         return name
 
     def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
-                                    stmt: 'rcfg.AsyncForIterSetup',
+                                    stmt: 'THIRForIterSetup',
                                     func: TpyFunction) -> None:
         """Initialize for-loop iteration state into the frame, per strategy
         (range / begin_end generators keep their fast shape):
@@ -6794,14 +3960,14 @@ class AsyncCoroCodegen:
         uid = stmt.uid
         # The source loop's setup runs once per frame, so a pair the
         # constructor already took is not taken again.
-        if rcfg.resumable_state(func).ctor_seeded_uid == uid:
+        if self._print_state(self._frame_of(func)).ctor_seeded_uid == uid:
             return
         if stmt.is_async:
-            iter_cpp = self._leaf.render_region_expr(stmt.iterable_expr)
+            iter_cpp = self._leaf.render_expr(stmt.iterable)
             self.ctx.temps.flush(out, indent)
             # A global iterable already renders as `Src*`; deref so the
             # `.__aiter__()` call resolves rather than hitting `.`-on-pointer.
-            if self.ctx.is_already_pointer_source(stmt.iterable_expr):
+            if stmt.iterable in self._leaf.published.pointer_sources:
                 iter_cpp = f"*({iter_cpp})"
             out.write(f"{indent}__for_itr_{uid}.emplace(({iter_cpp}).__aiter__());\n")
             return
@@ -6810,7 +3976,7 @@ class AsyncCoroCodegen:
         if strat == "range":
             self._emit_for_range_setup(out, indent, stmt, uid)
         elif strat == "begin_end":
-            src = self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
+            src = self._for_src_access(out, indent, stmt, uid, info)
             out.write(f"{indent}__for_it_{uid}.emplace(({src}).begin());\n")
             out.write(f"{indent}__for_end_{uid}.emplace(({src}).end());\n")
         elif strat == "next":
@@ -6820,7 +3986,7 @@ class AsyncCoroCodegen:
             # (`_stmt_emits_nothing` counts on that, so a named source must
             # not even reach the render).
             if self._for_has_src_slot(info, uid):
-                self._for_src_store(out, indent, stmt.iterable_expr, uid, info)
+                self._for_src_store(out, indent, stmt, uid, info)
         else:  # iter_next (universal)
             # A temporary source is stashed in `__for_src` first because
             # `tpy::__iter__` borrows its argument (it would otherwise dangle).
@@ -6829,21 +3995,19 @@ class AsyncCoroCodegen:
             # copied into the iterator slot -- see generator.hpp.
             # One read, so no binding: the render already names one
             # evaluation.
-            slot, src_cpp = self._for_src_store(out, indent,
-                                                stmt.iterable_expr, uid, info)
+            slot, src_cpp = self._for_src_store(out, indent, stmt, uid, info)
             src = slot if slot is not None else src_cpp
             out.write(f"{indent}::tpy::resumable_iter_init(__for_itr_{uid}, {src});\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
-                              stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:
+                              stmt: 'THIRForIterSetup', uid: int) -> None:
         """range() counter init into the frame counters."""
-        range_call = stmt.iterable_expr
+        range_call = stmt.source
         elem_type = stmt.elem_type
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
         cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
-        gen_args = [self._leaf.render_region_expr(a)
-                    for a in range_call.args]
+        gen_args = [self._leaf.render_expr(b) for b in stmt.bounds]
         self.ctx.temps.flush(out, indent)
         nargs = len(gen_args)
         ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
@@ -6863,7 +4027,7 @@ class AsyncCoroCodegen:
                     out, indent, f"*{ci}", f"*{st}", f"*{sp}", elem_type)
 
     def _for_advance_parts(self, func: TpyFunction,
-                           t: 'rcfg.AsyncForAdvance'
+                           t: 'THIRForAdvance'
                            ) -> tuple[str, str, str, list[str]]:
         """Return (pre, exhausted_test, live_test, bind_post) for the
         AsyncForAdvance, per strategy. `pre` runs before the exhaustion test;
@@ -6901,7 +4065,7 @@ class AsyncCoroCodegen:
                 # held for the bind and lent element by element as the
                 # borrow-form tuple; element refs are stable.
                 step = f"__for_step_{uid}"
-                lent = self._leaf.render_loop_step(stmt, step)
+                lent = self._leaf.render_loop_step(t.step, step)
                 # One line: the bind counts toward the inline-`__next__` size.
                 bind_post = [f"{{ auto&& {step} = *({it})++; "
                              f"{cpp_var} = {lent}; }}"]
@@ -6915,12 +4079,12 @@ class AsyncCoroCodegen:
         # next / iter_next: __next__() into __for_r, exhaust on !has_value.
         r = f"(*__for_r_{uid})"
         if strat == "next":
-            src = self._for_src_expr(stmt, uid, info)
+            src = self._for_src_expr(t, info)
             pre = f"__for_r_{uid}.emplace({src}.__next__());"
         else:  # iter_next
             # resumable_iter_next drives the owned iterator, or the self-iterator
             # source in place -- both re-read `src` so a frame move never dangles.
-            src = self._for_src_expr(stmt, uid, info)
+            src = self._for_src_expr(t, info)
             pre = (f"__for_r_{uid}.emplace("
                    f"::tpy::resumable_iter_next(__for_itr_{uid}, {src}));")
         # A source-derived field takes one spelling whichever form the trait
@@ -6937,23 +4101,24 @@ class AsyncCoroCodegen:
             bind_post = [f"{cpp_var} = &({elem});"]
         elif info is not None and info.opt_ptr_loop_var == stmt.var:
             bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr({elem});"]
-        elif stmt.var in self.ctx.generator_frame_slot_locals:
+        elif self._frame_of(func).slot_backed(stmt.var):
             bind_post = [f"{cpp_var}.emplace({elem});"]
         else:
             bind_post = [f"{cpp_var} = {elem};"]
         return (pre, f"!{r}.has_value()", f"{r}.has_value()", bind_post)
 
-    def _for_src_expr(self, stmt: 'TpyForEach', uid: int,
+    def _for_src_expr(self, t: 'THIRForAdvance',
                       info: 'GeneratorForInfo') -> str:
         """The iterator source for the `next` strategy advance: the stored
         `__for_src` (temporary) or the re-referencable named expression."""
+        uid = t.uid
         if self._for_has_src_slot(info, uid):
             return f"(*__for_src_{uid})"
-        return self._leaf.render_region_expr(stmt.iterable)
+        return self._leaf.render_expr(t.iterable)
 
     def _emit_async_for_advance(self, out: "TextIO", indent: str,
-                                  cfg: 'rcfg.CFG',
-                                  t: 'rcfg.AsyncForAdvance',
+                                  cfg: 'THIRResumableFrame',
+                                  t: 'THIRForAdvance',
                                   case_entries: dict[int, _StateLabel],
                                   func: TpyFunction,
                                   from_bb: int, *, tail: bool = False) -> None:
@@ -7024,42 +4189,42 @@ class AsyncCoroCodegen:
         return f"__sub_{suspension_index}"
 
     @staticmethod
-    def _sub_slot_name(payload: 'rcfg.AwaitPayload',
+    def _sub_slot_name(payload: 'THIRAwaitSuspension',
                        suspension_index: int) -> str:
         """The C++ slot a suspension polls/resets: the dedicated
         `__sub_<i>` field, or -- for a prebuilt-slot await of a bound
         coroutine -- the handle's own frame field."""
         if payload.prebuilt_slot is not None:
-            return escape_cpp_name(payload.prebuilt_slot)
+            return escape_cpp_name(payload.prebuilt_slot.name)
         return AsyncCoroCodegen._sub_field_name(suspension_index)
 
-    def _emplace_args(self, call: 'TpyCall | TpyMethodCall') -> 'list[str]':
+    def _emplace_args(self, payload: 'THIRAwaitSuspension') -> 'list[str]':
         """All emplace args for a sub-coro construction -- the leaf seam's
         argument chokepoint."""
-        return self._leaf.render_await_args(call)
+        return self._leaf.render_await_args(payload.args)
 
-    def _suspend_expr_cpp(self, expr: 'TpyExpr') -> str:
+    def _suspend_expr_cpp(self, slot: 'THIRLeafSlot | None') -> str:
         """Render a bound-method await receiver or an ERASED/BORROWED await
         operand -- the THIR leaf seam's suspend-expression chokepoint (the
         skeleton keeps its move / & / .get() / __self-prepend wrap around
         this render)."""
-        return self._leaf.render_suspend_expr(expr)
+        return self._leaf.render_expr(slot)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
-                        payload: 'rcfg.AwaitPayload',
+                        payload: 'THIRAwaitSuspension',
                         suspension_index: int) -> None:
         sub = self._sub_slot_name(payload, suspension_index)
-        if payload.mode is rcfg.AwaitMode.BORROWED:
+        if payload.mode is AwaitMode.BORROWED:
             out.write(f"{indent}{sub} = nullptr;\n")
-        elif (payload.mode is rcfg.AwaitMode.INLINE
-              or payload.mode is rcfg.AwaitMode.ERASED):
+        elif (payload.mode is AwaitMode.INLINE
+              or payload.mode is AwaitMode.ERASED):
             out.write(f"{indent}{sub}.reset();\n")
         else:
             raise CodeGenError(f"unknown await mode {payload.mode!r}",
                                loc=None)
 
     def _emit_resume_core(self, out: "TextIO", indent: str,
-                          payload: 'rcfg.AwaitPayload',
+                          payload: 'THIRAwaitSuspension',
                           suspension_index: int,
                           func: TpyFunction) -> None:
         """Emit the cancel check + poll + bind step at the start of a
@@ -7080,14 +4245,14 @@ class AsyncCoroCodegen:
         out.write(f"{indent}if (__r{suspension_index}.is_pending()) "
                   f"return {ret_cpp}::pending();\n")
         moved = f"std::move(__r{suspension_index}).value()"
-        if (payload.kind is rcfg.AwaitKind.ASSIGN
-                or payload.kind is rcfg.AwaitKind.VARDECL):
+        if (payload.kind is AwaitKind.ASSIGN
+                or payload.kind is AwaitKind.VARDECL):
             target = escape_cpp_name(payload.bind_target)
-            if payload.bind_target in self.ctx.generator_optional_fields:
+            if self._frame_of(func).slot_backed(payload.bind_target):
                 out.write(f"{indent}{target}.emplace({moved});\n")
             else:
                 out.write(f"{indent}{target} = {moved};\n")
-        elif payload.kind is rcfg.AwaitKind.RETURN:
+        elif payload.kind is AwaitKind.RETURN:
             # `return await h.borrow()` at an OWNING return: the sub's
             # payload is a `T*` into the awaitee's storage and the slot is a
             # `T` by value, so the forward copy-constructs through the deref
@@ -7139,7 +4304,7 @@ class AsyncCoroCodegen:
                           f"{self._ret_cpp(func)}>::ready("
                           f"std::move(__ret{suspension_index}));\n")
             return
-        elif payload.kind is rcfg.AwaitKind.DISCARD:
+        elif payload.kind is AwaitKind.DISCARD:
             out.write(f"{indent}(void){moved};\n")
         else:
             raise CodeGenError(f"unknown await kind {payload.kind!r}",
@@ -7147,7 +4312,7 @@ class AsyncCoroCodegen:
         self._emit_sub_reset(out, indent, payload, suspension_index)
 
     def _emit_yield_terminator(self, out: "TextIO", indent: str,
-                               t: 'rcfg.Yield', func: TpyFunction) -> None:
+                               t: 'THIRSuspend', func: TpyFunction) -> None:
         """Emit the full suspend action for a Yield terminator (policy
         seam). Async stores the sub-future + advances state, then
         `continue`s to re-enter the switch at the new state -- the resume
@@ -7164,18 +4329,15 @@ class AsyncCoroCodegen:
         out.write(f"{indent}continue;\n")
 
     def _emit_generator_yield(self, out: "TextIO", indent: str,
-                              t: 'rcfg.Yield') -> None:
+                              t: 'THIRSuspend') -> None:
         """Generator suspension: compute the yielded value, advance to the
         resume state, and return it to the caller. The next `__next__()`
         call re-enters the switch at the resume state, whose case header
         is a no-op (no poll/bind) and simply continues after the yield."""
         payload = t.payload
-        assert isinstance(payload, rcfg.YieldPayload), \
+        assert isinstance(payload, THIRYieldSuspension), \
             "generator shape requires a YieldPayload terminator"
-        ys = payload.yield_stmt
-        assert ys is not None, \
-            "YieldPayload built from a generator body always carries yield_stmt"
-        yield_expr = self._leaf.render_yield_value(ys)
+        yield_expr = self._leaf.render_expr(payload.value)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
         # The loop form resumes at the loop head whatever the state says.
@@ -7186,7 +4348,7 @@ class AsyncCoroCodegen:
         out.write(f"{indent}return {yield_expr};\n")
 
     def _emit_suspend(self, out: "TextIO", indent: str,
-                      payload: 'rcfg.AwaitPayload',
+                      payload: 'THIRAwaitSuspension',
                       suspension_index: int,
                       func: TpyFunction) -> None:
         """Emit the emplace + state-advance step at a Yield terminator.
@@ -7200,13 +4362,13 @@ class AsyncCoroCodegen:
             # Bound-coroutine await: the handle's frame slot is already
             # engaged (emplaced at the binding); nothing to construct.
             pass
-        elif payload.mode is rcfg.AwaitMode.INLINE:
+        elif payload.mode is AwaitMode.INLINE:
             if payload.async_with_kind is not None:
                 # Async-with synthetic yield. Receiver is the CM frame
                 # slot; args differ by kind.
                 ctx_n = payload.async_with_ctx_n
                 recv = f"(*__with_ctx_{ctx_n})"
-                if payload.async_with_kind is rcfg.AsyncWithKind.AENTER:
+                if payload.async_with_kind is AsyncWithKind.AENTER:
                     out.write(f"{indent}{sub}.emplace({recv});\n")
                 else:  # AEXIT -- cleanup-only call with all-None args
                     out.write(f"{indent}{sub}.emplace({recv}, "
@@ -7219,7 +4381,7 @@ class AsyncCoroCodegen:
             else:
                 call = payload.operand_expr
                 if isinstance(call, TpyCall):
-                    args = self._emplace_args(call)
+                    args = self._emplace_args(payload)
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                 elif isinstance(call, TpyMethodCall):
@@ -7229,13 +4391,13 @@ class AsyncCoroCodegen:
                         # `module.func(...)` -- receiver is a namespace,
                         # not a value, so the sub-coro ctor takes only
                         # the function args.
-                        args = self._emplace_args(call)
+                        args = self._emplace_args(payload)
                         self.ctx.temps.flush(out, indent)
                         out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                     else:
                         # Bound async method: prepend receiver as __self ctor arg.
-                        recv_cpp = self._suspend_expr_cpp(call.obj)
-                        arg_cpps = self._emplace_args(call)
+                        recv_cpp = self._suspend_expr_cpp(payload.receiver)
+                        arg_cpps = self._emplace_args(payload)
                         self.ctx.temps.flush(out, indent)
                         joined = ", ".join([recv_cpp] + arg_cpps)
                         out.write(f"{indent}{sub}.emplace({joined});\n")
@@ -7243,25 +4405,22 @@ class AsyncCoroCodegen:
                     raise CodeGenError(
                         "internal: inline-mode await operand is not a call",
                         loc=None)
-        elif payload.mode is rcfg.AwaitMode.ERASED:
-            operand_cpp = self._suspend_expr_cpp(payload.operand_expr)
+        elif payload.mode is AwaitMode.ERASED:
+            operand_cpp = self._suspend_expr_cpp(payload.operand)
             self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{sub}.emplace(std::move({operand_cpp}));\n")
-        elif payload.mode is rcfg.AwaitMode.BORROWED:
-            operand_cpp = self._suspend_expr_cpp(payload.operand_expr)
+        elif payload.mode is AwaitMode.BORROWED:
+            operand_cpp = self._suspend_expr_cpp(payload.operand)
             self.ctx.temps.flush(out, indent)
-            declared = emit_prims.cpp_declared_type(
-                self.ctx, payload.operand_expr)
-            declared = unwrap_readonly(unwrap_send_sync(declared)) if declared else None
-            if (isinstance(declared, OwnType)
-                    and is_dyn_protocol(unwrap_readonly(declared.wrapped))):
+            published = self._leaf.published
+            if payload.operand in published.owned_erased_operands:
                 # Owned-erased handle (unique_ptr<P> local/param): the
                 # sub-future points at the heap payload; polls dispatch
                 # through the protocol vtable.
                 out.write(f"{indent}{sub} = {operand_cpp}.get();\n")
             # A global / pointer-alias loop var already renders as `T*`;
             # re-taking its address would double-pointer the sub-future field.
-            elif self.ctx.is_already_pointer_source(payload.operand_expr):
+            elif payload.operand in published.pointer_sources:
                 out.write(f"{indent}{sub} = {operand_cpp};\n")
             else:
                 out.write(f"{indent}{sub} = &({operand_cpp});\n")
@@ -7270,19 +4429,3 @@ class AsyncCoroCodegen:
                                loc=None)
         out.write(f"{indent}__state = "
                   f"{_StateLabel(_StateKind.RESUME, suspension_index).cpp_name()};\n")
-
-
-def sub_struct_qualname(
-        types, owner: 'NominalType | None', method: str,
-        inferred_type_args: 'tuple[TpyType, ...] | None' = None,
-        *, module_qual: str | None = None,
-        extra_template_args: 'list[str] | None' = None,
-        loc=None) -> str:
-    """The sub-coro struct name for a statically-resolved await -- the
-    async face of `rcfg.frame_struct_qualname` (which owns the naming
-    grammar; see its docstring).
-    """
-    return rcfg.frame_struct_qualname(
-        types, owner, method, inferred_type_args,
-        module_qual=module_qual, extra_template_args=extra_template_args,
-        shape=rcfg.ResumableShape.ASYNC)

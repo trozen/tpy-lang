@@ -1,5 +1,5 @@
 """The structural validator over the SEAM body shape -- the resumable
-frame, whose leaves the skeleton holds in seam tables rather than one linear
+frame, whose leaves sit at the frame's slots rather than in one linear
 function body.
 
 Pins that lowering actually runs the gate (a body reaching the seam
@@ -22,7 +22,8 @@ from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
     THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
     THIRFunction, THIRFunctionLayout, THIRIf, THIRIfExpr, THIRLiteral,
-    THIRMethodCall, THIRName, THIRRaise, THIRResumableBody, THIRReturn,
+    THIRMethodCall, THIRName, THIRRaise, THIRResumableLeaves,
+    THIRResumableReturn, THIRReturn,
     THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
     THIRTupleUnpack, THIRUnionArgLift, THIREvalThen, THIRIsinstance,
     THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti)
@@ -32,8 +33,10 @@ from .lower import resumable as _lower_resumable_mod
 from .testutil import _compile, _entry, _lower_fn
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
-    validate_resumable_body,
+    validate_resumable_leaves,
 )
+from .frame import LeafRole, THIRLeafSlot
+from ..identity_map import IdentityMap
 
 # The whole-function / constructor validator rules: no compiling program can
 # reach a _fail arm (reaching one would mean lowering emitted malformed THIR),
@@ -77,6 +80,24 @@ def _form_lie() -> THIRCoerce:
                       coercion_name="int_literal", form=Form.VALUE)
 
 
+class _SlotFrame:
+    """The part of a frame the leaves validator reads: its slots."""
+
+    def __init__(self, *slots: THIRLeafSlot) -> None:
+        self._slots = list(slots)
+
+    def slots(self) -> list[THIRLeafSlot]:
+        return self._slots
+
+
+def _at(role: LeafRole, leaf, **kw) -> THIRResumableLeaves:
+    """Leaves holding one hand-built `leaf` at a slot of `role`."""
+    slot = THIRLeafSlot(role, None)
+    table = IdentityMap()
+    table[slot] = leaf
+    return THIRResumableLeaves(frame=_SlotFrame(slot), leaves=table, **kw)
+
+
 class TestSeamBodiesAreValidated:
     """Mechanical: the lowering entry point CALLS the gate. A render-string
     or byte-identity assertion here would pass even with the call removed."""
@@ -93,7 +114,7 @@ class TestSeamBodiesAreValidated:
 
     def test_resumable_body_reaches_the_validator(self, monkeypatch):
         seen = self._record(monkeypatch, _lower_resumable_mod,
-                            "validate_resumable_body", validate_resumable_body)
+                            "validate_resumable_leaves", validate_resumable_leaves)
         _emit_thir(_ASYNC_SRC)
         assert seen, "no resumable body was validated"
         assert any(b.leaves for _owner, b in seen)
@@ -121,25 +142,70 @@ class TestSeamBodiesAreValidated:
 
 class TestSeamPositionsRaise:
     def test_leaf_form_lie_raises(self):
-        body = THIRResumableBody(
-            leaves={1: THIRExprStmt(expr=_form_lie())},
-            conds={}, await_args={}, return_values={})
+        body = _at(LeafRole.STMT, THIRExprStmt(expr=_form_lie()))
         with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     def test_condition_form_lie_raises(self):
-        body = THIRResumableBody(
-            leaves={}, conds={1: _form_lie()}, await_args={},
-            return_values={})
+        body = _at(LeafRole.COND, _form_lie())
         with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     def test_yield_value_form_lie_raises(self):
-        body = THIRResumableBody(
-            leaves={}, conds={}, await_args={}, return_values={},
-            yield_values={1: _form_lie()})
+        body = _at(LeafRole.YIELD_VALUE, _form_lie())
         with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
+
+
+class TestPerPositionFlushRights:
+    """Each slot is walked at its own position's flush right: a temporary is
+    admitted where the printer flushes ahead of the line and rejected where
+    it does not -- the with-manager, the async-for source and the
+    bound-method receiver have no flush point, though the for source and
+    the erased await operand do."""
+
+    @staticmethod
+    def _temp():
+        # A call whose argument hoists a temporary ahead of the line.
+        temp = THIRArgTemp(result_type=INT32,
+                           init=THIRLiteral(result_type=INT32, value=1),
+                           cpp_type="int32_t", movable=True)
+        return THIRCall(result_type=INT32, callee="f", args=(temp,))
+
+    @pytest.mark.parametrize("role", [LeafRole.FOR_ITERABLE,
+                                      LeafRole.RANGE_BOUND,
+                                      LeafRole.AWAIT_OPERAND, LeafRole.COND])
+    def test_temp_at_a_flushing_position_passes(self, role):
+        validate_resumable_leaves("f", _at(role, self._temp()))
+
+    @pytest.mark.parametrize("role", [LeafRole.WITH_MANAGER,
+                                      LeafRole.ASYNC_FOR_ITERABLE,
+                                      LeafRole.AWAIT_RECEIVER])
+    def test_temp_at_a_position_without_a_flush_raises(self, role):
+        with pytest.raises(THIRValidationError,
+                           match="non-flushable"):
+            validate_resumable_leaves("f", _at(role, self._temp()))
+
+    def test_yield_value_flushes_only_where_its_slot_hosts_temps(self):
+        validate_resumable_leaves(
+            "f", _at(LeafRole.YIELD_VALUE, self._temp(),
+                     yield_hosts_temps=True))
+        with pytest.raises(THIRValidationError,
+                           match="non-flushable"):
+            validate_resumable_leaves(
+                "f", _at(LeafRole.YIELD_VALUE, self._temp()))
+
+    def test_leaf_keyed_by_a_foreign_slot_raises(self):
+        body = _at(LeafRole.COND, THIRLiteral(result_type=BOOL, value=True))
+        stray = THIRLeafSlot(LeafRole.COND, None)
+        body.leaves[stray] = THIRLiteral(result_type=BOOL, value=True)
+        with pytest.raises(THIRValidationError, match="no slot of its frame"):
+            validate_resumable_leaves("f", body)
+
+    def test_leaf_of_the_wrong_form_raises(self):
+        with pytest.raises(THIRValidationError, match="cond slot holds"):
+            validate_resumable_leaves(
+                "f", _at(LeafRole.COND, THIRExprStmt(expr=_form_lie())))
 
 
 class TestNarrowedRules:
@@ -147,8 +213,7 @@ class TestNarrowedRules:
     adjacent form that must keep failing."""
 
     def _in_return(self, expr):
-        return THIRResumableBody(leaves={}, conds={}, await_args={},
-                                 return_values={1: expr})
+        return _at(LeafRole.RETURN, THIRResumableReturn(value=expr))
 
     def test_value_typed_noop_convert_still_raises(self):
         # The address-of exemption is keyed on the plain-non-value families;
@@ -157,7 +222,7 @@ class TestNarrowedRules:
         bad = THIRFormConvert(result_type=INT32, value=inner,
                               form=Form.BORROW, move=False)
         with pytest.raises(THIRValidationError, match="no-op form convert"):
-            validate_resumable_body("f", self._in_return(bad))
+            validate_resumable_leaves("f", self._in_return(bad))
 
     def test_async_return_addr_of_coerce_passes(self):
         # `&(x)` materializes a pointer prvalue out of a borrow source.
@@ -165,7 +230,7 @@ class TestNarrowedRules:
         ok = THIRCoerce(result_type=INT32, expr=inner,
                         coercion_name="async_ret_addr_of", wrap="&({0})",
                         form=Form.VALUE)
-        validate_resumable_body("f", self._in_return(ok))
+        validate_resumable_leaves("f", self._in_return(ok))
 
     def test_unnamed_wrap_with_the_same_shape_still_raises(self):
         inner = THIRLiteral(result_type=INT32, value=1, form=Form.BORROW)
@@ -173,7 +238,7 @@ class TestNarrowedRules:
                          coercion_name="int_literal", wrap="&({0})",
                          form=Form.VALUE)
         with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_resumable_body("f", self._in_return(bad))
+            validate_resumable_leaves("f", self._in_return(bad))
 
 
 class TestArgListFlushRight:
@@ -192,12 +257,10 @@ class TestArgListFlushRight:
 
     def test_temp_bearing_lift_at_a_cond_seam_raises(self):
         # A resumable CONDITION has no flush point in the skeleton.
-        body = THIRResumableBody(
-            leaves={}, conds={1: self._lift()}, await_args={},
-            return_values={})
+        body = _at(LeafRole.COND, self._lift())
         with pytest.raises(THIRValidationError,
                            match="THIRUnionArgLift outside a call arg"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     def test_nested_temp_under_a_lift_raises_even_where_temps_flush(self):
         # A temp is admitted only as a DIRECT arg: nesting one inside a lift's
@@ -206,12 +269,10 @@ class TestArgListFlushRight:
         nested = THIRArgTemp(result_type=INT32,
                              init=THIRLiteral(result_type=INT32, value=1),
                              cpp_type="int32_t")
-        body = THIRResumableBody(
-            leaves={}, conds={}, return_values={},
-            await_args={1: (self._lift(value=nested),)})
+        body = _at(LeafRole.AWAIT_ARGS, (self._lift(value=nested),))
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     @staticmethod
     def _raise(*args):
@@ -223,28 +284,22 @@ class TestArgListFlushRight:
         # A raised construction's args ARE a flush position: its temps hoist
         # before the throw line, so a temp-bearing lift is admitted there and
         # the same node at a cond seam, which has no flush point, is not.
-        body = THIRResumableBody(
-            leaves={1: self._raise(self._lift())},
-            conds={}, await_args={}, return_values={})
-        validate_resumable_body("f", body)
+        body = _at(LeafRole.RAISE, self._raise(self._lift()))
+        validate_resumable_leaves("f", body)
 
     def test_raise_args_still_reject_a_nested_temp(self):
         nested = THIRArgTemp(result_type=INT32,
                              init=THIRLiteral(result_type=INT32, value=1),
                              cpp_type="int32_t")
-        body = THIRResumableBody(
-            leaves={1: self._raise(self._lift(value=nested))},
-            conds={}, await_args={}, return_values={})
+        body = _at(LeafRole.RAISE, self._raise(self._lift(value=nested)))
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     def test_plain_temp_bearing_lift_in_an_arg_list_passes(self):
         # The emplace arg list IS a flush position, like a call's or a raise's.
-        body = THIRResumableBody(
-            leaves={}, conds={}, return_values={},
-            await_args={1: (self._lift(),)})
-        validate_resumable_body("f", body)
+        body = _at(LeafRole.AWAIT_ARGS, (self._lift(),))
+        validate_resumable_leaves("f", body)
 
 
 class TestTransparentWrapperTemps:
@@ -265,10 +320,8 @@ class TestTransparentWrapperTemps:
                           coercion_name="int_literal")
 
     def test_temp_under_a_coerce_in_an_arg_list_passes(self):
-        body = THIRResumableBody(
-            leaves={}, conds={}, return_values={},
-            await_args={1: (self._coerced_temp(),)})
-        validate_resumable_body("f", body)
+        body = _at(LeafRole.AWAIT_ARGS, (self._coerced_temp(),))
+        validate_resumable_leaves("f", body)
 
     def test_temp_under_an_opaque_parent_in_an_arg_list_raises(self):
         # A binop is not a pure re-render of its operand: the operand's decl
@@ -276,22 +329,19 @@ class TestTransparentWrapperTemps:
         opaque = THIRBinOp(result_type=INT32, left=self._temp(), op="<=",
                            right=THIRLiteral(result_type=INT32, value=1),
                            resolved=None)
-        body = THIRResumableBody(
-            leaves={}, conds={}, return_values={},
-            await_args={1: (opaque,)})
+        body = _at(LeafRole.AWAIT_ARGS, (opaque,))
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
     def test_coerced_temp_outside_a_flush_position_raises(self):
         # A resumable RETURN VALUE has no flush point (the scaffolding binds
         # it into its own slot), and transparency does not manufacture one.
-        body = THIRResumableBody(
-            leaves={}, conds={}, await_args={},
-            return_values={1: self._coerced_temp()})
+        body = _at(LeafRole.RETURN,
+                   THIRResumableReturn(value=self._coerced_temp()))
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
-            validate_resumable_body("f", body)
+            validate_resumable_leaves("f", body)
 
 
 class TestValidator:

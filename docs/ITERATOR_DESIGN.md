@@ -409,5 +409,5 @@ Tests live in `tests/cases/iterators/`:
 | `tpyc/parse/parser.py` | `raise StopIteration` parsing |
 | `tpyc/parse/nodes.py` | `TpyRaise` node |
 | `tpyc/codegen_cpp/statements.py` | All for-loop codegen paths, `_is_lvalue_iterable()`, generator for-loop lowering |
-| `tpyc/codegen_cpp/gen_generators.py` | Generator function codegen: state machine structs, lambda optimization, for-loop pre-scan |
+| `tpyc/thir/lower/frame.py`, `tpyc/codegen_cpp/gen_async.py` | Generator frames: the resumable frame (for-loop pre-scan, placement) and its printer (state machine structs) |
 | `tpyc/codegen_cpp/functions.py` | `__next__` -> `std::expected` codegen |

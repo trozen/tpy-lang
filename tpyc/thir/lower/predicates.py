@@ -8173,10 +8173,12 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
             and (rec.const or rec.deep_const))
 
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
-    """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
-    `T*` with no further lifting, so an `&(...)` lift would produce `T**`.
+    """True when `expr` renders as a `T*` with no further lifting, so an
+    `&(...)` lift would produce `T**` -- the one answer the body lowering
+    and the resumable frame's printer (`THIRResumableLeaves.pointer_sources`)
+    both read.
 
-    Both of codegen's disjuncts. The name half is a pointer record plus the
+    Two disjuncts. The name half is a pointer record plus the
     `self` receiver whose `this` is a prvalue pointer; the `Ptr[T]` half is
     the one an inline membership test misses --
     a `Ptr[T]` source never gets a pointer record (the `_eligible_ptr_value`

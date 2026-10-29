@@ -10,11 +10,19 @@ from typing import Iterable
 
 from ..identity_map import IdentityMap
 from ..typesys import TpyType, unwrap_readonly, unwrap_ref_type
+from .frame import (
+    LeafRole, THIRAsyncWithSetup, THIRBranch, THIRExceptRegion, THIRFall,
+    THIRFinallyExit, THIRFinallyRegion,
+    THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
+    THIRLoopSourceRegion, THIRMatchDispatch, THIRResumableFrame, THIRSuspend,
+    THIRTryRegion, THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
+    stmt_slots, terminator_slots,
+)
 from .reject import is_bodyless_binding
 from .validate import _iter_children
 from .lower import iter_module_callables, iter_module_constructors
 from .nodes import (
-    Form,
+    Form, body_header,
     TruthinessMode,
     THIRArgTemp,
     THIRTempRead,
@@ -126,7 +134,7 @@ from .nodes import (
     THIRPtrLocalRebind,
     THIRRaise,
     THIRRecordCopy,
-    THIRResumableBody,
+    THIRResumableLeaves,
     THIRResumableReturn,
     THIRSetItem,
     THIRSliceAssign,
@@ -562,7 +570,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         rval = "" if stmt.iterable_lvalue else " [rvalue]"
         # `[frame_src=N]`: the resumable frame owns the source in that field.
         fsrc = ("" if stmt.frame_src_field is None
-                else f" [frame_src={stmt.frame_src_field}]")
+                else f" [frame_src={stmt.frame_src_field.name}]")
         presize = "" if stmt.presize is None else f" [presize {stmt.presize}]"
         lines = [f"{pad}for %{stmt.var}{const}{rval}{fsrc}{presize} "
                  f"in {_expr(stmt.iterable)}:"]
@@ -751,7 +759,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRForIterProto):
         const = _loop_binding_tag(stmt.binding)
         fsrc = ("" if stmt.frame_src_field is None
-                else f" [frame_src={stmt.frame_src_field}]")
+                else f" [frame_src={stmt.frame_src_field.name}]")
         lines = [f"{pad}for %{stmt.var}{const}{fsrc}: {_ty(stmt.elem_type)} "
                  f"in iter_proto({_expr(stmt.iterable)}):"]
         for s in stmt.body:
@@ -857,40 +865,181 @@ def _function_lines(fn: 'THIRFunction') -> list[str]:
     return lines
 
 
-def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
-    """A resumable body holds LEAVES keyed by the skeleton's node ids, not a
-    statement list -- the skeleton emits the state machine around them. Render
-    each keyed group so what THIR contributed is visible per seam."""
-    lines = [f"resumable {name}:"]
-    if body.signature is not None:
-        lines.append(f"  signature{_signature_facts(body.signature)}")
-    groups = (
-        ("leaves", body.leaves, _stmt_lines),
-        ("match_dispatches", body.match_dispatches, _stmt_lines),
-        ("conds", body.conds, None),
-        ("return_values", body.return_values, None),
-        ("yield_values", body.yield_values, None),
-        ("suspend_exprs", body.suspend_exprs, None),
-        ("region_exprs", body.region_exprs, None),
-    )
-    for label, mapping, stmt_render in groups:
-        if not mapping:
-            continue
-        lines.append(f"  {label}:")
-        # Keyed by skeleton node id -- renumbered sequentially in lowering
-        # order so the dump is stable across runs (an address is not).
-        for i, key in enumerate(mapping):
-            if stmt_render is not None:
-                rendered = stmt_render(mapping[key], 0)
-                lines.append(f"    [{i}] {rendered[0].lstrip()}"
-                             if rendered else f"    [{i}]")
-                lines.extend(f"    {ln}" for ln in rendered[1:])
-            else:
-                lines.append(f"    [{i}] {_expr(mapping[key])}")
-    if body.await_args:
-        lines.append("  await_args:")
-        for i, key in enumerate(body.await_args):
-            lines.append(f"    [{i}] ({_exprs(body.await_args[key])})")
+def _leaf_lines(leaves: 'THIRResumableLeaves | None', slot,
+                depth: int) -> list[str]:
+    """What THIR lowered at one frame slot, rendered by the slot's role."""
+    pad = "  " * depth
+    role = slot.role
+    if leaves is None or slot not in leaves.leaves:
+        return [f"{pad}{role.value}: <no leaf>"]
+    leaf = leaves.leaves[slot]
+    if role is LeafRole.AWAIT_ARGS:
+        return [f"{pad}await_args: ({_exprs(leaf)})"]
+    if role is LeafRole.LOOP_STEP:
+        return [f"{pad}loop_step: lent"]
+    if role is LeafRole.NESTED_DEF:
+        lines = [f"{pad}nested_def {slot.source.func.name}:"]
+        for st in leaf:
+            lines.extend(_stmt_lines(st, depth + 1))
+        return lines
+    if isinstance(leaf, THIRStmt):
+        return _stmt_lines(leaf, depth)
+    flags = "".join(f" [{tag}]" for tag, table in (
+        ("pointer", leaves.pointer_sources),
+        ("unwrapped", leaves.unwrapped_sources),
+        ("owned-erased", leaves.owned_erased_operands)) if slot in table)
+    return [f"{pad}{role.value}: {_expr(leaf)}{flags}"]
+
+
+def _resume_extraction_line(var: str, alias: str, sub) -> str:
+    """One narrowing subject's resume-case re-extraction facts."""
+    facts = [f for f, on in (
+        ("receiver", sub.receiver), ("cast-const", sub.cast_const),
+        ("indirect", sub.indirect), ("slot", sub.slot_backed),
+        ("param-const", sub.param_const), ("ptr-variant", sub.ptr_variant),
+        ("ptr-const", sub.ptr_const)) if on]
+    decl = _ty(sub.declared) if sub.declared is not None else "?"
+    storage = "" if sub.storage == var else f" via {sub.storage}"
+    tail = (" " + " ".join(facts)) if facts else ""
+    inner = ("" if sub.source_inner is None
+             else f" source-inner={_ty(sub.source_inner)}")
+    return (f"  resume extract {var} -> {alias}: {decl}{storage}{tail}"
+            f" cast-arg={sub.cast_arg}{inner}")
+
+
+def _region_label(r: object) -> str:
+    """One region of a block's stack, by operation."""
+    name = type(r).__name__.removeprefix("THIR").removesuffix("Region").lower()
+    if isinstance(r, THIRTryRegion):
+        if r.finally_helper_name is not None:
+            name = f"{name}({r.finally_helper_name})"
+        if r.finally_entry_bb is not None:
+            name += f" finally b{r.finally_entry_bb}"
+        return name
+    if isinstance(r, THIRFinallyRegion) and r.finally_exit_bb is not None:
+        return f"{name} exit b{r.finally_exit_bb}"
+    if isinstance(r, THIRExceptRegion) and r.parent_finally_entry_bb is not None:
+        return f"{name} finally b{r.parent_finally_entry_bb}"
+    if isinstance(r, THIRWithRegion):
+        return f"{name}(ctx {r.ctx_n}) post b{r.post_with_bb}"
+    if isinstance(r, THIRLoopSourceRegion):
+        return f"{name}(uid {r.uid})"
+    return name
+
+
+def _terminator_label(t: object) -> str:
+    """A block's terminator, by operation, with the blocks it reaches."""
+    if isinstance(t, THIRFall):
+        return f"fall b{t.next_bb}"
+    if isinstance(t, THIRBranch):
+        return f"branch b{t.then_bb} b{t.else_bb}"
+    if isinstance(t, THIRSuspend):
+        kind = "yield" if isinstance(t.payload, THIRYieldSuspension) else (
+            f"await {t.payload.mode.name.lower()} {t.payload.kind.name.lower()}")
+        return f"suspend#{t.suspension_index} {kind} -> b{t.resume_bb}"
+    if isinstance(t, THIRForAdvance):
+        return f"for_advance uid {t.uid} b{t.has_value_bb} b{t.exhausted_bb}"
+    if isinstance(t, THIRMatchDispatch):
+        arms = " ".join(f"b{b}" for b in t.arm_bbs)
+        join = "" if t.join_bb is None else f" join b{t.join_bb}"
+        return f"match_dispatch {arms}{join}"
+    if isinstance(t, THIRFrameReturn):
+        return "return"
+    if isinstance(t, THIRFrameRaise):
+        return "raise"
+    return "unreachable" if t is not None else "(open: no edge reaches it)"
+
+
+def _block_stmt_label(s: object) -> str:
+    """A block statement: a pseudo-statement by operation, a source leaf by
+    its statement kind (its lowering follows it)."""
+    if isinstance(s, THIRForIterSetup):
+        return f"for_iter_setup uid {s.uid}"
+    if isinstance(s, THIRWithEnter):
+        return f"with_enter ctx {s.ctx_n}"
+    if isinstance(s, THIRAsyncWithSetup):
+        return f"async_with_setup ctx {s.ctx_n}"
+    if isinstance(s, THIRFinallyExit):
+        return f"finally_exit {s.captured_exc_field}"
+    return f"leaf {type(s.source).__name__.removeprefix('Tpy')}"
+
+
+def _frame_lines(frame: 'THIRResumableFrame',
+                 leaves: 'THIRResumableLeaves | None' = None) -> list[str]:
+    """A published frame with its leaves: its captures, locals and
+    placement, then its coarse CFG in block order -- each block's region
+    stack, statements and terminator, each followed by what THIR lowered at
+    its slots -- the finally helpers and nested defs, and the frames it
+    embeds by value."""
+    header = body_header(leaves if leaves is not None else frame)
+    lines = [f"frame {header.name} [{frame.shape.value}]:"]
+    if header.signature is not None:
+        lines.append(f"  signature{_signature_facts(header.signature)}")
+    if header.receiver is not None:
+        const = " const" if header.receiver.readonly else ""
+        lines.append(f"  receiver {_ty(header.receiver.type)}{const}")
+    for p, capture in zip(frame.params, frame.captures):
+        const = " const" if p.name in frame.const_params else ""
+        lines.append(f"  param {p.name}: {_ty(p.type)} "
+                     f"capture={capture.name}{const}")
+    for loc in frame.locals:
+        pl = loc.placement
+        extra = "".join((" const" if pl.const else "",
+                         f" payload={pl.payload}" if pl.payload else "",
+                         " one-shot" if loc.one_shot else ""))
+        ty = _ty(loc.type) if loc.type is not None else "?"
+        lines.append(f"  local {loc.name}: {ty} placement={pl.kind.name}{extra}")
+    if leaves is not None:
+        for var in sorted(leaves.resume_extractions):
+            lines.append(_resume_extraction_line(
+                var, leaves.narrow_aliases.get(var, "?"),
+                leaves.resume_extractions[var]))
+    entries = set(frame.case_entries)
+    for bid in sorted(frame.blocks):
+        block = frame.blocks[bid]
+        flags = [f for f, on in (("entry", bid == frame.entry_block),
+                                 ("case", bid in entries)) if on]
+        head = f"  b{bid}" + (f" [{', '.join(flags)}]" if flags else "")
+        if block.region_stack:
+            head += " in " + " > ".join(_region_label(r) for r in block.region_stack)
+        lines.append(head + ":")
+        for s in block.stmts:
+            lines.append(f"    {_block_stmt_label(s)}")
+            for slot, _role in stmt_slots(s):
+                lines.extend(_leaf_lines(leaves, slot, 3))
+        lines.append(f"    -> {_terminator_label(block.terminator)}")
+        for slot, _role in terminator_slots(block.terminator):
+            lines.extend(_leaf_lines(leaves, slot, 3))
+    for region, by_handler in frame.handler_entries.items():
+        for handler, bid in by_handler.items():
+            caught = handler.exception_type or "*"
+            lines.append(f"  handler {caught} of {_region_label(region)}"
+                         f" enters b{bid}")
+    for name, helper in frame.finally_helpers:
+        lines.append(f"  finally helper {name}:")
+        for slot in helper:
+            lines.extend(_leaf_lines(leaves, slot, 2))
+    for slot in frame.nested_defs:
+        lines.extend(_leaf_lines(leaves, slot, 1))
+    for h in (*frame.for_fields, *frame.with_fields, *frame.ptr_slot_fields,
+              *frame.try_finally_fields):
+        loop_line = (h.loop.stmt.loc.line
+                     if h.loop is not None and h.loop.stmt.loc is not None
+                     else "?")
+        owner_facts = ""
+        if h.loop is not None:
+            strategy = (h.loop.info.strategy if h.loop.info is not None
+                        else "whole")
+            bound = ",".join(sorted(h.loop.bound_names)) or "-"
+            owner_facts = (f" of loop@{loop_line} {strategy}"
+                           f" alias={h.loop.alias or '-'} binds={bound}")
+        extra = "".join((" borrowed" if h.borrowed else "",
+                         f" for {h.local}" if h.local is not None else "",
+                         owner_facts,
+                         " drops" if h.drop_runs_user_code else ""))
+        lines.append(f"  holder {h.role.value} {h.name}: {h.cpp_type}{extra}")
+    for name, owner in frame.embedding_edges:
+        lines.append(f"  embeds {owner + '.' if owner else ''}{name}")
     return lines
 
 
@@ -972,7 +1121,8 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
                 lines.append("")
             lines.pop()
         elif ctx.thir_resumables.get(func) is not None:
-            lines.extend(_resumable_lines(func.name, ctx.thir_resumables[func]))
+            leaves = ctx.thir_resumables[func]
+            lines.extend(_frame_lines(leaves.frame, leaves))
         else:
             lines.append(_not_routed("fn", func.name, func))
         lines.append("")

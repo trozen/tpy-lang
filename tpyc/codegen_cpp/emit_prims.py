@@ -50,15 +50,16 @@ from ..typesys import (
     error_return_to_cpp, exception_record_cpp, handler_exception_record,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
     is_protocol_type, is_void_like_type, placeholder_value_inits,
-    polymorphic_source_inner, param_takes_ownership,
-    polymorphic_subclass_into_optional,
+    param_takes_ownership,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import call_result_const, peel_coerce, receiver_const
+from ..value_category import (const_indirect_local, peel_coerce,
+                              unpack_source_const_slots)
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
 from .variant_access import VariantAccess
 
 if TYPE_CHECKING:
+    from ..thir.nodes import THIRResumeExtraction
     from ..typesys import FunctionInfo
     from .context import CodeGenContext
     from .protocols import ProtocolGenerator
@@ -130,245 +131,27 @@ def is_plain_nonvalue(ctx: 'CodeGenContext', t: TpyType) -> bool:
 def is_const_indirect(ctx: 'CodeGenContext', target_type: TpyType | None,
                       init: TpyExpr | None,
                       stmt: 'TpyVarDecl | None' = None) -> bool:
-    """Check if a local variable should use const indirection (const T* or const T&).
-
-    Detects when the variable is derived from a ReadonlyType source:
-    - Optional inner is ReadonlyType (None-seeded from readonly param)
-    - Init expression has ReadonlyType in sema (direct alias of readonly param)
-    - Sema var_types holds ReadonlyType for annotated locals that are later
-      reassigned from a readonly source
-    """
-    if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
-        return True
-    if init is not None:
-        sema_type = ctx.analyzer.get_expr_type(init)
-        if isinstance(sema_type, ReadonlyType):
-            return True
-    # For annotated Optional locals, sema var_types may hold
-    # OptionalType(ReadonlyType(T)) even when stmt.type is plain Optional[T].
-    if stmt is not None:
-        sema_var_type = ctx.analyzer.var_types.get(stmt)
-        if (isinstance(sema_var_type, OptionalType)
-                and isinstance(sema_var_type.inner, ReadonlyType)):
-            return True
-    # A call's result access is its callee's declared one (the raw sema type
-    # above); one whose callee declares that its whole result follows the
-    # receiver is const on a const receiver, which C++ overload resolution
-    # picks whichever clone sema resolved. An element of a const-rooted
-    # container is const storage.
-    if isinstance(init, TpyMethodCall):
-        return call_result_const(init, ctx.analyzer.get_expr_type,
-                                 ctx.is_const_storage_source)
-    if isinstance(init, TpySubscript) and receiver_const(
-            init.obj, ctx.analyzer.get_expr_type, ctx.is_const_storage_source):
-        return True
-    # An alias of a const-inferred source must also bind const, else a
-    # mutable reference/pointer would be taken from a const source. Sound
-    # because a const source implies the alias is never written through --
-    # a write would have marked the source mutated via the borrow chain.
-    # Covers the pointer-local (Optional) branch, which the T&-branch
-    # call-site propagation does not reach.
-    if isinstance(init, TpyName) and (
-            init.name in ctx.const_ref_params
-            or init.name in ctx.const_indirect_locals
-            or init.name in ctx.deep_const_borrow_params):
-        return True
-    return False
-
-
-def is_const_borrow_source(ctx: 'CodeGenContext', var_name: str,
-                          var_decl: 'TpyType | None') -> bool:
-    return (isinstance(var_decl, ReadonlyType)
-            or var_name in ctx.deep_const_borrow_params
-            or var_name in ctx.const_ref_params)
+    """Check if a local variable should use const indirection (const T* or
+    const T&): `const_indirect_local` over the body scope's const names."""
+    return const_indirect_local(
+        ctx.analyzer, target_type, init, stmt,
+        storage_const=ctx.is_const_storage_source,
+        name_const=lambda n: (n in ctx.const_ref_params
+                              or n in ctx.const_indirect_locals
+                              or n in ctx.deep_const_borrow_params))
 
 
 def unpack_source_has_const_slots(ctx: 'CodeGenContext',
                                   stmt: TpyTupleUnpack) -> bool:
-    """True when the unpack source has const-typed borrow slots.
-
-    Triggered when the source is a name referring to either:
-    - a const-inferred param (deep_const_borrow_params), or
-    - a synthesized for-loop tuple iterating a const-bound source
-      (const_storage_form_tuple_locals).
-    Drives the unpack codegen to emit `const T*` / `const T&` for
-    unpacked locals rather than `T*` / `T&` (which would fail to bind
-    from the const slot).
-    """
-    if not isinstance(stmt.value, TpyName):
-        return False
-    return (stmt.value.name in ctx.deep_const_borrow_params
-            or stmt.value.name in ctx.const_storage_form_tuple_locals)
-
-
-def ptr_write_fills_slot(ctx: 'CodeGenContext', init: 'TpyExpr') -> bool:
-    """Whether a write of `init` into a pointer-form frame local
-    materializes storage of its own (a frame slot the pointer then aims
-    at), rather than aliasing storage that already exists (None literal,
-    alias, optional_to_ptr lift forms, a borrowed `T*`). The routing
-    order mirrors the emit arms."""
-    if isinstance(init, TpyNoneLiteral):
-        return False
-    if ctx.callee_returns_own_ptr_optional(init):
-        return True
-    if (isinstance(init, TpyName)
-            and ctx.needs_optional_to_ptr_lift(init.name)):
-        return False
-    if pointer_repr_optional(ctx.get_expr_type(init)) is not None:
-        if (ctx.is_storage_form_optional_source(init)
-                and not ctx.is_rvalue_source(init)):
-            return False
-        if not ctx.is_value_emit_rvalue(init):
-            return False
-    return ctx.is_rvalue_source(init)
-
-
-def ptr_slot_field_type(ctx: 'CodeGenContext', init: 'TpyExpr',
-                        target_type: TpyType | None,
-                        cpp_type: str) -> str | None:
-    """The frame-field C++ type an rvalue write into a pointer-form
-    frame local needs for its materialization slot, or None when the
-    write materializes no storage (`ptr_write_fills_slot`).
-
-    Single source of truth shared by the resumable ptr-slot prescan
-    (which reserves the field) and the pointer-local reseat lowering
-    (which consumes it): the two MUST agree
-    on which writes need a slot, or a frame write lands back in a
-    dying case-block local -- the reseat lowering rejects a missing
-    entry rather than guessing.
-    """
-    if not ptr_write_fills_slot(ctx, init):
-        return None
-    if ctx.callee_returns_own_ptr_optional(init):
-        # Own[Optional[T]]-returning call: the slot holds the returned
-        # optional<T> whole; the pointer is lifted via optional_to_ptr.
-        return f"std::optional<{cpp_type}>"
-    # Polymorphic refinement: a per-site slot can hold the subclass
-    # whole (the shared-slot slicing reject still fires upstream for
-    # the sync-shared shapes; this only spells the site's storage).
-    slot_cpp = cpp_type
-    sub = polymorphic_subclass_into_optional(
-        target_type, ctx.get_expr_type(init), ctx.analyzer.registry)
-    if sub is not None:
-        slot_cpp = sub.name
-    return f"std::optional<{slot_cpp}>"
+    """True when the unpack source has const-typed borrow slots
+    (`unpack_source_const_slots`): a deep-const-inferred param, or a
+    synthesized for-loop tuple iterating a const-bound source."""
+    return unpack_source_const_slots(
+        stmt.value, lambda n: (n in ctx.deep_const_borrow_params
+                               or n in ctx.const_storage_form_tuple_locals))
 
 
 # -- declared-type resolution ----------------------------------------------
-
-def cpp_declared_type(ctx: 'CodeGenContext',
-                      expr: TpyExpr) -> TpyType | None:
-    """Get the C++ declared type of a variable or field access.
-
-    For names, checks codegen var_types and current_func_params.
-    For field access (obj.field), resolves the field's declared type
-    on the record, which may be Optional even when sema has narrowed it.
-
-    MUST stay local-only for names: callers like the union-arg
-    already-variant check rely on module globals resolving None. The
-    narrowed-Optional family uses `declared_type_incl_globals`.
-    """
-    if isinstance(expr, TpyName):
-        return ctx.var_types.get(expr.name) or ctx.current_func_params.get(expr.name)
-    if isinstance(expr, TpyFieldAccess):
-        return resolve_field_declared_type(ctx, expr)
-    return None
-
-
-def declared_type_incl_globals(ctx: 'CodeGenContext',
-                               expr: TpyExpr) -> TpyType | None:
-    """`cpp_declared_type` extended to module globals.
-
-    Only the narrowed-Optional unwrap family consults globals: a
-    narrowed global read must see its declared (possibly Optional)
-    type. Other `cpp_declared_type` callers (e.g. the union-arg
-    already-variant check) rely on globals resolving None."""
-    declared = cpp_declared_type(ctx, expr)
-    if declared is not None:
-        return declared
-    if isinstance(expr, TpyName) and ctx.is_global_name(expr):
-        binding = ctx.analyzer.global_ns.lookup_local(expr.name)
-        if binding is not None:
-            return binding.type
-    return None
-
-
-def resolve_field_declared_type(ctx: 'CodeGenContext',
-                                expr: TpyFieldAccess) -> TpyType | None:
-    """Resolve the declared type of a field on its record/object."""
-    obj_type = cpp_declared_type(ctx, expr.obj)
-    if obj_type is None:
-        obj_type = ctx.get_expr_type(expr.obj)
-    if obj_type is None:
-        return None
-    actual_type = unwrap_readonly(obj_type)
-    if isinstance(actual_type, PtrType):
-        actual_type = actual_type.pointee
-    elif isinstance(actual_type, OwnType):
-        actual_type = actual_type.wrapped
-    elif isinstance(actual_type, OptionalType):
-        if actual_type.inner.is_value_type():
-            return None
-        actual_type = actual_type.inner
-    if isinstance(actual_type, NominalType) and actual_type.is_record:
-        record = ctx.analyzer.registry.get_record_for_type(actual_type)
-        if record:
-            for f in record.fields:
-                if f.name == expr.field:
-                    return f.type
-    return None
-
-
-def maybe_unwrap_narrowed_optional(ctx: 'CodeGenContext', expr_obj: TpyExpr,
-                                   obj: str, needs_deref: bool,
-                                   target_type: TpyType | None = None) -> str:
-    """Unwrap narrowed Optional receivers.
-
-    When sema has proven a std::optional<T> variable holds a value,
-    the C++ variable is still optional -- dereference it with (*obj).
-    Handles simple names, field accesses, and generator-promoted
-    Optional locals (whose rendered `obj` is already the inner
-    storage-form Optional after the outer init-tracking deref).
-    When `target_type` is given, the unwrap only fires for a
-    non-Optional target -- an Optional target keeps the whole copy.
-    """
-    if needs_deref:
-        return obj
-    if (target_type is not None
-            and isinstance(unwrap_readonly(target_type), OptionalType)):
-        return obj
-    cpp_decl = declared_type_incl_globals(ctx, expr_obj)
-    analyzed = ctx.get_expr_type(expr_obj)
-    is_comp_var = isinstance(expr_obj, TpyName) and expr_obj.name in ctx.comp_local_names
-    is_storage_optional = ctx.is_storage_form_optional_source(expr_obj)
-    if (cpp_decl is not None
-            and isinstance(cpp_decl, OptionalType)
-            and (isinstance(expr_obj, TpyFieldAccess) or is_comp_var
-                 or is_storage_optional
-                 or not cpp_decl.uses_pointer_repr())
-            and not isinstance(analyzed, OptionalType)):
-        return f"(*{obj})"
-    return obj
-
-
-def narrowed_value_optional_iter_type(ctx: 'CodeGenContext', expr: TpyExpr,
-                                      declared: TpyType | None) -> TpyType | None:
-    """For a for-loop iterable: if `declared` is a narrowed value-Optional
-    (`str|None`/`bytes|None` proven non-None, value-repr -- still
-    `std::optional<V>` in C++), return its narrowed inner so dispatch and
-    frame-field types use the contained value `V`. Pointer-repr Optionals
-    (e.g. `list|None`) already deref via the pointer-narrowing path, so they
-    pass through unchanged. The matching `(*v)` render is applied separately
-    via `maybe_unwrap_narrowed_optional`. Shared by the sync for-loop and
-    the resumable-frame strategy analysis (`_analyze_for_strategy`)."""
-    analyzed = ctx.get_expr_type(expr)
-    if (analyzed is not None
-            and isinstance(declared, OptionalType)
-            and not declared.uses_pointer_repr()
-            and not isinstance(analyzed, OptionalType)):
-        return unwrap_ref_type(analyzed)
-    return declared
-
 
 # -- range-loop literals ---------------------------------------------------
 
@@ -519,20 +302,22 @@ def emit_isinstance_extractions(
     protocols: 'ProtocolGenerator',
     out: TextIO, type_facts: dict[str, TpyType],
     alias_names: 'Mapping[str, str]',
+    subjects: 'Mapping[str, THIRResumeExtraction]',
     *, indent_extra: int = 1,
 ) -> dict[str, str | None]:
-    """Emit std::get extractions for isinstance-narrowed variables.
+    """Emit a resume case's extraction for each narrowed subject.
 
     Returns saved narrowed_vars entries for later restoration.
     Only emits extraction when the fact is a concrete (non-union) type.
     `indent_extra` controls how many indent levels past the current level
-    to emit at: 1 (default) inside an if-block / while-block, 0 after an
-    assert or at the implicit-else of an early-returning if.
+    to emit at.
 
     `alias_names` is the lowering's spelling for each narrowing subject
-    (`THIRResumableBody.narrow_aliases`), the single speller both this
+    (`THIRResumableLeaves.narrow_aliases`), the single speller both this
     declaration and the body's reads go by; a subject missing from it means
-    lowering and the seam disagree on the body's narrowings.
+    lowering and the seam disagree on the body's narrowings. `subjects`
+    (`THIRResumableLeaves.resume_extractions`) is what each declaration
+    is spelled from.
     """
     saved: dict[str, str | None] = {}
     if not type_facts:
@@ -557,34 +342,19 @@ def emit_isinstance_extractions(
         if is_protocol_type(narrowed_type):
             ctx.protocol_narrowings[var_name] = narrowed_type
             continue
-        # In @overload context, the param is already the concrete type --
-        # no std::get extraction needed.
-        if var_name in ctx.overload_param_types:
-            continue
+        subject = subjects[var_name]
         cpp_type = types.type_to_cpp(narrowed_type)
-        var_decl = ctx.lookup_var_type(var_name)
+        var_decl = subject.declared
         # Polymorphic source + strict-subclass narrowed_type: cast-and-cache
         # extraction. Identity narrowing (`is not None`) keeps the same
         # class and is gated out by the predicate.
         if is_polymorphic_subclass_fact(
                 var_decl, narrowed_type, ctx.analyzer.registry):
-            # If the if-head pre-bound the cast via C++17 if-init, route reads
-            # through `(*__var_ptr)` directly -- no need for a separate
-            # reference local that just aliases the deref. Compiler sees the
-            # same object either way. For assert/while paths that don't go
-            # through if-init, emit the fresh cast into a reference local.
-            init_local = ctx.isinstance_init_locals.get(var_name)
-            if init_local is not None:
-                saved[var_name] = ctx.narrowed_vars.get(var_name)
-                ctx.narrowed_vars[var_name] = f"(*{init_local})"
-                continue
             local_name = _resume_alias(alias_names, var_name)
-            cast_const = "const " if is_const_borrow_source(ctx, var_name, var_decl) else ""
-            cast_arg = ctx.polymorphic_cast_arg(var_name, var_decl)
-            source_inner = polymorphic_source_inner(
-                var_decl, ctx.analyzer.registry)
+            cast_const = "const " if subject.cast_const else ""
+            cast_arg = subject.cast_arg
             cast_rhs = protocols.dynamic_narrow_cast_rhs(
-                cpp_type, narrowed_type, source_inner, cast_arg,
+                cpp_type, narrowed_type, subject.source_inner, cast_arg,
                 is_const=bool(cast_const))
             out.write(
                 f"{inner_indent}{cast_const}{cpp_type}& {local_name} = "
@@ -598,10 +368,7 @@ def emit_isinstance_extractions(
         # contents. The outer Any survives unchanged.
         if isinstance(var_decl, AnyType):
             local_name = _resume_alias(alias_names, var_name)
-            if ctx.is_indirect_name(TpyName(var_name)):
-                var_ref = f"(*{var_name})"
-            else:
-                var_ref = var_name
+            var_ref = f"(*{var_name})" if subject.indirect else var_name
             out.write(
                 f"{inner_indent}const {cpp_type}& {local_name} = "
                 f"std::any_cast<const {cpp_type}&>({var_ref}.value);\n"
@@ -615,9 +382,12 @@ def emit_isinstance_extractions(
         # must target the original variable here.
         # A union local hoisted into the resumable frame is a
         # `frame_slot<variant<...>>`; std::get needs the variant, not the
-        # slot wrapper (the same `(*name)` unwrap the name-read path uses).
-        fs_deref = ctx.frame_slot_deref(var_name)
-        if ctx.is_indirect_name(TpyName(var_name)):
+        # slot wrapper (the same `(*name)` unwrap the name-read path uses),
+        # unless a loop variable shadows the field where this case emits.
+        fs_deref = (f"(*{escape_cpp_name(subject.storage)})"
+                    if subject.slot_backed
+                    and subject.storage not in ctx.frame_field_shadows else None)
+        if subject.indirect:
             var_ref = f"(*{var_name})"
         elif fs_deref is not None:
             var_ref = fs_deref
@@ -626,15 +396,12 @@ def emit_isinstance_extractions(
         local_name = _resume_alias(alias_names, var_name)
         # Value-type union params are const&, so std::get yields const T&.
         # Non-value union params and locals are mutable.
-        var_decl_type = ctx.var_types.get(var_name)
-        is_const = (var_name in ctx.current_func_params
-                    and var_decl_type is not None
-                    and (var_decl_type.is_value_type() or var_decl_type.needs_wrapper()))
+        var_decl_type = subject.slot_type
+        is_const = subject.param_const
         qualifier = "const auto&" if is_const else "auto&"
         # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
-        if var_name in ctx.ptr_variant_locals:
-            is_const = var_name in ctx.const_indirect_locals
-            va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=is_const)
+        if subject.ptr_variant:
+            va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=subject.ptr_const)
         else:
             va = VariantAccess(var_ref, var_decl_type, is_ptr_variant=False)
         out.write(f"{inner_indent}{qualifier} {local_name} = {va.get_by_type(cpp_type, lvalue=True)};\n")
@@ -1389,27 +1156,20 @@ __all__ = [
     "PARAM_LOCAL_SET_FIELDS",
     "check_literal_chain",
     "check_literal_in",
-    "cpp_declared_type",
-    "declared_type_incl_globals",
     "emit_except_handler_header",
     "emit_finally_chain",
     "emit_isinstance_extractions",
     "extract_int_literal",
     "gen_range_overflow_check",
-    "is_const_borrow_source",
     "is_const_indirect",
     "is_duplicable_expr",
     "is_plain_nonvalue",
     "is_simple_lvalue",
     "is_trivial_needle",
     "match_subject_is_lvalue",
-    "maybe_unwrap_narrowed_optional",
-    "narrowed_value_optional_iter_type",
     "nested_def_signature",
     "partition_optional_cases",
     "pattern_has_field_condition",
-    "ptr_slot_field_type",
-    "ptr_write_fills_slot",
     "push_finally",
     "reject_nondef_ctor_field_in_body",
     "reject_nonlvalue_resumable_match_ptr_bind",
@@ -1417,7 +1177,6 @@ __all__ = [
     "reject_polymorphic_rvalue_into_optional_local",
     "reject_rebind_slot_crosses_scope",
     "reject_suspending_polymorphic_match",
-    "resolve_field_declared_type",
     "resumable_match_subject_is_stable",
     "returns_bare_reference",
     "seed_param_locals",

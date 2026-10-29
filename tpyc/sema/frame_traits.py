@@ -85,7 +85,7 @@ def _value_slot_traits(t: 'TpyType') -> tuple[bool, bool]:
 def param_slot(pname: str, ptype: 'TpyType') -> FrameSlot:
     """Classify one async/generator param's frame slot.
 
-    Conservative mirror of gen_async._classify_param_kind: only the shapes
+    Conservative mirror of thir.lower.frame.classify_param_kind: only the shapes
     that store owned values (VALUE, OWNED_VALUE) can be Send; str params
     store a string_view borrow; every other kind (REF, POINTER, TYPE_PARAM,
     STATIC_PROTOCOL) aliases caller state or is unknown per-instantiation.

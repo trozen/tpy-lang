@@ -38,6 +38,7 @@ from ..typesys import (NoneType, substitute_cpp_ret, OptionalType, TpyType, Tupl
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .source import TraitAbi
+from .frame import LeafRole
 from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     PtrSlotKind, TruthinessMode, THIRArgTemp, THIRTempRead, BOUND_SOURCE_READ,
     THIRLent, THIRAssert, THIRAssign, THIRBinOp, THIRChainedCompareStmtExpr,
@@ -442,15 +443,16 @@ class _EmitState:
     # deref=True (a frame-stored non-value local) renders bare exactly while
     # its shadow is in scope. None outside resumable leaves.
     frame_shadow_probe: 'Callable[[str], bool] | None' = None
-    # Resumable MatchDispatch mode: the skeleton's arm emitter, keyed by a
-    # case's body id -- called at each scalar-tier arm-body point instead
+    # Resumable MatchDispatch mode: the printer's arm emitter, keyed by the
+    # arm's source case -- called at each scalar-tier arm-body point instead
     # of emitting the (empty) lowered body. None for sync matches.
-    match_arm_hook: 'Callable[[int, int], None] | None' = None
+    match_arm_hook: 'Callable[[object, int], None] | None' = None
     # Resumable leaf-return mode: renders the FULL return scaffolding
     # (done-state, Poll wrap / StopIteration, finally-chain walk) for a
     # return nested in a leaf compound -- the skeleton's `_make_async_return`
     # / `_make_generator_resumable_return` bound to the live ctx, called
-    # with (ast_stmt, indent_level). None outside resumable leaves.
+    # with (the THIRResumableReturn, indent_level). None outside resumable
+    # leaves.
     resumable_return_hook: 'Callable[[object, int], str] | None' = None
     iter_counter: IterCounter = field(default_factory=IterCounter)
     slot_counter: int = 0
@@ -2552,9 +2554,10 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
         # A fresh source whose elements this body binds into borrowing frame
         # storage: the frame owns the source so those bindings stay valid
         # past the state block.
-        emplace = emit_prims.for_src_emplace(stmt.frame_src_field, iterable_cpp)
+        held = stmt.frame_src_field.name
+        emplace = emit_prims.for_src_emplace(held, iterable_cpp)
         out.write(f"{indent}{emplace}\n")
-        obj = f"(*{stmt.frame_src_field})"
+        obj = f"(*{held})"
     else:
         out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
     if stmt.presize is not None:
@@ -2604,9 +2607,10 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
         # A fresh source the frame owns (see THIRForEach): the loop's own
         # capture binds the slot instead of a block-local copy that dies with
         # the state block.
-        emplace = emit_prims.for_src_emplace(stmt.frame_src_field, it_cpp)
+        held = stmt.frame_src_field.name
+        emplace = emit_prims.for_src_emplace(held, it_cpp)
         out.write(f"{indent}{emplace}\n")
-        out.write(f"{indent}auto& {src} = (*{stmt.frame_src_field});\n")
+        out.write(f"{indent}auto& {src} = (*{held});\n")
     else:
         out.write(f"{indent}{binding_kw} {src} = {it_cpp};\n")
     out.write(f"{indent}auto&& {itr} = ::tpy::__iter__({src});\n")
@@ -2900,10 +2904,10 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             # frame field aliases `__enter__()`'s result, so the manager
             # lives in the skeleton-declared `__with_ctx_<K>` field and
             # `__ctx_N` binds through it (the frame_ctx arm).
-            out.write(f"{indent}__with_ctx_{item.frame_ctx}"
+            out.write(f"{indent}{item.frame_ctx.name}"
                       f".emplace({ctx_cpp});\n")
             out.write(f"{indent}auto& __ctx_{n} = "
-                      f"(*__with_ctx_{item.frame_ctx});\n")
+                      f"(*{item.frame_ctx.name});\n")
         elif item.manager_hoist_cpp is not None:
             # Kept owned manager (`_with_manager_needs_hoist`): the target's
             # slot aliases `__enter__()`'s result past the block, so the
@@ -2943,7 +2947,9 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.FRAME_POINTER:
             out.write(f"{indent}" + frame_with_pointer_bind(
-                item.target, f"__ctx_{n}.__enter__()", item.target_field)
+                item.target, f"__ctx_{n}.__enter__()",
+                item.target_field.name if item.target_field is not None
+                else None)
                 + "\n")
         else:
             out.write(f"{indent}__ctx_{n}.__enter__();\n")
@@ -3206,8 +3212,8 @@ def _emit_match_arm_body(out: 'TextIO', entry, lvl: int,
     """One scalar-tier arm-body point. In resumable dispatch-hook mode the
     body is a BB chain the skeleton walks -- call its arm hook with the
     case's body key; sync matches emit the lowered body."""
-    if state.match_arm_hook is not None and entry.body_key is not None:
-        state.match_arm_hook(entry.body_key, lvl)
+    if state.match_arm_hook is not None and entry.arm_case is not None:
+        state.match_arm_hook(entry.arm_case, lvl)
         return
     _emit_stmts(out, entry.body, lvl, state)
 
@@ -4522,10 +4528,10 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
     elif isinstance(stmt, THIRStmtSeq):
         _emit_stmts(out, stmt.stmts, indent_level, state)
     elif isinstance(stmt, THIRResumableReturn):
-        # Scaffolding is skeleton in every position: the hook re-enters
-        # `_make_async_return` / `_make_generator_resumable_return`, whose
-        # value render loops back through `render_return_value` (the
-        # identity-keyed table this node's value was registered into).
+        # Scaffolding is printer emission in every position: the hook hands
+        # this node to `_make_async_return` /
+        # `_make_generator_resumable_return`, which render its value and
+        # deferred recipe from it.
         # No temps.flush here: `_lower_resumable_return_value` lowers with
         # the default `_ExprUse()` (allow_temps=False), so the value can
         # never carry a THIRArgTemp -- widening that seam to temp-bearing
@@ -4533,7 +4539,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         if state.resumable_return_hook is None:
             raise THIRCodeGenError(
                 "THIRResumableReturn outside resumable leaf emission")
-        out.write(state.resumable_return_hook(stmt.ast_stmt, indent_level))
+        out.write(state.resumable_return_hook(stmt, indent_level))
     elif isinstance(stmt, THIRFrameNestedDef):
         # The member itself is scaffolding-emitted; the statement position
         # keeps only the marker line under its source comment.
@@ -4813,19 +4819,25 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         temps.finish_plan()
 
 
+# The leaf slots holding a statement of the frame body (a loop the frame
+# holds the source of sits in one).
+_LEAF_STMT_ROLES = frozenset({LeafRole.STMT, LeafRole.RAISE,
+                              LeafRole.FINALLY_STMT})
+
+
 class ResumableLeafEmitter:
     """Per-routed-body leaf renderer driven by the shared resumable-frame
-    skeleton (`gen_async`). One instance per routed body holds one
+    printer (`gen_async`). One instance per routed body holds one
     `_EmitState`, so per-function streams (rebind slots, `__tup_N`) behave
     as one body across leaf calls while the `__tmp_N` and module-cumulative
     streams come from the ctx-backed sinks -- the same contract as `emit_thir_body`.
 
-    The skeleton looks up exactly the leaves lowering stored, keyed by the
-    parse-tree node it holds; a missing key means the gate and
-    the seam disagree on the routed body's shape -- a hard error, never
-    silently skipped."""
+    The printer renders each position from the leaf the lowering published
+    for the frame slot it holds (`THIRResumableLeaves.leaves`); a missing
+    leaf means the lowering and the printer disagree on the routed body's
+    shape -- a hard error, never silently skipped."""
 
-    def __init__(self, body, *, temps: 'TempSink',
+    def __init__(self, leaves, *, temps: 'TempSink',
                  with_counter: 'ModuleCounter',
                  try_counter: 'ModuleCounter',
                  finally_guard_counter: 'ModuleCounter',
@@ -4837,7 +4849,7 @@ class ResumableLeafEmitter:
                  ast_finally_push=None, ast_finally_pop=None,
                  iter_counter: 'IterCounter | None' = None,
                  ) -> None:
-        self._body = body
+        self._leaves = leaves
         self._state = _EmitState(temps=temps,
                                  with_counter=with_counter,
                                  try_counter=try_counter,
@@ -4856,68 +4868,74 @@ class ResumableLeafEmitter:
         self._state.ast_finally_pop = ast_finally_pop
         if iter_counter is not None:
             self._state.iter_counter = iter_counter
-        self._held_loops: 'dict[str, THIRStmt] | None' = None
+        self._held_loops: 'dict[object, THIRStmt] | None' = None
 
-    def _lookup(self, table, node, what: str):
-        if node not in table:
+    def leaf(self, slot):
+        """The lowering published for `slot`."""
+        table = self._leaves.leaves
+        if slot is None or slot not in table:
+            what = "slot" if slot is None else slot.role.value
             raise THIRCodeGenError(
-                f"resumable seam: routed body has no lowered {what} for "
-                f"{type(node).__name__} (lowering/seam disagreement)")
-        return table[node]
+                f"resumable seam: routed body has no lowered {what} "
+                "(lowering/seam disagreement)")
+        return table[slot]
 
     @property
     def narrow_aliases(self) -> 'Mapping[str, str]':
         """The lowered spelling of each narrowing subject's resume-case
         extraction alias -- the skeleton declares under these names so the
         leaves' reads of the same alias resolve."""
-        return self._body.narrow_aliases
+        return self._leaves.narrow_aliases
 
-    def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:
-        """Emit one BB leaf statement (or a RaiseT terminator's statement),
-        source comment included -- the seam the skeleton calls at each
-        leaf-statement position."""
-        node = self._lookup(self._body.leaves, stmt, "leaf statement")
-        _emit_stmts(out, (node,), indent_level, self._state)
+    @property
+    def published(self) -> 'THIRResumableLeaves':
+        """The leaves publication the printer renders from, with the
+        source-derived verdicts it reads at their slots."""
+        return self._leaves
 
-    def leaf_emits_nothing(self, stmt) -> bool:
+    def emit_leaf_stmt(self, out: TextIO, slot, indent_level: int) -> None:
+        """Emit one leaf statement (a block's, a raise terminator's, a
+        finally helper's), source comment included -- the seam the printer
+        calls at each leaf-statement position."""
+        _emit_stmts(out, (self.leaf(slot),), indent_level, self._state)
+
+    def leaf_emits_nothing(self, slot) -> bool:
         """A leaf statement that lowered to no code (`pass`, a docstring)."""
-        return isinstance(self._lookup(self._body.leaves, stmt, "leaf statement"),
-                          THIRNoOpStmt)
+        return isinstance(self.leaf(slot), THIRNoOpStmt)
 
-    def _held_leaf_loops(self) -> 'dict[str, THIRStmt]':
-        """The leaf `for` loops whose source the frame holds, by the field
+    def _held_leaf_loops(self) -> 'dict[object, THIRStmt]':
+        """The leaf `for` loops whose source the frame holds, by the holder
         that holds it; one walk of the body's leaves, shared by every alias
         render."""
         if self._held_loops is None:
+            stmts = [leaf for slot, leaf in self._leaves.leaves.items()
+                     if slot.role in _LEAF_STMT_ROLES]
             self._held_loops = {
                 n.frame_src_field: n
-                for n in _walk_thir(self._body.leaves.values())
+                for n in _walk_thir(stmts)
                 if isinstance(n, (THIRForEach, THIRForIterProto))
                 and n.frame_src_field is not None}
         return self._held_loops
 
-    def render_for_source(self, stmt, *, temps: 'TempSink',
-                          frame_src_field: 'str | None' = None) -> str:
+    def render_for_source(self, iterable, *, temps: 'TempSink',
+                          frame_src_field=None) -> str:
         """The render of a `for` head's iterable, as the loop's own setup
         will spell it -- what the frame struct puts under `decltype` to
-        spell the loop's fields. A loop the skeleton decomposed keeps its
-        iterable as a region expression; one that stays inside a leaf is
-        found by the frame field it was given, wherever in the leaf's tree
+        spell the loop's fields. A loop the frame decomposed renders its
+        setup's source slot (`iterable`); one that stays inside a leaf is
+        found by the frame holder it was given, wherever in the leaf's tree
         it sits. `temps` is the sink for this one render, an unevaluated
         one at the struct."""
-        node = self._body.region_exprs.get(stmt.iterable)
         leaf = None
-        if node is None:
-            if frame_src_field is None:
-                # A decomposed loop's iterable is a region expression; not
-                # finding it is a seam bug, never a leaf loop's to answer.
-                self._lookup(self._body.region_exprs, stmt.iterable,
-                             "region expr")
+        if iterable is not None:
+            node = self.leaf(iterable)
+        else:
             leaf = self._held_leaf_loops().get(frame_src_field)
             if leaf is None:
                 raise THIRCodeGenError(
                     "resumable seam: routed body has no lowered for-loop "
-                    f"holding {frame_src_field} (lowering/seam disagreement)")
+                    f"holding {frame_src_field.name} "
+                    "(lowering/seam disagreement)")
             node = leaf.iterable
         saved = self._state.temps
         self._state.temps = temps
@@ -4929,19 +4947,19 @@ class ResumableLeafEmitter:
             cpp = f"std::string_view({cpp})"
         return cpp
 
-    def render_cond(self, cond) -> str:
-        """Render a Branch terminator's condition; arg temps queue on the
-        shared ctx sink and flush at the skeleton's existing flush point."""
-        return _emit_expr(self._lookup(self._body.conds, cond, "condition"),
-                          self._state)
+    def render_expr(self, slot) -> str:
+        """Render an expression position -- a branch condition, a header
+        expression, an await operand or receiver, a yield value; arg temps
+        queue on the shared ctx sink and flush at the printer's flush point
+        where the position has one."""
+        return _emit_expr(self.leaf(slot), self._state)
 
-    def render_await_args(self, call, *,
+    def render_await_args(self, slot, *,
                           temps: 'TempSink | None' = None) -> 'list[str]':
-        """Render a suspension's sub-coro emplace arguments (same flush
-        contract as `render_cond`). `temps` is the sink for this one render
-        where it is not the statement's: an unevaluated one at the struct's
-        `decltype`."""
-        args = self._lookup(self._body.await_args, call, "await args")
+        """Render a suspension's sub-coro emplace arguments. `temps` is the
+        sink for this one render where it is not the statement's: an
+        unevaluated one at the struct's `decltype`."""
+        args = self.leaf(slot)
         if temps is None:
             return [_emit_expr(a, self._state) for a in args]
         saved = self._state.temps
@@ -4952,14 +4970,19 @@ class ResumableLeafEmitter:
             self._state.temps = saved
 
     def render_return_value(self, ret, *, allow_move: bool = False) -> str:
-        """Render a `return v`'s value for `_make_async_return`'s
-        scaffolding (the ret-tmp init / pending-slot store). The lowering
-        bakes the last-use move (THIRMove) position-blind; the scaffolding
-        knows the site, so a pre-finally store unwraps it -- an alias bound
-        before the try can still read the local from the finally body.
-        Defaults to no-move, the fail-safe polarity: a call site that
-        forgets the kwarg gets the copy, never the move."""
-        node = self._lookup(self._body.return_values, ret, "return value")
+        """Render a return's lowered value (`THIRResumableReturn.value`) for
+        `_make_async_return`'s scaffolding (the ret-tmp init / pending-slot
+        store). The lowering bakes the last-use move (THIRMove)
+        position-blind; the scaffolding knows the site, so a pre-finally
+        store unwraps it -- an alias bound before the try can still read the
+        local from the finally body. Defaults to no-move, the fail-safe
+        polarity: a call site that forgets the kwarg gets the copy, never
+        the move."""
+        node = ret.value
+        if node is None:
+            raise THIRCodeGenError(
+                "resumable seam: routed body has no lowered return value "
+                "(lowering/seam disagreement)")
         if not allow_move and isinstance(node, THIRMove):
             node = node.value
         return _emit_expr(node, self._state)
@@ -4967,28 +4990,15 @@ class ResumableLeafEmitter:
     def render_deferred_return(self, ret) -> 'tuple[list[str], str]':
         """The (capture declarations, materialize expression) pair the
         frame's return scaffolding binds around its inline finally chain, for
-        a sema-stamped finally-deferred return.
+        a sema-stamped finally-deferred return (`THIRResumableReturn`
+        with a `deferred` recipe)."""
+        return _deferred_return_capture(ret.deferred, self._state)
 
-        Lowering rejects a body whose stamped return it cannot build a recipe
-        for, so a routed body always has one: a missing entry is a
-        lowering/seam disagreement and `_lookup`'s raise is the only correct
-        answer. Falling through to the eager arms instead would move storage
-        the finally chain still reads."""
-        node = self._lookup(self._body.deferred_returns, ret,
-                            "deferred return recipe")
-        return _deferred_return_capture(node, self._state)
-
-    def render_yield_value(self, ys) -> str:
-        """Render a generator `yield v`'s value -- the seam the skeleton
-        calls at the yield site."""
-        return _emit_expr(self._lookup(self._body.yield_values, ys,
-                                       "yield value"), self._state)
-
-    def emit_nested_def_body(self, out: TextIO, func,
+    def emit_nested_def_body(self, out: TextIO, slot,
                              indent_level: int) -> None:
         """Emit a frame nested def's MEMBER body -- the seam
         `gen_coro_finally_top_def` calls for it. The
-        signature/struct-decl lines stay skeleton; the body statements were
+        signature/struct-decl lines stay printer; the body statements were
         lowered under the member scope at frame lowering.
 
         Unlike the frame BODY, whose leaves are scattered across resume cases
@@ -4996,43 +5006,24 @@ class ResumableLeafEmitter:
         top of its own, so it drains its own hoists there (`own_top`) and the
         hoisting arms are open to it. Each call of the member then gets its
         own slots, since they are its locals."""
-        body = self._lookup(self._body.nested_def_bodies, func,
-                            "nested def body")
-        _emit_body_draining_hoists(out, body, indent_level, self._state,
-                                   own_top=True)
+        _emit_body_draining_hoists(out, self.leaf(slot), indent_level,
+                                   self._state, own_top=True)
 
-    def render_suspend_expr(self, expr) -> str:
-        """Render an ERASED/BORROWED await operand or a bound-method await
-        receiver -- the seam the skeleton calls at the suspend site (it keeps
-        its own move / & / .get() / __self-prepend wrap)."""
-        return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
-                                       "suspend expr"), self._state)
-
-    def render_loop_step(self, stmt, step_cpp: str) -> str:
+    def render_loop_step(self, slot, step_cpp: str) -> str:
         """Render a borrow-form tuple loop var's step lent element by
-        element, over the step the skeleton holds as `step_cpp`."""
-        lent = self._lookup(self._body.loop_steps, stmt, "loop step")
-        return _emit_lent(lent, step_cpp, self._state, deref=False)
+        element, over the step the printer holds as `step_cpp`."""
+        return _emit_lent(self.leaf(slot), step_cpp, self._state, deref=False)
 
-    def render_region_expr(self, expr) -> str:
-        """Render a region/loop pseudo-statement's user expression (with
-        manager, for-loop iterable, range bound) -- the seam the skeleton
-        calls inside its emplace / &(..) / static_cast scaffolding (same
-        flush contract as `render_cond`)."""
-        return _emit_expr(self._lookup(self._body.region_exprs, expr,
-                                       "region expr"), self._state)
-
-    def emit_match_dispatch(self, out: TextIO, match_stmt,
+    def emit_match_dispatch(self, out: TextIO, slot,
                             indent_level: int,
-                            arm_hook: 'Callable[[int, int], None]') -> None:
+                            arm_hook: 'Callable[[object, int], None]') -> None:
         """Emit a MatchDispatch's whole type-aware dispatch (subject +
-        labels + guards) through THIR's match tiers -- the seam the skeleton
+        labels + guards) through THIR's match tiers -- the seam the printer
         calls for a match inside a resumable frame. `arm_hook` is the
-        skeleton's arm emitter keyed by the case body; it fires at each
+        printer's arm emitter keyed by the arm's source case; it fires at each
         arm-body point, so arm bodies stay BB chains in the state
         machine."""
-        node = self._lookup(self._body.match_dispatches, match_stmt,
-                            "match dispatch")
+        node = self.leaf(slot)
         prev = self._state.match_arm_hook
         self._state.match_arm_hook = arm_hook
         try:

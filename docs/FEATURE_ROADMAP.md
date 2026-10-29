@@ -2180,7 +2180,7 @@ generators (single yield point); struct-based with `__next__()` for multiple yie
 transforms the function body into a state-machine struct with `__next__()` method.
 Every generator, single-yield included, lowers on the shared resumable frame
 (the single-yield inline lambda path was deleted 2026-09-12). See
-`tpyc/codegen_cpp/gen_generators.py` and `gen_async.py`. Known limitation: generic
+`tpyc/thir/lower/frame.py` (the frame) and `tpyc/codegen_cpp/gen_async.py` (its printer). Known limitation: generic
 generators with multiple yield points are guarded with a sema error (template struct +
 out-of-line `__next__()` linkage issue).
 

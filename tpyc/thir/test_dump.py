@@ -117,8 +117,185 @@ def test_dump_includes_async_bodies():
         "    await asyncio.sleep(0)\n"
         "    return n\n\n"
         "def main() -> None:\n    pass\nmain()\n")
-    assert "resumable f:" in out
-    assert "return_values:" in out
+    assert "frame f [" in out
+    # The return terminator's leaf follows it in its block.
+    assert "    -> return\n      resumable_return %n" in out
+
+
+
+def test_dump_prints_the_published_frame():
+    # The frame is printed beside its leaves: captures, locals with their
+    # placement, then the coarse CFG block by block with region stacks and
+    # terminators.
+    out = _dump(
+        "from typing import Iterator\nfrom tpy import int32\n\n"
+        "def g(n: int32) -> Iterator[int32]:\n"
+        "    try:\n"
+        "        for i in range(n):\n"
+        "            yield i\n"
+        "    finally:\n"
+        "        print('done')\n\n"
+        "def main() -> None:\n"
+        "    for x in g(2):\n        print(x)\n"
+        "main()\n")
+    assert "frame g [" in out
+    assert "  param n: int32 capture=VALUE" in out
+    assert "placement=" in out
+    assert "b0 [entry, case]:" in out
+    assert "in try(__finally_0)" in out
+    assert "suspend#0 yield -> b" in out
+    # Each slot's leaf follows its position: the yielded value under the
+    # suspension, the range bound under the loop setup, the helper's print
+    # under the helper.
+    assert "      yield_value: " in out
+    assert "      range_bound: " in out
+    assert "finally helper __finally_0:\n    print(" in out
+    # The loop's machinery fields are published holders.
+    # A range counter belongs to its loop, with the loop's strategy, no
+    # source alias and the names the loop binds, and runs no user code when
+    # dropped.
+    assert ("  holder loop __for_i_0: int32_t of loop@6 range alias=- "
+            "binds=i\n") in out
+    assert "  holder try_finally " not in out  # its finally does not suspend
+
+
+def test_dump_prints_loop_holder_owners():
+    # Each loop holder prints its loop's strategy, the source alias it is
+    # spelled off and the names the loop binds; a source the frame keeps
+    # whole is its own alias, and an `async for` iterator has no loop.
+    out = _dump(
+        "import asyncio\nfrom typing import Iterator\n"
+        "from tpy import int32, Own\n\n\n"
+        "class Box:\n"
+        "    def __init__(self, n: int32) -> None:\n        self.n = n\n\n\n"
+        "class It:\n    i: int32\n\n"
+        "    def __init__(self) -> None:\n        self.i = 0\n\n"
+        "    def __aiter__(self) -> 'It':\n        return self\n\n"
+        "    async def __anext__(self) -> int32:\n"
+        "        self.i += 1\n"
+        "        if self.i > 2:\n            raise StopAsyncIteration\n"
+        "        return self.i\n\n\n"
+        "def make() -> Own[list[Box]]:\n    return [Box(1), Box(2)]\n\n\n"
+        "def g(xs: list[int32]) -> Iterator[int32]:\n"
+        "    for b in make():\n        print(b.n)\n"
+        "    for x in xs:\n        yield x\n\n\n"
+        "async def f() -> int32:\n"
+        "    total = 0\n"
+        "    async for v in It():\n        total += v\n"
+        "    return total\n\n\n"
+        "def main() -> None:\n"
+        "    for x in g([1, 2]):\n        print(x)\n"
+        "    print(asyncio.run(f()))\n\n\n"
+        "main()\n")
+    for line in (
+            "  holder loop __for_src_0: __for_src_0_t of loop@32 whole "
+            "alias=__for_src_0_t binds=b\n",
+            "  holder loop __for_it_1: ::tpy::begin_iter_t<__for_src_1_t> "
+            "of loop@34 begin_end alias=__for_src_1_t binds=x\n",
+            "  holder loop __for_itr_0: ::tpy::aiter_type_t<It> drops\n",
+    ):
+        assert line in out, line
+
+
+_ASYNC_FRAME = (
+    "import asyncio\nfrom tpy import int32\n\n\n"
+    "class Tracer:\n"
+    "    def __enter__(self) -> None:\n        print('enter')\n\n"
+    "    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n"
+    "        print('exit')\n\n\n"
+    "class CM:\n"
+    "    async def __aenter__(self) -> int32:\n        return 7\n\n"
+    "    async def __aexit__(self, exc_type: None, exc_val: None,"
+    " exc_tb: None) -> None:\n        print('aexit')\n\n\n"
+    "async def step(n: int32) -> int32:\n    return n\n\n\n"
+    "async def f(xs: list[int32], sel: int32) -> int32:\n"
+    "    total = 0\n"
+    "    try:\n"
+    "        for x in xs:\n            total += await step(x)\n"
+    "    except ValueError:\n        total = await step(-1)\n"
+    "    finally:\n        await step(0)\n"
+    "    with Tracer():\n        total += await step(1)\n"
+    "    async with CM() as v:\n        total += v\n"
+    "    match sel:\n"
+    "        case 1:\n            y = await step(2)\n            total += y\n"
+    "        case _:\n            pass\n"
+    "    return total\n\n\n"
+    "def main() -> None:\n    print(asyncio.run(f([1, 2], 1)))\n\n\n"
+    "main()\n")
+
+
+def test_dump_prints_async_frame_operations():
+    # Each pseudo-statement and terminator of a coroutine frame by its
+    # operation, the regions with the blocks their edges reach, the handler
+    # entries, and the try-finally holders.
+    out = _dump(_ASYNC_FRAME)
+    for line in (
+            "-> suspend#0 await inline vardecl -> b9",
+            "for_iter_setup uid 0",
+            "-> for_advance uid 0 b7 b8",
+            "-> match_dispatch b22 b24 join b21",
+            "with_enter ctx 0",
+            "async_with_setup ctx 1",
+            "finally_exit __finally_exc_0",
+            "b4 [case] in try finally b2:",
+            "b2 [case] in finally exit b1:",
+            "b10 in except finally b2:",
+            "b14 [case] in with(ctx 0) post b13:",
+            "  handler builtins.ValueError of try finally b2 enters b10",
+            "  holder try_finally __finally_exc_0: std::exception_ptr",
+    ):
+        assert line in out, line
+
+
+def test_dump_prints_the_carried_print_verdicts():
+    # A resume case's re-extraction facts and the receiver are printed
+    # with the frame.
+    out = _dump(
+        "import asyncio\nfrom tpy import int32\n\n\n"
+        "class Box:\n"
+        "    def __init__(self, n: int32) -> None:\n        self.n = n\n\n"
+        "    async def get(self, v: int32 | str) -> int32:\n"
+        "        if isinstance(v, int32):\n"
+        "            await asyncio.sleep(0)\n"
+        "            return v + self.n\n"
+        "        return 0\n\n\n"
+        "def main() -> None:\n    print(asyncio.run(Box(1).get(2)))\n\n\n"
+        "main()\n")
+    assert "  receiver Box const" in out
+    assert "  resume extract v -> " in out
+    assert " param-const" in out
+
+
+def test_dump_prints_the_source_verdict_flags():
+    # A borrowed manager that already renders as a pointer, a loop source
+    # the printer unwraps, and an owned erased await handle are flagged at
+    # their slots.
+    out = _dump(
+        "import asyncio\nfrom typing import Iterator\n"
+        "from tpy import Own, int32\nfrom tpy.coro import Cancellable\n\n\n"
+        "class M:\n"
+        "    def __init__(self) -> None:\n        pass\n\n"
+        "    async def __aenter__(self) -> int32:\n        return 1\n\n"
+        "    async def __aexit__(self, a: None, b: None, c: None) -> None:\n"
+        "        pass\n\n\n"
+        "GM = M()\n\n\n"
+        "async def held() -> int32:\n"
+        "    async with GM as v:\n        return v\n\n\n"
+        "def chars(s: str | None) -> Iterator[str]:\n"
+        "    if s is not None:\n"
+        "        for ch in s:\n            yield ch\n\n\n"
+        "async def one() -> int:\n    return 1\n\n\n"
+        "async def consume(c: Own[Cancellable[int]]) -> int:\n"
+        "    return await c\n\n\n"
+        "async def main_coro() -> None:\n"
+        "    print(await held(), list(chars('ab')), await consume(one()))\n\n\n"
+        "def main() -> None:\n    asyncio.run(main_coro())\n\n\n"
+        "main()\n")
+    flagged = {line.split(":")[0].strip(): line for line in out.splitlines()
+               if line.rstrip().endswith("]") and ": " in line}
+    assert flagged["with_manager"].endswith(" [pointer]")
+    assert flagged["for_iterable"].endswith(" [unwrapped]")
+    assert flagged["await_operand"].endswith(" [owned-erased]")
 
 
 def test_dump_includes_constructors():

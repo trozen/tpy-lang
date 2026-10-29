@@ -78,8 +78,7 @@ def program_facts(compiler, run: Callable, codegen_dir: Path | None = None) -> d
     from tpyc.codegen_cpp.context import CodeGenOptions
     from tpyc.diagnostics import (DiagnosticLevel, SemanticError,
                                   format_diagnostics)
-    from tpyc.thir.dump import (_constructor_lines, _function_lines,
-                                _resumable_lines)
+    from tpyc.thir.dump import _constructor_lines, _function_lines
     from tpyc.thir.lower import iter_module_callables
     from tpyc.thir.lower.functions import iter_module_constructors
 
@@ -165,3 +164,69 @@ def warnings_of(facts: dict) -> list[tuple[int, str]]:
     """Every WARNING diagnostic as (line, message), in reported order."""
     return [(line, message) for level, line, message in facts["diagnostics"]
             if level == "warning"]
+
+
+def _resumable_lines(name: str, leaves) -> list[str]:
+    """A frame's leaves as the survey renders them: grouped by the seam each
+    position renders at, each group in lowering order -- the statement
+    leaves, the match dispatches, the conditions, the return values
+    (terminators', then the returns nested in leaf compounds), the yield
+    values, the await operands and receivers, the header expressions, and
+    the await arguments. The committed renders were taken in this layout,
+    so it stays the survey's view of a frame, independent of `--dump-thir`'s
+    block layout."""
+    from tpyc.thir.dump import _expr, _exprs, _signature_facts, _stmt_lines
+    from tpyc.thir.frame import LeafRole
+    from tpyc.thir.nodes import THIRResumableReturn
+    from tpyc.thir.validate import _iter_children
+
+    def of(*roles):
+        return [leaf for slot, leaf in leaves.leaves.items()
+                if slot.role in roles]
+
+    def nested_returns(node, out):
+        if isinstance(node, THIRResumableReturn):
+            out.append(node)
+        for child in _iter_children(node):
+            nested_returns(child, out)
+
+    nested: list = []
+    for leaf in of(LeafRole.STMT, LeafRole.RAISE, LeafRole.FINALLY_STMT,
+                   LeafRole.MATCH_DISPATCH):
+        nested_returns(leaf, nested)
+    returns = ([r.value for r in of(LeafRole.RETURN) if r.value is not None]
+               + [r.value for r in nested if r.value is not None])
+    lines = [f"resumable {name}:"]
+    if leaves.signature is not None:
+        lines.append(f"  signature{_signature_facts(leaves.signature)}")
+    groups = (
+        ("leaves", of(LeafRole.STMT, LeafRole.RAISE, LeafRole.FINALLY_STMT),
+         True),
+        ("match_dispatches", of(LeafRole.MATCH_DISPATCH), True),
+        ("conds", of(LeafRole.COND), False),
+        ("return_values", returns, False),
+        ("yield_values", of(LeafRole.YIELD_VALUE), False),
+        ("suspend_exprs", of(LeafRole.AWAIT_OPERAND, LeafRole.AWAIT_RECEIVER),
+         False),
+        ("region_exprs", of(LeafRole.WITH_MANAGER, LeafRole.FOR_ITERABLE,
+                            LeafRole.ASYNC_FOR_ITERABLE, LeafRole.RANGE_BOUND),
+         False),
+    )
+    for label, items, stmts in groups:
+        if not items:
+            continue
+        lines.append(f"  {label}:")
+        for i, item in enumerate(items):
+            if stmts:
+                rendered = _stmt_lines(item, 0)
+                lines.append(f"    [{i}] {rendered[0].lstrip()}"
+                             if rendered else f"    [{i}]")
+                lines.extend(f"    {ln}" for ln in rendered[1:])
+            else:
+                lines.append(f"    [{i}] {_expr(item)}")
+    args = of(LeafRole.AWAIT_ARGS)
+    if args:
+        lines.append("  await_args:")
+        for i, a in enumerate(args):
+            lines.append(f"    [{i}] ({_exprs(a)})")
+    return lines

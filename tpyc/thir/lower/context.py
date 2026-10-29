@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
+from ..frame import THIRResumableFrame
 from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
                             TpyNamedExpr, TpyTupleUnpack, TpyVarDecl,
@@ -1659,7 +1660,8 @@ _BRANCH_SCOPED_SETS = (
 # the caller registers in its own frame, outside the inner push/pop.
 #   unhandled_hoists -- function-scoped residue ledger; branch drains ARE the
 #       accounting, restoring them would fake un-lowered hoists.
-#   nested_returns -- function-scoped resumable accumulator (the seam table).
+#   nested_returns -- function-scoped resumable accumulator (counted to
+#       tell whether a leaf compound returns).
 #   inline_narrowed -- condition-scoped: saved/restored by _lower_narrow_cond
 #       within a single condition, never live across statements.
 #   tparam_bounds -- init-only per-function fact.
@@ -1730,7 +1732,7 @@ _SHADOWED_NARROW_FACTS = ("narrowed", "subject_union", "union_layouts",
 # Shadowed by `shadow_scope` itself rather than through a table.
 _SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self")
 _LC_NOT_NAME_KEYED = (
-    "analyzer", "func", "prescan", "render_type", "render_type_stored",
+    "analyzer", "func", "frame", "prescan", "render_type", "render_type_stored",
     "render_resolve", "render_concept", "record_name", "self_cpp",
     "self_is_pointer", "error_return_cpp", "overload_stub_return",
     "overload_terminated", "resumable_leaf_mode", "placement",
@@ -1840,7 +1842,7 @@ class _LowerCtx:
     spell through it (val_or_ref<T> for Ref types, PendingView resolution),
     so any arm rendering that spelling must use this -- not `render_type` --
     for those slots."""
-    __slots__ = ("analyzer", "func", "prescan", "render_type",
+    __slots__ = ("analyzer", "func", "frame", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "forwarded_map",
                  "params", "in_nested_def", "capture_sites",
@@ -1876,6 +1878,10 @@ class _LowerCtx:
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
+        # The published frame whose leaves this lowers (its holders: the
+        # pointer slots, the kept-whole loop sources, the promoted with
+        # managers); None outside a resumable body.
+        self.frame: 'THIRResumableFrame | None' = None
         self.capture_sites = CaptureSites(func, eligible=not (
             top_level_scope or func.is_async or func.is_generator or func.error_return
             or func.type_params or params_override is not None or analyzer.overload_groups.get(func)
@@ -2013,9 +2019,8 @@ class _LowerCtx:
         # immediate element (a pointer-form arm deeper in renders ill-formed
         # C++), so this flag exists to REJECT those deeper positions.
         self.in_container_elem = False
-        # Returns nested in leaf compounds (THIRResumableReturn), collected
-        # here so `lower_resumable` can register their values into the body's
-        # `return_values` table (the seam's id(ast)-keyed lookup).
+        # Returns nested in leaf compounds (THIRResumableReturn), counted so
+        # a leaf compound can tell whether its body returns.
         self.nested_returns: list = []
         # True while lowering a helper-based finally body: a `return` there
         # needs the helper's Poll-replay / __finally_stop renders, a named

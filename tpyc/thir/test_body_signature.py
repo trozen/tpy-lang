@@ -9,9 +9,9 @@ import pytest
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, Representation, VoidType
 from . import nodes as th
-from .dump import _callee_lines, _resumable_lines
+from .dump import _callee_lines, _frame_lines
 from .testutil import _compile, _entry
-from .validate import THIRValidationError, validate_function, validate_resumable_body
+from .validate import THIRValidationError, validate_function, validate_resumable_leaves
 
 SOURCE = """\
 import asyncio
@@ -103,7 +103,7 @@ def _fns(ctx, name: str) -> list[th.THIRFunction]:
     return found
 
 
-def _resumable(ctx, name: str) -> th.THIRResumableBody:
+def _resumable(ctx, name: str) -> th.THIRResumableLeaves:
     return next(body for func, body in ctx.thir_resumables.items() if func.name == name)
 
 
@@ -140,7 +140,8 @@ def test_resumable_bodies(ctx) -> None:
     assert twice.param_types == (INT32,) and twice.passings == (ParamPassing.VALUE,)
     assert twice.return_representation is Representation.STORAGE
     assert _resumable(ctx, "count").signature.passings == (ParamPassing.VALUE,)
-    assert _resumable_lines("twice", _resumable(ctx, "twice"))[1] == "  signature(int32: value) -> storage"
+    twice_leaves = _resumable(ctx, "twice")
+    assert _frame_lines(twice_leaves.frame, twice_leaves)[1] == "  signature(int32: value) -> storage"
 
 
 def test_getter_and_twin_results(ctx) -> None:
@@ -184,4 +185,4 @@ def test_validator_holds_a_lowered_body_to_its_signature(ctx) -> None:
     validate_function(replace(eq, signature=None))
     twice = _resumable(ctx, "twice")
     with pytest.raises(THIRValidationError, match="without a valid signature"):
-        validate_resumable_body("twice", replace(twice, signature=None), lowered=True)
+        validate_resumable_leaves("twice", replace(twice, signature=None), lowered=True)

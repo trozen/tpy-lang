@@ -42,7 +42,7 @@ from ..thir.lower import iter_module_callables
 from ..thir.validate import THIRValidationError
 from ..thir.nodes import (THIRCoerce, THIRConsumingIter, THIRFieldAccess,
                           THIRFormConvert, THIRFunction, THIRMethodCall,
-                          THIRMove, THIRName, THIRNode, THIRResumableBody,
+                          THIRMove, THIRName, THIRNode, THIRResumableLeaves,
                           THIRReturn, THIRSelf, THIRSubscript)
 from ..thir.testutil import _compile as _compile_program, _entry
 from ..thir.source import Held
@@ -546,7 +546,7 @@ def _emitted_reads(compiler: object, entry: object, source: str
         if not dataclasses.is_dataclass(node) or isinstance(node, type):
             return
         if not isinstance(node, (THIRNode, THIRFunction,
-                                 THIRResumableBody)) or id(node) in seen:
+                                 THIRResumableLeaves)) or id(node) in seen:
             return
         seen.add(id(node))
         if isinstance(node, _READS) and _at(node) is not None:

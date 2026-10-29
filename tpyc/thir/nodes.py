@@ -30,7 +30,7 @@ from ..typesys import (
     TupleType, unwrap_qualifiers,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
-    unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
+    return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
 from .source import BindingRepr, SelectResult, Source, TraitAbi
@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from .storage_facts import THIRStorageFacts
     # The shared binding tags carry no runtime dependency on codegen here.
     from ..codegen_cpp.forms import LocalBinding
+    from .frame import THIRFrameHolder, THIRResumableFrame
+    from ..parse.nodes import TpyMatchCase
 
 
 class Form(Enum):
@@ -2950,23 +2952,21 @@ class THIRCoroHandleMove(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRResumableReturn(THIRStmt):
-    """A `return` nested in a NON-SUSPENDING leaf compound of a routed
-    resumable body (the CFG only splits compounds at suspensions, so
+    """A `return` of a routed resumable body: the leaf of a return
+    terminator's slot, and a return nested in a NON-SUSPENDING leaf
+    compound (the CFG only splits compounds at suspensions, so
     `if n <= 1: return 1` stays a whole leaf TpyIf).
 
     Return SCAFFOLDING (done-state, Poll wrap, finally-chain walk,
-    pending-return slots) is skeleton emission in every position; this node
-    only marks the position inside THIR-emitted leaf code. The emitter calls
-    back into the skeleton via `_EmitState.resumable_return_hook`, passing
-    `ast_stmt` -- the skeleton's `_make_async_return` /
-    `_make_generator_resumable_return` then re-enters the leaf seam
-    (`render_return_value`, keyed by id(ast_stmt)) for the value render, the
-    same table entry ReturnT terminators use. `value` is that lowered value
-    (None for a bare return); the lowering registers it into the body's
-    `return_values` table -- it is not read at emit. `deferred` carries the
-    same for a sema-stamped finally-deferred return, registered into
-    `deferred_returns`."""
-    ast_stmt: object
+    pending-return slots) is printer emission in every position; this node
+    carries what THIR lowered for it. The emitter hands the node itself to
+    `_EmitState.resumable_return_hook`, and the printer's return makers
+    render from it: `value` is the lowered operand (None for a bare return,
+    or at a slot that takes none); `deferred` the capture recipe of a
+    sema-stamped finally-deferred return (None exactly when unstamped:
+    the lowering rejects a stamped shape it has no recipe for);
+    `has_operand` whether the source return names an operand."""
+    has_operand: bool = True
     value: 'THIRExpr | None' = None
     deferred: 'THIRStmt | None' = None
 
@@ -3131,7 +3131,7 @@ class THIRFrameNestedDef(THIRStmt):
     """A nested `def` at its statement position inside a RESUMABLE frame
     body: the function itself is a frame MEMBER (signature + struct decl
     stay gen_async scaffolding, callable from every resume case; the member
-    BODY lowers into `THIRResumableBody.nested_def_bodies` and emits via
+    BODY lowers into the leaf of the frame's nested-def slot and emits via
     the leaf seam), so the statement renders only the
     `// def {name}: frame member` marker line under its ordinary source
     comment. `loc` drives the source comment; the marker spells the PYTHON
@@ -3629,8 +3629,8 @@ class THIRForEach(THIRStmt):
     # the capture is `__for_src_N.emplace(<src>)` and the iterators range over
     # `(*__for_src_N)`, because such a binding outlives the state block an
     # `auto __obj_N` would die with. Decided by the resumable frame prescan,
-    # which is the pass that places the field.
-    frame_src_field: 'str | None' = None
+    # which is the pass that places the field: the frame's LOOP holder.
+    frame_src_field: 'THIRFrameHolder | None' = None
     # A container reserved to the source's size right after the capture
     # (a list comprehension over a sized source; see THIRForRange).
     presize: 'str | None' = None
@@ -3672,7 +3672,7 @@ class THIRForIterProto(THIRStmt):
     iterable_lvalue: bool = True
     orelse: tuple[THIRStmt, ...] = ()
     # The frame field owning this loop's source -- see THIRForEach.
-    frame_src_field: 'str | None' = None
+    frame_src_field: 'THIRFrameHolder | None' = None
     # See THIRForRange.
     source_in_enclosing: bool = False
 
@@ -3719,7 +3719,7 @@ class THIRWithItem:
     `manager_borrowed` mirrors sema's fact (an lvalue non-value manager binds
     `auto& __ctx_N = ...`; an rvalue owns via `auto`). `deref_manager` is the
     already-pointer-source deref (`*(...)`) for a borrowed manager rendered as
-    `T*` (an F2 pointer-local name) -- mirrors `is_already_pointer_source` for
+    `T*` (an F2 pointer-local name) -- the `_already_pointer_source` answer for
     the admitted subset. `can_suppress` / `takes_exc_val` are sema's
     `__exit__` facts (bool return / an `exc_val: Optional[BaseException]`
     second param); they pick the catch arms and the exc argument spellings.
@@ -3730,10 +3730,10 @@ class THIRWithItem:
     `__enter__()`'s result past the block, so the manager hoists to a
     function-scope `std::optional<CM> __slot_N` and `__ctx_N` binds through
     it); None keeps the plain `auto __ctx_N = ...` bind. `frame_ctx` is the
-    resumable leaf twin: the owned manager's `__with_ctx_<K>` frame-field
-    number (`resumable_state(func).with_owned_ctx_map`, declared by the
-    skeleton), rendering `__with_ctx_K.emplace(...)` + the `auto& __ctx_N`
-    bind through it; None keeps the plain bind."""
+    resumable leaf twin: the WITH_CONTEXT holder homing the owned manager
+    in the frame (`THIRResumableFrame.with_owned_ctx_map`, declared by the
+    printer), rendering `<holder>.emplace(...)` + the `auto& __ctx_N` bind
+    through it; None keeps the plain bind."""
     binding: 'BindingRepr | None' = field(
         default=None, kw_only=True, compare=False, repr=False)
     ctx_expr: THIRExpr
@@ -3745,10 +3745,10 @@ class THIRWithItem:
     takes_exc_val: bool
     target_cpp: 'str | None' = None
     manager_hoist_cpp: 'str | None' = None
-    frame_ctx: 'int | None' = None
-    # FRAME_POINTER over a by-value `__enter__` result: the frame field the
-    # object lands in.
-    target_field: 'str | None' = None
+    frame_ctx: 'THIRFrameHolder | None' = None
+    # FRAME_POINTER over a by-value `__enter__` result: the frame's PTR_SLOT
+    # holder the object lands in.
+    target_field: 'THIRFrameHolder | None' = None
 
 
 @dataclass(frozen=True)
@@ -4049,10 +4049,10 @@ class THIRMatchArmEntry:
     pre_bindings: tuple[THIRMatchBinding, ...] = ()
     guard: 'THIRExpr | None' = None
     # Resumable MatchDispatch mode: the arm BODY lives in the state machine
-    # (an ordinary BB chain the skeleton walks), so `body` stays empty and
-    # the emit calls the skeleton's arm hook with this id(case.body) key at
+    # (an ordinary block chain the printer walks), so `body` stays empty and
+    # the emit calls the printer's arm hook with the arm's source case at
     # the body point instead. None for sync matches.
-    body_key: 'int | None' = None
+    arm_case: 'TpyMatchCase | None' = field(default=None, compare=False)
     # Union tier: the arm's numeric variant index (`_variant_index` over
     # the wrapper's full member ordering, computed at lowering) and the
     # `__case_{i}` extraction alias -- emitted as
@@ -4483,10 +4483,11 @@ def receiver_param(receiver: THIRBorrowedRecord) -> THIRParam:
                      passing=receiver.type.param_passing(receiver.readonly))
 
 
-def effective_params(fn: THIRFunction) -> tuple[THIRParam, ...]:
-    """The parameters a callee signature of `fn` binds, in order: the
+def effective_params(root: 'THIRFunction | THIRConstructor | THIRResumableLeaves | THIRResumableFrame'
+                     ) -> tuple[THIRParam, ...]:
+    """The parameters a callee signature of body `root` binds, in order: the
     receiver of a method body first, then the declared parameters."""
-    return fn.params if fn.receiver is None else (receiver_param(fn.receiver), *fn.params)
+    return body_header(root).bound_params
 
 
 @dataclass(frozen=True)
@@ -4556,73 +4557,131 @@ class THIRInheritedConstructor:
 
 
 @dataclass(frozen=True)
-class THIRResumableBody:
-    """A routed resumable (async) body's lowered LEAF content, keyed by the
-    AST node the shared state-machine skeleton holds.
+class THIRResumeExtraction:
+    """What a resume case's re-extraction of one narrowing subject is
+    spelled from, decided from the frame's facts: the subject's declared
+    type (the frame's receiver fact for its `self`), whether it is that
+    receiver, the polymorphic cast's const and pointer argument (the body's
+    one decision, `_poly_cast_context`, with the inner type of the source
+    it casts from), whether it already reads as a
+    pointer, the frame field it reads (a forwarded alias reads its
+    parameter's) and whether that field is a `frame_slot`, and, for a
+    variant subject, whether a value or wrapper parameter binds the alias
+    const and whether it is a pointer variant with const pointees."""
+    declared: TpyType | None
+    # The type of the frame field itself, None for a subject that is no
+    # parameter or frame local (the receiver).
+    slot_type: TpyType | None
+    receiver: bool
+    cast_const: bool
+    cast_arg: str
+    source_inner: TpyType | None
+    indirect: bool
+    storage: str
+    slot_backed: bool
+    param_const: bool
+    ptr_variant: bool
+    ptr_const: bool
 
-    The skeleton (`resumable_cfg` + `gen_async`) owns the frame struct, case
-    labels, region replay and suspend/resume plumbing -- structural emission,
-    like signatures. Every user-source leaf renders through these maps; a
-    missing key is a hard error (lowering and seam must agree), never a
-    silent per-leaf skip.
 
-    `leaves` covers BB leaf statements and RaiseT terminator statements;
-    `conds` the Branch terminator conditions; `await_args` each suspension's
-    sub-coro emplace arguments (keyed by the await's operand call);
-    `return_values` the value expression of ReturnT terminators and of
-    `_make_async_return`'s value renders (keyed by the TpyReturn);
-    `yield_values` the generator-shape yield value (keyed by the TpyYield --
-    the coerce carrying the yield-type target is baked, so the render is
-    position-blind, unlike the async return)."""
+@dataclass(frozen=True)
+class THIRResumableLeaves:
+    """A published frame's lowered leaves, published when the body's
+    leaves are lowered -- after the frame (`THIRResumableFrame`) and its
+    decisions, which they read.
+
+    `leaves` maps each of the frame's leaf slots (`THIRLeafSlot`) to its
+    lowering, whose form is fixed by the slot's role: a statement for a
+    block / raise / finally-helper statement, an expression for a
+    condition, a header expression or an await operand, a
+    `THIRResumableReturn` for a return, the argument tuple of an inline
+    await, a `THIRLent` loop step, the `THIRMatch` of a suspending match,
+    and a nested def's member statements. A slot the printer reaches with
+    no leaf is a lowering / printer disagreement and a hard error, never a
+    silent skip.
+
+    `params` are the frame's parameters (`THIRResumableFrame.params`, its
+    names and types) completed with the layout facts the binding table
+    decides as the leaves lower; the frame itself is never changed after it
+    is published. `signature` is the contract the body lowers under."""
+    frame: 'THIRResumableFrame'
     leaves: 'IdentityMap'
-    conds: 'IdentityMap'
-    await_args: 'IdentityMap'
-    return_values: 'IdentityMap'
-    yield_values: 'IdentityMap' = field(default_factory=IdentityMap)
+    params: tuple[THIRParam, ...] = ()
+    signature: THIRCallableSignature | None = None
     # The yield slot's placement: a value or owning slot may flush a
     # temporary ahead of its `return`; one that lends hands out a pointer the
     # temporary would not outlive, so it hosts none.
     yield_hosts_temps: bool = False
-    # ERASED/BORROWED await operands (keyed by the operand expr) and
-    # bound-method await receivers (keyed by the receiver expr, R5):
-    # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf
-    # renders the bare expression.
-    suspend_exprs: 'IdentityMap' = field(default_factory=IdentityMap)
-    # Region/loop pseudo-statement renders (keyed by the AST EXPRESSION
-    # node the skeleton holds): the with-region manager
-    # (`item.context_expr`), the for-loop iterable, and each range() bound.
-    # One map for all three kinds -- the skeleton keeps its emplace / &(..) /
-    # static_cast wrap, the leaf renders the bare expression.
-    region_exprs: 'IdentityMap' = field(default_factory=IdentityMap)
-    # A borrow-form tuple loop var's step (keyed by the for statement),
-    # lent as the loop var's borrow tuple (`THIRLent`).
-    loop_steps: 'IdentityMap' = field(default_factory=IdentityMap)
-    # MatchDispatch dispatches (keyed by the TpyMatch): the whole
-    # type-aware dispatch (subject + labels + guards) lowered through the
-    # sync match tiers with arm BODIES replaced by body_key hooks -- the
-    # skeleton walks the arm BBs through its arm emitter at those points.
-    match_dispatches: 'IdentityMap' = field(default_factory=IdentityMap)
-    # Frame nested defs (keyed by the nested TpyFunction): the
-    # member-function BODY statements, lowered under the nested function's
-    # own per-function scope with the frame classifications kept (a member
-    # reaches frame locals through the frame's fields via implicit this).
-    # The skeleton keeps the signature/struct-decl lines; the statement
-    # position keeps its THIRFrameNestedDef marker.
-    nested_def_bodies: 'IdentityMap' = field(default_factory=IdentityMap)
     # The extraction alias each narrowing subject gets when a resume case
     # re-establishes its fact (keyed by the subject name). The lowering is
-    # the only speller: the skeleton reads this rather than re-deriving a
-    # name from the frame layout, so body reads and skeleton declarations
+    # the only speller: the printer reads this rather than re-deriving a
+    # name from the frame layout, so body reads and printer declarations
     # cannot disagree.
     narrow_aliases: 'Mapping[str, str]' = field(default_factory=dict)
-    # Sema-stamped finally-deferred returns (keyed by the TpyReturn):
-    # the capture recipe the skeleton's return scaffolding consults. Present
-    # for EVERY stamped return of a routed body -- lowering rejects the body
-    # when the recipe table does not cover the shape -- so the seam never
-    # decides anything at emit and a missing entry is a disagreement.
-    deferred_returns: 'IdentityMap' = field(default_factory=IdentityMap)
-    # The contract the body lowers under (`THIRFunction.signature`).
-    signature: THIRCallableSignature | None = None
+    # The manager, `async for` source and await operand slots whose source
+    # already renders as a `T*` (a pointer local or global, a `Ptr[T]`
+    # value): the printer binds or derefs the render as it is, never
+    # through `&(...)`.
+    pointer_sources: IdentitySet = field(default_factory=IdentitySet)
+    # The loop source slots the leaf hands over bare for a narrowed
+    # value-Optional name or field: the printer unwraps the render `(*v)`.
+    unwrapped_sources: IdentitySet = field(default_factory=IdentitySet)
+    # The borrowed await operands whose declared type is an owned erased
+    # handle (`Own[P]` of a dynamic protocol): the sub-future points at the
+    # handle's payload.
+    owned_erased_operands: IdentitySet = field(default_factory=IdentitySet)
+    # Per narrowing subject, what its resume-case extraction is spelled
+    # from (`THIRResumeExtraction`); the printer writes the declaration.
+    resume_extractions: 'Mapping[str, THIRResumeExtraction]' = field(
+        default_factory=dict)
+
+
+@dataclass(frozen=True)
+class THIRBodyHeader:
+    """What a body declares to its callers, read the same way off every
+    body root (`body_header`): its name, its declared parameters, the
+    receiver a method binds ahead of them, and the contract it lowers under
+    (None where none is published)."""
+    name: str
+    params: tuple[THIRParam, ...]
+    receiver: THIRBorrowedRecord | None
+    signature: THIRCallableSignature | None
+
+    @property
+    def bound_params(self) -> tuple[THIRParam, ...]:
+        """The parameters a call binds, in order: the receiver first."""
+        return (self.params if self.receiver is None
+                else (receiver_param(self.receiver), *self.params))
+
+
+def body_header(root: 'THIRFunction | THIRConstructor | THIRResumableLeaves | THIRResumableFrame'
+                ) -> THIRBodyHeader:
+    """The one reading of a body root's header: a function's, a
+    constructor's, or a resumable frame's (its leaves, or the frame before
+    its leaves are lowered). A constructor binds no
+    receiver -- its `self` is the record it builds and hands back
+    (`constructor_signature`); a frame's contract is its leaves'."""
+    if isinstance(root, THIRFunction):
+        return THIRBodyHeader(root.name, root.params, root.receiver, root.signature)
+    if isinstance(root, THIRConstructor):
+        return THIRBodyHeader(f"{root.record_name}.__init__", root.params, None,
+                              constructor_signature(root) if root.record_layout is not None else None)
+    if isinstance(root, THIRResumableLeaves):
+        return replace(body_header(root.frame), params=root.params,
+                       signature=root.signature)
+    return THIRBodyHeader(root.func.name, root.params, root.receiver, None)
+
+
+def constructor_signature(ctor: THIRConstructor) -> THIRCallableSignature:
+    """The callable a constructor is: a function of its parameters handing
+    the caller its record by value (`Own[R]`), built where the caller
+    receives it."""
+    result = OwnType(ctor.record_layout.type)
+    passings = tuple(p.passing for p in ctor.params)
+    return THIRCallableSignature(
+        tuple(unwrap_ref_type(p.type) for p in ctor.params), result,
+        passings=passings if all(p is not None for p in passings) else None,
+        return_representation=return_representation(result))
 
 
 def hoists_declaration(node: THIRNode) -> bool:

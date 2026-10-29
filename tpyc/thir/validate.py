@@ -38,8 +38,8 @@ expression.
 
 Every lowered body is validated, whatever its shape: ordinary functions and
 constructors through `validate_function` / `validate_constructor`, and the
-resumable-frame bodies -- whose leaves the skeleton holds apart in seam
-tables rather than one linear body -- through `validate_resumable_body`.
+resumable-frame bodies -- whose leaves sit at the frame's slots rather than
+in one linear body -- through `validate_resumable_leaves`.
 A module's callee definitions are checked together by
 `validate_definitions`, once the codegen pass has lowered every function
 body of the module.
@@ -84,7 +84,8 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack,
     THIRCoroHandleMove, THIRMatch, THIRMatchBinding, THIRMatchFoldBind,
     THIRWith, THIRWithItem, WithTargetArm, THIRFrameSlotWrite, TupleElemBind,
-    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableLeaves,
+    THIRResumableReturn, THIRResumeExtraction, THIRStmt, THIRLent, THIRSelf,
     PtrSlotKind, THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral,
     THIRTupleLayout, THIROwnedRecord, THIRStoragePlacement,
@@ -99,6 +100,16 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
     hoists_declaration, record_rvalue_storage)
+from .frame import (
+    FrameCaptureKind, FrameLocalLayout, FrameLoopOwner, THIRAsyncWithSetup, THIRAwaitSuspension, THIRBlock, THIRBranch,
+    THIRExceptRegion, THIRFall, THIRFinallyExit, THIRFinallyRegion,
+    THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
+    THIRLeafSlot, LeafRole, THIRLoopSourceRegion, THIRMatchDispatch,
+    HolderRole, THIRFrameHolder,
+    THIRResumableFrame, THIRSuspend, THIRTryRegion, THIRUnreachable,
+    THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
+)
+from ..parse.nodes import TpyAwait, TpyStmt
 from .source import UNBOUND
 from .temp_plan import if_chain
 
@@ -1736,70 +1747,389 @@ def validate_stmts(owner: str, stmts, return_type=None, *,
         _LOWERED.reset(token)
 
 
-def validate_resumable_body(owner: str, body: THIRResumableBody, *,
-                            lowered: bool = False) -> None:
+def validate_resumable_leaves(owner: str, leaves: THIRResumableLeaves, *,
+                              lowered: bool = False) -> None:
     token = _LOWERED.set(lowered)
     try:
-        _validate_resumable_body(owner, body)
+        _validate_resumable_leaves(owner, leaves)
     finally:
         _LOWERED.reset(token)
 
 
-def _validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
-    """Same structural gate the ordinary bodies get, applied to a resumable
-    frame's leaf tables.
+# The statement roles, and the expression roles a lone expression fills.
+_STMT_ROLES = frozenset({LeafRole.STMT, LeafRole.RAISE, LeafRole.FINALLY_STMT})
+_EXPR_ROLES = frozenset({
+    LeafRole.COND, LeafRole.YIELD_VALUE, LeafRole.AWAIT_OPERAND,
+    LeafRole.AWAIT_RECEIVER, LeafRole.WITH_MANAGER, LeafRole.FOR_ITERABLE,
+    LeafRole.ASYNC_FOR_ITERABLE, LeafRole.RANGE_BOUND})
 
-    The frame skeleton holds the statements/expressions apart in identity-keyed
-    maps instead of one linear body, so each seam is walked at the flush
-    right its lowering grants. `return_type` stays out: a `return` in a
-    resumable is a CFG terminator whose value renders through
-    `return_values`, so no THIRReturn statement reaches a leaf, and the
-    frame's declared return type is not the sink type of that value render
-    (the scaffolding binds it to its own `__tpy_async_ret` slot).
-    `nested_def_bodies` is validated where it is lowered, under the member's
-    own return type."""
-    if _LOWERED.get() and (body.signature is None or _signature_problem(body.signature)):
-        _fail(owner, body, "lowered body without a valid signature")
-    for stmt in body.leaves.values():
-        _walk(owner, stmt)
-    for stmt in body.match_dispatches.values():
-        _walk(owner, stmt)
-    # Temp-free seams: their lowering never grants a flush right, so an
-    # arg temp reaching one is a lowering bug.
-    for expr in body.return_values.values():
-        _walk(owner, expr)
-    # A yield value is flushable (the skeleton flushes ahead of its
-    # `return`) exactly where its slot hosts temporaries.
-    for expr in body.yield_values.values():
-        _walk(owner, expr, argtemp_ok=body.yield_hosts_temps)
-    # The deferred-return recipe is consulted by the return scaffolding, which
-    # renders the capture into an `auto* p = ...;` line with no flush point.
-    for stmt in body.deferred_returns.values():
-        if stmt.capture is not None:
-            _walk(owner, stmt.capture)
-        for part in _deferred_leaf_parts(stmt.tuple_parts):
-            _walk(owner, part.expr)
-    # Flushable seams: the Branch condition, the sub-coro emplace, the await
-    # operand and the sync for-head source are positions where the skeleton
-    # flushes temps ahead of the line. For a condition the flush lands INSIDE
-    # the `case` block, so its temp is rebuilt on every re-entry -- which is
-    # what a fresh container argument in a loop head means.
-    for expr in body.conds.values():
-        _walk(owner, expr, argtemp_ok=True)
-    # Both maps below pool entries from several populate sites, not all of
-    # which grant temps -- `suspend_exprs` holds the await operand
-    # (flushable) plus the bound-method receiver; `region_exprs` the sync
-    # for-head iterable and range bounds (flushable) plus the with-manager
-    # and the async-for iterable. Pooling by expression identity leaves no way
-    # to tell them apart here, so both are walked at the looser right: a temp
-    # reaching one of the three temp-free seams pooled in (the bound-method
-    # receiver, the with-manager and the async-for iterable), where the
-    # skeleton has no flush point, is NOT caught.
-    for args in body.await_args.values():
-        # The tuple IS the emplace's arg list, so it is walked the way the
-        # call-node arm walks a call's args.
-        _walk_arg_list(owner, args, argtemp_ok=True)
-    for expr in body.suspend_exprs.values():
-        _walk(owner, expr, argtemp_ok=True)
-    for expr in body.region_exprs.values():
-        _walk(owner, expr, argtemp_ok=True)
+
+def _validate_resumable_leaves(owner: str,
+                               leaves: THIRResumableLeaves) -> None:
+    """Same structural gate the ordinary bodies get, applied to a resumable
+    frame's leaves: every leaf is keyed by a slot of its frame, has the
+    form its slot's role fixes, and is walked at the flush right of its
+    position -- an argument temporary only where the printer flushes ahead
+    of the line (`LeafRole.flushes`; a yield value where its slot hosts
+    temporaries). A lowered body fills every slot the printer renders
+    through a leaf (`_renders_without_leaf` names the one it does not).
+
+    `return_type` stays out: a `return` in a resumable is a terminator
+    whose value the printer's scaffolding binds to its own
+    `__tpy_async_ret` slot, so the frame's declared return type is not the
+    sink type of that value render. A nested def's member body is
+    validated where it is lowered, under the member's own return type."""
+    if _LOWERED.get() and (leaves.signature is None
+                           or _signature_problem(leaves.signature)):
+        _fail(owner, leaves, "lowered body without a valid signature")
+    if _LOWERED.get():
+        if (tuple(p.name for p in leaves.params)
+                != tuple(p.name for p in leaves.frame.params)):
+            _fail(owner, leaves, "leaf params do not mirror the frame's")
+        for param in leaves.params:
+            _check_param(owner, param)
+    own = {id(s) for s in leaves.frame.slots()}
+    for slot, leaf in leaves.leaves.items():
+        if not isinstance(slot, THIRLeafSlot) or id(slot) not in own:
+            _fail(owner, leaves, "a leaf is keyed by no slot of its frame")
+        role = slot.role
+        if role in _STMT_ROLES or role is LeafRole.MATCH_DISPATCH:
+            if not isinstance(leaf, THIRStmt):
+                _fail(owner, leaves, f"{role.value} slot holds "
+                      f"{type(leaf).__name__}")
+            _walk(owner, leaf)
+        elif role in _EXPR_ROLES:
+            if not isinstance(leaf, THIRExpr):
+                _fail(owner, leaves, f"{role.value} slot holds "
+                      f"{type(leaf).__name__}")
+            flush = (leaves.yield_hosts_temps
+                     if role is LeafRole.YIELD_VALUE else role.flushes)
+            _walk(owner, leaf, argtemp_ok=flush)
+        elif role is LeafRole.AWAIT_ARGS:
+            # The tuple IS the emplace's arg list, so it is walked the way
+            # the call-node arm walks a call's args.
+            _walk_arg_list(owner, leaf, argtemp_ok=True)
+        elif role is LeafRole.RETURN:
+            if not isinstance(leaf, THIRResumableReturn):
+                _fail(owner, leaves, "return slot holds "
+                      f"{type(leaf).__name__}")
+            # The scaffolding renders the value and the deferred capture
+            # into lines with no flush point.
+            if leaf.value is not None:
+                _walk(owner, leaf.value)
+            if leaf.deferred is not None:
+                if leaf.deferred.capture is not None:
+                    _walk(owner, leaf.deferred.capture)
+                for part in _deferred_leaf_parts(leaf.deferred.tuple_parts):
+                    _walk(owner, part.expr)
+        elif role is LeafRole.LOOP_STEP:
+            if not isinstance(leaf, THIRLent):
+                _fail(owner, leaves, "loop step slot holds "
+                      f"{type(leaf).__name__}")
+        elif role is not LeafRole.NESTED_DEF:
+            _fail(owner, leaves, f"leaf for unknown role {role}")
+    if _LOWERED.get():
+        for slot in leaves.frame.slots():
+            if slot not in leaves.leaves and not _renders_without_leaf(slot):
+                _fail(owner, leaves, f"a {slot.role.value} slot has no leaf")
+    _validate_leaf_verdicts(owner, leaves, own)
+
+
+# The slot roles each carried print verdict is decided at.
+_VERDICT_ROLES = (
+    ("pointer_sources", frozenset({LeafRole.WITH_MANAGER, LeafRole.ASYNC_FOR_ITERABLE,
+                                   LeafRole.AWAIT_OPERAND})),
+    ("unwrapped_sources", frozenset({LeafRole.FOR_ITERABLE})),
+    ("owned_erased_operands", frozenset({LeafRole.AWAIT_OPERAND})),
+)
+
+
+def _validate_leaf_verdicts(owner: str, leaves: THIRResumableLeaves,
+                            own: 'set[int]') -> None:
+    """Each source-derived verdict names a slot of the frame at a role it
+    is decided for, and the resume extractions cover exactly the
+    narrowing subjects the aliases spell."""
+    for name, roles in _VERDICT_ROLES:
+        for slot in getattr(leaves, name):
+            if (not isinstance(slot, THIRLeafSlot) or id(slot) not in own
+                    or slot.role not in roles):
+                _fail(owner, leaves, f"{name} holds a slot it is not decided for")
+    if set(leaves.resume_extractions) != set(leaves.narrow_aliases):
+        _fail(owner, leaves, "resume extractions disagree with the narrowing aliases")
+    for var, sub in leaves.resume_extractions.items():
+        if (not isinstance(sub, THIRResumeExtraction)
+                or sub.receiver and (sub.indirect or leaves.frame.receiver is None)
+                or sub.ptr_const and not sub.ptr_variant
+                or not isinstance(sub.cast_arg, str) or not sub.cast_arg):
+            _fail(owner, leaves, f"invalid resume extraction for {var}")
+
+
+def _renders_without_leaf(slot: THIRLeafSlot) -> bool:
+    """The one slot the printer renders from the frame alone: the return
+    of a `return await` resume block, whose resume step returns the polled
+    result itself."""
+    return (slot.role is LeafRole.RETURN
+            and isinstance(slot.source.value, TpyAwait))
+
+
+# -- The resumable frame, validated where it is published
+
+def _validate_frame_holders(owner: str, frame: THIRResumableFrame) -> None:
+    """Each machinery table holds holders of its role, no two holders share a
+    C++ member, and every reference to one -- a held loop source, a homed
+    manager, a write site's pointer slot -- names a holder of the frame; a
+    bound-handle await polls a local of the frame. Only a LOOP holder names
+    a loop, and that loop is one of the frame's, with the strategy record
+    and alias the frame keeps for it (`_check_loop_owner`); only an `async
+    for` iterator has no loop, and it is destroyed as running user code; a
+    held loop source names the loop it is held for."""
+    names: set[str] = set()
+    loops = ({id(s) for s in frame.for_loop_info}
+             | {id(s) for s in frame.for_src_fields})
+    sync_fields = ({fn for s, info in frame.for_loop_info.items()
+                    if not s.is_async for fn, _ in info.fields}
+                   | {h.name for h in frame.for_src_fields.values()
+                      if h is not None})
+    async_iters = {f"__for_itr_{frame.for_uid_map[s]}"
+                   for s in frame.for_loop_info
+                   if s.is_async and s in frame.for_uid_map}
+    for table, role in ((frame.for_fields, HolderRole.LOOP),
+                        (frame.with_fields, HolderRole.WITH_CONTEXT),
+                        (frame.ptr_slot_fields, HolderRole.PTR_SLOT),
+                        (frame.try_finally_fields, HolderRole.TRY_FINALLY)):
+        for h in table:
+            if not isinstance(h, THIRFrameHolder) or h.role is not role:
+                _fail(owner, frame, f"a {role.value} table holds {h!r}")
+            if h.name in names:
+                _fail(owner, frame, f"holder {h.name} is declared twice")
+            names.add(h.name)
+            if role is not HolderRole.LOOP:
+                if h.loop is not None or h.drop_runs_user_code:
+                    _fail(owner, frame, f"{role.value} holder {h.name} "
+                          "carries a loop fact")
+            elif h.loop is None:
+                if not h.drop_runs_user_code:
+                    _fail(owner, frame, f"loop holder {h.name} has no loop "
+                          "and is dropped as running no user code")
+                if h.name in sync_fields:
+                    _fail(owner, frame, f"synchronous loop holder {h.name} "
+                          "has no loop")
+                if h.name not in async_iters:
+                    _fail(owner, frame, f"loop holder {h.name} has no loop "
+                          "and is no `async for` iterator")
+            elif (not isinstance(h.loop, FrameLoopOwner)
+                  or id(h.loop.stmt) not in loops):
+                _fail(owner, frame, f"loop holder {h.name} names no loop "
+                      "of the frame")
+            else:
+                _check_loop_owner(owner, frame, h)
+    def held(refs, table, what: str) -> None:
+        ids = {id(h) for h in table}
+        for h in refs:
+            if h is not None and id(h) not in ids:
+                _fail(owner, frame, f"a {what} names no holder of the frame")
+    held(frame.for_src_fields.values(), frame.for_fields, "held loop source")
+    held((h for per in frame.with_owned_ctx_map.values() for h in per),
+         frame.with_fields, "homed manager")
+    held((h for per in frame.ptr_slot_map.values() for h in per.values()),
+         frame.ptr_slot_fields, "pointer slot")
+    for s, h in frame.for_src_fields.items():
+        if h is not None and (h.loop is None or h.loop.stmt is not s):
+            _fail(owner, frame, f"held loop source {h.name} is not its "
+                  "loop's")
+    local_ids = {id(loc) for loc in frame.locals}
+    for y in frame.suspensions:
+        p = y.payload
+        if (isinstance(p, THIRAwaitSuspension) and p.prebuilt_slot is not None
+                and id(p.prebuilt_slot) not in local_ids):
+            _fail(owner, frame, "a bound-handle await polls no local of the frame")
+
+
+def _check_loop_owner(owner: str, frame: THIRResumableFrame,
+                      h: THIRFrameHolder) -> None:
+    """A loop holder's owner agrees with the frame's record of its loop: a
+    decomposed loop's holder carries that loop's strategy record and is
+    one of its fields, spelled off the record's source alias; a kept-whole
+    loop's holder is that loop's held source, spelled as the alias
+    itself."""
+    loop = h.loop
+    if loop.info is None:
+        if frame.for_src_fields.get(loop.stmt) is not h:
+            _fail(owner, frame, f"loop holder {h.name} has no strategy and "
+                  "is not its loop's held source")
+        if loop.alias != h.cpp_type:
+            _fail(owner, frame, f"held loop source {h.name} is not spelled "
+                  "as its alias")
+        return
+    if loop.info is not frame.for_loop_info.get(loop.stmt):
+        _fail(owner, frame, f"loop holder {h.name} carries a strategy that "
+              "is not its loop's")
+    if h.name not in {fn for fn, _ in loop.info.fields}:
+        _fail(owner, frame, f"loop holder {h.name} is no field of its "
+              "loop's strategy")
+    if loop.alias != loop.info.src_alias:
+        _fail(owner, frame, f"loop holder {h.name} names an alias its "
+              "loop's strategy does not declare")
+
+
+_PSEUDO_STMTS = (THIRForIterSetup, THIRFinallyExit, THIRWithEnter,
+                 THIRAsyncWithSetup)
+_REGIONS = (THIRTryRegion, THIRFinallyRegion, THIRExceptRegion,
+            THIRWithRegion, THIRLoopSourceRegion)
+
+
+def _region_targets(r: object) -> 'tuple[int, ...]':
+    """The block ids a region transfers to: a CFG finally's entry and exit,
+    the parent finally a handler raises into, the block a suppressing
+    `with` resumes at."""
+    if isinstance(r, THIRTryRegion):
+        targets = (r.finally_entry_bb,)
+    elif isinstance(r, THIRFinallyRegion):
+        targets = (r.finally_exit_bb,)
+    elif isinstance(r, THIRExceptRegion):
+        targets = (r.parent_finally_entry_bb,)
+    elif isinstance(r, THIRWithRegion):
+        targets = (r.post_with_bb,)
+    else:
+        targets = ()
+    return tuple(t for t in targets if t is not None)
+
+
+def _terminator_targets(t: object) -> 'tuple[int, ...]':
+    """The block ids a terminator transfers to along its CFG edges."""
+    if isinstance(t, THIRFall):
+        return (t.next_bb,)
+    if isinstance(t, THIRBranch):
+        return (t.then_bb, t.else_bb)
+    if isinstance(t, THIRSuspend):
+        return (t.resume_bb,)
+    if isinstance(t, THIRForAdvance):
+        return (t.has_value_bb, t.exhausted_bb)
+    if isinstance(t, THIRMatchDispatch):
+        return t.arm_bbs + (() if t.join_bb is None else (t.join_bb,))
+    return ()
+
+
+def _check_frame_receiver(owner: str, frame: THIRResumableFrame) -> None:
+    """A method frame borrows its record at the body's access. A second
+    rule beside a function body's receiver (`_validate_function`) because
+    the two answer different questions: a function's receiver is the borrow
+    MIR models and is absent where MIR models none, while a frame's is the
+    `__self` every method frame captures, so a generic record's receiver
+    is admitted, spelled over the record's own type parameters (never
+    concrete arguments)."""
+    fact = frame.receiver
+    if (fact is None) != (frame.record_name is None):
+        _fail(owner, frame, "receiver disagrees with the frame's record")
+    if fact is None:
+        return
+    if (not isinstance(fact, THIRBorrowedRecord) or not isinstance(fact.type, NominalType)
+            or fact.type.name != frame.record_name
+            or fact.type.qualified_name() is None or is_inert_leaf(fact.type)
+            or fact.type.is_protocol
+            or not all(isinstance(a, TypeParamRef) for a in fact.type.type_args)
+            or type(fact.readonly) is not bool
+            or fact.readonly != bool(frame.func.is_readonly)
+            or any(p.name == "self" for p in frame.params)):
+        _fail(owner, frame, "invalid receiver fact")
+
+
+def validate_resumable_frame(frame: THIRResumableFrame) -> None:
+    """The structural invariants of a published frame: every block
+    transfers only to blocks of the frame; the suspensions
+    are the frame's `THIRSuspend` terminators, numbered 0..n-1 one-to-one
+    with their resume blocks; the case entries are frame blocks and include
+    the entry and every resume block; region stacks hold regions whose
+    edges (a CFG finally's entry and exit, a handler's parent finally, a
+    suppressing `with`'s resume block) name frame blocks; block statements
+    are source statements or the frame's pseudo-statements; handler entries
+    name frame blocks; params mirror the source's, each with a capture kind;
+    no local is declared twice, each carries a placement, and the frame's
+    locals are exactly the body's hoisted locals."""
+    owner = f"frame {frame.func.name}"
+    blocks = frame.blocks
+    if frame.entry_block not in blocks:
+        _fail(owner, frame, f"entry block {frame.entry_block} is not a block")
+    suspends: list[THIRSuspend] = []
+    for bid, block in blocks.items():
+        if not isinstance(block, THIRBlock) or block.id != bid:
+            _fail(owner, frame, f"block {bid} is keyed under another id")
+        t = block.terminator
+        # A block no edge reaches (the join of a match whose arms all leave)
+        # stays open.
+        if t is not None and not isinstance(t, (THIRFall, THIRBranch, THIRSuspend,
+                              THIRFrameReturn, THIRFrameRaise, THIRUnreachable,
+                              THIRForAdvance, THIRMatchDispatch)):
+            _fail(owner, block, f"block {bid} ends in {type(t).__name__}")
+        for target in _terminator_targets(t):
+            if target not in blocks:
+                _fail(owner, block, f"block {bid} transfers to missing block {target}")
+        if isinstance(t, THIRSuspend):
+            if not isinstance(t.payload, (THIRAwaitSuspension, THIRYieldSuspension)):
+                _fail(owner, block, f"block {bid} suspends with {type(t.payload).__name__}")
+            suspends.append(t)
+        for r in block.region_stack:
+            if not isinstance(r, _REGIONS):
+                _fail(owner, block, f"block {bid} region stack holds {type(r).__name__}")
+            for target in _region_targets(r):
+                if target not in blocks:
+                    _fail(owner, block, f"a {type(r).__name__} of block {bid} "
+                          f"enters missing block {target}")
+        for s in block.stmts:
+            if isinstance(s, THIRLeafSlot):
+                if s.role is not LeafRole.STMT or not isinstance(s.source, TpyStmt):
+                    _fail(owner, block, f"block {bid} holds a {s.role.value} slot")
+            elif not isinstance(s, _PSEUDO_STMTS):
+                _fail(owner, block, f"block {bid} holds {type(s).__name__}")
+    if sorted(id(y) for y in suspends) != sorted(id(y) for y in frame.suspensions):
+        _fail(owner, frame, "suspensions are not the frame's suspend terminators")
+    if sorted(y.suspension_index for y in frame.suspensions) != list(range(len(frame.suspensions))):
+        _fail(owner, frame, "suspension indices are not 0..n-1")
+    resumes = [y.resume_bb for y in frame.suspensions]
+    if len(set(resumes)) != len(resumes):
+        _fail(owner, frame, "two suspensions resume at one block")
+    entries = set(frame.case_entries)
+    if len(entries) != len(frame.case_entries):
+        _fail(owner, frame, "a case entry is listed twice")
+    if not entries <= set(blocks):
+        _fail(owner, frame, "a case entry is not a block")
+    if frame.entry_block not in entries or not set(resumes) <= entries:
+        _fail(owner, frame, "the entry or a resume block is no case entry")
+    for region, by_handler in frame.handler_entries.items():
+        if not isinstance(region, THIRTryRegion):
+            _fail(owner, frame, f"handler entries keyed by {type(region).__name__}")
+        for bid in by_handler.values():
+            if bid not in blocks:
+                _fail(owner, frame, f"a handler enters missing block {bid}")
+    _validate_frame_holders(owner, frame)
+    seen: set[int] = set()
+    for slot, role in frame.positioned_slots():
+        if not isinstance(slot, THIRLeafSlot) or slot.role is not role:
+            _fail(owner, frame, f"a {role.value} position holds "
+                  f"{getattr(slot, 'role', slot)}")
+        if id(slot) in seen:
+            _fail(owner, frame, f"a {role.value} slot sits at two positions")
+        seen.add(id(slot))
+    _check_frame_receiver(owner, frame)
+    if tuple(p.name for p in frame.params) != tuple(n for n, _ in frame.func.params):
+        _fail(owner, frame, "params do not mirror the source parameters")
+    if len(frame.captures) != len(frame.params):
+        _fail(owner, frame, "a param has no capture kind")
+    if not all(isinstance(k, FrameCaptureKind) for k in frame.captures):
+        _fail(owner, frame, "a capture kind is no FrameCaptureKind")
+    if any(p.type is None for p in frame.params):
+        _fail(owner, frame, "a param has no type")
+    if not frame.const_params <= {p.name for p in frame.params}:
+        _fail(owner, frame, "a const capture names no param")
+    names = [loc.name for loc in frame.locals]
+    if len(set(names)) != len(names):
+        _fail(owner, frame, "a frame local is declared twice")
+    hoisted = {n for n, _ in (frame.func.generator_locals or [])}
+    for loc in frame.locals:
+        if not isinstance(loc.placement, FrameLocalLayout):
+            _fail(owner, frame, f"local {loc.name} has no placement")
+        if loc.name not in hoisted:
+            _fail(owner, frame, f"local {loc.name} is no hoisted local of "
+                  "the body")
+    for missing in sorted(hoisted - set(names)):
+        _fail(owner, frame, f"hoisted local {missing} is no frame local")

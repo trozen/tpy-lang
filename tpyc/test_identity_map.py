@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tpyc.identity_map import IdentityMap, IdentitySet
-from tpyc.thir.nodes import THIRResumableBody
+from tpyc.thir.nodes import THIRResumableLeaves
 
 
 class _Node:
@@ -286,22 +286,19 @@ class TestDataclassDefaults:
                         f"{annotated} defaulted to {factory}")
         assert not offenders, "\n".join(offenders)
 
-    def test_a_resumable_body_built_from_defaults_owns_every_map(self):
-        # The seam maps are optional constructor arguments, so a test or a
-        # future lowering arm that omits one gets the default -- it must be an
-        # IdentityMap, not a dict.
-        body = THIRResumableBody(
-            leaves=IdentityMap(), conds=IdentityMap(),
-            await_args=IdentityMap(), return_values=IdentityMap())
-        for f in dataclasses.fields(body):
-            if f.name in ("signature", "yield_hosts_temps"):
-                continue  # The body's contract, not a seam table.
+    def test_resumable_leaves_are_keyed_by_identity(self):
+        # The leaves are keyed by the frame's slots: every node-keyed table
+        # (or set) on the published leaves must be an IdentityMap or an
+        # IdentitySet, not a dict or a set.
+        leaves = THIRResumableLeaves(frame=None, leaves=IdentityMap())
+        for f in dataclasses.fields(leaves):
+            if f.name in ("frame", "params", "signature", "yield_hosts_temps"):
+                continue  # Not a table.
             # Forward-referenced annotations keep their quotes in `f.type`.
             if f.type.strip("'\"") == "IdentityMap":
-                assert isinstance(getattr(body, f.name), IdentityMap), f.name
+                assert isinstance(getattr(leaves, f.name), IdentityMap), f.name
             elif f.type.strip("'\"") == "IdentitySet":
-                # A set of nodes is keyed by identity like the maps are.
-                assert isinstance(getattr(body, f.name), IdentitySet), f.name
+                assert isinstance(getattr(leaves, f.name), IdentitySet), f.name
             else:
                 # A name-keyed table is the one shape that may be a dict;
                 # anything else keyed by a node must say IdentityMap.

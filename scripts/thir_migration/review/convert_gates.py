@@ -893,7 +893,7 @@ RESUMABLE_FILE = os.path.join(LOWER, "resumable.py")
 
 
 def _yield_arm(tree):
-    """The `elif isinstance(t, rcfg.Yield) and is_generator:` arm of
+    """The `elif isinstance(t, THIRSuspend) and is_generator:` arm of
     `_lower_resumable`: the generator's yield value."""
     fn = _funcs(tree).get("_lower_resumable")
     if fn is None:
@@ -903,7 +903,7 @@ def _yield_arm(tree):
             continue
         parts = [ast.unparse(v) for v in n.test.values]
         if "is_generator" in parts and any(
-                p.startswith("isinstance(") and p.endswith("rcfg.Yield)")
+                p.startswith("isinstance(") and p.endswith("THIRSuspend)")
                 for p in parts):
             return n
     return None

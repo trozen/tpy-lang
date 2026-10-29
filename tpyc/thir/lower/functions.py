@@ -619,8 +619,7 @@ def _seed_imported_globals(analyzer, cands: dict[str, TpyType],
         if st is None:
             # An imported pointer-slot global reads through the qualified
             # spelling with the same slot renders (`(*::tpyapp::mod::g)`);
-            # `vi.is_pointer` is the render authority
-            # (is_indirect_name's imported branch).
+            # `vi.is_pointer` is the render authority.
             if (not getattr(vi, "is_pointer", False)
                     or _pointer_slot_global_type(vi.type, analyzer) is None):
                 continue
@@ -645,8 +644,7 @@ def _seed_readonly_globals(
     names are excluded, matching the generator's pointer_globals set).
 
     Sema resolves an unassigned name to the module global, and a value
-    global's read renders bare (`is_indirect_name` is False for
-    value globals, and `_maybe_convert_opt_view_param` is param-keyed) --
+    global's read renders bare (a value global gets no pointer record, and `_maybe_convert_opt_view_param` is param-keyed) --
     or, for a native-linkage / imported global, as a fixed spelling
     (`qualify_native_name` / `imported_variable_cpp`) -- so a seeded name
     routes through every existing name-read arm unchanged, the spelled ones
@@ -805,6 +803,26 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
         # global-decl-blind).
         lc.prescan.global_cpp.setdefault(n, qualify_native_name(cname))
 
+
+def body_params(src_params, lc: _LowerCtx, analyzer) -> tuple[THIRParam, ...]:
+    """A body's parameters with the layout facts their binding records
+    decide -- the one construction a function, a constructor and a
+    resumable frame (`THIRResumableFrame.params`) publish. Read off the
+    binding table's root records, where each parameter is declared."""
+    recs = lc.table.root.bindings
+    return tuple(THIRParam(
+        name=n, type=t,
+        passing=t.param_passing(recs[n].const),
+        native_container=native_container(t, recs[n].const, analyzer),
+        union_layout=_union_source_layout(n, t, lc, recs[n]),
+        borrowed_record=borrowed_record(t, recs[n].const, analyzer),
+        optional_layout=optional_layout(t, analyzer, borrow=True,
+                                        readonly=recs[n].const),
+        tuple_layout=tuple_parameter_layout(
+            t, analyzer, readonly=recs[n].deep_const),
+    ) for n, t in src_params)
+
+
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: 'Mapping[str, str]' = {},
@@ -938,18 +956,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
-    param_recs = lc.table.root.bindings
-    params = tuple(THIRParam(
-        name=n, type=t,
-        passing=t.param_passing(param_recs[n].const),
-        native_container=native_container(t, param_recs[n].const, analyzer),
-        union_layout=_union_source_layout(n, t, lc),
-        borrowed_record=borrowed_record(t, param_recs[n].const, analyzer),
-        optional_layout=optional_layout(t, analyzer, borrow=True,
-                                        readonly=param_recs[n].const),
-        tuple_layout=tuple_parameter_layout(
-            t, analyzer, readonly=param_recs[n].deep_const),
-    ) for n, t in src_params)
+    params = body_params(src_params, lc, analyzer)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     receiver = (method_receiver(func, self_type, analyzer, stub=stub)
                 if self_receiver is not None else None)
@@ -1242,22 +1249,10 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 message_init,
                 field_identity=identities.get(qnames.EXCEPTION_MESSAGE_FIELD)))
         body_declared = dict(declared)
-        param_recs = lc.table.root.bindings
         ctor = THIRConstructor(
             record_name=record.name,
             record_layout=layout,
-            params=tuple(THIRParam(
-                name=n, type=t, union_layout=_union_source_layout(n, t, lc),
-                passing=t.param_passing(param_recs[n].const),
-                native_container=native_container(
-                    t, param_recs[n].const, analyzer),
-                borrowed_record=borrowed_record(
-                    t, param_recs[n].const, analyzer),
-                optional_layout=optional_layout(
-                    t, analyzer, borrow=True, readonly=param_recs[n].const),
-                tuple_layout=tuple_parameter_layout(
-                    t, analyzer, readonly=param_recs[n].deep_const),
-            ) for n, t in init_method.params),
+            params=body_params(init_method.params, lc, analyzer),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),
             body=_lower_stmts(body_stmts, lc, body_declared,

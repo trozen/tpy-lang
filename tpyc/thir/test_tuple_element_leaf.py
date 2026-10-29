@@ -5,11 +5,9 @@ are written per receiver, not taken from another predicate."""
 
 from __future__ import annotations
 
-import dataclasses
 
 import pytest
 
-from ..identity_map import IdentityMap
 from . import nodes as th
 from .lower.convert import layout_tuple
 from .source import tuple_elems
@@ -115,15 +113,12 @@ _EXPECTED = {
 
 def _walk(node):
     yield node
-    if isinstance(node, th.THIRResumableBody):
-        # A frame's statements live in its leaf tables.
-        for f in dataclasses.fields(node):
-            table = getattr(node, f.name)
-            if isinstance(table, IdentityMap):
-                for v in table.values():
-                    for x in (v if isinstance(v, (list, tuple)) else (v,)):
-                        if isinstance(x, th.THIRNode):
-                            yield from _walk(x)
+    if isinstance(node, th.THIRResumableLeaves):
+        # A frame's statements live at its slots.
+        for v in node.leaves.values():
+            for x in (v if isinstance(v, (list, tuple)) else (v,)):
+                if isinstance(x, th.THIRNode):
+                    yield from _walk(x)
         return
     for child in _iter_children(node):
         yield from _walk(child)

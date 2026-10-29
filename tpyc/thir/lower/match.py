@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
 from ...parse.nodes import (
+    TpyMatchCase,
     TpyAsPattern,
     TpyCall,
     TpyCapturePattern,
@@ -1710,7 +1711,7 @@ def _lower_scalar_arms(
             binding = _hook_mode_binding(binding, lc)
             entry = _case_entry(
                 case, lc, body=(), loc=case.loc, binding=binding,
-                guard=guard, body_key=id(case.body))
+                guard=guard, arm_case=case)
         else:
             # Literal-subject arms register the facts for the body walk:
             # dead-branch folds over them are not lowered -- the
@@ -2157,7 +2158,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 case, lc, body=(), loc=case.loc, binding=binding,
                 guard=guard, field_conds=field_conds,
                 field_bindings=field_bindings,
-                or_conds=or_conds, body_key=id(case.body))
+                or_conds=or_conds, arm_case=case)
         else:
             entry = _case_entry(
                 case, lc, body=_statements._lower_scoped_stmts(
@@ -2733,7 +2734,7 @@ def _lower_optional_value_dispatch(
         with _bindings.at(lc, ncase):
             none_entry = (
                 _case_entry(ncase, lc, body=(), loc=ncase.loc,
-                            body_key=id(ncase.body))
+                            arm_case=ncase)
                 if arm_body_hooks else _case_entry(
                     ncase, lc, body=_statements._lower_scoped_stmts(
                         ncase.body, lc, dict(declared),
@@ -3034,7 +3035,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
         arms.append(THIRMatchArm(labels=(), entries=(_case_entry(
             case, lc, body=body, loc=case.loc, binding=binding, guard=guard,
             field_bindings=field_bindings, opt_conds=opt_conds,
-            body_key=id(case.body) if arm_body_hooks else None),)))
+            arm_case=case if arm_body_hooks else None),)))
     emit_unreachable = _unreachable_tail(stmt, arms)
     if not isinstance(stmt.subject, TpyName):
         # An admitted storage-form field source takes the O1 partition's
@@ -3162,8 +3163,8 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             case.body, lc, arm_declared,
             branch_decls_ok=True, loop_depth=loop_depth)
 
-    def body_key(case) -> 'int | None':
-        return id(case.body) if arm_body_hooks else None
+    def arm_case(case) -> 'TpyMatchCase | None':
+        return case if arm_body_hooks else None
 
     str_guarded: list[THIRMatchArmEntry] = []
     for _i, case, strs, bnode in guarded_src:
@@ -3176,7 +3177,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             str_guarded.append(_case_entry(
                 case, lc, body=lower_arm_body(case, arm_declared),
                 loc=case.loc, binding=binding, guard=guard,
-                body_key=body_key(case),
+                arm_case=arm_case(case),
                 opt_conds=_str_lit_cond_group(strs)))
 
     all_strings = [s for _i, _c, strs, _b in unguarded_src for s in strs]
@@ -3198,7 +3199,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                 binding = lower_binding(bnode, arm_declared)
                 entries.append(_case_entry(
                     case, lc, body=lower_arm_body(case, arm_declared),
-                    loc=case.loc, binding=binding, body_key=body_key(case),
+                    loc=case.loc, binding=binding, arm_case=arm_case(case),
                     opt_conds=_str_lit_cond_group((s,))))
         arms.append(THIRMatchArm(labels=(case_label(key, kind),),
                                  entries=tuple(entries)))
@@ -3225,7 +3226,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             str_trailing.append(_case_entry(
                 case, lc, body=lower_arm_body(case, arm_declared),
                 loc=case.loc, binding=binding, guard=guard,
-                body_key=body_key(case),
+                arm_case=arm_case(case),
                 pre_bindings=pre_bindings))
 
     emit_unreachable = _unreachable_tail(stmt, arms, *str_guarded,
@@ -3396,7 +3397,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
             case, lc, body=body, loc=case.loc, binding=binding,
             variant_index=variant_index, case_alias=case_alias,
             field_bindings=field_bindings,
-            body_key=id(case.body) if arm_body_hooks else None),)))
+            arm_case=case if arm_body_hooks else None),)))
     emit_unreachable = _unreachable_tail(stmt, arms)
     if subject_rvalue:
         _witness("match.subject_rvalue")
@@ -3568,7 +3569,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                     field_conds=field_conds,
                     field_bindings=_hook_mode_field_bindings(
                         field_bindings, lc),
-                    body_key=id(case.body))
+                    arm_case=case)
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 branch_decls_ok=True, loop_depth=loop_depth)

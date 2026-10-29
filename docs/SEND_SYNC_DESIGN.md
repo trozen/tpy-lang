@@ -244,11 +244,11 @@ This collapses OQ2 and OQ3 into the same machinery: OQ2's `Send[T]` wrapper and 
 
 | Source | Slot shape | File |
 |--------|-----------|------|
-| Non-value params (`list[int]`, `Pet`, user records) | `T&` reference | `gen_async.py:266`, `:657`; `gen_generators.py:666`, `:695` |
+| Non-value params (`list[int]`, `Pet`, user records) | `T&` reference | `gen_async.py` `_classify_params` (capture kind: `thir/lower/frame.py` `classify_param_kind`) |
 | `Own[T]` params (move-in, owned storage) | `T` by value | -- |
-| `str` params (`std::string_view` -- non-owning view) | `std::string_view` | `gen_async.py:280`, `gen_generators.py:678` |
+| `str` params (`std::string_view` -- non-owning view) | `std::string_view` | `gen_async.py` `_classify_params` |
 | `String` params (`std::string` -- owned string, from `lib/tpy/tpy/_core/_types.py:1511`) | `String` by value | -- |
-| Hoisted non-value locals across await/yield | `tpy::frame_slot<T>` | `gen_async.py:664`, `gen_generators.py:702` |
+| Hoisted non-value locals across await/yield | `tpy::frame_slot<T>` | `thir/lower/frame.py` (placement), `gen_async.py` (field emit) |
 | Borrowed async awaitables | raw pointer | `gen_async.py:679` |
 | Value-type params (`int32`, `bool`, `float`, `char`, ...) | `T` by value | -- |
 

@@ -731,7 +731,9 @@ itself (`match b:`) is a record subject like any other: `case Dog():` names
 a class the handle never is, so it is the impossible-class-pattern error,
 hinting `match deref(b)`. It reuses the same
 engine: the subject-source detection (`polymorphic_source_inner`), the
-cast-argument helper (`polymorphic_cast_arg`), and the cast-rhs builder
+cast-argument decision (`_poly_subject_form`, thir/lower/expressions.py,
+whose pointer-shaped-source test `polymorphic_source_is_pointer` the match
+lowering reads too), and the cast-rhs builder
 (`ProtocolGenerator.dynamic_narrow_cast_rhs`, which picks `dynamic_cast` for an
 inheritance conformer vs `tpy::dyn_adapter_cast` for a structural conformer).
 

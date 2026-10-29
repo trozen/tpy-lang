@@ -22,9 +22,30 @@ a body to immutable IR and emits from it with no analyzer reference. It is the
 SINGLE sema->codegen boundary for every body, in every module -- user code,
 `lib/tpy` and the stdlib alike -- and `codegen_cpp/` is the printer/skeleton
 layer around it (module driver, headers, signatures, record/protocol/enum
-drivers, frames at their leaf seams, type rendering). There is no second body
+drivers, the printer of the resumable frames THIR publishes, type rendering). There is no second body
 emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
 reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
+
+A generator or coroutine body is two THIR publications. The FRAME
+(`THIRResumableFrame`, `tpyc/thir/frame.py`) is decided by the frame builder
+(`tpyc/thir/lower/frame.py`, CFG in `frame_cfg.py`) where the body is first
+needed -- the generator forward-declaration gate, the struct-order sort for
+coroutines, the source-genexpr pass -- before any of its leaves is lowered:
+parameter capture kinds, the await-lift / argument-seat pre-pass, the frame
+locals' placement, the loop / with / pointer-slot / try-finally holders, the
+coarse CFG (blocks split only at suspensions and their joins, each with its
+region stack), the case entries, the abandonment cleanup and the frames it
+embeds by value. Every position where user source renders -- a block's leaf
+statement, a condition, a return, an await's operands, a loop or `with`
+header expression, a finally helper's statement, a nested def -- is a
+`THIRLeafSlot` of the frame, with a role that fixes its leaf's form and flush
+right; the machinery fields are `THIRFrameHolder`s that leaves reference. The
+builder answers name questions from its own environment (`FrameBuildEnv`),
+never from a body emitter's scope. The LEAVES (`THIRResumableLeaves`) are
+lowered at the frame's first leaf use: an `IdentityMap` from the frame's slots
+to the lowered THIR, with the params as `THIRParam`s. `gen_async` prints the
+state machine from both; its own state (case labels, redispatch, the
+constructor's loop seed, field order) is printer state keyed by the frame.
 
 `tpyc/mir/` provides an internal CFG builder, verifier and dump for scalar
 leaves, borrowed/owned plain records, flat tuples, selected Optional payloads
@@ -887,7 +908,7 @@ and not on a copy of it.
 `tpyc/identity_map.py` provides `IdentityMap` / `IdentitySet`, which
 store the key beside the value; every such table on
 `SemanticContext`, `SemanticAnalyzer`, `CodeGenContext`, `Compiler`
-and `THIRResumableBody` uses them, and their `__deepcopy__` carries
+and `THIRResumableLeaves` uses them, and their `__deepcopy__` carries
 keys over by identity so a snapshot is still looked up with the live
 node. The same holds for what a snapshot HOLDS, not just what it is
 keyed by: `FunctionTrackingState.__deepcopy__` seeds its memo with

@@ -16,7 +16,8 @@ from .lower import bindings, iter_module_callables, lower_function
 from .lower import resumable as _resumable
 from .lower.bindings import BindingTable
 from .lower.context import _LowerCtx
-from .nodes import THIRResumableBody
+from .frame import THIRResumableFrame
+from .nodes import THIRResumableLeaves
 from .reject import is_bodyless_binding
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -99,7 +100,7 @@ def lower_bodies(source: str) -> tuple[dict[str, object],
     compiler, modules = _compile(source)
     entry = _entry(modules)
     tables: dict[str, BindingTable] = {}
-    frames: dict[str, THIRResumableBody | None] = {}
+    frames: dict[str, THIRResumableLeaves | None] = {}
     lowering: list[str | None] = [None]
     install = bindings.install
     lower_frame = _resumable.lower_resumable
@@ -109,14 +110,15 @@ def lower_bodies(source: str) -> tuple[dict[str, object],
         tables.setdefault(key, table)
         install(lc, table)
 
-    def capture_frame(func: TpyFunction, *args: object, **kwargs: object
-                      ) -> THIRResumableBody | None:
-        key = _body_key(kwargs.get("record_name"), func)
+    def capture_frame(frame: THIRResumableFrame, *args: object,
+                      **kwargs: object) -> THIRResumableLeaves | None:
+        func = frame.func
+        key = _body_key(frame.record_name, func)
         if func in entry.analyzer.overload_groups:
             key = f"{key}@{sum(k.startswith(key + '@') for k in frames)}"
         lowering[0] = key
         try:
-            body = lower_frame(func, *args, **kwargs)
+            body = lower_frame(frame, *args, **kwargs)
         finally:
             lowering[0] = None
         frames.setdefault(key, body)

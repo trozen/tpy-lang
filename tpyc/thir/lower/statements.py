@@ -138,7 +138,9 @@ from ...type_def_registry import (
     is_str_type,
 )
 from ...modules.type_resolution import is_native_iterable
-from ...codegen_cpp.gen_async import sub_struct_qualname
+from ...codegen_cpp.frame_names import sub_struct_qualname
+from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
+                     frame_ptr_slot_name)
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import read_record, verdict
 from ...sema.call_lends import Retention, expr_lends_storage
@@ -172,7 +174,7 @@ from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_subclass_into_optional)
 from ...codegen_cpp.type_resolution import resolve_stmt_recorded_type
 from ...codegen_cpp.types import resolve_pending_container, resolve_tuple_pending
-from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
+from ...codegen_cpp import emit_prims
 from ...identity_map import IdentityMap
 from ...liveness import (
     collect_nested_def_nonlocal_rebinds, stmts_terminate,
@@ -1958,8 +1960,8 @@ def _select_for_each_route(
                    iterable_lvalue=not for_source_is_rvalue(stmt, analyzer))
 
 
-def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'str | None':
-    """The frame field owning this loop's source.
+def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'THIRFrameHolder | None':
+    """The frame holder owning this loop's source.
 
     Inside a resumable body a name bound out of a loop ELEMENT can be a frame
     field, and then the fresh source it points into has to outlive the state
@@ -1972,12 +1974,11 @@ def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'str | None':
     if not lc.resumable_leaf_mode or not for_source_is_rvalue(stmt,
                                                               lc.analyzer):
         return None
-    verdicts = rcfg.resumable_state(lc.func).for_src_fields
+    verdicts = (lc.frame.for_src_fields if lc.frame is not None else IdentityMap())
     if stmt not in verdicts:
         note_detail("foreach.frame_src_unplaced")
         raise ThirUnsupported("res.for_src_unplaced")
-    held = verdicts.get(stmt)
-    return held[0] if held is not None else None
+    return verdicts.get(stmt)
 
 
 def self_typed_frame_source(iterable: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
@@ -2910,7 +2911,7 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
 
     `frame`: a write of a resumable frame's field, which the frame declares;
     each owned element's object lands in the frame field the slot prescan
-    reserved for this site and element (`rcfg.ptr_slot_field`), or in place
+    reserved for this site and element (`THIRResumableFrame.ptr_slot_field`), or in place
     where it reserved none."""
     analyzer = lc.analyzer
     init = stmt.init
@@ -2974,7 +2975,7 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
     if frame:
         first = False
         # The slot prescan decided each owned element's storage once.
-        frame_fields = rcfg.ptr_tuple_slot_fields(lc.func, facts)
+        frame_fields = (lc.frame.ptr_tuple_slot_fields(facts) if lc.frame is not None else None)
         if frame_fields is None:
             note_detail("res.rebind_ptr_slot")
             raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -2991,7 +2992,8 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
         if i < len(mask) and mask[i]:
             fld = None
             if frame_fields is not None:
-                fld = frame_fields.get(i)
+                slot = frame_fields.get(i)
+                fld = slot.name if slot is not None else None
                 storage = (RebindStorage.OWN if fld is not None
                            else RebindStorage.IN_PLACE)
             else:
@@ -4808,7 +4810,7 @@ def _lower_coro_frame_local_decl(stmt: TpyVarDecl, lc: _LowerCtx,
                          from_call=True, ptr_local=False)))
     declared[stmt.name] = sema_var_t
     _witness("decl.coro_frame_local")
-    frame_cpp = sub_struct_qualname(None, None, own_wrapped.frame_func_name,
+    frame_cpp = sub_struct_qualname(None, own_wrapped.frame_func_name,
                                     module_qual=own_wrapped.frame_module_qual)
     return THIRVarDecl(
         name=stmt.name, resolved_type=sema_var_t, init=init_node,
@@ -7519,7 +7521,7 @@ def _frame_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
     owned = stmt.owns_target(i)
     is_ref = i < len(stmt.is_ref) and stmt.is_ref[i]
     r = src.read(i)
-    fld = rcfg.ptr_slot_field(lc.func, stmt, i)
+    fld = frame_ptr_slot_name(lc.frame, stmt, i)
     if fld is not None:
         # A rebound reference local taking an element over: the object
         # moves into the field the frame's ptr-slot prescan reserved for
@@ -10203,7 +10205,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                         value=lit,
                         rebind_storage=RebindStorage.IN_PLACE,
                         slot_cpp=lc.render_type(lit_pointee), loc=loc)
-                fld = rcfg.ptr_slot_field(lc.func, stmt)
+                fld = frame_ptr_slot_name(lc.frame, stmt)
                 if fld is None:
                     note_detail("decl.opt_reseat_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10219,7 +10221,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                 # optional lands in the prescanned frame field and the
                 # pointer lifts off it. The sync arm's decl-site slot is an
                 # inline one, which a suspension would outlive.
-                fld = rcfg.ptr_slot_field(lc.func, stmt)
+                fld = frame_ptr_slot_name(lc.frame, stmt)
                 if fld is None:
                     note_detail("decl.opt_reseat_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10242,7 +10244,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                 # (`__ptr_slot_f0 = make_opt(3); got =
                 # ::tpy::optional_to_ptr(__ptr_slot_f0);` -- the
                 # OPT_STORAGE_CALL decl's resumable twin).
-                fld = rcfg.ptr_slot_field(lc.func, stmt)
+                fld = frame_ptr_slot_name(lc.frame, stmt)
                 if fld is None:
                     note_detail("decl.opt_reseat_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10296,7 +10298,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                         value=value,
                         rebind_storage=RebindStorage.IN_PLACE,
                         slot_cpp=lc.render_type(pointee), loc=loc)
-                fld = rcfg.ptr_slot_field(lc.func, stmt)
+                fld = frame_ptr_slot_name(lc.frame, stmt)
                 if fld is None:
                     note_detail("decl.opt_reseat_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10542,10 +10544,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
     if lc.resumable_leaf_mode:
         if isinstance(stmt, TpyReturn):
             # A return nested in a non-suspending leaf compound: scaffolding
-            # stays skeleton -- the node calls back into _make_async_return /
-            # _make_generator_resumable_return via the emit hook, whose value
-            # render re-enters the seam's return_values table (registered by
-            # lower_resumable from lc.nested_returns).
+            # stays skeleton -- the emit hook hands this node to
+            # _make_async_return / _make_generator_resumable_return, which
+            # render its value and deferred recipe from it.
             begin_stmt()
             if lc.in_finally_helper:
                 # Generator helper returns render the fixed __finally_stop
@@ -10556,7 +10557,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 if (not lc.func.is_generator
                         or _return_carries_value(stmt, lc)):
                     raise ThirUnsupported("res.finally_return")
-                node = THIRResumableReturn(ast_stmt=stmt, value=None, loc=loc)
+                node = THIRResumableReturn(
+                    has_operand=stmt.value is not None, loc=loc)
                 lc.nested_returns.append(node)
                 _witness("res.finally_stop")
                 return node
@@ -10568,7 +10570,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      if _return_carries_value(stmt, lc) else None)
             deferred = _resumable_deferred_recipe(stmt, lc, declared, value)
             node = THIRResumableReturn(
-                ast_stmt=stmt, value=value, loc=loc, deferred=deferred)
+                has_operand=stmt.value is not None, value=value, loc=loc,
+                deferred=deferred)
             lc.nested_returns.append(node)
             _witness("res.nested_return")
             return node
@@ -14419,7 +14422,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     resumable = lc.func.is_generator or lc.func.is_async
     owned_ctx = None
     if resumable:
-        owned_ctx = rcfg.resumable_state(lc.func).with_owned_ctx_map.get(
+        owned_ctx = (lc.frame.with_owned_ctx_map if lc.frame is not None else IdentityMap()).get(
             stmt)
     hoists = lc.analyzer.if_branch_decls.get(stmt, {})
     # A with inside a branch / loop hoists here rather than at function top,
@@ -14476,7 +14479,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # the item's own frame field (the ptr-slot prescan's), a
                 # lent one is aimed at.
                 if (not returns_cpp_reference_shape(item.enter_type)
-                        and rcfg.ptr_slot_field(lc.func, item) is None):
+                        and frame_ptr_slot_field(lc.frame, item) is None):
                     note_detail("with.frame_pointer_field")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 # The pointer's pointee: ownership is the binding's fact.
@@ -14585,11 +14588,11 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         # top, which at module-init scope spells the `static
         # __global_slot_N` lifetime the emit arm draws from the scope's own
         # prefix.
-        frame_ctx_n = (owned_ctx[item_idx]
+        frame_ctx = (owned_ctx[item_idx]
                        if owned_ctx is not None
                        and item_idx < len(owned_ctx) else None)
         mgr_hoist_cpp = None
-        if (frame_ctx_n is None
+        if (frame_ctx is None
                 and not item.manager_borrowed and item.target is not None
                 and arm is WithTargetArm.ASSIGN_PTR
                 and item.manager_owns_enter_result
@@ -14601,7 +14604,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                  and lc.binding(ctx.name).pointer)
         _witness("with.manager_borrowed" if item.manager_borrowed
                  else "with.manager_owned")
-        if frame_ctx_n is not None:
+        if frame_ctx is not None:
             _witness("with.manager_frame_ctx")
         if deref:
             _witness("with.manager_deref")
@@ -14644,8 +14647,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             target_cpp=(_with_ptr_target_cpp(item.target, et, lc)
                         if arm is WithTargetArm.PTR_DECL else None),
             manager_hoist_cpp=mgr_hoist_cpp,
-            frame_ctx=frame_ctx_n,
-            target_field=(rcfg.ptr_slot_field(lc.func, item)
+            frame_ctx=frame_ctx,
+            target_field=(frame_ptr_slot_field(lc.frame, item)
                           if arm is WithTargetArm.FRAME_POINTER else None),
         ))
         if item.target is not None:

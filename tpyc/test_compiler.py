@@ -1452,8 +1452,8 @@ class TestCallMacroModuleData:
 # Programs for the repeated-compile guard below, one per family of
 # identity-keyed table: a `@property` read reaches the synthesized-getter
 # seam (`expr_types`), an async try/finally the resumable seam maps
-# (`THIRResumableBody`, `thir_resumables`, `resumable_region_guards`), and a
-# generator the frame's loop tables (`generator_for_loop_info`).
+# (`THIRResumableLeaves`, `thir_resumables`, `resumable_region_guards`), and a
+# generator the frame's loop tables (`THIRResumableFrame.for_loop_info`).
 _CASES_DIR = Path(__file__).resolve().parent.parent / "tests" / "cases"
 _REPEAT_CASES = {
     "property": _CASES_DIR / "records/member_name_shadows_type/src/main.py",

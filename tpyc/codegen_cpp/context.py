@@ -14,27 +14,27 @@ from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 
 from ..typesys import pointer_repr_optional
 from ..typesys import (
-    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
+    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
-    polymorphic_source_is_pointer, param_takes_ownership,
-    declared_result_readonly, shadowed_local_cpp_name, unwrap_own,
+    param_takes_ownership,
+    shadowed_local_cpp_name, unwrap_own,
 )
 from ..parse import (
-    SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
+    SourceLocation, TpyExpr,
+    TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression,
-    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
-    TpyIfExpr, TpyAssign, TpyImport, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
-    TpyNamedExpr, walrus_bindings,
+    TpyCoerce, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
+    TpyIfExpr, TpyImport, TpyVarDecl, TpyTupleUnpack, VarLinkage,
+    TpyNamedExpr,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
-    is_borrowing_view_type, ParamPassing,
+    ParamPassing,
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..identity_map import IdentityMap
@@ -43,11 +43,12 @@ from ..compilation_context import get_current_compiler
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
-    property_access_returns_cpp_ref,
-    declared_call_const,
     call_value_optional,
     CONTAINER_LITERAL_NODES,
-    const_place, call_result_const,
+    const_place,
+    const_storage_source as _const_storage_source_shared,
+    is_temporary_expr as _is_temporary_expr_shared,
+    is_value_emit_rvalue as _is_value_emit_rvalue_shared,
 )
 from .forms import (
     LoopBinding,
@@ -58,7 +59,7 @@ from .forms import (
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
-    from ..thir.nodes import THIRConstructor, THIRFunction, THIRResumableBody
+    from ..thir.nodes import THIRConstructor, THIRFunction
     from ..thir.emit import ResumableLeafEmitter
 
 
@@ -1464,9 +1465,16 @@ class CodeGenContext:
     # The THIRInheritedConstructor of each record that constructs through
     # `using Base::Base;`, keyed by the source TpyRecord; read by MIR only.
     thir_inherited_constructors: IdentityMap = field(default_factory=IdentityMap)
-    # Attempt-once cache of async-body leaf lowerings, keyed by the
-    # source TpyFunction. Populated lazily at first frame
-    # emission (the CFG needs live codegen ctx), unlike the seeding-loop maps.
+    # The published resumable frames (`THIRResumableFrame`), keyed by the
+    # source TpyFunction: built at a body's first request (the generator
+    # gate, the struct-order sort, the source-genexpr pass).
+    thir_resumable_frames: IdentityMap = field(default_factory=IdentityMap)
+    # The printer's own state per frame (`gen_async._FramePrint`), keyed by
+    # the frame object.
+    resumable_print: IdentityMap = field(default_factory=IdentityMap)
+    # Attempt-once cache of resumable-body leaf lowerings, keyed by the
+    # source TpyFunction. Populated at the frame's first leaf use (struct
+    # emit for the decltype aliases, else the body pass).
     thir_resumables: IdentityMap = field(default_factory=IdentityMap)
     # The active body's leaf renderer while gen_async emits its state
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
@@ -1493,11 +1501,6 @@ class CodeGenContext:
     # Walrus locals holding the owning STORAGE tuple form: their
     # storage_form_tuple_locals membership must survive the same restores.
     walrus_storage_tuple_locals: set[str] = field(default_factory=set)
-    # Resumable-frame `__await_lift_*` temps -- one-shot/movable sources, so a
-    # tuple-unpack reading one binds by rvalue-ref and moves its elements out
-    # rather than copying the whole tuple (assigned fresh per resumable body in
-    # setup_resumable_frame_locals; read only under in_generator_body).
-    one_shot_lift_locals: set[str] = field(default_factory=set)
     # Borrow-only walrus locals bound as T* pointers (decl is function-scope
     # via temps): pointer_locals/declared membership (+ const) must survive
     # the branch-scope restores like the rewrites above.
@@ -1791,19 +1794,8 @@ class CodeGenContext:
     # to the value yield slot -- but pointer-repr Optional/Union locals (also
     # in pointer_locals) must NOT be deref'd that way, hence a dedicated set.
     generator_borrow_form_loop_vars: set[str] = field(default_factory=set)
-    # For-loops with yields in state machine generators: keyed by TpyForEach.
-    # Values are GeneratorForInfo (not imported here to avoid circular dep)
-    generator_for_loop_info: IdentityMap = field(default_factory=IdentityMap)
-    # TpyWith -> per-item `__with_ctx_<n>` number for a non-decomposed region
-    # whose owned manager was promoted to the frame to back an aliasing target.
-    generator_with_owned_ctx: IdentityMap = field(default_factory=IdentityMap)
-    # Statement-level borrow-alias frame locals (single-assign / tuple-unpack
-    # targets aliasing existing storage). Seeded into pointer_locals by
-    # setup_resumable_frame_locals so the frame field is a `T*` alias, not an
-    # owning frame_slot<T>. Populated by _classify_pointer_alias_locals.
-    generator_pointer_alias_locals: set[str] = field(default_factory=set)
     # The enclosing resumable frame's const bindings
-    # (`rcfg.ResumableFuncState.const_frame_bindings`, shared by reference so
+    # (`THIRResumableFrame.const_bindings`, shared by reference so
     # the prescan's own additions are visible to the slot spellings it decides
     # next). Empty outside a frame. Read through `frame_binding_is_const`.
     frame_const_bindings: set[str] = field(default_factory=set)
@@ -2717,9 +2709,7 @@ class CodeGenContext:
         `is_const_storage_source` (the tuple sinks)."""
         return const_place(expr, self.analyzer.get_expr_type, lambda e, stepped: (
             stepped and isinstance(e, TpyName)
-            and (e.name in self.const_ref_params
-                 or e.name in self.const_indirect_locals
-                 or self.frame_binding_is_const(e.name))))
+            and self._name_binds_const(e.name)))
 
     def is_const_storage_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads from a const-bound storage location, so
@@ -2730,30 +2720,17 @@ class CodeGenContext:
         result is const (`call_result_const`) and lends storage: a borrowing
         view, or a reference.
         """
-        if self.is_const_union_source(expr):
-            return True
-        declared = declared_call_const(self.analyzer, expr)
-        if declared is not None:
-            return declared
-        if isinstance(expr, TpyMethodCall) and expr.obj is not None:
-            fi = expr.resolved_function_info
-            # A `@property` getter over a container field is the member read
-            # one spelling over (`property_access_returns_cpp_ref`: storage-ref
-            # Optional / union returns are references into the field too).
-            lends = fi is not None and (
-                is_borrowing_view_type(unwrap_ref_type(fi.return_type))
-                or property_access_returns_cpp_ref(self.analyzer, expr)
-                or _call_returns_cpp_ref_shared(self.analyzer, fi))
-            return (declared_result_readonly(fi)
-                    or lends and call_result_const(
-                        expr, self.analyzer.get_expr_type,
-                        self.is_const_storage_source))
-        if isinstance(expr, TpyName):
-            return (expr.name in self.const_storage_form_tuple_locals
-                    or expr.name in self.const_ref_params
-                    or expr.name in self.const_indirect_locals
-                    or self.frame_binding_is_const(expr.name))
-        return False
+        return _const_storage_source_shared(
+            self.analyzer, expr, root_const=self._name_binds_const,
+            name_const=lambda n: (n in self.const_storage_form_tuple_locals
+                                  or self._name_binds_const(n)))
+
+    def _name_binds_const(self, name: str) -> bool:
+        """A const param / local / frame binding by name: the root a const
+        storage chain may start from."""
+        return (name in self.const_ref_params
+                or name in self.const_indirect_locals
+                or self.frame_binding_is_const(name))
 
     def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
         """True when `init` is a call handing back its pointer-repr Optional
@@ -2854,64 +2831,6 @@ class CodeGenContext:
         """
         return self.local_cpp_form(name) is LocalCppForm.VALUE_VARIANT
 
-    def polymorphic_cast_arg(self, var_name: str, var_decl: 'TpyType | None') -> str:
-        """C++ expression to use as the input to dynamic_cast<Sub*>(...)
-        when narrowing the polymorphic source `var_name`.
-
-        Polymorphic isinstance/dynamic_cast needs a pointer input; the right
-        prefix depends on the variable's C++ binding shape:
-          - `self` inside a generator/async body -> `&{generator_self_ref}`
-            (the body sees self via `__self: T&`, which yields `T*` when
-            address-of'd)
-          - `self` in a regular method -> `this` (already a pointer)
-          - pointer-globals, pointer-locals, imported pointers
-            (`is_indirect_name`) -> the bare name (already a pointer)
-          - declared `Optional[Polymorphic]` (pointer-repr) param -> the bare
-            name (the C++ binding is `T*`)
-          - bare polymorphic param (`T&`) or anything else not above
-            -> `&name` (take the address)
-        """
-        name_expr = TpyName(var_name)
-        if var_name == "self" and self.generator_self_ref is not None:
-            # `__self` is a T& field on the frame struct; &__self gives T*.
-            return f"&{self.generator_self_ref}"
-        if var_name == "self" and self.is_indirect_name(name_expr):
-            return "this"
-        escaped = escape_cpp_name(var_name)
-        if self.is_indirect_name(name_expr):
-            return escaped
-        if polymorphic_source_is_pointer(var_decl):
-            return escaped
-        return f"&{escaped}"
-
-    def is_indirect_name(self, expr: TpyExpr) -> bool:
-        """Check if expression needs indirect access (-> / deref).
-
-        Unifies pointer-globals (T*), pointer-locals (T*), cross-module
-        imported pointer variables, and `self` (this pointer in methods)
-        -- all use -> for field/method access and (*x) for value dereference.
-        """
-        if isinstance(expr, TpyName) and expr.name in self.comp_local_names:
-            return False
-        # self -> this (pointer) in instance methods, unless inside a generator
-        # where generator_self_ref is already a dereferenced reference
-        if (isinstance(expr, TpyName) and expr.name == "self"
-                and self.self_renders_as_this()
-                and self.generator_self_ref is None):
-            return True
-        if self._is_pointer_global(expr) or self.is_pointer_local(expr):
-            return True
-        if isinstance(expr, TpyName):
-            imp = lookup_imported(
-                self.analyzer.ctx.module_attributes,
-                expr.name, SymbolKind.VARIABLE)
-            if imp is not None:
-                source_module, original_name = imp
-                module_info = self.analyzer.registry.get_module(source_module)
-                if module_info and original_name in module_info.variables:
-                    return module_info.variables[original_name].is_pointer
-        return False
-
     def generator_storage_name(self, name: str) -> str:
         """Resolve a frame-resident name to its backing storage name.
 
@@ -2921,173 +2840,12 @@ class CodeGenContext:
         """
         return self.generator_forwarded_locals.get(name, name)
 
-    def frame_slot_deref(self, name: str) -> str | None:
-        """The `(*storage)` read expression for a name backed by a
-        `tpy::frame_slot<T>` field, or None when no such unwrap is needed.
-
-        A non-value, non-pointer-form generator/async frame local lives in a
-        `frame_slot<T>` and is read via `(*name)` (see setup_resumable_frame_locals).
-        Single source of truth for that decision, shared by the name-read path
-        and the isinstance-narrowing get/holds_alternative sites.
-        """
-        if not self.in_generator_body:
-            return None
-        storage = self.generator_storage_name(name)
-        if (storage in self.generator_optional_fields
-                and storage not in self.frame_field_shadows):
-            return f"(*{escape_cpp_name(storage)})"
-        return None
-
-    def frame_pointer_tuples(
-            self, func: 'TpyFunction') -> dict[str, 'TpyType | None']:
-        """The frame locals sema names pointer tuples, each with the form
-        the lowering decided (`ptr_tuple_decision`; None: one C++ cannot
-        spell, which the binding planner refuses)."""
-        from ..thir.lower.bindings import ptr_tuple_decision
-        out: dict[str, 'TpyType | None'] = {}
-        for lname, _ in (func.generator_locals or []):
-            got = ptr_tuple_decision(self.analyzer, func, lname)
-            if got is not None:
-                out[lname] = got.form
-        return out
-
-    def owning_generator_tuple_locals(
-            self, func: 'TpyFunction') -> dict[str, 'TpyType | None']:
-        """Generator/async frame locals that OWN tuple element storage, mapped
-        to the EFFECTIVE tuple type when it differs from the declared one.
-
-        A frame field for such a local is `frame_slot<std::tuple<..., T>>`, not
-        the borrow-form `std::tuple<..., T*>`: a borrow field can't hold owned
-        elements and the owning rvalue can't be address-taken into it. Aliasing
-        tuple locals (every element bound from a storage lvalue) stay borrow
-        form.
-
-        Two sources qualify:
-          - typed as a tuple with an `OWN` element (e.g. an await-result lift
-            temp `tuple[Own[socket], ...]`). `is_value_type()` reports such a
-            tuple True, so without this it would take the raw-field path and
-            make the frame default ctor ill-formed (the owned element by value
-            is not default-constructible);
-          - an init that hands the frame element storage: a tuple LITERAL that
-            VALUE-captures a reference element (`t = (A(1), 2)` -- a fresh
-            rvalue no one else owns, so a borrow field would dangle at the end
-            of the statement), or an owning call (`t = make_pair()`, whose
-            result is equally the frame's).
-
-        Ownership is decided PER ELEMENT by sema for each init
-        (`tuple_elem_owned`) and joined here across every init of the name:
-        element i is owned iff every init hands it over. The verdict is
-        expressed as an effective TupleType with the owned reference
-        elements wrapped in `Own[...]`, so
-        `is_owned_movable` / `is_mixed_own` / `tuple_borrow_cpp` route it into
-        the frame kinds that already exist. An element one init hands over and
-        another only borrows has no single form and is rejected at the decl --
-        the borrow would have to point into the owning init's dead temporary.
-        """
-        # Local import: top-level would cycle (resumable_cfg -> gen_generators
-        # -> context).
-        from . import resumable_cfg as _rcfg
-        one_shot = _rcfg.resumable_state(func).one_shot_lift_names
-        scan = self.analyzer.function_scan_results.get(func)
-        reassigned = scan.reassigned if scan is not None else set()
-        # A pointer tuple's elements own per site, never in the field.
-        pointer_tuples = self.frame_pointer_tuples(func)
-        gen_types = {n: t for n, t in (func.generator_locals or [])
-                     if n not in pointer_tuples}
-        owning: dict[str, 'TpyType | None'] = {}
-
-        # Type/provenance-driven owning tuple locals:
-        #  - a tuple with an OWN element held by value owns its storage
-        #    regardless of how it is bound;
-        #  - an `__await_lift_*` temp is ALWAYS an owned result, so even a
-        #    reference-element tuple (e.g. `tuple[list[T], int]`) needs owning
-        #    `frame_slot<std::tuple<...>>` rather than the borrow-form
-        #    `std::tuple<T*, ...>` field a non-await borrow tuple would get --
-        #    the owned result can't be assigned into a pointer-element field.
-        for lname, ltype in gen_types.items():
-            inner = unwrap_ref_type(ltype)
-            if not (isinstance(inner, TupleType) and lname not in reassigned):
-                continue
-            if (inner.needs_frame_slot()
-                    or (lname in one_shot and inner.has_pointer_repr_element())):
-                owning[lname] = None
-
-        # Per-name join of the per-element ownership each init implies. A
-        # missing entry means "no init said anything", which is the borrow
-        # default.
-        elem_owned: dict[str, list[bool]] = {}
-        # An element ANY init wants owned: the join alone cannot tell "no init
-        # owned it" (plain borrow, fine) from "one did and another did not"
-        # (no single form -- the diagnostic below).
-        elem_wanted: dict[str, list[bool]] = {}
-        conflicts: dict[str, TpyStmt] = {}
-
-        def record(name: str | None, binding: object,
-                   at: 'TpyStmt | None') -> None:
-            """Join one init's per-element ownership (sema's
-            `tuple_elem_owned` for the binding) into the name's verdict."""
-            ltype = gen_types.get(name) if name is not None else None
-            inner = unwrap_ref_type(ltype) if ltype is not None else None
-            if name is None or not isinstance(inner, TupleType):
-                return
-            n = len(inner.element_types)
-            owned = self.analyzer.ctx.tuple_elem_owned.get(binding) or ()
-            verdict = list(owned[:n]) + [False] * (n - len(owned[:n]))
-            prev = elem_owned.get(name)
-            if prev is None:
-                elem_owned[name] = verdict
-                elem_wanted[name] = list(verdict)
-                return
-            want = elem_wanted[name]
-            for i, (a, b) in enumerate(zip(prev, verdict)):
-                if a != b and at is not None:
-                    conflicts.setdefault(name, at)
-                prev[i] = a and b
-                want[i] = want[i] or b
-
-        def visit(stmts: list[TpyStmt]) -> None:
-            for stmt in stmts:
-                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    record(stmt.name, stmt, stmt)
-                elif (isinstance(stmt, TpyAssign)
-                      and isinstance(stmt.target, TpyName)):
-                    record(stmt.target.name, stmt, stmt)
-                # A walrus binds in expression position: without this row its
-                # owning-call source is invisible here and the frame gets a
-                # borrow-form tuple field aliasing the dead result temporary.
-                for ne in walrus_bindings(stmt):
-                    record(ne.target, ne, stmt)
-                for body in stmt.sub_bodies():
-                    visit(body)
-
-        visit(func.body)
-        for lname, flags in elem_owned.items():
-            if not any(elem_wanted[lname]):
-                continue
-            if lname in conflicts:
-                at = conflicts[lname]
-                raise CodeGenError(
-                    f"'{lname}' is bound both to a tuple holding a fresh "
-                    f"object and to one borrowing an existing object, and "
-                    f"lives across a suspension; the two need different "
-                    f"storage. Bind the two forms to separate names",
-                    loc=getattr(at, "loc", None))
-            inner = unwrap_ref_type(gen_types[lname])
-            eff = TupleType(tuple(
-                OwnType(et) if own and not isinstance(et, OwnType) else et
-                for et, own in zip(inner.element_types, flags)))
-            owning[lname] = eff
-        return owning
-
     def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
         """Populate `pointer_locals`, `generator_optional_fields`, and
         `generator_frame_slot_locals` for a resumable-frame body
         (generator __next__ or async __poll__).
 
-        Also refreshes `one_shot_lift_locals` (the `__await_lift_*` temps) for
-        this body, so a tuple-unpack reading one can move its elements out.
-
-        For each local in `func.generator_locals`:
+        For each local of the published frame (`THIRResumableFrame.locals`):
           - value type: not tracked (frame slot is `T name;`, no peel)
           - pointer-form (pointer-repr Optional[NonValue] OR a for-loop
             iter var with a stable lvalue source): added to
@@ -3099,25 +2857,16 @@ class CodeGenContext:
 
         Caller's contract: all three sets are cleared at body entry and
         restored on exit (matches the existing `generator_*` save/restore
-        dance). `generator_for_loop_info` must already be populated.
+        dance). The frame must already be published.
         """
-        # Local import: top-level would cycle (resumable_cfg -> gen_generators
-        # -> context).
-        from . import resumable_cfg as _rcfg
-        self.one_shot_lift_locals = set(
-            _rcfg.resumable_state(func).one_shot_lift_names)
-
-        if not func.generator_locals:
-            return
-
-        # One placement verdict per hoisted local, shared with the struct
-        # field-decl emit (gen_async._frame_layout), which cached the plan
-        # by struct-emit time.
-        plan = _rcfg.resumable_state(func).frame_layout
-        assert plan is not None, func.name
-        for lname, verdict in plan.bindings.items():
+        # Local import: top-level would cycle (thir -> thir.emit -> context).
+        from ..thir.frame import SLOT_BACKED_KINDS, FrameLocalKind
+        # One placement verdict per hoisted local, the published frame's,
+        # which the struct field decls read.
+        for loc in self.thir_resumable_frames[func].locals:
+            lname, verdict = loc.name, loc.placement
             kind = verdict.kind
-            if kind is _rcfg.FrameLocalKind.PTR_ALIAS:
+            if kind is FrameLocalKind.PTR_ALIAS:
                 # A `T*` field aliasing live storage (pointer-form loop var,
                 # unpack target, or statement-level borrow alias): same
                 # dispatch as sync pointer-locals, seeded up-front so the
@@ -3127,67 +2876,39 @@ class CodeGenContext:
                 self.generator_borrow_form_loop_vars.add(lname)
                 if verdict.const:
                     self.const_indirect_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.OPT_PTR:
+            elif kind is FrameLocalKind.OPT_PTR:
                 self.pointer_locals.add(lname)
                 if verdict.const:
                     self.const_indirect_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.REBIND_PTR:
+            elif kind is FrameLocalKind.REBIND_PTR:
                 self.pointer_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.BORROW_TUPLE:
+            elif kind is FrameLocalKind.BORROW_TUPLE:
                 # Borrow-form tuple frame fields are declared
                 # std::tuple<..., T*> (gen_coro_struct), so assignments from
                 # storage sources need the element-wise pointer lift like any
                 # borrow-form local; proxy-ref loop elements (dict_items)
                 # carry the same form.
                 self.borrow_form_tuple_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
-                # A source-derived loop var is a frame slot whatever its
-                # element turns out to be -- including a value element:
-                # reads go through `(*name)` whether the trait picked alias
-                # or own; that is the point of deferring the choice to C++.
+            elif kind in SLOT_BACKED_KINDS:
+                # `tpy::frame_slot<T>` fields (`SLOT_BACKED_KINDS`): writes
+                # route through `.emplace(...)`, reads use the `(*name)`
+                # access -- a source-derived loop var too, whatever element
+                # the trait picks. PROTOCOL locals seed the same sets: the
+                # resumable struct emit raises its user-facing error before
+                # any read renders, so the membership is inert but keeps the
+                # dispatch total.
                 self.generator_optional_fields.add(lname)
                 self.generator_frame_slot_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
-                self.generator_optional_fields.add(lname)
-                self.generator_frame_slot_locals.add(lname)
-                # The frame slot holds the tuple BY VALUE (storage form), so
-                # element reads use `.` not `->` -- mark it a storage-form
-                # source like the sync owning local.
-                self.storage_form_tuple_locals.add(lname)
-            elif kind is _rcfg.FrameLocalKind.MIXED_TUPLE_SLOT:
-                self.generator_optional_fields.add(lname)
-                self.generator_frame_slot_locals.add(lname)
-                # A MIXED tuple is by value only in its OWNED half, so the
-                # slot holds the mixed render: element reads split, `.` for
-                # the owned element and `->` for the borrowed pointer.
-                self.storage_form_tuple_locals.add(lname)
-                self.own_borrow_tuple_locals.add(lname)
-            elif kind in (_rcfg.FrameLocalKind.FRAME_SLOT,
-                          _rcfg.FrameLocalKind.PROTOCOL):
-                # Non-pointer-form non-value frame fields are backed by
-                # `tpy::frame_slot<T>`: writes route through `.emplace(...)`,
-                # reads use the `(*name)` access. PROTOCOL locals seed the
-                # same sets: the resumable struct emit raises its user-facing
-                # error before any read renders, so the membership is inert
-                # but keeps the dispatch total.
-                self.generator_optional_fields.add(lname)
-                self.generator_frame_slot_locals.add(lname)
+                if kind in (FrameLocalKind.OWNING_TUPLE_SLOT,
+                            FrameLocalKind.MIXED_TUPLE_SLOT):
+                    # The slot holds the tuple by value (storage form), so
+                    # element reads use `.` -- for a MIXED tuple only in its
+                    # owned half: the borrowed element stays a pointer.
+                    self.storage_form_tuple_locals.add(lname)
+                if kind is FrameLocalKind.MIXED_TUPLE_SLOT:
+                    self.own_borrow_tuple_locals.add(lname)
             # VALUE / OWNED_STR: no context seeding -- value-typed access
             # needs no peel, and the owned-str field reads as a plain string.
-
-    def is_already_pointer_source(self, expr: TpyExpr) -> bool:
-        """True when `expr` renders as a `T*` value with no further lifting.
-
-        Composes `is_indirect_name` (pointer locals/globals/self/imports --
-        names whose rendering is already `T*`) with the `Ptr[T]` source
-        case (any expression whose sema type is `PtrType`). Used by the
-        codegen sites that lift other source shapes via `&(...)` or
-        `optional_to_ptr`: when this returns True, the bare rendering is
-        already in the right shape and the lift is a bug (`T**` / wrong type).
-        """
-        if self.is_indirect_name(expr):
-            return True
-        return isinstance(self.get_expr_type(expr), PtrType)
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the sema-analyzed type of an expression, unwrapping ReadonlyType.
@@ -3226,52 +2947,13 @@ class CodeGenContext:
         return isinstance(expr, CONTAINER_LITERAL_NODES)
 
     def is_value_emit_rvalue(self, expr: TpyExpr) -> bool:
-        """Rvalue source that renders as a value (not a `T*`), so a
-        pointer-form Optional sink needs to materialize a named slot before
-        taking address. Container/comprehension/generator literals plus
-        rvalue field accesses (`temp.field` on a moved-from object) are the
-        exhaustive set under the pointer-repr-Optional outer guard at the
-        pointer-local init and rebind sites.
-        """
-        return self.is_container_literal_expr(expr) or (
-            isinstance(expr, TpyFieldAccess) and self.is_rvalue_source(expr))
+        """`value_category.is_value_emit_rvalue`."""
+        return _is_value_emit_rvalue_shared(self.analyzer, expr)
 
     def is_temporary_expr(self, expr: TpyExpr) -> bool:
-        """Check if an expression produces a temporary (rvalue).
-
-        Temporaries can't bind to non-const lvalue references, so they need
-        to be stored in a temp variable when passed to mutable ref params.
-
-        Lvalues (don't need temps): variable names, field access
-        Rvalues (need temps): literals, binary/unary ops, calls, coercions, subscripts on records
-        """
-        # Scalar literals: 1, 3.14, "x", True, None
-        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
-            return True
-        # Container literals, comprehensions, generator expressions.
-        if self.is_container_literal_expr(expr):
-            return True
-        # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
-        if isinstance(expr, TpyCoerce):
-            # Pointer dereference is an lvalue, not a temporary
-            if isinstance(expr.actual_type, PtrType):
-                return False
-            return True
-        # Binary and unary ops always produce temporaries
-        if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
-            return True
-        if isinstance(expr, TpyMethodCall):
-            return self.is_rvalue_source(expr)
-        # Subscript on user records returns by value (rvalue)
-        # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
-        if isinstance(expr, TpySubscript):
-            raw_ct = self.analyzer.get_expr_type(expr.obj)
-            container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
-            if isinstance(container_type, NominalType) and container_type.is_user_record:
-                return True
-        if isinstance(expr, TpyCall):
-            return self.is_rvalue_source(expr)
-        return False
+        """Check if an expression produces a temporary (rvalue): the shared
+        `value_category.is_temporary_expr`."""
+        return _is_temporary_expr_shared(self.analyzer, expr)
 
     def unwrap_copy(self, expr: TpyExpr) -> TpyExpr:
         """If expr is tpy.copy(x), return x; otherwise return expr as-is."""

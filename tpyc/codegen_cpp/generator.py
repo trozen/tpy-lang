@@ -11,16 +11,15 @@ import contextlib
 import heapq
 import io
 
-from ..typesys import TpyType, TypeRegistry, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..typesys import TpyType, TypeRegistry, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
 from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from ..toolchain import PLATFORMS
-from .resumable_cfg import (
-    ResumableShape, recursive_delegation_error, resumable_state,
-)
+from ..resumable_shape import ResumableShape
+from .frame_names import recursive_delegation_error
 
 from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, cpp_string_literal_expr, enum_cpp_name
 from .types import TypeResolver
@@ -134,20 +133,11 @@ class CodeGenerator:
         from ..interop.extension import ExtensionGenerator
         self.extension = ExtensionGenerator(self.ctx, self.records, self.types)
 
-        # Generator codegen (must be created after wiring since it uses types/functions)
-        from .gen_generators import GeneratorCodegen
-        self.gen_generators = GeneratorCodegen(
-            self.ctx, self.types, self.functions)
-        self.records.gen_generators = self.gen_generators
-
         # Async coroutine codegen (state-machine struct + Poll<T> poll())
         from .gen_async import AsyncCoroCodegen
         self.gen_async = AsyncCoroCodegen(
             self.ctx, self.types, self.functions)
         self.records.gen_async = self.gen_async
-        # The resumable for-loop emit reuses the legacy strategy analysis
-        # (`_analyze_for_strategy`) so range/begin_end peepholes match.
-        self.gen_async.gen_generators = self.gen_generators
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True, *,
@@ -1042,15 +1032,6 @@ class CodeGenerator:
         spellings for every later one, and an omitted owner resolves them off
         a same-named free function (or off nothing).
         """
-        state = resumable_state(func)
-        if state.gen_eligible is not None:
-            return state.gen_eligible
-        result = self._compute_resumable_generator_eligible(func, record_name)
-        state.gen_eligible = result
-        return result
-
-    def _compute_resumable_generator_eligible(
-            self, func: "TpyFunction", record_name: str | None) -> bool:
         # Generic generators (explicit `[T]` type params) are eligible: the
         # resumable emitter is template-aware (struct + __next__ + factory
         # emitted inline in the header for templated coros, exactly like
@@ -1068,28 +1049,11 @@ class CodeGenerator:
         # protocol param aliased into a local) get a clean reject at
         # frame-field emit rather than a broken C++ build.
         #
-        # Backstop: build (and cache) the CFG, which raises a clean located
-        # CodeGenError for any shape the resumable lowering can't handle, so a
-        # residual unsupported shape surfaces as a diagnostic rather than a
-        # silent miscompile.
-        self.gen_async._build_resumable_cfg(func, record_name)
-        return True
-
-    @staticmethod
-    def _bound_frame_targets(
-            func: TpyFunction) -> list[tuple[str, str | None]]:
-        """`(function_name, owner_record_name | None)` for every bound
-        generator or coroutine object promoted into `func`'s resumable
-        frame -- each is embedded by value, the same infinite-size
-        constraint as an inline await's sub-future."""
-        targets: list[tuple[str, str | None]] = []
-        for _lname, ltype in (func.generator_locals or []):
-            inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ltype)))
-            if isinstance(inner, ConcreteFrameType):
-                owner = inner.frame_owner
-                targets.append((inner.frame_func_name,
-                                owner.name if owner is not None else None))
-        return targets
+        # Backstop: publishing the frame raises a clean located CodeGenError
+        # for any shape the resumable lowering can't handle, so a residual
+        # unsupported shape surfaces as a diagnostic rather than a silent
+        # miscompile.
+        return self.gen_async.resumable_frame(func, record_name).eligible
 
     def _collect_module_generators(self, module: TpyModule) -> None:
         """Populate the same-module generator map the `__for_src` embedding
@@ -1102,7 +1066,7 @@ class CodeGenerator:
         for f in module.functions:
             if f.is_generator:
                 gens[(f.name, None)] = f
-        self.gen_generators.same_module_generators = gens
+        self.gen_async.same_module_generators = gens
 
     def _emit_resumable_structs(self, hpp: TextIO, module: TpyModule) -> None:
         """Emit every resumable-frame struct definition -- async coros AND
@@ -1155,15 +1119,11 @@ class CodeGenerator:
         deps: list[set[int]] = [set() for _ in range(n)]
         dependents: list[list[int]] = [[] for _ in range(n)]
         for i, (f, rn, is_async) in enumerate(units):
-            # The frame's own record of what it embeds by value, populated at
-            # the sites that resolve each callee (prescans + the await payload
-            # factory). Build is memoized and self-seeds its scope, so forcing
-            # it here only moves work the emit loop below would do anyway.
-            self.gen_async._build_resumable_cfg(f, rn)
-            edges = list(resumable_state(f).frame_dep_units)
-            edges.extend(self.gen_generators._for_src_generator_targets(f))
-            edges.extend(self._bound_frame_targets(f))
-            for name, owner in edges:
+            # The frame's own record of what it embeds by value. The frame is
+            # published once, so building it here only moves work the emit
+            # loop below would do anyway.
+            frame = self.gen_async.resumable_frame(f, rn)
+            for name, owner in frame.embedding_edges:
                 j = index.get((name, owner))
                 # A self-edge (a coro that inline-awaits itself, a generator
                 # that delegates to itself) is kept on purpose: it's a 1-cycle
