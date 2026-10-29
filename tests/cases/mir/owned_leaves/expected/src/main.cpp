@@ -569,7 +569,7 @@ std::string string_as_str(std::string_view s) {
 }
 
 
-// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
+// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^unsupported hoisted value$/)
 __gen_countdown countdown(::tpy::BigInt n) {
     return __gen_countdown(n);
 }

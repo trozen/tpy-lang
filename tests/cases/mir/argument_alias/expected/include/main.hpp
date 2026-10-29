@@ -73,7 +73,7 @@ void rename(H& r, std::string_view s);
 void member_param(Holder& o, std::string_view s);
 // def member_self(o: Holder) -> None:  # tpyc: mir(conflict /argument_alias/)
 void member_self(Holder& o);
-// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
+// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(conflict /argument_alias/)
 __gen_gen_caller gen_caller(std::vector<::tpy::BigInt>& xs);
 // def keyword_alias(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
 ::tpy::BigInt keyword_alias(std::vector<::tpy::BigInt>& xs);
@@ -286,7 +286,7 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
     return os;
 }
 
-// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
+// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(conflict /argument_alias/)
 struct __gen_gen_caller : public ::tpy::next_iter_mixin<__gen_gen_caller, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;

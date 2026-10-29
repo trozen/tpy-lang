@@ -161,7 +161,7 @@ bool concat_mixed(std::string_view s, std::string_view t);
 ::tpy::BigInt no_init(bool flag);
 // def string_as_str(s: str) -> str:  # tpyc: mir(covered)
 std::string string_as_str(std::string_view s);
-// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
+// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^unsupported hoisted value$/)
 __gen_countdown countdown(::tpy::BigInt n);
 // def main() -> None:
 void main();
@@ -260,7 +260,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
     return os;
 }
 
-// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
+// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^unsupported hoisted value$/)
 struct __gen_countdown : public ::tpy::next_iter_mixin<__gen_countdown, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::BigInt n;

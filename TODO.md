@@ -2614,7 +2614,61 @@ alongside related feature work; only the big-rock deferrals live here.
     generator built at the forward-declaration gate (`--dump-thir` prints
     `frame g [async]`); the payload factory and the shape-gated prescan
     arms read it. Fix with a decided shape per body, checked against the
-    snapshots.
+    snapshots. MIR does not read `frame.shape`: it keys on the function's
+    own flags (`is_generator`, `is_async`, `is_genexpr`).
+  - **MIR lowers generator bodies: the gaps after the first slice**
+    (2026-10-29, docs/MIR_ANALYSIS_PLAN.md B4). A `def` generator's frame
+    lowers when it has none of these; each is refused by name:
+    - Decomposed `for` loops (`loop across a suspension`): a `for` whose
+      body suspends splits into `THIRForIterSetup` / `THIRForAdvance`, whose
+      loop binding exists only as the printer's `GeneratorForInfo`. Waits
+      for the one loop-binding record (decided in `_loop_row` /
+      `classify_binding`, keyed on the THIR node, carried by structured and
+      decomposed loops) -- the tuples line's one-binder step 5 ("loop heads
+      join the binder"). MIR needs on the setup and advance nodes what a
+      structured loop carries (loop binding, element type, the iterable or
+      the range bounds with their counter) to share `native_loop` /
+      `range_loop`'s cursor operations.
+    - `async def` bodies (`async body`): await suspensions, lifted awaits.
+    - Generator expressions (`generator expression`): THIR must publish the
+      source's user-facing name (the frame reads it as `__src`).
+    - try/except/finally/with regions around a suspension (`try across a
+      suspension`, `with across a suspension`), a suspending `match`
+      (`match across a suspension`), nested defs (`nested def`).
+    - Module globals a frame reads or writes: code running while the frame
+      is suspended may write them, which MIR has no suspension effect for
+      yet (`global across a suspension` once THIR publishes it). Frame
+      leaves carry no `global_binding` fact on a global's `THIRName` today,
+      so MIR refuses the read as `non-local name`.
+    - Reference yields (`reference yield`): a yield slot that lends.
+    - Owned-leaf (`int`, `str`) and aggregate frame locals (`unsupported
+      hoisted value`): entry declarations of owned storage and
+      borrow-then-copy iteration, which plain functions lack too. ORDER: a
+      suspension writes nothing because no admitted frame local holds a loan
+      across it (only REF captures and the receiver do, and those are the
+      caller's half). A frame local that can hold a loan -- an aggregate, a
+      view -- lands only with the caller's half below, or with a suspension
+      that writes everything reachable from the REF captures and the
+      receiver; otherwise MIR calls a loan-holding frame `covered` that is
+      not. `mir(covered)` on a generator means no conflict inside the body,
+      not safety between two steps.
+    - Argument lifts a frame holds (`argument held across a suspension`).
+    - Which frame locals a C++ local inside a leaf shadows (a non-hoisted
+      loop variable, a narrowing alias, a hoisted declaration -- the
+      printer's `frame_field_shadows`; THIR already rewrites every other
+      frame-field declaration into a write, `thir/lower/resumable.py`) is
+      re-derived in MIR by a statement-kind walk (`_leaf_declarations`,
+      `tpyc/mir/lower.py`) so the frame entry does not pre-declare them.
+      Fail-closed today (the walrus, unpack and match leaves that could add
+      a shadow are refused for other reasons, so no test can reach a missed
+      kind), but the fact is the printer's: THIR should publish it, per
+      frame local, on `THIRResumableFrame`.
+    - An explicit `StrView` (view) parameter captured by value is refused
+      (`by-value capture of a borrowed parameter`): bind the frame's copy
+      as a view with the caller's origin, as the parameter's own loan.
+    - The caller's half: a generator handle's summary (the parameters whose
+      loans the handle holds), so a caller mutating a lent argument between
+      steps is judged by MIR rather than by sema's coarse retention.
   - **Per-resume-block temporary plans and storage facts for frames.** MIR's
     lowering of frames needs two derivations the frame move did not add: a
     temporary-plan scope per resume block (a block's temporaries die at its

@@ -1,0 +1,27 @@
+gen_free: 6
+gen_free: 3
+gen_free: 0
+gen_free: xs 4 6
+gen_method: 3
+gen_method: 1
+gen_method: -1
+gen_method: count -1
+gen_while: 0
+gen_while: 1
+gen_while: 4
+gen_while: 9
+gen_alias: len 2
+gen_last_use: scalar 1
+gen_last_use: reused 2
+gen_last_use: reused 2
+gen_last_use: conditional 3
+gen_last_use: conditional 4
+gen_last_use: reassigned 5
+gen_last_use: reassigned 6
+gen_last_use: hazard len 2
+gen_last_use: hazard len 2
+gen_owned: hi
+not_for: 7
+not_try: 8
+not_try: finally
+not_genexpr: 12

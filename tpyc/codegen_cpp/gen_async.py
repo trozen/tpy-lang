@@ -65,7 +65,7 @@ from ..thir.frame import (
     THIRExceptRegion, THIRFall, THIRFinallyExit, THIRFinallyRegion,
     THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
     THIRLoopSourceRegion, THIRMatchDispatch, THIRRegion, THIRResumableFrame,
-    THIRSuspend, THIRTryRegion, THIRUnreachable,
+    THIRSuspend, THIRTryRegion, THIRFallOff,
     THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
 )
 from ..thir.lower.frame import (
@@ -2502,7 +2502,7 @@ class AsyncCoroCodegen:
             return None
         if has_dtor or cfg.finally_helpers:
             return None
-        plain = (THIRFall, THIRBranch, THIRSuspend, THIRUnreachable,
+        plain = (THIRFall, THIRBranch, THIRSuspend, THIRFallOff,
                  THIRForAdvance)
         if any(bb.region_stack or not isinstance(bb.terminator, plain)
                for bb in cfg.blocks.values()):
@@ -2548,7 +2548,7 @@ class AsyncCoroCodegen:
         may_hoist = (idempotent and not head.stmts and not head.entry_narrowings
                      and advance.exhausted_bb not in case_entries
                      and not exhausted.stmts
-                     and isinstance(exhausted.terminator, THIRUnreachable))
+                     and isinstance(exhausted.terminator, THIRFallOff))
         loop_label = case_entries[loop_bb].cpp_name()
         return _LoopForm(
             head_labels=frozenset(
@@ -3550,7 +3550,7 @@ class AsyncCoroCodegen:
                      *, tail: bool = False) -> None:
         """Walk BBs starting from start_bb, emitting their statements
         and following Fall/Branch terminators inline. Stops when the
-        terminator is Yield/Return/Raise/Unreachable, or when a
+        terminator is Yield/Return/Raise/FallOff, or when a
         Fall/Branch target is a case_entry (then emits a state
         transition).
 
@@ -3603,8 +3603,8 @@ class AsyncCoroCodegen:
                 self._leaf.emit_leaf_stmt(
                     out, t.slot, self.ctx.indent_level)
                 return
-            if isinstance(t, THIRUnreachable):
-                self._emit_unreachable_tail(out, body_indent, func)
+            if isinstance(t, THIRFallOff):
+                self._emit_fall_off_tail(out, body_indent, func)
                 return
             if isinstance(t, THIRFall):
                 if t.next_bb in case_entries:
@@ -4161,12 +4161,11 @@ class AsyncCoroCodegen:
             out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb,
             tail=tail)
 
-    def _emit_unreachable_tail(self, out: "TextIO", indent: str,
-                                 func: TpyFunction) -> None:
-        """Tail emission for a BB whose end is statically unreachable
-        (no explicit return/raise). Generators that fall off the end stop
-        iterating (StopIteration). For void async defs, emit Ready(unit);
-        otherwise panic."""
+    def _emit_fall_off_tail(self, out: "TextIO", indent: str,
+                            func: TpyFunction) -> None:
+        """The body falling off its end (`THIRFallOff`, no explicit
+        return/raise): a generator stops iterating (StopIteration), a void
+        async def completes (Ready(unit)), any other async def panics."""
         if self._is_generator_shape():
             # Fell off the end of the generator body -> StopIteration.
             emit_prims.emit_finally_chain(self.ctx, out, indent)

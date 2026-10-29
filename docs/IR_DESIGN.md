@@ -1871,15 +1871,16 @@ Terminator
   | Return(value: MIROperand | None)
   | Panic(message: str)
   | Switch(operand: MIROperand, arms: list[(Pattern, BlockId)], default: BlockId)
-  | Yield(value: MIROperand, resume: BlockId)     # generator yield point
   | Invoke(call: MIRRvalue, ok: BlockId, err: BlockId, err_local: str | None)
                                                # return-tier @error_return handling
   | Unreachable
 ```
 
-`Yield` suspends the generator, returning a value to the caller. On resume, execution
-continues at the `resume` block. This supports the resumable frame generators share with
-coroutines (`THIRResumableFrame`, printed by `gen_async.py`).
+A generator's suspension is not a terminator: it is the `MIRSuspend(value)` statement
+(it reads the yielded value, writes nothing, and may raise -- the caller may drop the
+frame instead of resuming it), followed by a `Goto` to the resume block. MIR reads the
+suspensions from the frame THIR publishes (`THIRResumableFrame`, its `THIRSuspend`
+terminators), the same frame `gen_async.py` prints; it builds no CFG of its own.
 
 `Invoke` is used for return-tier `@error_return(E)` calls: if the callee returns an
 error via `std::expected`, control flows to `err`; otherwise to `ok`. `err_local`
@@ -2509,7 +2510,7 @@ The codegen backend reads MIR instead of THIR:
 | `Branch(c, t, f)` | `if (c) { ... } else { ... }` |
 | `Switch(...)` | `switch` or `if`/`else if` chain |
 | `Invoke(call, ok, err, err_local)` | `auto __res = call; if (!__res) { err_local = __res.error(); goto err; }` |
-| `Yield(val, resume)` | state-machine `switch` dispatch |
+| `MIRSuspend(val)` + `Goto(resume)` | state-machine `switch` dispatch (MIR reads the published frame; the C++ comes from THIR's frame printer) |
 
 The codegen reconstructs structured control flow from the CFG where possible (if/else,
 while, for) to keep the C++ readable. This is a well-studied problem (structural
@@ -2767,14 +2768,13 @@ or eliminating the C++ compiler dependency), the MIR is ready.
 6. **Generator functions in MIR.** Generator functions are lowered to state-machine structs
    by codegen's printer from the frame THIR publishes (`THIRResumableFrame`: a coarse CFG
    whose suspensions are `THIRSuspend` terminators, with region stacks and case entries), so
-   MIR can lower a frame without a second CFG builder. Should the state-machine
-   transformation happen
-   during THIR -> MIR lowering (generators become explicit state machines in MIR), or
-   should MIR represent generators with `Yield` terminators and defer the state-machine
-   transform to MIR -> C++ codegen? Recommendation: `Yield` terminators in MIR --
-   this keeps MIR closer to the source semantics and lets the state-machine transform
-   remain a codegen concern. But this means MIR passes (liveness, borrow checking) must
-   understand that `Yield` suspends and resumes, which complicates dataflow analysis.
+   MIR can lower a frame without a second CFG builder. Settled for generator bodies:
+   MIR reads the published frame and keeps the source shape -- a suspension is the
+   `MIRSuspend` statement plus a `Goto` to the resume block, not a terminator, and the
+   state-machine transform stays a codegen concern. The analyses see a suspension as a
+   read of the yielded value with an exceptional exit (abandonment), so dataflow needs
+   no suspend/resume arm of its own. Async bodies and the frame features MIR does not
+   model yet (loops, regions and globals across a suspension) remain open.
 
 7. **String/bytes view borrow tracking.** Sema currently tracks `StrView`/`BytesView`
    borrows separately from `BorrowTracker` (via `str_source_borrows`,

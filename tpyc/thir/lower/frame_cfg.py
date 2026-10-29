@@ -30,7 +30,7 @@ from ..frame import (
     THIRFinallyExit, THIRFinallyRegion, THIRForAdvance, THIRForIterSetup,
     THIRFrameRaise, THIRFrameReturn, THIRLeafSlot, THIRLoopSourceRegion,
     THIRMatchDispatch, LeafRole, await_operand_slots,
-    THIRRegion, THIRSuspend, THIRSuspensionPayload, THIRTerminator, THIRTryRegion, THIRUnreachable,
+    THIRRegion, THIRSuspend, THIRSuspensionPayload, THIRTerminator, THIRTryRegion, THIRFallOff,
     THIRWithEnter,
     THIRWithRegion, THIRYieldSuspension,
 )
@@ -159,12 +159,11 @@ class CFGBuilder:
         alongside `await`."""
         entry = self._new_bb()
         end = self._build_block(entry, body)
-        # If the body fell off the end without a terminator, mark the
-        # tail BB with THIRUnreachable. The emitter inserts the appropriate
-        # "fell-through-without-returning" handling (Ready(unit) for
-        # `-> None`, panic otherwise).
+        # The tail block falls off the body's end. The emitter inserts the
+        # appropriate "fell-through-without-returning" handling (Ready(unit)
+        # for `-> None`, panic otherwise).
         if end is not None and self._blocks[end].terminator is None:
-            self._blocks[end].terminator = THIRUnreachable()
+            self._blocks[end].terminator = THIRFallOff()
         cfg = FrameCFG(
             entry_bb=entry,
             blocks=self._blocks,
@@ -413,16 +412,13 @@ class CFGBuilder:
 
     def _build_break(self, cur: int) -> None:
         if not self._loop_stack:
-            # Sema would have rejected; treat as unreachable.
-            self._finish(cur, THIRUnreachable())
-            return
+            raise AssertionError("'break' outside a loop: sema rejects it")
         target = self._loop_stack[-1].break_bb
         self._finish(cur, THIRFall(next_bb=target))
 
     def _build_continue(self, cur: int) -> None:
         if not self._loop_stack:
-            self._finish(cur, THIRUnreachable())
-            return
+            raise AssertionError("'continue' outside a loop: sema rejects it")
         target = self._loop_stack[-1].continue_bb
         self._finish(cur, THIRFall(next_bb=target))
 

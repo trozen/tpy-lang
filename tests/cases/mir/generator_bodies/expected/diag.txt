@@ -1,0 +1,2 @@
+main.py:50: warning: argument 'xs[0]' points into 'xs', which 'bound' modifies through parameter 'events' while it still uses 'value'; bind it to a local first ('v = xs[0]') or restructure so the call does not hand over both
+main.py:87: warning: argument 'xs[0]' points into 'xs', which 'tagged' modifies through parameter 'events' while it still uses 'value'; bind it to a local first ('v = xs[0]') or restructure so the call does not hand over both

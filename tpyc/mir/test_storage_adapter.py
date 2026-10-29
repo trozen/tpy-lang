@@ -445,7 +445,7 @@ def test_wrong_request_kind_is_an_invariant_error(artifacts: Artifacts) -> None:
         certify_thir_storage(replace(_request(artifacts, ctor), kind=MIRBodyKind.FREE_FUNCTION))
     # A function's kind is its own (`function_body_kind`); a request cannot re-label it.
     fn = next(f for f in artifacts[0].thir_functions.values() if f.receiver is None)
-    for kind in (MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR, MIRBodyKind.GENERATOR):
+    for kind in (MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR, MIRBodyKind.MODULE):
         with pytest.raises(MIRValidationError, match="kind differs from its function"):
             certify_thir_storage(replace(_request(artifacts, fn), kind=kind))
 

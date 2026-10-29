@@ -25,6 +25,7 @@ from .nodes import (
     MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
     MIRStatement, MIRRegionId, MIRIsAlternative, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint,
+    MIRSuspend,
     statement_target, place_shape, view_member, MIRWrap, builds_base, initialized_places,
 )
 from .value import (
@@ -181,6 +182,8 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
             return operands(call)
         case MIRPrint(arguments=arguments):
             return arguments
+        case MIRSuspend(value=value):
+            return (value,)
         case MIRStorageInit():
             return ()
         case MIRAssign(target=target, value=value):
@@ -200,12 +203,13 @@ def statement_may_raise(stmt: MIRStatement, slots: 'Mapping[MIRSlotId, MIRSlot]'
     """Whether `stmt` can exit the body by exception: a raising operation, a
     copy or constant materialization into owned storage whose allocation
     can throw (`TypeDef.copy_may_raise`), a container literal, an element
-    access that checks its index or key, a call whose summary may raise, or
-    a print, whose formatting allocates."""
+    access that checks its index or key, a call whose summary may raise, a
+    print, whose formatting allocates, or a suspension, where the caller
+    may abandon the frame."""
     match stmt:
         case MIRCallStmt(call=call):
             return call.may_raise
-        case MIRPrint():
+        case MIRPrint() | MIRSuspend():
             return True
         case MIRAssign(target=target) if reaches_element(target):
             # An element written in place may raise: its index may be out of range.
@@ -266,7 +270,7 @@ def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
     match stmt:
         case MIRStorageInit(target=target, value=None):
             return target.root
-        case MIRStorageInit() | MIRCallStmt() | MIRPrint():
+        case MIRStorageInit() | MIRCallStmt() | MIRPrint() | MIRSuspend():
             return None
         case MIRAssign(target=target):
             return None if target.projections else target.root
@@ -533,6 +537,8 @@ def _operand_places(stmt: MIRStatement) -> tuple[tuple[MIRSlotId, MIRPlace | Non
             return tuple((sid, None) for sid in call.arguments)
         case MIRPrint(arguments=arguments):
             return tuple((sid, None) for sid in arguments)
+        case MIRSuspend(value=value):
+            return ((value, None),)
         case MIRStorageInit():
             return ()
     value = stmt.value
@@ -1212,7 +1218,7 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
         for index, stmt in enumerate(block.statements):
-            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRCallStmt, MIRPrint)),
+            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRCallStmt, MIRPrint, MIRSuspend)),
                      "unknown instruction")
             target_place = statement_target(stmt)
             if isinstance(stmt, MIRPrint):
@@ -1223,6 +1229,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                 # A user method could format any other leaf (an enum's `__str__`).
                 _require(all(primitive_operand(slots[sid]) for sid in stmt.arguments),
                          "print argument lacks the primitive contract")
+            if isinstance(stmt, MIRSuspend):
+                # The caller receives the value as its own: no loan of the frame's storage.
+                suspended = slots.get(stmt.value)
+                _require(suspended is not None and suspended.kind is not MIRSlotKind.GLOBAL
+                         and (suspended.shape.is_scalar or suspended.shape.leaf_storage),
+                         "suspension needs a local inert or owned leaf value")
             if isinstance(stmt, MIRCallStmt):
                 validate_call(stmt.call)
                 _require(isinstance(signature_result(stmt.call.summary.callee.signature), VoidType),

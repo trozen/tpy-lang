@@ -5,11 +5,11 @@
 
 namespace tpyapp::main {
 
-// # generator: a resumable body is not lowered
-// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
+// # generator: a BigInt frame local is not declared at the frame's entry
+// def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^unsupported hoisted value$/)
 //     k = n
 //     while k > 0:
-//         yield k                                                                     # -> S_RESUME_0
+//         yield k                                                                                # -> S_RESUME_0
 //         k = k - 1
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_countdown::__next__() {
     while (true) switch (__state) {

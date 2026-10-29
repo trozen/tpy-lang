@@ -106,8 +106,8 @@ from .frame import (
     THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
     THIRLeafSlot, LeafRole, THIRLoopSourceRegion, THIRMatchDispatch,
     HolderRole, THIRFrameHolder,
-    THIRResumableFrame, THIRSuspend, THIRTryRegion, THIRUnreachable,
-    THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
+    THIRResumableFrame, THIRSuspend, THIRTryRegion, THIRFallOff,
+    THIRWithEnter, THIRWithRegion, THIRYieldSuspension, terminator_targets,
 )
 from ..parse.nodes import TpyAwait, TpyStmt
 from .source import UNBOUND
@@ -1995,21 +1995,6 @@ def _region_targets(r: object) -> 'tuple[int, ...]':
     return tuple(t for t in targets if t is not None)
 
 
-def _terminator_targets(t: object) -> 'tuple[int, ...]':
-    """The block ids a terminator transfers to along its CFG edges."""
-    if isinstance(t, THIRFall):
-        return (t.next_bb,)
-    if isinstance(t, THIRBranch):
-        return (t.then_bb, t.else_bb)
-    if isinstance(t, THIRSuspend):
-        return (t.resume_bb,)
-    if isinstance(t, THIRForAdvance):
-        return (t.has_value_bb, t.exhausted_bb)
-    if isinstance(t, THIRMatchDispatch):
-        return t.arm_bbs + (() if t.join_bb is None else (t.join_bb,))
-    return ()
-
-
 def _check_frame_receiver(owner: str, frame: THIRResumableFrame) -> None:
     """A method frame borrows its record at the body's access. A second
     rule beside a function body's receiver (`_validate_function`) because
@@ -2058,10 +2043,10 @@ def validate_resumable_frame(frame: THIRResumableFrame) -> None:
         # A block no edge reaches (the join of a match whose arms all leave)
         # stays open.
         if t is not None and not isinstance(t, (THIRFall, THIRBranch, THIRSuspend,
-                              THIRFrameReturn, THIRFrameRaise, THIRUnreachable,
+                              THIRFrameReturn, THIRFrameRaise, THIRFallOff,
                               THIRForAdvance, THIRMatchDispatch)):
             _fail(owner, block, f"block {bid} ends in {type(t).__name__}")
-        for target in _terminator_targets(t):
+        for target in terminator_targets(t):
             if target not in blocks:
                 _fail(owner, block, f"block {bid} transfers to missing block {target}")
         if isinstance(t, THIRSuspend):

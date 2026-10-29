@@ -224,7 +224,8 @@ def test_receiver_reads_and_alias_access_are_checked(artifacts: Artifacts) -> No
     fn = functions["direct"]
     alias = fn.body[0]
     uncovered(replace(fn, receiver=replace(fn.receiver, readonly=True)), "alias increases access")
-    for changes, reason in (({"cpp": "__self"}, "unsupported metadata: cpp"),
+    # A function body's receiver is the pointer `this`; a frame's reference receiver is refused here.
+    for changes, reason in (({"pointer": False}, "unsupported metadata: pointer"),
                             ({"result_type": INT32}, "reference type mismatch"),
                             ({"form": th.Form.STORAGE}, "receiver read form"),
                             ({"result_type": ReadonlyType(fn.receiver.type)}, "receiver read increases access")):

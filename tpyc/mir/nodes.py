@@ -7,7 +7,7 @@ from types import MappingProxyType
 from enum import Enum, auto
 
 from ..parse import SourceLocation
-from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
+from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction, THIRResumableLeaves, body_header
 from ..typesys import NominalType, Representation, TpyType
 from .call_contract import (
     MIRCallSummary, MIRGlobalId, MIRLoanTransfer, MIRParameterBinding, path_projections, path_step,
@@ -32,16 +32,15 @@ class MIRBodyKind(Enum):
     CONSTRUCTOR = auto()
     MODULE = auto()
     CLOSURE = auto()
-    GENERATOR = auto()
     ASYNC = auto()
     GENERIC = auto()
 
 
-def function_body_kind(fn: THIRFunction) -> MIRBodyKind:
+def function_body_kind(fn: THIRFunction | THIRResumableLeaves) -> MIRBodyKind:
     # THIR withholds the receiver fact wherever `self` is not an ordinary
     # borrowed receiver (staticmethods, properties, dunders, consuming
     # methods), so having an owner record never makes a body a METHOD.
-    return MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION
+    return MIRBodyKind.METHOD if body_header(fn).receiver is not None else MIRBodyKind.FREE_FUNCTION
 
 
 @dataclass(frozen=True)
@@ -475,14 +474,25 @@ class MIRPrint:
     loc: SourceLocation | None = None
 
 
-MIRStatement = MIRAssign | MIRStorageInit | MIRCallStmt | MIRPrint
+@dataclass(frozen=True)
+class MIRSuspend:
+    """A generator's suspension: it reads the yielded value and hands it
+    to the caller, writes nothing, and goes on at the resume block its
+    block's `MIRGoto` names. The caller may drop the frame instead of
+    resuming it: the body then leaves here, as it leaves at a raising
+    operation, so a suspension is an exceptional exit."""
+    value: MIRSlotId
+    loc: SourceLocation | None = None
+
+
+MIRStatement = MIRAssign | MIRStorageInit | MIRCallStmt | MIRPrint | MIRSuspend
 
 
 def statement_target(stmt: MIRStatement) -> MIRPlace | None:
     match stmt:
         case MIRAssign(target=target) | MIRStorageInit(target=target):
             return target
-        case MIRCallStmt() | MIRPrint():
+        case MIRCallStmt() | MIRPrint() | MIRSuspend():
             return None
         case _:
             raise TypeError("unknown MIR statement")
@@ -492,7 +502,7 @@ def statement_call(stmt: MIRStatement) -> MIRCall | None:
     match stmt:
         case MIRAssign(value=MIRCall() as call) | MIRCallStmt(call=call):
             return call
-        case MIRAssign() | MIRStorageInit() | MIRPrint():
+        case MIRAssign() | MIRStorageInit() | MIRPrint() | MIRSuspend():
             return None
         case _:
             raise TypeError("unknown MIR statement")

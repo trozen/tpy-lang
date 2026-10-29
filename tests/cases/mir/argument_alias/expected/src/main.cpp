@@ -208,7 +208,7 @@ void member_self(Holder& o) {
 }
 
 
-// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
+// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(conflict /argument_alias/)
 __gen_gen_caller gen_caller(std::vector<::tpy::BigInt>& xs) {
     return __gen_gen_caller(xs);
 }

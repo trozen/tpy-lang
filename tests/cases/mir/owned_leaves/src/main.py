@@ -432,8 +432,8 @@ def string_as_str(s: str) -> str:  # tpyc: mir(covered)
     return t
 
 
-# generator: a resumable body is not lowered
-def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
+# generator: a BigInt frame local is not declared at the frame's entry
+def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^unsupported hoisted value$/)
     k = n
     while k > 0:
         yield k

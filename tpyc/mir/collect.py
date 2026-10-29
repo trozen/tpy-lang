@@ -13,7 +13,7 @@ from ..identity_map import IdentityMap
 from ..parse import SourceLocation, TpyFunction, TpyModule, TpyRecord
 from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
-from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
+from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity, THIRResumableLeaves
 from ..thir.reject import is_bodyless_binding
 from ..typesys import TpyType
 from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
@@ -153,7 +153,8 @@ class MIRBodySource:
     # The constructed record; set for constructors only.
     record: TpyRecord | None
     kind: MIRBodyKind | None
-    source: THIRFunction | THIRConstructor | None
+    # A generator's body is its published frame's leaves.
+    source: THIRFunction | THIRConstructor | THIRResumableLeaves | None
     refusal: MIRRefusal | None
 
     @property
@@ -293,9 +294,12 @@ def _slot_orders(fn: MIRFunction) -> dict[MIRSlotId, tuple[object, ...]]:
     return {s.id: (*first.get(s.id, never), s.name or "") for s in fn.slots}
 
 
-def check_storage(source: THIRFunction | THIRConstructor, body: MIRBodyId, kind: MIRBodyKind,
-                  definitions: MIRDefinitions,
+def check_storage(source: THIRFunction | THIRConstructor | THIRResumableLeaves, body: MIRBodyId,
+                  kind: MIRBodyKind, definitions: MIRDefinitions,
                   summaries: Mapping[THIRFunctionIdentity, MIRSummaryResult]) -> MIRStorageCheck:
+    if isinstance(source, THIRResumableLeaves):
+        # A frame publishes no storage facts.
+        return MIRStorageCheck(MIRStorageState.NO_FACTS, gap_reason="storage facts have not been published")
     request = MIRStorageRequest(source, body, kind, definitions, summaries)
     bound = certify_thir_storage(request)
     requires = bound.requires_proof
@@ -390,10 +394,20 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
         line = func.loc.line if func.loc is not None else None
         fn = ctx.thir_functions.get(func)
         refusal: MIRRefusal | None = None
+        source: THIRFunction | THIRResumableLeaves | None = fn
         if is_bodyless_binding(func) or func.is_overload_stub:
             refusal = missing(func)
-        elif ctx.thir_resumables.get(func) is not None:
-            refusal = refused("resumable body")
+        elif func.is_async:
+            refusal = refused("async body")
+        elif func.is_genexpr:
+            refusal = refused("generator expression")
+        elif func.is_generator:
+            # A generator's body is the frame its emission published, read, never built here.
+            source = ctx.thir_resumables.get(func)
+            if func.type_params or (owner is not None and owner.type_args):
+                refusal = refused("generic body")
+            elif source is None or ctx.thir_resumable_frames.get(func) is not source.frame:
+                refusal = missing(func)
         elif func in ctx.thir_functions or func in ctx.thir_overload_functions:
             if func.type_params or (owner is not None and owner.type_args):
                 refusal = refused("generic body")
@@ -404,8 +418,8 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
         else:
             refusal = missing(func)
         yield MIRBodySource(body, func.name, line, func, owner, None,
-                            function_body_kind(fn) if fn is not None else None,
-                            fn if refusal is None else None, refusal)
+                            function_body_kind(source) if source is not None else None,
+                            source if refusal is None else None, refusal)
 
     for record, ctor, owner in iter_module_constructors(module, analyzer):
         body = identity(_declaration_name(f"{record.name}.__init__", ctor))
@@ -429,7 +443,9 @@ def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MI
     over its callees' final summaries."""
     assert source.source is not None and source.refusal is None
     summaries = workspace.summaries if workspace is not None else None
-    cached = workspace.lowering(source.body, source.source) if workspace is not None and not fresh else None
+    # A frame defines no callee: no workspace lowering is its.
+    cached = (workspace.lowering(source.body, source.source)
+              if workspace is not None and not fresh and source.summary_identity is not None else None)
     if cached is not None:
         return cached
     return lower_callable(source.source, source.body, definitions, summaries)

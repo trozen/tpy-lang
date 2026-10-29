@@ -574,9 +574,12 @@ class THIRFrameRaise:
 
 
 @dataclass(frozen=True)
-class THIRUnreachable:
-    """BB whose end is statically unreachable (e.g. infinite loop body
-    with no break/return)."""
+class THIRFallOff:
+    """The body falls off its end: the tail block of the body, which
+    completes the frame without a value (a generator is exhausted, a
+    `-> None` coroutine is ready). The tail of a body that never reaches
+    its end (`while True:` with no `break`) carries it too, in a block
+    no edge reaches."""
     pass
 
 
@@ -623,7 +626,7 @@ class THIRMatchDispatch:
         return self.slot.source
 
 
-THIRTerminator = Union[THIRFall, THIRBranch, THIRSuspend, THIRFrameReturn, THIRFrameRaise, THIRUnreachable,
+THIRTerminator = Union[THIRFall, THIRBranch, THIRSuspend, THIRFrameReturn, THIRFrameRaise, THIRFallOff,
                    THIRForAdvance, THIRMatchDispatch]
 
 
@@ -1125,6 +1128,21 @@ def terminator_slots(t: object) -> 'list[tuple[THIRLeafSlot, LeafRole]]':
             (p.args, LeafRole.AWAIT_ARGS),
             (p.operand, LeafRole.AWAIT_OPERAND)) if slot is not None]
     return []
+
+
+def terminator_targets(t: object) -> 'tuple[int, ...]':
+    """The block ids a terminator transfers to along its CFG edges."""
+    if isinstance(t, THIRFall):
+        return (t.next_bb,)
+    if isinstance(t, THIRBranch):
+        return (t.then_bb, t.else_bb)
+    if isinstance(t, THIRSuspend):
+        return (t.resume_bb,)
+    if isinstance(t, THIRForAdvance):
+        return (t.has_value_bb, t.exhausted_bb)
+    if isinstance(t, THIRMatchDispatch):
+        return t.arm_bbs + (() if t.join_bb is None else (t.join_bb,))
+    return ()
 
 
 def frame_ptr_slot_field(frame: 'THIRResumableFrame | None', stmt: object,

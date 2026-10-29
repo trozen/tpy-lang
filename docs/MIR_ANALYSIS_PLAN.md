@@ -1987,7 +1987,25 @@ form facts, never on lists of accepted kinds.
 - **Cleanup:** exceptional exits and destruction.
 - **B4: generator and async frames.** Frame placement and lifecycle facts
   published by THIR (close, cancellation, cleanup), not only suspend/resume
-  edges.
+  edges. First slice landed (2026-10-29): a `def` generator's body (free
+  function or method) lowers from the frame and leaves its emission
+  published (`THIRResumableFrame` / `THIRResumableLeaves`, read, never
+  built): the frame's blocks become MIR fragments, each `yield` a
+  `MIRSuspend` (reads the value, may abandon the frame -- an exceptional
+  exit -- writes nothing) followed by the edge to its resume block,
+  falling off the end or a bare `return` a valueless return; frame locals
+  are declared at entry by the hoist helper (MIR's type vocabulary:
+  inert leaves); a by-value capture of a lent parameter is the frame's
+  own copy. The verdict is `covered` at best (frames publish no storage
+  facts) and the body publishes no summary. Remaining, each refused by
+  name: decomposed `for` loops (a loop whose body suspends; waits for the
+  one loop-binding record), `async def` bodies, generator expressions
+  (their source's display name), try/except/finally/with regions,
+  suspending `match`, nested defs, module globals read or written by a
+  frame, reference yields, owned-leaf and aggregate frame locals, an
+  argument the frame holds across a suspension (a handle built over a
+  temporary), a by-value capture of an explicit `StrView` parameter, and
+  the caller's half (a generator handle's summary).
 - **B5: remaining general call summaries** (pending callee facts, globals,
   callbacks) proceed alongside B1-B4 as each step needs them.
 - **B6: advisory checker and authority transition.** Whether authority moves

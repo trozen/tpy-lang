@@ -2,7 +2,7 @@
 
 from contextlib import contextmanager
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
 from types import MappingProxyType
@@ -12,6 +12,12 @@ from ..codegen_cpp.forms import LoopBinding
 from ..type_def_registry import is_array
 from ..parse import ResultForm, RebindStorage
 from ..thir import nodes as th
+from ..thir.frame import (
+    FrameCaptureKind, THIRBranch, THIRFall, THIRFallOff, THIRFinallyExit, THIRForAdvance, THIRForIterSetup,
+    THIRFrameReturn,
+    THIRLeafSlot, THIRLoopSourceRegion, THIRMatchDispatch, THIRRegion, THIRSuspend, THIRWithRegion,
+    THIRYieldSuspension, terminator_targets,
+)
 from ..thir.source import BindingConstruct, BindingRepr, Held
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
@@ -23,7 +29,7 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing, int_traits_of, record_info_of, zero_value_of
 from ..typesys import (
-    BOOL, INT32, NominalType, TpyType,
+    BOOL, INT32, VOID, NominalType, TpyType,
     NoneType, OptionalType, ReadonlyType, Representation, TupleType, VoidType,
     certified_primitive_comparison, holds_borrowing_view, passing_representation,
     return_representation, through_view, unwrap_own, unwrap_readonly, view_family_of, view_owned_leaf,
@@ -34,7 +40,7 @@ from .nodes import (
     MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered,
     MIROp, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead,
     MIRStorageWrite, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRStorageInit, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
+    MIRStorageInit, MIRSuspend, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
 )
 from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
@@ -280,6 +286,36 @@ def _family_view(typ: TpyType) -> TpyType | None:
     return family.view_type if family is not None else None
 
 
+def _leaf_declarations(stmts: tuple[th.THIRStmt, ...]) -> set[str]:
+    """The names statements declare themselves, at any depth: a
+    declaration's, a narrowing alias's, a hoisted binding's, and the target
+    of a loop that does not hoist it."""
+    names: set[str] = set()
+    pending = list(stmts)
+    while pending:
+        stmt = pending.pop()
+        match stmt:
+            case th.THIRVarDecl(name=name) | th.THIRPtrLocalDecl(name=name) | th.THIRNarrowAlias(alias=name):
+                names.add(name)
+            case th.THIRForEach() | th.THIRForRange() if not stmt.hoist_loop_var:
+                names.add(stmt.var)
+        names.update(decl.name for decl in getattr(stmt, "hoist_decls", ()))
+        for member in fields(stmt):
+            value = getattr(stmt, member.name)
+            if isinstance(value, tuple):
+                pending.extend(item for item in value if isinstance(item, th.THIRStmt))
+    return names
+
+
+def _region_feature(region: THIRRegion) -> str:
+    """The construct a frame region is open for, as a refusal names it."""
+    if isinstance(region, THIRWithRegion):
+        return "with across a suspension"
+    if isinstance(region, THIRLoopSourceRegion):
+        return "loop across a suspension"
+    return "try across a suspension"
+
+
 # The literal-into-slot coercions that render the inner literal directly in
 # the slot's type; any other coercion converts a value.
 _LITERAL_COERCIONS = frozenset({"int_literal_to_fixed_int", "float_literal_to_float", "float_literal_to_float32"})
@@ -296,18 +332,33 @@ class _Lowering:
     model, and builds the body's MIR as it goes -- each expression and each
     statement a fragment (`emit.Fragment`) spliced into the body."""
 
-    def __init__(self, fn: th.THIRFunction, body: MIRBodyId, definitions: MIRDefinitions,
+    def __init__(self, fn: th.THIRFunction | None, body: MIRBodyId, definitions: MIRDefinitions,
                  summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None,
-                 constructor: MIRConstructorBody | None = None) -> None:
+                 constructor: MIRConstructorBody | None = None,
+                 frame: th.THIRResumableLeaves | None = None) -> None:
+        # A generator's body is its published frame's leaves (`frame_body`),
+        # read under the frame's header; it has no THIRFunction.
+        assert (fn is None) is (frame is not None)
         self.fn = fn
-        self.return_type = body_result(fn)
+        self.frame = frame
+        self.header = th.body_header(fn if fn is not None else frame)
+        # What a refusal of the whole body names: the function, or the generator's def.
+        self.node: object = fn if fn is not None else frame.frame.func
+        self.temp_plan = fn.temp_plan if fn is not None else None
+        # The body's own statement list; a frame's statements are its blocks' leaves.
+        self.top_statements: tuple[th.THIRStmt, ...] = fn.body if fn is not None else ()
+        # A frame declares every local at entry and assigns it after: each may be reassigned.
+        self.reassigned_locals = (fn.layout.reassigned_locals if fn is not None
+                                  else frozenset(local.name for local in frame.frame.locals))
+        # A generator completes without a value: what it hands out, it yields.
+        self.return_type = body_result(fn) if fn is not None else VOID
         # A constructor's body builds and returns its record (`constructor_entry`).
         self.constructor = constructor
         self.constructor_result: MIRSlotId | None = None
-        self.parameters = {p.name for p in fn.params}
+        self.parameters = {p.name for p in self.header.params}
         # The body has a temporary plan in use, and the temporary plan scope
         # the statements being checked run in.
-        self.planned = fn.temp_plan is not None and bool(fn.temp_plan.placements)
+        self.planned = self.temp_plan is not None and bool(self.temp_plan.placements)
         self.temp_now = 0
         self.writes: IdentityMap[th.THIRExpr, bool] = IdentityMap()
         self.definitions = definitions
@@ -335,7 +386,7 @@ class _Lowering:
         self.owned_locals: set[str] = set()
         self.fixed_owned: set[str] = set()
         self.tuple_roots: dict[str, str] = {}
-        self.body_declarations = {id(stmt) for stmt in fn.body if isinstance(stmt, th.THIRVarDecl)}
+        self.body_declarations = {id(stmt) for stmt in self.top_statements if isinstance(stmt, th.THIRVarDecl)}
         self.globals: dict[MIRGlobalId, th.THIRGlobalBinding] = {}
         self.global_slots: dict[MIRGlobalId, MIRSlotId] = {}
         self.range_counters: set[str] = set()
@@ -985,8 +1036,8 @@ class _Lowering:
         plan places, lent through a holder of it (`reference`, what the
         parameter lends); `addr_of`: its address is what the argument passes
         (an Optional record parameter's pointer)."""
-        _require(arg, self.fn.temp_plan is not None, "named argument needs complete temporary plan")
-        placement = self.fn.temp_plan.placement(arg)
+        _require(arg, self.temp_plan is not None, "named argument needs complete temporary plan")
+        placement = self.temp_plan.placement(arg)
         _plain(arg, {"init", "cpp_type", "movable"} | ({"addr_of"} if addr_of else set()))
         _require(arg, arg.addr_of is addr_of, "named argument address mismatch")
         _require(arg, arg.form is th.Form.BORROW and (isinstance(arg.init, (th.THIRCtorCall, th.THIRContainerLiteral))
@@ -1076,7 +1127,7 @@ class _Lowering:
             # An emplacement that is also the arm it fills is anchored once.
             return plan
         self.anchored_nodes[node] = True
-        found = self.fn.temp_plan.initializations.get(node, ()) if self.fn.temp_plan is not None else ()
+        found = self.temp_plan.initializations.get(node, ()) if self.temp_plan is not None else ()
         temporaries = tuple(t for t in map(self.temporary_of, (p.node for p in found)) if t is not None)
         if not temporaries:
             return plan
@@ -1090,8 +1141,8 @@ class _Lowering:
         return self.argument_temporaries.get(node) or self.select_temporaries.get(node)
 
     def select_temporary(self, expr: th.THIRSlotEmplace, holder: MIRShape) -> _Temporary:
-        _require(expr, self.fn.temp_plan is not None, "select storage needs complete temporary plan")
-        placement = self.fn.temp_plan.placement(expr)
+        _require(expr, self.temp_plan is not None, "select storage needs complete temporary plan")
+        placement = self.temp_plan.placement(expr)
         _plain(expr, {"value", "cpp_type"})
         _require(expr, placement.optional and placement.initialization is expr,
                  "select storage needs conditional emplacement")
@@ -1169,6 +1220,8 @@ class _Lowering:
         # Module init is not lowered, so nothing proves a replaced global's borrowers dead.
         _require(expr, not (write and owned), "owned-leaf global write")
         _require(expr, not write or fact.writable, "global binding is not writable")
+        # Code running while the frame is suspended may write any global.
+        _require(expr, self.frame is None, "global across a suspension")
         identity = MIRGlobalId(fact.module, fact.name)
         previous = self.globals.get(identity)
         _require(expr, previous is None or previous.type == fact.type, "inconsistent global type")
@@ -1226,79 +1279,83 @@ class _Lowering:
 
     def check(self) -> None:
         """Check and build the body; `assembly` is what `emit.assemble` closes it with."""
-        fn = self.fn
-        if fn.temp_plan is not None:
-            validate_plan(fn.body, fn.temp_plan)
-            for placement in fn.temp_plan.placements:
+        fn, node, header = self.fn, self.node, self.header
+        if self.temp_plan is not None:
+            validate_plan(fn.body, self.temp_plan)
+            for placement in self.temp_plan.placements:
                 _require(placement.node, not (isinstance(placement.node, th.THIRSlotEmplace)
                          and isinstance(placement.declaration, th.THIRWhile)),
                          "repeated condition select emplacement")
-        _require(fn, fn.error_return_cpp is None, "error-return body")
-        _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
+        if fn is not None:
+            _require(fn, fn.error_return_cpp is None, "error-return body")
+            _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
+        callee = fn.resolved_callee if fn is not None else None
         # A follows-receiver result has the access of the body's own receiver.
-        receiver_readonly = fn.receiver is not None and fn.receiver.readonly
+        receiver_readonly = header.receiver is not None and header.receiver.readonly
         # A body THIR resolved no callee for (an overload) publishes no signature: its declared type's.
-        published = fn.resolved_callee.signature.return_representation if fn.resolved_callee is not None else None
+        published = callee.signature.return_representation if callee is not None else None
         self.return_representation = published if published is not None else return_representation(self.return_type)
-        result = call_result(fn.resolved_callee, receiver_readonly, declared=self.return_type,
+        result = call_result(callee, receiver_readonly, declared=self.return_type,
                              representation=self.return_representation)
         if result is not None and value_class(result.type) in AGGREGATE_CLASSES:
             # A record or container returned by reference: its holder, of the declared type.
             problem = lent_shape_problem(self.return_type, result)
-            _require(fn, problem is None, problem)
-            self.register(fn, value_shape(result.type))
+            _require(node, problem is None, problem)
+            self.register(node, value_shape(result.type))
             self.result = result
         elif (owned := owned_value_type(self.return_type)) is not None:
-            _require(fn, self.return_representation is Representation.STORAGE, "unsupported return type")
-            self.leaf_layout(fn, owned)
+            _require(node, self.return_representation is Representation.STORAGE, "unsupported return type")
+            self.leaf_layout(node, owned)
         elif view_leaf(self.return_type):
             self.result = result
-            _require(fn, self.result is not None, "unsupported return type")
+            _require(node, self.result is not None, "unsupported return type")
         elif region_view(self.return_type):
             # A container view result views a region the caller reaches through the
             # arguments: a borrowed result, summarized by its origins.
-            self.register_container(fn, unwrap_readonly(self.return_type))
+            self.register_container(node, unwrap_readonly(self.return_type))
             self.result = result
-            _require(fn, self.result is not None, "unsupported return type")
+            _require(node, self.result is not None, "unsupported return type")
         elif (bare := owned_aggregate_result(self.return_type)) is not None:
             # The body's storage returned by value; the caller destroys what
             # it receives: the aggregate's verified definition.
-            _require(fn, self.return_representation is Representation.STORAGE, "unsupported return type")
+            _require(node, self.return_representation is Representation.STORAGE, "unsupported return type")
             problem = admission_problem(bare, value_class(bare))
-            _require(fn, problem is None, problem)
-            self.register(fn, value_shape(bare))
+            _require(node, problem is None, problem)
+            self.register(node, value_shape(bare))
             # A constructor builds its result where its caller receives it: nothing moves.
-            _require(fn, self.constructor is not None or self.movable(bare), "owned record result needs movable record")
+            _require(node, self.constructor is not None or self.movable(bare),
+                     "owned record result needs movable record")
             self.owned_aggregate_result = bare
         else:
-            _require(fn, not container_view(unwrap_readonly(self.return_type)),
+            _require(node, not container_view(unwrap_readonly(self.return_type)),
                      "view of container storage")
-            _require(fn, not holds_borrowing_view(self.return_type), "view return")
-            _require(fn, storage_leaf(self.return_type, self.return_representation)
+            _require(node, not holds_borrowing_view(self.return_type), "view return")
+            _require(node, storage_leaf(self.return_type, self.return_representation)
                      or isinstance(self.return_type, VoidType), "unsupported return type")
         mir = self.mir
         # A parameter binds at the type its callers bind (`bound_params`). A
         # body without a signature of its types has no summary (which refuses
-        # it as a signature mismatch), so it binds at its own.
-        bound = bound_params(fn) or th.effective_params(fn)
-        if fn.receiver is not None and self.constructor is not None:
+        # it as a signature mismatch), so it binds at its own; a frame binds
+        # the parameters of the factory that builds it.
+        bound = (bound_params(fn) or th.effective_params(fn)) if fn is not None else th.effective_params(self.frame)
+        if header.receiver is not None and self.constructor is not None:
             # A constructor's `self` is no parameter: a holder of the record it builds.
             bound = bound[1:]
-        elif fn.receiver is not None:
+        elif header.receiver is not None:
             param, *bound = bound
             binding = parameter_binding(param)
             if isinstance(binding, str):
-                raise MIRUnsupported(fn, binding)
+                raise MIRUnsupported(node, binding)
             shape, _ = self.parameter_slot(param, binding)
             self.parameters.add("self")
             receiver = mir.adopt(mir.record(shape, MIRSlotKind.PARAMETER, "self"))
             self.bound_parameter(receiver, binding)
             self.scope["self"] = _Bound(receiver)
         names: dict[str, MIRSlotId] = {}
-        for p, param in zip(fn.params, bound, strict=True):
+        for p, param in zip(header.params, bound, strict=True):
             _plain(p, {"name", "type", "passing", "borrowed_record", "optional_layout", "union_layout", "tuple_layout",
                         "native_container"})
-            _require(fn, p.name not in self.scope, "duplicate binding")
+            _require(node, p.name not in self.scope, "duplicate binding")
             # A body's parameter carries the facts THIR published for it.
             binding = parameter_binding(param)
             if isinstance(binding, str):
@@ -1330,8 +1387,11 @@ class _Lowering:
             # member-init list already moved from.
             self.constructor_result = self.constructor_entry()
             plans = self.constructor_initialization()
-        plans += self.declarations(fn.body, 0, top=True)
-        _require(fn, not self.unanchored, "rebind slot without anchor")
+        if fn is not None:
+            plans += self.declarations(fn.body, 0, top=True)
+        else:
+            plans.append(self.frame_body())
+        _require(node, not self.unanchored, "rebind slot without anchor")
         for backing in self.entry_backings:
             mir.adopt(backing, MIRStorageDuration.BODY)
             mir.append(MIRStorageInit(MIRPlace(backing), 0, MIRConstant(None), None))
@@ -1340,8 +1400,8 @@ class _Lowering:
             # Falling off the end returns the record built.
             mir.end(MIRReturn(self.constructor_result, None))
         if self.planned:
-            _require(fn, len(self.argument_temporaries) + len(self.select_temporaries) == len(fn.temp_plan.placements),
-                     "temporary plan contains unsupported record storage")
+            _require(fn, len(self.argument_temporaries) + len(self.select_temporaries)
+                     == len(self.temp_plan.placements), "temporary plan contains unsupported record storage")
         # Each callee once, as the body's summary table holds them.
         callees = tuple({s.callee.identity: s for s in self.calls.values()}.values())
         for identity, fact in self.globals.items():
@@ -1349,7 +1409,8 @@ class _Lowering:
         self.close_layouts()
         self.assembly = dict(
             void=isinstance(self.return_type, VoidType), return_type=self.return_type,
-            kind=MIRBodyKind.CONSTRUCTOR if self.constructor is not None else function_body_kind(fn),
+            kind=(MIRBodyKind.CONSTRUCTOR if self.constructor is not None
+                  else function_body_kind(fn if fn is not None else self.frame)),
             callees=callees, result=self.result, layouts=self.layouts(),
             parameter_bindings=tuple(self.parameter_bindings),
             return_representation=self.return_representation, source_name=self.source_name())
@@ -1357,13 +1418,14 @@ class _Lowering:
     def source_name(self) -> str:
         """The callable's Python name, `Owner.name` for a method, the owner
         by the name its user wrote (an enum's methods live on a companion
-        record)."""
-        fn = self.fn
-        owner = fn.resolved_callee.identity.owner if fn.resolved_callee is not None else None
-        if owner is None or "." in fn.name:
-            return fn.name
-        record = record_info_of(fn.receiver.type) if fn.receiver is not None else None
-        return f"{record.display_name if record is not None else owner.rsplit('.', 1)[-1]}.{fn.name}"
+        record); a frame's owner is its receiver's record."""
+        fn, header = self.fn, self.header
+        owner = (fn.resolved_callee.identity.owner if fn is not None and fn.resolved_callee is not None
+                 else header.receiver.type.name if fn is None and header.receiver is not None else None)
+        if owner is None or "." in header.name:
+            return header.name
+        record = record_info_of(header.receiver.type) if header.receiver is not None else None
+        return f"{record.display_name if record is not None else owner.rsplit('.', 1)[-1]}.{header.name}"
 
     def constructor_entry(self) -> MIRSlotId:
         """The record a constructor builds: storage of the body begun at
@@ -1416,6 +1478,126 @@ class _Lowering:
             f.write(MIRPlace(self.slot_of("self"), (MIRDeref(),)), f.splice(value), loc,
                     MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         return f
+
+    # --- a generator's frame -------------------------------------------------------
+
+    def frame_body(self) -> Fragment:
+        """A generator's body, read off the frame its emission published:
+        each parameter a by-value capture holds copied into the frame, the
+        frame's locals declared at entry and unassigned until written
+        (`hoisted_binding`), then each block the entry reaches -- its leaves
+        (`declarations`) closed by its terminator. The body ends without a
+        value where it returns or falls off its end."""
+        leaves = self.frame
+        frame, node = leaves.frame, self.node
+        _require(node, not frame.nested_defs, "nested def")
+        _require(node, not frame.arg_lifts, "argument held across a suspension")
+        _require(node, leaves.yield_hosts_temps, "reference yield")
+        reached: set[int] = set()
+        pending = [frame.entry_block]
+        while pending:
+            bid = pending.pop()
+            if bid not in reached:
+                reached.add(bid)
+                pending.extend(terminator_targets(frame.blocks[bid].terminator))
+        order = sorted(reached)
+        statements: list[th.THIRStmt] = []
+        for bid in order:
+            block = frame.blocks[bid]
+            for region in block.region_stack:
+                raise MIRUnsupported(node, _region_feature(region))
+            for s in block.stmts:
+                _require(node, not isinstance(s, THIRForIterSetup), "loop across a suspension")
+                _require(node, not isinstance(s, THIRFinallyExit), "try across a suspension")
+                _require(node, isinstance(s, THIRLeafSlot), "with across a suspension")
+                leaf = leaves.leaves.get(s)
+                _require(node, isinstance(leaf, th.THIRStmt), "missing frame leaf")
+                statements.extend(leaf.stmts if isinstance(leaf, th.THIRStmtSeq) else (leaf,))
+            _require(node, not isinstance(block.terminator, THIRForAdvance), "loop across a suspension")
+            _require(node, not isinstance(block.terminator, THIRMatchDispatch), "match across a suspension")
+        loc = node.loc
+        f = self.fragment()
+        for p, capture in zip(self.header.params, frame.captures, strict=True):
+            _require(node, capture in (FrameCaptureKind.REF, FrameCaptureKind.VALUE, FrameCaptureKind.OWNED_COPY),
+                     f"unsupported {capture.name.lower()} capture")
+            shape = self.bound(p.name)
+            if capture is FrameCaptureKind.REF or shape.is_scalar or shape.is_storage:
+                continue
+            # The frame's own copy of a lent parameter: the parameter keeps
+            # the loan its caller lends, as a body copying a reassigned one.
+            _require(node, self.owned_leaf_bound(p.name) is False, "by-value capture of a borrowed parameter")
+            parameter = self.name_place(p.name, loc)
+            copy = value_shape(shape.type)
+            f.splice(self.put_param_copy(loc, self.bind(p.name, copy, loc=loc).slot, parameter.sink(copy)))
+        declared = _leaf_declarations(tuple(statements))
+        for local in frame.locals:
+            if local.name in declared:
+                continue
+            _require(node, local.type is not None, "untyped frame local")
+            self.place_hoists(f, [self.hoisted_binding(node, local.name, local.type, local)], loc)
+        blocks = {bid: f.block() for bid in order}
+        f.end(MIRGoto(blocks[frame.entry_block].id, loc))
+        for bid in order:
+            block = frame.blocks[bid]
+            f.current = blocks[bid]
+            for s in block.stmts:
+                leaf = leaves.leaves[s]
+                self.sequence(f, self.declarations(leaf.stmts if isinstance(leaf, th.THIRStmtSeq) else (leaf,), 0,
+                                                   top=True))
+            if f.current is None:
+                continue
+            t = block.terminator
+            match t:
+                case THIRFall(next_bb=target):
+                    f.end(MIRGoto(blocks[target].id, None))
+                case THIRBranch():
+                    cond = leaves.leaves.get(t.cond)
+                    _require(node, isinstance(cond, th.THIRExpr), "missing frame leaf")
+                    condition = self.full_expression(cond)
+                    _require(cond, condition.shape_of().type == BOOL, "condition requires bool")
+                    f.branch(f.full_expression_value(condition), blocks[t.then_bb].id, blocks[t.else_bb].id,
+                             cond.loc)
+                case THIRSuspend():
+                    self.suspension(f, t, blocks[t.resume_bb].id)
+                case THIRFrameReturn():
+                    leaf = leaves.leaves.get(t.slot)
+                    _require(node, isinstance(leaf, th.THIRResumableReturn), "missing frame leaf")
+                    f.splice(self.stmt(leaf, 0))
+                case THIRFallOff():
+                    f.end(MIRReturn(None, None))
+                case _:
+                    raise MIRUnsupported(node, f"unsupported frame terminator {type(t).__name__}")
+        return f
+
+    def suspension(self, f: Fragment, t: THIRSuspend, resume: MIRBlockId) -> None:
+        """A `yield`: its value built in a scope of its own -- an inert leaf,
+        or owned storage the yield fills -- read by the suspension, which
+        resumes at `resume`."""
+        payload = t.payload
+        _require(self.node, isinstance(payload, THIRYieldSuspension), "async body")
+        expr = self.frame.leaves.get(payload.value) if payload.value is not None else None
+        _require(self.node, isinstance(expr, th.THIRExpr), "missing frame leaf")
+        typ = self.frame.frame.func.generator_yield_type
+        loc = payload.source_loc
+        entry = f.block()
+        f.end(MIRGoto(entry.id, loc))
+        f.current = entry
+        with f.scope():
+            if storage_leaf(typ):
+                value = self.full_expression(expr, expected=typ)
+                _require(expr, value.shape_of().type == typ, "yield type mismatch")
+                yielded = f.full_expression_value(value)
+            else:
+                owned = owned_value_type(typ)
+                _require(expr, owned is not None, "reference yield")
+                self.leaf_layout(expr, owned)
+                value = self.full_expression(expr, check=lambda: self.owned_sink(expr))
+                _require(expr, value.shape_of().type == owned, "yield type mismatch")
+                yielded = f.slot(value_shape(owned), storage_duration=f.scoped_duration())
+                with f.full_expression(value):
+                    f.write(yielded, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+            f.append(MIRSuspend(yielded, loc))
+            f.end(MIRGoto(resume, loc))
 
     # --- statements ---------------------------------------------------------------
 
@@ -1678,7 +1860,7 @@ class _Lowering:
         """The storage and holders of the temporaries the temporary plan
         declares at a statement in the scope it runs in, then those it
         initializes there."""
-        plan = self.fn.temp_plan
+        plan = self.temp_plan
         if not self.planned or (stmt not in plan.declarations and stmt not in plan.initializations):
             return None
         f = self.fragment()
@@ -1708,7 +1890,7 @@ class _Lowering:
 
     def temp_scope(self, owner: th.THIRStmt, role: str) -> int | None:
         """The temporary plan scope a scope of the body opens for `owner`."""
-        return self.fn.temp_plan.scope(owner, role) if self.fn.temp_plan is not None else None
+        return self.temp_plan.scope(owner, role) if self.temp_plan is not None else None
 
     def placement(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> bool | None:
         """Where a wrapper declaration's own storage lives: its scope, or no
@@ -2245,9 +2427,9 @@ class _Lowering:
         _require(stmt, isinstance(fact, th.THIRTupleStorageAlias)
                  and isinstance(stmt.init, th.THIRName) and fact.source == stmt.init.name
                  and fact.source in self.tuple_roots, "tuple alias needs initialized local backing")
-        _require(stmt, stmt.name not in self.fn.layout.reassigned_locals
-                 and fact.source not in self.fn.layout.reassigned_locals
-                 and self.tuple_roots[fact.source] not in self.fn.layout.reassigned_locals,
+        _require(stmt, stmt.name not in self.reassigned_locals
+                 and fact.source not in self.reassigned_locals
+                 and self.tuple_roots[fact.source] not in self.reassigned_locals,
                  "tuple alias needs fixed bindings")
         _require(stmt, stmt.form is th.Form.STORAGE and stmt.resolved_type == stmt.init.result_type,
                  "tuple alias type or form mismatch")
@@ -2302,11 +2484,11 @@ class _Lowering:
         while pending:
             for member in pending.pop().layout.fields:
                 if owned_leaf(member.type):
-                    self.leaf_layout(self.fn, member.type)
+                    self.leaf_layout(self.node, member.type)
                     continue
                 bare = inline_member_type(member.type)
                 if record_type(bare) and bare not in self.records:
-                    self.records[bare] = self.definitions.get(self.fn, bare)
+                    self.records[bare] = self.definitions.get(self.node, bare)
                     pending.append(self.records[bare])
 
     def value(self, expr: th.THIRExpr, expected: TpyType | None = None) -> Fragment:
@@ -2667,7 +2849,7 @@ class _Lowering:
             bound = self.scope[stmt.name] = _Bound(bound.slot, self.site_backing(stmt, holder.type, hoisted=True))
         # The C++ slot is the storage itself: never reseated, assigned in place.
         if (isinstance(stmt, th.THIRVarDecl) and stmt.form in (th.Form.VALUE, th.Form.STORAGE)
-                and stmt.name not in self.fn.layout.reassigned_locals):
+                and stmt.name not in self.reassigned_locals):
             self.fixed_owned.add(stmt.name)
         # A hoisted backing's storage is the body's, initialized at its own site.
         return self.put_owned_declare(stmt.loc, bound.slot, bound.backing, value, placement, hoisted,
@@ -2996,13 +3178,16 @@ class _Lowering:
                 _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
                 name = expr.name
             case th.THIRSelf():
-                _plain(expr, {"deref", "is_last_use", "is_movable", "pointer"})
-                # A frame's reference receiver is not the pointer `this`.
-                _require(expr, expr.pointer, "unsupported metadata: pointer")
-                _require(expr, self.fn.receiver is not None, "missing receiver fact")
+                # `cpp` spells the receiver for C++ only.
+                _plain(expr, {"deref", "is_last_use", "is_movable", "pointer", "cpp"})
+                # A frame holds its receiver as a reference, a function body as
+                # the pointer `this`: either lends the caller's record.
+                _require(expr, expr.pointer is (self.frame is None), "unsupported metadata: pointer")
+                receiver = self.header.receiver
+                _require(expr, receiver is not None, "missing receiver fact")
                 _require(expr, expr.form is th.Form.BORROW, "receiver read form")
                 _require(expr, not isinstance(expr.result_type, ReadonlyType)
-                         or self.fn.receiver.readonly, "receiver read increases access")
+                         or receiver.readonly, "receiver read increases access")
                 name = "self"
             case _:
                 raise MIRUnsupported(expr, "reference needs local name")
@@ -3666,6 +3851,12 @@ class _Lowering:
         """The leaf type a value expression has in MIR (`expr`'s admission);
         `expected` is the one its context converts it to, which only an
         unresolved number literal adopts."""
+        if isinstance(expr, th.THIRMove) and expr.form is th.Form.STORAGE:
+            # A last use moves into storage form (a yield's); the move arm
+            # admits it only for an inert leaf, its operand's admission.
+            typ = self.types[expr] = self.value_type(expr.value, expected)
+            _require(expr, expr.result_type == typ, "move type mismatch")
+            return typ
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
         typ = literal_type(expr, expected) if isinstance(expr, th.THIRLiteral) else expr.result_type
         _require(expr, storage_leaf(typ), "unsupported expression type")
@@ -3871,6 +4062,13 @@ class _Lowering:
                 writing = any(self.writes[e] for e in (expr.cond, expr.then, expr.orelse))
                 result = f.select(f.splice(cond), self.anchored(expr.then, then),
                                   self.anchored(expr.orelse, orelse), typ, loc)
+            case th.THIRMove() if storage_leaf(typ):
+                # Moving an inert leaf copies it: its operand read.
+                _plain(expr, {"value"})
+                operand = self.expr(expr.value, typ)
+                _require(expr, operand.shape_of().type == typ, "move type mismatch")
+                writing = self.writes[expr.value]
+                result = f.splice(operand)
             case _:
                 raise MIRUnsupported(expr, "unsupported expression")
         f.value = MIRValue(result, loc=loc)
@@ -4067,6 +4265,13 @@ class _Lowering:
                 return self.put_expression(stmt.loc, self.full_expression(stmt.expr, discard=True, at=stmt.loc))
             case th.THIRReturn():
                 return self.return_(stmt)
+            case th.THIRResumableReturn():
+                # A generator's `return` ends it without a value.
+                _plain(stmt, {"has_operand"})
+                _require(stmt, self.frame is not None, "generator return value")
+                f = self.fragment()
+                f.end(MIRReturn(None, stmt.loc))
+                return f
             case th.THIRForRange():
                 return self.range_loop(stmt, loops)
             case th.THIRForEach():
@@ -4136,7 +4341,7 @@ class _Lowering:
             case th.THIRParamCopy():
                 # The body's owned copy of a borrowed parameter it reassigns; reads see the copy.
                 _plain(stmt, {"name", "cpp_type", "init_cpp"})
-                _require(stmt, any(s is stmt for s in self.fn.body) and stmt.name in self.parameters
+                _require(stmt, any(s is stmt for s in self.top_statements) and stmt.name in self.parameters
                          and self.owned_leaf_bound(stmt.name) is False, "param copy needs a borrowed owned-leaf parameter")
                 typ = self.bound(stmt.name).type
                 parameter = self.name_place(stmt.name, stmt.loc)
@@ -4647,65 +4852,77 @@ class _Lowering:
         f.current = after
         return f
 
-    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange | th.THIRForEach) -> list[tuple[MIRSlotId, MIRSlotId | None, tuple[int, object] | None]]:
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange | th.THIRForEach
+               ) -> tuple[tuple[MIRSlotId, MIRSlotId | None, tuple[int, object] | None], ...]:
         facts = stmt.hoisted_bindings
         _require(stmt, all(isinstance(f, th.THIRHoistedBinding) for f in facts)
                  and tuple(f.name for f in facts) == tuple(decl.name for decl in stmt.hoist_decls),
                  "missing or inconsistent hoisted binding facts")
         hoisted: list[tuple[MIRSlotId, MIRSlotId | None, tuple[int, object] | None]] = []
         for fact in facts:
-            _require(stmt, fact.name not in self.scope and fact.initially_assigned is False
-                     and fact.placement is th.THIRStoragePlacement.SCOPE, "invalid hoisted binding placement or availability")
-            laid = self.laid_out(stmt, fact.type, holder=fact, others=("optional_record_storage",))
-            backing = None
-            if fact.optional_record_storage is not None:
-                reference = fact.optional_record_storage
-                problem = lent_shape_problem(fact.type, reference)
-                _require(stmt, problem is None, problem)
-                # The body's own backing storage, which assignments engage, and
-                # its holder: at the storage's own access, never readonly.
-                _require(stmt, not reference.readonly, "optional record backing must be mutable")
-                definition = self.definitions.get(stmt, reference.type)
-                _require(stmt, definition.layout.movable, "optional backing needs movable record")
-                self.records[reference.type] = definition
-                backing = _owned_optional(reference.type)
-                problem = shape_problem(backing, backing.type, producer=True)
-                _require(stmt, problem is None, problem)
-                shape = value_shape(reference.type, access=False, role=MIRRole.LOAN)
-            elif fact.borrowed_record is not None:
-                # A hoisted aggregate holder: of its declared type, at the
-                # access THIR decided for it, as any local's.
-                cls = _aggregate_class(fact.type)
-                _require(stmt, laid is None and cls is not None
-                         and isinstance(fact.borrowed_record, th.THIRBorrowedRecord)
-                         and type(fact.borrowed_record.readonly) is bool, "unsupported hoisted record")
-                problem = admission_problem(native_container_subject(fact.type), cls)
-                _require(stmt, problem is None, problem)
-                shape = _aggregate_holder(fact.type, fact.borrowed_record.readonly)
-            elif laid is not None:
-                shape = laid
-                _require(stmt, shape.cls is not MIRClass.UNION or shape.scalar_wrapper,
-                         "unsupported hoisted union storage")
-            else:
-                _require(stmt, storage_leaf(fact.type), "unsupported hoisted value")
-                shape = scalar_shape(fact.type)
-            default = fact.physical_default
-            if shape.scalar_wrapper:
-                # A union defaults to its first alternative's zero, an Optional to absent.
-                first = shape.alternatives[0] if shape.cls is MIRClass.UNION else None
-                expected = None if first is None else zero_value_of(first.type)
-                _require(stmt, (first is None or expected is not None)
-                         and isinstance(default, th.THIRWrapperDefault)
-                         and type(default.alternative) is int and default.alternative == 0
-                         and type(default.value) is type(expected) and default.value == expected,
-                         "missing or inconsistent physical wrapper default")
-            else:
-                _require(stmt, default is None, "physical default on non-wrapper hoist")
-            # An Optional record's backing, empty until a branch assigns it.
-            bound = self.bind(fact.name, shape, backing, loc=stmt.loc, backing_kind=MIRSlotKind.LOCAL)
-            hoisted.append((bound.slot, bound.backing,
-                                  (default.alternative, default.value) if default is not None else None))
+            _require(stmt, fact.initially_assigned is False and fact.placement is th.THIRStoragePlacement.SCOPE,
+                     "invalid hoisted binding placement or availability")
+            hoisted.append(self.hoisted_binding(stmt, fact.name, fact.type, fact, fact.optional_record_storage,
+                                                fact.borrowed_record, fact.physical_default))
         return tuple(hoisted)
+
+    def hoisted_binding(self, node: object, name: str, typ: TpyType, layout: object,
+                        optional_record_storage: th.THIRBorrowedRecord | None = None,
+                        borrowed_record: th.THIRBorrowedRecord | None = None, default: object = None
+                        ) -> tuple[MIRSlotId, MIRSlotId | None, tuple[int, object] | None]:
+        """One binding declared before the statement that first assigns it,
+        unassigned until then (`place_hoists` places it): its slot of type
+        `typ` as `layout`'s layout fact lays it out, the Optional record
+        backing it engages, and the physical default a scalar wrapper starts
+        at. A hoisted statement binding and a frame's local alike."""
+        _require(node, name not in self.scope, "invalid hoisted binding placement or availability")
+        laid = self.laid_out(node, typ, holder=layout, others=("optional_record_storage",))
+        backing = None
+        if optional_record_storage is not None:
+            reference = optional_record_storage
+            problem = lent_shape_problem(typ, reference)
+            _require(node, problem is None, problem)
+            # The body's own backing storage, which assignments engage, and
+            # its holder: at the storage's own access, never readonly.
+            _require(node, not reference.readonly, "optional record backing must be mutable")
+            definition = self.definitions.get(node, reference.type)
+            _require(node, definition.layout.movable, "optional backing needs movable record")
+            self.records[reference.type] = definition
+            backing = _owned_optional(reference.type)
+            problem = shape_problem(backing, backing.type, producer=True)
+            _require(node, problem is None, problem)
+            shape = value_shape(reference.type, access=False, role=MIRRole.LOAN)
+        elif borrowed_record is not None:
+            # A hoisted aggregate holder: of its declared type, at the
+            # access THIR decided for it, as any local's.
+            cls = _aggregate_class(typ)
+            _require(node, laid is None and cls is not None
+                     and isinstance(borrowed_record, th.THIRBorrowedRecord)
+                     and type(borrowed_record.readonly) is bool, "unsupported hoisted record")
+            problem = admission_problem(native_container_subject(typ), cls)
+            _require(node, problem is None, problem)
+            shape = _aggregate_holder(typ, borrowed_record.readonly)
+        elif laid is not None:
+            shape = laid
+            _require(node, shape.cls is not MIRClass.UNION or shape.scalar_wrapper,
+                     "unsupported hoisted union storage")
+        else:
+            _require(node, storage_leaf(typ), "unsupported hoisted value")
+            shape = scalar_shape(typ)
+        if shape.scalar_wrapper:
+            # A union defaults to its first alternative's zero, an Optional to absent.
+            first = shape.alternatives[0] if shape.cls is MIRClass.UNION else None
+            expected = None if first is None else zero_value_of(first.type)
+            _require(node, (first is None or expected is not None)
+                     and isinstance(default, th.THIRWrapperDefault)
+                     and type(default.alternative) is int and default.alternative == 0
+                     and type(default.value) is type(expected) and default.value == expected,
+                     "missing or inconsistent physical wrapper default")
+        else:
+            _require(node, default is None, "physical default on non-wrapper hoist")
+        # An Optional record's backing, empty until a branch assigns it.
+        bound = self.bind(name, shape, backing, loc=node.loc, backing_kind=MIRSlotKind.LOCAL)
+        return bound.slot, bound.backing, (default.alternative, default.value) if default is not None else None
 
     @contextmanager
     def nested(self) -> Iterator[None]:
@@ -4761,7 +4978,7 @@ def _lower(lowering: _Lowering) -> MIRLoweredStorage | MIRNotCovered:
             raise MIRUnsupported(failure, str(failure)) from failure
         except (MIRPresenceError, MIRDefiniteAssignmentError, MIRFallthroughError,
                 MIRRegionStorageError) as failure:
-            raise MIRUnsupported(lowering.fn, str(failure)) from failure
+            raise MIRUnsupported(lowering.node, str(failure)) from failure
         return MIRLoweredStorage(function, MappingProxyType(mir.backing_places),
                                  MappingProxyType(mir.borrow_operations), prepared)
     except MIRUnsupported as failure:
@@ -4802,10 +5019,22 @@ def lower_constructor_storage(ctor: th.THIRConstructor, body: MIRBodyId, *,
     return _lower(_Lowering(fn, body, definitions, summaries, built))
 
 
-def lower_callable(source: th.THIRFunction | th.THIRConstructor, body: MIRBodyId, definitions: MIRDefinitions,
-                   summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult]
+def lower_frame_storage(leaves: th.THIRResumableLeaves, body: MIRBodyId, *,
+                        definitions: MIRDefinitions | None = None,
+                        summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None
+                        ) -> MIRLoweredStorage | MIRNotCovered:
+    """A generator's body, read off the frame and leaves its emission
+    published (`_Lowering.frame_body`)."""
+    return _lower(_Lowering(None, body, definitions if definitions is not None else MIRDefinitions(), summaries,
+                            frame=leaves))
+
+
+def lower_callable(source: th.THIRFunction | th.THIRConstructor | th.THIRResumableLeaves, body: MIRBodyId,
+                   definitions: MIRDefinitions, summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult]
                    ) -> MIRLoweredStorage | MIRNotCovered:
-    """A function's or a constructor's body, lowered with its backing correspondence."""
+    """A function's, a constructor's or a generator's body, lowered with its backing correspondence."""
     if isinstance(source, th.THIRConstructor):
         return lower_constructor_storage(source, body, definitions=definitions, summaries=summaries)
+    if isinstance(source, th.THIRResumableLeaves):
+        return lower_frame_storage(source, body, definitions=definitions, summaries=summaries)
     return lower_function_storage(source, body, definitions=definitions, summaries=summaries)

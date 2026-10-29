@@ -192,9 +192,9 @@ def member_self(o: Holder) -> None:  # tpyc: mir(conflict /argument_alias/)
     member_param(o, o.inner.buf)  # tpyc: warning(/argument 'o.inner.buf' points into 'o.inner', which 'member_param' modifies through parameter 'o'/)
 
 
-# generator caller: not checked yet (BUGS.md#borrowed-arg-into-mutated-storage), MIR does not lower a resumable body
-def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
-    yield bound(xs, 1, xs[0])  # tpyc: ok
+# generator caller: MIR lowers the generator's frame: warns at the yield
+def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(conflict /argument_alias/)
+    yield bound(xs, 1, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'bound'/)
 
 
 class Log:

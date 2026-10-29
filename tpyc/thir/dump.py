@@ -13,7 +13,7 @@ from ..typesys import TpyType, unwrap_readonly, unwrap_ref_type
 from .frame import (
     LeafRole, THIRAsyncWithSetup, THIRBranch, THIRExceptRegion, THIRFall,
     THIRFinallyExit, THIRFinallyRegion,
-    THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
+    THIRFallOff, THIRForAdvance, THIRForIterSetup, THIRFrameRaise, THIRFrameReturn,
     THIRLoopSourceRegion, THIRMatchDispatch, THIRResumableFrame, THIRSuspend,
     THIRTryRegion, THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
     stmt_slots, terminator_slots,
@@ -947,7 +947,9 @@ def _terminator_label(t: object) -> str:
         return "return"
     if isinstance(t, THIRFrameRaise):
         return "raise"
-    return "unreachable" if t is not None else "(open: no edge reaches it)"
+    if isinstance(t, THIRFallOff):
+        return "fall off"
+    return "(open: no edge reaches it)"
 
 
 def _block_stmt_label(s: object) -> str:

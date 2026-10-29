@@ -206,7 +206,7 @@ def contradictory(flag: bool) -> int32:
     assert "no conflicts in covered replacement events" in out
 
 
-def test_generic_and_resumable_bodies_are_not_monomorphic_functions() -> None:
+def test_generic_and_async_bodies_are_not_monomorphic_functions() -> None:
     out = dump("""\
 from tpy import int32
 from typing import Iterator
@@ -215,13 +215,17 @@ def generic[T](x: T) -> int32:
 class Generic[T]:
     def read(self) -> int32:
         return 1
+def generic_values[T](x: T) -> Iterator[T]:
+    yield x
 def values() -> Iterator[int32]:
     yield 1
 async def ready() -> int32:
     return 1
 """)
-    assert out.count("<MIR not covered: generic body>") == 2, out
-    assert out.count("<MIR not covered: resumable body>") == 2, out
+    assert out.count("<MIR not covered: generic body>") == 3, out
+    assert out.count("<MIR not covered: async body>") == 1, out
+    # A generator's body lowers from its frame, completing without a value.
+    assert re.search(r"fn .*::values@[^\n]+ -> None", out), out
 
 
 def test_generated_clones_have_distinct_stable_identities() -> None:
@@ -479,9 +483,11 @@ def test_verdicts_climb_the_ladder() -> None:
     assert (plain.status, plain.storage) == (
         MIRVerdictStatus.COVERED, MIRStorageCheck(MIRStorageState.NO_PROOF_REQUIRED))
     assert plain.summary is not None and plain.summary.state is MIRSummaryState.KNOWN
+    # A generator's frame publishes no storage facts, and its body no summary.
     gen = by_name["gen"]
-    assert (gen.status, gen.reason, gen.function, gen.storage) == (
-        MIRVerdictStatus.UNCOVERED, "resumable body", None, None)
+    assert (gen.status, gen.reason, gen.kind, gen.summary) == (
+        MIRVerdictStatus.COVERED, None, MIRBodyKind.FREE_FUNCTION, None)
+    assert gen.storage.state is MIRStorageState.NO_FACTS
     countdown = by_name["countdown"]
     assert countdown.summary is not None and countdown.summary.state is MIRSummaryState.OPAQUE
     assert "recursi" in countdown.summary.reason

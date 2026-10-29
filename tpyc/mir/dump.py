@@ -5,7 +5,7 @@ from ..thir.nodes import THIRStubCallee
 from ..thir.scalar_leaves import MIRClass
 from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
+    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRSuspend,
     MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRegionId, MIRStorageInit,
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
@@ -181,6 +181,9 @@ def dump_function(fn: MIRFunction) -> str:
             if isinstance(stmt, MIRPrint):
                 arguments = ", ".join(f"%{s.index}" for s in stmt.arguments)
                 lines.append(f"  print ({arguments}){_location(stmt.loc)}")
+                continue
+            if isinstance(stmt, MIRSuspend):
+                lines.append(f"  suspend %{stmt.value.index}{_location(stmt.loc)}")
                 continue
             if isinstance(stmt, MIRStorageInit) and stmt.value is None:
                 lines.append(f"  begin-storage {_place(stmt.target)}{_location(stmt.loc)}")

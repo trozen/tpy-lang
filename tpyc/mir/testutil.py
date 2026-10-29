@@ -16,7 +16,7 @@ from .nodes import (
     MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRSlotId,
     MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
     MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
-    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
+    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, MIRSuspend, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
     builds_base, statement_call,
 )
 from .value import (
@@ -459,9 +459,11 @@ _OPERATIONS = {
 
 def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
             global_state: dict[MIRGlobalId, int | bool] | None = None,
-            output: list[tuple[Value, ...]] | None = None, begun: int | None = None) -> Value | None:
+            output: list[tuple[Value, ...]] | None = None, begun: int | None = None,
+            yields: list[Value] | None = None) -> Value | None:
     """Run `fn`; record storage it begins (a constructor's result) takes
-    identity `begun` when given."""
+    identity `begun` when given. A suspension hands its value to `yields`
+    and resumes at once."""
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert len(params) == len(args)
     values = dict(zip(params, args))
@@ -542,6 +544,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 printed = tuple(values[sid] for sid in stmt.arguments)
                 if output is not None:
                     output.append(printed)
+                continue
+            if isinstance(stmt, MIRSuspend):
+                if yields is not None:
+                    yields.append(values[stmt.value])
                 continue
             if isinstance(stmt, MIRStorageInit) and stmt.value is None:
                 # Record storage begun: an object whose fields are written next.

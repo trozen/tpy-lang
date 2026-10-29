@@ -124,7 +124,7 @@ from ..frame import (
     THIRResumableFrame,
     THIRSuspend,
     THIRSuspensionPayload,
-    THIRUnreachable,
+    THIRFallOff,
     THIRWithEnter,
     THIRWithRegion,
     THIRYieldSuspension,
@@ -2315,7 +2315,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 leaf = _apply_post_if_narrow(stmt, leaf, saved, bb)
             leaves[slot] = leaf
         t = bb.terminator
-        if not isinstance(t, (THIRFall, THIRUnreachable)) \
+        if not isinstance(t, (THIRFall, THIRFallOff)) \
                 and _bb_cursor_key(t) is not None:
             _bindings.enter(lc, _bb_cursor_key(t))
         if isinstance(t, THIRForAdvance) and t.step is not None:

@@ -5,9 +5,9 @@
 
 namespace tpyapp::main {
 
-// # generator caller: not checked yet (BUGS.md#borrowed-arg-into-mutated-storage), MIR does not lower a resumable body
-// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
-//     yield bound(xs, 1, xs[0])  # tpyc: ok                                                 # -> S_RESUME_0
+// # generator caller: MIR lowers the generator's frame: warns at the yield
+// def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(conflict /argument_alias/)
+//     yield bound(xs, 1, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'bound'/)  # -> S_RESUME_0
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_caller::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -15,7 +15,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_caller::__ne
         __state = S_RESUME_0;
         return ::tpyapp::main::bound(xs, ::tpy::BigInt(1), ::tpy::__getitem__(xs, 0));
     }
-    case S_RESUME_0: {  // after: yield bound(xs, 1, xs[0])  # tpyc: ok
+    case S_RESUME_0: {  // after: yield bound(xs, 1, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'bound'/)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

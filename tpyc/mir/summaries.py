@@ -29,7 +29,7 @@ from .reach import parameter_objects
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
-    MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRStorageInit, MIRReturn, MIRPlace,
+    MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRSuspend, MIRRangeAdvance, MIRRead, MIRStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
     place_shape, MIRUnionExtract,
 )
@@ -470,6 +470,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
             if isinstance(stmt, MIRPrint):
                 # Output is an effect outside every parameter-rooted summary.
                 return MIRSummaryResult.opaque("summary output effect")
+            if isinstance(stmt, MIRSuspend):
+                # What a suspension hands its caller is the caller's handle's to summarize.
+                return MIRSummaryResult.opaque("summary suspension")
             if not isinstance(stmt, MIRAssign):
                 return MIRSummaryResult.opaque("summary storage operation")
             target = slots[stmt.target.root]
