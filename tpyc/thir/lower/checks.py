@@ -3865,10 +3865,10 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     # clears the field when it DOES rewrite to the expression callee), so
     # only a parse error on the type-arg list keeps the call out.
     if (e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.type_args_parse_error):
-        sub = ("isinstance" if e.isinstance_var is not None
+        sub = ("isinstance" if e.isinstance_type is not None
                else "dunder_call" if e.dunder_call is not None
                else "compile_time_assert" if e.compile_time_assert
                else "macro" if e.macro_expansion is not None
@@ -7804,7 +7804,7 @@ def _ctor_call_special_form(e: TpyCall) -> bool:
     return (e.call_type is not None or bool(e.type_args)
             or bool(e.inferred_type_args)
             or e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.subscript_callee is not None)
 
@@ -7988,7 +7988,7 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
     if ct is None or not isinstance(ct, NominalType):
         return False
     if (e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert):
         return False
     if e.args and isinstance(e.args[0], TpyListRepeat):

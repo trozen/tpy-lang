@@ -21,7 +21,7 @@ std::string classify(const ::tpy::BaseException* e) {
     if (const ::tpy::ValueError* __e_ptr = dynamic_cast<const ::tpy::ValueError*>(e); (__e_ptr != nullptr)) {
         return (::tpy::str_concat("VE: ", std::string(::tpy::__str__((*__e_ptr)))));
     }
-    if (((dynamic_cast<const ::tpy::OSError*>(e) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(e) != nullptr))) {
+    if (::tpy::isinstance_any_of<const ::tpy::OSError, const ::tpy::RuntimeError>(e)) {
         return (::tpy::str_concat("OS/RE: ", std::string(::tpy::__str__((*e)))));
     }
     if (const ::tpy::CancelledError* __e_ptr = dynamic_cast<const ::tpy::CancelledError*>(e); (__e_ptr != nullptr)) {
@@ -34,7 +34,7 @@ std::string classify(const ::tpy::BaseException* e) {
 //     # Optional-direct path: no preceding `is None` narrowing.
 //     return isinstance(e, ValueError)  # tpyc: ok
 bool is_value_error(const ::tpy::BaseException* e) {
-    return (dynamic_cast<const ::tpy::ValueError*>(e) != nullptr);
+    return ::tpy::isinstance_any_of<const ::tpy::ValueError>(e);
 }
 
 // def main() -> None:

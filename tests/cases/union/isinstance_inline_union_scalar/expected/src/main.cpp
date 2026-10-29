@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //         return "num"
 //     return "str"
 std::string kind(const ::tpy::Union<double, ::tpy::BigInt, std::string>& v) {
-    if ((std::holds_alternative<double>(v) || std::holds_alternative<::tpy::BigInt>(v))) {
+    if (::tpy::holds_any<double, ::tpy::BigInt>(v)) {
         return "num";
     }
     const auto& __v = std::get<std::string>(v);

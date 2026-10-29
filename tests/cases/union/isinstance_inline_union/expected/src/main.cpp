@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return "ab"
 //     return "c"
 std::string classify(::tpy::Union<const A*, const B*, const C*> v) {
-    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
+    if (::tpy::holds_any<const A*, const B*>(v)) {
         return "ab";
     }
     auto& __v = *std::get<const C*>(v);
@@ -21,7 +21,7 @@ std::string classify(::tpy::Union<const A*, const B*, const C*> v) {
 //         return v.z
 //     return -1
 int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
-    if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {
+    if ((!(::tpy::holds_any<const A*, const B*>(v)))) {
         auto& __v = *std::get<const C*>(v);
         return __v.z;
     }

@@ -89,7 +89,7 @@ def _parts_may_alias(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
     return True
 
 
-def _peel_match_qualifiers(typ: TpyType) -> tuple[TpyType, bool]:
+def peel_match_qualifiers(typ: TpyType) -> tuple[TpyType, bool]:
     """The dispatch type behind `typ`'s qualifier wrappers, and whether any of
     them was `readonly[...]`.
 
@@ -113,7 +113,7 @@ def _peel_match_qualifiers(typ: TpyType) -> tuple[TpyType, bool]:
 
 def _strip_match_qualifiers(typ: TpyType) -> TpyType:
     """Drop the qualifier wrappers a match dispatch or comparison sees through."""
-    return _peel_match_qualifiers(typ)[0]
+    return peel_match_qualifiers(typ)[0]
 
 
 def _matches_every_value(pat: TpyPattern) -> bool:
@@ -173,7 +173,7 @@ class MatchAnalyzer:
         # (`match make_box():` -> `Own[Box[T]]`); the match reads the owned
         # value, so dispatch sees its inner type. Reachable only since
         # expression subjects were allowed (a name local is never Own-typed).
-        effective_type, subject_readonly = _peel_match_qualifiers(subject_type)
+        effective_type, subject_readonly = peel_match_qualifiers(subject_type)
         # Expand recursive union alias placeholder to its underlying
         # UnionType so match dispatch sees the variant arms.
         if isinstance(effective_type, AliasRef):

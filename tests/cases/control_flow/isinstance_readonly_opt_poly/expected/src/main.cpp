@@ -19,7 +19,7 @@ std::string classify(const ::tpy::BaseException* e) {
     if (const ::tpy::ValueError* __e_ptr = dynamic_cast<const ::tpy::ValueError*>(e); (__e_ptr != nullptr)) {
         return "VE";
     }
-    if (((dynamic_cast<const ::tpy::OSError*>(e) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(e) != nullptr))) {
+    if (::tpy::isinstance_any_of<const ::tpy::OSError, const ::tpy::RuntimeError>(e)) {
         return "OS_OR_RT";
     }
     return "OTHER";

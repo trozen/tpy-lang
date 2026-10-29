@@ -36,7 +36,7 @@ void main() {
     ::tpy::Any c2 = ::tpy::make_any(char(::tpy::char_from_str("a")));
     ::tpy::Any d = ::tpy::make_any(char(::tpy::char_from_str("b")));
     std::cout << "char" << " " << ::tpy::print_bool((c == c2)) << " " << ::tpy::print_bool((c == d)) << " " << ::tpy::print_bool((::tpy::any_cast_or_panic<char>(c) == ::tpy::char_from_str("a"))) << "\n" << ::tpy::check_signals;
-    if ((c.value.has_value() && c.value.type() == typeid(char))) {
+    if ((c.value.type() == typeid(char))) {
         const char& __c = std::any_cast<const char&>(c.value);
         std::cout << "narrowed" << " " << __c << "\n" << ::tpy::check_signals;
     }

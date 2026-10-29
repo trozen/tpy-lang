@@ -525,7 +525,7 @@ correct (just an extra copy when the source is dead afterward).
 ### `isinstance(x, T)` narrowing -- non-consuming
 
 ```cpp
-if (any_var.value.has_value() && any_var.value.type() == typeid(T)) {
+if (any_var.value.type() == typeid(T)) {  // an empty cell reports typeid(void)
     const T& any_var = std::any_cast<const T&>(/* outer */ any_var.value);
     // ... use any_var as T inside the branch
 }
@@ -583,7 +583,7 @@ if isinstance(any_var, int):
 ```
 
 ```cpp
-if (any_var.value.has_value() && any_var.value.type() == typeid(int64_t)) {
+if (any_var.value.type() == typeid(int64_t)) {
     const int64_t& any_var_n = std::any_cast<const int64_t&>(any_var.value);
     tpy::print(std::cout, any_var_n + 1);
     std::cout << '\n';

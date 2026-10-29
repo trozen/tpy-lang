@@ -368,8 +368,9 @@ Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
   upcast handles `&__tmp` -> `const BaseExc*`. No slicing.
 - **Init-only local** (`_gen_pointer_local_init`): same fix -- the typed slot
   uses the rvalue's class.
-- **isinstance lowering** (`_gen_call`): emits
-  `(dynamic_cast<const Sub*>(e_ptr) != nullptr)`; tuple form is OR of casts.
+- **isinstance lowering**: a test that binds no narrowing alias emits
+  `::tpy::isinstance_any_of<const Sub>(e_ptr)`, one call folding a tuple's
+  members over the subject read once.
   Reads `var_decl` (the declared, not narrowed, type) so the gate is sound
   for the original `Optional[Polymorphic]` declaration.
 - **Cast-and-cache narrowing** (`_emit_isinstance_extractions`): for

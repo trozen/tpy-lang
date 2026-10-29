@@ -345,4 +345,11 @@ static_assert(union_owner_roundtrip());
 
 }  // namespace detail
 
+// `isinstance(s, (A, B))` over a union: one read of `v`, so a subject that
+// borrows from a temporary is tested inside that temporary's full expression.
+template<class... Ms, class... Ts>
+constexpr bool holds_any(const std::variant<Ts...>& v) noexcept {
+    return (std::holds_alternative<Ms>(v) || ...);
+}
+
 }  // namespace tpy

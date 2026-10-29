@@ -160,7 +160,7 @@ inline std::string Pet::describe() const {
 //         return "mammal: " + self._name
 //     return "other: " + self._name
 inline std::string Pet::kind() const {
-    if (((dynamic_cast<const Cat*>(this) != nullptr) || (dynamic_cast<const Dog*>(this) != nullptr))) {
+    if (::tpy::isinstance_any_of<const Cat, const Dog>(this)) {
         return (::tpy::str_concat("mammal: ", this->_name));
     }
     return (::tpy::str_concat("other: ", this->_name));
@@ -173,7 +173,7 @@ inline std::string Pet::kind() const {
 //     assert isinstance(self, Dog)  # tpyc: ok
 //     return "ASSERT: " + self.bark()
 inline std::string Pet::assert_dog() const {
-    if (!((dynamic_cast<const Dog*>(this) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const Dog>(this))) ::tpy::raise_assertion_error();
     const Dog& __self = *dynamic_cast<const Dog*>(this);
     return (::tpy::str_concat("ASSERT: ", __self.bark()));
 }

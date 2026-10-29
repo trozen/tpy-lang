@@ -2560,18 +2560,6 @@ def _with_row(site, name, typ, inp: 'PlanInputs', visible):
     return _mk(site, name, typ, F.REFERENCE, None, const=_readonly_type(typ))
 
 
-def walrus_value_type(w, analyzer) -> 'TpyType | None':
-    """The type a walrus binds its target at: the named expression's type,
-    pending containers / views and literals resolved, wrappers peeled."""
-    t = analyzer.get_expr_type(w)
-    t = _p.resolve_pending_container(t, analyzer) or t
-    t = _p._resolve_pending_view(t, analyzer) or t
-    if t is None:
-        return None
-    t = resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
-    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-
-
 def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
     """A walrus target's first binding (`_lower_expr_impl`'s TpyNamedExpr
     arm), in the order its rungs try: a borrow-only record's pointer, a
@@ -2581,7 +2569,7 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
     sync only but the last."""
     an, pre = inp.analyzer, inp.prescan
     func = site.func or inp.func
-    vtu = walrus_value_type(site.node, an)
+    vtu = _p.walrus_value_type(site.node, an)
     if vtu is None:
         return _mk(site, name, typ, F.NONE, None)
     if not (func.is_generator or func.is_async):

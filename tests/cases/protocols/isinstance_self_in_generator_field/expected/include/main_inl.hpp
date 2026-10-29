@@ -17,7 +17,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
+        if (::tpy::isinstance_any_of<const Dog>(__self)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
             __state = S_RESUME_0;
             return "kind:dog";

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return "ab"
 //     return "c"
 std::string basic(::tpy::Union<const A*, const B*, const C*> v) {
-    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
+    if (::tpy::holds_any<const A*, const B*>(v)) {
         return "ab";
     }
     auto& __v = *std::get<const C*>(v);
@@ -21,7 +21,7 @@ std::string basic(::tpy::Union<const A*, const B*, const C*> v) {
 //         return v.z
 //     return -1
 ::tpy::BigInt negate(::tpy::Union<const A*, const B*, const C*> v) {
-    if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {
+    if ((!(::tpy::holds_any<const A*, const B*>(v)))) {
         auto& __v = *std::get<const C*>(v);
         return __v.z;
     }
@@ -33,7 +33,7 @@ std::string basic(::tpy::Union<const A*, const B*, const C*> v) {
 //         return "ab-flag"
 //     return "other"
 std::string and_rhs(::tpy::Union<const A*, const B*, const C*> v, bool flag) {
-    if (((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v)) && flag)) {
+    if ((::tpy::holds_any<const A*, const B*>(v) && flag)) {
         return "ab-flag";
     }
     return "other";
@@ -44,7 +44,7 @@ std::string and_rhs(::tpy::Union<const A*, const B*, const C*> v, bool flag) {
 //         return "maybe"
 //     return "c-no-flag"
 std::string or_lhs(::tpy::Union<const A*, const B*, const C*> v, bool flag) {
-    if (((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v)) || flag)) {
+    if ((::tpy::holds_any<const A*, const B*>(v) || flag)) {
         return "maybe";
     }
     auto& __v = *std::get<const C*>(v);
@@ -75,7 +75,7 @@ std::string match_guard(::tpy::Union<const A*, const B*, const C*> v) {
     switch (__match_subject_1.index()) {
     default: {
         {
-            if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
+            if (::tpy::holds_any<const A*, const B*>(v)) {
                 return "ab";
             }
         }

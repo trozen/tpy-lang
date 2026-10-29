@@ -176,14 +176,35 @@ def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
     overload infers const-ness from `cast_arg`, so `is_const` only shapes
     the `dynamic_cast` form. Module-level (analyzer-pure) so every caller
     shares one composition."""
+    base = _adapter_cast_base(check_type, source_inner, analyzer)
+    if base is not None:
+        return f"::tpy::dyn_adapter_cast<{base}, {cpp_type}>({cast_arg})"
+    const_pfx = "const " if is_const else ""
+    return f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
+
+
+def narrow_cast_member(cpp_type: str, check_type: TpyType,
+                       source_inner: 'TpyType | None', *,
+                       is_const: bool, analyzer) -> str:
+    """`check_type` as a member of `::tpy::isinstance_any_of`: the type its
+    `narrow_cast_rhs` cast targets, or `::tpy::Adapted<Base, T>` for a
+    structural conformer that cast reaches through the adapter."""
+    base = _adapter_cast_base(check_type, source_inner, analyzer)
+    if base is not None:
+        return f"::tpy::Adapted<{base}, {cpp_type}>"
+    return f"const {cpp_type}" if is_const else cpp_type
+
+
+def _adapter_cast_base(check_type: TpyType, source_inner: 'TpyType | None',
+                       analyzer) -> 'str | None':
+    """The @dynamic base a structural conformer `check_type` sits behind in
+    an adapter, or None when a `dynamic_cast` reaches it."""
     if (is_protocol_type(source_inner)
             and isinstance(check_type, NominalType)
             and not record_inherits_dynamic(check_type, source_inner,
                                             analyzer.registry)):
-        base = dynamic_base_name(source_inner, analyzer)
-        return f"::tpy::dyn_adapter_cast<{base}, {cpp_type}>({cast_arg})"
-    const_pfx = "const " if is_const else ""
-    return f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
+        return dynamic_base_name(source_inner, analyzer)
+    return None
 
 
 def resolve_protocol_type(typ: TpyType) -> TpyType:

@@ -45,7 +45,6 @@ from ..reject import ThirUnsupported, begin_stmt, note, note_detail
 from ..faces import witness as _witness
 from ..validate import validate_resumable_body, validate_stmts
 from ..nodes import (
-    THIRDynIsinstanceMulti,
     THIRAssign,
     THIRCoroHandleMove,
     THIRFieldAccess,
@@ -121,7 +120,7 @@ from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
                       narrow_alias_taken, SinkPos)
 from .expressions import (
     lent_holder,
-    _poly_cast_checks,
+    _poly_isinstance,
     _lower_call_arg,
     _lower_expr,
     _cond_mixed_walrus_temps,
@@ -2288,11 +2287,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # nullptr)`) -- the extraction alias is the ARM
                     # entry's skeleton emission, not this condition's.
                     _witness("res.poly_cond")
-                    conds[t.cond] = THIRDynIsinstanceMulti(
-                        result_type=analyzer.get_expr_type(t.cond),
-                        checks_cpp=_poly_cast_checks(
-                            pinfo[0], (pinfo[1],), lc, declared),
-                        loc=getattr(t.cond, "loc", None))
+                    conds[t.cond] = _poly_isinstance(
+                        t.cond, pinfo[0], (pinfo[1],), lc, declared,
+                        analyzer.get_expr_type(t.cond),
+                        getattr(t.cond, "loc", None))
                 else:
                     # The skeleton renders the cond, flushes pending temps,
                     # then writes the `if` -- all inside the `case` block, so

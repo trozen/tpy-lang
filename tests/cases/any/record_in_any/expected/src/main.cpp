@@ -19,7 +19,7 @@ void main() {
     if (::tpy::to_bool(a)) {
         std::cout << "truthy" << "\n" << ::tpy::check_signals;
     }
-    if ((a.value.has_value() && a.value.type() == typeid(Point))) {
+    if ((a.value.type() == typeid(Point))) {
         const Point& __a = std::any_cast<const Point&>(a.value);
         std::cout << ((__a.x) + (__a.y)) << "\n" << ::tpy::check_signals;
     }

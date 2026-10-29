@@ -235,7 +235,7 @@ inline ::tpy::BigInt Unwind::__enter__() const {
 //     return False
 inline bool Unwind::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if (!((exc_val != nullptr))) ::tpy::raise_assertion_error();
-    if (!((dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const ::tpy::ValueError>(exc_val))) ::tpy::raise_assertion_error();
     const ::tpy::ValueError& __exc_val = *dynamic_cast<const ::tpy::ValueError*>(exc_val);
     std::cout << "context manager: exit ValueError" << "\n" << ::tpy::check_signals;
     return false;

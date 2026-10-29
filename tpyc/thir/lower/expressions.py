@@ -6,7 +6,7 @@ only from the node arm being lowered.
 
 from __future__ import annotations
 from collections.abc import Callable, Sequence
-from typing import NoReturn, TypeVar
+from typing import NamedTuple, NoReturn, TypeVar
 from dataclasses import field, fields as dataclass_fields, replace
 from .callables import (callable_signature, resolved_callee, stub_callee,
                         with_method_callee, with_method_stub)
@@ -60,7 +60,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
-from ...typesys import binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
+from ...typesys import ANY, binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
     drop_own_marker, dyn_protocol_borrow_result, is_open_type_param_return, make_readonly,
     param_takes_ownership)
@@ -161,8 +161,10 @@ from ...codegen_cpp.context import (
 from ...codegen_cpp.protocols import (dynamic_adapter_type,
                                       dynamic_base_name,
                                       dynamic_ref_adapter_type,
+                                      narrow_cast_member,
                                       narrow_cast_rhs)
 from ...sema.dyn_erasure import record_inherits_dynamic
+from ...sema.match import peel_match_qualifiers
 from ...typesys import (
     varargs_elem_cpp,
     polymorphic_source_inner,
@@ -222,6 +224,7 @@ from ..nodes import (
     THIRNode,
     THIRBinOp,
     THIRChainedCompareStmtExpr,
+    THIREvalThen,
     THIRBytesLiteral,
     THIRPrintChain,
     THIRCall,
@@ -229,6 +232,7 @@ from ..nodes import (
     THIRClassConstant,
     THIRCoerce,
     THIRDynIsinstanceMulti,
+    THIRDynCast,
     THIRContainerLiteral,
     THIRCtorCall,
     THIREnumMember,
@@ -296,6 +300,10 @@ from .bindings import (_value_opt_kind, form_of, project_held,
                        walrus_owned_slot)
 from .predicates import (
     _var_decl_type,
+    _any_narrow_info,
+    IsinSubjectRead,
+    _poly_subject_const,
+    walrus_value_type,
     _binding_form_tuple,
     _fold_literal_comparison,
     _nested_storage_tuple,
@@ -4330,7 +4338,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             if (_pinf is not None
                     and _pinf[0] not in lc.narrow.narrowed
                     and _pinf[0] not in lc.narrow.spelled
-                    and not lc.binding(_pinf[0]).pointer
+                    # As the if arm: a pointer local is fine when the cast
+                    # reads it as the pointer (`p := deref(rc)`).
+                    and (not lc.binding(_pinf[0]).pointer
+                         or _subject_form(_IsinSubject(_pinf[0]), lc,
+                                          declared, decl=_pinf[2]).pointer)
                     and _pinf[0] != lc.self_receiver):
                 # An inline poly-isinstance LEFT under `&&`: the check
                 # lowers via the shared cast chokepoint and the subject's
@@ -4341,20 +4353,28 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 # the structural flavor re-casts through the adapter (a
                 # different spell) and keeps the fence.
                 pvar, pmember, _pdecl = _pinf
-                _c_p, _cast_arg, _inner_src = _poly_cast_context(
-                    pvar, lc, declared)
+                _inner_src = polymorphic_source_inner(
+                    _pdecl, analyzer.registry)
                 if (isinstance(pmember, NominalType)
                         and _inner_src is not None
                         and not is_protocol_type(_inner_src)):
                     _witness("binop.poly_inline_narrow")
-                    left = THIRDynIsinstanceMulti(
-                        result_type=analyzer.get_expr_type(e.left),
-                        checks_cpp=_poly_cast_checks(pvar, (pmember,), lc,
-                                                     declared),
-                        loc=getattr(e.left, "loc", None))
-                    _cpx = "const " if _c_p else ""
+                    left = _poly_isinstance(
+                        e.left, pvar, (pmember,), lc, declared,
+                        analyzer.get_expr_type(e.left),
+                        getattr(e.left, "loc", None))
+                    # The right side's reads of the subject re-spell the
+                    # validated cast inline, as text (`lc.narrow.spelled`),
+                    # over the cast's own operand read.
+                    _form = _subject_form(_IsinSubject(pvar), lc, declared)
+                    _arg = escape_cpp_name(pvar)
+                    if _form.operand.deref:
+                        _arg = f"(*{_arg})"
+                    if not _form.pointer:
+                        _arg = "&" + _arg
+                    _cpx = "const " if _form.const else ""
                     _spell = (f"(*static_cast<{_cpx}"
-                              f"{lc.render_type(pmember)}*>({_cast_arg}))")
+                              f"{lc.render_type(pmember)}*>({_arg}))")
                     # The guard above proved pvar is un-spelled, so the
                     # pop is unconditional.
                     lc.narrow.spelled[pvar] = _spell
@@ -5369,56 +5389,184 @@ def _narrow_subject_const(var: str, lc: '_LowerCtx',
     return rec.const or rec.deep_const
 
 
-def _poly_cast_context(var: str, lc: '_LowerCtx',
-                       declared: dict[str, TpyType]
-                       ) -> 'tuple[bool, str, TpyType | None]':
-    """The (const, cast_arg, source_inner) triple shared by every
-    polymorphic dynamic_cast composition (the if-init form, the no-alias
-    OR-chain, the value-position chain), so the spellings cannot drift.
-    Const pointees come from the param verdicts OR a readonly-qualified
-    subject; the cast arg spells bare for pointer-shaped subjects, `&name`
-    for `T&` ones. A post-if/assert-narrowed subject anchors to its ORIGINAL
-    declared type (`lc.narrow.poly_source`) -- the declared-type lookup,
-    which narrowing never retypes."""
-    var_raw = lc.narrow.poly_source.get(var, declared.get(var))
+class _IsinSubject(NamedTuple):
+    """An isinstance subject as every test arm reads it. `var` is the
+    narrowing key the test reads, and `init` the walrus that binds it, if
+    the subject is one. A subject with no key (`var` None) is the operand
+    `value`, read once inside the test's own full expression, so the
+    temporaries it borrows from outlive the test; `value_type` is its
+    analyzed type, and `ptr_variant` / `const` say how the operand holds
+    it: a reference union is the pointer variant a local of it would be."""
+    var: 'str | None'
+    init: 'THIRExpr | None' = None
+    value: 'THIRExpr | None' = None
+    value_type: 'TpyType | None' = None
+    ptr_variant: bool = False
+    const: bool = False
+
+
+class _SubjectForm(NamedTuple):
+    """The C++ form an isinstance subject is read in. `decl` is its
+    declared type (a narrowed polymorphic subject anchored to its original
+    declaration); `const` whether its pointees are const; `pointer` whether
+    it reads as the pointer a cast takes; `ptr_variant` whether a union
+    subject is the pointer variant; `operand` the subject's read."""
+    decl: 'TpyType | None'
+    const: bool
+    pointer: bool
+    ptr_variant: bool
+    operand: THIRExpr
+
+
+def _subject_form(subj: _IsinSubject, lc: '_LowerCtx',
+                  declared: dict[str, TpyType],
+                  u: 'UnionType | None' = None, *,
+                  decl: 'TpyType | None' = None) -> _SubjectForm:
+    """The one reader of an isinstance subject's form, for a name and a
+    keyless operand alike. A name answers through its binding; an operand
+    through its analyzed type. `u` is the subject's union when the test is a
+    union test: its pointer-variant pointees are const as the binding
+    declares them, while a polymorphic cast takes const pointees from the
+    const-borrow verdicts or a readonly declaration. `decl` is a key's
+    declared type an arm reads before the walrus declaring it lowers."""
+    var = subj.var
+    if var is None:
+        t = peel_match_qualifiers(subj.value_type)[0]
+        # Only tested, so a polymorphic cast of it may always take const
+        # pointees; a pointer variant's alternatives are the operand's own.
+        return _SubjectForm(
+            decl=t, const=subj.const if u is not None else True,
+            pointer=polymorphic_source_is_pointer(t),
+            ptr_variant=u is not None and subj.ptr_variant,
+            operand=subj.value)
+    rec = lc.binding(var)
+    if u is not None:
+        ptr_variant = is_ptr_variant_union(u) and rec.ptr_variant
+        return _SubjectForm(
+            decl=declared.get(var),
+            const=ptr_variant and _narrow_subject_const(var, lc, rec),
+            pointer=False, ptr_variant=ptr_variant,
+            operand=THIRName(result_type=u, name=var,
+                             deref=_narrow_variant_deref(var, lc)))
+    var_raw = lc.narrow.poly_source.get(var, declared.get(var, decl))
     var_decl = _poly_subject_decl(var_raw)
     const = (_const_borrow_name(var, lc)
              or _poly_subject_readonly(var_raw))
+    inner = polymorphic_source_inner(var_decl, lc.analyzer.registry)
+    rtype = var_decl if var_decl is not None else (inner or ANY)
     if var == lc.self_receiver:
         # `self` is already pointer-shaped in a plain method (`this`); a
         # resumable coro's `__self` is a `Record&` field, so it takes the
         # address. Mirrors polymorphic_cast_arg's self arms. A readonly
         # method's `this` is const, so the cast targets `const Sub*`.
-        cast_arg = ("this" if lc.self_cpp == "this"
-                    else f"&{lc.self_cpp}")
-        const = const or lc.binding("self").const
-    else:
-        cast_arg = (escape_cpp_name(var)
-                    if _poly_subject_is_pointer(var, lc, var_decl)
-                    else f"&{escape_cpp_name(var)}")
-    return const, cast_arg, polymorphic_source_inner(var_decl,
-                                                     lc.analyzer.registry)
+        return _SubjectForm(
+            decl=var_raw, const=const or lc.binding("self").const,
+            pointer=lc.self_cpp == "this", ptr_variant=False,
+            operand=THIRSelf(result_type=rtype, form=Form.BORROW,
+                             cpp=lc.self_cpp,
+                             pointer=lc.self_cpp == "this"))
+    # A frame slot's read is its payload, as every other read of it: the
+    # slot (`frame_slot<T>`) is storage, never the subject's value.
+    slot = _frame_slot_read_derefs(var, lc)
+    # A pointer-shaped declared type (`Ptr[T]`, pointer-repr `Optional[T]`),
+    # a `@dynamic` local held behind its base pointer, or a borrow bound as
+    # a pointer that no rebind re-points (`p = deref(h)`, `p := deref(h)`)
+    # reads as the pointer itself.
+    pointer = (polymorphic_source_is_pointer(var_decl)
+               or (not slot
+                   and (rec.form is BindingForm.DYN
+                        or (rec.form is BindingForm.POINTER
+                            and not rec.rebind_slot))))
+    return _SubjectForm(
+        decl=var_raw, const=const, pointer=pointer, ptr_variant=False,
+        operand=THIRName(result_type=rtype, name=var, form=Form.BORROW,
+                         deref=slot))
 
 
-def _poly_subject_is_pointer(var: str, lc: '_LowerCtx',
-                             var_decl: 'TpyType | None') -> bool:
-    """Whether a polymorphic dispatch subject NAME reads as the pointer the
-    cast takes: a pointer-shaped declared type (`Ptr[T]`, pointer-repr
-    `Optional[T]`) or a `@dynamic` local held behind its base pointer."""
-    return (polymorphic_source_is_pointer(var_decl)
-            or lc.binding(var).form is BindingForm.DYN)
+def _isinstance_subject(call: TpyExpr, var: str, lc: '_LowerCtx',
+                        declared: dict[str, TpyType]) -> _IsinSubject:
+    """The subject an isinstance test over narrowing key `var` reads: the
+    key itself, after the walrus that binds it when the call's subject is
+    one. The walrus lowers here, ahead of the test, so the test reads the
+    binding it declares."""
+    subject = call.args[0] if isinstance(call, TpyCall) else None
+    if isinstance(subject, TpyNamedExpr) and subject.target == var:
+        return _IsinSubject(var, init=_lower_expr(subject, lc, declared))
+    return _IsinSubject(var)
 
 
-def _poly_cast_checks(var: str, members, lc: '_LowerCtx',
-                      declared: dict[str, TpyType]) -> tuple[str, ...]:
-    """The per-member `({dynamic_cast} != nullptr)` checks of a no-alias
-    polymorphic isinstance (tuple / root-class / value-position forms),
-    composed via the shared `narrow_cast_rhs` chokepoint over
-    `_poly_cast_context`."""
-    const, cast_arg, inner_src = _poly_cast_context(var, lc, declared)
+def _isin_test(subj: _IsinSubject, test: THIRExpr) -> THIRExpr:
+    """`test` over `subj`, after the walrus binding its key, if any."""
+    if subj.init is None:
+        return test
+    return THIREvalThen(
+        result_type=test.result_type, init=subj.init, value=test,
+        loc=test.loc)
+
+
+def _poly_subject_form(subj: _IsinSubject, lc: '_LowerCtx',
+                       declared: dict[str, TpyType]
+                       ) -> 'tuple[bool, THIRExpr, bool, TpyType | None]':
+    """The (const, operand, address_of, source_inner) facts of a
+    polymorphic dynamic_cast's subject, shared by every composition (the
+    if-init form, the no-alias OR-chain, the value-position chain, the
+    cast-and-cache alias), so the spellings cannot drift. The operand is
+    taken by address unless it reads as a pointer already."""
+    form = _subject_form(subj, lc, declared)
+    inner = polymorphic_source_inner(_poly_subject_decl(form.decl),
+                                     lc.analyzer.registry)
+    return form.const, form.operand, not form.pointer, inner
+
+
+def _poly_casts(subj: _IsinSubject, members, lc: '_LowerCtx',
+                declared: dict[str, TpyType]) -> tuple[THIRDynCast, ...]:
+    """One `THIRDynCast` of `subj` per member, composed via the shared
+    `narrow_cast_rhs` chokepoint over `_poly_subject_form`."""
+    const, operand, address_of, inner_src = _poly_subject_form(
+        subj, lc, declared)
     return tuple(
-        f"({narrow_cast_rhs(lc.render_type(m), m, inner_src, cast_arg, is_const=const, analyzer=lc.analyzer)} != nullptr)"
+        THIRDynCast(
+            result_type=m, subject=operand, address_of=address_of,
+            cpp_template=narrow_cast_rhs(
+                lc.render_type(m), m, inner_src, "{0}", is_const=const,
+                analyzer=lc.analyzer))
         for m in members)
+
+
+def _poly_test(subj: _IsinSubject, members, lc: '_LowerCtx',
+               declared: dict[str, TpyType], result_type: TpyType,
+               loc) -> THIRExpr:
+    """The no-alias polymorphic test of `subj`: the casts to `members`
+    folded over the subject, read once inside the test's full expression --
+    so a prvalue subject, which `&` cannot take, is tested as a name is."""
+    const, operand, _address_of, inner_src = _poly_subject_form(
+        subj, lc, declared)
+    return _isin_test(subj, THIRDynIsinstanceMulti(
+        result_type=result_type, subject=operand,
+        member_cpps=tuple(
+            narrow_cast_member(lc.render_type(m), m, inner_src,
+                               is_const=const, analyzer=lc.analyzer)
+            for m in members),
+        loc=loc))
+
+
+def _poly_isinstance(call: TpyExpr, var: str, members, lc: '_LowerCtx',
+                     declared: dict[str, TpyType], result_type: TpyType,
+                     loc) -> THIRExpr:
+    """The no-alias polymorphic test of narrowing key `var`."""
+    return _poly_test(_isinstance_subject(call, var, lc, declared), members,
+                      lc, declared, result_type, loc)
+
+
+def _any_isinstance(call: TpyExpr, var: str, members, lc: '_LowerCtx',
+                    declared: dict[str, TpyType], result_type: TpyType,
+                    loc) -> THIRExpr:
+    """The Any typeid test of narrowing key `var`."""
+    subj = _isinstance_subject(call, var, lc, declared)
+    return _isin_test(subj, THIRAnyIsinstance(
+        result_type=result_type,
+        subject=_subject_form(subj, lc, declared).operand,
+        member_cpps=tuple(lc.render_type(m) for m in members), loc=loc))
 
 
 def _ptr_read_derefs(name: str, lc: '_LowerCtx') -> bool:
@@ -5509,20 +5657,29 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
     return False
 
 
+def _narrow_variant_deref(var: str, lc: '_LowerCtx') -> bool:
+    """Whether reading narrowing subject `var`'s variant derefs it: a
+    POINTER-bound subject (a resumable pointer-form loop var over
+    `list[A | B]`) and a frame_slot one (its reads render `(*name)`), with
+    the live-narrowing seam guard, like any other read of it."""
+    return _ptr_read_derefs(var, lc) or _frame_slot_read_derefs(var, lc)
+
+
+def _frame_slot_read_derefs(var: str, lc: '_LowerCtx') -> bool:
+    """Whether a frame_slot name's read renders `(*name)`: always, but
+    under a live narrowing binding, which replaces the read wholesale."""
+    return (lc.binding(var).frame_slot
+            and var not in lc.narrow.spelled
+            and var not in lc.narrow.narrowed)
+
+
 def _narrow_variant_cpp(var: str, u: UnionType, lc: '_LowerCtx') -> str:
     """The C++ expression yielding the narrowing subject's `std::variant`: a
     recursive-alias wrapper union (F6) reaches it via `.value` (the
     VariantAccess.variant_expr indirection); every other routed union is the
-    variant itself. A POINTER-bound subject (a resumable pointer-form loop var
-    over `list[A | B]`) derefs first, like any other read of it. Shared by the
-    isinstance condition and the extraction alias so the two spellings cannot
-    drift."""
-    # A frame_slot subject derefs like a pointer local (R1c: reads render
-    # `(*name)`), with the same live-narrowing seam guard.
-    _fs_deref = (lc.binding(var).frame_slot
-                 and var not in lc.narrow.spelled
-                 and var not in lc.narrow.narrowed)
-    base = f"(*{var})" if (_ptr_read_derefs(var, lc) or _fs_deref) else var
+    variant itself. Shared by the extraction alias and the compound-condition
+    read; the isinstance test reads the same through `_subject_form`."""
+    base = f"(*{var})" if _narrow_variant_deref(var, lc) else var
     return f"{base}.value" if u.needs_wrapper() else base
 
 
@@ -5589,29 +5746,46 @@ def _inline_union_member(var: str, member: TpyType, typ: UnionType,
     return cpp, pointer, _union_extraction(var, typ, member, lc)
 
 
+def _union_isinstance(subj: _IsinSubject, u: UnionType, members,
+                      lc: '_LowerCtx', declared: dict[str, TpyType],
+                      result_type: TpyType, loc) -> THIRExpr:
+    """The holds_alternative test over `subj`'s variant (ptr `*` +
+    const-pointee in the template args for pointer variants), after the
+    walrus binding its key, if any. Only a narrowing key's test states the
+    selection fact MIR reads; a keyless operand has no slot to state it on."""
+    form = _subject_form(subj, lc, declared, u)
+    const = "const " if form.const else ""
+    if u.needs_wrapper():
+        _witness("narrow.wrapper_union")
+    return _isin_test(subj, THIRIsinstance(
+        result_type=result_type,
+        union_test=(_union_test(subj.var, u, members, lc)
+                    if subj.var is not None else None),
+        subject=form.operand,
+        wrapper=u.needs_wrapper(),
+        member_cpps=tuple(
+            f"{const}{lc.render_type(m)}*" if form.ptr_variant
+            else lc.render_type(m)
+            for m in members),
+        loc=loc))
+
+
 def _lower_isinstance_cond(info, condition: TpyExpr,
-                           lc: '_LowerCtx') -> THIRExpr:
+                           lc: '_LowerCtx',
+                           declared: dict[str, TpyType]) -> THIRExpr:
     """The isinstance-condition render shared by the narrow if / while /
-    assert / ternary arms: the holds_alternative OR-chain (ptr `*` +
-    const-pointee in the template args for pointer variants), or the bare
-    `true` literal for sema's exhaustiveness fold."""
+    assert / ternary arms: the union test over the narrowing key, or the
+    bare `true` literal for sema's exhaustiveness fold -- either after the
+    walrus binding the key when the subject is one."""
     var, u, members, folded = info
     cond_loc = getattr(condition, "loc", None)
     result_type = lc.analyzer.get_expr_type(condition)
     if folded:
-        return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
-    is_ptr = _narrow_subject_is_ptr(var, u, lc)
-    const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
-    if u.needs_wrapper():
-        _witness("narrow.wrapper_union")
-    return THIRIsinstance(
-        result_type=result_type,
-        union_test=_union_test(var, u, members, lc),
-        variant_cpp=_narrow_variant_cpp(var, u, lc),
-        member_cpps=tuple(
-            f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
-            for m in members),
-        loc=cond_loc)
+        subj = _isinstance_subject(condition, var, lc, declared)
+        return _isin_test(subj, THIRLiteral(result_type=result_type,
+                                            value=True, loc=cond_loc))
+    return _union_isinstance(_isinstance_subject(condition, var, lc, declared),
+                             u, members, lc, declared, result_type, cond_loc)
 
 
 def _assign_narrowed_union_recv(obj: TpyExpr, declared: dict[str, TpyType],
@@ -6259,9 +6433,10 @@ _HELD_BY_KIND: dict[type, Held] = {
     **dict.fromkeys((
         THIRLiteral, THIRStrLiteral, THIRCharLiteral, THIRUnaryArith,
         THIRUnaryNot, THIRIsNone, THIRIdentity, THIRIsinstance,
-        THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti, THIRConceptTest,
+        THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti, THIRDynCast,
+        THIRConceptTest,
         THIRMembership, THIRStrMembership, THIRTupleMembership,
-        THIRChainedCompareStmtExpr, THIRTruthy, THIREnumMember,
+        THIRChainedCompareStmtExpr, THIREvalThen, THIRTruthy, THIREnumMember,
         THIREnumWrap, THIRClassConstant, THIRLambda, THIRDefaultConstruct,
         THIRPrintChain, THIRErrorReturnUnwrap, THIRConsumingIter),
         Held.VALUE),
@@ -8807,7 +8982,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # The walrus that declares its target's record pre-declares the
         # binding as the record's kind says; any other walrus writes the
         # binding in scope, by the value's shape.
-        vtu = bindings.walrus_value_type(e, analyzer)
+        vtu = walrus_value_type(e, analyzer)
         if vtu is None:
             raise ThirUnsupported("expr.walrus")
         if (lc.binding(e.target).rebind_slot
@@ -9303,28 +9478,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # rides the native arm).
             _witness("call.ord_fold")
             return _lower_int_literal(ord(e.args[0].value), rtype, lc, loc)
-        vinfo = (None if use.result in (_ExprResultUse.CONDITION,
-                                        _ExprResultUse.TRUTHY)
-                 else _poly_isinstance_value_info(e, declared, analyzer))
-        if vinfo is not None:
-            # A VALUE-position polymorphic isinstance (`return
-            # isinstance(e, VE)`): the bare null-check chain -- no alias,
-            # position-independent bool. CONDITION/TRUTHY positions stay
-            # out: a statement condition (incl. the negated form's operand)
-            # carries branch/post-if facts this arm would silently drop --
-            # those take the narrow-if arms instead. Narrowed / re-spelled
-            # subjects and non-pointer-shaped pointer-locals reject.
-            vvar, vmembers, _vd = vinfo
-            if (vvar in lc.narrow.narrowed or vvar in lc.narrow.spelled
-                    or (lc.binding(vvar).pointer
-                        and not polymorphic_source_is_pointer(
-                            _poly_subject_decl(declared.get(vvar))))):
-                raise ThirUnsupported(call_reject_reason("expr.call"))
-            _witness("narrow.poly_value")
-            return THIRDynIsinstanceMulti(
-                result_type=rtype,
-                checks_cpp=_poly_cast_checks(vvar, vmembers, lc, declared),
-                loc=loc)
+        if e.isinstance_type is not None and e.macro_expansion is None:
+            # Every isinstance this far tests without narrowing (a value
+            # position, or a subject with no narrowing key): one builder.
+            isin = _lower_isinstance_value(e, lc, declared, rtype, loc,
+                                           condition=use.result in (
+                                               _ExprResultUse.CONDITION,
+                                               _ExprResultUse.TRUTHY))
+            if isin is not None:
+                return isin
         if _is_range_call(e):
             # A `range(...)` call in OBJECT position (decl init, print arg):
             # the same `::tpy::Range<T>(...)` ctor render the instantiation-arg
@@ -9402,54 +9564,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     f"{lc.render_type(tp_fi.return_type.inner)}"
                     ">::try_parse({0})"),
                 loc=loc)
-        # The static type-param isinstance family at a VALUE position
-        # (`return isinstance(x, (Dog, Cat))` on a bounded-T subject): the
-        # same spelled trait disjunction the truthy-condition arm renders --
-        # no extraction alias, position-independent. Non-tparam isinstance
-        # stays with the narrowing machinery and keeps rejecting here.
-        si_val = _lower_static_isinstance(e, lc, rtype)
-        if si_val is not None:
-            _witness("call.isinstance_static_value")
-            return si_val
-        # A UNION-subject isinstance at a VALUE position (`print(
-        # isinstance(pu, A))` on a routed variant local): the same
-        # holds_alternative chain the narrowing condition renders, with NO
-        # extraction alias -- position-independent, spelled on the bare
-        # original name -- the narrowed alias is deliberately skipped.
-        # Protocol / Any / polymorphic / deref / indirect subjects keep
-        # rejecting; overload bodies are never lowered
-        # (sig.special_callable), so the overload_param_types const-fold
-        # cannot be live here. A RESUMABLE frame member is in
-        # (`yield isinstance(v, A)`): its variant spelling -- bare member,
-        # or the frame_slot `(*v)` deref -- is the same one
-        # `_narrow_variant_cpp` already gives the condition arms.
-        if (e.isinstance_var is not None and e.isinstance_type is not None
-                and not e.isinstance_type_param
-                and not e.isinstance_is_protocol):
-            iv = e.isinstance_var
-            du = declared.get(iv)
-            dub = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(du)))
-                   if du is not None else None)
-            if (isinstance(dub, UnionType)
-                    and not lc.binding(iv).pointer
-                    and iv not in lc.narrow.narrowed
-                    and iv not in lc.inline_narrowed):
-                members = (list(e.isinstance_type.members)
-                           if isinstance(e.isinstance_type, UnionType)
-                           else [e.isinstance_type])
-                is_ptr = _narrow_subject_is_ptr(iv, dub, lc)
-                const = ("const " if (is_ptr and _narrow_subject_const(iv, lc))
-                         else "")
-                _witness("call.isinstance_union_value")
-                return THIRIsinstance(
-                    result_type=rtype,
-                    variant_cpp=_narrow_variant_cpp(iv, dub, lc),
-                    union_test=_union_test(iv, dub, members, lc),
-                    member_cpps=tuple(
-                        f"{const}{lc.render_type(m)}*" if is_ptr
-                        else lc.render_type(m)
-                        for m in members),
-                    loc=loc)
         if not _call_use_supported(e, lc, declared, use,
                                    allow_whole_optional=allow_whole_optional,
                                    error_return_raw=error_return_raw):
@@ -14831,33 +14945,156 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     )
 
 
-def _lower_static_isinstance(e: TpyCall, lc: '_LowerCtx',
-                             rtype: 'TpyType | None') -> 'THIRCall | None':
+def _lower_static_isinstance(e: TpyCall, subj: _IsinSubject,
+                             form: _SubjectForm, lc: '_LowerCtx',
+                             rtype: 'TpyType | None') -> 'THIRExpr | None':
     """The STATIC type-param isinstance family (`isinstance(x, Animal)` /
     `isinstance(x, (Dog, Cat))` on a bounded-T subject): a
     per-instantiation compile-time trait -- a disjunction of
-    `::tpy::isinstance_static<M, decltype(x)>()` over the (tuple-normalized
+    `::tpy::isinstance_static<M, X>()` over the (tuple-normalized
     union's) members -- with NO extraction alias, so the same spelled
-    expression renders at every position. Shared by the truthy-condition
-    arm and the value-position call arm; each witnesses its own face."""
-    if not (e.isinstance_var is not None and e.isinstance_type_param
-            and e.isinstance_type is not None):
+    expression renders at every position. `X` is the subject's declared
+    type, which the trait reads instead of the value, so a keyless operand
+    is only evaluated for its effects first."""
+    if not (e.isinstance_type_param and e.isinstance_type is not None):
         return None
     if isinstance(e.isinstance_type, UnionType):
         members = list(e.isinstance_type.members)
     else:
         members = [e.isinstance_type]
-    var = escape_cpp_name(e.isinstance_var)
-    checks = [
-        f"::tpy::isinstance_static<{lc.render_type(m)}, "
-        f"decltype({var})>()"
-        for m in members
-    ]
+    x = lc.render_type(form.decl)
+    checks = [f"::tpy::isinstance_static<{lc.render_type(m)}, {x}>()"
+              for m in members]
     spelled = (checks[0] if len(checks) == 1
                else "(" + " || ".join(checks) + ")")
-    return THIRCall(
-        result_type=rtype, callee="isinstance", args=(),
-        cpp_template=spelled, loc=getattr(e, "loc", None))
+    loc = getattr(e, "loc", None)
+    test = THIRCall(result_type=rtype, callee="isinstance", args=(),
+                    cpp_template=spelled, loc=loc)
+    if subj.var is None:
+        return THIREvalThen(result_type=rtype, init=subj.value, value=test,
+                            loc=loc)
+    return _isin_test(subj, test)
+
+
+def _isinstance_value_test(e: TpyCall, subj: _IsinSubject, lc: '_LowerCtx',
+                           declared: dict[str, TpyType],
+                           rtype: TpyType, loc, *,
+                           condition: bool) -> 'THIRExpr | None':
+    """The test isinstance call `e` makes without narrowing anything, over
+    `subj` -- the narrowing key, or a keyless operand read once. No branch,
+    no alias: the same bool at every position. None when no test form
+    covers the subject."""
+    analyzer = lc.analyzer
+    var = subj.var
+    keyed = var is not None
+    form = _subject_form(subj, lc, declared)
+    si = _lower_static_isinstance(e, subj, form, lc, rtype)
+    if si is not None:
+        _witness("cond.isinstance_static" if condition
+                 else "call.isinstance_static_value")
+        return si
+    # A keyed subject's read is replaced by a live narrowing binding, which
+    # these value tests do not spell.
+    spelled = keyed and var in lc.narrow.spelled
+    narrowed = keyed and (var in lc.narrow.narrowed or spelled)
+    pointer = keyed and lc.binding(var).pointer
+    vinfo = (None if condition and keyed
+             else _poly_isinstance_value_info(
+                 e, declared, analyzer, IsinSubjectRead(var, form.decl)))
+    if vinfo is not None:
+        # The bare null-check chain. A keyed CONDITION/TRUTHY position
+        # stays out: a statement condition (incl. the negated form's
+        # operand) carries branch/post-if facts this arm would silently
+        # drop -- those take the narrow-if arms instead. Narrowed /
+        # re-spelled subjects and non-pointer-shaped pointer-locals reject.
+        _vvar, vmembers, _vd = vinfo
+        if narrowed or (pointer and not form.pointer):
+            return None
+        _witness("narrow.poly_value")
+        return _poly_test(subj, vmembers, lc, declared, rtype, loc)
+    du = form.decl
+    dub = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(du)))
+           if du is not None else None)
+    if isinstance(dub, OwnType):
+        dub = unwrap_readonly(dub.wrapped)
+    if (isinstance(dub, UnionType) and not e.isinstance_is_protocol
+            and not pointer and not narrowed
+            and not (keyed and var in lc.inline_narrowed)):
+        # The holds_alternative test the narrowing condition renders, with
+        # NO extraction alias, spelled on the bare original name -- the
+        # narrowed alias is deliberately skipped. A RESUMABLE frame member
+        # is in (`yield isinstance(v, A)`): its variant read -- bare member,
+        # or the frame_slot `(*v)` deref -- is the condition arms' own.
+        members = (list(e.isinstance_type.members)
+                   if isinstance(e.isinstance_type, UnionType)
+                   else [e.isinstance_type])
+        _witness("call.isinstance_union_value")
+        return _union_isinstance(subj, dub, members, lc, declared, rtype, loc)
+    ainfo = (None if spelled
+             else _any_narrow_info(e, declared, analyzer,
+                                   IsinSubjectRead(var, form.decl)))
+    if ainfo is not None:
+        _witness("call.isinstance_any_value")
+        return _isin_test(subj, THIRAnyIsinstance(
+            result_type=rtype, subject=form.operand,
+            member_cpps=tuple(lc.render_type(m) for m in ainfo[1]),
+            loc=loc))
+    return None
+
+
+def _lower_isinstance_value(e: TpyCall, lc: '_LowerCtx',
+                            declared: dict[str, TpyType], rtype: TpyType,
+                            loc, *, condition: bool = False
+                            ) -> 'THIRExpr | None':
+    """An isinstance call that narrows nothing where it stands: its subject
+    is a value, evaluated once, left to right. A subject with a narrowing
+    key is tested by the key, after the walrus that binds it; any other is
+    read once inside the test's own full expression -- or, when sema
+    answered the check statically, only evaluated before the constant."""
+    key = e.isinstance_var
+    if key is not None:
+        subj = _isinstance_subject(e, key, lc, declared)
+        return _isinstance_value_test(e, subj, lc, declared, rtype, loc,
+                                      condition=condition)
+    subject = e.args[0]
+    st = lc.analyzer.get_expr_type(subject)
+    ptr_u = (None if call_hands_back_value(subject)
+             else pointer_variant_union(st))
+    # The test finishes inside the subject's full expression (an OPERAND),
+    # so a read lending a temporary's storage is still alive where it is
+    # tested.
+    if ptr_u is not None:
+        # A borrowed reference union is read as a pointer-variant local
+        # `u = <subject>` reads its source, and tested in that form: a field
+        # or element in its storage variant, unlifted.
+        from .statements import ptr_union_source
+        const = _poly_subject_const(subject, lc)
+        operand, storage = ptr_union_source(subject, ptr_u, lc, declared,
+                                            pos=SinkPos.OPERAND)
+        if storage:
+            ptr_u = None
+    else:
+        const = False
+        operand = _lower_expr(subject, lc, declared,
+                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                           pos=SinkPos.OPERAND))
+    if e.isinstance_fold is not None:
+        answer = THIRLiteral(result_type=rtype, value=e.isinstance_fold,
+                             loc=loc)
+        # A name read evaluates nothing (a resumable body's spilled
+        # `await` reads its spill), so the answer is the constant alone.
+        if isinstance(operand, THIRName):
+            return answer
+        _witness("call.isinstance_fold_kept")
+        return THIREvalThen(result_type=rtype, init=operand, value=answer,
+                            loc=loc)
+    subj = _IsinSubject(None, value=operand, value_type=st,
+                        ptr_variant=ptr_u is not None, const=const)
+    test = _isinstance_value_test(e, subj, lc, declared, rtype, loc,
+                                  condition=condition)
+    if test is not None:
+        _witness("call.isinstance_operand_subject")
+    return test
 
 
 def _lower_literal_arg(a: TpyExpr, target: 'TpyType | None', lc: '_LowerCtx',
@@ -18827,12 +19064,18 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             # (`::tpy::isinstance_static<M, decltype(x)>()`) with NO
             # extraction alias -- reads of the subject render the bare
             # name whatever sema narrowed, so the branch facts are inert.
-            si = _lower_static_isinstance(e, lc, et)
-            if si is not None:
-                _witness("cond.isinstance_static")
-                return si
-            if (e.isinstance_var is not None
-                    or e.isinstance_type is not None):
+            # An isinstance with no narrowing key carries no facts either:
+            # it tests as a bool value, its subject evaluated once.
+            isin = (e.isinstance_type is not None
+                    and e.macro_expansion is None)
+            if isin and (e.isinstance_var is None
+                         or e.isinstance_type_param):
+                cond = _lower_isinstance_value(e, lc, declared, et,
+                                               getattr(e, "loc", None),
+                                               condition=True)
+                if cond is not None:
+                    return cond
+            if isin:
                 raise ThirUnsupported("truthy.call_nonbool")
             if mode is None and not native_scalar:
                 raise ThirUnsupported("truthy.call_nonbool")
@@ -19353,7 +19596,7 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
             or _resolved_str_value(rbare, analyzer) is not None):
         raise ThirUnsupported("ifexpr.narrow_result", detail=True)
     cond = _lower_isinstance_cond((var, u, (then_m,), False), e.condition,
-                                  lc)
+                                  lc, declared)
 
     def _arm(arm_expr, member):
         if member is None:

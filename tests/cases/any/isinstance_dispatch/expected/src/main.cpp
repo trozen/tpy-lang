@@ -14,13 +14,13 @@ namespace tpyapp::main {
 //     else:
 //         print("other")
 void show(::tpy::Any v) {
-    if ((v.value.has_value() && v.value.type() == typeid(::tpy::BigInt))) {
+    if ((v.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __v = std::any_cast<const ::tpy::BigInt&>(v.value);
         std::cout << "int" << " " << __v << "\n" << ::tpy::check_signals;
-    } else if ((v.value.has_value() && v.value.type() == typeid(std::string))) {
+    } else if ((v.value.type() == typeid(std::string))) {
         const std::string& __v = std::any_cast<const std::string&>(v.value);
         std::cout << "str" << " " << __v << "\n" << ::tpy::check_signals;
-    } else if ((v.value.has_value() && v.value.type() == typeid(double))) {
+    } else if ((v.value.type() == typeid(double))) {
         const double& __v = std::any_cast<const double&>(v.value);
         std::cout << "float" << " " << __v << "\n" << ::tpy::check_signals;
     } else {

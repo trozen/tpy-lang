@@ -406,6 +406,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # a value position
     "call.isinstance_union_value",  # union-subject holds_alternative chain
                                     # at a value position (no alias)
+    "call.isinstance_any_value",    # Any-subject typeid test at a value
+                                    # position (no alias)
+    "call.isinstance_operand_subject",  # a subject with no narrowing
+                                    # key, read once inside the test
+    "call.isinstance_fold_kept",    # a static answer whose subject still
+                                    # evaluates before the constant
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //         print("not int")
 void main() {
     ::tpy::Any x = ::tpy::make_any(::tpy::BigInt(42));
-    if ((x.value.has_value() && x.value.type() == typeid(::tpy::BigInt))) {
+    if ((x.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __x = std::any_cast<const ::tpy::BigInt&>(x.value);
         std::cout << ((__x) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     } else {

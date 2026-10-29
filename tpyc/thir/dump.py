@@ -50,6 +50,8 @@ from .nodes import (
     THIRAnyIsinstance,
     THIRDynIsinstance,
     THIRDynIsinstanceMulti,
+    THIRDynCast,
+    THIREvalThen,
     THIRExprStmt,
     THIRContainerLiteral,
     THIRContinue,
@@ -341,14 +343,21 @@ def _expr(e: THIRExpr) -> str:
         cst = "const " if e.is_const else ""
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
     if isinstance(e, THIRIsinstance):
-        return f"isinstance(%{e.variant_cpp}, [{', '.join(e.member_cpps)}])"
-    if isinstance(e, THIRAnyIsinstance):
-        return (f"any_isinstance(%{e.subject_cpp}, "
+        return (f"isinstance({_expr(e.subject)}"
+                f"{'.value' if e.wrapper else ''}, "
                 f"[{', '.join(e.member_cpps)}])")
+    if isinstance(e, THIRAnyIsinstance):
+        return (f"any_isinstance({_expr(e.subject)}, "
+                f"[{', '.join(e.member_cpps)}])")
+    if isinstance(e, THIRDynCast):
+        addr = "&" if e.address_of else ""
+        return f"dyn_cast[{e.cpp_template}]({addr}{_expr(e.subject)})"
     if isinstance(e, THIRDynIsinstance):
-        return f"dyn_isinstance[{e.ptr_local}]({e.init_cpp})"
+        return (f"dyn_isinstance[{e.decl_cpp} {e.ptr_local}]"
+                f"({_expr(e.cast)})")
     if isinstance(e, THIRDynIsinstanceMulti):
-        return f"dyn_isinstance_multi([{', '.join(e.checks_cpp)}])"
+        return (f"dyn_isinstance_multi({_expr(e.subject)}, "
+                f"[{', '.join(e.member_cpps)}])")
     if isinstance(e, THIRPrintChain):
         args = ", ".join(_print_arg(a) for a in e.args)
         return f"print_chain({args})"
@@ -414,6 +423,8 @@ def _expr(e: THIRExpr) -> str:
                  if init is not None]
         pairs = " && ".join(_expr(p) for p in e.pairs)
         return f"chained_compare({'; '.join(binds + [pairs])})"
+    if isinstance(e, THIREvalThen):
+        return f"eval_then({_expr(e.init)}; {_expr(e.value)})"
     if isinstance(e, THIRErrorReturnUnwrap):
         form = "value" if e.value_form else "ptr"
         return f"er_unwrap[{form}]({_expr(e.call)})"
@@ -495,7 +506,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 f"(%{stmt.variant_cpp})"]
     if isinstance(stmt, THIRDynNarrowAlias):
         cst = "const " if stmt.is_const else ""
-        return [f"{pad}%{stmt.alias} = {cst}&*{stmt.cast_rhs_cpp}"]
+        return [f"{pad}%{stmt.alias} = {cst}&*{_expr(stmt.cast)}"]
     if isinstance(stmt, THIRAnyNarrowAlias):
         return [f"{pad}%{stmt.alias} = const &any_cast<{stmt.member_cpp}>"
                 f"(%{stmt.subject_cpp})"]

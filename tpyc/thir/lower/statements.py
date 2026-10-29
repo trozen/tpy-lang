@@ -161,7 +161,6 @@ from ...codegen_cpp.protocols import (
 from ...sema.dyn_erasure import record_inherits_dynamic
 from ...codegen_cpp.context import (escape_cpp_name,
                                     ternary_iterable_lends_storage)
-from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...prescan import (
     collect_fact_kills,
     match_is_none,
@@ -208,8 +207,7 @@ from ..nodes import (HoistDecl, THIRStoragePlacement, THIRHoistedBinding,
     THIRErrorReturnDiscard, THIRExpr, THIRExprStmt, THIRFieldAccess,
     THIRConsumingIter, THIRBorrowedRecord, THIRForEach, THIRNativeIteration,
     THIRForIterProto, THIRForRange, THIRFormConvert, THIRIf, THIRIfExpr,
-    THIRIsinstance, THIRAnyIsinstance, THIRDynIsinstance,
-    THIRDynIsinstanceMulti, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
+    THIRIsinstance, THIRDynIsinstance, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
     THIRModuleVar, THIRMove, THIRCopy, THIRName, THIRDynNarrowAlias,
     THIRNarrowAlias, THIRNestedDef, THIRConceptTest, THIRFoldedBlock,
     THIRFoldedIfChain, THIRFrameNestedDef, THIRFrameSlotWrite,
@@ -364,8 +362,8 @@ from .expressions import (
     _own_tuple_borrow_lift_arg, _deref_loop_source, _lower_isinstance_cond,
     _narrow_member_cpp, _narrow_subject_const, _narrow_subject_is_ptr,
     _union_source_layout, _union_extraction, _inline_union_member,
-    _narrow_variant_cpp, _poly_cast_checks, _poly_cast_context,
-    _poly_subject_is_pointer,
+    _narrow_variant_cpp, _poly_casts, _poly_isinstance, _any_isinstance,
+    _IsinSubject, _isinstance_subject, _isin_test, _subject_form,
     _param_declared_type, _is_move_source, _node_moves, _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
@@ -5460,15 +5458,14 @@ def _make_dyn_narrow_alias(alias: str, var: str, member: TpyType,
                            loc) -> THIRDynNarrowAlias:
     """One polymorphic cast-and-cache extraction -- the isinstance
     extractions' poly arm (`[const ]Sub& __v =
-    *<cast_rhs>;`), composed via the shared `_poly_cast_context` /
-    `narrow_cast_rhs` chokepoints (which anchor a re-narrowing chain to the
-    subject's original decl through `lc.narrow.poly_source`)."""
-    member_cpp = lc.render_type(member)
-    const, cast_arg, inner_src = _poly_cast_context(var, lc, declared)
-    cast_rhs = narrow_cast_rhs(member_cpp, member, inner_src, cast_arg,
-                               is_const=const, analyzer=lc.analyzer)
-    return THIRDynNarrowAlias(alias=alias, member_cpp=member_cpp,
-                              cast_rhs_cpp=cast_rhs, is_const=const, loc=loc)
+    *<cast>;`), composed via the shared `_poly_casts` chokepoint (which
+    anchors a re-narrowing chain to the subject's original decl through
+    `lc.narrow.poly_source`)."""
+    subj = _IsinSubject(var)
+    const = _subject_form(subj, lc, declared).const
+    (cast,) = _poly_casts(subj, (member,), lc, declared)
+    return THIRDynNarrowAlias(alias=alias, member_cpp=lc.render_type(member),
+                              cast=cast, is_const=const, loc=loc)
 
 def _register_dyn_narrow(alias: str, var: str, member: TpyType,
                          lc: _LowerCtx,
@@ -5879,7 +5876,7 @@ def _lower_multi_compound_cond(cond: TpyExpr, hits, lc: _LowerCtx,
 
     def lower_leaf(hit, c):
         var, u, members = hit
-        lowered = _lower_isinstance_cond((var, u, members, False), c, lc)
+        lowered = _lower_isinstance_cond((var, u, members, False), c, lc, declared)
         if len(members) == 1:
             lc.inline_narrowed[var] = _inline_union_member(var, members[0],
                                                          u, lc)
@@ -5909,7 +5906,7 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
     if isin is None:
         negated = isinstance(condition, TpyUnaryOp) and condition.op == "!"
         inner = condition.operand if negated else condition
-        base = _lower_isinstance_cond((var, u, members, folded), inner, lc)
+        base = _lower_isinstance_cond((var, u, members, folded), inner, lc, declared)
         if not negated:
             return base
         return THIRUnaryNot(
@@ -5951,7 +5948,7 @@ def _lower_or_chain_cond(oinfo, condition: TpyExpr, lc: _LowerCtx,
 
     def lower_leaf(hit, c):
         members, folded = hit
-        return _lower_isinstance_cond((var, u, members, folded), c, lc)
+        return _lower_isinstance_cond((var, u, members, folded), c, lc, declared)
 
     def on_advance(left_subtree):
         done = checked(left_subtree)
@@ -6177,16 +6174,15 @@ def _lower_folded_narrow_if(stmt: TpyIf, finfo, lc: _LowerCtx,
 
 
 def _lower_any_isinstance_cond(ainfo, condition: TpyExpr,
-                               lc: _LowerCtx) -> THIRExpr:
+                               lc: _LowerCtx,
+                               declared: dict[str, TpyType]) -> THIRExpr:
     """The D15 Any-isinstance condition render: the has_value + typeid
     check(s), with the negated-polarity `!` wrap mirroring the union path."""
     var, members, negated, _isin = ainfo
     inner = condition.operand if negated else condition
-    base = THIRAnyIsinstance(
-        result_type=lc.analyzer.get_expr_type(inner),
-        subject_cpp=var,
-        member_cpps=tuple(lc.render_type(m) for m in members),
-        loc=getattr(inner, "loc", None))
+    base = _any_isinstance(inner, var, members, lc, declared,
+                           lc.analyzer.get_expr_type(inner),
+                           getattr(inner, "loc", None))
     if not negated:
         return base
     return THIRUnaryNot(
@@ -6204,11 +6200,9 @@ def _lower_any_compound_cond(cond: TpyExpr, isin: TpyExpr, var: str,
     saves/restores). A `||` spine
     installs nothing (Any has no complement fact)."""
     def lower_leaf(_hit, c):
-        lowered = THIRAnyIsinstance(
-            result_type=lc.analyzer.get_expr_type(c),
-            subject_cpp=var,
-            member_cpps=(lc.render_type(member),),
-            loc=getattr(c, "loc", None))
+        lowered = _any_isinstance(c, var, (member,), lc, declared,
+                                  lc.analyzer.get_expr_type(c),
+                                  getattr(c, "loc", None))
         if op == "&&":
             cpp = lc.render_type(member)
             lc.narrow.spelled[var] = (
@@ -6236,21 +6230,18 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
     var, member, _var_decl = pinfo
     analyzer = lc.analyzer
     cpp_type = lc.render_type(member)
-    # The shared const / cast-arg / source-inner triple (the if-init
-    # clause consults the const-borrow-source rule -- the param const verdicts
-    # + the readonly-declared arm -- and polymorphic_cast_arg's
-    # pointer-vs-address split).
-    const, cast_arg, inner_src = _poly_cast_context(var, lc, declared)
-    const_pfx = "const " if const else ""
-    ptr_local = _fresh_narrow_local(f"__{var}_ptr", lc.alias_taken())
-    cast_rhs = narrow_cast_rhs(
-        cpp_type, member, inner_src,
-        cast_arg, is_const=const, analyzer=analyzer)
     inner = stmt.condition
+    subj = _isinstance_subject(inner, var, lc, declared)
+    # The const-borrow-source rule (the param const verdicts + the
+    # readonly-declared arm) spells the cast pointer's pointee.
+    const_pfx = "const " if _subject_form(subj, lc, declared).const else ""
+    ptr_local = _fresh_narrow_local(f"__{var}_ptr", lc.alias_taken())
+    (cast,) = _poly_casts(subj, (member,), lc, declared)
     cond = THIRDynIsinstance(
         result_type=analyzer.get_expr_type(inner),
-        init_cpp=f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}",
+        decl_cpp=f"{const_pfx}{cpp_type}*",
         ptr_local=ptr_local,
+        cast=_isin_test(subj, cast),
         loc=getattr(inner, "loc", None))
 
     def fact_of(facts):
@@ -6279,10 +6270,9 @@ def _lower_dyn_multi_if(stmt: TpyIf, minfo, lc: _LowerCtx,
     the subject's own render."""
     var, members, _var_decl = minfo
     analyzer = lc.analyzer
-    cond = THIRDynIsinstanceMulti(
-        result_type=analyzer.get_expr_type(stmt.condition),
-        checks_cpp=_poly_cast_checks(var, members, lc, declared),
-        loc=getattr(stmt.condition, "loc", None))
+    cond = _poly_isinstance(stmt.condition, var, members, lc, declared,
+                            analyzer.get_expr_type(stmt.condition),
+                            getattr(stmt.condition, "loc", None))
     _witness("narrow.poly_tuple")
 
     def fact_of(facts):
@@ -6303,7 +6293,7 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
     the shared chain skeleton, with the any_cast extraction alias."""
     var, members, _negated, isin = ainfo
     if isin is None:
-        cond = _lower_any_isinstance_cond(ainfo, stmt.condition, lc)
+        cond = _lower_any_isinstance_cond(ainfo, stmt.condition, lc, declared)
     else:
         saved_spelled = dict(lc.narrow.spelled)
         try:
@@ -9085,37 +9075,48 @@ def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
         lc, loc), held=held, loc=loc)
 
 
-def _ptr_union_value(stmt: TpyVarDecl, ptr_u: 'UnionType', is_const: bool,
+def _ptr_union_value(init: TpyExpr, ptr_u: 'UnionType', is_const: bool,
                      lc: _LowerCtx, declared: dict[str, TpyType],
                      loc) -> THIRExpr:
     """The value a pointer-variant binding (`::tpy::Union<A*, B*>`) takes
-    off a slotless source: None stores the monostate member bare; a
+    off a slotless source `init`: None stores the monostate member bare; a
     value-variant field or element lvalue lifts via
     `to_[const_]ptr_variant`; a same-union name or a ptr-variant-returning
     call lands bare."""
-    init = stmt.init
     if isinstance(init, TpyNoneLiteral):
         return THIRLiteral(result_type=ptr_u, value=None, form=Form.STORAGE,
                            loc=loc)
+    src, storage = ptr_union_source(init, ptr_u, lc, declared)
+    if not storage:
+        return src
+    return THIRFormConvert(result_type=ptr_u, value=src, form=Form.BORROW,
+                           is_const=is_const, loc=loc)
+
+
+def ptr_union_source(init: TpyExpr, ptr_u: 'UnionType', lc: _LowerCtx,
+                     declared: dict[str, TpyType], *,
+                     pos: SinkPos = SinkPos.UNSPECIFIED
+                     ) -> 'tuple[THIRExpr, bool]':
+    """The read of a borrowed union source `init` of type `ptr_u`, and
+    whether it is the storage variant -- a field or element lvalue, which a
+    pointer-variant slot lifts -- rather than the pointer variant itself (a
+    same-union name, a ptr-variant-returning call). `pos` is the consumer's
+    sink."""
     if isinstance(init, TpyFieldAccess) or is_property_getter_read(init):
         # A @property read is a getter CALL that hands back the FIELD's
-        # storage variant by reference, so it lifts exactly as the plain
+        # storage variant by reference, so it reads exactly as the plain
         # member read does.
         if is_property_getter_read(init):
-            src = _lower_expr(init, lc, declared,
-                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-        else:
-            src = _lower_field_source(init, lc, declared)
-        return THIRFormConvert(result_type=ptr_u, value=src,
-                               form=Form.BORROW, is_const=is_const, loc=loc)
+            return _lower_expr(init, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                            pos=pos)), True
+        return _lower_field_source(init, lc, declared, pos=pos), True
     if isinstance(init, TpySubscript):
         # A union container-element read (`pet = pets["rex"]`): the checked
-        # getitem's value-variant lvalue, lifted.
-        return THIRFormConvert(
-            result_type=ptr_u,
-            value=_lower_expr(init, lc, declared,
-                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-            form=Form.BORROW, is_const=is_const, loc=loc)
+        # getitem's value-variant lvalue.
+        return _lower_expr(init, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        pos=pos)), True
     # A call source takes the STORAGE use the call-ret union row admits; a
     # SAME-union name copy is a whole-variant assign, so an assign-narrowed
     # divergent source read is safe at this sink.
@@ -9124,9 +9125,10 @@ def _ptr_union_value(stmt: TpyVarDecl, ptr_u: 'UnionType', is_const: bool,
                         declared.get(init.name)))) == ptr_u)
     return _lower_expr(
         init, lc, declared,
-        use=(_ExprUse(result=_ExprResultUse.STORAGE)
-             if isinstance(init, (TpyCall, TpyMethodCall)) else _ExprUse()),
-        allow_union_divergent=divergent_ok)
+        use=(_ExprUse(result=_ExprResultUse.STORAGE, pos=pos)
+             if isinstance(init, (TpyCall, TpyMethodCall))
+             else _ExprUse(pos=pos)),
+        allow_union_divergent=divergent_ok), False
 
 
 # --- first declarations ------------------------------------------------------
@@ -9418,8 +9420,8 @@ def _decl_ptr_variant(stmt, vtype, rec, scope, loc):
     lc, declared = scope.lc, scope.declared
     ptr_u = _eligible_ptr_union_wide(vtype, lc.analyzer)
     facts = _record_facts(rec)
-    u_init = _ptr_union_value(stmt, ptr_u, facts["is_const"], lc, declared,
-                              loc)
+    u_init = _ptr_union_value(stmt.init, ptr_u, facts["is_const"], lc,
+                              declared, loc)
     declared[stmt.name] = vtype
     return THIRVarDecl(
         name=stmt.name, resolved_type=ptr_u, init=u_init,
@@ -11159,7 +11161,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                           result=_ExprResultUse.BORROW_BIND)),
                     val_cpp=_union_storage_val_cpp(ptr_u), loc=loc)
             u_init = _ptr_union_value(
-                stmt, ptr_u, lc.declaring(stmt.name).const, lc,
+                stmt.init, ptr_u, lc.declaring(stmt.name).const, lc,
                 declared, loc)
             return THIRAssign(
                 target=THIRName(result_type=ptr_u, name=stmt.name,
@@ -12996,14 +12998,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # DECL is not pointer-shaped (an F2 rebind alias) keeps
                 # rejecting.
                 or (lc.binding(pvar).pointer
-                    and not _poly_subject_is_pointer(
-                        pvar, lc, declared.get(pvar)))
+                    and not _subject_form(_IsinSubject(pvar), lc, declared,
+                                          decl=pinfo[2]).pointer)
                 # A reseat of the base pointer inside a branch would leave
                 # the if-init cast stale.
-                or (lc.binding(pvar).form is BindingForm.DYN
+                or (lc.binding(pvar).form in (BindingForm.DYN,
+                                              BindingForm.POINTER)
                     and (_body_writes_name(stmt.then_body, pvar)
                          or _body_writes_name(stmt.else_body, pvar)))
-                # `self` is admitted, resumable included: `_poly_cast_context`
+                # `self` is admitted, resumable included: `_subject_form`
                 # spells its cast arg (`this` / `&__self`), and this arm's
                 # single-fact/then-only slice is exactly the if-INIT
                 # form (`__self_ptr`, no frame-field collision). The
@@ -13040,9 +13043,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             multi_ok = not (
                 bool(hoists)
                 or (lc.binding(mvar).pointer
-                    and not _poly_subject_is_pointer(
-                        mvar, lc, declared.get(mvar)))
-                # `self` rides `_poly_cast_context`'s spelling here too; the
+                    and not _subject_form(_IsinSubject(mvar), lc, declared,
+                                          decl=minfo[2]).pointer)
+                # `self` rides `_subject_form`'s spelling here too; the
                 # tuple form binds no alias, so the resumable rename that
                 # gates the single-fact arm does not apply.
                 or mvar in lc.prescan.global_seeded
@@ -13082,8 +13085,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # not reach (they read the `__self` alias); fenced.
                 or nvar == lc.self_receiver
                 or (lc.binding(nvar).pointer
-                    and not _poly_subject_is_pointer(
-                        nvar, lc, nanchored.get(nvar)))
+                    and not _subject_form(_IsinSubject(nvar), lc, nanchored,
+                                          decl=nanchored.get(nvar)).pointer)
                 or nvar in lc.prescan.global_seeded
                 or nvar in lc.narrow.spelled
                 # A then-entry or else-entry extraction has no emit on this
@@ -13098,12 +13101,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _witness("narrow.dyn_neg_guard")
             condition = THIRUnaryNot(
                 result_type=analyzer.get_expr_type(stmt.condition),
-                operand=THIRDynIsinstanceMulti(
-                    result_type=analyzer.get_expr_type(
-                        stmt.condition.operand),
-                    checks_cpp=_poly_cast_checks(nvar, (nmember,), lc,
-                                                 declared),
-                    loc=getattr(stmt.condition.operand, "loc", None)),
+                operand=_poly_isinstance(
+                    stmt.condition.operand, nvar, (nmember,), lc, declared,
+                    analyzer.get_expr_type(stmt.condition.operand),
+                    getattr(stmt.condition.operand, "loc", None)),
                 loc=getattr(stmt.condition, "loc", None))
         else:
             # No narrowing arm claimed this condition, so no branch-entry
@@ -13556,11 +13557,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # The poly narrowing assert's condition: the bare null-check
             # (THIRAssert wraps it in `if (!(...))`); the persistent alias
             # follows via _append_assert_narrow's poly tail.
-            cond = THIRDynIsinstanceMulti(
-                result_type=analyzer.get_expr_type(stmt.condition),
-                checks_cpp=_poly_cast_checks(pai[0], (pai[1],), lc,
-                                             declared),
-                loc=getattr(stmt.condition, "loc", None))
+            cond = _poly_isinstance(
+                stmt.condition, pai[0], (pai[1],), lc, declared,
+                analyzer.get_expr_type(stmt.condition),
+                getattr(stmt.condition, "loc", None))
         elif _reassert_bump_info(
                 stmt, declared, lc.narrow.persistent_narrowed,
                 analyzer) is not None:

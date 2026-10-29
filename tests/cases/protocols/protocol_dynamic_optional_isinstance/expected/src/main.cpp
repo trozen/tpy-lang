@@ -21,7 +21,7 @@ std::string classify(BaseExc* e) {
         ValErr& narrowed = (*__e_ptr);
         return (::tpy::str_concat("VAL: ", narrowed.what()));
     }
-    if (((dynamic_cast<OsErr*>(e) != nullptr) || (dynamic_cast<ValErr*>(e) != nullptr))) {
+    if (::tpy::isinstance_any_of<OsErr, ValErr>(e)) {
         return (::tpy::str_concat("OS-or-VAL: ", e->what()));
     }
     return (::tpy::str_concat("BASE: ", e->what()));
@@ -41,7 +41,7 @@ std::string classify_direct(BaseExc* e) {
         ValErr& narrowed = (*__e_ptr);
         return (::tpy::str_concat("DIRECT-VAL: ", narrowed.what()));
     }
-    if ((dynamic_cast<BaseExc*>(e) != nullptr)) {
+    if (::tpy::isinstance_any_of<BaseExc>(e)) {
         return "DIRECT-BASE";
     }
     return "DIRECT-NONE";

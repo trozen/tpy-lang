@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     narrowed = p  # tpyc: type(Dog)
 //     return narrowed.bark()
 std::string bare_negative(const Pet& p) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -27,7 +27,7 @@ std::string bare_negative(const Pet& p) {
 //     narrowed = p  # tpyc: type(Dog)
 //     return narrowed.bark()
 std::string bare_raise(const Pet& p) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         throw ::tpy::ValueError("expected Dog");
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -42,7 +42,7 @@ std::string bare_raise(const Pet& p) {
 //     narrowed = p  # tpyc: type(Dog)
 //     return narrowed.bark()
 std::string bare_const(const Pet& p) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -61,7 +61,7 @@ std::string bare_const(const Pet& p) {
 //     narrowed = p  # tpyc: type(Dog)
 //     return narrowed.bark()
 std::string optional_negative(const Pet* p) {
-    if ((!((dynamic_cast<const Dog*>(p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "none-or-non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(p);
@@ -97,12 +97,12 @@ std::string positive_then_more(const Pet& p) {
 //     nw = p  # tpyc: type(WatchDog)
 //     return "WATCH: " + nw.alert()
 std::string sequential_negative(const Pet& p) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
     const Dog& nd = __p;
-    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const WatchDog>(p)))) {
         return (::tpy::str_concat("DOG: ", nd.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
@@ -122,15 +122,15 @@ std::string sequential_negative(const Pet& p) {
 //     g = p  # tpyc: type(GuardDog)
 //     return "guard: " + g.patrol()
 std::string triple_chain(const Pet& p) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const WatchDog>(p)))) {
         return "dog only";
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    if ((!((dynamic_cast<const GuardDog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const GuardDog>(p)))) {
         return "watch only";
     }
     const GuardDog& __p_3 = *dynamic_cast<const GuardDog*>(&p);
@@ -148,9 +148,9 @@ std::string triple_chain(const Pet& p) {
 //     w = p  # tpyc: type(WatchDog)
 //     return "ASSERT-WATCH: " + w.alert()
 std::string assert_then_assert(const Pet& p) {
-    if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const Dog>(p))) ::tpy::raise_assertion_error();
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    if (!((dynamic_cast<const WatchDog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const WatchDog>(p))) ::tpy::raise_assertion_error();
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
     const WatchDog& w = __p_2;
     return (::tpy::str_concat("ASSERT-WATCH: ", w.alert()));
@@ -166,9 +166,9 @@ std::string assert_then_assert(const Pet& p) {
 //     w = p  # tpyc: type(WatchDog)
 //     return "ASSERT-EARLY-WATCH: " + w.alert()
 std::string assert_then_early_return(const Pet& p) {
-    if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const Dog>(p))) ::tpy::raise_assertion_error();
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const WatchDog>(p)))) {
         return (::tpy::str_concat("ASSERT-DOG: ", __p.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
@@ -192,15 +192,15 @@ std::string assert_then_early_return(const Pet& p) {
 //         return "p watch / q non-dog"
 //     return "p watch / q dog: " + q.bark()
 std::string sibling_vars(const Pet& p, const Pet& q) {
-    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
         return "p non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const WatchDog>(p)))) {
         return (::tpy::str_concat("p dog: ", __p.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    if ((!((dynamic_cast<const Dog*>(&q) != nullptr)))) {
+    if ((!(::tpy::isinstance_any_of<const Dog>(q)))) {
         return "p watch / q non-dog";
     }
     const Dog& __q = *dynamic_cast<const Dog*>(&q);
@@ -223,7 +223,7 @@ std::string narrow_in_for_body(const Pet& p, const ::tpy::BigInt& n) {
     std::string last = "";
     ::tpy::BigInt __stop_0 = n;
     for (::tpy::BigInt _ = 0; _ < __stop_0; ++_) {
-        if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+        if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
             return "non-dog in for";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -249,7 +249,7 @@ std::string narrow_in_for_body(const Pet& p, const ::tpy::BigInt& n) {
 std::string narrow_in_while_body(const Pet& p) {
     int32_t count = 0;
     while ((count < 1)) {
-        if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+        if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
             return "non-dog in loop";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -273,7 +273,7 @@ std::string narrow_in_while_body(const Pet& p) {
 std::string narrow_in_try_body(const Pet& p) {
     {
         try {
-            if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+            if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
                 throw ::tpy::ValueError("not a dog");
             }
             const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -302,13 +302,13 @@ std::string narrow_in_try_body(const Pet& p) {
 std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label) {
     auto& __match_subject_1 = label;
     if (__match_subject_1 == 1) {
-        if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+        if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
             return "case1 non-dog";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
         return (::tpy::str_concat("case1 dog: ", __p.bark()));
     } else if (__match_subject_1 == 2) {
-        if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+        if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
             return "case2 non-dog";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
@@ -335,7 +335,7 @@ std::string narrow_in_with_body(const Pet& p) {
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
+        if ((!(::tpy::isinstance_any_of<const Dog>(p)))) {
             std::string __tpy_ret_0 = "with non-dog";
             __fin_ran_1 = true;
             __ctx_1.__exit__({}, nullptr, {});

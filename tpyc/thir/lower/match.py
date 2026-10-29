@@ -1428,7 +1428,7 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
     if (ginfo is not None and ginfo[0] not in lc.narrow.narrowed
             and ginfo[0] not in lc.narrow.spelled):
         _witness("match.guard_isinstance")
-        return _lower_isinstance_cond(ginfo, guard, lc)
+        return _lower_isinstance_cond(ginfo, guard, lc, declared)
     # Every guard renders through the truthiness path, so a non-bool guard
     # takes its type's truthiness wrap rather than rejecting.
     lowered = _lower_truthy(guard, lc, declared)

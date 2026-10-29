@@ -1205,16 +1205,13 @@ class TempState:
 
 
 def any_isinstance_check(subject_cpp: str, member_cpps: 'tuple[str, ...]') -> str:
-    """The Any-isinstance condition render (D15): the has_value guard + one
-    typeid check per member (tuple form OR-joined in one paren group). An
-    empty/moved-from Any has no value() and is not any concrete type, so the
-    guard is essential. The one spelling behind `THIRAnyIsinstance`."""
+    """The Any-isinstance condition render (D15), reading `subject_cpp`
+    once: its typeid against the member's, or `::tpy::any_isinstance` over
+    a tuple's members. An empty/moved-from Any reports `typeid(void)`, so
+    it matches no member. The one spelling behind `THIRAnyIsinstance`."""
     if len(member_cpps) == 1:
-        return (f"({subject_cpp}.value.has_value() && "
-                f"{subject_cpp}.value.type() == typeid({member_cpps[0]}))")
-    checks = " || ".join(f"{subject_cpp}.value.type() == typeid({m})"
-                         for m in member_cpps)
-    return f"({subject_cpp}.value.has_value() && ({checks}))"
+        return f"({subject_cpp}.value.type() == typeid({member_cpps[0]}))"
+    return f"::tpy::any_isinstance<{', '.join(member_cpps)}>({subject_cpp})"
 
 
 def contains_named_expr(expr: TpyExpr | None) -> bool:

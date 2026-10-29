@@ -177,6 +177,27 @@ _CONSTRUCTS = [
     ("inplace_dunder",
      "def f(xs: list[int32], ys: list[int32]) -> None:\n    xs += ys\n",
      "native tpy::list_extend"),
+    ("isinstance_eval_then",
+     "from tpy import Own\n"
+     "class A:\n    def __init__(self) -> None:\n        pass\n"
+     "def make() -> Own[A]:\n    return A()\n"
+     "def f() -> bool:\n    return isinstance(make(), A)\n",
+     "eval_then("),
+    ("isinstance_dyn_cast",
+     "from typing import Protocol\nfrom tpy import dynamic\n"
+     "@dynamic\nclass P(Protocol):\n    def n(self) -> int32: ...\n"
+     "class C(P):\n    def __init__(self) -> None:\n        pass\n"
+     "    def n(self) -> int32:\n        return 1\n"
+     "def f(p: P) -> int32:\n    if isinstance(p, C):\n"
+     "        return p.n()\n    return 0\n",
+     "dyn_cast["),
+    ("isinstance_poly_value",
+     "from typing import Protocol\nfrom tpy import dynamic\n"
+     "@dynamic\nclass P(Protocol):\n    def n(self) -> int32: ...\n"
+     "class C(P):\n    def __init__(self) -> None:\n        pass\n"
+     "    def n(self) -> int32:\n        return 1\n"
+     "def f(p: P) -> bool:\n    return isinstance(p, C)\n",
+     "dyn_isinstance_multi("),
 ]
 
 

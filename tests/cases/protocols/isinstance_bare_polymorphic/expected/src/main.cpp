@@ -28,7 +28,7 @@ std::string speak(const Pet& p) {
 //         return "mammal: " + p.name()
 //     return "other: " + p.name()
 std::string kind(const Pet& p) {
-    if (((dynamic_cast<const Cat*>(&p) != nullptr) || (dynamic_cast<const Dog*>(&p) != nullptr))) {
+    if (::tpy::isinstance_any_of<const Cat, const Dog>(p)) {
         return (::tpy::str_concat("mammal: ", p.name()));
     }
     return (::tpy::str_concat("other: ", p.name()));
@@ -56,7 +56,7 @@ std::string classify_const(const Pet& p) {
 //     assert isinstance(p, Dog)  # tpyc: ok
 //     return "ASSERT: " + p.bark()
 std::string assert_dog(const Pet& p) {
-    if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    if (!(::tpy::isinstance_any_of<const Dog>(p))) ::tpy::raise_assertion_error();
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
     return (::tpy::str_concat("ASSERT: ", __p.bark()));
 }
@@ -68,7 +68,7 @@ std::string assert_dog(const Pet& p) {
 //     # safe because the `&&` LHS already validated via dynamic_cast.
 //     return isinstance(p, Dog) and len(p.bark()) > threshold
 bool short_circuit(const Pet& p, int32_t threshold) {
-    return ((dynamic_cast<const Dog*>(&p) != nullptr) && (::tpy::__len__((*static_cast<const Dog*>(&p)).bark()) > threshold));
+    return (::tpy::isinstance_any_of<const Dog>(p) && (::tpy::__len__((*static_cast<const Dog*>(&p)).bark()) > threshold));
 }
 
 // def main() -> None:

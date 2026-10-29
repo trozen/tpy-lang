@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     else:
 //         print("other")
 void dispatch(::tpy::Any v) {
-    if ((v.value.has_value() && v.value.type() == typeid(::tpy::BigInt))) {
+    if ((v.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __v = std::any_cast<const ::tpy::BigInt&>(v.value);
         std::cout << "int" << " " << __v << "\n" << ::tpy::check_signals;
-    } else if ((v.value.has_value() && v.value.type() == typeid(std::string))) {
+    } else if ((v.value.type() == typeid(std::string))) {
         const std::string& __v = std::any_cast<const std::string&>(v.value);
         std::cout << "str" << " " << __v << "\n" << ::tpy::check_signals;
     } else {
@@ -28,7 +28,7 @@ void dispatch(::tpy::Any v) {
 //         return True
 //     return False
 bool tuple_form(::tpy::Any v) {
-    if ((v.value.has_value() && (v.value.type() == typeid(double) || v.value.type() == typeid(::tpy::BigInt)))) {
+    if (::tpy::any_isinstance<double, ::tpy::BigInt>(v)) {
         return true;
     }
     return false;
@@ -40,7 +40,7 @@ bool tuple_form(::tpy::Any v) {
 //         return False
 //     return True
 bool negated(::tpy::Any v) {
-    if ((!((v.value.has_value() && v.value.type() == typeid(std::string))))) {
+    if ((!((v.value.type() == typeid(std::string))))) {
         return false;
     }
     return true;

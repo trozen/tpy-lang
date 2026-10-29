@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def box_handle(b: Box[Pet], bp: Box[Point]) -> None:
 //     # A check only the held object can pass tests the handle: False, warned.
-//     print("box:", isinstance(b, Dog))  # tpyc: warning(/tests the 'Box\[Pet\]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref\(b\)/)
+//     print("box:", isinstance(b, Dog))  # tpyc: warning(/tests the 'Box\[Pet\]' handle, never a 'Dog'; to test the object it holds, use isinstance\(p := deref\(b\), Dog\)/)
 //     print("box:", isinstance(b, Box))  # tpyc: ok
 //     print("box:", isinstance(bp, Point))  # tpyc: warning(/tests the 'Box\[Point\]' handle/)
 void box_handle(const ::tpystd::tplib::box::Box<Pet>& b, const ::tpystd::tplib::box::Box<Point>& bp) {

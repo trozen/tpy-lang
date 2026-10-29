@@ -96,7 +96,7 @@ void main() {
     std::string_view w = "y";
     ::tpy::Any b = ::tpy::make_any(std::string(w));
     std::cout << "annotated" << " " << ::tpy::any_cast_or_panic<std::string>(b) << "\n" << ::tpy::check_signals;
-    if ((a.value.has_value() && a.value.type() == typeid(std::string))) {
+    if ((a.value.type() == typeid(std::string))) {
         const std::string& __a = std::any_cast<const std::string&>(a.value);
         std::cout << "isinstance" << " " << __a << "\n" << ::tpy::check_signals;
     }
@@ -114,7 +114,7 @@ void main() {
     ::tpy::BytesView bb = ::tpy::bytes_literal("by", 2);
     ::tpy::Any c = ::tpy::make_any(::tpy::Bytes(bb));
     std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::any_cast_or_panic<::tpy::Bytes>(c)) << "\n" << ::tpy::check_signals;
-    if ((c.value.has_value() && c.value.type() == typeid(::tpy::Bytes))) {
+    if ((c.value.type() == typeid(::tpy::Bytes))) {
         const ::tpy::Bytes& __c = std::any_cast<const ::tpy::Bytes&>(c.value);
         std::cout << "bytes-isinstance" << " " << ::tpy::__len__(__c) << "\n" << ::tpy::check_signals;
     }

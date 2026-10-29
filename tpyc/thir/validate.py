@@ -92,6 +92,7 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRForEach, THIRForRange, THIROptionalLayout, THIROptionalPtrArg,
     THIROptionalRead, THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
     THIRUnionLiteral, THIRWrapperDefault, THIRIsinstance, THIRNarrowAlias,
+    THIREvalThen, THIRDynIsinstanceMulti,
     THIRNarrowedRead, THIRResolvedCallee, THIRFunctionIdentity,
     THIRCallableSignature, THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
@@ -772,6 +773,17 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 _fail(owner, node, "invalid union selection alternatives")
             if isinstance(fact, THIRUnionExtraction) and fact.layout.elements[fact.alternative] is None:
                 _fail(owner, node, "absent union alternative has no payload")
+            # The test reads the slot its fact selects in.
+            if isinstance(fact, THIRUnionTest) and not (
+                    isinstance(node.subject, THIRName)
+                    and node.subject.name == fact.source):
+                _fail(owner, node, "union test subject is not its fact's source")
+    if isinstance(node, THIREvalThen):
+        if node.init is None or node.value is None:
+            _fail(owner, node, "eval-then needs an operand and a value")
+    if isinstance(node, THIRDynIsinstanceMulti) and (
+            node.subject is None or not node.member_cpps):
+        _fail(owner, node, "polymorphic isinstance needs a subject and members")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         if node.optional_layout is not None:
             _check_optional(owner, node, node.optional_layout,

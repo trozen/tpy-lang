@@ -15,7 +15,7 @@ void main() {
     Counter c = Counter(::tpy::BigInt(1));
     ::tpy::Any a = ::tpy::make_any(c);
     c.n = ::tpy::BigInt(99);
-    if ((a.value.has_value() && a.value.type() == typeid(Counter))) {
+    if ((a.value.type() == typeid(Counter))) {
         const Counter& __a = std::any_cast<const Counter&>(a.value);
         std::cout << "a.n =" << " " << __a.n << "\n" << ::tpy::check_signals;
     }

@@ -35,7 +35,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(::tpy::BigInt(8080))}, {"debug", ::tpy::make_any(bool(true))}, {"timeout", ::tpy::make_any(static_cast<double>(1.5))}});
     ::tpy::Any debug = ::tpy::__getitem__(cfg, "debug");
-    if ((debug.value.has_value() && debug.value.type() == typeid(bool))) {
+    if ((debug.value.type() == typeid(bool))) {
         const bool& __debug = std::any_cast<const bool&>(debug.value);
         if (::tpy::to_bool(__debug)) {
             std::cout << "debug on" << "\n" << ::tpy::check_signals;

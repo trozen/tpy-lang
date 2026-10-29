@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def check_and(p: Pet, threshold: int32) -> bool:
 //     return isinstance(p, Dog) and len(p.bark()) > threshold
 bool check_and(const Pet& p, int32_t threshold) {
-    return ((dynamic_cast<const Dog*>(&p) != nullptr) && (::tpy::__len__((*static_cast<const Dog*>(&p)).bark()) > threshold));
+    return (::tpy::isinstance_any_of<const Dog>(p) && (::tpy::__len__((*static_cast<const Dog*>(&p)).bark()) > threshold));
 }
 
 // def main() -> None:

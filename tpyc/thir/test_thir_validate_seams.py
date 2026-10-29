@@ -15,8 +15,8 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import (BOOL, INT32, NominalType, TupleType, UnionType, VoidType,
-                       unwrap_readonly, unwrap_ref_type)
+from ..typesys import (BOOL, CHAR, INT32, NominalType, TupleType, UnionType,
+                       VoidType, unwrap_readonly, unwrap_ref_type)
 from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
     THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRCtorCall,
     THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
@@ -24,7 +24,8 @@ from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
     THIRFunction, THIRFunctionLayout, THIRIf, THIRIfExpr, THIRLiteral,
     THIRMethodCall, THIRName, THIRRaise, THIRResumableBody, THIRReturn,
     THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
-    THIRTupleUnpack, THIRUnionArgLift)
+    THIRTupleUnpack, THIRUnionArgLift, THIREvalThen, THIRIsinstance,
+    THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti)
 from . import validate as _validate
 from .source import UNBOUND
 from .lower import iter_module_callables, iter_module_constructors, lower_constructor, lower_function
@@ -752,3 +753,64 @@ class TestNodeStructuralRules:
                           layout=THIRFunctionLayout())
         with pytest.raises(THIRValidationError, match="template_args_cpp"):
             validate_function(fn)
+
+    @staticmethod
+    def _union_test(subject: THIRExpr) -> THIRIsinstance:
+        u = UnionType((INT32, CHAR))
+        fact = THIRUnionTest(source="u", layout=THIRUnionLayout(
+            type=u, elements=u.members), alternatives=(0,))
+        return THIRIsinstance(result_type=BOOL, subject=subject,
+                              member_cpps=("int32_t",), union_test=fact)
+
+    def test_union_test_over_its_source_passes(self):
+        validate_function(self._fn(self._union_test(
+            THIRName(result_type=UnionType((INT32, CHAR)), name="u"))))
+
+    def test_union_test_over_another_name_fails(self):
+        # The fact selects in `u`'s slot; a test over `v` would test a
+        # value the branch facts never see.
+        with pytest.raises(THIRValidationError,
+                           match="union test subject is not its fact's source"):
+            validate_function(self._fn(self._union_test(
+                THIRName(result_type=UnionType((INT32, CHAR)), name="v"))))
+
+    def test_union_test_over_a_non_name_fails(self):
+        with pytest.raises(THIRValidationError,
+                           match="union test subject is not its fact's source"):
+            validate_function(self._fn(self._union_test(
+                THIRLiteral(result_type=INT32, value=1))))
+
+    @staticmethod
+    def _poly_test(members: tuple[str, ...]) -> THIRDynIsinstanceMulti:
+        return THIRDynIsinstanceMulti(
+            result_type=BOOL, member_cpps=members,
+            subject=THIRName(result_type=NominalType("P"), name="p"))
+
+    def test_poly_test_over_its_members_passes(self):
+        validate_function(self._fn(self._poly_test(("const C",))))
+
+    def test_poly_test_without_members_fails(self):
+        with pytest.raises(THIRValidationError,
+                           match="polymorphic isinstance needs a subject"):
+            validate_function(self._fn(self._poly_test(())))
+
+    @staticmethod
+    def _eval_then(init, value) -> THIREvalThen:
+        return THIREvalThen(result_type=BOOL, init=init, value=value)
+
+    def test_eval_then_for_effect_passes(self):
+        validate_function(self._fn(self._eval_then(
+            THIRLiteral(result_type=INT32, value=1),
+            THIRLiteral(result_type=BOOL, value=True))))
+
+    def test_eval_then_without_operand_fails(self):
+        with pytest.raises(THIRValidationError,
+                           match="eval-then needs an operand and a value"):
+            validate_function(self._fn(self._eval_then(
+                None, THIRLiteral(result_type=BOOL, value=True))))
+
+    def test_eval_then_without_value_fails(self):
+        with pytest.raises(THIRValidationError,
+                           match="eval-then needs an operand and a value"):
+            validate_function(self._fn(self._eval_then(
+                THIRLiteral(result_type=INT32, value=1), None)))

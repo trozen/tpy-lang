@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     assert isinstance(v, (Alpha, Beta))
 //     return 0
 int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
-    if (!((std::holds_alternative<const Alpha*>(v) || std::holds_alternative<const Beta*>(v)))) ::tpy::raise_assertion_error();
+    if (!(::tpy::holds_any<const Alpha*, const Beta*>(v))) ::tpy::raise_assertion_error();
     return 0;
 }
 

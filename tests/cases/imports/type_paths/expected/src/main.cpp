@@ -383,7 +383,7 @@ void members() {
 //     p = cast(m.Outer, o2)  # tpyc: ok
 //     print("cast:", p.LIMIT)
 void type_tests(::tpy::Union<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*> o) {
-    std::cout << "isinstance:" << " " << ::tpy::print_bool(std::holds_alternative<const ::tpyapp::m::Outer::Inner*>(o)) << " " << ::tpy::print_bool((std::holds_alternative<const ::tpyapp::m::Outer*>(o) || std::holds_alternative<const ::tpyapp::m::Outer::Inner*>(o))) << " " << ::tpy::print_bool((std::holds_alternative<const ::tpyapp::m::Outer*>(o) || std::holds_alternative<const ::tpyapp::m::Outer::Inner*>(o))) << "\n" << ::tpy::check_signals;
+    std::cout << "isinstance:" << " " << ::tpy::print_bool(std::holds_alternative<const ::tpyapp::m::Outer::Inner*>(o)) << " " << ::tpy::print_bool(::tpy::holds_any<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*>(o)) << " " << ::tpy::print_bool(::tpy::holds_any<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*>(o)) << "\n" << ::tpy::check_signals;
     ::tpyapp::m::Outer o2 = ::tpyapp::m::Outer();
     ::tpyapp::m::Outer p = o2;
     std::cout << "cast:" << " " << ::tpyapp::m::Outer::LIMIT << "\n" << ::tpy::check_signals;

@@ -108,16 +108,16 @@ inline Puppy::Puppy(int32_t n) : Dog(n) {}
 template<typename T>
 int32_t classify(::tpy::param_val_or_ref_t<T> x) {
     int32_t code = 0;
-    if (::tpy::isinstance_static<Animal, decltype(x)>()) {
+    if (::tpy::isinstance_static<Animal, ::tpy::val_or_ref_t<T>>()) {
         code = ::tpy::add_check<int32_t>(code, 1);
     }
-    if (::tpy::isinstance_static<Dog, decltype(x)>()) {
+    if (::tpy::isinstance_static<Dog, ::tpy::val_or_ref_t<T>>()) {
         code = ::tpy::add_check<int32_t>(code, 2);
     }
-    if (::tpy::isinstance_static<Puppy, decltype(x)>()) {
+    if (::tpy::isinstance_static<Puppy, ::tpy::val_or_ref_t<T>>()) {
         code = ::tpy::add_check<int32_t>(code, 4);
     }
-    if (::tpy::isinstance_static<Cat, decltype(x)>()) {
+    if (::tpy::isinstance_static<Cat, ::tpy::val_or_ref_t<T>>()) {
         code = ::tpy::add_check<int32_t>(code, 8);
     }
     return code;

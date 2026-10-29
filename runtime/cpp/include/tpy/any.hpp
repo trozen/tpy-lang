@@ -63,6 +63,14 @@ struct Any {
     TPY_ALWAYS_INLINE bool empty() const noexcept { return !value.has_value(); }
 };
 
+// `isinstance(a, (A, B))` over an Any: one read of `a`. An empty cell's
+// `type()` is `typeid(void)`, which matches no member.
+template<typename... Ms>
+bool any_isinstance(const Any& a) noexcept {
+    const std::type_info& t = a.value.type();
+    return ((t == typeid(Ms)) || ...);
+}
+
 // ---------------------------------------------------------------------
 // AnyOps: dispatch table for universal operations
 // ---------------------------------------------------------------------

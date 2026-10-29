@@ -22,7 +22,7 @@ void warn_record_not_last_use() {
 void no_warn_record_last_use() {
     Node n = Node(2);
     ::tpy::Any a = ::tpy::make_any(n);
-    if ((a.value.has_value() && a.value.type() == typeid(Node))) {
+    if ((a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
         std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
@@ -44,7 +44,7 @@ void no_warn_record_explicit_copy() {
 //         print(a.n)
 void no_warn_record_rvalue() {
     ::tpy::Any a = ::tpy::make_any(Node(4));
-    if ((a.value.has_value() && a.value.type() == typeid(Node))) {
+    if ((a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
         std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
@@ -104,7 +104,7 @@ void no_warn_int_not_last_use() {
 //     if isinstance(a, Node):
 //         print(a.n)
 void takes_any(::tpy::Any a) {
-    if ((a.value.has_value() && a.value.type() == typeid(Node))) {
+    if ((a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
         std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
@@ -138,7 +138,7 @@ void exercise_returns_any() {
     Node n = Node(6);
     ::tpy::Any a = ::tpyapp::main::returns_any(n);
     std::cout << n.n << "\n" << ::tpy::check_signals;
-    if ((a.value.has_value() && a.value.type() == typeid(Node))) {
+    if ((a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
         std::cout << __a.n << "\n" << ::tpy::check_signals;
     }

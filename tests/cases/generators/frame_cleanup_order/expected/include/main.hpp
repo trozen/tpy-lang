@@ -1146,7 +1146,7 @@ inline Seen& Seen::__enter__() {
 // def __exit__(self, t: None, v: BaseException | None, tb: None) -> None:
 //     print(self.tag, "exit none", v is None, "index", isinstance(v, IndexError))
 inline void Seen::__exit__(std::monostate t, const ::tpy::BaseException* v, std::monostate tb) const {
-    std::cout << this->tag << " " << "exit none" << " " << ::tpy::print_bool((v == nullptr)) << " " << "index" << " " << ::tpy::print_bool((dynamic_cast<const ::tpy::IndexError*>(v) != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << this->tag << " " << "exit none" << " " << ::tpy::print_bool((v == nullptr)) << " " << "index" << " " << ::tpy::print_bool(::tpy::isinstance_any_of<const ::tpy::IndexError>(v)) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, tag: str) -> None:

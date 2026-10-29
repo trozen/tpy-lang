@@ -805,9 +805,8 @@ arm.
   rather than bound as a sliced copy. Only a bare-name
   subject narrows the subject for in-arm reads (`p.speak()` resolves to the
   matched subclass); an expression subject reaches the narrowed value via
-  `as` / a capture. This is a deliberate divergence from `isinstance`, which
-  stays bare-name-only: `match` re-evaluates the subject (CPython semantics)
-  rather than narrowing a name in place, so it needs no dotted-path key.
+  `as` / a capture, as an `isinstance` over an expression narrows nothing
+  (only a name or a walrus target narrows there).
 - `Optional[Pet]` is not routed here -- polymorphic dispatch on an optional
   additionally needs a `None` arm (a separate, unimplemented path); it stays
   rejected by the existing Optional handling.
@@ -1053,7 +1052,7 @@ Minor differences where TPy's compiled model diverges:
 | Mapping patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Soft keyword | `match`/`case` usable as variable names | Same (Python ast handles this) | No difference |
 | Guard that mutates the subject | Subject evaluated once; guards see the snapshot | Chain tiers alias a name subject and re-read it after each guard; a field/subscript subject on the guarded chain is rejected | Silent divergence for the name face (`BUGS.md#match-subject-alias-under-guard-mutation`); fix is a by-value scalar subject |
-| Polymorphic subject expression | Any expression | Any expression (bound once into `__match_subject`); `isinstance` still requires a bare name | Match: no difference. Deliberate divergence from `isinstance`, which stays bare-name-only |
+| Polymorphic subject expression | Any expression | Any expression (bound once into `__match_subject`); `isinstance` takes any expression too, bound once, and narrows only a name or a walrus target | No difference |
 | Shadowed polymorphic arm | Silently allowed (dead arm) | Compile error (`unreachable case`) | Stricter: rejects an arm CPython would accept-but-never-run |
 | Non-conformer polymorphic arm | Silently allowed (never matches) | Compile error | Stricter: a `case T()` whose `T` can't match the subject is rejected, not dead code |
 | Literal pattern of an incompatible kind (`str` vs int, ...) | Silently allowed (dead arm) | Compile error | Stricter: rejects an arm CPython would accept-but-never-run |

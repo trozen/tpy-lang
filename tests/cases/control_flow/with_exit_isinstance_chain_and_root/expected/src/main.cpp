@@ -89,7 +89,7 @@ bool Suppress::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc
         std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n" << ::tpy::check_signals;
         return true;
     }
-    if ((dynamic_cast<const ::tpy::BaseException*>(exc_val) != nullptr)) {
+    if (::tpy::isinstance_any_of<const ::tpy::BaseException>(exc_val)) {
         std::cout << (::tpy::str_concat("BASE: ", std::string(::tpy::__str__((*exc_val))))) << "\n" << ::tpy::check_signals;
         return false;
     }

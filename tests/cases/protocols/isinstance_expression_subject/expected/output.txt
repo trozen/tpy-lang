@@ -1,0 +1,100 @@
+free: deref True
+free: owner 1 woof
+free: inherit awoo
+free: tparam True False
+free: ptr variant True False
+free: name value True True
+free: structural True
+free: make_a
+free: fold True True
+free: make_box
+free: handle False
+free: any True False
+free: tree True False
+free: pick 1
+free: value False
+free: pick 2
+free: not False
+free: pick 4
+free: ternary a
+free: pick 1
+free: and False
+free: pick 2
+free: or True
+free: pick 0
+free: pick 2
+free: pick 4
+free: while 6
+free: pick 0
+free: const True
+free: field False True
+free: keyless True
+temp: make_box
+temp: make_box
+temp: poly True True
+temp: make_holder
+temp: make_holder
+temp: union False True
+temp: anys
+temp: anys
+temp: any True True
+temp: make_animal
+temp: make_animal
+temp: fresh False False
+temp: make_holder
+temp: property True
+temp: make_box
+temp: make_holder
+temp: make_box
+temp: make_holder
+temp: make_box
+temp: logic True False dog
+walrus: value True dog
+walrus: assigned True dog
+walrus: tuple value True dog
+walrus: tuple dog
+walrus: make_a
+walrus: fold True 5
+walrus: false make_a
+walrus: fold false False 6
+walrus: owner True dog
+walrus: owner n 3
+walrus: and True False False True
+kill: pick 1
+kill: subject 3
+kill: twin 3
+gen: union [1, 3, 4]
+gen: tparam [True, True, True] [False, False, False]
+method: True
+ctor: False
+gen: True
+gen: False
+gen: owner 10
+async: fetch 0
+async: fetch 1
+async: True False
+comp: pick 0
+comp: pick 1
+comp: pick 2
+comp: [True, False, True]
+comp: pick 0
+comp: pick 1
+comp: pick 2
+comp: [1]
+closure: True
+with: enter
+with: pick 3
+with: True
+with: exit
+try: pick 2
+try: False
+finally: make_a
+finally: True
+error_return: pick 0
+error_return: True
+error_return: pick 1
+error_return: missing
+match: pick 1
+match: True
+module: make_a
+module: True

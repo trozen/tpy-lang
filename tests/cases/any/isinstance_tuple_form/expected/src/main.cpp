@@ -11,10 +11,10 @@ namespace tpyapp::main {
 //         return "float-or-bool"
 //     return "other"
 std::string classify(::tpy::Any x) {
-    if ((x.value.has_value() && (x.value.type() == typeid(::tpy::BigInt) || x.value.type() == typeid(std::string)))) {
+    if (::tpy::any_isinstance<::tpy::BigInt, std::string>(x)) {
         return "int-or-str";
     }
-    if ((x.value.has_value() && (x.value.type() == typeid(bool) || x.value.type() == typeid(double)))) {
+    if (::tpy::any_isinstance<bool, double>(x)) {
         return "float-or-bool";
     }
     return "other";

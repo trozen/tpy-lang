@@ -98,7 +98,7 @@ inline Puppy::Puppy(int32_t n) : Dog(n) {}
 //     return isinstance(x, (Dog, Cat))  # tpyc: ok
 template<typename T>
 bool is_dog_or_cat(::tpy::param_val_or_ref_t<T> x) {
-    return (::tpy::isinstance_static<Cat, decltype(x)>() || ::tpy::isinstance_static<Dog, decltype(x)>());
+    return (::tpy::isinstance_static<Cat, ::tpy::val_or_ref_t<T>>() || ::tpy::isinstance_static<Dog, ::tpy::val_or_ref_t<T>>());
 }
 
 void __tpy_init();

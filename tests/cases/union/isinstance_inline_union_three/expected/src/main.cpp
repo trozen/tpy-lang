@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //         return v.n
 //     return 0
 int32_t classify(::tpy::Union<A*, B*, C*, D*> v) {
-    if ((!((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v) || std::holds_alternative<C*>(v))))) {
+    if ((!(::tpy::holds_any<A*, B*, C*>(v)))) {
         auto& __v = *std::get<D*>(v);
         __v.n = ::tpy::add_check<int32_t>(__v.n, 100);
         return __v.n;

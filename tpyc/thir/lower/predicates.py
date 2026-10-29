@@ -1322,6 +1322,34 @@ def _narrow_subject_union(dt: 'TpyType | None',
                 u = w
     return u
 
+def walrus_value_type(w, analyzer) -> 'TpyType | None':
+    """The type a walrus binds its target at: the named expression's type,
+    pending containers / views and literals resolved, wrappers peeled."""
+    t = analyzer.get_expr_type(w)
+    t = resolve_pending_container(t, analyzer) or t
+    t = _resolve_pending_view(t, analyzer) or t
+    if t is None:
+        return None
+    t = resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+
+
+def _isinstance_key_decl(cond: TpyCall,
+                         declared: dict[str, TpyType]) -> 'TpyType | None':
+    """The declared type of isinstance `cond`'s narrowing key. A walrus
+    target the check's own walrus declares is not in `declared` until the
+    chosen arm lowers that walrus: it reads at the type sema declared it."""
+    var = cond.isinstance_var
+    if var is None:
+        return None
+    if var in declared:
+        return declared[var]
+    subject = cond.args[0]
+    if isinstance(subject, TpyNamedExpr) and subject.target == var:
+        return cond.isinstance_key_type
+    return None
+
+
 def _isinstance_narrow_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
 ) -> 'tuple[str, UnionType, tuple[TpyType, ...], bool] | None':
@@ -1349,7 +1377,8 @@ def _isinstance_narrow_info(
     if me is not None and not folded:
         return None
     var = cond.isinstance_var
-    u = _narrow_subject_union(declared.get(var), analyzer)
+    u = _narrow_subject_union(_isinstance_key_decl(cond, declared),
+                              analyzer)
     if u is None:
         return None
     ct = cond.isinstance_type
@@ -1360,23 +1389,38 @@ def _isinstance_narrow_info(
         return None
     return var, u, members, folded
 
+@dataclass(frozen=True)
+class IsinSubjectRead:
+    """The subject an isinstance value test reads, as its caller holds it:
+    the narrowing key (None for a keyless operand) and the subject's type."""
+    var: 'str | None'
+    decl: 'TpyType | None'
+
+
 def _any_narrow_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, tuple[TpyType, ...]] | None':
+        subject: 'IsinSubjectRead | None' = None,
+) -> 'tuple[str | None, tuple[TpyType, ...]] | None':
     """The D15 Any-isinstance condition shape: `isinstance(v, A)` /
     `isinstance(v, (A, B))` on a declared local/param of exactly `Any`.
     Returns `(var, check_members)` or None. The Any sibling of
     `_isinstance_narrow_info`: no exhaustiveness fold exists for Any (sema
     cannot exhaust an open type), and a `NoneType` check member (the
-    typeid(std::monostate) arm) is not lowered yet."""
-    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
-            and cond.isinstance_type is not None):
+    typeid(std::monostate) arm) is not lowered yet. `subject` is the read
+    the caller tests; None reads the call's narrowing key."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_type is not None):
         return None
     if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
-    var = cond.isinstance_var
-    dt = declared.get(var)
+    if subject is None:
+        if cond.isinstance_var is None:
+            return None
+        subject = IsinSubjectRead(cond.isinstance_var,
+                                  _isinstance_key_decl(cond, declared))
+    var, dt = subject.var, subject.decl
     if dt is None:
+        if var is None:
+            return None
         # A module-level `Any` GLOBAL subject (`isinstance(g, int)`): the
         # value-typed global reads bare (`g.value...`) and the extraction
         # alias is name-based, so the render matches a local's exactly.
@@ -1415,7 +1459,7 @@ def _poly_narrow_info(
     if not isinstance(member, NominalType):
         return None
     var = cond.isinstance_var
-    dt = _poly_subject_decl(declared.get(var))
+    dt = _poly_subject_decl(_isinstance_key_decl(cond, declared))
     if dt is None:
         return None
     registry = analyzer.registry
@@ -1426,7 +1470,7 @@ def _poly_narrow_info(
 
 def _poly_narrow_multi_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, tuple[NominalType, ...], TpyType] | None':
+) -> 'tuple[str | None, tuple[NominalType, ...], TpyType] | None':
     """The NO-ALIAS polymorphic isinstance forms: the TUPLE check
     `isinstance(v, (A, B))` -> the no-init OR-chain
     `((dynamic_cast<const A*>(v) != nullptr) || ...)`, and the ROOT-class
@@ -1441,7 +1485,7 @@ def _poly_narrow_multi_info(
     if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
     var = cond.isinstance_var
-    dt = _poly_subject_decl(declared.get(var))
+    dt = _poly_subject_decl(_isinstance_key_decl(cond, declared))
     if dt is None:
         return None
     registry = analyzer.registry
@@ -1488,7 +1532,8 @@ def _poly_subject_readonly(dt: 'TpyType | None') -> bool:
 
 def _poly_isinstance_value_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, tuple[NominalType, ...], TpyType] | None':
+        subject: 'IsinSubjectRead | None' = None,
+) -> 'tuple[str | None, tuple[NominalType, ...], TpyType] | None':
     """A VALUE-position polymorphic isinstance (`return isinstance(e, VE)`):
     the bare null-check chain -- no branch, no alias, so members may be
     strict subclasses or the root, single or tuple. Returns
@@ -1496,16 +1541,21 @@ def _poly_isinstance_value_info(
     subject stays out: a `&&` RHS read of the subject may be sema-narrowed,
     needs the inline `(*static_cast<const Sub*>(&p))` read that no
     value-position arm renders, so the `_poly_subject_decl` Ref peel must not
-    widen THIS arm."""
-    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
-            and cond.isinstance_type is not None):
+    widen THIS arm. `subject` is the read the caller tests; None reads the
+    call's narrowing key."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_type is not None):
         return None
     if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
-    var = cond.isinstance_var
-    if isinstance(declared.get(var), RefType):
+    if subject is None:
+        if cond.isinstance_var is None:
+            return None
+        subject = IsinSubjectRead(cond.isinstance_var,
+                                  _isinstance_key_decl(cond, declared))
+    var, decl = subject.var, subject.decl
+    if isinstance(decl, RefType):
         return None
-    dt = _poly_subject_decl(declared.get(var))
+    dt = _poly_subject_decl(decl)
     if dt is None:
         return None
     registry = analyzer.registry
@@ -9723,7 +9773,7 @@ def _ru_wrapper_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     if not isinstance(a, (TpyCall, TpyMethodCall)):
         return False
-    if isinstance(a, TpyCall) and a.isinstance_var is not None:
+    if isinstance(a, TpyCall) and a.isinstance_type is not None:
         return False
     fi = getattr(a, "resolved_function_info", None)
     if fi is None:
@@ -9872,7 +9922,7 @@ def _ru_wrapper_own_call_arg(a: TpyExpr, ptype: 'TpyType | None',
         return None
     if not isinstance(a, (TpyCall, TpyMethodCall)):
         return None
-    if isinstance(a, TpyCall) and a.isinstance_var is not None:
+    if isinstance(a, TpyCall) and a.isinstance_type is not None:
         return None
     fi = a.resolved_function_info
     if fi is None:
@@ -11195,7 +11245,7 @@ def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     # substitution loop a no-op.
     if (e.call_type is not None or e.type_args
             or e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.subscript_callee is not None):
         return None
@@ -11257,7 +11307,7 @@ def _array_literal_ctor_source(e: TpyCall, rtype: 'TpyType | None') -> bool:
         return False
     if (e.subscript_callee is not None or e.type_args
             or e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert):
         return False
     if not isinstance(e.args[0], TpyArrayLiteral):
@@ -11278,7 +11328,7 @@ def _template_ctor_call_fi(e: TpyCall) -> 'FunctionInfo | None':
             or e.kwargs or e.double_star_unpack is not None):
         return None
     if (e.type_args or e.enum_from_value is not None
-            or e.cast_target_type is not None or e.isinstance_var is not None
+            or e.cast_target_type is not None or e.isinstance_type is not None
             or e.dunder_call is not None or e.macro_expansion is not None
             or e.compile_time_assert or e.subscript_callee is not None):
         return None
@@ -11350,7 +11400,7 @@ def _container_literal_inst_slot(e: TpyCall, rtype: 'TpyType | None',
     if e.kwargs or getattr(e, "double_star_unpack", None) is not None:
         return None
     if (e.subscript_callee is not None or e.enum_from_value is not None
-            or e.cast_target_type is not None or e.isinstance_var is not None
+            or e.cast_target_type is not None or e.isinstance_type is not None
             or e.dunder_call is not None or e.macro_expansion is not None
             or e.compile_time_assert):
         return None
@@ -11481,7 +11531,7 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     # the node's own type args.
     if (e.subscript_callee is not None
             or e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.isinstance_type is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert):
         return None
     if not e.args or isinstance(e.args[0], (TpyListRepeat, TpyArrayLiteral)):

@@ -1,0 +1,1 @@
+main.py:244: warning: isinstance() tests the 'Box[Pet]' handle, never a 'Dog'; to test the object it holds, use isinstance(p := deref(...), Dog)

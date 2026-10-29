@@ -426,7 +426,7 @@ class NarrowingTracker:
             nonlocal found
             if (isinstance(node, TpyMethodCall)
                     or (isinstance(node, TpyCall)
-                        and node.isinstance_var is None
+                        and node.isinstance_type is None
                         and node.func_name not in ("isinstance", "len"))
                     # A membership test calling a TPy `__contains__`, and a
                     # pull of an iteration source running TPy code, are calls

@@ -769,6 +769,17 @@ class THIRChainedCompareStmtExpr(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIREvalThen(THIRExpr):
+    """`init` evaluated for its effects, then `value`:
+    `({ (void)(init); value; })`. An isinstance's walrus binds its target
+    before the test reads it; a static answer keeps its subject's
+    evaluation. `value` never reads `init`'s temporaries, which die at its
+    `;`."""
+    init: THIRExpr
+    value: THIRExpr
+
+
+@dataclass(frozen=True)
 class THIRIsNone(THIRExpr):
     """A `name is None` / `name is not None` identity test. On a pointer-repr
     Optional borrow name (an `Optional[record]` param or an OPTIONAL_TO_PTR
@@ -2264,42 +2275,55 @@ class THIRStrSlice(THIRExpr):
 @dataclass(frozen=True)
 class THIRIsinstance(THIRExpr):
     """`isinstance(v, A)` / `isinstance(v, (A, B))` over a routed union
-    local/param -> `std::holds_alternative<M>(v)` per check member, OR-joined
-    and parenthesized for the multi-member form, over value or pointer
-    variants (F4 U3). `member_cpps` are the final
+    value -> `std::holds_alternative<M>(v)`, or `::tpy::holds_any<M...>(v)`
+    for the multi-member form, over value or pointer variants (F4 U3). `member_cpps` are the final
     template args (the `*` suffix and `const` prefix already applied for
     pointer variants at lowering, like VariantAccess._type_arg);
-    `variant_cpp` is the source spelled as the bare Python name -- the
-    narrowed_vars alias is deliberately skipped, and the
-    slice excludes indirect / frame-slot sources."""
-    variant_cpp: str
+    `subject` is the tested value -- a name read with the narrowed alias
+    deliberately skipped, or any other subject's operand, read once (a
+    tuple's members fold in `::tpy::holds_any<A, B>(v)`);
+    `wrapper` reaches a recursive-alias wrapper's variant (`.value`)."""
+    subject: THIRExpr
     member_cpps: tuple[str, ...]
+    wrapper: bool = False
     union_test: THIRUnionTest | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
+class THIRDynCast(THIRExpr):
+    """The pointer a polymorphic isinstance narrows its subject to:
+    `cpp_template` is the cast composed at lowering by the shared
+    `narrow_cast_rhs` chokepoint over `{0}`, which renders the `subject`
+    (`&`-taken when `address_of`: the subject reads as the object, not as
+    a pointer to it)."""
+    subject: THIRExpr
+    cpp_template: str
+    address_of: bool = False
+
+
+@dataclass(frozen=True)
 class THIRDynIsinstanceMulti(THIRExpr):
-    """The TUPLE form of a polymorphic isinstance condition --
-    `isinstance(v, (A, B))` -> the no-init OR-chain
-    `((dynamic_cast<const A*>(v) != nullptr) || (...))`. `checks_cpp` are
-    the pre-rendered per-member null-checks (the shared `narrow_cast_rhs`
-    chokepoint at lowering); no extraction alias exists (the branch fact is
-    the checked union)."""
-    checks_cpp: tuple[str, ...] = ()
+    """The no-alias form of a polymorphic isinstance --
+    `isinstance(v, (A, B))` -> `::tpy::isinstance_any_of<const A, const B>(v)`,
+    one member or several: the `subject` is read once, inside the test's
+    full expression, as the object or a pointer to it; `member_cpps` are
+    the casts' targets (`narrow_cast_member`). No extraction alias exists
+    (the branch fact is the checked union)."""
+    subject: THIRExpr
+    member_cpps: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class THIRAnyIsinstance(THIRExpr):
     """`isinstance(v, A)` / `isinstance(v, (A, B))` over an Any-typed subject
-    (D15) -> the has_value guard + typeid check(s):
+    (D15) -> the typeid check, reading `v` once:
 
-        (v.value.has_value() && v.value.type() == typeid(T))
-        (v.value.has_value() && (..typeid(A) || ..typeid(B)))
+        (v.value.type() == typeid(T))
+        ::tpy::any_isinstance<A, B>(v)
 
-    -- the isinstance Any branch. `subject_cpp` is the bare
-    Python name (the slice excludes indirect / frame-slot subjects, like the
-    variant sibling `THIRIsinstance`)."""
-    subject_cpp: str
+    -- the isinstance Any branch. `subject` is the tested value, as the
+    variant sibling `THIRIsinstance`'s."""
+    subject: THIRExpr
     member_cpps: tuple[str, ...]
 
 
@@ -2311,12 +2335,14 @@ class THIRDynIsinstance(THIRExpr):
 
         [const ]Sub* __p_ptr = <narrow_cast_rhs>; (__p_ptr != nullptr)
 
-    `init_cpp` is the full init declaration (type, ptr local, cast RHS --
-    composed at lowering via the shared `narrow_cast_rhs` chokepoint);
+    `decl_cpp` is the cast pointer's declared type, `cast` its initializer
+    (a `THIRDynCast`, or one sequenced after the walrus it tests, a
+    `THIREvalThen`);
     `ptr_local` is the pre-bound cast pointer every branch read of the
     subject renders through (`(*__p_ptr)` via THIRName.cpp)."""
-    init_cpp: str
+    decl_cpp: str
     ptr_local: str
+    cast: THIRExpr
 
 
 @dataclass(frozen=True)
@@ -3074,14 +3100,13 @@ class THIRDynNarrowAlias(THIRStmt):
     emitted at STATEMENT level after an early-return guard (`if not
     isinstance(v, Sub): return/raise`) or a narrowing assert -- the poly
     arm with persistent=True. The cast
-    RHS is pre-composed at lowering via the shared `narrow_cast_rhs` /
-    `_poly_cast_context` chokepoints (dynamic_cast, or `dyn_adapter_cast`
+    is composed at lowering via the shared `narrow_cast_rhs` chokepoint (dynamic_cast, or `dyn_adapter_cast`
     for a structural conformer of a @dynamic protocol), anchored to the
     subject's ORIGINAL declared type so a re-narrowing chain keeps the same
     cast input. Never carries a source comment."""
     alias: str
     member_cpp: str
-    cast_rhs_cpp: str
+    cast: 'THIRDynCast'
     is_const: bool
 
 

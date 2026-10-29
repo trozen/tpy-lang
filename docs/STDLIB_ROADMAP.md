@@ -1032,7 +1032,7 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 | `Literal` | Done | |
 | `TypedDict`, `Unpack` | Done | |
 | `Union`, `Annotated` | Missing | TPy uses `A \| B` syntax |
-| `Any` | Partial | Type-erased value cell; see `docs/ANY_TYPE_DESIGN.md`. Open in BUGS.md: `any-field-read-rejects`, `any-vs-concrete-compare-rejects`, `isinstance-any-value-expression-rejects` |
+| `Any` | Partial | Type-erased value cell; see `docs/ANY_TYPE_DESIGN.md`. Open in BUGS.md: `any-field-read-rejects`, `any-vs-concrete-compare-rejects` |
 | `TypeVar`, `Generic`, `ParamSpec`, `TypeVarTuple` | Missing | TPy uses PEP 695 `[T]` syntax |
 | `ClassVar` | Missing | |
 | `NewType` | Missing | Could be macro |

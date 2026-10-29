@@ -15,7 +15,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
+        if (::tpy::isinstance_any_of<const Dog>(__self)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
             __state = S_RESUME_0;
             return (::tpy::str_concat("ro-dog:", __self_narrowed._name));
@@ -47,7 +47,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((dynamic_cast<Dog*>(&__self) != nullptr)) {
+        if (::tpy::isinstance_any_of<Dog>(__self)) {
             Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
             __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(1));
             __state = S_RESUME_0;

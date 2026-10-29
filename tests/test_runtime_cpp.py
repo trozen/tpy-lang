@@ -28,6 +28,8 @@ _SELFCHECKS = [
     ("test_bigint_small_ops.cpp", "BigInt small-operation values and allocations"),
     ("test_math_exception_policy.cpp", "math exceptions and IEEE special values"),
     ("test_seq_contains_identity.cpp", "containment's identity-before-== rule"),
+    ("test_isinstance_folds.cpp",
+     "isinstance folds over every subject kind, adapter shape and Any state"),
     ("test_fixed_int_checks.cpp",
      "checked integer ops at every width and BigInt, OverflowError, by-value integer lookups"),
     ("test_dict_default_args.cpp", "dict get/pop/setdefault default deduction"),

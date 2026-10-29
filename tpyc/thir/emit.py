@@ -41,6 +41,7 @@ from .source import TraitAbi
 from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     PtrSlotKind, TruthinessMode, THIRArgTemp, THIRTempRead, BOUND_SOURCE_READ,
     THIRLent, THIRAssert, THIRAssign, THIRBinOp, THIRChainedCompareStmtExpr,
+    THIRDynCast, THIREvalThen,
     THIRBreak, THIRBytesLiteral, THIRCall, THIRCharLiteral, THIRWalrus,
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
     THIRGenExpr, THIRClassConstant, THIRCoerce, THIRConstructor,
@@ -601,6 +602,28 @@ def _emit_literal(lit: THIRLiteral) -> str:
     return str(v)
 
 
+def _bind_once(temp: str | None, code: str, *, by_value: bool = False) -> str:
+    """The statement that evaluates `code` once inside a statement
+    expression: bound to `temp`, or run for its effects alone."""
+    if temp is None:
+        return f"(void)({code});"
+    return f"auto{'' if by_value else '&&'} {temp} = {code};"
+
+
+def _emit_eval_then(e: THIREvalThen, state: _EmitState) -> str:
+    # A statement expression, not a comma: GCC's -Wsequence-point reads a
+    # walrus target written in one `<<` operand and read in a later one
+    # as unsequenced. `value` never reads `init`'s temporaries.
+    return ("({ " + _bind_once(None, _emit_expr(e.init, state)) + " "
+            + _emit_expr(e.value, state) + "; })")
+
+
+def _subject_atom(subject: THIRExpr, cpp: str) -> str:
+    """An isinstance subject's render where a postfix or `&` applies to it:
+    a name as it reads, any other operand parenthesized."""
+    return cpp if isinstance(subject, (THIRName, THIRSelf)) else f"({cpp})"
+
+
 def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                                    state: _EmitState) -> str:
     # Bind each non-simple operand to an `auto&& _cmpI` temp, then interleave
@@ -623,8 +646,8 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                 code = f"({_region.prefix}{code})"
         else:
             code = _emit_expr(init, state)
-        ref = "" if e.by_value and e.by_value[i] else "&&"
-        binds.append(f"auto{ref} _cmp{i} = {code};")
+        binds.append(_bind_once(f"_cmp{i}", code,
+                                by_value=bool(e.by_value and e.by_value[i])))
 
     def render_pair(i: int) -> str:
         if i == 0:
@@ -1749,23 +1772,32 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # Over value/pointer variants: one
         # holds_alternative per check member, OR-joined and parenthesized for
         # the multi-member (tuple / inline-union) form.
-        checks = [f"std::holds_alternative<{m}>({e.variant_cpp})"
-                  for m in e.member_cpps]
-        return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
+        variant = _emit_expr(e.subject, state)
+        if e.wrapper:
+            variant = f"{_subject_atom(e.subject, variant)}.value"
+        if len(e.member_cpps) == 1:
+            return f"std::holds_alternative<{e.member_cpps[0]}>({variant})"
+        return f"::tpy::holds_any<{', '.join(e.member_cpps)}>({variant})"
+    if isinstance(e, THIRDynCast):
+        arg = _emit_expr(e.subject, state)
+        if e.address_of:
+            arg = "&" + _subject_atom(e.subject, arg)
+        return e.cpp_template.replace("{0}", arg)
     if isinstance(e, THIRDynIsinstance):
         # The C++17 if-init form: the whole `init; cond` sits inside the if's
         # own parens (the `{init_clause}{cond}` composition).
-        return f"{e.init_cpp}; ({e.ptr_local} != nullptr)"
+        return (f"{e.decl_cpp} {e.ptr_local} = {_emit_expr(e.cast, state)}; "
+                f"({e.ptr_local} != nullptr)")
     if isinstance(e, THIRDynIsinstanceMulti):
-        # The tuple form's OR-chain; a single check (the root-class form)
-        # renders bare -- only a multi-member join takes the outer parens.
-        if len(e.checks_cpp) == 1:
-            return e.checks_cpp[0]
-        return "(" + " || ".join(e.checks_cpp) + ")"
+        return (f"::tpy::isinstance_any_of<{', '.join(e.member_cpps)}>"
+                f"({_emit_expr(e.subject, state)})")
     if isinstance(e, THIRAnyIsinstance):
         # The shared composition (any_isinstance_check) -- one spelling for
         # every Any-typed isinstance check.
-        return any_isinstance_check(e.subject_cpp, e.member_cpps)
+        subject = _emit_expr(e.subject, state)
+        if len(e.member_cpps) == 1:
+            subject = _subject_atom(e.subject, subject)
+        return any_isinstance_check(subject, e.member_cpps)
     if isinstance(e, THIRNarrowedRead):
         # A compound-condition read of the narrowed subject: the bare get, no
         # alias yet -- the ptr-variant deref parenthesizes for member access.
@@ -1785,6 +1817,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_binop(e, state)
     if isinstance(e, THIRChainedCompareStmtExpr):
         return _emit_chained_compare_stmtexpr(e, state)
+    if isinstance(e, THIREvalThen):
+        return _emit_eval_then(e, state)
     if isinstance(e, THIRUnaryNot):
         # The `!` arm over a bool operand, whose truthiness render is the
         # plain value render. A pointer-repr Optional borrow name's truthiness
@@ -4262,10 +4296,10 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
     elif isinstance(stmt, THIRDynNarrowAlias):
         # The polymorphic cast-and-cache extraction: explicit type + `*`
-        # deref of the pre-composed cast RHS.
+        # deref of the cast.
         const_pfx = "const " if stmt.is_const else ""
         out.write(f"{indent}{const_pfx}{stmt.member_cpp}& {stmt.alias} = "
-                  f"*{stmt.cast_rhs_cpp};\n")
+                  f"*{_emit_expr(stmt.cast, state)};\n")
     elif isinstance(stmt, THIRAnyNarrowAlias):
         # The Any-narrowing extraction: explicit type, not auto&.
         out.write(f"{indent}const {stmt.member_cpp}& {stmt.alias} = "

@@ -3730,9 +3730,13 @@ class _Lowering:
                 result = f.leaf(typ, f.splice(call), loc)
                 writing = self.call_writes(expr)
             case th.THIRIsinstance():
-                _plain(expr, {"variant_cpp", "member_cpps", "union_test"})
+                _plain(expr, {"subject", "member_cpps", "wrapper", "union_test"})
                 fact = expr.union_test
+                # The test reads the slot its fact names; a subject with no
+                # slot (a keyless operand) carries no fact.
                 _require(expr, typ == BOOL and isinstance(fact, th.THIRUnionTest)
+                         and isinstance(expr.subject, th.THIRName)
+                         and expr.subject.name == fact.source
                          and self.union_is(fact.source, fact.layout)
                          and bool(fact.alternatives) and len(set(fact.alternatives)) == len(fact.alternatives)
                          and all(type(i) is int and 0 <= i < len(fact.layout.elements)

@@ -91,7 +91,7 @@ bool SuppressVE::__exit__(std::monostate exc_type, const ::tpy::BaseException* e
         std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n" << ::tpy::check_signals;
         return true;
     }
-    if (((dynamic_cast<const ::tpy::OSError*>(exc_val) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(exc_val) != nullptr))) {
+    if (::tpy::isinstance_any_of<const ::tpy::OSError, const ::tpy::RuntimeError>(exc_val)) {
         std::cout << (::tpy::str_concat("suppressed family: ", std::string(::tpy::__str__((*exc_val))))) << "\n" << ::tpy::check_signals;
         return true;
     }

@@ -527,8 +527,13 @@ class TpyCall(TpyCallLike):
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
     enum_from_value: NominalType | None = None  # Set by sema for enum value lookup: Color(0)
-    isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
-    isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
+    isinstance_var: str | None = None        # Set by sema: the name an isinstance narrows (a bare-name or walrus-target subject), None for any other subject
+    isinstance_type: TpyType | None = None   # Set by sema on EVERY isinstance call: resolved type being checked for
+    # Set by sema: a static isinstance answer whose subject is not a bare
+    # name, so the subject still evaluates (once) before the constant.
+    isinstance_fold: bool | None = None
+    # Set by sema: the declared type of a walrus-target narrowing key.
+    isinstance_key_type: TpyType | None = None
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
     isinstance_type_param: bool = False      # Set by sema: subject is a non-poly class-bounded type param -> compile-time tpy::isinstance_static
     cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type

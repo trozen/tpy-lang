@@ -78,4 +78,35 @@ const T* dyn_adapter_cast(const Base* p) {
     return nullptr;
 }
 
+// A structural conformer `T` of @dynamic protocol `Base` as an
+// `isinstance_any_of` member: it casts through `dyn_adapter_cast`.
+template<typename Base, typename T>
+struct Adapted {};
+
+namespace detail {
+template<typename M>
+struct isinstance_cast {
+    template<typename P>
+    static auto* cast(P* p) { return dynamic_cast<M*>(p); }
+};
+
+template<typename Base, typename T>
+struct isinstance_cast<Adapted<Base, T>> {
+    template<typename P>
+    static auto* cast(P* p) { return dyn_adapter_cast<Base, T>(p); }
+};
+}  // namespace detail
+
+// `isinstance(s, (A, B))` over a polymorphic subject -- the object, or a
+// pointer to it. One read of `s`, so a subject that borrows from a temporary
+// is tested inside that temporary's full expression.
+template<typename... Ms, typename S>
+bool isinstance_any_of(S&& s) {
+    if constexpr (std::is_pointer_v<std::remove_cvref_t<S>>) {
+        return ((detail::isinstance_cast<Ms>::cast(s) != nullptr) || ...);
+    } else {
+        return ((detail::isinstance_cast<Ms>::cast(&s) != nullptr) || ...);
+    }
+}
+
 } // namespace tpy

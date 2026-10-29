@@ -1,7 +1,8 @@
 # isinstance() tests the value a variable holds: on a Box / Rc / Arc / Weak /
 # user __deref__ handle that is the handle, as in CPython, and a check only
-# the held object can pass warns. The object is tested by
-# name (`p = rc.get()`, `p = deref(rc)`, `match b.get()`, `match deref(b)`).
+# the held object can pass warns, suggesting the walrus spelling. The object
+# is tested by name (`p = rc.get()`, `p = deref(rc)`, `match b.get()`,
+# `match deref(b)`).
 from typing import Protocol
 from tpy import dynamic, deref, Own, Ptr, readonly
 from tplib.box import Box
@@ -72,7 +73,7 @@ class Handle:
 
 def box_handle(b: Box[Pet], bp: Box[Point]) -> None:
     # A check only the held object can pass tests the handle: False, warned.
-    print("box:", isinstance(b, Dog))  # tpyc: warning(/tests the 'Box\[Pet\]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref\(b\)/)
+    print("box:", isinstance(b, Dog))  # tpyc: warning(/tests the 'Box\[Pet\]' handle, never a 'Dog'; to test the object it holds, use isinstance\(p := deref\(b\), Dog\)/)
     print("box:", isinstance(b, Box))  # tpyc: ok
     print("box:", isinstance(bp, Point))  # tpyc: warning(/tests the 'Box\[Point\]' handle/)
 

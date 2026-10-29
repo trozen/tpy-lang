@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return "present"
 //     return "none"
 std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
-    if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
+    if (::tpy::holds_any<::tpy::BigInt, std::string>(v)) {
         return "present";
     }
     return "none";
@@ -20,7 +20,7 @@ std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::
 //         return "present"
 //     return "none"
 std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
-    if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
+    if (::tpy::holds_any<::tpy::BigInt, std::string>(v)) {
         return "present";
     }
     return "none";
@@ -31,7 +31,7 @@ std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std:
 //         return "ab"
 //     return "none"
 std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v) {
-    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
+    if (::tpy::holds_any<const A*, const B*>(v)) {
         return "ab";
     }
     return "none";

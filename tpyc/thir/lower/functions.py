@@ -192,7 +192,7 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
         for node in _fallback_walk(stmt):
             if isinstance(node, TpyMatch) or (
                     isinstance(node, TpyCall)
-                    and getattr(node, "isinstance_var", None) is not None):
+                    and getattr(node, "isinstance_type", None) is not None):
                 return "sig.overload_set.db_isinstance"
     for _n, pt in func.params:
         if _n in allow_narrow_params:

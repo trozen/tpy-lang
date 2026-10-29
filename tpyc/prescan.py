@@ -435,6 +435,18 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     return None
 
 
+def isinstance_narrowing_key(subject: TpyExpr) -> str | None:
+    """The name an `isinstance` check narrows: its subject's when the
+    subject is a bare name or a walrus target, else None. A field path is
+    not one: the branch reads of `o.u` would need the extraction a name gets
+    (BUGS.md#isinstance-field-path-narrowing)."""
+    if isinstance(subject, TpyName):
+        return subject.name
+    if isinstance(subject, TpyNamedExpr):
+        return subject.target
+    return None
+
+
 def storage_spelling(expr: TpyExpr) -> str | None:
     """How a diagnostic names a storage operand back to the user -- a name,
     a field path, or an accessor read spelled `h.i` and not as its getter

@@ -46,8 +46,9 @@ from ..parse import (
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
     TpyGeneratorExpression, TpyStmt, TupleElemCapture,
     TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
-    TpyDictComprehension, TpySetComprehension,
+    TpyDictComprehension, TpySetComprehension, TpyNamedExpr,
 )
+from ..prescan import isinstance_narrowing_key
 from ..modules import extract_type_params
 from ..namespace import BindingKind, NameBinding
 from ..coercions import CoercionContext, VALUE_TO_PTR
@@ -95,6 +96,7 @@ from .receiver_calls import (call_mutates_receiver,
                              record_receiver_edges,
                              record_truth_calls)
 from .narrowing import truthy_operands
+from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
@@ -2933,15 +2935,15 @@ class CallAnalyzer:
                            else "...")
                 self.ctx.warning(
                     f"isinstance() tests the '{var_type}' handle, never a "
-                    f"'{ct}'; to test the object it holds, bind it first: "
-                    f"p = deref({spelled})",
+                    f"'{ct}'; to test the object it holds, use "
+                    f"isinstance(p := deref({spelled}), {ct})",
                     expr,
                 )
         return result
 
     def _analyze_isinstance_type_param(
         self, tp: TypeParamRef, check_types: list[TpyType],
-        var_name: str, expr: TpyCall,
+        var_name: str | None, expr: TpyCall,
     ) -> TpyType:
         """Lower isinstance(x, C) where x: T is a generic type parameter to a
         per-instantiation compile-time trait (`tpy::isinstance_static<C,
@@ -2989,7 +2991,7 @@ class CallAnalyzer:
         self,
         inner: 'TpyType',
         check_types: list['TpyType'],
-        var_name: str,
+        var_name: str | None,
         expr: TpyCall,
     ) -> TpyType:
         """Validate isinstance() check types against a dynamic-dispatch
@@ -3053,18 +3055,22 @@ class CallAnalyzer:
             )
 
         first_arg = expr.args[0]
-        if not isinstance(first_arg, TpyName):
-            raise self.ctx.error(
-                "isinstance() first argument must be a variable name", expr
-            )
-
-        self.expr.analyze_expr(first_arg)
+        # The walrus binds before the check reads its target, so it is
+        # analyzed ahead of any narrowing lookup on that target.
+        subject_type = self.expr.analyze_expr(first_arg)
+        key = isinstance_narrowing_key(first_arg)
 
         # Check if second arg is a static protocol name
         second_arg = expr.args[1]
         if isinstance(second_arg, TpyName):
             protocol_info = self.ctx.registry.scan_by_short_name(second_arg.name)
             if protocol_info is not None and not protocol_info.is_dynamic:
+                if not isinstance(first_arg, TpyName):
+                    raise self.ctx.error(
+                        "isinstance() with a protocol requires a "
+                        "protocol-typed parameter as its first argument",
+                        expr,
+                    )
                 return self._analyze_isinstance_protocol(
                     expr, first_arg, second_arg.name, protocol_info
                 )
@@ -3072,13 +3078,18 @@ class CallAnalyzer:
         check_types = self._resolve_isinstance_check_types(second_arg, expr)
 
         expr.resolved_function_info = self._isinstance_function_info()
+        expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                else make_union(*check_types))
 
         # If the variable is narrowed to a concrete non-union type (inside an
         # `if isinstance(v, A)` branch, a match arm, or via assignment
         # narrowing), the check is statically answerable. Fold the call site
         # to a constant but keep the full union branch-facts path below so
-        # downstream narrowing / codegen extractions still run.
-        narrowed = self.ctx.func.narrowed_types.get(first_arg.name)
+        # downstream narrowing / codegen extractions still run. A walrus
+        # target is rebound by the check itself, so its earlier narrowing
+        # says nothing about the value tested.
+        narrowed = (self.ctx.func.narrowed_types.get(first_arg.name)
+                    if isinstance(first_arg, TpyName) else None)
         static_fold: bool | None = None
         # When the variable was declared as a polymorphic-class source --
         # `Optional[Polymorphic]` (lowered to `T*`) or a bare polymorphic
@@ -3087,7 +3098,16 @@ class CallAnalyzer:
         # static fold so the runtime path lowers isinstance to a dynamic_cast.
         # Even after `is not None` narrowing strips Optional to its inner
         # class type, the C++ representation remains polymorphism-intact.
-        declared_param_type = self.expr.narrowing.declared_type_for_name(first_arg.name)
+        # A subject with no name is tested as the value it evaluates to.
+        value_type = peel_match_qualifiers(subject_type)[0]
+        if isinstance(value_type, AliasRef):
+            value_type = (self.ctx.registry.resolve_alias_ref(value_type)
+                          or value_type)
+        declared_param_type = (
+            self.expr.narrowing.declared_type_for_name(key)
+            if key is not None else value_type)
+        if isinstance(first_arg, TpyNamedExpr):
+            expr.isinstance_key_type = declared_param_type
         polymorphic_source = polymorphic_source_inner(
             declared_param_type, self.ctx.registry)
         # Reject `isinstance(self, Sub)` in contexts where codegen can't
@@ -3101,7 +3121,7 @@ class CallAnalyzer:
         # Generator methods are NOT rejected: they share the resumable frame
         # with `async def` (which already supports isinstance(self, Sub)), and
         # `polymorphic_cast_arg` emits the correct `&__self` cast input there.
-        if (first_arg.name == "self"
+        if (isinstance(first_arg, TpyName) and first_arg.name == "self"
                 and polymorphic_source is not None
                 and isinstance(self.ctx.func.current_function, TpyFunction)):
             cur = self.ctx.func.current_function
@@ -3129,13 +3149,16 @@ class CallAnalyzer:
                 static_fold = self._evaluate_static_isinstance(
                     narrowed_inner, check_types, expr)
 
-        effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
+        effective_type = (self.expr.narrowing.effective_union_type(key)
+                          if key is not None else value_type)
         if effective_type is not None:
             effective_type = self._isinstance_unwrap(effective_type)
 
         if effective_type is None:
             raise self.ctx.error(
-                f"isinstance() cannot resolve the type of '{first_arg.name}'",
+                f"isinstance() cannot resolve the type of '{key}'"
+                if key is not None
+                else "isinstance() cannot resolve the type of its subject",
                 expr,
             )
 
@@ -3152,7 +3175,7 @@ class CallAnalyzer:
                     and is_dynamic_dispatch_inner(inner, self.ctx.registry)
                     and check_types):
                 return self._validate_polymorphic_subclass_dispatch(
-                    inner, check_types, first_arg.name, expr)
+                    inner, check_types, key, expr)
 
             raise self.ctx.error(
                 f"isinstance() is only supported on union types, "
@@ -3186,9 +3209,7 @@ class CallAnalyzer:
                         "narrow to a concrete type first",
                         expr,
                     )
-            expr.isinstance_var = first_arg.name
-            expr.isinstance_type = (check_types[0] if len(check_types) == 1
-                                    else make_union(*check_types))
+            expr.isinstance_var = key
             return BOOL
 
         if not isinstance(effective_type, UnionType):
@@ -3197,21 +3218,21 @@ class CallAnalyzer:
             # C++ instantiation, not here. Lower to a compile-time trait.
             if isinstance(effective_type, TypeParamRef) and check_types:
                 return self._analyze_isinstance_type_param(
-                    effective_type, check_types, first_arg.name, expr)
+                    effective_type, check_types, key, expr)
             # Polymorphic source post-narrowing: source was declared as a
             # polymorphic class (`Optional[Inner]` or bare `Inner`); the
             # C++ representation is `const Inner*` or `const Inner&` and
             # dynamic_cast to a subclass is sound. Route to runtime dispatch.
             if polymorphic_source is not None and check_types:
                 return self._validate_polymorphic_subclass_dispatch(
-                    polymorphic_source, check_types, first_arg.name, expr)
+                    polymorphic_source, check_types, key, expr)
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.
             if static_fold is None:
                 static_fold = self._evaluate_static_isinstance(
                     effective_type, check_types, expr)
-            expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
+            self._fold_isinstance(expr, static_fold)
             return BOOL
 
         # Union case: validate that check types select a member. A bare
@@ -3250,7 +3271,7 @@ class CallAnalyzer:
             # be declared-union members -- emit the constant and bypass the
             # narrowing setup (we can't narrow a union to a non-member).
             if static_fold is not None:
-                expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
+                self._fold_isinstance(expr, static_fold)
                 return BOOL
             if len(non_members) == 1:
                 raise self.ctx.error(
@@ -3264,15 +3285,24 @@ class CallAnalyzer:
                 expr,
             )
 
-        expr.isinstance_var = first_arg.name
+        expr.isinstance_var = key
         expr.isinstance_type = (matched[0] if len(matched) == 1
                                 else make_union(*matched))
         if static_fold is not None:
             # Folded at the call site, but keep isinstance_var/isinstance_type
             # so the surrounding if/elif still narrows and codegen emits the
             # std::get extraction for the then-block.
-            expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
+            self._fold_isinstance(expr, static_fold)
         return BOOL
+
+    @staticmethod
+    def _fold_isinstance(expr: TpyCall, value: bool) -> None:
+        """Answer `expr` statically. A bare-name subject reads nothing, so
+        the call is the constant; any other subject still evaluates first."""
+        if isinstance(expr.args[0], TpyName):
+            expr.macro_expansion = TpyBoolLiteral(value=value, loc=expr.loc)
+        else:
+            expr.isinstance_fold = value
 
     def _analyze_isinstance_protocol(
         self, expr: TpyCall, first_arg: TpyName, protocol_name: str,
