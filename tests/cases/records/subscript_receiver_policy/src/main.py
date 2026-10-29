@@ -1,8 +1,8 @@
-# The receiver kind is the first component of a method set's ranking
-# (docs/OVERLOAD_DESIGN.md "The receiver kind ranks first"): a mutable receiver
-# ranks the mutating variants first, a readonly one the readonly ones, and the
-# others only when none of those applies -- for a subscript and an explicit
-# call alike. The sections CPython's dispatch stand-in agrees with live in
+# The receiver kind in a method set's ranking (docs/OVERLOAD_DESIGN.md "The
+# receiver kind"): a mutable receiver ranks the mutating variants first and the
+# readonly ones only when none of those applies; on a readonly receiver the
+# arguments pick and the receiver kind breaks a tie -- for a subscript and an
+# explicit call alike. The sections CPython's dispatch stand-in agrees with live in
 # records/subscript_answers_as_call.
 from tpy import Own, dispatch, int8, int32, int64, readonly
 from policy_lib import Inferred

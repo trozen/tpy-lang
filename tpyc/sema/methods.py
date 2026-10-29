@@ -1427,6 +1427,13 @@ class MethodAnalyzer:
             loc=expr.loc,
         )
 
+        # Readonly self: a @readonly context ranks the set as a readonly
+        # receiver does, and calling a non-readonly ancestor method would
+        # mutate self through a const receiver.
+        is_readonly_context = (
+            isinstance(self.ctx.func.current_function, TpyFunction)
+            and self.ctx.func.current_function.is_readonly
+        )
         method_info = overloads[0]
         if method_info.is_generic():
             if len(overloads) > 1:
@@ -1437,17 +1444,12 @@ class MethodAnalyzer:
                 fake_expr, method_info, method_owner, type_subst)
         else:
             return_type = self._resolve_and_check_args(
-                fake_expr, overloads, type_subst)
+                fake_expr, overloads, type_subst,
+                is_readonly_receiver=is_readonly_context)
 
         if method_name == "__init__":
             self._settle_base_init_template(fake_expr, type_subst)
 
-        # Readonly self: a @readonly context calling a non-readonly ancestor
-        # method would mutate self through a const receiver.
-        is_readonly_context = (
-            isinstance(self.ctx.func.current_function, TpyFunction)
-            and self.ctx.func.current_function.is_readonly
-        )
         resolved_info = fake_expr.resolved_function_info
         if is_readonly_context and resolved_info is not None and not resolved_info.is_readonly:
             raise self.ctx.error(
@@ -2388,7 +2390,9 @@ class MethodAnalyzer:
                 init_owner if expr.method == "__init__" else parent_info,
                 type_subst)
         else:
-            return_type = self._resolve_and_check_args(expr, overloads, type_subst)
+            return_type = self._resolve_and_check_args(
+                expr, overloads, type_subst,
+                is_readonly_receiver=is_readonly_context)
         if expr.method == "__init__":
             self._settle_base_init_template(expr, type_subst)
         if is_readonly_context and not expr.resolved_function_info.is_readonly:

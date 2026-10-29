@@ -3057,6 +3057,7 @@ class ExpressionAnalyzer:
             # mutable one (the method-call receiver rule), which then must be
             # readonly itself.
             right_type = unwrap_send_sync(unwrap_ref_type(right_type))
+            haystack_type = right_type
             right_type = unwrap_readonly(right_type)
             if isinstance(right_type, OwnType):
                 right_type = right_type.wrapped
@@ -3098,7 +3099,7 @@ class ExpressionAnalyzer:
                     leaf = self._contains_leaf(right_type, expr.left,
                                                left_type)
                     readonly_right = receiver_is_readonly(
-                        self.ctx, expr.right, right_type)
+                        self.ctx, expr.right, haystack_type)
                     try:
                         matched = self.calls.ranking().resolve(
                             subst_overloads,

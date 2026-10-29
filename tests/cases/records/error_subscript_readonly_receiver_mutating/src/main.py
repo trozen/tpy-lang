@@ -1,6 +1,6 @@
-# A readonly receiver ranks the readonly variants first (docs/OVERLOAD_DESIGN.md
-# "The receiver kind ranks first"); when only a mutating one takes the key, the
-# subscript is that call on a readonly receiver, refused as the call would be.
+# On a readonly receiver the arguments pick (docs/OVERLOAD_DESIGN.md "The
+# receiver kind"); when only a mutating variant takes the key, the subscript is
+# that call on a readonly receiver, refused as the call would be.
 from tpy import dispatch, int32, readonly
 
 

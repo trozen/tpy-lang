@@ -1,4 +1,5 @@
 The CPython @dispatch stand-in runs the first applicable variant in declaration
-order, while the compiler ranks the receiver kind first: the mutable and the
+order, while the compiler ranks the mutating variants first on a mutable
+receiver (and lets the arguments pick on a readonly one): the mutable and the
 readonly receiver of one set pick different variants, which no declaration
 order reproduces (BUGS.md#stub-first-applicable-cannot-split-calls).

@@ -448,7 +448,7 @@ is ranked exactly as the named call to that dunder ranks it
 `tpyc/sema/operators.py`, with the checkers every call ranks with,
 `call_ranking`): the receiver's type parameters substituted
 (int-kind ones such as `ArrayList[T, N]`'s `N` included), the receiver kind
-ranked first ("The receiver kind ranks first" below) and the consuming
+ranked ("The receiver kind" below) and the consuming
 filter (`filter_receiver_overloads`), the method's own
 type parameters inferred from the operand (a class-shadowed name, as in
 `Rc[T].__eq__[T: Equatable]`, stays the class's). The operand is ranked as
@@ -1012,16 +1012,24 @@ argument as the base picks a variant: `a: Animal = d; t(a, d, n8)` runs
 the runtime type (CPython's `isinstance` would still see a `Dog`), and
 binding the subclass at the base type warns "upcast narrows".
 
-**The receiver kind ranks first.** A method set whose variants differ in
-whether they mutate their receiver (`@readonly` / `@readonly(False)`, the two
-clones of an `@auto_readonly` pair) ranks the variants matching the receiver
-first -- the mutating ones on a mutable receiver, the readonly ones on a
-readonly receiver -- through both stages, and ranks the others only when
-none of those applies (`rank_overload_candidates`, shared by calls,
-operators, `in` and subscripts). A tie among the preferred variants stays
-*Ambiguous overload*; it never falls back. A mutating fallback on a
-readonly receiver is refused by the receiver's readonly check, as a call to
-that variant alone is.
+**The receiver kind.** A method set whose variants differ in whether they
+mutate their receiver (`@readonly` / `@readonly(False)`, the two clones of an
+`@auto_readonly` pair) ranks them by the receiver's kind
+(`rank_overload_candidates`, shared by calls, operators, `in` and
+subscripts):
+
+- On a READONLY receiver the arguments pick, and the receiver kind only
+  breaks a tie they leave (the twins of a clone pair). A mutating winner is
+  then refused by the receiver's readonly check, as a call to that variant
+  alone is -- a worse-fitting readonly variant never runs in its place,
+  since CPython would run the argument winner. Spell the argument at the
+  readonly variant's type to call it (`p.m(int64(k))`).
+- On a MUTABLE receiver the mutating variants rank first, through both
+  stages, and the readonly ones only when none of the mutating ones applies
+  (TODO.md "Argument types rank before the receiver kind on a MUTABLE
+  receiver").
+
+A tie among the variants ranked together stays *Ambiguous overload*.
 
 ```python
 class B:
@@ -1033,7 +1041,9 @@ class B:
     def __getitem__(self, k: int32) -> int32: ...
 
 b[1]            # mutable receiver: the int64 variant, b.__getitem____int64(static_cast<int64_t>(1))
-r[1]            # r: readonly[B] -- the int32 variant
+r[1]            # r: readonly[B] -- the int32 variant, the arguments' pick
+r[n64]          # n64: int64 -- the arguments pick the mutating int64 variant:
+                # "Cannot call non-readonly method '__getitem__' on readonly reference"
 f.m(1)          # m(str) mutating, m(int32) readonly: no mutating one applies,
                 # so the readonly one runs: f.m__int32(1)
 ```

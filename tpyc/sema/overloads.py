@@ -1166,18 +1166,22 @@ def rank_overload_candidates(
     ranking: 'CallRanking',
     readonly_receiver: bool | None = None,
 ) -> OverloadPick:
-    """Two-stage overload resolution over one ranking (`OverloadFit.rank`),
-    the receiver kind its first component: with ``readonly_receiver`` given
-    (a method call's receiver), the variants matching it -- the readonly
-    ones on a readonly receiver, the mutating ones on a mutable receiver --
-    are ranked first, both stages, and the others only when none of them
-    applies. A tie among the preferred variants stays ambiguous. On a
-    readonly receiver a mutating fallback winner is then refused by the
-    receiver's readonly check, as a call to that variant alone is."""
+    """Two-stage overload resolution over one ranking (`OverloadFit.rank`)
+    with ``readonly_receiver`` given for a method call's receiver.
+
+    On a readonly receiver the arguments pick, and the receiver kind only
+    breaks a tie (the last rank component): a mutating winner is then
+    refused by the receiver's readonly check, as a call to that variant
+    alone is, rather than a worse-fitting readonly variant running. On a
+    mutable receiver the mutating variants are ranked first, both stages,
+    and the readonly ones only when none of them applies. A tie among the
+    variants ranked together stays ambiguous."""
     declared = [declared_readonly(c.overload) for c in candidates]
     split = readonly_receiver is not None and len(set(declared)) > 1
     if not split:
         return _rank_stages(candidates, ranking)
+    if readonly_receiver:
+        return _rank_stages(candidates, ranking, readonly_tiebreak=True)
     preferred = [i for i, ro in enumerate(declared) if ro == readonly_receiver]
     others = [i for i, ro in enumerate(declared) if ro != readonly_receiver]
     for part in (preferred, others):
@@ -1196,11 +1200,23 @@ def declared_readonly(fi: FunctionInfo) -> bool:
     return fi.is_readonly and not fi.readonly_inferred
 
 
+def _receiver_ranked(rank: tuple, cand: OverloadCandidate,
+                     readonly_tiebreak: bool) -> tuple:
+    """`rank`, with a readonly variant ahead in a tie when
+    ``readonly_tiebreak``."""
+    if not readonly_tiebreak:
+        return rank
+    return (*rank, not declared_readonly(cand.overload))
+
+
 def _rank_stages(
     candidates: list[OverloadCandidate],
     ranking: 'CallRanking',
+    readonly_tiebreak: bool = False,
 ) -> OverloadPick:
-    """The two stages of `rank_overload_candidates` over one partition.
+    """The two stages of `rank_overload_candidates` over one partition;
+    with ``readonly_tiebreak``, a readonly variant wins a tie the arguments
+    leave.
 
     The strict stage takes the candidates that convert no argument; then
     the conversion stage ranks every candidate a conversion makes
@@ -1240,7 +1256,10 @@ def _rank_stages(
     strict = [i for i, fit in enumerate(fits)
               if fit is not None and fit.converted == 0]
     if strict:
-        best = _pick_best(candidates, [(fits[i].rank(), i) for i in strict],
+        best = _pick_best(candidates,
+                          [(_receiver_ranked(fits[i].rank(), candidates[i],
+                                             readonly_tiebreak), i)
+                           for i in strict],
                           converted=False)
         return OverloadPick(best, tuple(strict),
                             inferred.get(candidates[best].overload),
@@ -1255,7 +1274,8 @@ def _rank_stages(
                 binding=joined.get(cand.overload),
             )
         if fit is not None:
-            ranked.append((fit.rank(), index))
+            ranked.append((_receiver_ranked(fit.rank(), cand, readonly_tiebreak),
+                           index))
     if not ranked:
         return OverloadPick(None)
     best = _pick_best(candidates, ranked, converted=True)
