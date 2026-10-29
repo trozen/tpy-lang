@@ -119,14 +119,17 @@ struct Random {
 
     // @dispatch
     // def randrange(self, stop: int32) -> int32:
+    int32_t randrange__int32(int32_t stop);
     int32_t randrange(int32_t stop);
 
     // @dispatch
     // def randrange(self, start: int32, stop: int32) -> int32:
+    int32_t randrange__int32__int32(int32_t start, int32_t stop);
     int32_t randrange(int32_t start, int32_t stop);
 
     // @dispatch
     // def randrange(self, start: int32, stop: int32, step: int32) -> int32:
+    int32_t randrange__int32__int32__int32(int32_t start, int32_t stop, int32_t step);
     int32_t randrange(int32_t start, int32_t stop, int32_t step);
 
     // def randbytes(self, n: int32) -> bytes:
@@ -264,11 +267,15 @@ inline int32_t Random::randint(int32_t a, int32_t b) {
 //     if stop <= 0:
 //         raise ValueError("empty range for randrange()")
 //     return int32(self._randbelow(uint32(stop)))
-inline int32_t Random::randrange(int32_t stop) {
+inline int32_t Random::randrange__int32(int32_t stop) {
     if ((stop <= 0)) {
         throw ::tpy::ValueError("empty range for randrange()");
     }
     return ::tpy::int_cast_check<int32_t>(this->_randbelow(static_cast<uint32_t>(stop)));
+}
+
+inline int32_t Random::randrange(int32_t stop) {
+    return this->randrange__int32(stop);
 }
 
 // @dispatch
@@ -276,11 +283,15 @@ inline int32_t Random::randrange(int32_t stop) {
 //     if stop <= start:
 //         raise ValueError("empty range for randrange()")
 //     return start + int32(self._randbelow(uint32(stop - start)))
-inline int32_t Random::randrange(int32_t start, int32_t stop) {
+inline int32_t Random::randrange__int32__int32(int32_t start, int32_t stop) {
     if ((stop <= start)) {
         throw ::tpy::ValueError("empty range for randrange()");
     }
     return (::tpy::add_check<int32_t>(start, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(stop, start)))))));
+}
+
+inline int32_t Random::randrange(int32_t start, int32_t stop) {
+    return this->randrange__int32__int32(start, stop);
 }
 
 // # ---------- Continuous distributions ----------

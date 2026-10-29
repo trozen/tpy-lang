@@ -41,6 +41,7 @@ struct Record {
 
     // @overload
     // def get(self, key: str) -> int32 | str: ...
+    ::tpy::Union<int32_t, std::string> get__str(std::string_view key) const;
     ::tpy::Union<int32_t, std::string> get(std::string_view key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Record";
 };
@@ -72,11 +73,15 @@ inline std::string Record::get__lit_name(std::string_view key) const {
 
 // @overload
 // def get(self, key: str) -> int32 | str: ...
-inline ::tpy::Union<int32_t, std::string> Record::get(std::string_view key) const {
+inline ::tpy::Union<int32_t, std::string> Record::get__str(std::string_view key) const {
     if ((key == "age")) {
         return this->data_age;
     }
     return this->data_name;
+}
+
+inline ::tpy::Union<int32_t, std::string> Record::get(std::string_view key) const {
+    return this->get__str(key);
 }
 void __tpy_init();
 } // namespace tpyapp::main

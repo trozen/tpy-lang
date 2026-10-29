@@ -246,11 +246,13 @@ struct Two {
 
     // @dispatch
     // def __getitem__(self, i: int32) -> int32:
+    int32_t __getitem____int32(int32_t i) const;
     int32_t __getitem__(int32_t i) const;
 
     // @dispatch
     // @readonly(False)
     // def __getitem__(self, k: str) -> int32:
+    int32_t __getitem____str(std::string_view k);
     int32_t __getitem__(std::string_view k);
 
     int32_t operator[](int32_t i) const;
@@ -275,11 +277,13 @@ struct KeyBase {
 
     // @dispatch
     // def __getitem__(self, k: T) -> int32:
+    int32_t __getitem____T(::tpy::readonly_form_t<T> k) const;
     int32_t __getitem__(::tpy::readonly_form_t<T> k) const;
 
     // @dispatch
     // @readonly(False)
     // def __getitem__(self, i: int32) -> int32:
+    int32_t __getitem____int32(int32_t i);
     int32_t __getitem__(int32_t i);
 
     int32_t operator[](::tpy::readonly_form_t<T> k) const;
@@ -574,8 +578,12 @@ inline Two::Two()
 // @dispatch
 // def __getitem__(self, i: int32) -> int32:
 //     return self.xs[i]
-inline int32_t Two::__getitem__(int32_t i) const {
+inline int32_t Two::__getitem____int32(int32_t i) const {
     return ::tpy::__getitem__(this->xs, i);
+}
+
+inline int32_t Two::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 // # Only the str-keyed overload mutates; an int key reads the other one.
@@ -585,11 +593,15 @@ inline int32_t Two::__getitem__(int32_t i) const {
 //     if k not in self.d:
 //         self.d[k] = 0
 //     return self.d[k]
-inline int32_t Two::__getitem__(std::string_view k) {
+inline int32_t Two::__getitem____str(std::string_view k) {
     if ((!(this->d.contains(k)))) {
         ::tpy::__setitem__(this->d, k, 0);
     }
     return ::tpy::__getitem__(this->d, k);
+}
+
+inline int32_t Two::__getitem__(std::string_view k) {
+    return this->__getitem____str(k);
 }
 
 inline int32_t Two::operator[](int32_t i) const {
@@ -706,8 +718,13 @@ inline KeyBase<T>::KeyBase() : xs(std::vector<int32_t>{5}) {}
 // def __getitem__(self, k: T) -> int32:
 //     return self.xs[0]
 template<typename T>
-inline int32_t KeyBase<T>::__getitem__(::tpy::readonly_form_t<T> k) const {
+inline int32_t KeyBase<T>::__getitem____T(::tpy::readonly_form_t<T> k) const {
     return ::tpy::__getitem__(this->xs, 0);
+}
+
+template<typename T>
+inline int32_t KeyBase<T>::__getitem__(::tpy::readonly_form_t<T> k) const {
+    return this->__getitem____T(k);
 }
 
 // # Only the int32-keyed overload mutates.
@@ -717,9 +734,14 @@ inline int32_t KeyBase<T>::__getitem__(::tpy::readonly_form_t<T> k) const {
 //     self.xs.append(1)
 //     return self.xs[0]
 template<typename T>
-inline int32_t KeyBase<T>::__getitem__(int32_t i) {
+inline int32_t KeyBase<T>::__getitem____int32(int32_t i) {
     this->xs.push_back(1);
     return ::tpy::__getitem__(this->xs, 0);
+}
+
+template<typename T>
+inline int32_t KeyBase<T>::__getitem__(int32_t i) {
+    return this->__getitem____int32(i);
 }
 
 template<typename T>

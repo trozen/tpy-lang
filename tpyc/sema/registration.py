@@ -219,6 +219,66 @@ def _emits_own_variant(variant: TpyFunction, impl: TpyFunction | None) -> bool:
     return not (body.is_generator or body.is_async)
 
 
+def _clone_families(infos: list[FunctionInfo]) -> list[list[FunctionInfo]]:
+    """The variants of one method set grouped into clone families: members
+    with the same parameters (`readonly` aside) that differ by receiver
+    const-ness or consumption -- an `@auto_readonly` / `auto_own` pair, the
+    C++ overloads one name keeps apart by the receiver. In source order."""
+    families: list[list[FunctionInfo]] = []
+    keys: list[tuple] = []
+    for fi in infos:
+        key = tuple((without_readonly(p.type), p.keyword_only)
+                    for p in fi.params)
+        for i, k in enumerate(keys):
+            if k == key and all(m.is_readonly != fi.is_readonly
+                                or m.is_consuming != fi.is_consuming
+                                for m in families[i]):
+                families[i].append(fi)
+                break
+        else:
+            keys.append(key)
+            families.append([fi])
+    return families
+
+
+def _cpp_param_key(t: TpyType) -> object:
+    """A parameter type as its C++ parameter form where two TPy value types
+    share one (`str` / `StrView` -> `std::string_view`); any other type
+    as itself."""
+    if (isinstance(t, NominalType) and not t.type_args
+            and t.is_value_type()):
+        return ("cpp", t.to_cpp_param_type())
+    return t
+
+
+def _own_member_names(ri: RecordInfo) -> dict[str, SourceLocation | None]:
+    """The C++ member names `ri`'s own struct declares from its source --
+    its methods, fields, class constants, properties and their
+    `set_<prop>` setters -- each with the declaration it comes from."""
+    names: dict[str, SourceLocation | None] = {}
+    for name, infos in ri.methods.items():
+        decl = next((fi.variant_decl for fi in infos
+                     if fi.variant_decl is not None), None)
+        names.setdefault(name, decl.loc if decl is not None else None)
+    for fld in (*ri.fields, *ri.class_constants.values()):
+        names.setdefault(fld.name, fld.loc)
+    for prop, info in ri.properties.items():
+        for accessor, member in ((info.getter, prop),
+                                 (info.setter, f"set_{prop}")):
+            if accessor is None:
+                continue
+            decl = accessor.variant_decl
+            names.setdefault(member, decl.loc if decl is not None else None)
+    return names
+
+
+def _member_call_template(variant: str, fi: FunctionInfo) -> str:
+    """The operator spelling of a named dunder variant: its member call."""
+    args = ", ".join(f"{{{i}}}" for i, p in enumerate(fi.params)
+                     if not p.is_variadic)
+    return f"({{self}}).{variant}({args})"
+
+
 def _contains_self_type(typ: TpyType) -> bool:
     """Check if a type contains SelfType anywhere in its structure."""
     if isinstance(typ, SelfType):
@@ -2237,7 +2297,7 @@ class TypeRegistrar:
                     if method.name == '__enter__' else True),
                 native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or shared_spelling,
-                _shares_set_spelling=shared_spelling is not None,
+                _compiler_spelling=shared_spelling is not None,
                 _emits_cpp_defaults=emits_cpp_defaults(method, is_native),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
@@ -2248,6 +2308,7 @@ class TypeRegistrar:
                 owning_type_qname=owning_type_qname,
                 is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
                 originating_module=self.ctx.module_name,
+                variant_decl=method,
             )
             func_info.following_components = method.following_components
             func_info.implicit_readonly_result = (
@@ -3492,6 +3553,90 @@ class TypeRegistrar:
                                 and fi.root.body.is_auto_readonly_mutable_clone)]
                 if any(fi.is_property_getter for fi in live):
                     prop_info.accessors = live
+
+    def name_record_method_variants(self, record: TpyRecord) -> None:
+        """Give each TPy-bodied variant of `record`'s method and operator
+        dunder sets its own C++ name (`name_overload_variants`), so a call
+        the program writes names the variant sema picked; the plain name
+        stays as one forwarder per variant for C++'s own callers. Runs after
+        `validate_record_inheritance`, base before subclass: the names
+        reserved against are the whole emitted member namespace over the MRO.
+
+        A member `record` declares under a variant name it inherits
+        (`Child.m__int32` beside `Base`'s `m(int32)` variant) is refused: it
+        would hide the variant from the calls that name it. Only source
+        names are refused; a generated name avoids the taken ones.
+
+        A clone family (an `@auto_readonly` / `auto_own` pair, which C++
+        tells apart by the receiver) shares one name. A method implementing
+        a slot of a `@dynamic` base may not be a set: the slot is one
+        virtual, and its override is chosen by the name C++ calls."""
+        ri = self.ctx.registry.get_record(record.name)
+        if ri is None or ri.is_native or ri.builtin_type_key:
+            return
+        stub_impl: dict[int, TpyFunction] = {}
+        for impl, stubs in self.ctx.overload_groups.items():
+            for stub in stubs:
+                stub_impl[id(stub)] = impl
+        inherited = self.ctx.registry.inherited_variants(ri)
+        for member, loc in _own_member_names(ri).items():
+            if member in inherited:
+                owner, variant_fi = inherited[member]
+                shown = self.compat.variant_text(variant_fi.name, variant_fi)
+                raise SemanticError(
+                    f"'{record.name}.{member}' has the same name the compiler "
+                    f"gives the inherited variant '{owner.name}.{shown}'; "
+                    f"rename it", loc or record.loc)
+        reserved = self._record_member_names(ri) | frozenset(inherited)
+        sets: list[tuple[str, list[list[FunctionInfo]]]] = []
+        for name, infos in ri.methods.items():
+            if any(fi.is_property_getter or fi.is_property_setter
+                   for fi in infos):
+                continue
+            families = _clone_families(infos)
+            if len(families) > 1:
+                sets.append((name, families))
+        for name, families in sets:
+            slot = self.protocols.dynamic_protocol_of_member(ri, name)
+            if slot is not None:
+                decl = next((fam[0].variant_decl for fam in families
+                             if fam[0].variant_decl is not None), None)
+                raise SemanticError(
+                    f"'{record.name}.{name}' implements @dynamic protocol "
+                    f"method '{slot.name}.{name}' and cannot be a @dispatch set; "
+                    f"give the other variants different names",
+                    (decl.loc if decl is not None else None) or record.loc)
+            named = []
+            for family in families:
+                head = family[0]
+                decl = head.variant_decl
+                if decl is None or not _emits_own_variant(
+                        decl, stub_impl.get(id(decl))):
+                    continue
+                named.append(family)
+            name_overload_variants([family[0] for family in named], reserved)
+            for family in named:
+                variant = family[0].variant_cpp_name
+                if variant is None:
+                    continue
+                reserved = reserved | {variant}
+                for fi in family:
+                    fi.root._variant_cpp_name = variant
+                    if fi.root._compiler_spelling:
+                        # The operator's own spelling would leave the pick
+                        # to C++ again: a named dunder renders as its call.
+                        fi.cpp_template = _member_call_template(variant, fi)
+
+    def _record_member_names(self, ri: RecordInfo) -> frozenset[str]:
+        """Every C++ member name `ri`'s struct and its bases declare from
+        their source: the methods, fields, properties and their
+        `set_<prop>` setters, class constants and the members codegen adds
+        itself (inherited variant names: `inherited_variants`)."""
+        names: set[str] = {"size", "begin", "end", "__tpy_owned_",
+                           "__tpy_class_name__"}
+        for owner in (ri, *self.ctx.registry.iter_ancestor_records(ri)):
+            names.update(_own_member_names(owner))
+        return frozenset(names)
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,
@@ -5161,8 +5306,13 @@ class TypeRegistrar:
         """
         seen: dict[tuple, int] = {}
         for i, info in enumerate(infos):
+            # A method's variants all keep a plain-name member, so two
+            # whose C++ parameters coincide (`str` / `StrView`, both
+            # `std::string_view`) clash there as identical types would.
+            cpp_form = is_method and not is_bodyless_binding(info)
             key_parts: list = [
-                (p.type, p.keyword_only)
+                (_cpp_param_key(p.type) if cpp_form else p.type,
+                 p.keyword_only)
                 for p in info.params
                 if not p.is_variadic
             ]

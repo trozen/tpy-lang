@@ -37,11 +37,11 @@ namespace tpyapp::main {
 void main() {
     Frac f = Frac(::tpy::BigInt(1), ::tpy::BigInt(2));
     Frac f2 = Frac(::tpy::BigInt(1), ::tpy::BigInt(3));
-    std::cout << ((f) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
-    Frac q = ((f) / (::tpy::BigInt(2)));
+    std::cout << ((f).__truediv____int(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    Frac q = ((f).__truediv____int(::tpy::BigInt(2)));
     std::cout << q.den << "\n" << ::tpy::check_signals;
-    std::cout << ((f) / (::tpy::BigInt(2))).num << "\n" << ::tpy::check_signals;
-    double r = ((f) / (f2));
+    std::cout << ((f).__truediv____int(::tpy::BigInt(2))).num << "\n" << ::tpy::check_signals;
+    double r = ((f).__truediv____Frac(f2));
     std::cout << ::tpy::print_float(r) << "\n" << ::tpy::check_signals;
     Vec v = Vec(1.0, 2.0);
     std::cout << ((v) * (2.0)) << "\n" << ::tpy::check_signals;

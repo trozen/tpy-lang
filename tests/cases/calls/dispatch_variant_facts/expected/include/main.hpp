@@ -97,34 +97,42 @@ struct K {
 
     // @dispatch
     // def take(self, r: R) -> None:
+    void take__R(const R& r);
     void take(const R& r);
 
     // @dispatch
     // def take(self, xs: list[float]) -> None:
+    void take__list_float(std::vector<double>& xs);
     void take(std::vector<double>& xs);
 
     // @dispatch
     // def look(self, s: str) -> int32:
+    int32_t look__str(std::string_view s) const;
     int32_t look(std::string_view s) const;
 
     // @dispatch
     // def look(self, xs: list[float]) -> int32:
+    int32_t look__list_float(const std::vector<double>& xs) const;
     int32_t look(const std::vector<double>& xs) const;
 
     // @dispatch
     // def look_d(self, s: str) -> int32:
+    int32_t look_d__str(std::string_view s) const;
     int32_t look_d(std::string_view s) const;
 
     // @dispatch
     // def look_d(self, d: dict[str, int32]) -> int32:
+    int32_t look_d__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& d) const;
     int32_t look_d(const ::tpy::ordered_map<std::string, int32_t>& d) const;
 
     // @dispatch
     // def look_s(self, s: str) -> int32:
+    int32_t look_s__str(std::string_view s) const;
     int32_t look_s(std::string_view s) const;
 
     // @dispatch
     // def look_s(self, xs: set[int32]) -> int32:
+    int32_t look_s__set_int32(const ::tpy::ordered_set<int32_t>& xs) const;
     int32_t look_s(const ::tpy::ordered_set<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.K";
 };
@@ -271,59 +279,91 @@ inline K::K() : n(0) {}
 // @dispatch
 // def take(self, r: R) -> None:
 //     self.n = r.n
-inline void K::take(const R& r) {
+inline void K::take__R(const R& r) {
     this->n = r.n;
+}
+
+inline void K::take(const R& r) {
+    return this->take__R(r);
 }
 
 // @dispatch
 // def take(self, xs: list[float]) -> None:
 //     xs.append(2.5)
 //     self.n = len(xs)
-inline void K::take(std::vector<double>& xs) {
+inline void K::take__list_float(std::vector<double>& xs) {
     xs.push_back(2.5);
     this->n = ::tpy::__len__(xs);
+}
+
+inline void K::take(std::vector<double>& xs) {
+    return this->take__list_float(xs);
 }
 
 // @dispatch
 // def look(self, s: str) -> int32:
 //     return -1
-inline int32_t K::look(std::string_view s) const {
+inline int32_t K::look__str(std::string_view s) const {
     return -1;
+}
+
+inline int32_t K::look(std::string_view s) const {
+    return this->look__str(s);
 }
 
 // @dispatch
 // def look(self, xs: list[float]) -> int32:
 //     return len(xs)
-inline int32_t K::look(const std::vector<double>& xs) const {
+inline int32_t K::look__list_float(const std::vector<double>& xs) const {
     return ::tpy::__len__(xs);
+}
+
+inline int32_t K::look(const std::vector<double>& xs) const {
+    return this->look__list_float(xs);
 }
 
 // @dispatch
 // def look_d(self, s: str) -> int32:
 //     return -1
-inline int32_t K::look_d(std::string_view s) const {
+inline int32_t K::look_d__str(std::string_view s) const {
     return -1;
+}
+
+inline int32_t K::look_d(std::string_view s) const {
+    return this->look_d__str(s);
 }
 
 // @dispatch
 // def look_d(self, d: dict[str, int32]) -> int32:
 //     return len(d)
-inline int32_t K::look_d(const ::tpy::ordered_map<std::string, int32_t>& d) const {
+inline int32_t K::look_d__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& d) const {
     return ::tpy::__len__(d);
+}
+
+inline int32_t K::look_d(const ::tpy::ordered_map<std::string, int32_t>& d) const {
+    return this->look_d__dict_str_int32(d);
 }
 
 // @dispatch
 // def look_s(self, s: str) -> int32:
 //     return -1
-inline int32_t K::look_s(std::string_view s) const {
+inline int32_t K::look_s__str(std::string_view s) const {
     return -1;
+}
+
+inline int32_t K::look_s(std::string_view s) const {
+    return this->look_s__str(s);
 }
 
 // @dispatch
 // def look_s(self, xs: set[int32]) -> int32:
 //     return len(xs)
-inline int32_t K::look_s(const ::tpy::ordered_set<int32_t>& xs) const {
+inline int32_t K::look_s__set_int32(const ::tpy::ordered_set<int32_t>& xs) const {
     return ::tpy::__len__(xs);
+}
+
+inline int32_t K::look_s(const ::tpy::ordered_set<int32_t>& xs) const {
+    return this->look_s__set_int32(xs);
 }
 
 // def __init__(self) -> None:

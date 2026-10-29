@@ -467,7 +467,7 @@ struct tpy::Adapter<tpystd::asyncio::_executor::AnyTask, T> : tpystd::asyncio::_
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    bool poll_any(::tpystd::coro::Waker waker) override { return inner.poll_any(waker); }
+    bool poll_any(::tpystd::coro::Waker waker) override { return inner.poll_any(std::move(waker)); }
     void cancel_any() override { inner.cancel_any(); }
 };
 
@@ -475,7 +475,7 @@ template<tpystd::asyncio::_executor::__AnyTask_Concept__ T>
 struct tpy::RefAdapter<tpystd::asyncio::_executor::AnyTask, T> : tpystd::asyncio::_executor::AnyTask {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    bool poll_any(::tpystd::coro::Waker waker) override { return inner.poll_any(waker); }
+    bool poll_any(::tpystd::coro::Waker waker) override { return inner.poll_any(std::move(waker)); }
     void cancel_any() override { inner.cancel_any(); }
 };
 

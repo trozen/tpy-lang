@@ -31,7 +31,7 @@ struct TimerEntry {
     bool __lt__(TimerEntry o) const;
 
     friend bool operator<(const TimerEntry& lhs, TimerEntry o) {
-        return lhs.__lt__(o);
+        return lhs.__lt__(std::move(o));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.TimerEntry";
 };

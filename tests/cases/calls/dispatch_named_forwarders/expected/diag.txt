@@ -1,0 +1,1 @@
+main.py:196: warning: Method 'Redef.m' hides 'Base.m' -- any 'Base' reference will call 'Base.m', not 'Redef.m' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch

@@ -137,8 +137,7 @@ from ...type_def_registry import (
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container
-from ...typesys import (make_list, overload_variant_cpp_name, ResolvedBinop,
-                         ResolvedUnaryop)
+from ...typesys import make_list, ResolvedBinop, ResolvedUnaryop
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...sema.dyn_erasure import (classify_dyn_own_arg, conformer_source,
@@ -182,6 +181,7 @@ from ..nodes import (
     THIRTupleLayout,
 )
 from .predicates import (
+    _method_member_cpp,
     _deref_member_call_ok,
     _expr_is_const_source,
     _call_storage_optional_return,
@@ -4170,8 +4170,9 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
     or the value-union member sema landed it in, `TpyCoerce.union_member`),
     or None when this arg takes no pin. The pin applies where the callee is
     a variant C++ picks among its set again
-    (`FunctionInfo.reresolved_by_cpp`: a method's, or a user operator
-    dunder's, whose variants share one C++ name), or where the slot is a
+    (`FunctionInfo.reresolved_by_cpp`: variants sharing one C++ name), at a
+    named method or operator variant (whose literal would otherwise render
+    target-less), or where the slot is a
     value union and the argument may not render at the member sema chose:
     the bare literal may convert to no alternative (`3` at `uint8 | str`).
     A constant renders at its literal's own C++ type (`_literal_cpp_type`);
@@ -4188,7 +4189,14 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
     if not is_str and lit_t is None:
         return None
     member = a.union_member if isinstance(a, TpyCoerce) else None
-    if ((fi is None or not fi.reresolved_by_cpp)
+    # A method or operator variant of a set renders its numeric literal at
+    # the parameter's type even where its own name picks it: a method's
+    # literal argument is otherwise rendered target-less
+    # (BUGS.md#method-literal-arg-renders-target-less). A str literal
+    # converts to the one view parameter the name reaches.
+    method_variant = (lit_t is not None and fi is not None and fi.is_method
+                      and fi.overloaded and fi.variant_cpp_name is not None)
+    if ((fi is None or not (fi.reresolved_by_cpp or method_variant))
             and (member is None or lit_t is None or (
                 _numeric_literal_value(a, analyzer) is not None
                 and member == _literal_cpp_type(
@@ -9436,13 +9444,13 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                 return None
             return ("super_generic",
                     f"{parent.to_cpp()}::template "
-                    f"{escape_cpp_name(e.method)}")
+                    f"{_method_member_cpp(fi, e.method)}")
         if not _f1_record(parent, analyzer):
             # The non-generic form keeps its F1 pin (a native/cross-module
             # base may spell differently than bare to_cpp).
             return None
         return ("qualified",
-                f"{parent.to_cpp()}::{escape_cpp_name(e.method)}")
+                f"{parent.to_cpp()}::{_method_member_cpp(fi, e.method)}")
     if e.is_static_call:
         if e.builtin_module_call is not None:
             return None
@@ -9466,9 +9474,8 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                 cpp_class = module_static_class_cpp(
                     analyzer.registry, e.user_module_call, e.obj.field,
                     owner=e.static_call_owner)
-                cpp_method = (fi.native_name if fi.native_name
-                              else escape_cpp_name(e.method))
-                return ("qualified", f"{cpp_class}::{cpp_method}")
+                return ("qualified",
+                        f"{cpp_class}::{_method_member_cpp(fi, e.method)}")
             if fi.cpp_template is not None:
                 return _template_kind(fi, e)
             if (fi.native_function
@@ -13694,24 +13701,17 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
-    """The method-call member resolution's literal-mangled arm -- an
-    overloaded method plus a Literal param on the resolved fi
-    (`r.get("age")` -> `r.get__lit_age("age")`). Returns the mangled member
-    spelling, or None when the plain resolution applies. The @native rename
-    outranks it, so a renamed fi returns None and
-    the caller falls to `_method_member_cpp`."""
+    """The method-call member resolution's literal arm -- a named variant
+    with a `Literal` param (`r.get("age")` -> `r.get__lit_age("age")`), whose
+    member exists under its variant name only. None when the plain
+    resolution applies; the name is `_method_member_cpp`'s, read off the
+    same fact (`variant_cpp_name`) the definition reads."""
     fi = e.resolved_function_info
-    if fi is None or (fi.native_name and not fi.native_function):
+    if fi is None or fi.variant_cpp_name is None:
         return None
     if not any(isinstance(p.type, LiteralType) for p in fi.params):
         return None
-    obj_type = analyzer.get_expr_type(e.obj)
-    if not isinstance(obj_type, NominalType):
-        return None
-    record = analyzer.registry.get_record_for_type(obj_type)
-    if record is None or len(record.get_method_overloads(e.method)) <= 1:
-        return None
-    return overload_variant_cpp_name(e.method, fi.params)
+    return fi.variant_cpp_name
 
 
 def _enum_receiver(recv: TpyExpr, analyzer) -> 'TpyType | None':
@@ -13749,15 +13749,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     a `THIRNoneCheck` receiver).
 
     Method: a plain instance method, resolvable through the MRO (an
-    inherited method emits identically for the admitted arg shapes). An
-    overload set is admitted when its call renders the plain
-    `recv.method(args)` (or the mangled member of a literal set): an
-    `@auto_readonly` / `auto_own` clone pair, a property pair, a set whose
-    variants differ by C++ parameter types. A set with a TEMPLATE variant
-    (its own type params, or a protocol / `Fn` parameter that synthesizes
-    them) rejects: that variant is emitted through the template-header path,
-    which the plain member call does not name. The arguments read the
-    variant sema bound (`bound_method_overload`). A native_name RENAME on an actually-native
+    inherited method emits identically for the admitted arg shapes). A
+    variant of a set renders under its own name (`_method_member_cpp`), a
+    clone pair under the plain name C++ keeps apart by the receiver. The
+    arguments read the variant sema bound (`bound_method_overload`). A native_name RENAME on an actually-native
     record IS admitted (the file-handle `fh.write` shape -- member = native_name,
     a plain member call); a native_function (free-function form) / cpp_template
     each takes a different method-call arm and stays rejected.
@@ -13901,55 +13896,6 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or (fi.type_params and not generic_method_ok)
             or not (fi.is_method or static_member)):
         return note_detail("method.fi_kind")
-    overloads = analyzer.registry.get_method_overloads_with_parents(ri, e.method)
-    if len(overloads) != 1:
-        # An @auto_readonly / auto_own[Self] clone pair renders the same
-        # plain `recv.method(args)` whichever member sema resolved -- C++
-        # dispatches on receiver const-ness (or lvalue-ness), so the call
-        # emit is member-blind. The mutable-clone flag is threaded onto its
-        # FunctionInfo; an auto_own pair is the one-consuming-member shape
-        # (its consuming DEF never routes, but calls on lvalue receivers
-        # resolve to the borrowing member and render bare). Genuine stub
-        # sets (incl. literal overloads, whose call sites MANGLE the
-        # callee name) keep rejecting.
-        is_clone_pair = (
-            len(overloads) == 2
-            and (any(fi2.is_auto_readonly_mutable_clone for fi2 in overloads)
-                 or sum(1 for fi2 in overloads if fi2.is_consuming) == 1))
-        # A property getter/setter pair shares the property name: the read
-        # resolves to the getter specifically (`c.prop` -> `c.prop()`), so the
-        # emit is unambiguous whatever the paired setter -- not a genuine
-        # overload set. A setter call carries a synthetic name (`set_prop`)
-        # not in the registry, so its lookup is empty -- the resolved fi's
-        # accessor kind is the tell.
-        is_property_pair = (
-            (bool(overloads)
-             and all(fi2.is_property_getter or fi2.is_property_setter
-                     for fi2 in overloads))
-            or (not overloads
-                and (fi.is_property_getter or fi.is_property_setter)))
-        # A genuine stub set whose members differ by C++ param TYPES renders
-        # the plain `recv.method(args)` -- C++ overload resolution picks the
-        # specialization emitted per stub. LITERAL-typed params
-        # spell a MANGLED member instead (`r.get__lit_age("age")` -- the
-        # record arm's method_literal_mangled_cpp spelling). Template stubs
-        # (own type params, or protocol/Fn params synthesizing them) emit
-        # through the template-header path -- both reject.
-        template_stub = any(getattr(fi2, "type_params", None)
-                            or any(_stub_template_param(p.type)
-                                   for p in fi2.params)
-                            for fi2 in overloads)
-        is_plain_stub_set = (
-            not any(isinstance(p.type, LiteralType) for p in fi.params)
-            and not template_stub)
-        literal_stub_set = (
-            not template_stub
-            and method_literal_mangled_cpp(e, analyzer) is not None)
-        if not (is_clone_pair or is_property_pair
-                or (is_plain_stub_set
-                    and _witness("method.overload_set_call"))
-                or literal_stub_set):
-            return note_detail("method.overload_set")
     ret = analyzer.get_expr_type(e)
     # The value-result CORE is the one the builtin-stub families already
     # share (`_stub_method_ret_ok`): scalar / char / enum / Ptr / str-value /

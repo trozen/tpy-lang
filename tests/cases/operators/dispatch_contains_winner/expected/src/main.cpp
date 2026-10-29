@@ -29,8 +29,8 @@ int32_t mark(std::string_view tag, int32_t x) {
 void value() {
     B b = B();
     int8_t n8 = 1;
-    bool r = b.__contains__(static_cast<int16_t>(n8));
-    bool c = b.__contains__(static_cast<int16_t>(n8));
+    bool r = b.__contains____int16(static_cast<int16_t>(n8));
+    bool c = b.__contains____int16(static_cast<int16_t>(n8));
     std::cout << "value:" << " " << ::tpy::print_bool(r) << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
 }
 
@@ -43,7 +43,7 @@ void value() {
 void negated() {
     B b = B();
     int8_t n8 = 1;
-    bool r = (!(b.__contains__(static_cast<int16_t>(n8))));
+    bool r = (!(b.__contains____int16(static_cast<int16_t>(n8))));
     std::cout << "negated:" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
 }
 
@@ -57,9 +57,9 @@ void negated() {
 //     print("literal:", r, n, c)
 void literal() {
     BLit b = BLit();
-    bool r = b.__contains__(3);
-    bool n = (!(b.__contains__(3)));
-    bool c = b.__contains__(3);
+    bool r = b.__contains____int32(3);
+    bool n = (!(b.__contains____int32(3)));
+    bool c = b.__contains____int32(3);
     std::cout << "literal:" << " " << ::tpy::print_bool(r) << " " << ::tpy::print_bool(n) << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
 }
 
@@ -72,7 +72,7 @@ void literal() {
 void generic_class() {
     G<int32_t> g = G<int32_t>();
     int8_t n8 = 1;
-    bool r = g.__contains__(static_cast<int16_t>(n8));
+    bool r = g.__contains____int16(static_cast<int16_t>(n8));
     std::cout << "generic_class:" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
 }
 
@@ -99,7 +99,7 @@ void generic_function() {
 void strings() {
     Words w = Words();
     Blob s = Blob();
-    bool r = w.__contains__(std::string_view("x"));
+    bool r = w.__contains____str("x");
     bool ab = s.__contains__(::tpy::bytes_literal("ab", 2));
     bool cd = (!(s.__contains__(::tpy::bytes_literal("cd", 2))));
     std::cout << "strings:" << " " << ::tpy::print_bool(r) << " " << ::tpy::print_bool(ab) << " " << ::tpy::print_bool(cd) << "\n" << ::tpy::check_signals;
@@ -132,7 +132,7 @@ void comprehension() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int8_t x = *__beg_0;
-            if (b.__contains__(static_cast<int16_t>(x))) {
+            if (b.__contains____int16(static_cast<int16_t>(x))) {
                 __result.push_back(x);
             }
         }
@@ -476,7 +476,7 @@ void __tpy_init() {
     static B __global_slot_2 = B();
     mb = &__global_slot_2;
     m8 = 1;
-    mr = mb->__contains__(static_cast<int16_t>(m8));
+    mr = mb->__contains____int16(static_cast<int16_t>(m8));
     std::cout << "module:" << " " << ::tpy::print_bool(mr) << "\n" << ::tpy::check_signals;
 }
 

@@ -725,10 +725,11 @@ class SemanticAnalyzer:
 
     def _compute_record_shadow_facts(self, module: TpyModule) -> None:
         """Set `RecordInfo.shadows_local_type` for each record: true when a C++
-        member (own or MRO-inherited method/field/property/class-constant) shares
-        a name with a same-module record/enum/@dynamic-protocol, so the member
-        shadows that type in record scope and local type references inside must
-        render fully-qualified. The shadow name is a type's leading C++ component
+        member (own or MRO-inherited method/field/property/class-constant, or
+        a method variant's generated name) shares a name with a same-module
+        record/enum/@dynamic-protocol, so the member shadows that type in
+        record scope and local type references inside must render
+        fully-qualified. The shadow name is a type's leading C++ component
         (`Outer` for a nested `Outer.Inner`), which is what an unqualified member
         can hijack."""
         registry = self.ctx.registry
@@ -755,6 +756,10 @@ class SemanticAnalyzer:
             if ri is None:
                 continue
             members = registry.class_member_names(ri, nested)
+            members.update(fi.variant_cpp_name
+                           for owner in (ri, *registry.iter_ancestor_records(ri))
+                           for infos in owner.methods.values() for fi in infos
+                           if fi.variant_cpp_name is not None)
             ri.shadows_local_type = not members.isdisjoint(shadow_names)
 
     def register_records_and_protocols(self, module: TpyModule) -> None:
@@ -823,11 +828,6 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self.registrar.validate_record_inheritance(record)
 
-        # Compute the member-name/type-name shadow fact now that MRO is
-        # populated and every local type is registered -- one source both
-        # codegen and THIR read (see RecordInfo.shadows_local_type).
-        self._compute_record_shadow_facts(module)
-
         # Re-validate record field types now that protocols are registered AND
         # inheritance is finalized. Optional[@dynamic] / container-element /
         # union-protocol checks rely on protocol_info_of, which only resolves
@@ -848,6 +848,19 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self.registrar.validate_value_type_fields(record)
             self.registrar.prune_value_property_clones(record)
+        # After the clones are settled and the MRO is resolved: every
+        # TPy-bodied method / dunder variant of a set gets its C++ name.
+        # A base must be named before its subclasses (they reserve its
+        # names): source order within a module and module order across
+        # Phase 1 give that for every class a base can precede.
+        for record in module.all_records():
+            self.registrar.name_record_method_variants(record)
+
+        # Compute the member-name/type-name shadow fact now that MRO is
+        # populated, every local type is registered and every variant is
+        # named -- one source both codegen and THIR read (see
+        # RecordInfo.shadows_local_type).
+        self._compute_record_shadow_facts(module)
 
         # Validate default_factory fields conform to Default protocol
         self._validate_factory_defaults(module)

@@ -176,8 +176,8 @@ int64_t td_x(const Opts& o) {
 //     print("ctor-template-lambda", il)
 void callee_reentry() {
     Disp d = Disp();
-    std::cout << "dispatch-method-outer" << " " << ::tpyapp::main::outer__int64(d.m(static_cast<int64_t>(2), static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
-    int64_t dl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&d](int64_t a) -> int64_t { return d.m(a, static_cast<int64_t>(3)); }, 2);
+    std::cout << "dispatch-method-outer" << " " << ::tpyapp::main::outer__int64(d.m__int64__int64(static_cast<int64_t>(2), static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
+    int64_t dl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&d](int64_t a) -> int64_t { return d.m__int64__int64(a, static_cast<int64_t>(3)); }, 2);
     std::cout << "dispatch-method-lambda" << " " << dl << "\n" << ::tpy::check_signals;
     Opts __tmp_1 = Opts(2);
     std::cout << "td-outer" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::td_x(__tmp_1)) << "\n" << ::tpy::check_signals;

@@ -23,7 +23,7 @@ struct Key {
     bool __eq__(Key other) const;
 
     friend bool operator==(const Key& lhs, Key other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "other.Key";
 };

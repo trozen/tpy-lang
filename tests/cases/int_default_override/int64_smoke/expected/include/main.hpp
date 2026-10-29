@@ -24,10 +24,12 @@ struct Widths {
 
     // @dispatch
     // def __add__(self, x: int64) -> int32:
+    int32_t __add____int64(int64_t x) const;
     int32_t __add__(int64_t x) const;
 
     // @dispatch
     // def __add__(self, x: int32) -> int32:
+    int32_t __add____int32(int32_t x) const;
     int32_t __add__(int32_t x) const;
 
     friend int32_t operator+(const Widths& lhs, int64_t x) {
@@ -54,15 +56,23 @@ inline Widths::Widths() {
 // @dispatch
 // def __add__(self, x: int64) -> int32:
 //     return 64
-inline int32_t Widths::__add__(int64_t x) const {
+inline int32_t Widths::__add____int64(int64_t x) const {
     return 64;
+}
+
+inline int32_t Widths::__add__(int64_t x) const {
+    return this->__add____int64(x);
 }
 
 // @dispatch
 // def __add__(self, x: int32) -> int32:
 //     return 32
-inline int32_t Widths::__add__(int32_t x) const {
+inline int32_t Widths::__add____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t Widths::__add__(int32_t x) const {
+    return this->__add____int32(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

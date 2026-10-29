@@ -43,7 +43,7 @@ std::string cross__str__int32(std::string_view x, int32_t y) {
 void free_function() {
     L v = L();
     std::vector<int32_t> xs = {1, 2};
-    std::cout << "free_function:" << " " << ((v) + (xs)) << "\n" << ::tpy::check_signals;
+    std::cout << "free_function:" << " " << ((v).__add____list_int32(xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def method() -> None:
@@ -84,7 +84,7 @@ void comprehension() {
     std::vector<int32_t> xs = {1, 2};
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_0) -> int32_t {
         int32_t _ = int32_t(__i_0);
-        return ((v) + (xs));
+        return ((v).__add____list_int32(xs));
     })) << "\n" << ::tpy::check_signals;
 }
 
@@ -97,7 +97,7 @@ void comprehension() {
 void lam() {
     L v = L();
     std::vector<int32_t> xs = {1, 2};
-    std::function<int32_t()> g = [v, xs]() -> int32_t { return ((v) + (xs)); };
+    std::function<int32_t()> g = [v, xs]() -> int32_t { return ((v).__add____list_int32(xs)); };
     std::cout << "lambda:" << " " << g() << "\n" << ::tpy::check_signals;
 }
 
@@ -122,18 +122,18 @@ void lam() {
 //     print("spellings:", cond)
 void spellings() {
     N v = N();
-    std::cout << "spellings:" << " " << ((v) * (::tpy::BigInt(3))) << " " << ((::tpy::BigInt(3)) * (v)) << " " << (v) * (::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
-    v.__iadd__(::tpy::BigInt(3));
+    std::cout << "spellings:" << " " << ((v).__mul____int(::tpy::BigInt(3))) << " " << ((v).__rmul____int(::tpy::BigInt(3))) << " " << (v).__mul____int(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    v.__iadd____int(::tpy::BigInt(3));
     std::cout << "spellings: iadd" << " " << v.hits << "\n" << ::tpy::check_signals;
-    bool lt = ((v) < (::tpy::BigInt(3)));
-    bool chained = (((v) > (::tpy::BigInt(3))) && (3 > 1));
-    bool ne = (!((v) == (::tpy::BigInt(3))));
+    bool lt = ((v).__lt____int(::tpy::BigInt(3)));
+    bool chained = (((v).__gt____int(::tpy::BigInt(3))) && (3 > 1));
+    bool ne = (!((v).__eq____int(::tpy::BigInt(3))));
     std::cout << "spellings:" << " " << ::tpy::print_bool(lt) << " " << ::tpy::print_bool(chained) << " " << ::tpy::print_bool(ne) << "\n" << ::tpy::check_signals;
     int32_t t;
-    bool walrus = ({ auto&& _cmp1 = (t = 3); ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
+    bool walrus = ({ auto&& _cmp1 = (t = 3); ((v).__gt____int(::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
     std::cout << "spellings:" << " " << ::tpy::print_bool(walrus) << " " << t << "\n" << ::tpy::check_signals;
     bool flag = (v.hits > 0);
-    bool cond = ({ auto&& _cmp1 = ((flag) ? (3) : (3)); ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
+    bool cond = ({ auto&& _cmp1 = ((flag) ? (3) : (3)); ((v).__gt____int(::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
     std::cout << "spellings:" << " " << ::tpy::print_bool(cond) << "\n" << ::tpy::check_signals;
 }
 
@@ -145,7 +145,7 @@ void spellings() {
 //     print("aug_fallback:", w.n)
 void aug_fallback() {
     W w = W(0);
-    w = (w) + (::tpy::BigInt(3));
+    w = (w).__add____int(::tpy::BigInt(3));
     std::cout << "aug_fallback:" << " " << w.n << "\n" << ::tpy::check_signals;
 }
 
@@ -158,9 +158,9 @@ void aug_fallback() {
 //     print("optional_pin:", ostr + "x", ostr.m("y"))  # tpyc: ok
 void optional_pin() {
     Opt o = Opt();
-    std::cout << "optional_pin:" << " " << ((o) + (std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << "optional_pin:" << " " << ((o).__add____float_None(std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
     OptStr ostr = OptStr();
-    std::cout << "optional_pin:" << " " << ((ostr) + (std::optional<std::string_view>("x"))) << " " << ostr.m(std::optional<std::string_view>("y")) << "\n" << ::tpy::check_signals;
+    std::cout << "optional_pin:" << " " << ((ostr).__add____str_None("x")) << " " << ostr.m__str_None("y") << "\n" << ::tpy::check_signals;
 }
 
 // def timedelta_ops() -> None:
@@ -174,10 +174,10 @@ void optional_pin() {
 void timedelta_ops() {
     ::tpystd::datetime::timedelta d = ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1));
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(9007199254740993LL));
-    std::cout << "timedelta:" << " " << ((d) * (::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))) << " " << (d) * (::tpy::BigInt(static_cast<int64_t>(9007199254740993LL))) << "\n" << ::tpy::check_signals;
-    std::cout << "timedelta:" << " " << ::tpy::print_bool(((((d) * (::tpy::BigInt(static_cast<int64_t>(9007199254740993LL))))) == ((d) * (::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))))) << "\n" << ::tpy::check_signals;
-    std::cout << "timedelta:" << " " << ((((d) * (big))) / (::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))) << "\n" << ::tpy::check_signals;
-    std::cout << "timedelta:" << " " << ((d) * (::tpy::BigInt(3))) << " " << ((d) * (1.5)) << " " << ((d) / (::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
+    std::cout << "timedelta:" << " " << ((d).__mul____int(::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))) << " " << (d).__mul____int(::tpy::BigInt(static_cast<int64_t>(9007199254740993LL))) << "\n" << ::tpy::check_signals;
+    std::cout << "timedelta:" << " " << ::tpy::print_bool(((((d).__mul____int(::tpy::BigInt(static_cast<int64_t>(9007199254740993LL))))) == ((d).__mul____int(::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))))) << "\n" << ::tpy::check_signals;
+    std::cout << "timedelta:" << " " << ((((d).__mul____int(big))).__truediv____int(::tpy::BigInt(static_cast<int64_t>(9007199254740993LL)))) << "\n" << ::tpy::check_signals;
+    std::cout << "timedelta:" << " " << ((d).__mul____int(::tpy::BigInt(3))) << " " << ((d).__mul____float(1.5)) << " " << ((d).__truediv____int(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
 }
 
 // def builtin_rows() -> None:
@@ -215,7 +215,7 @@ void builtin_rows() {
 void literal_values(std::string_view mode, std::string_view one) {
     std::cout << "literal:" << " " << (::tpy::str_concat("text:", mode)) << "\n" << ::tpy::check_signals;
     Text t = Text();
-    std::cout << "literal:" << " " << ((t) + (mode)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal:" << " " << ((t).__add____str(mode)) << "\n" << ::tpy::check_signals;
     std::cout << "literal:" << " " << ::tpyapp::main::f__str(one) << "\n" << ::tpy::check_signals;
     std::cout << "literal:" << " " << ::tpyapp::main::cross__lit_a(one, 3) << "\n" << ::tpy::check_signals;
 }
@@ -237,7 +237,7 @@ void literal_param() {
     Lit3 v = Lit3();
     std::cout << "literal:" << " " << ((v) + (::tpyapp::main::lit3())) << "\n" << ::tpy::check_signals;
     LitWidth lw = LitWidth();
-    std::cout << "literal:" << " " << ((lw) + (::tpyapp::main::lit3())) << "\n" << ::tpy::check_signals;
+    std::cout << "literal:" << " " << ((lw).__add____int32(::tpyapp::main::lit3())) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -287,7 +287,7 @@ void __tpy_init() {
     v_mod = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = {1, 2};
     xs_mod = &__global_slot_2;
-    std::cout << "module:" << " " << (((*v_mod)) + ((*xs_mod))) << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << (((*v_mod)).__add____list_int32((*xs_mod))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

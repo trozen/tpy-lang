@@ -47,25 +47,25 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.__setitem__(std::string_view("y"), 1);
+        t.__setitem____str__int32("y", 1);
         __state = S_RESUME_0;
-        return t[std::string_view("y")];
+        return t.__getitem____str("y");
     }
     case S_RESUME_0: {  // after: yield t["y"]  # tpyc: ok
-        t.__setitem__(std::string_view("y"), ::tpy::add_check<int32_t>(t[std::string_view("y")], 1));
+        t.__setitem____str__int32("y", ::tpy::add_check<int32_t>(t.__getitem____str("y"), 1));
         __state = S_RESUME_1;
-        return t[std::string_view("y")];
+        return t.__getitem____str("y");
     }
     case S_RESUME_1: {  // after: yield t["y"]
         {
             auto __tmp_1 = ks.key();
-            t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 1));
+            t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 1));
         }
         __state = S_RESUME_2;
-        return t[1];
+        return t.__getitem____int32(1);
     }
     case S_RESUME_2: {  // after: yield t[1]
-        t.__delitem__(std::string_view("y"));
+        t.__delitem____str("y");
         __state = S_RESUME_3;
         return ::tpy::__len__(t.log);
     }

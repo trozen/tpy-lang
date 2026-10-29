@@ -156,9 +156,9 @@ void main() {
     std::cout << "ctor-dispatch-consume:" << " " << ::tpyapp::main::tagged__list_Tagged_B_int64(__tmp_6) << "\n" << ::tpy::check_signals;
     Shelf s = Shelf();
     std::vector<Bag<int64_t>> __tmp_7 = {Bag<int64_t>()};
-    std::cout << "ctor-method-list:" << " " << s.put(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-method-list:" << " " << s.put__list_Bag_int64(__tmp_7) << "\n" << ::tpy::check_signals;
     std::vector<Bag<int64_t>> __tmp_8 = {Bag<int64_t>()};
-    std::cout << "ctor-method-keyword:" << " " << s.put(__tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-method-keyword:" << " " << s.put__list_Bag_int64(__tmp_8) << "\n" << ::tpy::check_signals;
 }
 
 // main()

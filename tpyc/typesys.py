@@ -8514,20 +8514,23 @@ class FunctionInfo:
     # its omitted arguments (`materializes_defaults`). Stored on the RAW fi,
     # read through `root`.
     _emits_cpp_defaults: bool = field(default=True, compare=False)
-    # The C++ name of this variant of a free overload set with several
-    # emitted variants (`name_overload_variants`); None = emitted under its
-    # source name. Every definition, declaration, re-export, call and
-    # function reference spells it, so C++ never re-resolves sema's pick.
-    # Stored on the RAW fi, read through `root` (`variant_cpp_name`).
+    # The C++ name of this variant of an overload set with several emitted
+    # variants -- a free set's, or a record's method / operator dunder set's
+    # (`name_overload_variants`); None = emitted under its source name.
+    # Every definition, declaration, re-export, call and function reference
+    # spells it, so C++ never re-resolves sema's pick. Stored on the RAW fi,
+    # read through `root` (`variant_cpp_name`).
     _variant_cpp_name: str | None = field(default=None, compare=False)
-    # The `cpp_template` is not this variant's own text but the operator
-    # spelling every variant of its set shares (a user operator dunder's
-    # `({self}) + ({0})`), so C++ picks among the set's variants by its own
-    # rules as for a method name. Set at registration; read through `root`.
-    _shares_set_spelling: bool = field(default=False, compare=False)
-    # The def a variant of a free overload set was registered from (the
-    # `@dispatch` body or the `typing.overload` stub): how an emitter
-    # holding the def finds its FunctionInfo (`variant_cpp_name_of`).
+    # The `cpp_template` is not a binding's text but the compiler's
+    # spelling of a user operator dunder: the C++ operator a single
+    # definition is reached by (`({self}) + ({0})`), or the member call of
+    # a named variant of a set (`({self}).__add____int({0})`). Set at
+    # registration; read through `root`.
+    _compiler_spelling: bool = field(default=False, compare=False)
+    # The def a variant of an overload set was registered from (the
+    # `@dispatch` body or the `typing.overload` stub; a method's own def):
+    # how an emitter holding the def finds its FunctionInfo
+    # (`variant_cpp_name_of`).
     variant_decl: TpyFunction | None = field(default=None, repr=False, compare=False)
     # Synthesized for a call through a callable VALUE (an Fn/Callable-typed
     # param, local or field). The signature comes from the Fn type, not from
@@ -8616,14 +8619,14 @@ class FunctionInfo:
     @property
     def reresolved_by_cpp(self) -> bool:
         """Whether C++ picks among this variant's set again: it is one of an
-        overload set (`overloaded`) whose variants share one C++ name -- a
-        method's, or the operator a user dunder's shared spelling names --
-        emitted from TPy (not generic, not a @native / @cpp_template stub,
-        whose C++ is written against its own spelling). A free function's
-        variants each have their own name (`variant_cpp_name`)."""
+        overload set (`overloaded`) whose variants share one C++ name --
+        the operator a single user dunder's spelling names -- emitted from
+        TPy (not generic, not a @native / @cpp_template stub, whose C++ is
+        written against its own spelling). A TPy-bodied variant of a set
+        has its own name (`variant_cpp_name`)."""
         return (self.overloaded and self.variant_cpp_name is None
                 and not self.is_generic()
-                and (self.cpp_template is None or self.root._shares_set_spelling)
+                and (self.cpp_template is None or self.root._compiler_spelling)
                 and not self.native_function and not self.native_name)
 
     @property
@@ -8941,10 +8944,10 @@ def is_bodyless_binding(fn) -> bool:
     what its signature says are all there is.
 
     A user operator dunder is no binding: its `cpp_template` is the
-    operator spelling its overload set shares (`_shares_set_spelling`),
-    which names the call, not a missing body.
+    compiler's spelling of its call (`_compiler_spelling`), not a missing
+    body.
     """
-    if isinstance(fn, FunctionInfo) and fn.root._shares_set_spelling:
+    if isinstance(fn, FunctionInfo) and fn.root._compiler_spelling:
         return False
     return binds_runtime_symbol(fn) or (fn.is_stub and not fn.is_export)
 
@@ -10201,6 +10204,19 @@ class TypeRegistry:
         `record` (`mro_method_definer`), `record` itself when none does."""
         found = self.mro_method_definer(record, method)
         return found[1] if found is not None else record
+
+    def inherited_variants(self, record: RecordInfo,
+                           ) -> dict[str, tuple[RecordInfo, 'FunctionInfo']]:
+        """The variants of a set `record` inherits, by C++ name, with the
+        class declaring each, where a call through `record` still reaches
+        them: a set `record` or a class between redefines is hidden whole,
+        so its names are free again."""
+        return {
+            fi.variant_cpp_name: (owner, fi)
+            for owner in self.iter_ancestor_records(record)
+            for name, infos in owner.methods.items()
+            if self.method_owner(record, name) is owner
+            for fi in infos if fi.variant_cpp_name is not None}
 
     def iter_mro_entries(self, record: RecordInfo, *, reverse: bool = False,
                          fields_only: bool = False,

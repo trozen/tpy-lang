@@ -43,18 +43,22 @@ struct P {
 
     // @dispatch
     // def tk2(self, xs: list[float]) -> int32:
+    int32_t tk2__list_float(const std::vector<double>& xs) const;
     int32_t tk2(const std::vector<double>& xs) const;
 
     // @dispatch
     // def tk2(self, xs: list[int32]) -> int32:
+    int32_t tk2__list_int32(std::vector<int32_t>& xs) const;
     int32_t tk2(std::vector<int32_t>& xs) const;
 
     // @dispatch
     // def m(self, xs: list[float]) -> int32:
+    int32_t m__list_float(std::vector<double>& xs) const;
     int32_t m(std::vector<double>& xs) const;
 
     // @dispatch
     // def m(self, r: R) -> int32:
+    int32_t m__R(const R& r);
     int32_t m(const R& r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
@@ -76,35 +80,51 @@ inline P::P() : n(0) {}
 // @dispatch
 // def tk2(self, xs: list[float]) -> int32:
 //     return len(xs)
-inline int32_t P::tk2(const std::vector<double>& xs) const {
+inline int32_t P::tk2__list_float(const std::vector<double>& xs) const {
     return ::tpy::__len__(xs);
+}
+
+inline int32_t P::tk2(const std::vector<double>& xs) const {
+    return this->tk2__list_float(xs);
 }
 
 // @dispatch
 // def tk2(self, xs: list[int32]) -> int32:
 //     xs.append(4)
 //     return len(xs)
-inline int32_t P::tk2(std::vector<int32_t>& xs) const {
+inline int32_t P::tk2__list_int32(std::vector<int32_t>& xs) const {
     xs.push_back(4);
     return ::tpy::__len__(xs);
+}
+
+inline int32_t P::tk2(std::vector<int32_t>& xs) const {
+    return this->tk2__list_int32(xs);
 }
 
 // @dispatch
 // def m(self, xs: list[float]) -> int32:
 //     xs.append(1.0)
 //     return len(xs)
-inline int32_t P::m(std::vector<double>& xs) const {
+inline int32_t P::m__list_float(std::vector<double>& xs) const {
     xs.push_back(1.0);
     return ::tpy::__len__(xs);
+}
+
+inline int32_t P::m(std::vector<double>& xs) const {
+    return this->m__list_float(xs);
 }
 
 // @dispatch
 // def m(self, r: R) -> int32:
 //     self.n = r.n
 //     return r.n
-inline int32_t P::m(const R& r) {
+inline int32_t P::m__R(const R& r) {
     this->n = r.n;
     return r.n;
+}
+
+inline int32_t P::m(const R& r) {
+    return this->m__R(r);
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -2843,12 +2843,14 @@ def _record_read_fields(e: TpySubscript, rec_fi: 'FunctionInfo',
                         use: '_ExprUse', lc: '_LowerCtx',
                         declared: dict[str, TpyType]) -> dict:
     """The render fields of a record subscript node: a binding the variant
-    names (a builtin dunder a subclass inherits) renders as any read does
-    (`_getitem_render`), a variant with a TPy body and a store target
-    through the record's generated `operator[]`. No unchecked twin: sema
-    proves no index of a record receiver in range."""
+    names (a builtin dunder a subclass inherits) and a named variant of a
+    set render as any read does (`_getitem_render`), a single variant with
+    a TPy body and a store target through the record's generated
+    `operator[]`. No unchecked twin: sema proves no index of a record
+    receiver in range."""
     read = (_getitem_render(e, use, lc, declared)
-            if is_bodyless_binding(rec_fi.root) else None)
+            if (is_bodyless_binding(rec_fi.root)
+                or rec_fi.variant_cpp_name is not None) else None)
     if read is None:
         return {"record_getitem": True}
     return {"bound_getitem": read.binding,
@@ -7791,7 +7793,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                  and _slice_bound_supported(e.index.step,
                                                             analyzer)))):
                     record_slice_tpl = ("{self}."
-                                        + (fi.native_name or fi.name)
+                                        + _method_member_cpp(fi, fi.name)
                                         + "({0})")
                     _witness("subscript.record_slice_method")
                 # Any other slice read renders the resolved dunder's
@@ -12666,7 +12668,7 @@ def _lower_dyn_synth_call(call: 'TpyMethodCall', rtype: 'TpyType | None',
         receiver=_lower_expr(
             recv, lc, declared,
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-        method_cpp=escape_cpp_name(call.method),
+        method_cpp=_method_member_cpp(fi, call.method),
         args=(_lower_call_arg(name_arg, fi.params[0].type, lc, declared,
                               method_arg=True,
                               retention=arg_retention(fi, 0, call, analyzer,
@@ -14433,8 +14435,11 @@ def _generic_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | 
     class_name, record_info = static_class_cpp(
         analyzer.registry, implicit, analyzer.ctx.module_name, e.obj.name,
         e.static_call_owner)
-    return _compose_static_targs(class_name, record_info,
-                                 escape_cpp_name(e.method), e, lc)
+    return _compose_static_targs(
+        class_name, record_info,
+        (_method_member_cpp(e.resolved_function_info, e.method)
+         if e.resolved_function_info is not None
+         else escape_cpp_name(e.method)), e, lc)
 
 
 def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | None]':
@@ -14451,7 +14456,7 @@ def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, 
     cpp_class = module_static_class_cpp(
         analyzer.registry, e.user_module_call, class_short,
         owner=e.static_call_owner)
-    cpp_method = (fi.native_name if fi is not None and fi.native_name
+    cpp_method = (_method_member_cpp(fi, e.method) if fi is not None
                   else escape_cpp_name(e.method))
     return _compose_static_targs(cpp_class, record_info, cpp_method, e, lc)
 

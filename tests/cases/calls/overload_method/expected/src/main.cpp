@@ -15,8 +15,8 @@ void main() {
     Vet v = Vet();
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(7));
-    std::cout << v.treat(d) << "\n" << ::tpy::check_signals;
-    std::cout << v.treat(c) << "\n" << ::tpy::check_signals;
+    std::cout << v.treat__Dog(d) << "\n" << ::tpy::check_signals;
+    std::cout << v.treat__Cat(c) << "\n" << ::tpy::check_signals;
     std::cout << v.count << "\n" << ::tpy::check_signals;
 }
 

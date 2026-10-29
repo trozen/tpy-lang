@@ -22,9 +22,9 @@ namespace tpyapp::main {
 void main() {
     Day a = Day(::tpy::BigInt(10));
     Day b = Day(::tpy::BigInt(3));
-    Delta diff = ((a) - (b));
+    Delta diff = ((a).__sub____Day(b));
     std::cout << diff.n << "\n" << ::tpy::check_signals;
-    Day moved = ((a) - (Delta(::tpy::BigInt(2))));
+    Day moved = ((a).__sub____Delta(Delta(::tpy::BigInt(2))));
     std::cout << moved.ordinal << "\n" << ::tpy::check_signals;
     Day later = ((a) + (Delta(::tpy::BigInt(5))));
     std::cout << later.ordinal << "\n" << ::tpy::check_signals;

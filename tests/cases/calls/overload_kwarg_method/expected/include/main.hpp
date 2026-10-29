@@ -25,10 +25,12 @@ struct Box {
 
     // @dispatch
     // def apply(self, x: int32, *, tag: str = "") -> str:
+    std::string apply__int32__str(int32_t x, std::string_view tag = "") const;
     std::string apply(int32_t x, std::string_view tag = "") const;
 
     // @dispatch
     // def apply(self, x: int32, *, tag: int32 = 0) -> int32:
+    int32_t apply__int32__int32(int32_t x, int32_t tag = 0) const;
     int32_t apply(int32_t x, int32_t tag = 0) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -46,15 +48,23 @@ inline Box::Box(int32_t base) : base(base) {}
 // @dispatch
 // def apply(self, x: int32, *, tag: str = "") -> str:
 //     return tag + ":" + str(self.base + x)
-inline std::string Box::apply(int32_t x, std::string_view tag) const {
+inline std::string Box::apply__int32__str(int32_t x, std::string_view tag) const {
     return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
+}
+
+inline std::string Box::apply(int32_t x, std::string_view tag) const {
+    return this->apply__int32__str(x, tag);
 }
 
 // @dispatch
 // def apply(self, x: int32, *, tag: int32 = 0) -> int32:
 //     return self.base + x + tag
-inline int32_t Box::apply(int32_t x, int32_t tag) const {
+inline int32_t Box::apply__int32__int32(int32_t x, int32_t tag) const {
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), tag));
+}
+
+inline int32_t Box::apply(int32_t x, int32_t tag) const {
+    return this->apply__int32__int32(x, tag);
 }
 void __tpy_init();
 } // namespace tpyapp::main

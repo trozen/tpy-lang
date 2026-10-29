@@ -249,8 +249,7 @@ def use_passing() -> str:
 
 # a @dispatch group with a template sibling: the non-template variant taking
 # the peer by value is defined in the .cpp, the template one in the header
-# (calling the set is BUGS.md#dispatch-method-variant-reresolved-by-cpp, the
-# `method.overload_set` reject; the class compiling is the subject)
+# (the class compiling is the subject)
 class Disp:
     k: int32
 
@@ -299,8 +298,7 @@ class Opt:
 
 
 # an @overload implementation annotated with the peer: only the stubs, which
-# do not name it, are emitted (header templates over the `Iterable` protocol;
-# a call is BUGS.md#dispatch-method-variant-reresolved-by-cpp)
+# do not name it, are emitted (header templates over the `Iterable` protocol)
 class Box:
     @overload
     def f(self, x: Iterable[int32]) -> int32: ...

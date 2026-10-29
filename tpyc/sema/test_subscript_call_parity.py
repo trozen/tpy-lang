@@ -507,8 +507,8 @@ def test_union_variant_argument_renders_at_the_union():
     """`v.b(1)` with `b(x: float)` declared before `b(x: int64 | str)`:
     sema picks the union variant whatever the declaration order, and the
     literal renders at the member sema chose wrapped in the union, so C++
-    binds that variant rather than the `double` overload sharing the
-    method's name."""
+    binds that variant (named `b__int64_str`, the literal kept at the
+    union's member)."""
     compiler, modules = _compile(HEADER + """
 from tpy import dispatch, int64
 
@@ -534,7 +534,7 @@ def f(v: V) -> None:
               == "b"]
     assert picked == ["int64 | str"]
     cpp = compiler.generate_module_sources(_entry(modules)).cpp
-    assert ("v.b(::tpy::Union<int64_t, std::string>("
+    assert ("v.b__int64_str(::tpy::Union<int64_t, std::string>("
             "static_cast<int64_t>(1)))") in cpp
 
 

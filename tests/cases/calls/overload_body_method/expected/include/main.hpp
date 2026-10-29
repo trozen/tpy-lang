@@ -25,10 +25,12 @@ struct Animal {
 
     // @dispatch
     // def greet(self, x: int) -> str:  # tpyc: ok
+    std::string greet__int(const ::tpy::BigInt& x) const;
     std::string greet(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def greet(self, x: str) -> str:  # tpyc: ok
+    std::string greet__str(std::string_view x) const;
     std::string greet(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
@@ -46,15 +48,23 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 // @dispatch
 // def greet(self, x: int) -> str:  # tpyc: ok
 //     return self.name + " got " + str(x) + " treats"
-inline std::string Animal::greet(const ::tpy::BigInt& x) const {
+inline std::string Animal::greet__int(const ::tpy::BigInt& x) const {
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), (x).to_string())), " treats"));
+}
+
+inline std::string Animal::greet(const ::tpy::BigInt& x) const {
+    return this->greet__int(x);
 }
 
 // @dispatch
 // def greet(self, x: str) -> str:  # tpyc: ok
 //     return self.name + " heard '" + x + "'"
-inline std::string Animal::greet(std::string_view x) const {
+inline std::string Animal::greet__str(std::string_view x) const {
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " heard '")), x)), "'"));
+}
+
+inline std::string Animal::greet(std::string_view x) const {
+    return this->greet__str(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -76,9 +76,9 @@ void __tpy_init() {
     al->append(100);
     al->append(200);
     std::cout << al->__len__() << "\n" << ::tpy::check_signals;
-    std::cout << al->__getitem__(0) << "\n" << ::tpy::check_signals;
+    std::cout << al->__getitem____int32(0) << "\n" << ::tpy::check_signals;
     al->__setitem__(0, 111);
-    std::cout << al->__getitem__(0) << "\n" << ::tpy::check_signals;
+    std::cout << al->__getitem____int32(0) << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
     arr = &__global_slot_3;
     std::cout << ::tpy::__len__((*arr)) << "\n" << ::tpy::check_signals;

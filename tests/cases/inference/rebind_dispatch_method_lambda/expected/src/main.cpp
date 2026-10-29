@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void rebind(const M& m) {
     Rec r = Rec(1);
     double x = 0.5;
-    x = m.run(r, [](double q) -> double { return ((q) + (0.5)); });
+    x = m.run__Rec__Callable_float_float(r, [](double q) -> double { return ((q) + (0.5)); });
     std::cout << ::tpy::print_float(x) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 

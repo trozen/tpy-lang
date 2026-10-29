@@ -71,7 +71,7 @@ void main() {
     std::cout << "first-reverse:" << " " << ::tpy::__getitem__(::tpy::builtin_sorted<int32_t>(std::array<int32_t, 2>{3, 1}, true), 0) << "\n" << ::tpy::check_signals;
     std::cout << "first-key:" << " " << ::tpy::__getitem__(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 2}, neg), 0) << "\n" << ::tpy::check_signals;
     Disp dm = Disp();
-    std::cout << "first-dispatch-method:" << " " << ::tpy::__getitem__(dm.m(static_cast<int64_t>(2), static_cast<int64_t>(3)), 0) << "\n" << ::tpy::check_signals;
+    std::cout << "first-dispatch-method:" << " " << ::tpy::__getitem__(dm.m__int64__int64(static_cast<int64_t>(2), static_cast<int64_t>(3)), 0) << "\n" << ::tpy::check_signals;
     std::cout << "twice-td:" << " " << ::tpy::TuplePrinter(std::tuple<int64_t, int64_t>{::tpyapp::main::td_x(Opts(2)), ::tpyapp::main::td_x(Opts(2))}) << "\n" << ::tpy::check_signals;
     Opts o = Opts(3);
     std::cout << "identity-td:" << " " << o.x << "\n" << ::tpy::check_signals;

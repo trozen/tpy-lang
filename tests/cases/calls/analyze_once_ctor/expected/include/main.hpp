@@ -141,10 +141,12 @@ struct Shelf {
 
     // @dispatch
     // def put(self, x: list[Bag[int64]]) -> str:
+    std::string put__list_Bag_int64(std::vector<Bag<int64_t>>& x) const;
     std::string put(std::vector<Bag<int64_t>>& x) const;
 
     // @dispatch
     // def put(self, x: str) -> str:
+    std::string put__str(std::string_view x) const;
     std::string put(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
 };
@@ -176,16 +178,24 @@ inline E::E(int32_t v)
 // def put(self, x: list[Bag[int64]]) -> str:
 //     x[0].items.append(5000000005)
 //     return f"list {x[0].items[0]}"
-inline std::string Shelf::put(std::vector<Bag<int64_t>>& x) const {
+inline std::string Shelf::put__list_Bag_int64(std::vector<Bag<int64_t>>& x) const {
     ::tpy::__getitem__(x, 0).items.push_back(static_cast<int64_t>(5000000005));
     return std::format("list {}", ::tpy::__getitem__(::tpy::__getitem__(x, 0).items, 0));
+}
+
+inline std::string Shelf::put(std::vector<Bag<int64_t>>& x) const {
+    return this->put__list_Bag_int64(x);
 }
 
 // @dispatch
 // def put(self, x: str) -> str:
 //     return "str " + x
-inline std::string Shelf::put(std::string_view x) const {
+inline std::string Shelf::put__str(std::string_view x) const {
     return (::tpy::str_concat("str ", x));
+}
+
+inline std::string Shelf::put(std::string_view x) const {
+    return this->put__str(x);
 }
 
 // def __init__(self, item: Own[T]) -> None:

@@ -60,8 +60,8 @@ void __tpy_init() {
     al->append(20);
     al->append(30);
     std::cout << ::tpy::__len__((*al)) << "\n" << ::tpy::check_signals;
-    std::cout << (*al)[0] << "\n" << ::tpy::check_signals;
-    std::cout << (*al)[2] << "\n" << ::tpy::check_signals;
+    std::cout << (*al).__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << (*al).__getitem____int32(2) << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
     std::cout << ::tpy::__len__((*arr)) << "\n" << ::tpy::check_signals;

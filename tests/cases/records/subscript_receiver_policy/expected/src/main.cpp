@@ -14,7 +14,7 @@ Narrow make_narrow() {
 //     # readonly receiver: only the readonly variant applies
 //     print("mixed_readonly:", b[1], b.__getitem__(1), b.hits)  # tpyc: ok
 void read_mixed(const Mixed& b) {
-    std::cout << "mixed_readonly:" << " " << b[1] << " " << b.__getitem__(1) << " " << b.hits << "\n" << ::tpy::check_signals;
+    std::cout << "mixed_readonly:" << " " << b.__getitem____int32(1) << " " << b.__getitem____int32(1) << " " << b.hits << "\n" << ::tpy::check_signals;
 }
 
 // def read_twins(w: readonly[Twins]) -> None:
@@ -56,20 +56,20 @@ void read_twins(const Twins& w) {
 //     print("inferred:", inf.m(1), inf.hits)  # tpyc: ok
 void main() {
     Mixed b = Mixed();
-    std::cout << "mixed:" << " " << b[static_cast<int64_t>(1)] << " " << b.__getitem__(static_cast<int64_t>(1)) << " " << b.hits << "\n" << ::tpy::check_signals;
+    std::cout << "mixed:" << " " << b.__getitem____int64(static_cast<int64_t>(1)) << " " << b.__getitem____int64(static_cast<int64_t>(1)) << " " << b.hits << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_mixed(b);
     Narrow nw = Narrow();
     int32_t n32 = 5;
-    std::cout << "narrow:" << " " << static_cast<const Narrow&>(nw)[static_cast<int64_t>(n32)] << " " << static_cast<const Narrow&>(nw).m(static_cast<int64_t>(n32)) << " " << nw.hits << "\n" << ::tpy::check_signals;
+    std::cout << "narrow:" << " " << nw.__getitem____int64(static_cast<int64_t>(n32)) << " " << nw.m__int64(static_cast<int64_t>(n32)) << " " << nw.hits << "\n" << ::tpy::check_signals;
     NarrowKey nk = NarrowKey();
-    std::cout << "narrow key:" << " " << nk[::tpy::int_cast_check<int8_t>(n32)] << " " << nk.m(::tpy::int_cast_check<int8_t>(n32)) << " " << nk.hits << "\n" << ::tpy::check_signals;
-    std::cout << "temporary:" << " " << static_cast<const Narrow&>(::tpyapp::main::make_narrow()).m(static_cast<int64_t>(n32)) << "\n" << ::tpy::check_signals;
+    std::cout << "narrow key:" << " " << nk.__getitem____int8(::tpy::int_cast_check<int8_t>(n32)) << " " << nk.m__int8(::tpy::int_cast_check<int8_t>(n32)) << " " << nk.hits << "\n" << ::tpy::check_signals;
+    std::cout << "temporary:" << " " << ::tpyapp::main::make_narrow().m__int64(static_cast<int64_t>(n32)) << "\n" << ::tpy::check_signals;
     Twins w = Twins();
     int64_t n = 0;
     std::cout << "twins:" << " " << w[n] << " " << w.__getitem__(n) << " " << w.hits << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_twins(w);
     ::tpyapp::policy_lib::Inferred inf = ::tpyapp::policy_lib::Inferred();
-    std::cout << "inferred:" << " " << static_cast<const ::tpyapp::policy_lib::Inferred&>(inf).m(1) << " " << inf.hits << "\n" << ::tpy::check_signals;
+    std::cout << "inferred:" << " " << inf.m__int32(1) << " " << inf.hits << "\n" << ::tpy::check_signals;
 }
 
 // from policy_lib import Inferred

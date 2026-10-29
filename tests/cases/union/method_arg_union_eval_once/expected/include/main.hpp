@@ -47,7 +47,7 @@ struct Fixed {
     uint64_t __hash__() const;
 
     friend bool operator==(const Fixed& lhs, Fixed other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
 };
@@ -87,7 +87,7 @@ struct Zone {
     uint64_t __hash__() const;
 
     friend bool operator==(const Zone& lhs, Zone other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zone";
 };

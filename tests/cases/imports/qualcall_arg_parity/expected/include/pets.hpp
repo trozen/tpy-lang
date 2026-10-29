@@ -90,11 +90,13 @@ struct K {
     // @staticmethod
     // @dispatch
     // def sov(x: str) -> int:
+    static ::tpy::BigInt sov__str(std::string_view x);
     static ::tpy::BigInt sov(std::string_view x);
 
     // @staticmethod
     // @dispatch
     // def sov(x: bool) -> int:
+    static ::tpy::BigInt sov__bool(bool x);
     static ::tpy::BigInt sov(bool x);
     static constexpr std::string_view __tpy_class_name__ = "pets.K";
 };
@@ -192,16 +194,24 @@ inline ::tpy::BigInt K::cls_code(::tpy::Union<const Cat*, const Dog*> pet) {
 // @dispatch
 // def sov(x: str) -> int:
 //     return len(x)
-inline ::tpy::BigInt K::sov(std::string_view x) {
+inline ::tpy::BigInt K::sov__str(std::string_view x) {
     return ::tpy::BigInt(::tpy::__len__(x));
+}
+
+inline ::tpy::BigInt K::sov(std::string_view x) {
+    return K::sov__str(x);
 }
 
 // @staticmethod
 // @dispatch
 // def sov(x: bool) -> int:
 //     return 7
-inline ::tpy::BigInt K::sov(bool x) {
+inline ::tpy::BigInt K::sov__bool(bool x) {
     return ::tpy::BigInt(7);
+}
+
+inline ::tpy::BigInt K::sov(bool x) {
+    return K::sov__bool(x);
 }
 void __tpy_init();
 } // namespace tpyapp::pets

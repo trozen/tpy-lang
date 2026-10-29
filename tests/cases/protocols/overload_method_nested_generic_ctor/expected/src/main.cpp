@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(r.get().get().name())
 void main() {
     Wrapper<Pet> w = Wrapper<Pet>();
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = w.wrap(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Buddy"))));
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = w.wrap__Own_Box_T(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Buddy"))));
     std::cout << r.get().get().name() << "\n" << ::tpy::check_signals;
 }
 

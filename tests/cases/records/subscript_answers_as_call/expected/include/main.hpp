@@ -196,26 +196,32 @@ struct Table {
 
     // @dispatch
     // def __getitem__(self, i: int32) -> int32:
+    int32_t __getitem____int32(int32_t i) const;
     int32_t __getitem__(int32_t i) const;
 
     // @dispatch
     // def __getitem__(self, k: str) -> int32:
+    int32_t __getitem____str(std::string_view k) const;
     int32_t __getitem__(std::string_view k) const;
 
     // @dispatch
     // def __setitem__(self, i: int32, v: int32) -> None:
+    void __setitem____int32__int32(int32_t i, int32_t v);
     void __setitem__(int32_t i, int32_t v);
 
     // @dispatch
     // def __setitem__(self, k: str, v: int32) -> None:
+    void __setitem____str__int32(std::string_view k, int32_t v);
     void __setitem__(std::string_view k, int32_t v);
 
     // @dispatch
     // def __delitem__(self, i: int32) -> None:
+    void __delitem____int32(int32_t i);
     void __delitem__(int32_t i);
 
     // @dispatch
     // def __delitem__(self, k: str) -> None:
+    void __delitem____str(std::string_view k);
     void __delitem__(std::string_view k);
 
     int32_t operator[](int32_t i) const;
@@ -241,18 +247,22 @@ struct Box {
 
     // @dispatch
     // def __getitem__(self, i: int32) -> T:
+    ::tpy::val_or_ref_t<T> __getitem____int32(int32_t i);
     ::tpy::val_or_ref_t<T> __getitem__(int32_t i);
 
     // @dispatch
     // def __getitem__(self, i: int32) -> T:
+    ::tpy::val_or_cref_t<T> __getitem____int32(int32_t i) const;
     ::tpy::val_or_cref_t<T> __getitem__(int32_t i) const;
 
     // @dispatch
     // def __getitem__(self, k: str) -> T:
+    ::tpy::val_or_ref_t<T> __getitem____str(std::string_view k);
     ::tpy::val_or_ref_t<T> __getitem__(std::string_view k);
 
     // @dispatch
     // def __getitem__(self, k: str) -> T:
+    ::tpy::val_or_cref_t<T> __getitem____str(std::string_view k) const;
     ::tpy::val_or_cref_t<T> __getitem__(std::string_view k) const;
 
     ::tpy::val_or_cref_t<T> operator[](int32_t i) const;
@@ -297,10 +307,12 @@ struct Wide {
 
     // @dispatch
     // def __getitem__(self, k: int32) -> str:
+    std::string __getitem____int32(int32_t k) const;
     std::string __getitem__(int32_t k) const;
 
     // @dispatch
     // def __getitem__(self, k: int) -> str:
+    std::string __getitem____int(const ::tpy::BigInt& k) const;
     std::string __getitem__(const ::tpy::BigInt& k) const;
 
     std::string operator[](int32_t k) const;
@@ -324,18 +336,22 @@ struct Rows {
 
     // @dispatch
     // def __getitem__(self, k: str) -> list[int32]:
+    std::vector<int32_t>& __getitem____str(std::string_view k);
     std::vector<int32_t>& __getitem__(std::string_view k);
 
     // @dispatch
     // def __getitem__(self, k: str) -> list[int32]:
+    const std::vector<int32_t>& __getitem____str(std::string_view k) const;
     const std::vector<int32_t>& __getitem__(std::string_view k) const;
 
     // @dispatch
     // def __getitem__(self, i: int32) -> list[int32]:
+    std::vector<int32_t>& __getitem____int32(int32_t i);
     std::vector<int32_t>& __getitem__(int32_t i);
 
     // @dispatch
     // def __getitem__(self, i: int32) -> list[int32]:
+    const std::vector<int32_t>& __getitem____int32(int32_t i) const;
     const std::vector<int32_t>& __getitem__(int32_t i) const;
 
     const std::vector<int32_t>& operator[](std::string_view k) const;
@@ -390,11 +406,13 @@ struct RoGet {
     // @dispatch
     // @readonly(False)
     // def __getitem__(self, k: str) -> int32:
+    int32_t __getitem____str(std::string_view k);
     int32_t __getitem__(std::string_view k);
 
     // @dispatch
     // @readonly
     // def __getitem__(self, k: int32) -> int32:
+    int32_t __getitem____int32(int32_t k) const;
     int32_t __getitem__(int32_t k) const;
 
     // def __setitem__(self, k: int32, v: int32) -> None:
@@ -422,11 +440,13 @@ struct Fallback {
     // @dispatch
     // @readonly(False)
     // def m(self, k: str) -> int32:
+    int32_t m__str(std::string_view k);
     int32_t m(std::string_view k);
 
     // @dispatch
     // @readonly
     // def m(self, k: int32) -> int32:
+    int32_t m__int32(int32_t k) const;
     int32_t m(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fallback";
 };
@@ -474,11 +494,13 @@ struct Bag {
     // @dispatch
     // @readonly(False)
     // def __contains__(self, k: str) -> bool:
+    bool __contains____str(std::string_view k);
     bool __contains__(std::string_view k);
 
     // @dispatch
     // @readonly
     // def __contains__(self, k: int32) -> bool:
+    bool __contains____int32(int32_t k) const;
     bool __contains__(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
@@ -497,11 +519,13 @@ struct Stages {
     // @dispatch
     // @readonly(False)
     // def __getitem__(self, k: int32) -> int32:
+    int32_t __getitem____int32(int32_t k);
     int32_t __getitem__(int32_t k);
 
     // @dispatch
     // @readonly
     // def __getitem__(self, k: int) -> int32:
+    int32_t __getitem____int(const ::tpy::BigInt& k) const;
     int32_t __getitem__(const ::tpy::BigInt& k) const;
 
     int32_t operator[](int32_t k);
@@ -1214,43 +1238,67 @@ inline Table::Table()
 // @dispatch
 // def __getitem__(self, i: int32) -> int32:
 //     return self.nums[i]
-inline int32_t Table::__getitem__(int32_t i) const {
+inline int32_t Table::__getitem____int32(int32_t i) const {
     return ::tpy::__getitem__(this->nums, i);
+}
+
+inline int32_t Table::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 // @dispatch
 // def __getitem__(self, k: str) -> int32:
 //     return self.names[k]
-inline int32_t Table::__getitem__(std::string_view k) const {
+inline int32_t Table::__getitem____str(std::string_view k) const {
     return ::tpy::__getitem__(this->names, k);
+}
+
+inline int32_t Table::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
 }
 
 // @dispatch
 // def __setitem__(self, i: int32, v: int32) -> None:
 //     self.nums[i] = v
-inline void Table::__setitem__(int32_t i, int32_t v) {
+inline void Table::__setitem____int32__int32(int32_t i, int32_t v) {
     ::tpy::__setitem__(this->nums, i, v);
+}
+
+inline void Table::__setitem__(int32_t i, int32_t v) {
+    return this->__setitem____int32__int32(i, v);
 }
 
 // @dispatch
 // def __setitem__(self, k: str, v: int32) -> None:
 //     self.names[k] = v
-inline void Table::__setitem__(std::string_view k, int32_t v) {
+inline void Table::__setitem____str__int32(std::string_view k, int32_t v) {
     ::tpy::__setitem__(this->names, k, v);
+}
+
+inline void Table::__setitem__(std::string_view k, int32_t v) {
+    return this->__setitem____str__int32(k, v);
 }
 
 // @dispatch
 // def __delitem__(self, i: int32) -> None:
 //     self.log.append("del-int")
-inline void Table::__delitem__(int32_t i) {
+inline void Table::__delitem____int32(int32_t i) {
     this->log.push_back("del-int");
+}
+
+inline void Table::__delitem__(int32_t i) {
+    return this->__delitem____int32(i);
 }
 
 // @dispatch
 // def __delitem__(self, k: str) -> None:
 //     self.log.append("del-" + k)
-inline void Table::__delitem__(std::string_view k) {
+inline void Table::__delitem____str(std::string_view k) {
     this->log.push_back((::tpy::str_concat("del-", k)));
+}
+
+inline void Table::__delitem__(std::string_view k) {
+    return this->__delitem____str(k);
 }
 
 inline int32_t Table::operator[](int32_t i) const {
@@ -1279,15 +1327,23 @@ inline Wide::Wide() {
 // @dispatch
 // def __getitem__(self, k: int32) -> str:
 //     return "int32"
-inline std::string Wide::__getitem__(int32_t k) const {
+inline std::string Wide::__getitem____int32(int32_t k) const {
     return "int32";
+}
+
+inline std::string Wide::__getitem__(int32_t k) const {
+    return this->__getitem____int32(k);
 }
 
 // @dispatch
 // def __getitem__(self, k: int) -> str:
 //     return "int"
-inline std::string Wide::__getitem__(const ::tpy::BigInt& k) const {
+inline std::string Wide::__getitem____int(const ::tpy::BigInt& k) const {
     return "int";
+}
+
+inline std::string Wide::__getitem__(const ::tpy::BigInt& k) const {
+    return this->__getitem____int(k);
 }
 
 inline std::string Wide::operator[](int32_t k) const {
@@ -1305,29 +1361,45 @@ inline Rows::Rows() : data(::tpy::ordered_map<std::string, std::vector<int32_t>>
 // @dispatch
 // def __getitem__(self, k: str) -> list[int32]:
 //     return self.data[k]
-inline std::vector<int32_t>& Rows::__getitem__(std::string_view k) {
+inline std::vector<int32_t>& Rows::__getitem____str(std::string_view k) {
     return ::tpy::__getitem__(this->data, k);
+}
+
+inline std::vector<int32_t>& Rows::__getitem__(std::string_view k) {
+    return this->__getitem____str(k);
 }
 
 // @dispatch
 // def __getitem__(self, k: str) -> list[int32]:
 //     return self.data[k]
-inline const std::vector<int32_t>& Rows::__getitem__(std::string_view k) const {
+inline const std::vector<int32_t>& Rows::__getitem____str(std::string_view k) const {
     return ::tpy::__getitem__(this->data, k);
 }
 
-// @dispatch
-// def __getitem__(self, i: int32) -> list[int32]:
-//     return self.data["a"]
-inline std::vector<int32_t>& Rows::__getitem__(int32_t i) {
-    return ::tpy::__getitem__(this->data, "a");
+inline const std::vector<int32_t>& Rows::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
 }
 
 // @dispatch
 // def __getitem__(self, i: int32) -> list[int32]:
 //     return self.data["a"]
-inline const std::vector<int32_t>& Rows::__getitem__(int32_t i) const {
+inline std::vector<int32_t>& Rows::__getitem____int32(int32_t i) {
     return ::tpy::__getitem__(this->data, "a");
+}
+
+inline std::vector<int32_t>& Rows::__getitem__(int32_t i) {
+    return this->__getitem____int32(i);
+}
+
+// @dispatch
+// def __getitem__(self, i: int32) -> list[int32]:
+//     return self.data["a"]
+inline const std::vector<int32_t>& Rows::__getitem____int32(int32_t i) const {
+    return ::tpy::__getitem__(this->data, "a");
+}
+
+inline const std::vector<int32_t>& Rows::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 inline const std::vector<int32_t>& Rows::operator[](std::string_view k) const {
@@ -1386,17 +1458,25 @@ inline RoGet::RoGet()
 // def __getitem__(self, k: str) -> int32:
 //     self.hits += 1
 //     return 0
-inline int32_t RoGet::__getitem__(std::string_view k) {
+inline int32_t RoGet::__getitem____str(std::string_view k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return 0;
+}
+
+inline int32_t RoGet::__getitem__(std::string_view k) {
+    return this->__getitem____str(k);
 }
 
 // @dispatch
 // @readonly
 // def __getitem__(self, k: int32) -> int32:
 //     return self.vals[k]
-inline int32_t RoGet::__getitem__(int32_t k) const {
+inline int32_t RoGet::__getitem____int32(int32_t k) const {
     return ::tpy::__getitem__(this->vals, k);
+}
+
+inline int32_t RoGet::__getitem__(int32_t k) const {
+    return this->__getitem____int32(k);
 }
 
 // def __setitem__(self, k: int32, v: int32) -> None:
@@ -1422,17 +1502,25 @@ inline Fallback::Fallback() : hits(0) {}
 // def m(self, k: str) -> int32:
 //     self.hits += 1
 //     return 200
-inline int32_t Fallback::m(std::string_view k) {
+inline int32_t Fallback::m__str(std::string_view k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return 200;
+}
+
+inline int32_t Fallback::m(std::string_view k) {
+    return this->m__str(k);
 }
 
 // @dispatch
 // @readonly
 // def m(self, k: int32) -> int32:
 //     return 101
-inline int32_t Fallback::m(int32_t k) const {
+inline int32_t Fallback::m__int32(int32_t k) const {
     return 101;
+}
+
+inline int32_t Fallback::m(int32_t k) const {
+    return this->m__int32(k);
 }
 
 // def __init__(self) -> None:
@@ -1470,17 +1558,25 @@ inline Bag::Bag() : hits(0) {}
 // def __contains__(self, k: str) -> bool:
 //     self.hits += 1
 //     return True
-inline bool Bag::__contains__(std::string_view k) {
+inline bool Bag::__contains____str(std::string_view k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return true;
+}
+
+inline bool Bag::__contains__(std::string_view k) {
+    return this->__contains____str(k);
 }
 
 // @dispatch
 // @readonly
 // def __contains__(self, k: int32) -> bool:
 //     return k > 0
-inline bool Bag::__contains__(int32_t k) const {
+inline bool Bag::__contains____int32(int32_t k) const {
     return (k > 0);
+}
+
+inline bool Bag::__contains__(int32_t k) const {
+    return this->__contains____int32(k);
 }
 
 // def __init__(self) -> None:
@@ -1492,16 +1588,24 @@ inline Stages::Stages() {
 // @readonly(False)
 // def __getitem__(self, k: int32) -> int32:
 //     return 32
-inline int32_t Stages::__getitem__(int32_t k) {
+inline int32_t Stages::__getitem____int32(int32_t k) {
     return 32;
+}
+
+inline int32_t Stages::__getitem__(int32_t k) {
+    return this->__getitem____int32(k);
 }
 
 // @dispatch
 // @readonly
 // def __getitem__(self, k: int) -> int32:
 //     return 64
-inline int32_t Stages::__getitem__(const ::tpy::BigInt& k) const {
+inline int32_t Stages::__getitem____int(const ::tpy::BigInt& k) const {
     return 64;
+}
+
+inline int32_t Stages::__getitem__(const ::tpy::BigInt& k) const {
+    return this->__getitem____int(k);
 }
 
 inline int32_t Stages::operator[](int32_t k) {
@@ -1693,7 +1797,7 @@ inline AsyncRec::AsyncRec() : x(0) {}
 inline KeyedHolder::KeyedHolder(Keys& ks) : t(Table()) {
     {
         auto __tmp_1 = ks.key();
-        this->t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(this->t[__tmp_1], 3));
+        this->t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(this->t.__getitem____int32(__tmp_1), 3));
     }
 }
 
@@ -1704,9 +1808,9 @@ inline KeyedHolder::KeyedHolder(Keys& ks) : t(Table()) {
 inline int32_t KeyedHolder::bump(Keys& ks) {
     {
         auto __tmp_1 = ks.key();
-        this->t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(this->t[__tmp_1], 2));
+        this->t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(this->t.__getitem____int32(__tmp_1), 2));
     }
-    return this->t[1];
+    return this->t.__getitem____int32(1);
 }
 
 // def __init__(self) -> None:
@@ -1718,8 +1822,8 @@ inline Holder::Holder() : t(Table()) {}
 //     self.t["m"] = 3  # tpyc: ok
 //     return self.t["m"] + self.t[0]  # tpyc: ok
 inline int32_t Holder::bump() {
-    this->t.__setitem__(std::string_view("m"), 3);
-    return (::tpy::add_check<int32_t>(this->t[std::string_view("m")], this->t[0]));
+    this->t.__setitem____str__int32("m", 3);
+    return (::tpy::add_check<int32_t>(this->t.__getitem____str("m"), this->t.__getitem____int32(0)));
 }
 
 // def __init__(self) -> None:
@@ -1728,8 +1832,8 @@ inline int32_t Holder::bump() {
 //     self.t["c"] = 4  # tpyc: ok
 //     self.first = self.t["c"]  # tpyc: ok
 inline Seeded::Seeded() : t(Table()) {
-    this->t.__setitem__(std::string_view("c"), 4);
-    this->first = this->t[std::string_view("c")];
+    this->t.__setitem____str__int32("c", 4);
+    this->first = this->t.__getitem____str("c");
 }
 
 // def __enter__(self) -> int32:
@@ -1861,32 +1965,52 @@ inline Box<T>::Box(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : items(::t
 // def __getitem__(self, i: int32) -> T:
 //     return self.items[i]
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Box<T>::__getitem__(int32_t i) {
+inline ::tpy::val_or_ref_t<T> Box<T>::__getitem____int32(int32_t i) {
     return ::tpy::__getitem__(this->items, i);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::__getitem__(int32_t i) {
+    return this->__getitem____int32(i);
 }
 
 // @dispatch
 // def __getitem__(self, i: int32) -> T:
 //     return self.items[i]
 template<typename T>
-inline ::tpy::val_or_cref_t<T> Box<T>::__getitem__(int32_t i) const {
+inline ::tpy::val_or_cref_t<T> Box<T>::__getitem____int32(int32_t i) const {
     return ::tpy::__getitem__(this->items, i);
 }
 
-// @dispatch
-// def __getitem__(self, k: str) -> T:
-//     return self.items[len(k) - 1]
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Box<T>::__getitem__(std::string_view k) {
-    return ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(::tpy::__len__(k), 1)));
+inline ::tpy::val_or_cref_t<T> Box<T>::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 // @dispatch
 // def __getitem__(self, k: str) -> T:
 //     return self.items[len(k) - 1]
 template<typename T>
-inline ::tpy::val_or_cref_t<T> Box<T>::__getitem__(std::string_view k) const {
+inline ::tpy::val_or_ref_t<T> Box<T>::__getitem____str(std::string_view k) {
     return ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(::tpy::__len__(k), 1)));
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::__getitem__(std::string_view k) {
+    return this->__getitem____str(k);
+}
+
+// @dispatch
+// def __getitem__(self, k: str) -> T:
+//     return self.items[len(k) - 1]
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::__getitem____str(std::string_view k) const {
+    return ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(::tpy::__len__(k), 1)));
+}
+
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
 }
 
 template<typename T>

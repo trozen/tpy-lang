@@ -41,10 +41,12 @@ struct C {
 
     // @dispatch
     // def kind(self, x: bool) -> str:
+    std::string kind__bool(bool x) const;
     std::string kind(bool x) const;
 
     // @dispatch
     // def kind(self, x: str) -> str:
+    std::string kind__str(std::string_view x) const;
     std::string kind(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
@@ -58,15 +60,23 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 // @dispatch
 // def kind(self, x: bool) -> str:
 //     return "m-bool"
-inline std::string C::kind(bool x) const {
+inline std::string C::kind__bool(bool x) const {
     return "m-bool";
+}
+
+inline std::string C::kind(bool x) const {
+    return this->kind__bool(x);
 }
 
 // @dispatch
 // def kind(self, x: str) -> str:
 //     return "m-str"
-inline std::string C::kind(std::string_view x) const {
+inline std::string C::kind__str(std::string_view x) const {
     return "m-str";
+}
+
+inline std::string C::kind(std::string_view x) const {
+    return this->kind__str(x);
 }
 // # Generic overload: a str literal resolving here binds T by deduction, so the
 // # pin must be skipped (the param renders param_val_or_ref_t<T>, not a view).

@@ -44,26 +44,32 @@ struct V {
 
     // @dispatch
     // def narrow(self, x: int64) -> str:
+    std::string narrow__int64(int64_t x) const;
     std::string narrow(int64_t x) const;
 
     // @dispatch
     // def narrow(self, x: int16) -> str:
+    std::string narrow__int16(int16_t x) const;
     std::string narrow(int16_t x) const;
 
     // @dispatch
     // def f(self, x: float32) -> float:
+    double f__float32(float x) const;
     double f(float x) const;
 
     // @dispatch
     // def f(self, x: str) -> float:
+    double f__str(std::string_view x) const;
     double f(std::string_view x) const;
 
     // @dispatch
     // def k(self, x: int) -> str:
+    std::string k__int(const ::tpy::BigInt& x) const;
     std::string k(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def k(self, x: float) -> str:
+    std::string k__float(double x) const;
     std::string k(double x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.V";
 };
@@ -82,44 +88,68 @@ inline V::V() {
 // @dispatch
 // def narrow(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::narrow(int64_t x) const {
+inline std::string V::narrow__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::narrow(int64_t x) const {
+    return this->narrow__int64(x);
 }
 
 // @dispatch
 // def narrow(self, x: int16) -> str:
 //     return "int16"
-inline std::string V::narrow(int16_t x) const {
+inline std::string V::narrow__int16(int16_t x) const {
     return "int16";
+}
+
+inline std::string V::narrow(int16_t x) const {
+    return this->narrow__int16(x);
 }
 
 // @dispatch
 // def f(self, x: float32) -> float:
 //     # TPy holds a float32 already; the stand-in rounds here.
 //     return float32(x)
-inline double V::f(float x) const {
+inline double V::f__float32(float x) const {
     return static_cast<double>(x);
+}
+
+inline double V::f(float x) const {
+    return this->f__float32(x);
 }
 
 // @dispatch
 // def f(self, x: str) -> float:
 //     return 0.0
-inline double V::f(std::string_view x) const {
+inline double V::f__str(std::string_view x) const {
     return 0.0;
+}
+
+inline double V::f(std::string_view x) const {
+    return this->f__str(x);
 }
 
 // @dispatch
 // def k(self, x: int) -> str:
 //     return "int"
-inline std::string V::k(const ::tpy::BigInt& x) const {
+inline std::string V::k__int(const ::tpy::BigInt& x) const {
     return "int";
+}
+
+inline std::string V::k(const ::tpy::BigInt& x) const {
+    return this->k__int(x);
 }
 
 // @dispatch
 // def k(self, x: float) -> str:
 //     return "float"
-inline std::string V::k(double x) const {
+inline std::string V::k__float(double x) const {
     return "float";
+}
+
+inline std::string V::k(double x) const {
+    return this->k__float(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

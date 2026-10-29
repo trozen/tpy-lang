@@ -30,7 +30,7 @@ struct Coord {
     bool __eq__(Coord other) const;
 
     friend bool operator==(const Coord& lhs, Coord other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Coord";
 };

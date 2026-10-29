@@ -31,21 +31,25 @@ struct Container {
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...
+    ::tpy::val_or_ref_t<T> __getitem____int32(int32_t index);
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index);
 
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...
+    ::tpy::val_or_cref_t<T> __getitem____int32(int32_t index) const;
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const;
 
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
+    std::span<T> __getitem____slice(::tpy::Slice index);
     std::span<T> __getitem__(::tpy::Slice index);
 
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
+    std::span<const T> __getitem____slice(::tpy::Slice index) const;
     std::span<const T> __getitem__(::tpy::Slice index) const;
 
     ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
@@ -81,23 +85,33 @@ inline void Container<T>::add(::tpy::param_val_or_ref_t<T> item) {
 // @auto_readonly
 // def __getitem__(self, index: int32) -> T: ...
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Container<T>::__getitem__(int32_t index) {
+inline ::tpy::val_or_ref_t<T> Container<T>::__getitem____int32(int32_t index) {
     return ::tpy::__getitem__(this->_data, index);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::__getitem__(int32_t index) {
+    return this->__getitem____int32(index);
 }
 
 // @overload
 // @auto_readonly
 // def __getitem__(self, index: int32) -> T: ...
 template<typename T>
-inline ::tpy::val_or_cref_t<T> Container<T>::__getitem__(int32_t index) const {
+inline ::tpy::val_or_cref_t<T> Container<T>::__getitem____int32(int32_t index) const {
     return ::tpy::__getitem__(this->_data, index);
 }
 
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Container<T>::__getitem__(int32_t index) const {
+    return this->__getitem____int32(index);
+}
+
 // @overload
 // @auto_readonly
 // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
 template<typename T>
-inline std::span<T> Container<T>::__getitem__(::tpy::Slice index) {
+inline std::span<T> Container<T>::__getitem____slice(::tpy::Slice index) {
     std::optional<int32_t> s_start = index.start;
     std::optional<int32_t> s_stop = index.stop;
     int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
@@ -105,16 +119,26 @@ inline std::span<T> Container<T>::__getitem__(::tpy::Slice index) {
     return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
 }
 
+template<typename T>
+inline std::span<T> Container<T>::__getitem__(::tpy::Slice index) {
+    return this->__getitem____slice(index);
+}
+
 // @overload
 // @auto_readonly
 // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
 template<typename T>
-inline std::span<const T> Container<T>::__getitem__(::tpy::Slice index) const {
+inline std::span<const T> Container<T>::__getitem____slice(::tpy::Slice index) const {
     std::optional<int32_t> s_start = index.start;
     std::optional<int32_t> s_stop = index.stop;
     int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
     int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
     return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+template<typename T>
+inline std::span<const T> Container<T>::__getitem__(::tpy::Slice index) const {
+    return this->__getitem____slice(index);
 }
 
 template<typename T>

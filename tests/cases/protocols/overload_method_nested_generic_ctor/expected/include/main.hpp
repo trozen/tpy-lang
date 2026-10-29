@@ -68,10 +68,12 @@ struct Wrapper {
 
     // @dispatch
     // def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap__Own_Box_T(::tpystd::tplib::box::Box<T>&& x) const;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) const;
 
     // @dispatch
     // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap__str(std::string_view x) const;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -122,16 +124,26 @@ inline Wrapper<T>::Wrapper() {
 // def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
 //     return Rc.new(x)
 template<typename T>
-inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> Wrapper<T>::wrap(::tpystd::tplib::box::Box<T>&& x) const {
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> Wrapper<T>::wrap__Own_Box_T(::tpystd::tplib::box::Box<T>&& x) const {
     return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
+}
+
+template<typename T>
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> Wrapper<T>::wrap(::tpystd::tplib::box::Box<T>&& x) const {
+    return this->wrap__Own_Box_T(std::move(x));
 }
 
 // @dispatch
 // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
 //     return Rc.new(Box(x))
 template<typename T>
-inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> Wrapper<T>::wrap(std::string_view x) const {
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> Wrapper<T>::wrap__str(std::string_view x) const {
     return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
+}
+
+template<typename T>
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> Wrapper<T>::wrap(std::string_view x) const {
+    return this->wrap__str(x);
 }
 
 void __tpy_init();

@@ -17,7 +17,7 @@ int32_t base() {
 //     return p.f(4) * 100 + p.f("ab")
 int32_t use_plain() {
     Plain p = Plain();
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(p.f(4), 100)), p.f(std::string_view("ab"))));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(p.f__int32(4), 100)), p.f__str("ab")));
 }
 
 // def use_bag() -> str:
@@ -46,13 +46,13 @@ std::string use_bag() {
 std::string use_groups() {
     ::tpyapp::cyc_b::Val v = ::tpyapp::cyc_b::Val(7);
     Maker mk = Maker();
-    Item item = mk.make(v);
+    Item item = mk.make__Val(v);
     item.n = ::tpy::add_check<int32_t>(item.n, 1);
     Split sp = Split();
-    int32_t n = sp.__iter__(v);
+    int32_t n = sp.__iter____Val(v);
     sp.items.push_back(4);
     {
-        auto __src_0 = sp.__iter__(1);
+        auto __src_0 = sp.__iter____int32(1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -79,9 +79,9 @@ std::string use_cycle() {
     t.val = ::tpy::add_check<int32_t>(t.val, 1);
     Merger m = Merger(7);
     ::tpyapp::cyc_b::Val w = ::tpyapp::cyc_b::Val(3);
-    int32_t first = m.merge(w);
+    int32_t first = m.merge__Val(w);
     m.base = 10;
-    return std::format("{} {} {}", t.val, first, m.merge(5));
+    return std::format("{} {} {}", t.val, first, m.merge__int32(5));
 }
 
 // def use_operators() -> str:
@@ -130,14 +130,22 @@ std::string use_passing() {
 
 // @overload
 // def f(self, x: int32) -> int32: ...
-int32_t Plain::f(int32_t x) {
+int32_t Plain::f__int32(int32_t x) {
     return ::tpyapp::cyc_b::twice(x);
+}
+
+int32_t Plain::f(int32_t x) {
+    return this->f__int32(x);
 }
 
 // @overload
 // def f(self, x: str) -> int32: ...
-int32_t Plain::f(std::string_view x) {
+int32_t Plain::f__str(std::string_view x) {
     return ::tpyapp::cyc_b::twice(::tpy::__len__(x));
+}
+
+int32_t Plain::f(std::string_view x) {
+    return this->f__str(x);
 }
 
 // def __init__(self, b: cyc_b.Val) -> None:  # tpyc: ok
@@ -150,14 +158,22 @@ Merger::Merger(int32_t base) : base(base) {}
 
 // @overload
 // def merge(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-int32_t Merger::merge(::tpyapp::cyc_b::Val x) {
+int32_t Merger::merge__Val(::tpyapp::cyc_b::Val x) {
     return (::tpy::add_check<int32_t>(this->base, x.payload));
+}
+
+int32_t Merger::merge(::tpyapp::cyc_b::Val x) {
+    return this->merge__Val(std::move(x));
 }
 
 // @overload
 // def merge(self, x: int32) -> int32: ...
-int32_t Merger::merge(int32_t x) {
+int32_t Merger::merge__int32(int32_t x) {
     return (::tpy::add_check<int32_t>(this->base, x));
+}
+
+int32_t Merger::merge(int32_t x) {
+    return this->merge__int32(x);
 }
 
 // def __init__(self) -> None:
@@ -202,14 +218,22 @@ int32_t Item::get() const {
 
 // @overload
 // def make(self, x: cyc_b.Val) -> Own[Item]: ...  # tpyc: ok
-Item Maker::make(::tpyapp::cyc_b::Val x) {
+Item Maker::make__Val(::tpyapp::cyc_b::Val x) {
     return Item(x.payload);
+}
+
+Item Maker::make(::tpyapp::cyc_b::Val x) {
+    return this->make__Val(std::move(x));
 }
 
 // @overload
 // def make(self, x: int32) -> Own[Item]: ...
-Item Maker::make(int32_t x) {
+Item Maker::make__int32(int32_t x) {
     return Item(x);
+}
+
+Item Maker::make(int32_t x) {
+    return this->make__int32(x);
 }
 
 // def __init__(self) -> None:
@@ -218,8 +242,12 @@ Split::Split() : items(std::vector<int32_t>{2, 3}) {}
 
 // @overload
 // def __iter__(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-int32_t Split::__iter__(::tpyapp::cyc_b::Val x) {
+int32_t Split::__iter____Val(::tpyapp::cyc_b::Val x) {
     return ::tpy::builtin_sum<int32_t>(::tpyapp::cyc_a::__genexpr___iter___1(this->items, x));
+}
+
+int32_t Split::__iter__(::tpyapp::cyc_b::Val x) {
+    return this->__iter____Val(std::move(x));
 }
 
 // def __init__(self, k: int32) -> None:
@@ -269,7 +297,7 @@ bool Adder::__eq__(const ::tpyapp::cyc_b::Item& x) const {
 }
 
 int32_t Adder::operator[](::tpyapp::cyc_b::Val x) const {
-    return __getitem__(x);
+    return __getitem__(std::move(x));
 }
 
 auto Adder::operator*() -> decltype(__deref__()) {
@@ -281,7 +309,7 @@ auto Adder::operator*() const -> decltype(__deref__()) {
 }
 
 int32_t Adder::operator()(::tpyapp::cyc_b::Val x) const {
-    return __call__(x);
+    return __call__(std::move(x));
 }
 
 // def __init__(self, k: int32) -> None:
@@ -353,8 +381,12 @@ Disp::Disp(int32_t k) : k(k) {}
 // @dispatch
 // def g(self, x: cyc_b.Val) -> int32:  # tpyc: ok
 //     return x.payload + self.k
-int32_t Disp::g(::tpyapp::cyc_b::Val x) const {
+int32_t Disp::g__Val(::tpyapp::cyc_b::Val x) const {
     return (::tpy::add_check<int32_t>(x.payload, this->k));
+}
+
+int32_t Disp::g(::tpyapp::cyc_b::Val x) const {
+    return this->g__Val(std::move(x));
 }
 
 // def __init__(self, k: int32) -> None:
@@ -364,8 +396,12 @@ Opt::Opt(int32_t k) : k(k) {}
 // @dispatch
 // def __call__(self, x: int32) -> int32:
 //     return x * self.k
-int32_t Opt::__call__(int32_t x) const {
+int32_t Opt::__call____int32(int32_t x) const {
     return (::tpy::mul_check<int32_t>(x, this->k));
+}
+
+int32_t Opt::__call__(int32_t x) const {
+    return this->__call____int32(x);
 }
 
 // @dispatch
@@ -373,18 +409,26 @@ int32_t Opt::__call__(int32_t x) const {
 //     if x is None:
 //         return 0
 //     return x.payload
-int32_t Opt::__call__(std::optional<::tpyapp::cyc_b::Val> x) const {
+int32_t Opt::__call____Val_None(std::optional<::tpyapp::cyc_b::Val> x) const {
     if ((!x.has_value())) {
         return 0;
     }
     return (*x).payload;
 }
 
+int32_t Opt::__call__(std::optional<::tpyapp::cyc_b::Val> x) const {
+    return this->__call____Val_None(std::move(x));
+}
+
 // @dispatch
 // def f(self, x: int32) -> int32:
 //     return x * 10 + self.k
-int32_t Opt::f(int32_t x) const {
+int32_t Opt::f__int32(int32_t x) const {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 10)), this->k));
+}
+
+int32_t Opt::f(int32_t x) const {
+    return this->f__int32(x);
 }
 
 // @dispatch
@@ -392,11 +436,15 @@ int32_t Opt::f(int32_t x) const {
 //     if x is None:
 //         return -1
 //     return x.payload
-int32_t Opt::f(std::optional<::tpyapp::cyc_b::Val> x) const {
+int32_t Opt::f__Val_None(std::optional<::tpyapp::cyc_b::Val> x) const {
     if ((!x.has_value())) {
         return -1;
     }
     return (*x).payload;
+}
+
+int32_t Opt::f(std::optional<::tpyapp::cyc_b::Val> x) const {
+    return this->f__Val_None(std::move(x));
 }
 
 int32_t Opt::operator()(int32_t x) const {
@@ -404,7 +452,7 @@ int32_t Opt::operator()(int32_t x) const {
 }
 
 int32_t Opt::operator()(std::optional<::tpyapp::cyc_b::Val> x) const {
-    return __call__(x);
+    return __call__(std::move(x));
 }
 // import cyc_b
 void __tpy_init() {

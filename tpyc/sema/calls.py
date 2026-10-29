@@ -5779,31 +5779,12 @@ class CallAnalyzer:
             # Each variant names itself by its parameter types, so the
             # reason it gives is told apart from its siblings'.
             lines = list(dict.fromkeys(
-                bind(typed, f.params, self._variant_text(name, f)).message
+                bind(typed, f.params, self.compat.variant_text(name, f)).message
                 for f in views))
             raise self.ctx.error(
                 "\n".join([head] + [f"  {line}" for line in lines]), loc)
         hint = self.no_match_hint(views, typed, src)
         raise self.ctx.error(f"{head}{hint}", loc)
-
-    def _variant_text(self, name: str, variant: FunctionInfo) -> str:
-        """One overload variant of `name` as a diagnostic lists it: its
-        parameter types, `/` and `*` where it has them."""
-        parts: list[str] = []
-        params = variant.params
-        for i, p in enumerate(params):
-            if (p.keyword_only and not p.is_kwargs
-                    and (i == 0 or not params[i - 1].keyword_only)
-                    and not any(q.is_variadic for q in params[:i])):
-                parts.append("*")
-            text = self.compat.call_type_text(p.type)
-            parts.append(f"*{p.name}" if p.is_variadic
-                         else f"**{p.name}" if p.is_kwargs
-                         else f"{p.name}: {text}")
-            if p.positional_only and (i + 1 == len(params)
-                                      or not params[i + 1].positional_only):
-                parts.append("/")
-        return f"{name}({', '.join(parts)})"
 
     @staticmethod
     def shared_param_type(survivors: list[FunctionInfo],

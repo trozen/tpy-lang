@@ -76,10 +76,12 @@ struct O {
 
     // @dispatch
     // def g(self, a: B, x: Own[B], k: int) -> int:  # tpyc: warning(/Own\[B\] param 'x' is never consumed/)
+    ::tpy::BigInt g__B__Own_B__int(B& a, B&& x, const ::tpy::BigInt& k) const;
     ::tpy::BigInt g(B& a, B&& x, const ::tpy::BigInt& k) const;
 
     // @dispatch
     // def g(self, a: B, x: B, k: str) -> int:
+    ::tpy::BigInt g__B__B__str(B& a, const B& x, std::string_view k) const;
     ::tpy::BigInt g(B& a, const B& x, std::string_view k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.O";
 };
@@ -117,18 +119,26 @@ inline O::O() : k(::tpy::BigInt(0)) {}
 // def g(self, a: B, x: Own[B], k: int) -> int:  # tpyc: warning(/Own\[B\] param 'x' is never consumed/)
 //     a.v = 100
 //     return x.v
-inline ::tpy::BigInt O::g(B& a, B&& x, const ::tpy::BigInt& k) const {
+inline ::tpy::BigInt O::g__B__Own_B__int(B& a, B&& x, const ::tpy::BigInt& k) const {
     a.v = ::tpy::BigInt(100);
     return x.v;
+}
+
+inline ::tpy::BigInt O::g(B& a, B&& x, const ::tpy::BigInt& k) const {
+    return this->g__B__Own_B__int(a, std::move(x), k);
 }
 
 // @dispatch
 // def g(self, a: B, x: B, k: str) -> int:
 //     a.v = 200
 //     return x.v
-inline ::tpy::BigInt O::g(B& a, const B& x, std::string_view k) const {
+inline ::tpy::BigInt O::g__B__B__str(B& a, const B& x, std::string_view k) const {
     a.v = ::tpy::BigInt(200);
     return x.v;
+}
+
+inline ::tpy::BigInt O::g(B& a, const B& x, std::string_view k) const {
+    return this->g__B__B__str(a, x, k);
 }
 // # calls a method on `x` only: never consumed (true)
 // def bump_g[T: Bumps](x: Own[T]) -> int:  # tpyc: warning(/Own\[T\] param 'x' is never consumed/)

@@ -45,26 +45,32 @@ struct O {
 
     // @dispatch
     // def m(self, x: B) -> str:
+    std::string m__B(const B& x) const;
     std::string m(const B& x) const;
 
     // @dispatch
     // def m(self, x: int32) -> str:
+    std::string m__int32(int32_t x) const;
     std::string m(int32_t x) const;
 
     // @dispatch
     // def m(self, x: str) -> str:
+    std::string m__str(std::string_view x) const;
     std::string m(std::string_view x) const;
 
     // @dispatch
     // def m(self, x: dict[str, int32]) -> str:
+    std::string m__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& x) const;
     std::string m(const ::tpy::ordered_map<std::string, int32_t>& x) const;
 
     // @dispatch
     // def pair(self, a: B, x: B) -> str:
+    std::string pair__B__B(B& a, const B& x) const;
     std::string pair(B& a, const B& x) const;
 
     // @dispatch
     // def pair(self, a: str, x: B) -> str:
+    std::string pair__str__B(std::string_view a, const B& x) const;
     std::string pair(std::string_view a, const B& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.O";
 };
@@ -88,45 +94,69 @@ inline B B::take() && {
 // @dispatch
 // def m(self, x: B) -> str:
 //     return f"B {x.v}"
-inline std::string O::m(const B& x) const {
+inline std::string O::m__B(const B& x) const {
     return std::format("B {}", x.v);
+}
+
+inline std::string O::m(const B& x) const {
+    return this->m__B(x);
 }
 
 // @dispatch
 // def m(self, x: int32) -> str:
 //     return f"int32 {x}"
-inline std::string O::m(int32_t x) const {
+inline std::string O::m__int32(int32_t x) const {
     return std::format("int32 {}", x);
+}
+
+inline std::string O::m(int32_t x) const {
+    return this->m__int32(x);
 }
 
 // @dispatch
 // def m(self, x: str) -> str:
 //     return f"str {x}"
-inline std::string O::m(std::string_view x) const {
+inline std::string O::m__str(std::string_view x) const {
     return std::format("str {}", x);
+}
+
+inline std::string O::m(std::string_view x) const {
+    return this->m__str(x);
 }
 
 // @dispatch
 // def m(self, x: dict[str, int32]) -> str:
 //     return f"dict {x['k']}"
-inline std::string O::m(const ::tpy::ordered_map<std::string, int32_t>& x) const {
+inline std::string O::m__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& x) const {
     return std::format("dict {}", ::tpy::__getitem__(x, "k"));
+}
+
+inline std::string O::m(const ::tpy::ordered_map<std::string, int32_t>& x) const {
+    return this->m__dict_str_int32(x);
 }
 
 // @dispatch
 // def pair(self, a: B, x: B) -> str:
 //     a.v += 1000
 //     return f"pair {a.v}"
-inline std::string O::pair(B& a, const B& x) const {
+inline std::string O::pair__B__B(B& a, const B& x) const {
     a.v = ::tpy::add_check<int32_t>(a.v, 1000);
     return std::format("pair {}", a.v);
+}
+
+inline std::string O::pair(B& a, const B& x) const {
+    return this->pair__B__B(a, x);
 }
 
 // @dispatch
 // def pair(self, a: str, x: B) -> str:
 //     return "pair str"
-inline std::string O::pair(std::string_view a, const B& x) const {
+inline std::string O::pair__str__B(std::string_view a, const B& x) const {
     return "pair str";
+}
+
+inline std::string O::pair(std::string_view a, const B& x) const {
+    return this->pair__str__B(a, x);
 }
 // def ident[T](x: Own[T]) -> Own[T]:
 //     return x

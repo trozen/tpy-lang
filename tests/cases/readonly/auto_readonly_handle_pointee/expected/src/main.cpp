@@ -34,7 +34,7 @@ void span_view(::tpystd::tplib::array_list::ArrayList<int32_t, 8>& a) {
 //     s = a[0:2]  # tpyc: ok
 //     s[1] = 60
 void span_slice(::tpystd::tplib::array_list::ArrayList<int32_t, 8>& a) {
-    std::span<int32_t> s = a.__getitem__(::tpy::BasicSlice{0, 2});
+    std::span<int32_t> s = a.__getitem____basic_slice(::tpy::BasicSlice{0, 2});
     ::tpy::__setitem__(s, 1, 60);
 }
 
@@ -65,9 +65,9 @@ void main() {
     a.append(2);
     a.append(3);
     ::tpyapp::main::span_view(a);
-    std::cout << "span_view" << " " << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << "span_view" << " " << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::span_slice(a);
-    std::cout << "span_slice" << " " << a[1] << " " << a[2] << "\n" << ::tpy::check_signals;
+    std::cout << "span_slice" << " " << a.__getitem____int32(1) << " " << a.__getitem____int32(2) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_store

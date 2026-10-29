@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(a.greet("hello"))
 void main() {
     Animal a = Animal("Rex");
-    std::cout << a.greet(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
-    std::cout << a.greet(std::string_view("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << a.greet__int(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << a.greet__str("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

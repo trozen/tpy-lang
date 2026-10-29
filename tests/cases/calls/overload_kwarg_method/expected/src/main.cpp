@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(c)                                # 112
 void main() {
     Box b = Box(100);
-    std::string a = b.apply(5, std::string_view("sum"));
+    std::string a = b.apply__int32__str(5, "sum");
     std::cout << a << "\n" << ::tpy::check_signals;
-    int32_t c = b.apply(5, 7);
+    int32_t c = b.apply__int32__int32(5, 7);
     std::cout << c << "\n" << ::tpy::check_signals;
 }
 

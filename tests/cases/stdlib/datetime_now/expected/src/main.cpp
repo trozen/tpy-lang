@@ -52,7 +52,7 @@ void main() {
     std::cout << ::tpy::print_bool(((lo) < (utc))) << " " << ::tpy::print_bool(((utc) < (hi))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((0 <= now.hour())) << " " << ::tpy::print_bool((now.hour() <= 23)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((0 <= now.microsecond())) << " " << ::tpy::print_bool((now.microsecond() <= 999999)) << "\n" << ::tpy::check_signals;
-    ::tpystd::datetime::timedelta off = ((now) - (utc));
+    ::tpystd::datetime::timedelta off = ((now).__sub____datetime(utc));
     std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (off))) << " " << ::tpy::print_bool(((off) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::date d1 = date::today();
     ::tpystd::datetime::datetime dt = datetime::today();
@@ -61,14 +61,14 @@ void main() {
     std::cout << ::tpy::print_bool(((d1) <= (::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))) <= (d2))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime n2 = datetime::now();
-    std::cout << ::tpy::print_bool(((((n2) - (now))) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((((n2).__sub____datetime(now))) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime local = datetime::fromtimestamp(1751551805.5);
     ::tpystd::datetime::datetime utcv = datetime::utcfromtimestamp(1751551805.5);
-    ::tpystd::datetime::timedelta delta = ((local) - (utcv));
+    ::tpystd::datetime::timedelta delta = ((local).__sub____datetime(utcv));
     std::cout << ::tpy::print_bool((local.microsecond() == utcv.microsecond())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (delta))) << " " << ::tpy::print_bool(((delta) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt mins = ((delta).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
-    std::cout << ::tpy::print_bool(((delta) == (((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) * (mins))))) << "\n" << ::tpy::check_signals;
+    ::tpy::BigInt mins = ((delta).__floordiv____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
+    std::cout << ::tpy::print_bool(((delta) == (((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))).__mul____int(mins))))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v2 wall-clock surface: now/utcnow/today/fromtimestamp and

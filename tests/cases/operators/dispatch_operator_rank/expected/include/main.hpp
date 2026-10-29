@@ -77,10 +77,12 @@ struct L {
 
     // @dispatch
     // def __add__(self, xs: list[int32]) -> int32:
+    int32_t __add____list_int32(const std::vector<int32_t>& xs) const;
     int32_t __add__(const std::vector<int32_t>& xs) const;
 
     // @dispatch
     // def __add__(self, xs: list[int64]) -> int32:
+    int32_t __add____list_int64(const std::vector<int64_t>& xs) const;
     int32_t __add__(const std::vector<int64_t>& xs) const;
 
     friend int32_t operator+(const L& lhs, const std::vector<int32_t>& xs) {
@@ -108,50 +110,62 @@ struct N {
 
     // @dispatch
     // def __mul__(self, x: int) -> int32:
+    int32_t __mul____int(const ::tpy::BigInt& x) const;
     int32_t __mul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __mul__(self, x: float) -> int32:
+    int32_t __mul____float(double x) const;
     int32_t __mul__(double x) const;
 
     // @dispatch
     // def __rmul__(self, x: int) -> int32:
+    int32_t __rmul____int(const ::tpy::BigInt& x) const;
     int32_t __rmul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rmul__(self, x: float) -> int32:
+    int32_t __rmul____float(double x) const;
     int32_t __rmul__(double x) const;
 
     // @dispatch
     // def __iadd__(self, x: int) -> "N":
+    N& __iadd____int(const ::tpy::BigInt& x);
     N& __iadd__(const ::tpy::BigInt& x);
 
     // @dispatch
     // def __iadd__(self, x: float) -> "N":
+    N& __iadd____float(double x);
     N& __iadd__(double x);
 
     // @dispatch
     // def __lt__(self, x: int) -> bool:
+    bool __lt____int(const ::tpy::BigInt& x) const;
     bool __lt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __lt__(self, x: float) -> bool:
+    bool __lt____float(double x) const;
     bool __lt__(double x) const;
 
     // @dispatch
     // def __gt__(self, x: int) -> bool:
+    bool __gt____int(const ::tpy::BigInt& x) const;
     bool __gt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __gt__(self, x: float) -> bool:
+    bool __gt____float(double x) const;
     bool __gt__(double x) const;
 
     // @dispatch
     // def __eq__(self, x: int) -> bool:
+    bool __eq____int(const ::tpy::BigInt& x) const;
     bool __eq__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __eq__(self, x: float) -> bool:
+    bool __eq____float(double x) const;
     bool __eq__(double x) const;
 
     friend int32_t operator*(const N& lhs, const ::tpy::BigInt& x) {
@@ -212,10 +226,12 @@ struct W {
 
     // @dispatch
     // def __add__(self, x: int) -> Own["W"]:
+    W __add____int(const ::tpy::BigInt& x) const;
     W __add__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __add__(self, x: float) -> Own["W"]:
+    W __add____float(double x) const;
     W __add__(double x) const;
 
     friend W operator+(const W& lhs, const ::tpy::BigInt& x) {
@@ -241,10 +257,12 @@ struct Opt {
 
     // @dispatch
     // def __add__(self, x: float | None) -> int32:
+    int32_t __add____float_None(std::optional<double> x) const;
     int32_t __add__(std::optional<double> x) const;
 
     // @dispatch
     // def __add__(self, x: int32) -> int32:
+    int32_t __add____int32(int32_t x) const;
     int32_t __add__(int32_t x) const;
 
     friend int32_t operator+(const Opt& lhs, std::optional<double> x) {
@@ -290,14 +308,17 @@ struct LitWidth {
 
     // @dispatch
     // def __add__(self, x: int32) -> int32:
+    int32_t __add____int32(int32_t x) const;
     int32_t __add__(int32_t x) const;
 
     // @dispatch
     // def __add__(self, x: int64) -> int32:
+    int32_t __add____int64(int64_t x) const;
     int32_t __add__(int64_t x) const;
 
     // @dispatch
     // def __add__(self, x: int) -> int32:
+    int32_t __add____int(const ::tpy::BigInt& x) const;
     int32_t __add__(const ::tpy::BigInt& x) const;
 
     friend int32_t operator+(const LitWidth& lhs, int32_t x) {
@@ -327,10 +348,12 @@ struct Text {
 
     // @dispatch
     // def __add__(self, x: str) -> int32:
+    int32_t __add____str(std::string_view x) const;
     int32_t __add__(std::string_view x) const;
 
     // @dispatch
     // def __add__(self, x: String) -> int32:
+    int32_t __add____String(const ::tpy::String& x) const;
     int32_t __add__(const ::tpy::String& x) const;
 
     friend int32_t operator+(const Text& lhs, std::string_view x) {
@@ -356,18 +379,22 @@ struct OptStr {
 
     // @dispatch
     // def __add__(self, x: str | None) -> int32:
+    int32_t __add____str_None(std::optional<std::string_view> x) const;
     int32_t __add__(std::optional<std::string_view> x) const;
 
     // @dispatch
     // def __add__(self, x: bool) -> int32:
+    int32_t __add____bool(bool x) const;
     int32_t __add__(bool x) const;
 
     // @dispatch
     // def m(self, x: str | None) -> str:
+    std::string m__str_None(std::optional<std::string_view> x) const;
     std::string m(std::optional<std::string_view> x) const;
 
     // @dispatch
     // def m(self, x: bool) -> str:
+    std::string m__bool(bool x) const;
     std::string m(bool x) const;
 
     friend int32_t operator+(const OptStr& lhs, std::optional<std::string_view> x) {
@@ -434,15 +461,23 @@ inline L::L() {
 // @dispatch
 // def __add__(self, xs: list[int32]) -> int32:
 //     return 32
-inline int32_t L::__add__(const std::vector<int32_t>& xs) const {
+inline int32_t L::__add____list_int32(const std::vector<int32_t>& xs) const {
     return 32;
+}
+
+inline int32_t L::__add__(const std::vector<int32_t>& xs) const {
+    return this->__add____list_int32(xs);
 }
 
 // @dispatch
 // def __add__(self, xs: list[int64]) -> int32:
 //     return 64
-inline int32_t L::__add__(const std::vector<int64_t>& xs) const {
+inline int32_t L::__add____list_int64(const std::vector<int64_t>& xs) const {
     return 64;
+}
+
+inline int32_t L::__add__(const std::vector<int64_t>& xs) const {
+    return this->__add____list_int64(xs);
 }
 
 // def __init__(self) -> None:
@@ -452,101 +487,149 @@ inline N::N() : hits(0) {}
 // @dispatch
 // def __mul__(self, x: int) -> int32:
 //     return 2
-inline int32_t N::__mul__(const ::tpy::BigInt& x) const {
+inline int32_t N::__mul____int(const ::tpy::BigInt& x) const {
     return 2;
+}
+
+inline int32_t N::__mul__(const ::tpy::BigInt& x) const {
+    return this->__mul____int(x);
 }
 
 // @dispatch
 // def __mul__(self, x: float) -> int32:
 //     return 1
-inline int32_t N::__mul__(double x) const {
+inline int32_t N::__mul____float(double x) const {
     return 1;
+}
+
+inline int32_t N::__mul__(double x) const {
+    return this->__mul____float(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: int) -> int32:
 //     return 20
-inline int32_t N::__rmul__(const ::tpy::BigInt& x) const {
+inline int32_t N::__rmul____int(const ::tpy::BigInt& x) const {
     return 20;
+}
+
+inline int32_t N::__rmul__(const ::tpy::BigInt& x) const {
+    return this->__rmul____int(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: float) -> int32:
 //     return 10
-inline int32_t N::__rmul__(double x) const {
+inline int32_t N::__rmul____float(double x) const {
     return 10;
+}
+
+inline int32_t N::__rmul__(double x) const {
+    return this->__rmul____float(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: int) -> "N":
 //     self.hits += 2
 //     return self
-inline N& N::__iadd__(const ::tpy::BigInt& x) {
+inline N& N::__iadd____int(const ::tpy::BigInt& x) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
     return (*this);
+}
+
+inline N& N::__iadd__(const ::tpy::BigInt& x) {
+    return this->__iadd____int(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: float) -> "N":
 //     self.hits += 1
 //     return self
-inline N& N::__iadd__(double x) {
+inline N& N::__iadd____float(double x) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return (*this);
+}
+
+inline N& N::__iadd__(double x) {
+    return this->__iadd____float(x);
 }
 
 // @dispatch
 // def __lt__(self, x: int) -> bool:
 //     print("spellings: lt int")
 //     return True
-inline bool N::__lt__(const ::tpy::BigInt& x) const {
+inline bool N::__lt____int(const ::tpy::BigInt& x) const {
     std::cout << "spellings: lt int" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool N::__lt__(const ::tpy::BigInt& x) const {
+    return this->__lt____int(x);
 }
 
 // @dispatch
 // def __lt__(self, x: float) -> bool:
 //     print("spellings: lt float")
 //     return True
-inline bool N::__lt__(double x) const {
+inline bool N::__lt____float(double x) const {
     std::cout << "spellings: lt float" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool N::__lt__(double x) const {
+    return this->__lt____float(x);
 }
 
 // @dispatch
 // def __gt__(self, x: int) -> bool:
 //     print("spellings: gt int")
 //     return True
-inline bool N::__gt__(const ::tpy::BigInt& x) const {
+inline bool N::__gt____int(const ::tpy::BigInt& x) const {
     std::cout << "spellings: gt int" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool N::__gt__(const ::tpy::BigInt& x) const {
+    return this->__gt____int(x);
 }
 
 // @dispatch
 // def __gt__(self, x: float) -> bool:
 //     print("spellings: gt float")
 //     return True
-inline bool N::__gt__(double x) const {
+inline bool N::__gt____float(double x) const {
     std::cout << "spellings: gt float" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool N::__gt__(double x) const {
+    return this->__gt____float(x);
 }
 
 // @dispatch
 // def __eq__(self, x: int) -> bool:
 //     print("spellings: eq int")
 //     return False
-inline bool N::__eq__(const ::tpy::BigInt& x) const {
+inline bool N::__eq____int(const ::tpy::BigInt& x) const {
     std::cout << "spellings: eq int" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+inline bool N::__eq__(const ::tpy::BigInt& x) const {
+    return this->__eq____int(x);
 }
 
 // @dispatch
 // def __eq__(self, x: float) -> bool:
 //     print("spellings: eq float")
 //     return False
-inline bool N::__eq__(double x) const {
+inline bool N::__eq____float(double x) const {
     std::cout << "spellings: eq float" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+inline bool N::__eq__(double x) const {
+    return this->__eq____float(x);
 }
 
 // def __init__(self, n: int32) -> None:
@@ -556,15 +639,23 @@ inline W::W(int32_t n) : n(n) {}
 // @dispatch
 // def __add__(self, x: int) -> Own["W"]:
 //     return W(self.n + 2)
-inline W W::__add__(const ::tpy::BigInt& x) const {
+inline W W::__add____int(const ::tpy::BigInt& x) const {
     return W((::tpy::add_check<int32_t>(this->n, 2)));
+}
+
+inline W W::__add__(const ::tpy::BigInt& x) const {
+    return this->__add____int(x);
 }
 
 // @dispatch
 // def __add__(self, x: float) -> Own["W"]:
 //     return W(self.n + 1)
-inline W W::__add__(double x) const {
+inline W W::__add____float(double x) const {
     return W((::tpy::add_check<int32_t>(this->n, 1)));
+}
+
+inline W W::__add__(double x) const {
+    return this->__add____float(x);
 }
 
 // def __init__(self) -> None:
@@ -575,15 +666,23 @@ inline Opt::Opt() {
 // @dispatch
 // def __add__(self, x: float | None) -> int32:
 //     return 1
-inline int32_t Opt::__add__(std::optional<double> x) const {
+inline int32_t Opt::__add____float_None(std::optional<double> x) const {
     return 1;
+}
+
+inline int32_t Opt::__add__(std::optional<double> x) const {
+    return this->__add____float_None(x);
 }
 
 // @dispatch
 // def __add__(self, x: int32) -> int32:
 //     return 32
-inline int32_t Opt::__add__(int32_t x) const {
+inline int32_t Opt::__add____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t Opt::__add__(int32_t x) const {
+    return this->__add____int32(x);
 }
 
 // def __init__(self) -> None:
@@ -605,22 +704,34 @@ inline LitWidth::LitWidth() {
 // @dispatch
 // def __add__(self, x: int32) -> int32:
 //     return 32
-inline int32_t LitWidth::__add__(int32_t x) const {
+inline int32_t LitWidth::__add____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t LitWidth::__add__(int32_t x) const {
+    return this->__add____int32(x);
 }
 
 // @dispatch
 // def __add__(self, x: int64) -> int32:
 //     return 64
-inline int32_t LitWidth::__add__(int64_t x) const {
+inline int32_t LitWidth::__add____int64(int64_t x) const {
     return 64;
+}
+
+inline int32_t LitWidth::__add__(int64_t x) const {
+    return this->__add____int64(x);
 }
 
 // @dispatch
 // def __add__(self, x: int) -> int32:
 //     return 0
-inline int32_t LitWidth::__add__(const ::tpy::BigInt& x) const {
+inline int32_t LitWidth::__add____int(const ::tpy::BigInt& x) const {
     return 0;
+}
+
+inline int32_t LitWidth::__add__(const ::tpy::BigInt& x) const {
+    return this->__add____int(x);
 }
 
 // def __init__(self) -> None:
@@ -631,15 +742,23 @@ inline Text::Text() {
 // @dispatch
 // def __add__(self, x: str) -> int32:
 //     return 1
-inline int32_t Text::__add__(std::string_view x) const {
+inline int32_t Text::__add____str(std::string_view x) const {
     return 1;
+}
+
+inline int32_t Text::__add__(std::string_view x) const {
+    return this->__add____str(x);
 }
 
 // @dispatch
 // def __add__(self, x: String) -> int32:
 //     return 2
-inline int32_t Text::__add__(const ::tpy::String& x) const {
+inline int32_t Text::__add____String(const ::tpy::String& x) const {
     return 2;
+}
+
+inline int32_t Text::__add__(const ::tpy::String& x) const {
+    return this->__add____String(x);
 }
 
 // def __init__(self) -> None:
@@ -650,29 +769,45 @@ inline OptStr::OptStr() {
 // @dispatch
 // def __add__(self, x: str | None) -> int32:
 //     return 1
-inline int32_t OptStr::__add__(std::optional<std::string_view> x) const {
+inline int32_t OptStr::__add____str_None(std::optional<std::string_view> x) const {
     return 1;
+}
+
+inline int32_t OptStr::__add__(std::optional<std::string_view> x) const {
+    return this->__add____str_None(x);
 }
 
 // @dispatch
 // def __add__(self, x: bool) -> int32:
 //     return 2
-inline int32_t OptStr::__add__(bool x) const {
+inline int32_t OptStr::__add____bool(bool x) const {
     return 2;
+}
+
+inline int32_t OptStr::__add__(bool x) const {
+    return this->__add____bool(x);
 }
 
 // @dispatch
 // def m(self, x: str | None) -> str:
 //     return "opt"
-inline std::string OptStr::m(std::optional<std::string_view> x) const {
+inline std::string OptStr::m__str_None(std::optional<std::string_view> x) const {
     return "opt";
+}
+
+inline std::string OptStr::m(std::optional<std::string_view> x) const {
+    return this->m__str_None(x);
 }
 
 // @dispatch
 // def m(self, x: bool) -> str:
 //     return "bool"
-inline std::string OptStr::m(bool x) const {
+inline std::string OptStr::m__bool(bool x) const {
     return "bool";
+}
+
+inline std::string OptStr::m(bool x) const {
+    return this->m__bool(x);
 }
 
 // def __init__(self) -> None:
@@ -685,7 +820,7 @@ inline Holder::Holder() : v(L()) {}
 //     return self.v + xs  # tpyc: ok
 inline int32_t Holder::add() const {
     std::vector<int32_t> xs = {1, 2};
-    return ((this->v) + (xs));
+    return ((this->v).__add____list_int32(xs));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -65,21 +65,21 @@ int32_t randint(int32_t a, int32_t b) {
 // def randrange(stop: int32) -> int32:
 //     return _inst.randrange(stop)
 int32_t randrange__int32(int32_t stop) {
-    return _inst->randrange(stop);
+    return _inst->randrange__int32(stop);
 }
 
 // @dispatch
 // def randrange(start: int32, stop: int32) -> int32:
 //     return _inst.randrange(start, stop)
 int32_t randrange__int32__int32(int32_t start, int32_t stop) {
-    return _inst->randrange(start, stop);
+    return _inst->randrange__int32__int32(start, stop);
 }
 
 // @dispatch
 // def randrange(start: int32, stop: int32, step: int32) -> int32:
 //     return _inst.randrange(start, stop, step)
 int32_t randrange__int32__int32__int32(int32_t start, int32_t stop, int32_t step) {
-    return _inst->randrange(start, stop, step);
+    return _inst->randrange__int32__int32__int32(start, stop, step);
 }
 
 // def randbytes(n: int32) -> bytes:
@@ -403,7 +403,7 @@ uint32_t Random::_randbelow(uint32_t n) {
 //         neg_step: int32 = -step
 //         width = (start - stop + neg_step - 1) // neg_step
 //     return start + step * int32(self._randbelow(uint32(width)))
-int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
+int32_t Random::randrange__int32__int32__int32(int32_t start, int32_t stop, int32_t step) {
     if ((step == 0)) {
         throw ::tpy::ValueError("zero step for randrange()");
     }
@@ -421,6 +421,10 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
         width = (::tpy::div_check<int32_t>((::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(start, stop)), neg_step)), 1)), neg_step));
     }
     return (::tpy::add_check<int32_t>(start, (::tpy::mul_check<int32_t>(step, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(width)))))));
+}
+
+int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
+    return this->randrange__int32__int32__int32(start, stop, step);
 }
 
 // def randbytes(self, n: int32) -> bytes:

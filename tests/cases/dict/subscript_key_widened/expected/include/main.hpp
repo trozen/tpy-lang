@@ -41,10 +41,12 @@ struct T {
 
     // @dispatch
     // def take(self, k: int32) -> str:
+    std::string take__int32(int32_t k) const;
     std::string take(int32_t k) const;
 
     // @dispatch
     // def take(self, k: str) -> str:
+    std::string take__str(std::string_view k) const;
     std::string take(std::string_view k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.T";
 };
@@ -64,10 +66,12 @@ struct Table {
 
     // @dispatch
     // def __getitem__(self, i: int32) -> int32:
+    int32_t __getitem____int32(int32_t i) const;
     int32_t __getitem__(int32_t i) const;
 
     // @dispatch
     // def __getitem__(self, name: str) -> int32:
+    int32_t __getitem____str(std::string_view name) const;
     int32_t __getitem__(std::string_view name) const;
 
     int32_t operator[](int32_t i) const;
@@ -90,15 +94,23 @@ inline T::T() {
 // @dispatch
 // def take(self, k: int32) -> str:
 //     return "int"
-inline std::string T::take(int32_t k) const {
+inline std::string T::take__int32(int32_t k) const {
     return "int";
+}
+
+inline std::string T::take(int32_t k) const {
+    return this->take__int32(k);
 }
 
 // @dispatch
 // def take(self, k: str) -> str:
 //     return "str"
-inline std::string T::take(std::string_view k) const {
+inline std::string T::take__str(std::string_view k) const {
     return "str";
+}
+
+inline std::string T::take(std::string_view k) const {
+    return this->take__str(k);
 }
 
 // def __init__(self) -> None:
@@ -108,15 +120,23 @@ inline Table::Table() : cells(std::vector<int32_t>{5, 6, 7}) {}
 // @dispatch
 // def __getitem__(self, i: int32) -> int32:
 //     return self.cells[i]
-inline int32_t Table::__getitem__(int32_t i) const {
+inline int32_t Table::__getitem____int32(int32_t i) const {
     return ::tpy::__getitem__(this->cells, i);
+}
+
+inline int32_t Table::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 // @dispatch
 // def __getitem__(self, name: str) -> int32:
 //     return -1
-inline int32_t Table::__getitem__(std::string_view name) const {
+inline int32_t Table::__getitem____str(std::string_view name) const {
     return -1;
+}
+
+inline int32_t Table::__getitem__(std::string_view name) const {
+    return this->__getitem____str(name);
 }
 
 inline int32_t Table::operator[](int32_t i) const {

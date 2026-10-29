@@ -28,11 +28,13 @@ struct Point {
     // @overload
     // @classmethod
     // def make(cls, x: int32) -> Own[Self]: ...
+    static Point make__int32(int32_t x);
     static Point make(int32_t x);
 
     // @overload
     // @classmethod
     // def make(cls, x: int32, y: int32) -> Own[Self]: ...
+    static Point make__int32__int32(int32_t x, int32_t y);
     static Point make(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -53,16 +55,24 @@ inline Point::Point(int32_t x, int32_t y)
 // @overload
 // @classmethod
 // def make(cls, x: int32) -> Own[Self]: ...
-inline Point Point::make(int32_t x) {
+inline Point Point::make__int32(int32_t x) {
     int32_t y = 0;
     return Point(x, y);
+}
+
+inline Point Point::make(int32_t x) {
+    return Point::make__int32(x);
 }
 
 // @overload
 // @classmethod
 // def make(cls, x: int32, y: int32) -> Own[Self]: ...
-inline Point Point::make(int32_t x, int32_t y) {
+inline Point Point::make__int32__int32(int32_t x, int32_t y) {
     return Point(x, y);
+}
+
+inline Point Point::make(int32_t x, int32_t y) {
+    return Point::make__int32__int32(x, y);
 }
 void __tpy_init();
 } // namespace tpyapp::main

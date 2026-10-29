@@ -1,0 +1,5 @@
+sorted: ['Key(1)', 'Key(2)', 'Key(3)']
+print: Key(3)
+protocol: 5 5
+dynamic: 36
+callable: 12 11 13

@@ -79,7 +79,7 @@ void main() {
     std::cout << ::tpy::print_float(gap_wall.timestamp()) << " " << ::tpy::print_float(gap_wall1.timestamp()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((fold_wall) == (fold_wall1))) << " " << ::tpy::print_bool((::tpy::__hash__(fold_wall) == ::tpy::__hash__(fold_wall1))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((fold_wall) < (fold_wall1))) << " " << ::tpy::print_bool(((fold_wall) > (fold_wall1))) << "\n" << ::tpy::check_signals;
-    std::cout << ((fold_wall1) - (fold_wall)) << "\n" << ::tpy::check_signals;
+    std::cout << ((fold_wall1).__sub____datetime(fold_wall)) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
     ::tpystd::datetime::datetime naive1 = naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5, 1);

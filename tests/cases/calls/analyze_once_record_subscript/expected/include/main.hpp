@@ -40,10 +40,12 @@ struct Table {
 
     // @dispatch
     // def __getitem__(self, k: int32) -> str:
+    std::string __getitem____int32(int32_t k) const;
     std::string __getitem__(int32_t k) const;
 
     // @dispatch
     // def __getitem__(self, k: str) -> str:
+    std::string __getitem____str(std::string_view k) const;
     std::string __getitem__(std::string_view k) const;
 
     std::string operator[](int32_t k) const;
@@ -71,15 +73,23 @@ inline B B::take() && {
 // @dispatch
 // def __getitem__(self, k: int32) -> str:
 //     return f"int32 {k}"
-inline std::string Table::__getitem__(int32_t k) const {
+inline std::string Table::__getitem____int32(int32_t k) const {
     return std::format("int32 {}", k);
+}
+
+inline std::string Table::__getitem__(int32_t k) const {
+    return this->__getitem____int32(k);
 }
 
 // @dispatch
 // def __getitem__(self, k: str) -> str:
 //     return f"str {k}"
-inline std::string Table::__getitem__(std::string_view k) const {
+inline std::string Table::__getitem____str(std::string_view k) const {
     return std::format("str {}", k);
+}
+
+inline std::string Table::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
 }
 
 inline std::string Table::operator[](int32_t k) const {

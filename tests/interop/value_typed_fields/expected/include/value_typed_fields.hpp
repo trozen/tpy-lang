@@ -32,7 +32,7 @@ struct Point {
     int64_t __hash__() const;
 
     friend bool operator==(const Point& lhs, Point other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };

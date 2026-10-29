@@ -32,9 +32,9 @@ namespace tpyapp::main {
 //         print(x)
 void main() {
     MyList m = MyList();
-    std::cout << m[0] << "\n" << ::tpy::check_signals;
-    std::cout << m[3] << "\n" << ::tpy::check_signals;
-    std::span<const int32_t> sp = m.__getitem__(::tpy::BasicSlice{1, 4});
+    std::cout << m.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << m.__getitem____int32(3) << "\n" << ::tpy::check_signals;
+    std::span<const int32_t> sp = m.__getitem____slice(::tpy::BasicSlice{1, 4});
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -42,7 +42,7 @@ void main() {
         int32_t x = *__beg_0;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<const int32_t> sp2 = m.__getitem__(::tpy::BasicSlice{std::nullopt, 2});
+    std::span<const int32_t> sp2 = m.__getitem____slice(::tpy::BasicSlice{std::nullopt, 2});
     auto& __obj_1 = sp2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -50,7 +50,7 @@ void main() {
         int32_t x = *__beg_1;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<const int32_t> sp3 = m.__getitem__(::tpy::BasicSlice{3, std::nullopt});
+    std::span<const int32_t> sp3 = m.__getitem____slice(::tpy::BasicSlice{3, std::nullopt});
     auto& __obj_2 = sp3;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
@@ -58,7 +58,7 @@ void main() {
         int32_t x = *__beg_2;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<const int32_t> sp4 = m.__getitem__(::tpy::BasicSlice{std::nullopt, std::nullopt});
+    std::span<const int32_t> sp4 = m.__getitem____slice(::tpy::BasicSlice{std::nullopt, std::nullopt});
     auto& __obj_3 = sp4;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();

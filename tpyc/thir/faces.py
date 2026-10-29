@@ -568,7 +568,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `::tpy::any_cast_or_panic<T>(x)`
     # Ptr[T]-receiver Deref method calls (lowering; the THIRMethodCall
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
-    "method.overload_set_call",     # genuine (non-mangled) method stub set call
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::none_attr(p, "m").m(args)`
     "method.user_deref_chain",      # `r.__deref__()...m(args)` user Deref proxy

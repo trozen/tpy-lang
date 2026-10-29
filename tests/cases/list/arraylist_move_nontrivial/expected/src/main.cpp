@@ -80,33 +80,33 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = ::tpyapp::main::make();
     std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
-    std::cout << xs[0].name << " " << xs[1].name << "\n" << ::tpy::check_signals;
-    xs[0].n = ::tpy::BigInt(99);
-    std::cout << xs[0].n << "\n" << ::tpy::check_signals;
+    std::cout << xs.__getitem____int32(0).name << " " << xs.__getitem____int32(1).name << "\n" << ::tpy::check_signals;
+    xs.__getitem____int32(0).n = ::tpy::BigInt(99);
+    std::cout << xs.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     xs.append(Item("gamma", ::tpy::BigInt(3)));
     Item last = xs.pop();
     std::cout << last.name << "\n" << ::tpy::check_signals;
     xs.insert(0, Item("zero", ::tpy::BigInt(0)));
-    std::cout << xs[0].name << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << xs.__getitem____int32(0).name << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     xs.reverse();
-    std::cout << xs[0].name << "\n" << ::tpy::check_signals;
+    std::cout << xs.__getitem____int32(0).name << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> ys = ::tpyapp::main::make_full();
     std::cout << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
-    std::cout << ys[3].name << "\n" << ::tpy::check_signals;
+    std::cout << ys.__getitem____int32(3).name << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> zs = ::tpyapp::main::make_empty();
     std::cout << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
     zs.append(Item("late", ::tpy::BigInt(7)));
-    std::cout << zs[0].name << "\n" << ::tpy::check_signals;
+    std::cout << zs.__getitem____int32(0).name << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> ws = ::tpyapp::main::make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4> moved = std::move(ws);
-    std::cout << ::tpy::__len__(moved) << " " << moved[0].name << " " << moved[1].name << "\n" << ::tpy::check_signals;
-    moved[0].name = "shifted";
-    std::cout << moved[0].name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(moved) << " " << moved.__getitem____int32(0).name << " " << moved.__getitem____int32(1).name << "\n" << ::tpy::check_signals;
+    moved.__getitem____int32(0).name = "shifted";
+    std::cout << moved.__getitem____int32(0).name << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = ::tpyapp::main::make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
     std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
     acc = &*(__slot_2 = ::tpyapp::main::make_full());
-    std::cout << ::tpy::__len__((*acc)) << " " << (*acc)[0].name << " " << (*acc)[3].name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*acc)) << " " << (*acc).__getitem____int32(0).name << " " << (*acc).__getitem____int32(3).name << "\n" << ::tpy::check_signals;
 }
 
 // # ArrayList[T, N] movability for a non-trivially-relocatable element type

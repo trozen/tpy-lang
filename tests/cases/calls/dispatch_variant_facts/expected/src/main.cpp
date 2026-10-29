@@ -97,11 +97,11 @@ int32_t early__list_float(const std::vector<double>& xs) {
 //     print("setter-callee:", bx.size, bx.items)
 void main() {
     K k = K();
-    k.take(::tpyapp::main::mkr());
-    std::cout << "method-read:" << " " << k.n << " " << k.look(::tpyapp::main::mk()) << " " << k.look({1.5, 2.5}) << " " << k.look(std::vector<double>()) << " " << k.look(std::string_view("x")) << "\n" << ::tpy::check_signals;
-    std::cout << "method-empty:" << " " << k.look_d(::tpy::ordered_map<std::string, int32_t>()) << " " << k.look_s(::tpy::ordered_set<int32_t>()) << " " << k.look_d(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) << "\n" << ::tpy::check_signals;
+    k.take__R(::tpyapp::main::mkr());
+    std::cout << "method-read:" << " " << k.n << " " << k.look__list_float(::tpyapp::main::mk()) << " " << k.look__list_float({1.5, 2.5}) << " " << k.look__list_float(std::vector<double>()) << " " << k.look__str("x") << "\n" << ::tpy::check_signals;
+    std::cout << "method-empty:" << " " << k.look_d__dict_str_int32(::tpy::ordered_map<std::string, int32_t>()) << " " << k.look_s__set_int32(::tpy::ordered_set<int32_t>()) << " " << k.look_d__dict_str_int32(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) << "\n" << ::tpy::check_signals;
     std::vector<double> ys = {1.0};
-    k.take(ys);
+    k.take__list_float(ys);
     ys.push_back(9.0);
     std::cout << "method-mutate:" << " " << k.n << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> zs = {1, 2};

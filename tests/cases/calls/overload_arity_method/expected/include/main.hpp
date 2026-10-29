@@ -25,10 +25,12 @@ struct Calculator {
 
     // @overload
     // def scale(self, x: int) -> int: ...  # tpyc: ok
+    ::tpy::BigInt scale__int(const ::tpy::BigInt& x);
     ::tpy::BigInt scale(const ::tpy::BigInt& x);
 
     // @overload
     // def scale(self, x: int, factor: int) -> int: ...  # tpyc: ok
+    ::tpy::BigInt scale__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& factor);
     ::tpy::BigInt scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calculator";
 };
@@ -45,15 +47,23 @@ inline Calculator::Calculator(const ::tpy::BigInt& offset) : offset(offset) {}
 
 // @overload
 // def scale(self, x: int) -> int: ...  # tpyc: ok
-inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x) {
+inline ::tpy::BigInt Calculator::scale__int(const ::tpy::BigInt& x) {
     ::tpy::BigInt factor = ::tpy::BigInt(1);
     return ((((x) * (factor))) + (this->offset));
 }
 
+inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x) {
+    return this->scale__int(x);
+}
+
 // @overload
 // def scale(self, x: int, factor: int) -> int: ...  # tpyc: ok
-inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
+inline ::tpy::BigInt Calculator::scale__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
     return ((((x) * (factor))) + (this->offset));
+}
+
+inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
+    return this->scale__int__int(x, factor);
 }
 void __tpy_init();
 } // namespace tpyapp::main

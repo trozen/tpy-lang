@@ -69,18 +69,22 @@ struct B {
 
     // @dispatch
     // def __mul__(self, x: int) -> int32:
+    int32_t __mul____int(const ::tpy::BigInt& x) const;
     int32_t __mul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __mul__(self, x: float) -> int32:
+    int32_t __mul____float(double x) const;
     int32_t __mul__(double x) const;
 
     // @dispatch
     // def __rmul__(self, x: int) -> int32:
+    int32_t __rmul____int(const ::tpy::BigInt& x) const;
     int32_t __rmul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rmul__(self, x: float) -> int32:
+    int32_t __rmul____float(double x) const;
     int32_t __rmul__(double x) const;
 
     friend int32_t operator*(const B& lhs, const ::tpy::BigInt& x) {
@@ -114,10 +118,12 @@ struct BN {
 
     // @dispatch
     // def mul(self, x: int) -> int32:
+    int32_t mul__int(const ::tpy::BigInt& x) const;
     int32_t mul(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def mul(self, x: float) -> int32:
+    int32_t mul__float(double x) const;
     int32_t mul(double x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.BN";
 };
@@ -135,10 +141,12 @@ struct W {
 
     // @dispatch
     // def __mul__(self, x: int16) -> int32:
+    int32_t __mul____int16(int16_t x) const;
     int32_t __mul__(int16_t x) const;
 
     // @dispatch
     // def __mul__(self, x: int32) -> int32:
+    int32_t __mul____int32(int32_t x) const;
     int32_t __mul__(int32_t x) const;
 
     friend int32_t operator*(const W& lhs, int16_t x) {
@@ -166,10 +174,12 @@ struct VI {
 
     // @dispatch
     // def __iadd__(self, x: int) -> "VI":
+    VI& __iadd____int(const ::tpy::BigInt& x);
     VI& __iadd__(const ::tpy::BigInt& x);
 
     // @dispatch
     // def __iadd__(self, x: float) -> "VI":
+    VI& __iadd____float(double x);
     VI& __iadd__(double x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.VI";
 };
@@ -189,10 +199,12 @@ struct V {
 
     // @dispatch
     // def __iadd__(self, x: int) -> "V":
+    V& __iadd____int(const ::tpy::BigInt& x);
     V& __iadd__(const ::tpy::BigInt& x);
 
     // @dispatch
     // def __iadd__(self, x: float) -> "V":
+    V& __iadd____float(double x);
     V& __iadd__(double x);
 
     // def __add__(self, x: int32) -> Own["V"]:
@@ -217,26 +229,32 @@ struct C {
 
     // @dispatch
     // def __eq__(self, x: int) -> bool:
+    bool __eq____int(const ::tpy::BigInt& x) const;
     bool __eq__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __eq__(self, x: float) -> bool:
+    bool __eq____float(double x) const;
     bool __eq__(double x) const;
 
     // @dispatch
     // def __lt__(self, x: int) -> bool:
+    bool __lt____int(const ::tpy::BigInt& x) const;
     bool __lt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __lt__(self, x: float) -> bool:
+    bool __lt____float(double x) const;
     bool __lt__(double x) const;
 
     // @dispatch
     // def __gt__(self, x: int) -> bool:
+    bool __gt____int(const ::tpy::BigInt& x) const;
     bool __gt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __gt__(self, x: float) -> bool:
+    bool __gt____float(double x) const;
     bool __gt__(double x) const;
 
     friend bool operator==(const C& lhs, const ::tpy::BigInt& x) {
@@ -431,82 +449,102 @@ struct Ops {
 
     // @dispatch
     // def __floordiv__(self, x: int) -> int32:
+    int32_t __floordiv____int(const ::tpy::BigInt& x) const;
     int32_t __floordiv__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __floordiv__(self, x: float) -> int32:
+    int32_t __floordiv____float(double x) const;
     int32_t __floordiv__(double x) const;
 
     // @dispatch
     // def __rfloordiv__(self, x: int) -> int32:
+    int32_t __rfloordiv____int(const ::tpy::BigInt& x) const;
     int32_t __rfloordiv__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rfloordiv__(self, x: float) -> int32:
+    int32_t __rfloordiv____float(double x) const;
     int32_t __rfloordiv__(double x) const;
 
     // @dispatch
     // def __truediv__(self, x: int) -> int32:
+    int32_t __truediv____int(const ::tpy::BigInt& x) const;
     int32_t __truediv__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __truediv__(self, x: float) -> int32:
+    int32_t __truediv____float(double x) const;
     int32_t __truediv__(double x) const;
 
     // @dispatch
     // def __rtruediv__(self, x: int) -> int32:
+    int32_t __rtruediv____int(const ::tpy::BigInt& x) const;
     int32_t __rtruediv__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rtruediv__(self, x: float) -> int32:
+    int32_t __rtruediv____float(double x) const;
     int32_t __rtruediv__(double x) const;
 
     // @dispatch
     // def __mod__(self, x: int) -> int32:
+    int32_t __mod____int(const ::tpy::BigInt& x) const;
     int32_t __mod__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __mod__(self, x: float) -> int32:
+    int32_t __mod____float(double x) const;
     int32_t __mod__(double x) const;
 
     // @dispatch
     // def __and__(self, x: int) -> int32:
+    int32_t __and____int(const ::tpy::BigInt& x) const;
     int32_t __and__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __and__(self, x: float) -> int32:
+    int32_t __and____float(double x) const;
     int32_t __and__(double x) const;
 
     // @dispatch
     // def __ror__(self, x: int) -> int32:
+    int32_t __ror____int(const ::tpy::BigInt& x) const;
     int32_t __ror__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __ror__(self, x: float) -> int32:
+    int32_t __ror____float(double x) const;
     int32_t __ror__(double x) const;
 
     // @dispatch
     // def __xor__(self, x: int) -> int32:
+    int32_t __xor____int(const ::tpy::BigInt& x) const;
     int32_t __xor__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __xor__(self, x: float) -> int32:
+    int32_t __xor____float(double x) const;
     int32_t __xor__(double x) const;
 
     // @dispatch
     // def __lshift__(self, x: int) -> int32:
+    int32_t __lshift____int(const ::tpy::BigInt& x) const;
     int32_t __lshift__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __lshift__(self, x: float) -> int32:
+    int32_t __lshift____float(double x) const;
     int32_t __lshift__(double x) const;
 
     // @dispatch
     // def __rrshift__(self, x: int) -> int32:
+    int32_t __rrshift____int(const ::tpy::BigInt& x) const;
     int32_t __rrshift__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rrshift__(self, x: float) -> int32:
+    int32_t __rrshift____float(double x) const;
     int32_t __rrshift__(double x) const;
 
     friend int32_t operator/(const Ops& lhs, const ::tpy::BigInt& x) {
@@ -606,10 +644,12 @@ struct Pick {
 
     // @dispatch
     // def __or__(self, p: Pt) -> Pt:
+    const Pt& __or____Pt(const Pt& p) const;
     const Pt& __or__(const Pt& p) const;
 
     // @dispatch
     // def __or__(self, x: float) -> Pt:
+    const Pt& __or____float(double x) const;
     const Pt& __or__(double x) const;
 
     friend const Pt& operator|(const Pick& lhs, const Pt& p) {
@@ -796,29 +836,45 @@ inline B::B() {
 // @dispatch
 // def __mul__(self, x: int) -> int32:
 //     return 1
-inline int32_t B::__mul__(const ::tpy::BigInt& x) const {
+inline int32_t B::__mul____int(const ::tpy::BigInt& x) const {
     return 1;
+}
+
+inline int32_t B::__mul__(const ::tpy::BigInt& x) const {
+    return this->__mul____int(x);
 }
 
 // @dispatch
 // def __mul__(self, x: float) -> int32:
 //     return 2
-inline int32_t B::__mul__(double x) const {
+inline int32_t B::__mul____float(double x) const {
     return 2;
+}
+
+inline int32_t B::__mul__(double x) const {
+    return this->__mul____float(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: int) -> int32:
 //     return 11
-inline int32_t B::__rmul__(const ::tpy::BigInt& x) const {
+inline int32_t B::__rmul____int(const ::tpy::BigInt& x) const {
     return 11;
+}
+
+inline int32_t B::__rmul__(const ::tpy::BigInt& x) const {
+    return this->__rmul____int(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: float) -> int32:
 //     return 12
-inline int32_t B::__rmul__(double x) const {
+inline int32_t B::__rmul____float(double x) const {
     return 12;
+}
+
+inline int32_t B::__rmul__(double x) const {
+    return this->__rmul____float(x);
 }
 
 // def __init__(self) -> None:
@@ -829,15 +885,23 @@ inline BN::BN() {
 // @dispatch
 // def mul(self, x: int) -> int32:
 //     return 1
-inline int32_t BN::mul(const ::tpy::BigInt& x) const {
+inline int32_t BN::mul__int(const ::tpy::BigInt& x) const {
     return 1;
+}
+
+inline int32_t BN::mul(const ::tpy::BigInt& x) const {
+    return this->mul__int(x);
 }
 
 // @dispatch
 // def mul(self, x: float) -> int32:
 //     return 2
-inline int32_t BN::mul(double x) const {
+inline int32_t BN::mul__float(double x) const {
     return 2;
+}
+
+inline int32_t BN::mul(double x) const {
+    return this->mul__float(x);
 }
 
 // def __init__(self) -> None:
@@ -848,15 +912,23 @@ inline W::W() {
 // @dispatch
 // def __mul__(self, x: int16) -> int32:
 //     return 16
-inline int32_t W::__mul__(int16_t x) const {
+inline int32_t W::__mul____int16(int16_t x) const {
     return 16;
+}
+
+inline int32_t W::__mul__(int16_t x) const {
+    return this->__mul____int16(x);
 }
 
 // @dispatch
 // def __mul__(self, x: int32) -> int32:
 //     return 32
-inline int32_t W::__mul__(int32_t x) const {
+inline int32_t W::__mul____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t W::__mul__(int32_t x) const {
+    return this->__mul____int32(x);
 }
 
 // def __init__(self) -> None:
@@ -867,18 +939,26 @@ inline VI::VI() : log("") {}
 // def __iadd__(self, x: int) -> "VI":
 //     self.log = self.log + "I"
 //     return self
-inline VI& VI::__iadd__(const ::tpy::BigInt& x) {
+inline VI& VI::__iadd____int(const ::tpy::BigInt& x) {
     this->log = (::tpy::str_concat(this->log, "I"));
     return (*this);
+}
+
+inline VI& VI::__iadd__(const ::tpy::BigInt& x) {
+    return this->__iadd____int(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: float) -> "VI":
 //     self.log = self.log + "F"
 //     return self
-inline VI& VI::__iadd__(double x) {
+inline VI& VI::__iadd____float(double x) {
     this->log = (::tpy::str_concat(this->log, "F"));
     return (*this);
+}
+
+inline VI& VI::__iadd__(double x) {
+    return this->__iadd____float(x);
 }
 
 // def __init__(self) -> None:
@@ -889,18 +969,26 @@ inline V::V() : log("") {}
 // def __iadd__(self, x: int) -> "V":
 //     self.log = self.log + "iadd"
 //     return self
-inline V& V::__iadd__(const ::tpy::BigInt& x) {
+inline V& V::__iadd____int(const ::tpy::BigInt& x) {
     this->log = (::tpy::str_concat(this->log, "iadd"));
     return (*this);
+}
+
+inline V& V::__iadd__(const ::tpy::BigInt& x) {
+    return this->__iadd____int(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: float) -> "V":
 //     self.log = self.log + "iaddF"
 //     return self
-inline V& V::__iadd__(double x) {
+inline V& V::__iadd____float(double x) {
     this->log = (::tpy::str_concat(this->log, "iaddF"));
     return (*this);
+}
+
+inline V& V::__iadd__(double x) {
+    return this->__iadd____float(x);
 }
 
 // def __add__(self, x: int32) -> Own["V"]:
@@ -921,43 +1009,67 @@ inline C::C() {
 // @dispatch
 // def __eq__(self, x: int) -> bool:
 //     return True
-inline bool C::__eq__(const ::tpy::BigInt& x) const {
+inline bool C::__eq____int(const ::tpy::BigInt& x) const {
     return true;
+}
+
+inline bool C::__eq__(const ::tpy::BigInt& x) const {
+    return this->__eq____int(x);
 }
 
 // @dispatch
 // def __eq__(self, x: float) -> bool:
 //     return False
-inline bool C::__eq__(double x) const {
+inline bool C::__eq____float(double x) const {
     return false;
+}
+
+inline bool C::__eq__(double x) const {
+    return this->__eq____float(x);
 }
 
 // @dispatch
 // def __lt__(self, x: int) -> bool:
 //     return True
-inline bool C::__lt__(const ::tpy::BigInt& x) const {
+inline bool C::__lt____int(const ::tpy::BigInt& x) const {
     return true;
+}
+
+inline bool C::__lt__(const ::tpy::BigInt& x) const {
+    return this->__lt____int(x);
 }
 
 // @dispatch
 // def __lt__(self, x: float) -> bool:
 //     return False
-inline bool C::__lt__(double x) const {
+inline bool C::__lt____float(double x) const {
     return false;
+}
+
+inline bool C::__lt__(double x) const {
+    return this->__lt____float(x);
 }
 
 // @dispatch
 // def __gt__(self, x: int) -> bool:
 //     return True
-inline bool C::__gt__(const ::tpy::BigInt& x) const {
+inline bool C::__gt____int(const ::tpy::BigInt& x) const {
     return true;
+}
+
+inline bool C::__gt__(const ::tpy::BigInt& x) const {
+    return this->__gt____int(x);
 }
 
 // @dispatch
 // def __gt__(self, x: float) -> bool:
 //     return False
-inline bool C::__gt__(double x) const {
+inline bool C::__gt____float(double x) const {
     return false;
+}
+
+inline bool C::__gt__(double x) const {
+    return this->__gt____float(x);
 }
 
 // def __init__(self) -> None:
@@ -1050,141 +1162,221 @@ inline Ops::Ops() {
 // @dispatch
 // def __floordiv__(self, x: int) -> int32:
 //     return 1
-inline int32_t Ops::__floordiv__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__floordiv____int(const ::tpy::BigInt& x) const {
     return 1;
+}
+
+inline int32_t Ops::__floordiv__(const ::tpy::BigInt& x) const {
+    return this->__floordiv____int(x);
 }
 
 // @dispatch
 // def __floordiv__(self, x: float) -> int32:
 //     return 2
-inline int32_t Ops::__floordiv__(double x) const {
+inline int32_t Ops::__floordiv____float(double x) const {
     return 2;
+}
+
+inline int32_t Ops::__floordiv__(double x) const {
+    return this->__floordiv____float(x);
 }
 
 // @dispatch
 // def __rfloordiv__(self, x: int) -> int32:
 //     return 3
-inline int32_t Ops::__rfloordiv__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__rfloordiv____int(const ::tpy::BigInt& x) const {
     return 3;
+}
+
+inline int32_t Ops::__rfloordiv__(const ::tpy::BigInt& x) const {
+    return this->__rfloordiv____int(x);
 }
 
 // @dispatch
 // def __rfloordiv__(self, x: float) -> int32:
 //     return 4
-inline int32_t Ops::__rfloordiv__(double x) const {
+inline int32_t Ops::__rfloordiv____float(double x) const {
     return 4;
+}
+
+inline int32_t Ops::__rfloordiv__(double x) const {
+    return this->__rfloordiv____float(x);
 }
 
 // @dispatch
 // def __truediv__(self, x: int) -> int32:
 //     return 5
-inline int32_t Ops::__truediv__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__truediv____int(const ::tpy::BigInt& x) const {
     return 5;
+}
+
+inline int32_t Ops::__truediv__(const ::tpy::BigInt& x) const {
+    return this->__truediv____int(x);
 }
 
 // @dispatch
 // def __truediv__(self, x: float) -> int32:
 //     return 6
-inline int32_t Ops::__truediv__(double x) const {
+inline int32_t Ops::__truediv____float(double x) const {
     return 6;
+}
+
+inline int32_t Ops::__truediv__(double x) const {
+    return this->__truediv____float(x);
 }
 
 // @dispatch
 // def __rtruediv__(self, x: int) -> int32:
 //     return 7
-inline int32_t Ops::__rtruediv__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__rtruediv____int(const ::tpy::BigInt& x) const {
     return 7;
+}
+
+inline int32_t Ops::__rtruediv__(const ::tpy::BigInt& x) const {
+    return this->__rtruediv____int(x);
 }
 
 // @dispatch
 // def __rtruediv__(self, x: float) -> int32:
 //     return 8
-inline int32_t Ops::__rtruediv__(double x) const {
+inline int32_t Ops::__rtruediv____float(double x) const {
     return 8;
+}
+
+inline int32_t Ops::__rtruediv__(double x) const {
+    return this->__rtruediv____float(x);
 }
 
 // @dispatch
 // def __mod__(self, x: int) -> int32:
 //     return 9
-inline int32_t Ops::__mod__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__mod____int(const ::tpy::BigInt& x) const {
     return 9;
+}
+
+inline int32_t Ops::__mod__(const ::tpy::BigInt& x) const {
+    return this->__mod____int(x);
 }
 
 // @dispatch
 // def __mod__(self, x: float) -> int32:
 //     return 10
-inline int32_t Ops::__mod__(double x) const {
+inline int32_t Ops::__mod____float(double x) const {
     return 10;
+}
+
+inline int32_t Ops::__mod__(double x) const {
+    return this->__mod____float(x);
 }
 
 // @dispatch
 // def __and__(self, x: int) -> int32:
 //     return 11
-inline int32_t Ops::__and__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__and____int(const ::tpy::BigInt& x) const {
     return 11;
+}
+
+inline int32_t Ops::__and__(const ::tpy::BigInt& x) const {
+    return this->__and____int(x);
 }
 
 // @dispatch
 // def __and__(self, x: float) -> int32:
 //     return 12
-inline int32_t Ops::__and__(double x) const {
+inline int32_t Ops::__and____float(double x) const {
     return 12;
+}
+
+inline int32_t Ops::__and__(double x) const {
+    return this->__and____float(x);
 }
 
 // @dispatch
 // def __ror__(self, x: int) -> int32:
 //     return 13
-inline int32_t Ops::__ror__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__ror____int(const ::tpy::BigInt& x) const {
     return 13;
+}
+
+inline int32_t Ops::__ror__(const ::tpy::BigInt& x) const {
+    return this->__ror____int(x);
 }
 
 // @dispatch
 // def __ror__(self, x: float) -> int32:
 //     return 14
-inline int32_t Ops::__ror__(double x) const {
+inline int32_t Ops::__ror____float(double x) const {
     return 14;
+}
+
+inline int32_t Ops::__ror__(double x) const {
+    return this->__ror____float(x);
 }
 
 // @dispatch
 // def __xor__(self, x: int) -> int32:
 //     return 15
-inline int32_t Ops::__xor__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__xor____int(const ::tpy::BigInt& x) const {
     return 15;
+}
+
+inline int32_t Ops::__xor__(const ::tpy::BigInt& x) const {
+    return this->__xor____int(x);
 }
 
 // @dispatch
 // def __xor__(self, x: float) -> int32:
 //     return 16
-inline int32_t Ops::__xor__(double x) const {
+inline int32_t Ops::__xor____float(double x) const {
     return 16;
+}
+
+inline int32_t Ops::__xor__(double x) const {
+    return this->__xor____float(x);
 }
 
 // @dispatch
 // def __lshift__(self, x: int) -> int32:
 //     return 17
-inline int32_t Ops::__lshift__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__lshift____int(const ::tpy::BigInt& x) const {
     return 17;
+}
+
+inline int32_t Ops::__lshift__(const ::tpy::BigInt& x) const {
+    return this->__lshift____int(x);
 }
 
 // @dispatch
 // def __lshift__(self, x: float) -> int32:
 //     return 18
-inline int32_t Ops::__lshift__(double x) const {
+inline int32_t Ops::__lshift____float(double x) const {
     return 18;
+}
+
+inline int32_t Ops::__lshift__(double x) const {
+    return this->__lshift____float(x);
 }
 
 // @dispatch
 // def __rrshift__(self, x: int) -> int32:
 //     return 19
-inline int32_t Ops::__rrshift__(const ::tpy::BigInt& x) const {
+inline int32_t Ops::__rrshift____int(const ::tpy::BigInt& x) const {
     return 19;
+}
+
+inline int32_t Ops::__rrshift__(const ::tpy::BigInt& x) const {
+    return this->__rrshift____int(x);
 }
 
 // @dispatch
 // def __rrshift__(self, x: float) -> int32:
 //     return 20
-inline int32_t Ops::__rrshift__(double x) const {
+inline int32_t Ops::__rrshift____float(double x) const {
     return 20;
+}
+
+inline int32_t Ops::__rrshift__(double x) const {
+    return this->__rrshift____float(x);
 }
 
 // def __init__(self, x: int32) -> None:
@@ -1198,15 +1390,23 @@ inline Pick::Pick() : own(Pt(0)) {}
 // @dispatch
 // def __or__(self, p: Pt) -> Pt:
 //     return p
-inline const Pt& Pick::__or__(const Pt& p) const {
+inline const Pt& Pick::__or____Pt(const Pt& p) const {
     return p;
+}
+
+inline const Pt& Pick::__or__(const Pt& p) const {
+    return this->__or____Pt(p);
 }
 
 // @dispatch
 // def __or__(self, x: float) -> Pt:
 //     return self.own
-inline const Pt& Pick::__or__(double x) const {
+inline const Pt& Pick::__or____float(double x) const {
     return this->own;
+}
+
+inline const Pt& Pick::__or__(double x) const {
+    return this->__or____float(x);
 }
 
 // def __init__(self) -> None:
@@ -1248,7 +1448,7 @@ inline Holder::Holder() : b(B()) {}
 //     # Method body: a field receiver converts the operand the same way.
 //     return self.b * n  # tpyc: ok
 inline int32_t Holder::scaled(int32_t n) const {
-    return ((this->b) * (::tpy::BigInt(n)));
+    return ((this->b).__mul____int(::tpy::BigInt(n)));
 }
 
 // def __init__(self) -> None:

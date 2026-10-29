@@ -131,14 +131,14 @@ int32_t optional_result(Slots& s) {
 //     # receiver is fine and stays const.
 //     return t[0]  # tpyc: ok
 int32_t int_key(const Two& t) {
-    return t[0];
+    return t.__getitem____int32(0);
 }
 
 // def mono_key(c: readonly[KeyMono], k: int64) -> int32:
 //     # Inherited overloads: the int64 key picks the readonly `T = int64` one.
 //     return c[k]  # tpyc: ok
 int32_t mono_key(const KeyMono& c, int64_t k) {
-    return c[k];
+    return c.__getitem____T(k);
 }
 
 // def generic_key(c: readonly[KeyGen[int64]], k: int64) -> int32:
@@ -146,7 +146,7 @@ int32_t mono_key(const KeyMono& c, int64_t k) {
 //     # with the instance's, as the monomorphic twin above resolves it.
 //     return c[k]  # tpyc: ok
 int32_t generic_key(const KeyGen<int64_t>& c, int64_t k) {
-    return c[k];
+    return c.__getitem____T(k);
 }
 
 // def readonly_iteration(p: readonly[Pair]) -> int32:

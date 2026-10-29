@@ -42,16 +42,16 @@ void main() {
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     a.__delitem__(1);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
-    std::cout << a[0] << "\n" << ::tpy::check_signals;
-    std::cout << a[1] << "\n" << ::tpy::check_signals;
-    std::cout << a[2] << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(1) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(2) << "\n" << ::tpy::check_signals;
     a.__delitem__(0);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
-    std::cout << a[0] << "\n" << ::tpy::check_signals;
-    std::cout << a[1] << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(1) << "\n" << ::tpy::check_signals;
     a.__delitem__(1);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
-    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
     a.__delitem__(0);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }

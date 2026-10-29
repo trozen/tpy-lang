@@ -77,9 +77,10 @@ names the variant the compiler resolved.
 
 ### C++ names of variants
 
-Each variant of a FREE overload set that is emitted as a C++ function of its
+Each variant of an overload set that is emitted as a C++ function of its
 own -- a bodied `@dispatch` variant, a `typing.overload` stub's
-specialization -- gets its own C++ name when the set has more than one such
+specialization, of a free set or of a record's method / operator dunder
+set -- gets its own C++ name when the set has more than one such
 variant. The call then names the variant sema resolved, so C++ overload
 resolution never re-decides it (left to C++, a protocol variant's `T&`
 template beats a concrete variant's `const Dog&` for a non-const argument,
@@ -106,9 +107,68 @@ and two constrained templates over unrelated protocols are unordered).
   native and one bodied variant -- keeps `log` for its bodied one. A
   `typing.overload` generator or coroutine implementation is emitted once,
   not per stub, and keeps its name.
-- Methods, operator dunders and constructors still share one C++ name per
-  set and leave the choice to C++: protocol conformance calls a method by
-  its Python name (BUGS.md#dispatch-method-variant-reresolved-by-cpp).
+- Methods and operator dunders (since 2026-10-27). A record's sets are
+  named in one record-wide pass after inheritance is resolved
+  (`TypeRegistrar.name_record_method_variants`), with the same allocator;
+  the names reserved are the struct's whole member namespace over the MRO
+  (methods, fields, properties and their `set_<prop>` setters, class
+  constants, the members codegen adds), so a collision takes the
+  declaration index (`set_foo__int32__v0` beside a property
+  `foo__int32`). A clone family -- an `@auto_readonly` / `auto_own` pair,
+  which C++ tells apart by the receiver -- shares one name. Every call the
+  program writes names the variant: `c.m__Dog(d)`, a protocol-typed
+  variant deduced at its argument (`c.m__Named(cat)`), `super().m(...)` /
+  `Base.m(self, ...)`, a static call, a subscript
+  (`s.__getitem____int32(0)`, `s.__getitem____slice(...)`), `in`
+  (`b.__contains____int32(3)`), an in-place `op=`. An operator over a named
+  dunder variant renders its member call (the variant's `cpp_template` is
+  stamped `({self}).__mul____int({0})` in place of the shared C++ operator
+  spelling, so every operator path reads one fact): `v * 3` ->
+  `(v).__mul____int(::tpy::BigInt(3))`, `!=` derived from a named `__eq__`
+  -> `(!(v).__eq____int(...))`. A reflected one is the right operand's
+  member call (`x * v` -> `(v).__rmul____int(x)`), which C++ evaluates
+  right operand first, where Python runs `x` first: an evaluation-order
+  difference postponed with the rest of that policy
+  (BUGS.md#subexpression-right-to-left-eval). The names reserved include
+  every variant name a class inherits from a set it does not redefine
+  (`TypeRegistry.inherited_variants`). A member the class declares under
+  one of them -- a method or set of any kind, a field, a class constant, a
+  property or its `set_<prop>` setter (`Child.m__int32` beside `Base`'s
+  `m(int32)` variant) -- is refused at its declaration ("'Child.m__int32'
+  has the same name the compiler gives the inherited variant
+  'Base.m(x: int32)'; rename it"), since it would hide the variant from
+  the calls naming it. Only source names are refused: a variant name the
+  class's own set generates avoids the inherited ones with the `__vN`
+  suffix. A set the class redefines is hidden whole, so its variants keep
+  their names and hide the base's. A generated name counts as a
+  member for the type-shadowing census, so a type spelled like a variant is
+  referred to qualified inside the struct.
+- The plain name stays, as one forwarder per variant with the variant's own
+  signature -- template head, parameters, defaults, return, receiver
+  qualifier -- defined beside the variant (`return this->m__int(x);`, a
+  parameter of the variant's spelling cannot hide it, nor a static one's,
+  called through its class (`return S::m__int32(x);`); a parameter moved
+  on as every delegating shim moves it (`forward_param`: an ownership
+  transfer, or a by-value one whose copy is not known cheap), a consuming
+  receiver `std::move(*this).m__int(x)`). What C++ calls on its own -- a protocol
+  concept and a protocol-bounded body, a `@dynamic` adapter, a callable
+  object's `operator()`, the friend operator / `operator[]` shims, runtime
+  helpers -- reaches the plain name and sees exactly the overload set it
+  always did, picking among it by C++ rules
+  (BUGS.md#dispatch-method-variant-reresolved-by-cpp). A variant with a
+  `Literal` parameter has no forwarder: no plain-name member could tell
+  its values apart (a `typing.overload` literal-only group keeps only its
+  general stub under the plain name). Two variants whose C++ parameters
+  coincide (`str` / `StrView`) with the same receiver const-ness are
+  refused in sema with the identical-parameters diagnostic, since their
+  forwarders would clash. Generator and coroutine variants keep the plain
+  name (as for free sets).
+- A method implementing a slot of a `@dynamic` protocol (the record's or
+  an ancestor's) may not be a set: the slot is one virtual, chosen by its
+  name. *'C.m' implements @dynamic protocol method 'DP.m' and cannot be a
+  @dispatch set; give the other variants different names*.
+- Constructors still share one C++ name per set
+  (BUGS.md#dispatch-ctor-group-unlowered).
 - A literal argument is pinned to the parameter sema picked: a call to a
   TPy overload set (not generic, not `@native` / `@cpp_template`) renders a
   str or numeric literal as a value of that parameter's own type, so the
@@ -139,12 +199,12 @@ and two constrained templates over unrelated protocols are unordered).
   `b(x: float)` renders
   `v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(1)))`, so
   C++ binds the union variant, not the `double` one. The pin fires
-  where the variants share one C++ name -- methods, constructors, and a
-  user operator dunder set, whose variants share the operator's spelling
-  (`({self}) * ({0})`, recorded at registration) -- since a free call names
-  its variant (`variant_cpp_name`) and C++ has nothing left to choose
-  (`FunctionInfo.reresolved_by_cpp`, read by `tpyc/thir/lower/checks.py`
-  `_literal_pin_slot`); and at any call where the union member differs
+  where the variants share one C++ name (`FunctionInfo.reresolved_by_cpp`,
+  read by `tpyc/thir/lower/checks.py` `_literal_pin_slot`); at a named
+  method or operator variant, which no longer needs it to pick, because a
+  method call's literal argument otherwise renders target-less
+  (BUGS.md#method-literal-arg-renders-target-less) -- a free call threads
+  the parameter type into the literal itself; and at any call where the union member differs
   from the type the argument renders as, since the bare literal may convert
   to no alternative (`pick(3)` at `pick(x: uint8 | str)` renders
   `pick(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3)))`). A
@@ -157,17 +217,17 @@ and two constrained templates over unrelated protocols are unordered).
   DEFAULT does not (BUGS.md#union-int-literal-narrow-member-ill-formed). `@native` / `@cpp_template` stubs (builtin `float`,
   `float32`, ...) take no pin. At an operator the literal operand at the
   dunder's parameter is pinned wherever sema resolves the dunder: `v * 3` at
-  `__mul__(float)` / `__mul__(int)` renders `((v) * (::tpy::BigInt(3)))`,
+  `__mul__(float)` / `__mul__(int)` renders `((v).__mul____int(::tpy::BigInt(3)))`,
   the reflected arithmetic `3 * v`, the in-place
-  `v.__iadd__(::tpy::BigInt(3))`, the `v = v + 3` an `+=` falls back to, a
+  `v.__iadd____int(::tpy::BigInt(3))`, the `v = v + 3` an `+=` falls back to, a
   comparison and each link of a chained one, the explicit `v.__mul__(3)`,
   and a `!=` derived from such a set's `__eq__`, which then renders
-  `(!((v) == (::tpy::BigInt(3))))` so the C++ operator is the pinned one
+  `(!((v).__eq____int(::tpy::BigInt(3))))`
   (`_operator_literal_pins`, `tpyc/thir/lower/expressions.py`). A chained
   comparison's middle operand evaluated once into a temp binds the value
   as written and takes the pin where the pinned link compares it
   (`v > (t := 3) > 1` renders `({ auto&& _cmp1 = (t = 3);
-  ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })`), so the next link
+  ((v).__gt____int(::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })`), so the next link
   compares the value sema typed. A str literal at an Optional str
   parameter takes the optional type (`std::optional<std::string_view>("x")`).
   An operand that needs a conversion and is not a literal is converted by
@@ -178,8 +238,8 @@ and two constrained templates over unrelated protocols are unordered).
   is the call `h.__contains__(x)` and lowers as that call (`not in` its
   negation): the winner receives the needle as the call's argument --
   converted at its parameter in sema, literal pin included -- so `n8 in b` at `__contains__(int16)` / `(int32)` renders
-  `b.__contains__(static_cast<int16_t>(n8))` and `3 in b`
-  `b.__contains__(static_cast<int16_t>(3))`. A native container's
+  `b.__contains____int16(static_cast<int16_t>(n8))` and `3 in b`
+  `b.__contains____int16(static_cast<int16_t>(3))`. A native container's
   `__contains__` (dict, set, bytes) is a lookup by value, not a call at its
   key slot, so its needle is not converted (`2**40 in d` over
   `dict[int32, str]` is False, not a range check).
@@ -972,13 +1032,16 @@ class B:
     @readonly
     def __getitem__(self, k: int32) -> int32: ...
 
-b[1]            # mutable receiver: the int64 variant, b[static_cast<int64_t>(1)]
+b[1]            # mutable receiver: the int64 variant, b.__getitem____int64(static_cast<int64_t>(1))
 r[1]            # r: readonly[B] -- the int32 variant
 f.m(1)          # m(str) mutating, m(int32) readonly: no mutating one applies,
-                # so the readonly one runs: static_cast<const F&>(f).m(1)
+                # so the readonly one runs: f.m__int32(1)
 ```
 
-A readonly variant ranked for a mutable receiver passes the receiver const
+A named variant is reached by its own name, so the receiver's const-ness
+picks nothing. Where a readonly variant shares its C++ name with a mutating
+one -- a clone family, or a set without variant names -- and is ranked for
+a mutable receiver, the call passes the receiver const
 (`static_cast<const T&>(recv)`, evaluated once; `std::as_const` is deleted
 for an rvalue) at every call of a dunder or method sema ranks: a method
 call (a nullable `Ptr` receiver as

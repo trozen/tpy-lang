@@ -67,8 +67,8 @@ void main() {
         std::cout << "call" << " " << ::tpy::__getitem__(d, ::tpy::int_cast_check<int32_t>(x)) << "\n" << ::tpy::check_signals;
         std::cout << "get" << " " << ::tpy::dict_get_default(d, ::tpy::int_cast_check<int32_t>(x), "none") << "\n" << ::tpy::check_signals;
         std::cout << "free" << " " << ::tpyapp::main::take__int32(::tpy::int_cast_check<int32_t>(x)) << "\n" << ::tpy::check_signals;
-        std::cout << "meth" << " " << t.take(::tpy::int_cast_check<int32_t>(x)) << "\n" << ::tpy::check_signals;
-        std::cout << "rec" << " " << tab[::tpy::int_cast_check<int32_t>(x)] << " " << tab[std::string_view("a")] << "\n" << ::tpy::check_signals;
+        std::cout << "meth" << " " << t.take__int32(::tpy::int_cast_check<int32_t>(x)) << "\n" << ::tpy::check_signals;
+        std::cout << "rec" << " " << tab.__getitem____int32(::tpy::int_cast_check<int32_t>(x)) << " " << tab.__getitem____str("a") << "\n" << ::tpy::check_signals;
         std::cout << "fnpos" << " " << ::tpyapp::main::take_pos__int32__int32(::tpy::int_cast_check<int32_t>(x), 0) << "\n" << ::tpy::check_signals;
     }
     xs.push_back(::tpyapp::main::wide());

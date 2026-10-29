@@ -18,13 +18,13 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_operand_gen::__next__(
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         a.emplace(Acc(1));
-        (*a).__iadd__(b);
+        (*a).__iadd____Bump(b);
         __state = S_RESUME_0;
         return (*a).n;
     }
     case S_RESUME_0: {  // after: yield a.n
         b.k = 10;
-        (*a).__iadd__(b);
+        (*a).__iadd____Bump(b);
         __state = S_RESUME_1;
         return (*a).n;
     }

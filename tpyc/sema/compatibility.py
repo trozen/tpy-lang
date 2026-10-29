@@ -3394,6 +3394,25 @@ class TypeCompatibility:
         return (f"{fi.name}("
                 f"{', '.join(self.call_type_text(p.type) for p in fi.params)})")
 
+    def variant_text(self, name: str, variant: 'FunctionInfo') -> str:
+        """One overload variant of `name` as a diagnostic lists it: its
+        parameter types, `/` and `*` where it has them."""
+        parts: list[str] = []
+        params = variant.params
+        for i, p in enumerate(params):
+            if (p.keyword_only and not p.is_kwargs
+                    and (i == 0 or not params[i - 1].keyword_only)
+                    and not any(q.is_variadic for q in params[:i])):
+                parts.append("*")
+            text = self.call_type_text(p.type)
+            parts.append(f"*{p.name}" if p.is_variadic
+                         else f"**{p.name}" if p.is_kwargs
+                         else f"{p.name}: {text}")
+            if p.positional_only and (i + 1 == len(params)
+                                      or not params[i + 1].positional_only):
+                parts.append("/")
+        return f"{name}({', '.join(parts)})"
+
     def ambiguous_overload_text(self, func_name: str,
                                 candidates: tuple['FunctionInfo', ...]) -> str:
         """The message every call position reports a top tie with."""

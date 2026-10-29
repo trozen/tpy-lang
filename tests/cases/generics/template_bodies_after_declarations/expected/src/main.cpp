@@ -224,7 +224,7 @@ void main() {
     lp.v = ::tpy::add_check<int32_t>(lp.v, 1);
     std::cout << "c" << " " << lm.v << " " << lp.v << "\n" << ::tpy::check_signals;
     Ov ov = Ov();
-    std::cout << "d" << " " << ov.f(4) << " " << ov.f(std::string_view("hey")) << "\n" << ::tpy::check_signals;
+    std::cout << "d" << " " << ov.f__int32(4) << " " << ov.f__str("hey") << "\n" << ::tpy::check_signals;
     ::tpyapp::main::section_e();
     Later lf = Pair<int32_t>(1).with_<std::string>("u");
     lf.v = ::tpy::add_check<int32_t>(lf.v, 1);

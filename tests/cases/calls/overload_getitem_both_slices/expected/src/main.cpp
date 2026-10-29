@@ -19,7 +19,7 @@ namespace tpyapp::main {
 //     sp3 = w[0:5:-1]
 void main() {
     Window w = Window();
-    std::span<const int32_t> sp = w.__getitem__(::tpy::BasicSlice{1, 4});
+    std::span<const int32_t> sp = w.__getitem____basic_slice(::tpy::BasicSlice{1, 4});
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -27,14 +27,14 @@ void main() {
         int32_t x = *__beg_0;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<const int32_t> sp2 = w.__getitem__(::tpy::Slice{0, 5, 2});
-    std::span<const int32_t> sp3 = w.__getitem__(::tpy::Slice{0, 5, -1});
+    std::span<const int32_t> sp2 = w.__getitem____slice(::tpy::Slice{0, 5, 2});
+    std::span<const int32_t> sp3 = w.__getitem____slice(::tpy::Slice{0, 5, -1});
 }
 
 
 // @overload
 // def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
-std::span<const int32_t> Window::__getitem__(::tpy::BasicSlice index) const {
+std::span<const int32_t> Window::__getitem____basic_slice(::tpy::BasicSlice index) const {
     std::optional<int32_t> s_start = index.start;
     std::optional<int32_t> s_stop = index.stop;
     int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
@@ -42,13 +42,21 @@ std::span<const int32_t> Window::__getitem__(::tpy::BasicSlice index) const {
     return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
 }
 
+std::span<const int32_t> Window::__getitem__(::tpy::BasicSlice index) const {
+    return this->__getitem____basic_slice(index);
+}
+
 // @overload
 // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
-std::span<const int32_t> Window::__getitem__(::tpy::Slice index) const {
+std::span<const int32_t> Window::__getitem____slice(::tpy::Slice index) const {
     std::optional<int32_t> s_step = index.step;
     int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
     std::cout << step << "\n" << ::tpy::check_signals;
     return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
+}
+
+std::span<const int32_t> Window::__getitem__(::tpy::Slice index) const {
+    return this->__getitem____slice(index);
 }
 // main()
 void __tpy_init() {

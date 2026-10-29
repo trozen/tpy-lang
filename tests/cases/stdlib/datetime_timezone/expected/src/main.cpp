@@ -144,11 +144,11 @@ void main() {
     std::cout << dt.isoformat() << " " << std::string(::tpy::__str__(dt)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(dt.utcoffset()) << " " << ::tpy::print_optional_val(dt.tzname()) << " " << ::tpy::print_bool((!dt.dst().has_value())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) == (u))) << " " << ::tpy::print_bool(((dt) <= (u))) << " " << ::tpy::print_bool(((dt) >= (u))) << " " << ::tpy::print_bool((::tpy::__hash__(dt) == ::tpy::__hash__(u))) << "\n" << ::tpy::check_signals;
-    std::cout << ((u) - (dt)) << "\n" << ::tpy::check_signals;
+    std::cout << ((u).__sub____datetime(dt)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
-    std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____datetime(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_3))) << "\n" << ::tpy::check_signals;
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
-    std::cout << ((dt) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(45)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(45)))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456));
     std::cout << ::tpy::print_bool(((naive) == (u))) << " " << ::tpy::print_bool((!((naive) == (u)))) << "\n" << ::tpy::check_signals;
     {
@@ -160,7 +160,7 @@ void main() {
     }
     {
         try {
-            std::cout << ((u) - (naive)) << "\n" << ::tpy::check_signals;
+            std::cout << ((u).__sub____datetime(naive)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TypeError&) {
             std::cout << "TypeError-sub" << "\n" << ::tpy::check_signals;
         }

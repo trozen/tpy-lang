@@ -21,9 +21,9 @@ void main() {
     std::vector<int32_t> items = {10, 20, 30};
     a.extend(items);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
-    std::cout << a[0] << "\n" << ::tpy::check_signals;
-    std::cout << a[1] << "\n" << ::tpy::check_signals;
-    std::cout << a[3] << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(1) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(3) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

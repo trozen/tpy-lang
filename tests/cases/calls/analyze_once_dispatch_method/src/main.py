@@ -66,8 +66,7 @@ def main() -> None:
     print("field:", o.m(b.take().v))  # tpyc: ok
     b = B(5)
     print("select-arm:", o.m(f"{b.take().v}" if flag else "none"))  # tpyc: ok
-    # (a list argument is the free function case's: C++ re-picks a method
-    # variant for a braced list, BUGS.md#dispatch-method-variant-reresolved-by-cpp)
+    # (a list argument is the free function case's)
     b = B(7)
     print("dict:", o.m({"k": b.take().v}))  # tpyc: ok
     b = B(8)

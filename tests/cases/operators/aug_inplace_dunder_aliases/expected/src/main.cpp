@@ -259,9 +259,9 @@ void operand_narrow_int() {
 void operand_record() {
     Acc a = Acc(1);
     Bump b = Bump(2);
-    a.__iadd__(b);
+    a.__iadd____Bump(b);
     b.k = 50;
-    a.__iadd__(b);
+    a.__iadd____Bump(b);
     std::cout << "operand_record" << " " << a.n << " " << b.k << "\n" << ::tpy::check_signals;
 }
 
@@ -307,7 +307,7 @@ void operand_rebound(bool flag) {
     if (flag) {
         b = &*(__slot_2 = Bump(3));
     }
-    a.__iadd__((*b));
+    a.__iadd____Bump((*b));
     std::cout << "operand_rebound" << " " << a.n << "\n" << ::tpy::check_signals;
 }
 
@@ -328,7 +328,7 @@ void operand_narrowed(bool flag) {
         o = &*(__slot_1 = Bump(4));
     }
     if ((o != nullptr)) {
-        a.__iadd__((*o));
+        a.__iadd____Bump((*o));
     }
     std::cout << "operand_narrowed" << " " << a.n << "\n" << ::tpy::check_signals;
 }
@@ -351,7 +351,7 @@ void setitem_copies() {
     Row z = Row(2);
     Row __tmp_1 = z;
     al.__setitem__(0, std::move(__tmp_1));
-    std::cout << "setitem_arraylist" << " " << al[0].x << " " << z.x << "\n" << ::tpy::check_signals;
+    std::cout << "setitem_arraylist" << " " << al.__getitem____int32(0).x << " " << z.x << "\n" << ::tpy::check_signals;
     ListSlots sl = ListSlots();
     std::vector<int32_t> v = {7, 8};
     std::vector<int32_t> __tmp_2 = v;

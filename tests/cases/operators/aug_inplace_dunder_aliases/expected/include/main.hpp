@@ -153,10 +153,12 @@ struct Acc {
 
     // @dispatch
     // def __iadd__(self, b: Bump) -> "Acc":
+    Acc& __iadd____Bump(const Bump& b);
     Acc& __iadd__(const Bump& b);
 
     // @dispatch
     // def __iadd__(self, b: bool) -> "Acc":
+    Acc& __iadd____bool(bool b);
     Acc& __iadd__(bool b);
 
     // def __isub__(self, xs: list[int32]) -> "Acc":
@@ -419,18 +421,26 @@ inline Acc::Acc(int32_t n)
 // def __iadd__(self, b: Bump) -> "Acc":
 //     self.n += b.k
 //     return self
-inline Acc& Acc::__iadd__(const Bump& b) {
+inline Acc& Acc::__iadd____Bump(const Bump& b) {
     this->n = ::tpy::add_check<int32_t>(this->n, b.k);
     return (*this);
+}
+
+inline Acc& Acc::__iadd__(const Bump& b) {
+    return this->__iadd____Bump(b);
 }
 
 // @dispatch
 // def __iadd__(self, b: bool) -> "Acc":
 //     self.n += 100
 //     return self
-inline Acc& Acc::__iadd__(bool b) {
+inline Acc& Acc::__iadd____bool(bool b) {
     this->n = ::tpy::add_check<int32_t>(this->n, 100);
     return (*this);
+}
+
+inline Acc& Acc::__iadd__(bool b) {
+    return this->__iadd____bool(b);
 }
 
 // def __isub__(self, xs: list[int32]) -> "Acc":
@@ -470,7 +480,7 @@ inline Holder::Holder() : acc(Acc(0)) {}
 //     self.acc += b  # tpyc: ok
 //     print("operand_method", self.acc.n)
 inline void Holder::add(const Bump& b) {
-    this->acc.__iadd__(b);
+    this->acc.__iadd____Bump(b);
     std::cout << "operand_method" << " " << this->acc.n << "\n" << ::tpy::check_signals;
 }
 

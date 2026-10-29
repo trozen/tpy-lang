@@ -22,9 +22,9 @@ void main() {
     ::tpystd::tplib::array_list::ArrayList<Counter, 4> counters = ::tpystd::tplib::array_list::ArrayList<Counter, 4>();
     counters.append(Counter(0));
     counters.append(Counter(10));
-    counters[0].bump();
-    counters[0].bump();
-    counters[1].bump();
+    counters.__getitem____int32(0).bump();
+    counters.__getitem____int32(0).bump();
+    counters.__getitem____int32(1).bump();
     auto& __src_0 = counters;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

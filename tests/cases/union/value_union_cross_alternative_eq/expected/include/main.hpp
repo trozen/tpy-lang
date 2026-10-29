@@ -287,7 +287,7 @@ struct Fixed {
     uint64_t __hash__() const;
 
     friend bool operator==(const Fixed& lhs, Fixed other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
 };
@@ -327,7 +327,7 @@ struct Zone {
     uint64_t __hash__() const;
 
     friend bool operator==(const Zone& lhs, Zone other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zone";
 };
@@ -367,11 +367,11 @@ struct Tagged {
     bool __ne__(Tagged other) const;
 
     friend bool operator==(const Tagged& lhs, Tagged other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
 
     friend bool operator!=(const Tagged& lhs, Tagged other) {
-        return lhs.__ne__(other);
+        return lhs.__ne__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
@@ -400,7 +400,7 @@ struct Marked {
     bool __eq__(Marked other) const;
 
     friend bool operator==(const Marked& lhs, Marked other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Marked";
 };

@@ -21,10 +21,12 @@ struct Inferred {
 
     // @dispatch
     // def m(self, k: int64) -> int32:
+    int32_t m__int64(int64_t k);
     int32_t m(int64_t k);
 
     // @dispatch
     // def m(self, k: int32) -> int32:
+    int32_t m__int32(int32_t k) const;
     int32_t m(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "policy_lib.Inferred";
 };
@@ -43,16 +45,24 @@ inline Inferred::Inferred() : hits(0) {}
 // def m(self, k: int64) -> int32:
 //     self.hits += 1
 //     return 200
-inline int32_t Inferred::m(int64_t k) {
+inline int32_t Inferred::m__int64(int64_t k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return 200;
+}
+
+inline int32_t Inferred::m(int64_t k) {
+    return this->m__int64(k);
 }
 
 // @dispatch
 // def m(self, k: int32) -> int32:
 //     return k + 100
-inline int32_t Inferred::m(int32_t k) const {
+inline int32_t Inferred::m__int32(int32_t k) const {
     return (::tpy::add_check<int32_t>(k, 100));
+}
+
+inline int32_t Inferred::m(int32_t k) const {
+    return this->m__int32(k);
 }
 void __tpy_init();
 } // namespace tpyapp::policy_lib

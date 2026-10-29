@@ -260,7 +260,7 @@ void readonly_t() {
 void method() {
     Keeper k = Keeper();
     Puppy p = Puppy();
-    std::cout << "method:" << " " << k.f(p) << " " << p.hits << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << k.f__Dog(p) << " " << p.hits << "\n" << ::tpy::check_signals;
 }
 
 // def multi_base() -> None:
@@ -726,7 +726,7 @@ void coerce_subclass_vs_proto() {
 void coerce_method() {
     Walker w = Walker();
     int8_t n8 = 1;
-    std::cout << "coerce_method:" << " " << w.go(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_method:" << " " << w.go__int64(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
 }
 
 // def coerce_optional_scalar() -> None:
@@ -861,7 +861,7 @@ std::string lhw__float(double x) {
 void literal_home() {
     LitHome h = LitHome();
     std::cout << "literal_home:" << " " << ::tpyapp::main::lhf__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::lhf__float(0.5) << " " << ::tpyapp::main::lhw__float(0.25) << "\n" << ::tpy::check_signals;
-    std::cout << "literal_home:" << " " << h.mv(::tpy::BigInt(7)) << " " << h.mv(true) << " " << h.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << h.opt(std::optional<double>(0.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_home:" << " " << h.mv__int(::tpy::BigInt(7)) << " " << h.mv__bool(true) << " " << h.opt__int_None(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << h.opt__float_None(std::optional<double>(0.5)) << "\n" << ::tpy::check_signals;
 }
 
 // @dispatch
@@ -926,22 +926,22 @@ std::string lit_cross__lit_a(std::string_view x, int64_t y) {
 void operators() {
     OpList v = OpList();
     std::vector<int32_t> xs = {1, 2};
-    std::cout << "operators:" << " " << ((v) + (xs)) << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << ((v).__add____list_int32(xs)) << "\n" << ::tpy::check_signals;
     OpNum n = OpNum();
-    std::cout << "operators:" << " " << ((n) * (::tpy::BigInt(3))) << " " << ((::tpy::BigInt(3)) * (n)) << " " << (n) * (::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
-    n.__iadd__(::tpy::BigInt(3));
-    bool lt = ((n) < (::tpy::BigInt(3)));
-    bool chained = (((n) > (::tpy::BigInt(3))) && (3 > 1));
-    bool ne = (!((n) == (::tpy::BigInt(3))));
+    std::cout << "operators:" << " " << ((n).__mul____int(::tpy::BigInt(3))) << " " << ((n).__rmul____int(::tpy::BigInt(3))) << " " << (n).__mul____int(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    n.__iadd____int(::tpy::BigInt(3));
+    bool lt = ((n).__lt____int(::tpy::BigInt(3)));
+    bool chained = (((n).__gt____int(::tpy::BigInt(3))) && (3 > 1));
+    bool ne = (!((n).__eq____int(::tpy::BigInt(3))));
     std::cout << "operators:" << " " << n.hits << " " << ::tpy::print_bool(lt) << " " << ::tpy::print_bool(chained) << " " << ::tpy::print_bool(ne) << "\n" << ::tpy::check_signals;
     OpAcc acc = OpAcc(0);
-    acc = (acc) + (::tpy::BigInt(3));
+    acc = (acc).__add____int(::tpy::BigInt(3));
     OpWidth w = OpWidth();
-    std::cout << "operators:" << " " << acc.n << " " << ((w) + (3)) << " " << ((w) - (std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << acc.n << " " << ((w).__add____int32(3)) << " " << ((w).__sub____float_None(std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
     int32_t t;
-    std::cout << "operators:" << " " << ::tpy::print_bool(({ auto&& _cmp1 = (t = 3); ((n) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })) << " " << t << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << ::tpy::print_bool(({ auto&& _cmp1 = (t = 3); ((n).__gt____int(::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })) << " " << t << "\n" << ::tpy::check_signals;
     OpOptStr o = OpOptStr();
-    std::cout << "operators:" << " " << ((o) + (std::optional<std::string_view>("x"))) << " " << o.m(std::optional<std::string_view>("y")) << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << ((o).__add____str_None("x")) << " " << o.m__str_None("y") << "\n" << ::tpy::check_signals;
     OpMixed mx = OpMixed();
     mx.__iadd__(::tpy::BigInt(3));
     std::cout << "operators:" << " " << mx.hits << "\n" << ::tpy::check_signals;
@@ -964,7 +964,7 @@ void operators_literal(std::string_view one, std::string_view mode) {
     std::cout << "operators_literal:" << " " << ::tpyapp::main::lit_base__str(one) << " " << ::tpyapp::main::lit_cross__lit_a(one, 3) << "\n" << ::tpy::check_signals;
     OpLitWidth lw = OpLitWidth();
     OpText t = OpText();
-    std::cout << "operators_literal:" << " " << ((lw) + (::tpyapp::main::lit3())) << " " << ((t) + (mode)) << "\n" << ::tpy::check_signals;
+    std::cout << "operators_literal:" << " " << ((lw).__add____int32(::tpyapp::main::lit3())) << " " << ((t).__add____str(mode)) << "\n" << ::tpy::check_signals;
 }
 
 // def operators_builtin() -> None:
@@ -991,9 +991,9 @@ void membership() {
     InSet h = InSet();
     InWords w = InWords();
     int8_t n8 = 1;
-    std::cout << "membership:" << " " << ::tpy::print_bool(h.__contains__(static_cast<int16_t>(n8))) << " " << ::tpy::print_bool((!(h.__contains__(static_cast<int16_t>(n8))))) << " " << ::tpy::print_bool(w.__contains__(std::string_view("x"))) << "\n" << ::tpy::check_signals;
+    std::cout << "membership:" << " " << ::tpy::print_bool(h.__contains____int16(static_cast<int16_t>(n8))) << " " << ::tpy::print_bool((!(h.__contains____int16(static_cast<int16_t>(n8))))) << " " << ::tpy::print_bool(w.__contains____str("x")) << "\n" << ::tpy::check_signals;
     InLit lit = InLit();
-    std::cout << "membership:" << " " << ::tpy::print_bool(lit.__contains__(3)) << " " << ::tpy::print_bool(lit.__contains__(3)) << "\n" << ::tpy::check_signals;
+    std::cout << "membership:" << " " << ::tpy::print_bool(lit.__contains____int32(3)) << " " << ::tpy::print_bool(lit.__contains____int32(3)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -198,50 +198,62 @@ struct Shape {
 
     // @dispatch
     // def grow(self, *, by: int32) -> str:
+    std::string grow__int32(int32_t by) const;
     std::string grow(int32_t by) const;
 
     // @dispatch
     // def grow(self, *, to: str) -> str:
+    std::string grow__str(std::string_view to) const;
     std::string grow(std::string_view to) const;
 
     // @dispatch
     // def conf(self, x: int32, /, **kw: Unpack[Opts]) -> str:
+    std::string conf__int32__Opts(int32_t x, const Opts& kw) const;
     std::string conf(int32_t x, const Opts& kw) const;
 
     // @dispatch
     // def conf(self, s: str) -> str:
+    std::string conf__str(std::string_view s) const;
     std::string conf(std::string_view s) const;
 
     // @dispatch
     // def fconf(self, x: float, /, **kw: Unpack[Opts]) -> str:
+    std::string fconf__float__Opts(double x, const Opts& kw) const;
     std::string fconf(double x, const Opts& kw) const;
 
     // @dispatch
     // def fconf(self, s: str) -> str:
+    std::string fconf__str(std::string_view s) const;
     std::string fconf(std::string_view s) const;
 
     // @dispatch
     // def opt(self, x: int32, **kw: Unpack[Maybe]) -> str:
+    std::string opt__int32__Maybe(int32_t x, const Maybe& kw) const;
     std::string opt(int32_t x, const Maybe& kw) const;
 
     // @dispatch
     // def opt(self, s: str) -> str:
+    std::string opt__str(std::string_view s) const;
     std::string opt(std::string_view s) const;
 
     // @dispatch
     // def __getitem__(self, i: int32) -> str:
+    std::string __getitem____int32(int32_t i) const;
     std::string __getitem__(int32_t i) const;
 
     // @dispatch
     // def __getitem__(self, k: str) -> str:
+    std::string __getitem____str(std::string_view k) const;
     std::string __getitem__(std::string_view k) const;
 
     // @dispatch
     // def __add__(self, other: int32) -> int32:
+    int32_t __add____int32(int32_t other) const;
     int32_t __add__(int32_t other) const;
 
     // @dispatch
     // def __add__(self, other: str) -> int32:
+    int32_t __add____str(std::string_view other) const;
     int32_t __add__(std::string_view other) const;
 
     std::string operator[](int32_t i) const;
@@ -336,85 +348,133 @@ inline Shape::Shape() : n(1) {}
 // @dispatch
 // def grow(self, *, by: int32) -> str:
 //     return f"by {self.n + by}"
-inline std::string Shape::grow(int32_t by) const {
+inline std::string Shape::grow__int32(int32_t by) const {
     return std::format("by {}", (::tpy::add_check<int32_t>(this->n, by)));
+}
+
+inline std::string Shape::grow(int32_t by) const {
+    return this->grow__int32(by);
 }
 
 // @dispatch
 // def grow(self, *, to: str) -> str:
 //     return f"to {to}"
-inline std::string Shape::grow(std::string_view to) const {
+inline std::string Shape::grow__str(std::string_view to) const {
     return std::format("to {}", to);
+}
+
+inline std::string Shape::grow(std::string_view to) const {
+    return this->grow__str(to);
 }
 
 // @dispatch
 // def conf(self, x: int32, /, **kw: Unpack[Opts]) -> str:
 //     return f"conf {x} {kw['x']}"
-inline std::string Shape::conf(int32_t x, const Opts& kw) const {
+inline std::string Shape::conf__int32__Opts(int32_t x, const Opts& kw) const {
     return std::format("conf {} {}", x, kw.x);
+}
+
+inline std::string Shape::conf(int32_t x, const Opts& kw) const {
+    return this->conf__int32__Opts(x, kw);
 }
 
 // @dispatch
 // def conf(self, s: str) -> str:
 //     return f"conf-s {s}"
-inline std::string Shape::conf(std::string_view s) const {
+inline std::string Shape::conf__str(std::string_view s) const {
     return std::format("conf-s {}", s);
+}
+
+inline std::string Shape::conf(std::string_view s) const {
+    return this->conf__str(s);
 }
 
 // @dispatch
 // def fconf(self, x: float, /, **kw: Unpack[Opts]) -> str:
 //     return f"fconf {x} {kw['x']}"
-inline std::string Shape::fconf(double x, const Opts& kw) const {
+inline std::string Shape::fconf__float__Opts(double x, const Opts& kw) const {
     return std::format("fconf {} {}", ::tpy::float_to_str(x), kw.x);
+}
+
+inline std::string Shape::fconf(double x, const Opts& kw) const {
+    return this->fconf__float__Opts(x, kw);
 }
 
 // @dispatch
 // def fconf(self, s: str) -> str:
 //     return f"fconf-s {s}"
-inline std::string Shape::fconf(std::string_view s) const {
+inline std::string Shape::fconf__str(std::string_view s) const {
     return std::format("fconf-s {}", s);
+}
+
+inline std::string Shape::fconf(std::string_view s) const {
+    return this->fconf__str(s);
 }
 
 // @dispatch
 // def opt(self, x: int32, **kw: Unpack[Maybe]) -> str:
 //     return f"opt {x + kw.get('y', 0)}"
-inline std::string Shape::opt(int32_t x, const Maybe& kw) const {
+inline std::string Shape::opt__int32__Maybe(int32_t x, const Maybe& kw) const {
     return std::format("opt {}", (::tpy::add_check<int32_t>(x, kw.y.value_or(0))));
+}
+
+inline std::string Shape::opt(int32_t x, const Maybe& kw) const {
+    return this->opt__int32__Maybe(x, kw);
 }
 
 // @dispatch
 // def opt(self, s: str) -> str:
 //     return f"opt-s {s}"
-inline std::string Shape::opt(std::string_view s) const {
+inline std::string Shape::opt__str(std::string_view s) const {
     return std::format("opt-s {}", s);
+}
+
+inline std::string Shape::opt(std::string_view s) const {
+    return this->opt__str(s);
 }
 
 // @dispatch
 // def __getitem__(self, i: int32) -> str:
 //     return f"at {i}"
-inline std::string Shape::__getitem__(int32_t i) const {
+inline std::string Shape::__getitem____int32(int32_t i) const {
     return std::format("at {}", i);
+}
+
+inline std::string Shape::__getitem__(int32_t i) const {
+    return this->__getitem____int32(i);
 }
 
 // @dispatch
 // def __getitem__(self, k: str) -> str:
 //     return f"key {k}"
-inline std::string Shape::__getitem__(std::string_view k) const {
+inline std::string Shape::__getitem____str(std::string_view k) const {
     return std::format("key {}", k);
+}
+
+inline std::string Shape::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
 }
 
 // @dispatch
 // def __add__(self, other: int32) -> int32:
 //     return self.n + other
-inline int32_t Shape::__add__(int32_t other) const {
+inline int32_t Shape::__add____int32(int32_t other) const {
     return (::tpy::add_check<int32_t>(this->n, other));
+}
+
+inline int32_t Shape::__add__(int32_t other) const {
+    return this->__add____int32(other);
 }
 
 // @dispatch
 // def __add__(self, other: str) -> int32:
 //     return len(other) * 10
-inline int32_t Shape::__add__(std::string_view other) const {
+inline int32_t Shape::__add____str(std::string_view other) const {
     return (::tpy::mul_check<int32_t>(::tpy::__len__(other), 10));
+}
+
+inline int32_t Shape::__add__(std::string_view other) const {
+    return this->__add____str(other);
 }
 
 inline std::string Shape::operator[](int32_t i) const {

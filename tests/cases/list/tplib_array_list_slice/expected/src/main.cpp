@@ -55,7 +55,7 @@ void main() {
         int32_t __tmp_1 = v;
         a.append(std::move(__tmp_1));
     }
-    std::span<int32_t> sp = a.__getitem__(::tpy::BasicSlice{1, 4});
+    std::span<int32_t> sp = a.__getitem____basic_slice(::tpy::BasicSlice{1, 4});
     auto& __obj_1 = sp;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -63,7 +63,7 @@ void main() {
         int32_t x = *__beg_1;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp2 = a.__getitem__(::tpy::BasicSlice{std::nullopt, 2});
+    std::span<int32_t> sp2 = a.__getitem____basic_slice(::tpy::BasicSlice{std::nullopt, 2});
     auto& __obj_2 = sp2;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
@@ -71,7 +71,7 @@ void main() {
         int32_t x = *__beg_2;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp3 = a.__getitem__(::tpy::BasicSlice{3, std::nullopt});
+    std::span<int32_t> sp3 = a.__getitem____basic_slice(::tpy::BasicSlice{3, std::nullopt});
     auto& __obj_3 = sp3;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
@@ -79,7 +79,7 @@ void main() {
         int32_t x = *__beg_3;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp4 = a.__getitem__(::tpy::BasicSlice{std::nullopt, std::nullopt});
+    std::span<int32_t> sp4 = a.__getitem____basic_slice(::tpy::BasicSlice{std::nullopt, std::nullopt});
     auto& __obj_4 = sp4;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
@@ -87,7 +87,7 @@ void main() {
         int32_t x = *__beg_4;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp5 = a.__getitem__(::tpy::BasicSlice{-2, std::nullopt});
+    std::span<int32_t> sp5 = a.__getitem____basic_slice(::tpy::BasicSlice{-2, std::nullopt});
     auto& __obj_5 = sp5;
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
@@ -95,7 +95,7 @@ void main() {
         int32_t x = *__beg_5;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp6 = a.__getitem__(::tpy::BasicSlice{std::nullopt, -1});
+    std::span<int32_t> sp6 = a.__getitem____basic_slice(::tpy::BasicSlice{std::nullopt, -1});
     auto& __obj_6 = sp6;
     auto __beg_6 = __obj_6.begin();
     auto __end_6 = __obj_6.end();
@@ -103,10 +103,10 @@ void main() {
         int32_t x = *__beg_6;
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::span<int32_t> sp7 = a.__getitem__(::tpy::BasicSlice{3, 1});
+    std::span<int32_t> sp7 = a.__getitem____basic_slice(::tpy::BasicSlice{3, 1});
     std::cout << ::tpy::__len__(sp7) << "\n" << ::tpy::check_signals;
-    std::cout << a[0] << "\n" << ::tpy::check_signals;
-    std::cout << a[4] << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << a.__getitem____int32(4) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

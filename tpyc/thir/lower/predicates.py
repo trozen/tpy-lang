@@ -7249,9 +7249,12 @@ def _container_field_bare_read(e: TpyExpr, declared: dict[str, TpyType],
             and _field_receiver_ok(e, declared, analyzer))
 
 def _method_member_cpp(fi, name: str) -> str:
-    """The member-name rule for a resolved call: the @native rename over the
-    escaped source name (a native FUNCTION's rename rides
-    native_function_name instead, so it never lands here)."""
+    """The member-name rule for a resolved call: the variant's own name
+    when it is one of a set (`variant_cpp_name`), else
+    the @native rename over the escaped source name (a native FUNCTION's
+    rename rides native_function_name instead, so it never lands here)."""
+    if fi.variant_cpp_name is not None:
+        return fi.variant_cpp_name
     return (fi.native_name if fi.native_name and not fi.native_function
             else escape_cpp_name(name))
 

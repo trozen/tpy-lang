@@ -1,0 +1,22 @@
+free_function: tag int32 1 3
+free_function: 1 2 10 20
+free_function: True True 4 2
+free_function: 2 2 2
+method: tag 1 1
+generator: tag
+generator: 20
+generator: 1
+async: tag 1 1
+comprehension: ['tag', 'tag'] [10, 10] 2
+closure: tag 1 1
+with: tag False 1
+try: tag 2
+try: 1 int32 5
+error_return: tag 20 1
+match: tag 1 False 1
+lazy: 10 False 0 ['left']
+lazy: True ['left', 'chain']
+receiver_kind: animal 1
+constructor: tag 1 1
+base: int32 tag 1 1
+module: tag 1 False 1

@@ -115,10 +115,10 @@ void main() {
     std::cout << datetime::utcfromtimestamp(253402300799.5) << "\n" << ::tpy::check_signals;
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10)))) << "\n" << ::tpy::check_signals;
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(-1), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    std::cout << ((dt) - (::tpystd::datetime::timedelta(::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15)))) << "\n" << ::tpy::check_signals;
-    std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))) - (dt)) << "\n" << ::tpy::check_signals;
-    std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(4), ::tpy::BigInt(999999)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____datetime(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))).__sub____datetime(dt)) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____datetime(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(4), ::tpy::BigInt(999999)))) << "\n" << ::tpy::check_signals;
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999))) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))).isoformat() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) > (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) <= (dt))) << " " << ::tpy::print_bool(((dt) == (dt))) << " " << ::tpy::print_bool((!((dt) == (dt)))) << "\n" << ::tpy::check_signals;
@@ -153,7 +153,7 @@ void main() {
     }
     {
         try {
-            ::tpystd::datetime::datetime bad4 = ((::tpystd::datetime::datetime(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1))) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
+            ::tpystd::datetime::datetime bad4 = ((::tpystd::datetime::datetime(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1))).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
             std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
             std::cout << "caught underflow" << "\n" << ::tpy::check_signals;

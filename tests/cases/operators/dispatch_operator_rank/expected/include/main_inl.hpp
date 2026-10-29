@@ -17,7 +17,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         v.emplace(L());
         xs.emplace(std::vector<int32_t>{1, 2});
         __state = S_RESUME_0;
-        return (((*v)) + ((*xs)));
+        return (((*v)).__add____list_int32((*xs)));
     }
     case S_RESUME_0: {  // after: yield v + xs  # tpyc: ok
         __state = S_DONE;

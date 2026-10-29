@@ -292,7 +292,7 @@ void readonly_t() {
 void method() {
     Keeper k = Keeper();
     Puppy p = Puppy();
-    std::cout << "method:" << " " << k.f(p) << " " << p.hits << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << k.f__Dog(p) << " " << p.hits << "\n" << ::tpy::check_signals;
 }
 
 // def typing_overload() -> None:
@@ -803,7 +803,7 @@ void coerce_subclass_vs_proto() {
 void coerce_method() {
     Walker w = Walker();
     int8_t n8 = 1;
-    std::cout << "coerce_method:" << " " << w.go(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_method:" << " " << w.go__int64(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
 }
 
 // def coerce_optional_scalar() -> None:

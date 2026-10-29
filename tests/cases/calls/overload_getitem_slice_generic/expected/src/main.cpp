@@ -28,8 +28,8 @@ void main() {
     c.add(10);
     c.add(20);
     c.add(30);
-    std::cout << c[1] << "\n" << ::tpy::check_signals;
-    std::span<const int32_t> sp = c.__getitem__(::tpy::BasicSlice{0, 2});
+    std::cout << c.__getitem____int32(1) << "\n" << ::tpy::check_signals;
+    std::span<const int32_t> sp = c.__getitem____slice(::tpy::BasicSlice{0, 2});
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -40,7 +40,7 @@ void main() {
     Container<std::string> s = Container<std::string>();
     s.add("hello");
     s.add("world");
-    std::cout << s[0] << "\n" << ::tpy::check_signals;
+    std::cout << s.__getitem____int32(0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

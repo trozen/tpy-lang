@@ -28,7 +28,7 @@ struct Delta {
     Delta __add__(Delta other) const;
 
     friend Delta operator+(const Delta& lhs, Delta other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Delta";
 };
@@ -55,25 +55,27 @@ struct Day {
 
     // @overload
     // def __sub__(self, other: Day) -> Delta: ...
+    Delta __sub____Day(Day other) const;
     Delta __sub__(Day other) const;
 
     // @overload
     // def __sub__(self, other: Delta) -> Day: ...
+    Day __sub____Delta(Delta other) const;
     Day __sub__(Delta other) const;
 
     // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one
     Day __add__(Delta other) const;
 
     friend Delta operator-(const Day& lhs, Day other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend Day operator-(const Day& lhs, Delta other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend Day operator+(const Day& lhs, Delta other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Day";
 };
@@ -107,14 +109,22 @@ inline Day::Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
 // # Operand-polymorphic: Day - Day -> Delta, Day - Delta -> Day.
 // @overload
 // def __sub__(self, other: Day) -> Delta: ...
-inline Delta Day::__sub__(Day other) const {
+inline Delta Day::__sub____Day(Day other) const {
     return Delta(((this->ordinal) - (other.ordinal)));
+}
+
+inline Delta Day::__sub__(Day other) const {
+    return this->__sub____Day(std::move(other));
 }
 
 // @overload
 // def __sub__(self, other: Delta) -> Day: ...
-inline Day Day::__sub__(Delta other) const {
+inline Day Day::__sub____Delta(Delta other) const {
     return Day(((this->ordinal) - (other.n)));
+}
+
+inline Day Day::__sub__(Delta other) const {
+    return this->__sub____Delta(std::move(other));
 }
 
 // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one

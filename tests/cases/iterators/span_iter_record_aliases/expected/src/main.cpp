@@ -83,7 +83,7 @@ __gen_gen gen(::tpystd::tplib::array_list::ArrayList<A, 4>& al) {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, al));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = al[0].n;
+            int32_t __tpy_async_ret = al.__getitem____int32(0).n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
@@ -168,11 +168,11 @@ void main() {
         auto&& x = ::tpy::unwrap_ref(*__r_1);
         x.n = ::tpy::add_check<int32_t>(x.n, 1);
     }
-    std::cout << "local" << " " << al[0].n << " " << al[1].n << "\n" << ::tpy::check_signals;
+    std::cout << "local" << " " << al.__getitem____int32(0).n << " " << al.__getitem____int32(1).n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_param(al);
     ::tpy::SpanIter<A> it = al.__iter__();
     ::tpyapp::main::bump_iterable(it);
-    std::cout << "param" << " " << al[0].n << "\n" << ::tpy::check_signals;
+    std::cout << "param" << " " << al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     Bag b = Bag();
     b.bump_mine();
     auto& __src_2 = b;
@@ -183,7 +183,7 @@ void main() {
         auto&& e = ::tpy::unwrap_ref(*__r_3);
         e.n = ::tpy::add_check<int32_t>(e.n, 10);
     }
-    std::cout << "method" << " " << b.al[0].n << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << b.al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     {
         auto __src_4 = ::tpyapp::main::gen(al);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -206,7 +206,7 @@ void main() {
         }
     };
     inner();
-    std::cout << "closure" << " " << al[0].n << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     {
         try {
             auto& __src_8 = al;
@@ -218,12 +218,12 @@ void main() {
                 x.n = ::tpy::add_check<int32_t>(x.n, 1);
             }
         } catch (...) {
-            std::cout << "finally" << " " << al[0].n << "\n" << ::tpy::check_signals;
+            std::cout << "finally" << " " << al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << al[0].n << "\n" << ::tpy::check_signals;
+        std::cout << "finally" << " " << al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     }
-    auto& __match_subject_1 = al[0].n;
+    auto& __match_subject_1 = al.__getitem____int32(0).n;
     switch (__match_subject_1) {
     case 7: {
         auto& __src_10 = al;
@@ -240,7 +240,7 @@ void main() {
         break;
     }
     }
-    std::cout << "match" << " " << al[0].n << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << al.__getitem____int32(0).n << "\n" << ::tpy::check_signals;
     A __slot_1 = A(0);
     A* kept = &__slot_1;
     auto& __src_12 = al;
@@ -252,7 +252,7 @@ void main() {
         kept = &(x);
     }
     kept->n = ::tpy::add_check<int32_t>(kept->n, 100);
-    std::cout << "kept" << " " << al[1].n << "\n" << ::tpy::check_signals;
+    std::cout << "kept" << " " << al.__getitem____int32(1).n << "\n" << ::tpy::check_signals;
     std::cout << "readonly" << " " << ::tpyapp::main::total(al) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> ints = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     ints.append(1);
@@ -264,7 +264,7 @@ void main() {
         int32_t k = ::tpy::unwrap_ref(*__r_15);
         k = ::tpy::add_check<int32_t>(k, 1);
     }
-    std::cout << "ints" << " " << ints[0] << "\n" << ::tpy::check_signals;
+    std::cout << "ints" << " " << ints.__getitem____int32(0) << "\n" << ::tpy::check_signals;
 }
 
 // # A loop variable over a SpanIter of records (ArrayList's `__iter__`, a user
@@ -297,7 +297,7 @@ void __tpy_init() {
         auto&& gx = ::tpy::unwrap_ref(*__r_1);
         gx.n = ::tpy::add_check<int32_t>(gx.n, 1);
     }
-    std::cout << "module" << " " << (*gal)[0].n << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << (*gal).__getitem____int32(0).n << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

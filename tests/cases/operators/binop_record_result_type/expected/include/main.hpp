@@ -29,17 +29,19 @@ struct Frac {
 
     // @overload
     // def __truediv__(self, other: Frac) -> float: ...
+    double __truediv____Frac(Frac other) const;
     double __truediv__(Frac other) const;
 
     // @overload
     // def __truediv__(self, other: int) -> Frac: ...
+    Frac __truediv____int(const ::tpy::BigInt& other) const;
     Frac __truediv__(const ::tpy::BigInt& other) const;
 
     // def __str__(self) -> str:
     std::string __str__() const;
 
     friend double operator/(const Frac& lhs, Frac other) {
-        return lhs.__truediv__(other);
+        return lhs.__truediv__(std::move(other));
     }
 
     friend Frac operator/(const Frac& lhs, const ::tpy::BigInt& other) {
@@ -142,14 +144,22 @@ inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den)
 
 // @overload
 // def __truediv__(self, other: Frac) -> float: ...
-inline double Frac::__truediv__(Frac other) const {
+inline double Frac::__truediv____Frac(Frac other) const {
     return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
+}
+
+inline double Frac::__truediv__(Frac other) const {
+    return this->__truediv____Frac(std::move(other));
 }
 
 // @overload
 // def __truediv__(self, other: int) -> Frac: ...
-inline Frac Frac::__truediv__(const ::tpy::BigInt& other) const {
+inline Frac Frac::__truediv____int(const ::tpy::BigInt& other) const {
     return Frac(this->num, ((this->den) * (other)));
+}
+
+inline Frac Frac::__truediv__(const ::tpy::BigInt& other) const {
+    return this->__truediv____int(other);
 }
 
 // def __str__(self) -> str:

@@ -12,9 +12,9 @@ namespace tpyapp::cyc_user {
 //     return f"{first} {o(2)} {o.f(1)}"  # tpyc: ok
 std::string use() {
     ::tpyapp::cyc_a::Opt o = ::tpyapp::cyc_a::Opt(3);
-    int32_t first = o.__call__(2);
+    int32_t first = o.__call____int32(2);
     o.k = 4;
-    return std::format("{} {} {}", first, o.__call__(2), o.f(1));
+    return std::format("{} {} {}", first, o.__call____int32(2), o.f__int32(1));
 }
 
 // import cyc_a

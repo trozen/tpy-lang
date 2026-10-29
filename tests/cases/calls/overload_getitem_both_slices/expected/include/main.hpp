@@ -24,10 +24,12 @@ struct Window {
 
     // @overload
     // def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+    std::span<const int32_t> __getitem____basic_slice(::tpy::BasicSlice index) const;
     std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const;
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+    std::span<const int32_t> __getitem____slice(::tpy::Slice index) const;
     std::span<const int32_t> __getitem__(::tpy::Slice index) const;
 
     std::span<const int32_t> operator[](::tpy::BasicSlice index) const;

@@ -406,36 +406,36 @@ void overload_stubs() {
 //     print("method:", v.wide(-2147483648 if ticked(calls) else -2147483648), v.wide(-2147483648))  # tpyc: ok
 void method() {
     V v = V();
-    ::tpy::BigInt r = v.mm(::tpy::BigInt(3));
-    std::cout << "method:" << " " << r << " " << ::tpy::print_float(v.mm(0.5)) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << v.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(-3))) << " " << v.fopt(std::optional<double>(0.1)) << " " << v.iopt(std::optional<int32_t>(3)) << " " << v.nopt(std::optional<int16_t>(static_cast<int16_t>(3))) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.narrow(static_cast<int16_t>(3)) << " " << v.narrow(static_cast<int16_t>(-3)) << " " << v.mv(::tpy::BigInt(7)) << " " << v.mv(true) << " " << v.width(0.25) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt r1 = v.mm(::tpy::BigInt(3));
-    ::tpy::BigInt r2 = v.mm(::tpy::BigInt(3));
-    ::tpy::BigInt r3 = v.mm(::tpy::BigInt(3));
-    std::cout << "method:" << " " << ((r1) + (::tpy::BigInt(1))) << " " << ((r2) + (::tpy::BigInt(1))) << " " << ((r3) + (::tpy::BigInt(1))) << " " << v.mv(::tpy::BigInt(7)) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << ::tpy::print_float(v.f(static_cast<float>(1.0000000596046448))) << " " << ::tpy::print_float(v.f(static_cast<float>(-1.0000000596046448))) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.mv(::tpy::BigInt::from_str("9223372036854775808")) << " " << v.mv(::tpy::BigInt(static_cast<int64_t>(-9223372036854775807LL - 1))) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.fo(std::optional<double>(static_cast<double>(3))) << " " << v.fo(std::optional<double>(-0.5)) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.mm(::tpy::BigInt::from_str("1180591620717411303424")) << "\n" << ::tpy::check_signals;
+    ::tpy::BigInt r = v.mm__int(::tpy::BigInt(3));
+    std::cout << "method:" << " " << r << " " << ::tpy::print_float(v.mm__float(0.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.opt__int_None(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << v.opt__int_None(std::optional<::tpy::BigInt>(::tpy::BigInt(-3))) << " " << v.fopt__float_None(std::optional<double>(0.1)) << " " << v.iopt__int32_None(std::optional<int32_t>(3)) << " " << v.nopt__int16_None(std::optional<int16_t>(static_cast<int16_t>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.narrow__int16(static_cast<int16_t>(3)) << " " << v.narrow__int16(static_cast<int16_t>(-3)) << " " << v.mv__int(::tpy::BigInt(7)) << " " << v.mv__bool(true) << " " << v.width__float(0.25) << "\n" << ::tpy::check_signals;
+    ::tpy::BigInt r1 = v.mm__int(::tpy::BigInt(3));
+    ::tpy::BigInt r2 = v.mm__int(::tpy::BigInt(3));
+    ::tpy::BigInt r3 = v.mm__int(::tpy::BigInt(3));
+    std::cout << "method:" << " " << ((r1) + (::tpy::BigInt(1))) << " " << ((r2) + (::tpy::BigInt(1))) << " " << ((r3) + (::tpy::BigInt(1))) << " " << v.mv__int(::tpy::BigInt(7)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_float(v.f__float32(static_cast<float>(1.0000000596046448))) << " " << ::tpy::print_float(v.f__float32(static_cast<float>(-1.0000000596046448))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.mv__int(::tpy::BigInt::from_str("9223372036854775808")) << " " << v.mv__int(::tpy::BigInt(static_cast<int64_t>(-9223372036854775807LL - 1))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.fo__float_None(std::optional<double>(static_cast<double>(3))) << " " << v.fo__float_None(std::optional<double>(-0.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.mm__int(::tpy::BigInt::from_str("1180591620717411303424")) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> calls = std::vector<int32_t>{};
-    ::tpy::BigInt r4 = v.mm(::tpy::BigInt(((::tpyapp::main::ticked(calls)) ? (3) : (3))));
+    ::tpy::BigInt r4 = v.mm__int(::tpy::BigInt(((::tpyapp::main::ticked(calls)) ? (3) : (3))));
     int32_t w;
-    ::tpy::BigInt r5 = v.mm(::tpy::BigInt((w = 3)));
+    ::tpy::BigInt r5 = v.mm__int(::tpy::BigInt((w = 3)));
     std::cout << "method:" << " " << ((r4) + (::tpy::BigInt(1))) << " " << ((r5) + (::tpy::BigInt(1))) << " " << w << " " << ::tpy::__len__(calls) << "\n" << ::tpy::check_signals;
     int32_t w16;
     ::tpy::BigInt w64;
-    std::cout << "method:" << " " << v.narrow(static_cast<int16_t>((w16 = 3))) << " " << v.narrow(((w64 = static_cast<int64_t>(3000000000))).to_fixed_check<int64_t>()) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.narrow__int16(static_cast<int16_t>((w16 = 3))) << " " << v.narrow__int64(((w64 = static_cast<int64_t>(3000000000))).to_fixed_check<int64_t>()) << "\n" << ::tpy::check_signals;
     int32_t wf;
     double xf;
-    std::cout << "method:" << " " << v.fo(std::optional<double>(static_cast<double>((wf = 3)))) << " " << ::tpy::print_float(v.f(static_cast<float>((xf = 0.5)))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.fo__float_None(std::optional<double>(static_cast<double>((wf = 3)))) << " " << ::tpy::print_float(v.f__float32(static_cast<float>((xf = 0.5)))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt u;
-    std::cout << "method:" << " " << v.mm((u = ::tpy::BigInt::from_str("1180591620717411303424"))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.mm__int((u = ::tpy::BigInt::from_str("1180591620717411303424"))) << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << w16 << " " << w64 << " " << wf << " " << ::tpy::print_float(xf) << " " << u << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << ::tpy::print_float(v.f(static_cast<float>(0.25))) << " " << ::tpy::print_float(v.f(static_cast<float>(0.5))) << " " << v.fo(std::optional<double>(0.5)) << " " << v.mm(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << ::tpy::print_float(v.f(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.fo(std::optional<double>(static_cast<double>(static_cast<int64_t>(3000000000)))) << " " << ::tpy::print_float(v.f(static_cast<float>(static_cast<uint64_t>(10000000000000000000ull)))) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << v.wide(static_cast<int32_t>(((::tpyapp::main::ticked(calls)) ? (-2147483648) : (-2147483648)))) << " " << v.wide(static_cast<int32_t>(-2147483648)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_float(v.f__float32(static_cast<float>(0.25))) << " " << ::tpy::print_float(v.f__float32(static_cast<float>(0.5))) << " " << v.fo__float_None(std::optional<double>(0.5)) << " " << v.mm__int(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_float(v.f__float32(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.fo__float_None(std::optional<double>(static_cast<double>(static_cast<int64_t>(3000000000)))) << " " << ::tpy::print_float(v.f__float32(static_cast<float>(static_cast<uint64_t>(10000000000000000000ull)))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.wide__int32(static_cast<int32_t>(((::tpyapp::main::ticked(calls)) ? (-2147483648) : (-2147483648)))) << " " << v.wide__int32(static_cast<int32_t>(-2147483648)) << "\n" << ::tpy::check_signals;
 }
 
 // def inverse() -> None:
@@ -466,7 +466,7 @@ void inverse() {
 //     print("union_member:", v.um(p, 1), um(p, 1))  # tpyc: ok
 void union_member(int32_t p) {
     V v = V();
-    std::cout << "union_member:" << " " << v.um(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << " " << ::tpyapp::main::um__int64_str__int32(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "union_member:" << " " << v.um__int64_str__int32(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << " " << ::tpyapp::main::um__int64_str__int32(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << "\n" << ::tpy::check_signals;
 }
 
 // def union_literal(k: int32, code: int32 | str | None) -> None:
@@ -484,7 +484,7 @@ void union_literal(int32_t k, const ::tpy::Union<std::monostate, int32_t, std::s
     V v = V();
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 3;
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = 3;
-    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(__tmp_1) << " " << ::tpyapp::main::u__int_str(::tpy::BigInt(k)) << " " << v.u(__tmp_2) << " " << v.u(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
+    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(__tmp_1) << " " << ::tpyapp::main::u__int_str(::tpy::BigInt(k)) << " " << v.u__int_str(__tmp_2) << " " << v.u__int_str(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
     std::cout << "union_literal:" << " " << ::tpyapp::main::code_of__None_int32_str(3) << " " << ::tpyapp::main::code_of__noargs() << "\n" << ::tpy::check_signals;
     if ((std::holds_alternative<std::monostate>(code))) {
         return;
@@ -512,13 +512,13 @@ void union_literal(int32_t k, const ::tpy::Union<std::monostate, int32_t, std::s
 void union_render() {
     V v = V();
     std::vector<int32_t> calls = std::vector<int32_t>{};
-    std::cout << "union_render:" << " " << v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(1))) << " " << v.pk(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3))) << " " << ::tpyapp::main::pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_render:" << " " << v.b__int64_str(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(1))) << " " << v.pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3))) << " " << ::tpyapp::main::pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3))) << "\n" << ::tpy::check_signals;
     int32_t x;
-    std::cout << "union_render:" << " " << v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>((x = 3)))) << " " << v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(((::tpyapp::main::ticked(calls)) ? (3) : (3))))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_render:" << " " << v.b__int64_str(::tpy::Union<int64_t, std::string>(static_cast<int64_t>((x = 3)))) << " " << v.b__int64_str(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(((::tpyapp::main::ticked(calls)) ? (3) : (3))))) << "\n" << ::tpy::check_signals;
     int32_t y;
-    std::cout << "union_render:" << " " << v.pk(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>((y = 3)))) << " " << v.pk(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(((::tpyapp::main::ticked(calls)) ? (3) : (3))))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_render:" << " " << v.pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>((y = 3)))) << " " << v.pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(((::tpyapp::main::ticked(calls)) ? (3) : (3))))) << "\n" << ::tpy::check_signals;
     std::cout << "union_render:" << " " << x << " " << y << " " << ::tpy::__len__(calls) << "\n" << ::tpy::check_signals;
-    std::cout << "union_render:" << " " << v.huge(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))) << " " << ::tpyapp::main::huge(::tpy::Union<float, std::string>(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_render:" << " " << v.huge__float(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))) << " " << ::tpyapp::main::huge(::tpy::Union<float, std::string>(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<int64_t, std::string> __tmp_1 = ::tpy::Union<int64_t, std::string>(static_cast<int64_t>(-5));
     std::cout << "union_render:" << " " << ::tpy::ListPrinter(({
         std::vector<int64_t> __result;
@@ -531,7 +531,7 @@ void union_render() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::cout << "union_render:" << " " << v.hw(::tpy::Union<float, std::string>(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_render:" << " " << v.hw__float32_str(::tpy::Union<float, std::string>(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
 }
 
 // def arg_positions() -> None:
@@ -584,7 +584,7 @@ void comprehension() {
     V v = V();
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpy::array_from_index<std::string, 2>([&](std::size_t __i_0) -> std::string {
         int32_t _ = int32_t(__i_0);
-        return v.narrow(static_cast<int16_t>(3));
+        return v.narrow__int16(static_cast<int16_t>(3));
     })) << " " << ::tpy::ListPrinter(::tpy::array_from_index<std::string, 2>([&](std::size_t __i_1) -> std::string {
         int32_t _ = int32_t(__i_1);
         return ::tpyapp::main::num__int(::tpy::BigInt(1));
@@ -606,7 +606,7 @@ std::string call0(const std::function<std::string()>& f) {
 //     print("lambda:", call0(lambda: v.opt(3) + " " + num(2)))  # tpyc: warning(/copies the object 'v'/)
 void lambda_body() {
     V v = V();
-    std::cout << "lambda:" << " " << ::tpyapp::main::call0([v]() -> std::string { return (::tpy::str_concat((::tpy::str_concat(v.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))), " ")), ::tpyapp::main::num__int(::tpy::BigInt(2)))); }) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda:" << " " << ::tpyapp::main::call0([v]() -> std::string { return (::tpy::str_concat((::tpy::str_concat(v.opt__int_None(std::optional<::tpy::BigInt>(::tpy::BigInt(3))), " ")), ::tpyapp::main::num__int(::tpy::BigInt(2)))); }) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -652,7 +652,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static V __global_slot_1 = V();
     v = &__global_slot_1;
-    std::cout << "module:" << " " << v->mm(::tpy::BigInt(3)) << " " << ::tpyapp::main::num__int(::tpy::BigInt(3)) << " " << v->narrow(static_cast<int16_t>(3)) << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << v->mm__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::num__int(::tpy::BigInt(3)) << " " << v->narrow__int16(static_cast<int16_t>(3)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

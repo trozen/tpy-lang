@@ -66,10 +66,12 @@ struct Acc {
 
     // @dispatch
     // def add(self, x: int32) -> None:  # tpyc: ok
+    void add__int32(int32_t x);
     void add(int32_t x);
 
     // @dispatch
     // def add(self, x: str) -> None:
+    void add__str(std::string_view x);
     void add(std::string_view x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
 };
@@ -98,15 +100,23 @@ inline Acc::Acc() : total(0) {}
 // @dispatch
 // def add(self, x: int32) -> None:  # tpyc: ok
 //     self.total += x
-inline void Acc::add(int32_t x) {
+inline void Acc::add__int32(int32_t x) {
     this->total = ::tpy::add_check<int32_t>(this->total, x);
+}
+
+inline void Acc::add(int32_t x) {
+    return this->add__int32(x);
 }
 
 // @dispatch
 // def add(self, x: str) -> None:
 //     self.total += len(x)
-inline void Acc::add(std::string_view x) {
+inline void Acc::add__str(std::string_view x) {
     this->total = ::tpy::add_check<int32_t>(this->total, ::tpy::__len__(x));
+}
+
+inline void Acc::add(std::string_view x) {
+    return this->add__str(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

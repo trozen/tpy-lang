@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void show(const ::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
     int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        const Point& pt = lst[i];
+        const Point& pt = lst.__getitem____int32(i);
         std::cout << pt.x << " " << pt.y << "\n" << ::tpy::check_signals;
     }
 }
@@ -20,7 +20,7 @@ void show(const ::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
 //     p = lst[0]  # a mutable Point& alias into the list...
 //     p.x = 99  # ... so this write is visible through the list below
 void bump(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    Point& p = lst[0];
+    Point& p = lst.__getitem____int32(0);
     p.x = 99;
 }
 

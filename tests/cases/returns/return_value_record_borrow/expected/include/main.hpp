@@ -51,11 +51,11 @@ struct F {
     uint64_t __hash__() const;
 
     friend F operator+(const F& lhs, F o) {
-        return lhs.__add__(o);
+        return lhs.__add__(std::move(o));
     }
 
     friend bool operator==(const F& lhs, F other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.F";
 };

@@ -72,10 +72,12 @@ struct GBox {
 
     // @dispatch
     // def ov(self, x: str) -> int:
+    ::tpy::BigInt ov__str(std::string_view x) const;
     ::tpy::BigInt ov(std::string_view x) const;
 
     // @dispatch
     // def ov(self, x: bool) -> int:
+    ::tpy::BigInt ov__bool(bool x) const;
     ::tpy::BigInt ov(bool x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
@@ -198,16 +200,26 @@ inline GBox<T>::GBox(::tpy::readonly_form_t<T> v) : v(v) {}
 // def ov(self, x: str) -> int:
 //     return len(x)
 template<typename T>
-inline ::tpy::BigInt GBox<T>::ov(std::string_view x) const {
+inline ::tpy::BigInt GBox<T>::ov__str(std::string_view x) const {
     return ::tpy::BigInt(::tpy::__len__(x));
+}
+
+template<typename T>
+inline ::tpy::BigInt GBox<T>::ov(std::string_view x) const {
+    return this->ov__str(x);
 }
 
 // @dispatch
 // def ov(self, x: bool) -> int:
 //     return 7
 template<typename T>
-inline ::tpy::BigInt GBox<T>::ov(bool x) const {
+inline ::tpy::BigInt GBox<T>::ov__bool(bool x) const {
     return ::tpy::BigInt(7);
+}
+
+template<typename T>
+inline ::tpy::BigInt GBox<T>::ov(bool x) const {
+    return this->ov__bool(x);
 }
 
 void __tpy_init();

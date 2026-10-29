@@ -327,26 +327,32 @@ struct Acc {
 
     // @dispatch
     // def add(self, xs: list[int64]) -> str:
+    std::string add__list_int64(std::vector<int64_t>& xs) const;
     std::string add(std::vector<int64_t>& xs) const;
 
     // @dispatch
     // def add(self, xs: str) -> str:
+    std::string add__str(std::string_view xs) const;
     std::string add(std::string_view xs) const;
 
     // @dispatch
     // def fill(self, xs: list[float]) -> int32:
+    int32_t fill__list_float(std::vector<double>& xs) const;
     int32_t fill(std::vector<double>& xs) const;
 
     // @dispatch
     // def fill(self, xs: str) -> int32:
+    int32_t fill__str(std::string_view xs) const;
     int32_t fill(std::string_view xs) const;
 
     // @dispatch
     // def fill_map(self, d: dict[str, float]) -> int32:
+    int32_t fill_map__dict_str_float(::tpy::ordered_map<std::string, double>& d) const;
     int32_t fill_map(::tpy::ordered_map<std::string, double>& d) const;
 
     // @dispatch
     // def fill_map(self, d: str) -> int32:
+    int32_t fill_map__str(std::string_view d) const;
     int32_t fill_map(std::string_view d) const;
 
     // def push[T](self, xs: list[T], v: T) -> T:
@@ -355,10 +361,12 @@ struct Acc {
 
     // @dispatch
     // def __add__(self, o: list[int64]) -> int32:
+    int32_t __add____list_int64(const std::vector<int64_t>& o) const;
     int32_t __add__(const std::vector<int64_t>& o) const;
 
     // @dispatch
     // def __add__(self, o: int32) -> int32:
+    int32_t __add____int32(int32_t o) const;
     int32_t __add__(int32_t o) const;
 
     // def in_method(self) -> None:
@@ -452,63 +460,95 @@ inline Acc::Acc() : total(0) {}
 // def add(self, xs: list[int64]) -> str:
 //     xs.append(8)
 //     return "list[int64]"
-inline std::string Acc::add(std::vector<int64_t>& xs) const {
+inline std::string Acc::add__list_int64(std::vector<int64_t>& xs) const {
     xs.push_back(8);
     return "list[int64]";
+}
+
+inline std::string Acc::add(std::vector<int64_t>& xs) const {
+    return this->add__list_int64(xs);
 }
 
 // @dispatch
 // def add(self, xs: str) -> str:
 //     return "str"
-inline std::string Acc::add(std::string_view xs) const {
+inline std::string Acc::add__str(std::string_view xs) const {
     return "str";
+}
+
+inline std::string Acc::add(std::string_view xs) const {
+    return this->add__str(xs);
 }
 
 // @dispatch
 // def fill(self, xs: list[float]) -> int32:
 //     xs.append(0.5)
 //     return len(xs)
-inline int32_t Acc::fill(std::vector<double>& xs) const {
+inline int32_t Acc::fill__list_float(std::vector<double>& xs) const {
     xs.push_back(0.5);
     return ::tpy::__len__(xs);
+}
+
+inline int32_t Acc::fill(std::vector<double>& xs) const {
+    return this->fill__list_float(xs);
 }
 
 // @dispatch
 // def fill(self, xs: str) -> int32:
 //     return -1
-inline int32_t Acc::fill(std::string_view xs) const {
+inline int32_t Acc::fill__str(std::string_view xs) const {
     return -1;
+}
+
+inline int32_t Acc::fill(std::string_view xs) const {
+    return this->fill__str(xs);
 }
 
 // @dispatch
 // def fill_map(self, d: dict[str, float]) -> int32:
 //     d["b"] = 0.5
 //     return len(d)
-inline int32_t Acc::fill_map(::tpy::ordered_map<std::string, double>& d) const {
+inline int32_t Acc::fill_map__dict_str_float(::tpy::ordered_map<std::string, double>& d) const {
     ::tpy::__setitem__(d, "b", 0.5);
     return ::tpy::__len__(d);
+}
+
+inline int32_t Acc::fill_map(::tpy::ordered_map<std::string, double>& d) const {
+    return this->fill_map__dict_str_float(d);
 }
 
 // @dispatch
 // def fill_map(self, d: str) -> int32:
 //     return -1
-inline int32_t Acc::fill_map(std::string_view d) const {
+inline int32_t Acc::fill_map__str(std::string_view d) const {
     return -1;
+}
+
+inline int32_t Acc::fill_map(std::string_view d) const {
+    return this->fill_map__str(d);
 }
 
 // # An operator's operand is read-only, so this callee reads the list.
 // @dispatch
 // def __add__(self, o: list[int64]) -> int32:
 //     return len(o)
-inline int32_t Acc::__add__(const std::vector<int64_t>& o) const {
+inline int32_t Acc::__add____list_int64(const std::vector<int64_t>& o) const {
     return ::tpy::__len__(o);
+}
+
+inline int32_t Acc::__add__(const std::vector<int64_t>& o) const {
+    return this->__add____list_int64(o);
 }
 
 // @dispatch
 // def __add__(self, o: int32) -> int32:
 //     return o
-inline int32_t Acc::__add__(int32_t o) const {
+inline int32_t Acc::__add____int32(int32_t o) const {
     return o;
+}
+
+inline int32_t Acc::__add__(int32_t o) const {
+    return this->__add____int32(o);
 }
 
 // def in_method(self) -> None:

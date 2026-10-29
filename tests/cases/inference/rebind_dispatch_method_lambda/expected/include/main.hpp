@@ -39,10 +39,12 @@ struct M {
 
     // @dispatch
     // def run(self, r: Rec, f: Callable[[float], float]) -> float:
+    double run__Rec__Callable_float_float(Rec& r, std::function<double(double)> f) const;
     double run(Rec& r, std::function<double(double)> f) const;
 
     // @dispatch
     // def run(self, s: str) -> str:
+    std::string run__str(std::string_view s) const;
     std::string run(std::string_view s) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.M";
 };
@@ -66,16 +68,24 @@ inline M::M() {
 // def run(self, r: Rec, f: Callable[[float], float]) -> float:
 //     r.v = 100
 //     return f(1.0)
-inline double M::run(Rec& r, std::function<double(double)> f) const {
+inline double M::run__Rec__Callable_float_float(Rec& r, std::function<double(double)> f) const {
     r.v = 100;
     return f(1.0);
+}
+
+inline double M::run(Rec& r, std::function<double(double)> f) const {
+    return this->run__Rec__Callable_float_float(r, f);
 }
 
 // @dispatch
 // def run(self, s: str) -> str:
 //     return s
-inline std::string M::run(std::string_view s) const {
+inline std::string M::run__str(std::string_view s) const {
     return std::string(s);
+}
+
+inline std::string M::run(std::string_view s) const {
+    return this->run__str(s);
 }
 void __tpy_init();
 } // namespace tpyapp::main

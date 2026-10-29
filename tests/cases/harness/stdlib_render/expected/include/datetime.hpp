@@ -119,38 +119,47 @@ struct timedelta {
 
     // @dispatch
     // def __mul__(self, other: int) -> timedelta:
+    timedelta __mul____int(const ::tpy::BigInt& other) const;
     timedelta __mul__(const ::tpy::BigInt& other) const;
 
     // @dispatch
     // def __mul__(self, other: float) -> timedelta:
+    timedelta __mul____float(double other) const;
     timedelta __mul__(double other) const;
 
     // @dispatch
     // def __rmul__(self, other: int) -> timedelta:
+    timedelta __rmul____int(const ::tpy::BigInt& other) const;
     timedelta __rmul__(const ::tpy::BigInt& other) const;
 
     // @dispatch
     // def __rmul__(self, other: float) -> timedelta:
+    timedelta __rmul____float(double other) const;
     timedelta __rmul__(double other) const;
 
     // @dispatch
     // def __floordiv__(self, other: timedelta) -> int:
+    ::tpy::BigInt __floordiv____timedelta(timedelta other) const;
     ::tpy::BigInt __floordiv__(timedelta other) const;
 
     // @dispatch
     // def __floordiv__(self, other: int) -> timedelta:
+    timedelta __floordiv____int(const ::tpy::BigInt& other) const;
     timedelta __floordiv__(const ::tpy::BigInt& other) const;
 
     // @dispatch
     // def __truediv__(self, other: timedelta) -> float:
+    double __truediv____timedelta(timedelta other) const;
     double __truediv__(timedelta other) const;
 
     // @dispatch
     // def __truediv__(self, other: int) -> timedelta:
+    timedelta __truediv____int(const ::tpy::BigInt& other) const;
     timedelta __truediv__(const ::tpy::BigInt& other) const;
 
     // @dispatch
     // def __truediv__(self, other: float) -> timedelta:
+    timedelta __truediv____float(double other) const;
     timedelta __truediv__(double other) const;
 
     // def __mod__(self, other: timedelta) -> timedelta:
@@ -178,11 +187,11 @@ struct timedelta {
     bool __ge__(timedelta other) const;
 
     friend timedelta operator+(const timedelta& lhs, timedelta other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
 
     friend timedelta operator-(const timedelta& lhs, timedelta other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend timedelta operator*(const timedelta& lhs, const ::tpy::BigInt& other) {
@@ -202,7 +211,7 @@ struct timedelta {
     }
 
     friend double operator/(const timedelta& lhs, timedelta other) {
-        return lhs.__truediv__(other);
+        return lhs.__truediv__(std::move(other));
     }
 
     friend timedelta operator/(const timedelta& lhs, const ::tpy::BigInt& other) {
@@ -214,27 +223,27 @@ struct timedelta {
     }
 
     friend timedelta operator%(const timedelta& lhs, timedelta other) {
-        return lhs.__mod__(other);
+        return lhs.__mod__(std::move(other));
     }
 
     friend bool operator==(const timedelta& lhs, timedelta other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
 
     friend bool operator<(const timedelta& lhs, timedelta other) {
-        return lhs.__lt__(other);
+        return lhs.__lt__(std::move(other));
     }
 
     friend bool operator<=(const timedelta& lhs, timedelta other) {
-        return lhs.__le__(other);
+        return lhs.__le__(std::move(other));
     }
 
     friend bool operator>(const timedelta& lhs, timedelta other) {
-        return lhs.__gt__(other);
+        return lhs.__gt__(std::move(other));
     }
 
     friend bool operator>=(const timedelta& lhs, timedelta other) {
-        return lhs.__ge__(other);
+        return lhs.__ge__(std::move(other));
     }
 
     friend timedelta operator-(const timedelta& operand) {
@@ -303,7 +312,7 @@ struct timezone {
     std::string __str__() const;
 
     friend bool operator==(const timezone& lhs, timezone other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "datetime.timezone";
 };
@@ -382,7 +391,7 @@ struct ZoneInfo {
     std::string __str__() const;
 
     friend bool operator==(const ZoneInfo& lhs, ZoneInfo other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "datetime.ZoneInfo";
 };
@@ -474,10 +483,12 @@ struct date {
 
     // @dispatch
     // def __sub__(self, other: "date") -> timedelta:
+    timedelta __sub____date(date other) const;
     timedelta __sub__(date other) const;
 
     // @dispatch
     // def __sub__(self, other: timedelta) -> "date":
+    date __sub____timedelta(timedelta other) const;
     date __sub__(timedelta other) const;
 
     bool __eq__(date other) const;
@@ -493,35 +504,35 @@ struct date {
     bool __ge__(date other) const;
 
     friend date operator+(const date& lhs, timedelta other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
 
     friend timedelta operator-(const date& lhs, date other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend date operator-(const date& lhs, timedelta other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend bool operator==(const date& lhs, date other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
 
     friend bool operator<(const date& lhs, date other) {
-        return lhs.__lt__(other);
+        return lhs.__lt__(std::move(other));
     }
 
     friend bool operator<=(const date& lhs, date other) {
-        return lhs.__le__(other);
+        return lhs.__le__(std::move(other));
     }
 
     friend bool operator>(const date& lhs, date other) {
-        return lhs.__gt__(other);
+        return lhs.__gt__(std::move(other));
     }
 
     friend bool operator>=(const date& lhs, date other) {
-        return lhs.__ge__(other);
+        return lhs.__ge__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "datetime.date";
 };
@@ -611,23 +622,23 @@ struct time {
     bool __ge__(time other) const;
 
     friend bool operator==(const time& lhs, time other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
 
     friend bool operator<(const time& lhs, time other) {
-        return lhs.__lt__(other);
+        return lhs.__lt__(std::move(other));
     }
 
     friend bool operator<=(const time& lhs, time other) {
-        return lhs.__le__(other);
+        return lhs.__le__(std::move(other));
     }
 
     friend bool operator>(const time& lhs, time other) {
-        return lhs.__gt__(other);
+        return lhs.__gt__(std::move(other));
     }
 
     friend bool operator>=(const time& lhs, time other) {
-        return lhs.__ge__(other);
+        return lhs.__ge__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "datetime.time";
 };
@@ -852,42 +863,44 @@ struct datetime {
 
     // @dispatch
     // def __sub__(self, other: "datetime") -> timedelta:
+    ::tpystd::datetime::timedelta __sub____datetime(::tpystd::datetime::datetime other) const;
     ::tpystd::datetime::timedelta __sub__(::tpystd::datetime::datetime other) const;
 
     // @dispatch
     // def __sub__(self, other: timedelta) -> "datetime":
+    ::tpystd::datetime::datetime __sub____timedelta(::tpystd::datetime::timedelta other) const;
     ::tpystd::datetime::datetime __sub__(::tpystd::datetime::timedelta other) const;
 
     friend bool operator==(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
 
     friend bool operator<(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__lt__(other);
+        return lhs.__lt__(std::move(other));
     }
 
     friend bool operator<=(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__le__(other);
+        return lhs.__le__(std::move(other));
     }
 
     friend bool operator>(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__gt__(other);
+        return lhs.__gt__(std::move(other));
     }
 
     friend bool operator>=(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__ge__(other);
+        return lhs.__ge__(std::move(other));
     }
 
     friend ::tpystd::datetime::datetime operator+(const datetime& lhs, ::tpystd::datetime::timedelta other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
 
     friend ::tpystd::datetime::timedelta operator-(const datetime& lhs, ::tpystd::datetime::datetime other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
 
     friend ::tpystd::datetime::datetime operator-(const datetime& lhs, ::tpystd::datetime::timedelta other) {
-        return lhs.__sub__(other);
+        return lhs.__sub__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "datetime.datetime";
 };
@@ -974,77 +987,113 @@ inline timedelta timedelta::__abs__() const {
 // def __mul__(self, other: int) -> timedelta:
 //     return timedelta(days=self.days * other, seconds=self.seconds * other,
 //                      microseconds=self.microseconds * other)
-inline timedelta timedelta::__mul__(const ::tpy::BigInt& other) const {
+inline timedelta timedelta::__mul____int(const ::tpy::BigInt& other) const {
     return timedelta(((::tpy::BigInt(this->days)) * (other)), ((::tpy::BigInt(this->seconds)) * (other)), ((::tpy::BigInt(this->microseconds)) * (other)));
+}
+
+inline timedelta timedelta::__mul__(const ::tpy::BigInt& other) const {
+    return this->__mul____int(other);
 }
 
 // @dispatch
 // def __mul__(self, other: float) -> timedelta:
 //     a, b = other.as_integer_ratio()
 //     return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
-inline timedelta timedelta::__mul__(double other) const {
+inline timedelta timedelta::__mul____float(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((this->_to_microseconds()) * (a)), b));
+}
+
+inline timedelta timedelta::__mul__(double other) const {
+    return this->__mul____float(other);
 }
 
 // @dispatch
 // def __rmul__(self, other: int) -> timedelta:
 //     return timedelta(days=self.days * other, seconds=self.seconds * other,
 //                      microseconds=self.microseconds * other)
-inline timedelta timedelta::__rmul__(const ::tpy::BigInt& other) const {
+inline timedelta timedelta::__rmul____int(const ::tpy::BigInt& other) const {
     return timedelta(((::tpy::BigInt(this->days)) * (other)), ((::tpy::BigInt(this->seconds)) * (other)), ((::tpy::BigInt(this->microseconds)) * (other)));
+}
+
+inline timedelta timedelta::__rmul__(const ::tpy::BigInt& other) const {
+    return this->__rmul____int(other);
 }
 
 // @dispatch
 // def __rmul__(self, other: float) -> timedelta:
 //     a, b = other.as_integer_ratio()
 //     return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
-inline timedelta timedelta::__rmul__(double other) const {
+inline timedelta timedelta::__rmul____float(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((this->_to_microseconds()) * (a)), b));
 }
 
+inline timedelta timedelta::__rmul__(double other) const {
+    return this->__rmul____float(other);
+}
+
 // @dispatch
 // def __floordiv__(self, other: timedelta) -> int:
 //     return self._to_microseconds() // other._to_microseconds()
-inline ::tpy::BigInt timedelta::__floordiv__(timedelta other) const {
+inline ::tpy::BigInt timedelta::__floordiv____timedelta(timedelta other) const {
     return ((this->_to_microseconds()) / (other._to_microseconds()));
+}
+
+inline ::tpy::BigInt timedelta::__floordiv__(timedelta other) const {
+    return this->__floordiv____timedelta(std::move(other));
 }
 
 // @dispatch
 // def __floordiv__(self, other: int) -> timedelta:
 //     return timedelta(microseconds=self._to_microseconds() // other)
-inline timedelta timedelta::__floordiv__(const ::tpy::BigInt& other) const {
+inline timedelta timedelta::__floordiv____int(const ::tpy::BigInt& other) const {
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ((this->_to_microseconds()) / (other)));
+}
+
+inline timedelta timedelta::__floordiv__(const ::tpy::BigInt& other) const {
+    return this->__floordiv____int(other);
 }
 
 // @dispatch
 // def __truediv__(self, other: timedelta) -> float:
 //     return self._to_microseconds() / other._to_microseconds()
-inline double timedelta::__truediv__(timedelta other) const {
+inline double timedelta::__truediv____timedelta(timedelta other) const {
     return (::tpy::truediv(this->_to_microseconds(), other._to_microseconds()));
+}
+
+inline double timedelta::__truediv__(timedelta other) const {
+    return this->__truediv____timedelta(std::move(other));
 }
 
 // @dispatch
 // def __truediv__(self, other: int) -> timedelta:
 //     return timedelta(microseconds=_divide_and_round(self._to_microseconds(), other))
-inline timedelta timedelta::__truediv__(const ::tpy::BigInt& other) const {
+inline timedelta timedelta::__truediv____int(const ::tpy::BigInt& other) const {
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(this->_to_microseconds(), other));
+}
+
+inline timedelta timedelta::__truediv__(const ::tpy::BigInt& other) const {
+    return this->__truediv____int(other);
 }
 
 // @dispatch
 // def __truediv__(self, other: float) -> timedelta:
 //     a, b = other.as_integer_ratio()
 //     return timedelta(microseconds=_divide_and_round(b * self._to_microseconds(), a))
-inline timedelta timedelta::__truediv__(double other) const {
+inline timedelta timedelta::__truediv____float(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((b) * (this->_to_microseconds())), a));
+}
+
+inline timedelta timedelta::__truediv__(double other) const {
+    return this->__truediv____float(other);
 }
 
 // def __mod__(self, other: timedelta) -> timedelta:
@@ -1464,8 +1513,12 @@ inline date date::__add__(timedelta other) const {
 // @dispatch
 // def __sub__(self, other: "date") -> timedelta:
 //     return timedelta(days=self.toordinal() - other.toordinal())
-inline timedelta date::__sub__(date other) const {
+inline timedelta date::__sub____date(date other) const {
     return timedelta(((this->toordinal()) - (other.toordinal())));
+}
+
+inline timedelta date::__sub__(date other) const {
+    return this->__sub____date(std::move(other));
 }
 
 // @dispatch
@@ -1474,12 +1527,16 @@ inline timedelta date::__sub__(date other) const {
 //     if o < 1 or o > _MAXORDINAL:
 //         raise OverflowError("result out of range")
 //     return date.fromordinal(o)
-inline date date::__sub__(timedelta other) const {
+inline date date::__sub____timedelta(timedelta other) const {
     ::tpy::BigInt o = ((this->toordinal()) - (::tpy::BigInt(other.days)));
     if (((o < 1) || (o > ::tpystd::_datetime_cal::_MAXORDINAL))) {
         throw ::tpy::OverflowError("result out of range");
     }
     return date::fromordinal(o);
+}
+
+inline date date::__sub__(timedelta other) const {
+    return this->__sub____timedelta(std::move(other));
 }
 
 inline bool date::__eq__(date other) const {
@@ -2039,7 +2096,7 @@ inline bool datetime::__ge__(::tpystd::datetime::datetime other) const {
 //         return timedelta(microseconds=self._epoch_us()
 //                          - other._epoch_us())
 //     return timedelta(microseconds=self._utc_us() - other._utc_us())
-inline ::tpystd::datetime::timedelta datetime::__sub__(::tpystd::datetime::datetime other) const {
+inline ::tpystd::datetime::timedelta datetime::__sub____datetime(::tpystd::datetime::datetime other) const {
     if (((this->_tz_kind() != 0) != (other._tz_kind() != 0))) {
         throw ::tpy::TypeError("can't subtract offset-naive and offset-aware datetimes");
     }
@@ -2049,11 +2106,19 @@ inline ::tpystd::datetime::timedelta datetime::__sub__(::tpystd::datetime::datet
     return ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ((this->_utc_us()) - (other._utc_us())));
 }
 
+inline ::tpystd::datetime::timedelta datetime::__sub__(::tpystd::datetime::datetime other) const {
+    return this->__sub____datetime(std::move(other));
+}
+
 // @dispatch
 // def __sub__(self, other: timedelta) -> "datetime":
 //     return self + (-other)
-inline ::tpystd::datetime::datetime datetime::__sub__(::tpystd::datetime::timedelta other) const {
+inline ::tpystd::datetime::datetime datetime::__sub____timedelta(::tpystd::datetime::timedelta other) const {
     return (((*this)) + (-(other)));
+}
+
+inline ::tpystd::datetime::datetime datetime::__sub__(::tpystd::datetime::timedelta other) const {
+    return this->__sub____timedelta(std::move(other));
 }
 void __tpy_init();
 } // namespace tpystd::datetime

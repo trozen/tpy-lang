@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     # The Own[B] parameter read beside its own consume: a copy, as a local's.
 //     print("own-param:", O().pair(b, b.take()))  # tpyc: warning(/copies B into owned storage/)
 void owned_param(B&& b) {
-    std::cout << "own-param:" << " " << O().pair(b, B(b).take()) << "\n" << ::tpy::check_signals;
+    std::cout << "own-param:" << " " << O().pair__B__B(b, B(b).take()) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -24,8 +24,7 @@ void owned_param(B&& b) {
 //     print("field:", o.m(b.take().v))  # tpyc: ok
 //     b = B(5)
 //     print("select-arm:", o.m(f"{b.take().v}" if flag else "none"))  # tpyc: ok
-//     # (a list argument is the free function case's: C++ re-picks a method
-//     # variant for a braced list, BUGS.md#dispatch-method-variant-reresolved-by-cpp)
+//     # (a list argument is the free function case's)
 //     b = B(7)
 //     print("dict:", o.m({"k": b.take().v}))  # tpyc: ok
 //     b = B(8)
@@ -35,22 +34,22 @@ void main() {
     O o = O();
     bool flag = true;
     B a = B(1);
-    std::cout << "name:" << " " << o.pair(a, B(0)) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "name:" << " " << o.pair__B__B(a, B(0)) << " " << a.v << "\n" << ::tpy::check_signals;
     B __slot_1 = B(2);
     B* b = &__slot_1;
-    std::cout << "keyword:" << " " << o.m(std::move(*b).take()) << "\n" << ::tpy::check_signals;
+    std::cout << "keyword:" << " " << o.m__B(std::move(*b).take()) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_2;
     b = &*(__slot_2 = B(4));
-    std::cout << "field:" << " " << o.m(std::move(*b).take().v) << "\n" << ::tpy::check_signals;
+    std::cout << "field:" << " " << o.m__int32(std::move(*b).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     b = &*(__slot_3 = B(5));
-    std::cout << "select-arm:" << " " << o.m(((flag) ? (std::format("{}", std::move(*b).take().v)) : ("none"))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << o.m__str(((flag) ? (std::format("{}", std::move(*b).take().v)) : ("none"))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     b = &*(__slot_4 = B(7));
-    std::cout << "dict:" << " " << o.m(::tpy::ordered_map<std::string, int32_t>({{"k", std::move(*b).take().v}})) << "\n" << ::tpy::check_signals;
+    std::cout << "dict:" << " " << o.m__dict_str_int32(::tpy::ordered_map<std::string, int32_t>({{"k", std::move(*b).take().v}})) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_5;
     b = &*(__slot_5 = B(8));
-    std::cout << "nested-generic:" << " " << o.m(::tpyapp::main::ident<B>(std::move(*b).take())) << "\n" << ::tpy::check_signals;
+    std::cout << "nested-generic:" << " " << o.m__B(::tpyapp::main::ident<B>(std::move(*b).take())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::owned_param(B(9));
 }
 

@@ -366,10 +366,12 @@ struct Disp {
 
     // @dispatch
     // def m(self, x: int64, k: int64) -> int64:
+    int64_t m__int64__int64(int64_t x, int64_t k) const;
     int64_t m(int64_t x, int64_t k) const;
 
     // @dispatch
     // def m(self, x: str, k: int64) -> int64:
+    int64_t m__str__int64(std::string_view x, int64_t k) const;
     int64_t m(std::string_view x, int64_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Disp";
 };
@@ -441,15 +443,23 @@ inline Disp::Disp() {
 // @dispatch
 // def m(self, x: int64, k: int64) -> int64:
 //     return x * 10 + k
-inline int64_t Disp::m(int64_t x, int64_t k) const {
+inline int64_t Disp::m__int64__int64(int64_t x, int64_t k) const {
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(x, 10)), k));
+}
+
+inline int64_t Disp::m(int64_t x, int64_t k) const {
+    return this->m__int64__int64(x, k);
 }
 
 // @dispatch
 // def m(self, x: str, k: int64) -> int64:
 //     return k
-inline int64_t Disp::m(std::string_view x, int64_t k) const {
+inline int64_t Disp::m__str__int64(std::string_view x, int64_t k) const {
     return k;
+}
+
+inline int64_t Disp::m(std::string_view x, int64_t k) const {
+    return this->m__str__int64(x, k);
 }
 
 // def run(self) -> int64:

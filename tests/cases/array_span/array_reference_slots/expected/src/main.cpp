@@ -62,10 +62,10 @@ void main() {
     std::cout << ::tpy::print_bool((::tpyapp::main::first_or_none(a, false) == nullptr)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> xs = {5, 6, 7};
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(xs));
-    std::cout << al[0] << " " << ::tpy::__len__(al) << "\n" << ::tpy::check_signals;
+    std::cout << al.__getitem____int32(0) << " " << ::tpy::__len__(al) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     ::tpystd::tplib::array_list::ArrayList<uint8_t, 8> bl = ::tpystd::tplib::array_list::ArrayList<uint8_t, 8>(&(ba));
-    std::cout << static_cast<int>(bl[0]) << " " << ::tpy::__len__(bl) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(bl.__getitem____int32(0)) << " " << ::tpy::__len__(bl) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

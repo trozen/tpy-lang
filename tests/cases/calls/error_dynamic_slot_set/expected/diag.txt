@@ -1,0 +1,1 @@
+main.py:25: error: 'Child.scale' implements @dynamic protocol method 'Scaler.scale' and cannot be a @dispatch set; give the other variants different names

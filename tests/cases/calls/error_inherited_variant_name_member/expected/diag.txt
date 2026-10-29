@@ -1,0 +1,1 @@
+main.py:18: error: 'Child.m__int32' has the same name the compiler gives the inherited variant 'Base.m(x: int32)'; rename it

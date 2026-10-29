@@ -49,8 +49,8 @@ void main() {
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     c.extend(s);
     std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
-    std::cout << c[0] << "\n" << ::tpy::check_signals;
-    std::cout << c[2] << "\n" << ::tpy::check_signals;
+    std::cout << c.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    std::cout << c.__getitem____int32(2) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

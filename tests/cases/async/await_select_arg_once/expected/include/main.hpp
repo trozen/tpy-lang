@@ -54,10 +54,12 @@ struct M {
 
     // @dispatch
     // def o(self, s: str, k: int32 = 5) -> str:
+    std::string o__str__int32(std::string_view s, int32_t k = 5) const;
     std::string o(std::string_view s, int32_t k = 5) const;
 
     // @dispatch
     // def o(self, s: int32, k: int32 = 6) -> str:
+    std::string o__int32__int32(int32_t s, int32_t k = 6) const;
     std::string o(int32_t s, int32_t k = 6) const;
 
     // def __call__(self, s: str, k: int32 = 5) -> str:
@@ -385,15 +387,23 @@ inline std::string M::m(std::string_view s, int32_t k) const {
 // @dispatch
 // def o(self, s: str, k: int32 = 5) -> str:
 //     return f"str {s} {k}"
-inline std::string M::o(std::string_view s, int32_t k) const {
+inline std::string M::o__str__int32(std::string_view s, int32_t k) const {
     return std::format("str {} {}", s, k);
+}
+
+inline std::string M::o(std::string_view s, int32_t k) const {
+    return this->o__str__int32(s, k);
 }
 
 // @dispatch
 // def o(self, s: int32, k: int32 = 6) -> str:
 //     return f"int {s} {k}"
-inline std::string M::o(int32_t s, int32_t k) const {
+inline std::string M::o__int32__int32(int32_t s, int32_t k) const {
     return std::format("int {} {}", s, k);
+}
+
+inline std::string M::o(int32_t s, int32_t k) const {
+    return this->o__int32__int32(s, k);
 }
 
 // def __call__(self, s: str, k: int32 = 5) -> str:

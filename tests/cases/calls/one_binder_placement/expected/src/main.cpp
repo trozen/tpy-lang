@@ -154,10 +154,10 @@ void free_function() {
 //     print("method", s.opt(3), s.opt(3, y=1), s.opt("w"))  # tpyc: ok
 void method() {
     Shape s = Shape();
-    std::cout << "method" << " " << s.grow(2) << " " << s.grow(std::string_view("big")) << "\n" << ::tpy::check_signals;
-    std::cout << "method" << " " << s.conf(1, Opts(2)) << " " << s.conf(std::string_view("z")) << "\n" << ::tpy::check_signals;
-    std::cout << "method" << " " << s.fconf(1.0, Opts(2)) << "\n" << ::tpy::check_signals;
-    std::cout << "method" << " " << s.opt(3, Maybe(std::nullopt)) << " " << s.opt(3, Maybe(1)) << " " << s.opt(std::string_view("w")) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << s.grow__int32(2) << " " << s.grow__str("big") << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << s.conf__int32__Opts(1, Opts(2)) << " " << s.conf__str("z") << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << s.fconf__float__Opts(1.0, Opts(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << s.opt__int32__Maybe(3, Maybe(std::nullopt)) << " " << s.opt__int32__Maybe(3, Maybe(1)) << " " << s.opt__str("w") << "\n" << ::tpy::check_signals;
 }
 
 // def protocol() -> None:
@@ -180,7 +180,7 @@ void protocol() {
 //     print("subscript", s[1], s["a"])  # tpyc: ok
 void subscript() {
     Shape s = Shape();
-    std::cout << "subscript" << " " << s[1] << " " << s[std::string_view("a")] << "\n" << ::tpy::check_signals;
+    std::cout << "subscript" << " " << s.__getitem____int32(1) << " " << s.__getitem____str("a") << "\n" << ::tpy::check_signals;
 }
 
 // def operator() -> None:
@@ -189,7 +189,7 @@ void subscript() {
 //     print("operator", s + 2, s + "x")  # tpyc: ok
 void operator_() {
     Shape s = Shape();
-    std::cout << "operator" << " " << ((s) + (2)) << " " << ((s) + (std::string_view("x"))) << "\n" << ::tpy::check_signals;
+    std::cout << "operator" << " " << ((s).__add____int32(2)) << " " << ((s).__add____str("x")) << "\n" << ::tpy::check_signals;
 }
 
 // def consume(p: MaybeValued) -> int32:  # tpyc: ok

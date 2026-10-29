@@ -272,11 +272,11 @@ __coro_akey akey(Keys& ks) {
         __sub_3.reset();
         {
             auto __tmp_1 = ks.key();
-            t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], __await_lift_3));
+            t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), __await_lift_3));
         }
         std::cout << "async_key:" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::DictPrinter((*d)) << " " << ::tpy::__getitem__((*rs), 1).x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        int32_t __tpy_async_ret = t[1];
+        int32_t __tpy_async_ret = t.__getitem____int32(1);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -300,11 +300,11 @@ int32_t closure_key(Table& t, Keys& ks) {
     auto inner = [&ks, &t]() {
         {
             auto __tmp_1 = ks.key();
-            t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 1));
+            t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 1));
         }
     };
     inner();
-    return t[1];
+    return t.__getitem____int32(1);
 }
 
 // def match_key(t: Table, ks: Keys, k: str) -> int32:
@@ -320,9 +320,9 @@ int32_t match_key(Table& t, Keys& ks, std::string_view k) {
     if (__match_subject_1 == "a") {
         {
             auto __tmp_1 = ks.key();
-            t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 1));
+            t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 1));
         }
-        return t[1];
+        return t.__getitem____int32(1);
     } else {
         return 0;
     }
@@ -363,15 +363,15 @@ __gen_gen gen(Table& t, Keys& ks) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        t.__setitem__(std::string_view("z"), 2);
-        t.__setitem__(std::string_view("z"), ::tpy::add_check<int32_t>(t[std::string_view("z")], 3));
+        t.__setitem____str__int32("z", 2);
+        t.__setitem____str__int32("z", ::tpy::add_check<int32_t>(t.__getitem____str("z"), 3));
         {
             auto __tmp_1 = ks.key();
-            t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 3));
+            t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 3));
         }
-        t.__delitem__(2);
+        t.__delitem____int32(2);
         __state = S_DONE;
-        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(t[std::string_view("z")], t[1]));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(t.__getitem____str("z"), t.__getitem____int32(1)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -393,11 +393,11 @@ __coro_later later(Table& t, Keys& ks) {
 //         raise Failed()
 //     return t["e"]
 std::expected<int32_t, Failed> checked(Table& t) {
-    t.__setitem__(std::string_view("e"), 7);
-    if ((t[std::string_view("e")] == 0)) {
+    t.__setitem____str__int32("e", 7);
+    if ((t.__getitem____str("e") == 0)) {
         return ::tpy::make_unexpected(Failed{});
     }
-    return t[std::string_view("e")];
+    return t.__getitem____str("e");
 }
 
 // @error_return(Failed)
@@ -410,12 +410,12 @@ std::expected<int32_t, Failed> checked(Table& t) {
 std::expected<int32_t, Failed> checked_key(Table& t, Keys& ks) {
     {
         auto __tmp_1 = ks.key();
-        t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 6));
+        t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 6));
     }
-    if ((t[1] == 0)) {
+    if ((t.__getitem____int32(1) == 0)) {
         return ::tpy::make_unexpected(Failed{});
     }
-    return t[1];
+    return t.__getitem____int32(1);
 }
 
 // def by_match(t: Table, k: str) -> int32:
@@ -428,9 +428,9 @@ std::expected<int32_t, Failed> checked_key(Table& t, Keys& ks) {
 int32_t by_match(const Table& t, std::string_view k) {
     auto& __match_subject_1 = k;
     if (__match_subject_1 == "a") {
-        return t[k];
+        return t.__getitem____str(k);
     } else {
-        return t[1];
+        return t.__getitem____int32(1);
     }
     ::std::unreachable();
 }
@@ -442,7 +442,7 @@ int32_t by_match(const Table& t, std::string_view k) {
 //     return inner("a")
 int32_t closure(const Table& t) {
     auto inner = [&t](std::string_view k) -> int32_t {
-        return t[k];
+        return t.__getitem____str(k);
     };
     return inner("a");
 }
@@ -636,20 +636,20 @@ int32_t closure(const Table& t) {
 //     facts()
 void main() {
     Table t = Table();
-    t.__setitem__(std::string_view("a"), 10);
-    t.__setitem__(1, 20);
-    std::cout << "free:" << " " << t[std::string_view("a")] << " " << t[1] << " " << t.__getitem__(std::string_view("a")) << " " << t.__getitem__(1) << "\n" << ::tpy::check_signals;
-    t.__setitem__(std::string_view("a"), ::tpy::add_check<int32_t>(t[std::string_view("a")], 5));
-    t.__setitem__(1, ::tpy::sub_check<int32_t>(t[1], 2));
-    t.__delitem__(std::string_view("a"));
-    t.__delitem__(0);
+    t.__setitem____str__int32("a", 10);
+    t.__setitem____int32__int32(1, 20);
+    std::cout << "free:" << " " << t.__getitem____str("a") << " " << t.__getitem____int32(1) << " " << t.__getitem____str("a") << " " << t.__getitem____int32(1) << "\n" << ::tpy::check_signals;
+    t.__setitem____str__int32("a", ::tpy::add_check<int32_t>(t.__getitem____str("a"), 5));
+    t.__setitem____int32__int32(1, ::tpy::sub_check<int32_t>(t.__getitem____int32(1), 2));
+    t.__delitem____str("a");
+    t.__delitem____int32(0);
     std::cout << "free:" << " " << ::tpy::DictPrinter(t.names) << " " << ::tpy::ListPrinter(t.nums) << " " << ::tpy::ListPrinter(t.log) << "\n" << ::tpy::check_signals;
     Sub s = Sub();
-    s.__setitem__(std::string_view("x"), 5);
-    s.__delitem__(std::string_view("x"));
-    std::cout << "inherited:" << " " << ::tpy::DictPrinter(s.names) << " " << s[0] << " " << ::tpy::ListPrinter(s.log) << "\n" << ::tpy::check_signals;
+    s.__setitem____str__int32("x", 5);
+    s.__delitem____str("x");
+    std::cout << "inherited:" << " " << ::tpy::DictPrinter(s.names) << " " << s.__getitem____int32(0) << " " << ::tpy::ListPrinter(s.log) << "\n" << ::tpy::check_signals;
     Box<int32_t> b = Box<int32_t>(7, 8);
-    std::cout << "generic:" << " " << b[0] << " " << b[std::string_view("ab")] << " " << b.__getitem__(std::string_view("a")) << "\n" << ::tpy::check_signals;
+    std::cout << "generic:" << " " << b.__getitem____int32(0) << " " << b.__getitem____str("ab") << " " << b.__getitem____str("a") << "\n" << ::tpy::check_signals;
     Sink snk = Sink();
     snk.__setitem__("k", 1);
     std::cout << "setter_only:" << " " << ::tpy::ListPrinter(snk.seen) << "\n" << ::tpy::check_signals;
@@ -657,16 +657,16 @@ void main() {
     int8_t n8 = 3;
     int64_t n64 = static_cast<int64_t>(1099511627776);
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    std::cout << "keys:" << " " << w[static_cast<int32_t>(n8)] << " " << w[1] << " " << w[::tpy::BigInt(n64)] << " " << w[big] << "\n" << ::tpy::check_signals;
+    std::cout << "keys:" << " " << w.__getitem____int32(static_cast<int32_t>(n8)) << " " << w.__getitem____int32(1) << " " << w.__getitem____int(::tpy::BigInt(n64)) << " " << w.__getitem____int(big) << "\n" << ::tpy::check_signals;
     Rows r = Rows();
-    r[std::string_view("a")].push_back(2);
-    std::vector<int32_t>& row = r[0];
+    r.__getitem____str("a").push_back(2);
+    std::vector<int32_t>& row = r.__getitem____int32(0);
     row.push_back(3);
-    std::cout << "reference:" << " " << ::tpy::__len__(r[std::string_view("a")]) << " " << ::tpy::ListPrinter(::tpy::__getitem__(r.data, "a")) << "\n" << ::tpy::check_signals;
+    std::cout << "reference:" << " " << ::tpy::__len__(r.__getitem____str("a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(r.data, "a")) << "\n" << ::tpy::check_signals;
     Keys ks = Keys();
     {
         auto __tmp_1 = ks.key();
-        t.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(t[__tmp_1], 5));
+        t.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(t.__getitem____int32(__tmp_1), 5));
     }
     std::array<int32_t, 3> xs = {1, 2, 3};
     {
@@ -678,7 +678,7 @@ void main() {
         auto&& __tmp_3 = ks.name();
         ::tpy::__setitem__(d, __tmp_3, ::tpy::add_check<int32_t>(::tpy::__getitem__(d, __tmp_3), 1));
     }
-    std::cout << "once:" << " " << t[1] << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::DictPrinter(d) << " " << ks.calls << "\n" << ::tpy::check_signals;
+    std::cout << "once:" << " " << t.__getitem____int32(1) << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::DictPrinter(d) << " " << ks.calls << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     std::cout << "method:" << " " << h.bump() << "\n" << ::tpy::check_signals;
     std::cout << "ctor:" << " " << Seeded().first << "\n" << ::tpy::check_signals;
@@ -711,19 +711,19 @@ void main() {
     {
         auto&& __tmp_9 = ::tpyapp::main::pick(ct);
         auto __tmp_10 = ::tpyapp::main::trace("call_receiver: key", 1);
-        __tmp_9.__setitem__(__tmp_10, ::tpy::add_check<int32_t>(__tmp_9[__tmp_10], 4));
+        __tmp_9.__setitem____int32__int32(__tmp_10, ::tpy::add_check<int32_t>(__tmp_9.__getitem____int32(__tmp_10), 4));
     }
     std::cout << "call_receiver:" << " " << ::tpy::ListPrinter(ct.nums) << "\n" << ::tpy::check_signals;
     Table vt = Table();
     ::tpy::ordered_map<std::string, int32_t> vd = ::tpy::ordered_map<std::string, int32_t>({{"v", 1}});
-    vt.__setitem__(::tpy::str_strip(::tpyapp::main::label()), 1);
+    vt.__setitem____str__int32(::tpy::str_strip(::tpyapp::main::label()), 1);
     {
         auto&& __tmp_11 = ::tpyapp::main::label();
-        vt.__setitem__(::tpy::str_strip(__tmp_11), ::tpy::add_check<int32_t>(vt[::tpy::str_strip(__tmp_11)], 1));
+        vt.__setitem____str__int32(::tpy::str_strip(__tmp_11), ::tpy::add_check<int32_t>(vt.__getitem____str(::tpy::str_strip(__tmp_11)), 1));
     }
     {
         auto&& __tmp_12 = ::tpyapp::main::label();
-        vt.__setitem__(::tpy::str_slice(__tmp_12, ::tpy::BasicSlice{1, 2}), ::tpy::add_check<int32_t>(vt[::tpy::str_slice(__tmp_12, ::tpy::BasicSlice{1, 2})], 1));
+        vt.__setitem____str__int32(::tpy::str_slice(__tmp_12, ::tpy::BasicSlice{1, 2}), ::tpy::add_check<int32_t>(vt.__getitem____str(::tpy::str_slice(__tmp_12, ::tpy::BasicSlice{1, 2})), 1));
     }
     {
         auto&& __tmp_13 = ::tpyapp::main::label();
@@ -732,7 +732,7 @@ void main() {
     {
         auto&& __tmp_14 = ::tpyapp::main::label();
         auto&& __tmp_15 = ::tpyapp::main::view(__tmp_14);
-        vt.__setitem__(__tmp_15, ::tpy::add_check<int32_t>(vt[__tmp_15], 1));
+        vt.__setitem____str__int32(__tmp_15, ::tpy::add_check<int32_t>(vt.__getitem____str(__tmp_15), 1));
     }
     std::cout << "view_key:" << " " << ::tpy::DictPrinter(vt.names) << " " << ::tpy::DictPrinter(vd) << "\n" << ::tpy::check_signals;
     OwnKeys ok = OwnKeys();
@@ -793,29 +793,29 @@ void main() {
     Keys rk = Keys();
     {
         auto __tmp_27 = rk.key();
-        rg.__setitem__(__tmp_27, ::tpy::add_check<int32_t>(static_cast<const RoGet&>(rg)[__tmp_27], 2));
+        rg.__setitem__(__tmp_27, ::tpy::add_check<int32_t>(rg.__getitem____int32(__tmp_27), 2));
     }
     std::cout << "readonly_getter:" << " " << ::tpy::ListPrinter(rg.vals) << " " << rg.hits << " " << rk.calls << "\n" << ::tpy::check_signals;
     Fallback fb = Fallback();
-    std::cout << "fallback:" << " " << static_cast<const Fallback&>(fb).m(1) << " " << fb.hits << "\n" << ::tpy::check_signals;
+    std::cout << "fallback:" << " " << fb.m__int32(1) << " " << fb.hits << "\n" << ::tpy::check_signals;
     Pair pr = Pair();
     pr[0].push_back(2);
     pr.__getitem__(0).push_back(3);
     std::cout << "pair:" << " " << ::tpy::__len__(pr.data) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_pair(pr);
     Bag bg = Bag();
-    std::cout << "contains:" << " " << ::tpy::print_bool(static_cast<const Bag&>(bg).__contains__(1)) << " " << ::tpy::print_bool(static_cast<const Bag&>(bg).__contains__(1)) << " " << ::tpy::print_bool(bg.__contains__(std::string_view("s"))) << " " << bg.hits << "\n" << ::tpy::check_signals;
+    std::cout << "contains:" << " " << ::tpy::print_bool(bg.__contains____int32(1)) << " " << ::tpy::print_bool(bg.__contains____int32(1)) << " " << ::tpy::print_bool(bg.__contains____str("s")) << " " << bg.hits << "\n" << ::tpy::check_signals;
     Stages sg = Stages();
     ::tpy::BigInt big5 = ::tpy::BigInt(5);
-    std::cout << "stages:" << " " << sg[(big5).to_fixed_check<int32_t>()] << " " << sg.__getitem__((big5).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+    std::cout << "stages:" << " " << sg.__getitem____int32((big5).to_fixed_check<int32_t>()) << " " << sg.__getitem____int32((big5).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
     Table __slot_1 = Table();
     Table* ot = &__slot_1;
     if ((ot != nullptr)) {
-        (*ot).__setitem__(std::string_view("q"), 2);
-        std::cout << "optional:" << " " << (*ot)[std::string_view("q")] << "\n" << ::tpy::check_signals;
+        (*ot).__setitem____str__int32("q", 2);
+        std::cout << "optional:" << " " << (*ot).__getitem____str("q") << "\n" << ::tpy::check_signals;
     }
     Table c = Table();
-    c.__setitem__(std::string_view("a"), 11);
+    c.__setitem____str__int32("a", 11);
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_0 = {"a", "a"};
@@ -824,20 +824,20 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const std::string& k = *__beg_0;
-            __result.push_back(c[k]);
+            __result.push_back(c.__getitem____str(k));
         }
         std::move(__result);
     })) << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_1) -> int32_t {
         int32_t i = int32_t(__i_1);
-        return c[i];
+        return c.__getitem____int32(i);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "closure:" << " " << ::tpyapp::main::closure(c) << "\n" << ::tpy::check_signals;
     std::cout << "match:" << " " << ::tpyapp::main::by_match(c, "a") << " " << ::tpyapp::main::by_match(c, "b") << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Scope();
     auto one = __ctx_1.__enter__();
     try {
-        c.__setitem__(std::string_view("w"), one);
-        std::cout << "with:" << " " << c[std::string_view("w")] << "\n" << ::tpy::check_signals;
+        c.__setitem____str__int32("w", one);
+        std::cout << "with:" << " " << c.__getitem____str("w") << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -851,20 +851,20 @@ void main() {
     Keys fks = Keys();
     {
         try {
-            c.__setitem__(std::string_view("f"), 9);
+            c.__setitem____str__int32("f", 9);
         } catch (...) {
             {
                 auto __tmp_28 = fks.key();
-                c.__setitem__(__tmp_28, ::tpy::add_check<int32_t>(c[__tmp_28], 1));
+                c.__setitem____int32__int32(__tmp_28, ::tpy::add_check<int32_t>(c.__getitem____int32(__tmp_28), 1));
             }
-            std::cout << "finally:" << " " << c[std::string_view("f")] << " " << c[1] << " " << fks.calls << "\n" << ::tpy::check_signals;
+            std::cout << "finally:" << " " << c.__getitem____str("f") << " " << c.__getitem____int32(1) << " " << fks.calls << "\n" << ::tpy::check_signals;
             throw;
         }
         {
             auto __tmp_29 = fks.key();
-            c.__setitem__(__tmp_29, ::tpy::add_check<int32_t>(c[__tmp_29], 1));
+            c.__setitem____int32__int32(__tmp_29, ::tpy::add_check<int32_t>(c.__getitem____int32(__tmp_29), 1));
         }
-        std::cout << "finally:" << " " << c[std::string_view("f")] << " " << c[1] << " " << fks.calls << "\n" << ::tpy::check_signals;
+        std::cout << "finally:" << " " << c.__getitem____str("f") << " " << c.__getitem____int32(1) << " " << fks.calls << "\n" << ::tpy::check_signals;
     }
     {
         std::cout << "error_return:" << " " << ({ auto __er_2 = ::tpyapp::main::checked(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
@@ -926,7 +926,7 @@ void positions() {
     std::cout << "method:" << " " << KeyedHolder(__tmp_1).bump(pk) << " " << pk.calls << "\n" << ::tpy::check_signals;
     Keys ck = Keys();
     KeyedHolder kh = KeyedHolder(ck);
-    std::cout << "ctor:" << " " << kh.t[1] << " " << ck.calls << "\n" << ::tpy::check_signals;
+    std::cout << "ctor:" << " " << kh.t.__getitem____int32(1) << " " << ck.calls << "\n" << ::tpy::check_signals;
     Keys lk = Keys();
     Table __tmp_2 = Table();
     std::cout << "closure_key:" << " " << ::tpyapp::main::closure_key(__tmp_2, lk) << " " << lk.calls << "\n" << ::tpy::check_signals;
@@ -950,7 +950,7 @@ void positions() {
     try {
         {
             auto __tmp_5 = wk.key();
-            wt.__setitem__(__tmp_5, ::tpy::add_check<int32_t>(wt[__tmp_5], one));
+            wt.__setitem____int32__int32(__tmp_5, ::tpy::add_check<int32_t>(wt.__getitem____int32(__tmp_5), one));
         }
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -962,7 +962,7 @@ void positions() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "with_key:" << " " << wt[1] << " " << wk.calls << "\n" << ::tpy::check_signals;
+    std::cout << "with_key:" << " " << wt.__getitem____int32(1) << " " << wk.calls << "\n" << ::tpy::check_signals;
     Keys bk = Keys();
     ::tpy::ordered_map<::tpy::BigInt, int32_t> bd = ::tpy::ordered_map<::tpy::BigInt, int32_t>({{::tpy::BigInt(static_cast<int64_t>(1099511627776LL)), 1}});
     {
@@ -1112,7 +1112,7 @@ void regions() {
     std::array<int32_t, 4> xs = {0, 0, 0, 0};
     {
         auto __tmp_1 = ((flag) ? (rk.key()) : (rk.key()));
-        rt.__setitem__(__tmp_1, ::tpy::add_check<int32_t>(rt[__tmp_1], 1));
+        rt.__setitem____int32__int32(__tmp_1, ::tpy::add_check<int32_t>(rt.__getitem____int32(__tmp_1), 1));
     }
     {
         auto __tmp_2 = ((flag) ? (rk.key()) : (rk.key()));
@@ -1121,7 +1121,7 @@ void regions() {
     std::cout << "region_ternary:" << " " << ::tpy::ListPrinter(rt.nums) << " " << ::tpy::ListPrinter(xs) << " " << rk.calls << "\n" << ::tpy::check_signals;
     {
         auto __tmp_3 = ((flag) ? (((flag) ? (rk.key()) : (0))) : (rk.key()));
-        rt.__setitem__(__tmp_3, ::tpy::add_check<int32_t>(rt[__tmp_3], 1));
+        rt.__setitem____int32__int32(__tmp_3, ::tpy::add_check<int32_t>(rt.__getitem____int32(__tmp_3), 1));
     }
     {
         auto __tmp_4 = ((flag) ? (((flag) ? (rk.key()) : (0))) : (rk.key()));
@@ -1137,7 +1137,7 @@ void regions() {
             }
             std::move(__result);
         }));
-        rt.__setitem__(__tmp_5, ::tpy::add_check<int32_t>(rt[__tmp_5], 1));
+        rt.__setitem____int32__int32(__tmp_5, ::tpy::add_check<int32_t>(rt.__getitem____int32(__tmp_5), 1));
     }
     {
         auto __tmp_6 = ::tpy::builtin_sum<int32_t>(({
@@ -1153,7 +1153,7 @@ void regions() {
     std::cout << "region_comprehension:" << " " << ::tpy::ListPrinter(rt.nums) << " " << ::tpy::ListPrinter(xs) << " " << rk.calls << "\n" << ::tpy::check_signals;
     {
         auto __tmp_7 = ((rk.key() > 5) && (5 > rk.key()));
-        rt.__setitem__((::tpy::BigInt(static_cast<int32_t>(__tmp_7))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(rt[(::tpy::BigInt(static_cast<int32_t>(__tmp_7))).to_fixed_check<int32_t>()], 1));
+        rt.__setitem____int32__int32((::tpy::BigInt(static_cast<int32_t>(__tmp_7))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(rt.__getitem____int32((::tpy::BigInt(static_cast<int32_t>(__tmp_7))).to_fixed_check<int32_t>()), 1));
     }
     {
         auto __tmp_8 = ((rk.key() > 5) && (5 > rk.key()));
@@ -1162,7 +1162,7 @@ void regions() {
     std::cout << "region_chained:" << " " << ::tpy::ListPrinter(rt.nums) << " " << ::tpy::ListPrinter(xs) << " " << rk.calls << "\n" << ::tpy::check_signals;
     {
         auto __tmp_9 = ::tpyapp::main::spend(::tpyapp::main::make_token(rk));
-        rt.__setitem__(__tmp_9, ::tpy::add_check<int32_t>(rt[__tmp_9], 1));
+        rt.__setitem____int32__int32(__tmp_9, ::tpy::add_check<int32_t>(rt.__getitem____int32(__tmp_9), 1));
     }
     {
         auto __tmp_10 = ::tpyapp::main::spend(::tpyapp::main::make_token(rk));
@@ -1255,7 +1255,7 @@ void backings() {
     {
         auto&& __tmp_1 = (::tpy::str_concat(" ", ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt})));
         auto __tmp_2 = ::tpyapp::main::tail(__tmp_1);
-        bt.__setitem__(__tmp_2, ::tpy::add_check<int32_t>(bt[__tmp_2], 5));
+        bt.__setitem____str__int32(__tmp_2, ::tpy::add_check<int32_t>(bt.__getitem____str(__tmp_2), 5));
     }
     {
         auto&& __tmp_3 = (::tpy::str_concat(" ", ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt})));
@@ -1271,7 +1271,7 @@ void backings() {
     {
         auto&& __tmp_5 = ((flag) ? (::tpyapp::main::spell(bk, "y")) : (::tpyapp::main::spell(bk, "n")));
         auto __tmp_6 = ::tpyapp::main::strip_view(__tmp_5);
-        bt.__setitem__(__tmp_6, ::tpy::add_check<int32_t>(bt[__tmp_6], 1));
+        bt.__setitem____str__int32(__tmp_6, ::tpy::add_check<int32_t>(bt.__getitem____str(__tmp_6), 1));
     }
     {
         auto&& __tmp_7 = ((flag) ? (::tpyapp::main::spell(bk, "y")) : (::tpyapp::main::spell(bk, "n")));
@@ -1284,7 +1284,7 @@ void backings() {
     ::tpy::__setitem__(d, "k", 0);
     {
         auto __tmp_9 = bk.key();
-        bt.__setitem__(::tpy::str_strip(::tpy::__getitem__(names, (::tpy::sub_check<int32_t>(__tmp_9, 1)))), ::tpy::add_check<int32_t>(bt[::tpy::str_strip(::tpy::__getitem__(names, (::tpy::sub_check<int32_t>(__tmp_9, 1))))], ::tpyapp::main::none_written(names)));
+        bt.__setitem____str__int32(::tpy::str_strip(::tpy::__getitem__(names, (::tpy::sub_check<int32_t>(__tmp_9, 1)))), ::tpy::add_check<int32_t>(bt.__getitem____str(::tpy::str_strip(::tpy::__getitem__(names, (::tpy::sub_check<int32_t>(__tmp_9, 1))))), ::tpyapp::main::none_written(names)));
     }
     {
         auto __tmp_10 = bk.key();
@@ -1811,7 +1811,7 @@ void __tpy_init() {
     static Table __global_slot_5 = Table();
     GT = &__global_slot_5;
     ::tpy::__setitem__(GT->names, "g", 6);
-    std::cout << "module:" << " " << (*GT)[std::string_view("g")] << " " << (*GT)[2] << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << (*GT).__getitem____str("g") << " " << (*GT).__getitem____int32(2) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_6 = {0, 0};
     XS = &__global_slot_6;
     static Keys __global_slot_7 = Keys();

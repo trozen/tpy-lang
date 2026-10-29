@@ -34,10 +34,10 @@ void test_arraylist_aug_assign() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> items = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     items.append(100);
     items.append(200);
-    items.__setitem__(0, ::tpy::add_check<int32_t>(items[0], 5));
-    std::cout << items[0] << "\n" << ::tpy::check_signals;
-    items.__setitem__(1, ::tpy::sub_check<int32_t>(items[1], 50));
-    std::cout << items[1] << "\n" << ::tpy::check_signals;
+    items.__setitem__(0, ::tpy::add_check<int32_t>(items.__getitem____int32(0), 5));
+    std::cout << items.__getitem____int32(0) << "\n" << ::tpy::check_signals;
+    items.__setitem__(1, ::tpy::sub_check<int32_t>(items.__getitem____int32(1), 50));
+    std::cout << items.__getitem____int32(1) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_index_aug_assign() -> None:

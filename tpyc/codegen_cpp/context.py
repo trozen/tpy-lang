@@ -34,7 +34,7 @@ from ..parse import (
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
-    is_borrowing_view_type,
+    is_borrowing_view_type, ParamPassing,
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..identity_map import IdentityMap
@@ -107,9 +107,20 @@ def forward_param(cpp_name: str, ptype: TpyType) -> str:
     """A delegating shim's argument for its own parameter `cpp_name`
     (declared `ptype`) handed on to the method it wraps: an
     ownership-transfer parameter is moved on, since the slot it binds takes
-    an rvalue (`T&&`, `std::tuple<...>&&`, a move-only by-value payload);
-    any other parameter is passed by name."""
+    an rvalue (`T&&`, `std::tuple<...>&&`, a move-only by-value payload),
+    and so is one the shim holds by value unless its copy is known to cost
+    no more than a move: the shim's copy is its last use. A class's copy
+    is not known cheap (`copy_is_cheap` does not see a ValueType's `str`
+    field, BUGS.md#copy-is-cheap-valuetype-record-fields), a builtin
+    scalar's is. A `@nomove` type keeps its copy. Any other parameter is
+    passed by name."""
     if param_takes_ownership(ptype):
+        return f"std::move({cpp_name})"
+    bare = unwrap_readonly(ptype)
+    if (bare.param_passing() is ParamPassing.VALUE
+            and bare.is_movable()
+            and not (bare.copy_is_cheap()
+                     and not bare.value_ops_run_user_code())):
         return f"std::move({cpp_name})"
     return cpp_name
 
@@ -593,7 +604,8 @@ def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
         cpp_method = (fi.native_name if fi and fi.native_name
                       else escape_cpp_name(method))
         return f"{class_cpp}::{cpp_method}"
-    return f"{class_cpp}::{escape_cpp_name(method)}"
+    variant = fi.variant_cpp_name if fi is not None else None
+    return f"{class_cpp}::{variant or escape_cpp_name(method)}"
 
 
 def static_class_cpp(registry, implicit_stdlib_modules: 'set[str]',

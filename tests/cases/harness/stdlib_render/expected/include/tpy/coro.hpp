@@ -125,7 +125,7 @@ struct tpy::Adapter<tpystd::coro::Cancellable<T>, __tpy_Impl> : tpystd::coro::Ca
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { return inner.__poll__(waker); }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { return inner.__poll__(std::move(waker)); }
     void cancel() override { inner.cancel(); }
 };
 
@@ -133,7 +133,7 @@ template<typename T, tpystd::coro::__Cancellable_Concept__<T> __tpy_Impl>
 struct tpy::RefAdapter<tpystd::coro::Cancellable<T>, __tpy_Impl> : tpystd::coro::Cancellable<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { return inner.__poll__(waker); }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { return inner.__poll__(std::move(waker)); }
     void cancel() override { inner.cancel(); }
 };
 

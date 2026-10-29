@@ -1272,11 +1272,17 @@ class ProtocolChecker:
         the record or any ancestor (transitively): such a method is emitted
         as `override` on a virtual slot, so a base reference dispatches it
         dynamically."""
-        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
+        return self.dynamic_protocol_of_member(record_info, method_name) is not None
+
+    def dynamic_protocol_of_member(self, record_info: RecordInfo,
+                                   method_name: str) -> NominalType | None:
+        """The first @dynamic protocol implemented by the record or any
+        ancestor (transitively) that declares method_name, or None."""
+        for proto, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
             for sig in self.collect_protocol_methods(proto_info):
                 if sig.name == method_name:
-                    return True
-        return False
+                    return proto
+        return None
 
     def statically_hidden(self, cls: RecordInfo, name: str,
                           base: RecordInfo) -> RecordInfo | None:

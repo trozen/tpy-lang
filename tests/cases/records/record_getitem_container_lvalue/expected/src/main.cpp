@@ -123,11 +123,11 @@ void receivers() {
     ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4> al = ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4>();
     al.append(std::vector<int32_t>{3});
     al.__setitem__(0, std::vector<int32_t>{5});
-    std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al[0]) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t>& w = al[0];
+    std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al.__getitem____int32(0)) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t>& w = al.__getitem____int32(0);
     w.push_back(4);
-    ::tpy::__setitem__(al[0], 0, 30);
-    std::cout << "arraylist:" << " " << ::tpy::ListPrinter(al[0]) << " " << ::tpy::__len__(al[0]) << "\n" << ::tpy::check_signals;
+    ::tpy::__setitem__(al.__getitem____int32(0), 0, 30);
+    std::cout << "arraylist:" << " " << ::tpy::ListPrinter(al.__getitem____int32(0)) << " " << ::tpy::__len__(al.__getitem____int32(0)) << "\n" << ::tpy::check_signals;
     Pts p = Pts();
     Pt* q = &(p[0]);
     q->x = 11;
@@ -161,8 +161,8 @@ int32_t ro_reader(const Rows& r) {
 //     p = lst[0]  # tpyc: ok
 //     return p.x + lst[1].x  # tpyc: ok
 int32_t ro_records(const ::tpystd::tplib::array_list::ArrayList<Pt, 4>& lst) {
-    const Pt& p = lst[0];
-    return (::tpy::add_check<int32_t>(p.x, lst[1].x));
+    const Pt& p = lst.__getitem____int32(0);
+    return (::tpy::add_check<int32_t>(p.x, lst.__getitem____int32(1).x));
 }
 
 

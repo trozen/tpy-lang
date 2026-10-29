@@ -57,7 +57,7 @@ void same_call(B&& b) {
 //     print("dispatch_method", n)
 void dispatch_method(B&& b) {
     O o = O();
-    ::tpy::BigInt n = o.g(b, B(b).take(), ::tpy::BigInt(1));
+    ::tpy::BigInt n = o.g__B__Own_B__int(b, B(b).take(), ::tpy::BigInt(1));
     std::cout << "dispatch_method" << " " << n << "\n" << ::tpy::check_signals;
 }
 

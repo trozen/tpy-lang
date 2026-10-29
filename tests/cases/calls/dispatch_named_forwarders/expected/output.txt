@@ -1,0 +1,22 @@
+own: 1 2 4
+borrow: 9 2
+fn: 18 4
+literal: read write other x one two
+collision: ['set_foo int32 3', 'set_foo str a', 'setter 5'] 4
+auto_own: 5 11
+consuming: 6 8
+inherited: 1 2 3 5
+inherited: 7 97 98
+getter-only: 96 9 10
+inherited own: 1
+inherited: 1 1 1 11
+redefined: 11 12
+static: 3 2
+named: 3 2 7
+value: ['a', 'b', 'c'] True False
+generic: T True 2
+bases: mammal pet
+receiver: int32 int32 6
+receiver: StrView StrView 8
+receiver: True
+protocol: 6 9

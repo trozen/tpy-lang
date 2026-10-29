@@ -186,138 +186,172 @@ struct V {
 
     // @dispatch
     // def mm(self, x: int) -> int:
+    ::tpy::BigInt mm__int(const ::tpy::BigInt& x) const;
     ::tpy::BigInt mm(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def mm(self, x: float) -> float:
+    double mm__float(double x) const;
     double mm(double x) const;
 
     // @dispatch
     // def opt(self, x: int | None) -> str:
+    std::string opt__int_None(std::optional<::tpy::BigInt> x) const;
     std::string opt(std::optional<::tpy::BigInt> x) const;
 
     // @dispatch
     // def opt(self, x: float | None) -> str:
+    std::string opt__float_None(std::optional<double> x) const;
     std::string opt(std::optional<double> x) const;
 
     // @dispatch
     // def fopt(self, x: float | None) -> str:
+    std::string fopt__float_None(std::optional<double> x) const;
     std::string fopt(std::optional<double> x) const;
 
     // @dispatch
     // def fopt(self, x: float32) -> str:
+    std::string fopt__float32(float x) const;
     std::string fopt(float x) const;
 
     // @dispatch
     // def iopt(self, x: int32 | None) -> str:
+    std::string iopt__int32_None(std::optional<int32_t> x) const;
     std::string iopt(std::optional<int32_t> x) const;
 
     // @dispatch
     // def iopt(self, x: int64) -> str:
+    std::string iopt__int64(int64_t x) const;
     std::string iopt(int64_t x) const;
 
     // @dispatch
     // def nopt(self, x: int16 | None) -> str:
+    std::string nopt__int16_None(std::optional<int16_t> x) const;
     std::string nopt(std::optional<int16_t> x) const;
 
     // @dispatch
     // def nopt(self, x: int64) -> str:
+    std::string nopt__int64(int64_t x) const;
     std::string nopt(int64_t x) const;
 
     // @dispatch
     // def narrow(self, x: int16) -> str:
+    std::string narrow__int16(int16_t x) const;
     std::string narrow(int16_t x) const;
 
     // @dispatch
     // def narrow(self, x: int64) -> str:
+    std::string narrow__int64(int64_t x) const;
     std::string narrow(int64_t x) const;
 
     // @dispatch
     // def mv(self, x: bool) -> int:
+    ::tpy::BigInt mv__bool(bool x) const;
     ::tpy::BigInt mv(bool x) const;
 
     // @dispatch
     // def mv(self, x: int) -> int:
+    ::tpy::BigInt mv__int(const ::tpy::BigInt& x) const;
     ::tpy::BigInt mv(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def width(self, x: float) -> str:
+    std::string width__float(double x) const;
     std::string width(double x) const;
 
     // @dispatch
     // def width(self, x: float32) -> str:
+    std::string width__float32(float x) const;
     std::string width(float x) const;
 
     // @dispatch
     // def f(self, x: float32) -> float:
+    double f__float32(float x) const;
     double f(float x) const;
 
     // @dispatch
     // def f(self, x: str) -> float:
+    double f__str(std::string_view x) const;
     double f(std::string_view x) const;
 
     // @dispatch
     // def fo(self, x: float | None) -> str:
+    std::string fo__float_None(std::optional<double> x) const;
     std::string fo(std::optional<double> x) const;
 
     // @dispatch
     // def fo(self, x: str) -> str:
+    std::string fo__str(std::string_view x) const;
     std::string fo(std::string_view x) const;
 
     // @dispatch
     // def um(self, x: int64 | str, k: int32) -> str:
+    std::string um__int64_str__int32(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const;
     std::string um(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const;
 
     // @dispatch
     // def um(self, x: bytes, k: int32) -> str:
+    std::string um__bytes__int32(::tpy::BytesView x, int32_t k) const;
     std::string um(::tpy::BytesView x, int32_t k) const;
 
     // @dispatch
     // def u(self, x: int | str) -> str:
+    std::string u__int_str(const ::tpy::Union<::tpy::BigInt, std::string>& x) const;
     std::string u(const ::tpy::Union<::tpy::BigInt, std::string>& x) const;
 
     // @dispatch
     // def u(self, x: float) -> str:
+    std::string u__float(double x) const;
     std::string u(double x) const;
 
     // @dispatch
     // def b(self, x: int64 | str) -> str:
+    std::string b__int64_str(const ::tpy::Union<int64_t, std::string>& x) const;
     std::string b(const ::tpy::Union<int64_t, std::string>& x) const;
 
     // @dispatch
     // def b(self, x: float) -> str:
+    std::string b__float(double x) const;
     std::string b(double x) const;
 
     // @dispatch
     // def pk(self, x: uint8 | str) -> str:
+    std::string pk__str_uint8(const ::tpy::Union<std::string, uint8_t>& x) const;
     std::string pk(const ::tpy::Union<std::string, uint8_t>& x) const;
 
     // @dispatch
     // def pk(self, x: float) -> str:
+    std::string pk__float(double x) const;
     std::string pk(double x) const;
 
     // @dispatch
     // def huge(self, x: float) -> str:
+    std::string huge__float(double x) const;
     std::string huge(double x) const;
 
     // @dispatch
     // def huge(self, x: float32 | str) -> str:
+    std::string huge__float32_str(const ::tpy::Union<float, std::string>& x) const;
     std::string huge(const ::tpy::Union<float, std::string>& x) const;
 
     // @dispatch
     // def hw(self, x: float32 | str) -> str:
+    std::string hw__float32_str(const ::tpy::Union<float, std::string>& x) const;
     std::string hw(const ::tpy::Union<float, std::string>& x) const;
 
     // @dispatch
     // def hw(self, x: int64) -> str:
+    std::string hw__int64(int64_t x) const;
     std::string hw(int64_t x) const;
 
     // @dispatch
     // def wide(self, x: int32) -> str:
+    std::string wide__int32(int32_t x) const;
     std::string wide(int32_t x) const;
 
     // @dispatch
     // def wide(self, x: int64) -> str:
+    std::string wide__int64(int64_t x) const;
     std::string wide(int64_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.V";
 };
@@ -463,240 +497,376 @@ inline V::V() {
 // @dispatch
 // def mm(self, x: int) -> int:
 //     return x * 2
-inline ::tpy::BigInt V::mm(const ::tpy::BigInt& x) const {
+inline ::tpy::BigInt V::mm__int(const ::tpy::BigInt& x) const {
     return ((x) * (::tpy::BigInt(2)));
+}
+
+inline ::tpy::BigInt V::mm(const ::tpy::BigInt& x) const {
+    return this->mm__int(x);
 }
 
 // @dispatch
 // def mm(self, x: float) -> float:
 //     return x / 4
-inline double V::mm(double x) const {
+inline double V::mm__float(double x) const {
     return (::tpy::truediv(x, 4));
+}
+
+inline double V::mm(double x) const {
+    return this->mm__float(x);
 }
 
 // @dispatch
 // def opt(self, x: int | None) -> str:
 //     return "intopt"
-inline std::string V::opt(std::optional<::tpy::BigInt> x) const {
+inline std::string V::opt__int_None(std::optional<::tpy::BigInt> x) const {
     return "intopt";
+}
+
+inline std::string V::opt(std::optional<::tpy::BigInt> x) const {
+    return this->opt__int_None(std::move(x));
 }
 
 // @dispatch
 // def opt(self, x: float | None) -> str:
 //     return "floatopt"
-inline std::string V::opt(std::optional<double> x) const {
+inline std::string V::opt__float_None(std::optional<double> x) const {
     return "floatopt";
+}
+
+inline std::string V::opt(std::optional<double> x) const {
+    return this->opt__float_None(x);
 }
 
 // @dispatch
 // def fopt(self, x: float | None) -> str:
 //     return "f64opt"
-inline std::string V::fopt(std::optional<double> x) const {
+inline std::string V::fopt__float_None(std::optional<double> x) const {
     return "f64opt";
+}
+
+inline std::string V::fopt(std::optional<double> x) const {
+    return this->fopt__float_None(x);
 }
 
 // @dispatch
 // def fopt(self, x: float32) -> str:
 //     return "f32"
-inline std::string V::fopt(float x) const {
+inline std::string V::fopt__float32(float x) const {
     return "f32";
+}
+
+inline std::string V::fopt(float x) const {
+    return this->fopt__float32(x);
 }
 
 // @dispatch
 // def iopt(self, x: int32 | None) -> str:
 //     return "int32opt"
-inline std::string V::iopt(std::optional<int32_t> x) const {
+inline std::string V::iopt__int32_None(std::optional<int32_t> x) const {
     return "int32opt";
+}
+
+inline std::string V::iopt(std::optional<int32_t> x) const {
+    return this->iopt__int32_None(x);
 }
 
 // @dispatch
 // def iopt(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::iopt(int64_t x) const {
+inline std::string V::iopt__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::iopt(int64_t x) const {
+    return this->iopt__int64(x);
 }
 
 // @dispatch
 // def nopt(self, x: int16 | None) -> str:
 //     return "int16opt"
-inline std::string V::nopt(std::optional<int16_t> x) const {
+inline std::string V::nopt__int16_None(std::optional<int16_t> x) const {
     return "int16opt";
+}
+
+inline std::string V::nopt(std::optional<int16_t> x) const {
+    return this->nopt__int16_None(x);
 }
 
 // @dispatch
 // def nopt(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::nopt(int64_t x) const {
+inline std::string V::nopt__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::nopt(int64_t x) const {
+    return this->nopt__int64(x);
 }
 
 // @dispatch
 // def narrow(self, x: int16) -> str:
 //     return "int16"
-inline std::string V::narrow(int16_t x) const {
+inline std::string V::narrow__int16(int16_t x) const {
     return "int16";
+}
+
+inline std::string V::narrow(int16_t x) const {
+    return this->narrow__int16(x);
 }
 
 // @dispatch
 // def narrow(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::narrow(int64_t x) const {
+inline std::string V::narrow__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::narrow(int64_t x) const {
+    return this->narrow__int64(x);
 }
 
 // @dispatch
 // def mv(self, x: bool) -> int:
 //     return 2
-inline ::tpy::BigInt V::mv(bool x) const {
+inline ::tpy::BigInt V::mv__bool(bool x) const {
     return ::tpy::BigInt(2);
+}
+
+inline ::tpy::BigInt V::mv(bool x) const {
+    return this->mv__bool(x);
 }
 
 // @dispatch
 // def mv(self, x: int) -> int:
 //     return 3
-inline ::tpy::BigInt V::mv(const ::tpy::BigInt& x) const {
+inline ::tpy::BigInt V::mv__int(const ::tpy::BigInt& x) const {
     return ::tpy::BigInt(3);
+}
+
+inline ::tpy::BigInt V::mv(const ::tpy::BigInt& x) const {
+    return this->mv__int(x);
 }
 
 // @dispatch
 // def width(self, x: float) -> str:
 //     return "f64"
-inline std::string V::width(double x) const {
+inline std::string V::width__float(double x) const {
     return "f64";
+}
+
+inline std::string V::width(double x) const {
+    return this->width__float(x);
 }
 
 // @dispatch
 // def width(self, x: float32) -> str:
 //     return "f32"
-inline std::string V::width(float x) const {
+inline std::string V::width__float32(float x) const {
     return "f32";
+}
+
+inline std::string V::width(float x) const {
+    return this->width__float32(x);
 }
 
 // @dispatch
 // def f(self, x: float32) -> float:
 //     # TPy holds a float32 already; the stand-in rounds here.
 //     return float32(x)
-inline double V::f(float x) const {
+inline double V::f__float32(float x) const {
     return static_cast<double>(x);
+}
+
+inline double V::f(float x) const {
+    return this->f__float32(x);
 }
 
 // @dispatch
 // def f(self, x: str) -> float:
 //     return 0.0
-inline double V::f(std::string_view x) const {
+inline double V::f__str(std::string_view x) const {
     return 0.0;
+}
+
+inline double V::f(std::string_view x) const {
+    return this->f__str(x);
 }
 
 // @dispatch
 // def fo(self, x: float | None) -> str:
 //     return "fopt"
-inline std::string V::fo(std::optional<double> x) const {
+inline std::string V::fo__float_None(std::optional<double> x) const {
     return "fopt";
+}
+
+inline std::string V::fo(std::optional<double> x) const {
+    return this->fo__float_None(x);
 }
 
 // @dispatch
 // def fo(self, x: str) -> str:
 //     return "str"
-inline std::string V::fo(std::string_view x) const {
+inline std::string V::fo__str(std::string_view x) const {
     return "str";
+}
+
+inline std::string V::fo(std::string_view x) const {
+    return this->fo__str(x);
 }
 
 // @dispatch
 // def um(self, x: int64 | str, k: int32) -> str:
 //     return "union"
-inline std::string V::um(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const {
+inline std::string V::um__int64_str__int32(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const {
     return "union";
+}
+
+inline std::string V::um(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const {
+    return this->um__int64_str__int32(x, k);
 }
 
 // @dispatch
 // def um(self, x: bytes, k: int32) -> str:
 //     return "bytes"
-inline std::string V::um(::tpy::BytesView x, int32_t k) const {
+inline std::string V::um__bytes__int32(::tpy::BytesView x, int32_t k) const {
     return "bytes";
+}
+
+inline std::string V::um(::tpy::BytesView x, int32_t k) const {
+    return this->um__bytes__int32(x, k);
 }
 
 // @dispatch
 // def u(self, x: int | str) -> str:
 //     return "union"
-inline std::string V::u(const ::tpy::Union<::tpy::BigInt, std::string>& x) const {
+inline std::string V::u__int_str(const ::tpy::Union<::tpy::BigInt, std::string>& x) const {
     return "union";
+}
+
+inline std::string V::u(const ::tpy::Union<::tpy::BigInt, std::string>& x) const {
+    return this->u__int_str(x);
 }
 
 // @dispatch
 // def u(self, x: float) -> str:
 //     return "float"
-inline std::string V::u(double x) const {
+inline std::string V::u__float(double x) const {
     return "float";
+}
+
+inline std::string V::u(double x) const {
+    return this->u__float(x);
 }
 
 // @dispatch
 // def b(self, x: int64 | str) -> str:
 //     return "union"
-inline std::string V::b(const ::tpy::Union<int64_t, std::string>& x) const {
+inline std::string V::b__int64_str(const ::tpy::Union<int64_t, std::string>& x) const {
     return "union";
+}
+
+inline std::string V::b(const ::tpy::Union<int64_t, std::string>& x) const {
+    return this->b__int64_str(x);
 }
 
 // @dispatch
 // def b(self, x: float) -> str:
 //     return "float"
-inline std::string V::b(double x) const {
+inline std::string V::b__float(double x) const {
     return "float";
+}
+
+inline std::string V::b(double x) const {
+    return this->b__float(x);
 }
 
 // @dispatch
 // def pk(self, x: uint8 | str) -> str:
 //     return "union"
-inline std::string V::pk(const ::tpy::Union<std::string, uint8_t>& x) const {
+inline std::string V::pk__str_uint8(const ::tpy::Union<std::string, uint8_t>& x) const {
     return "union";
+}
+
+inline std::string V::pk(const ::tpy::Union<std::string, uint8_t>& x) const {
+    return this->pk__str_uint8(x);
 }
 
 // @dispatch
 // def pk(self, x: float) -> str:
 //     return "float"
-inline std::string V::pk(double x) const {
+inline std::string V::pk__float(double x) const {
     return "float";
+}
+
+inline std::string V::pk(double x) const {
+    return this->pk__float(x);
 }
 
 // @dispatch
 // def huge(self, x: float) -> str:
 //     return "float"
-inline std::string V::huge(double x) const {
+inline std::string V::huge__float(double x) const {
     return "float";
+}
+
+inline std::string V::huge(double x) const {
+    return this->huge__float(x);
 }
 
 // @dispatch
 // def huge(self, x: float32 | str) -> str:
 //     return "union"
-inline std::string V::huge(const ::tpy::Union<float, std::string>& x) const {
+inline std::string V::huge__float32_str(const ::tpy::Union<float, std::string>& x) const {
     return "union";
+}
+
+inline std::string V::huge(const ::tpy::Union<float, std::string>& x) const {
+    return this->huge__float32_str(x);
 }
 
 // @dispatch
 // def hw(self, x: float32 | str) -> str:
 //     return "union"
-inline std::string V::hw(const ::tpy::Union<float, std::string>& x) const {
+inline std::string V::hw__float32_str(const ::tpy::Union<float, std::string>& x) const {
     return "union";
+}
+
+inline std::string V::hw(const ::tpy::Union<float, std::string>& x) const {
+    return this->hw__float32_str(x);
 }
 
 // @dispatch
 // def hw(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::hw(int64_t x) const {
+inline std::string V::hw__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::hw(int64_t x) const {
+    return this->hw__int64(x);
 }
 
 // @dispatch
 // def wide(self, x: int32) -> str:
 //     return "int32"
-inline std::string V::wide(int32_t x) const {
+inline std::string V::wide__int32(int32_t x) const {
     return "int32";
+}
+
+inline std::string V::wide(int32_t x) const {
+    return this->wide__int32(x);
 }
 
 // @dispatch
 // def wide(self, x: int64) -> str:
 //     return "int64"
-inline std::string V::wide(int64_t x) const {
+inline std::string V::wide__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string V::wide(int64_t x) const {
+    return this->wide__int64(x);
 }
 
 // def __init__(self, x: uint8 | str) -> None:

@@ -147,8 +147,8 @@ void main() {
     std::cout << "free_type:" << " " << ::tpyapp::main::tag__int32(1) << " " << ::tpyapp::main::tag__str("abc") << "\n" << ::tpy::check_signals;
     std::cout << "free_order:" << " " << ::tpyapp::main::kind__int32(3) << " " << ::tpyapp::main::kind__str("s") << "\n" << ::tpy::check_signals;
     Acc a = Acc();
-    a.add(2);
-    a.add(std::string_view("xyz"));
+    a.add__int32(2);
+    a.add__str("xyz");
     std::cout << "method:" << " " << a.total << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = std::vector<int32_t>{};
     ::tpyapp::main::push__list_int32(xs);

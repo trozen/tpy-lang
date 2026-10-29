@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     b = Point.make(1, 2)
 //     print(a.x, a.y, b.x, b.y)
 void main() {
-    Point a = Point::make(1);
-    Point b = Point::make(1, 2);
+    Point a = Point::make__int32(1);
+    Point b = Point::make__int32__int32(1, 2);
     std::cout << a.x << " " << a.y << " " << b.x << " " << b.y << "\n" << ::tpy::check_signals;
 }
 

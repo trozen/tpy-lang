@@ -36,7 +36,7 @@ from ..typesys import (
     property_getter_returns_storage_ref,
     bare_name, TupleGlobalLayout, global_tuple_layout,
     body_function_info, body_method_info,
-    overload_variant_cpp_name, variant_cpp_name_of,
+    variant_cpp_name_of,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
@@ -45,7 +45,7 @@ from ..parse.nodes import (
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyName, TpyFieldAccess, TpyStmt, OverloadForm,
 )
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, forward_param, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
 from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import (resolve_global_binding_type,
@@ -1361,7 +1361,8 @@ class FunctionGenerator:
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
-                                mode=mode)
+                                mode=mode,
+                                variant_of=stub)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1381,13 +1382,8 @@ class FunctionGenerator:
         a mangled method name. Injects literal narrowing facts for dead
         branch elimination.
         """
-        # Methods keep one shared name except for their literal variants
-        # (`method_literal_mangled_cpp` spells the same rule at the call).
-        mangled = (overload_variant_cpp_name(impl.name, stub.params)
-                   if any(isinstance(t, LiteralType) for _, t in stub.params)
-                   else impl.name)
         synth = TpyFunction(
-            name=mangled,
+            name=impl.name,
             params=list(impl.params),
             return_type=stub.return_type,
             body=impl.body,
@@ -1442,7 +1438,7 @@ class FunctionGenerator:
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
-                                mode=mode)
+                                mode=mode, variant_of=stub)
         finally:
             self.ctx.literal_overload_facts = {}
             self.ctx.thir_overload_key = None
@@ -1493,16 +1489,52 @@ class FunctionGenerator:
                                addr_escapes_params=self._get_method_addr_escapes(method, record_name),
                                func=method)
 
+    def method_variant_name(self, decl: TpyFunction,
+                            record_name: str) -> str | None:
+        """The C++ name of the method variant registered from `decl` (its
+        own def, or the `typing.overload` stub it specializes), or None
+        when it is emitted under its source name."""
+        ri = self.ctx.analyzer.registry.get_record(record_name)
+        if ri is None:
+            return None
+        return variant_cpp_name_of(ri.get_method_overloads(decl.name), decl)
+
+    def _names_a_set(self, decl: TpyFunction, record_name: str) -> bool:
+        """Whether the members named `decl.name` are a set's named
+        variants, which keep the plain name for their forwarders."""
+        ri = self.ctx.analyzer.registry.get_record(record_name)
+        if ri is None:
+            return False
+        infos = ri.get_method_overloads(decl.name) or ()
+        return len({fi.variant_cpp_name for fi in infos}) > 1
+
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
                        dynamic_overrides: dict[str, bool] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None,
-                       mode: MethodEmitMode = "inline") -> None:
+                       mode: MethodEmitMode = "inline",
+                       variant_of: TpyFunction | None = None) -> None:
         """Generate a method definition for a record. ``mode`` is
-        forwarded to ``_gen_method_overload``.
-        """
+        forwarded to ``_gen_method_overload``. ``variant_of`` is the def
+        `method` specializes (a `typing.overload` stub), when it is not
+        `method` itself.
+
+        A named variant of a set (`method_variant_name`) is defined under
+        its name, followed by a forwarder under the plain name with the
+        variant's own signature: C++'s own callers (protocol concepts,
+        operator shims, `@dynamic` adapters, runtime helpers) reach the
+        plain name and see exactly the overload set they always did. A
+        `Literal` variant has no plain-name member to forward from: it was
+        only ever reached by its own name."""
+        decl = variant_of if variant_of is not None else method
+        variant = self.method_variant_name(decl, record_name)
         # escape_cpp_name handles names that collide with C++ keywords
         # (e.g. `def double` -> `double_`); call sites apply the same escape.
-        cpp_name = escape_cpp_name(method.name)
+        plain_name = escape_cpp_name(method.name)
+        cpp_name = variant if variant is not None else plain_name
+        forward_to = (variant if variant is not None
+                      and not any(isinstance(t, LiteralType)
+                                  for _, t in decl.params)
+                      and self._names_a_set(decl, record_name) else None)
         cpp_return_type = method.return_type
 
         # Property setter: rename to set_<name> in C++
@@ -1517,20 +1549,24 @@ class FunctionGenerator:
         if dynamic_overrides and method.name in dynamic_overrides:
             override_const = dynamic_overrides[method.name]
 
-        if is_const and not is_static:
-            # @readonly: single const overload. C++ allows calling const methods
-            # on non-const objects, so no non-const duplicate needed.
-            is_override = override_const is True
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
-                                      const=True, override=is_override,
-                                      record_type_param_bounds=record_type_param_bounds,
-                                      mode=mode)
-        else:
-            is_override = override_const is False and not is_static  # base is non-const
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                      static=is_static, override=is_override,
-                                      record_type_param_bounds=record_type_param_bounds,
-                                      mode=mode)
+        names = [(cpp_name, None)]
+        if forward_to is not None:
+            names.append((plain_name, forward_to))
+        for name, target in names:
+            if is_const and not is_static:
+                # @readonly: single const overload. C++ allows calling const methods
+                # on non-const objects, so no non-const duplicate needed.
+                is_override = override_const is True
+                self._gen_method_overload(out, method, record_name, name, cpp_return_type,
+                                          const=True, override=is_override,
+                                          record_type_param_bounds=record_type_param_bounds,
+                                          mode=mode, forward_to=target)
+            else:
+                is_override = override_const is False and not is_static  # base is non-const
+                self._gen_method_overload(out, method, record_name, name, cpp_return_type,
+                                          const=False, static=is_static, override=is_override,
+                                          record_type_param_bounds=record_type_param_bounds,
+                                          mode=mode, forward_to=target)
 
     def method_return_cpp(self, method: TpyFunction, record_name: str,
                           cpp_return_type: TpyType | None = None, *,
@@ -1578,10 +1614,12 @@ class FunctionGenerator:
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
-        mode: MethodEmitMode = "inline",
+        mode: MethodEmitMode = "inline", forward_to: str | None = None,
     ) -> None:
         """Emit a single method overload. See ``MethodEmitMode`` for the
-        contract of ``mode``.
+        contract of ``mode``. With ``forward_to``, the member is a
+        forwarder: the same signature, its body the call of the named
+        variant ``forward_to`` with its own arguments.
         """
         is_def_mode = mode in ("def_hpp", "def_cpp")
         ret_type = self.method_return_cpp(method, record_name, cpp_return_type,
@@ -1606,7 +1644,8 @@ class FunctionGenerator:
         # from the parser clone -- don't blanket-apply const.
         use_const_params = ((const and not method.auto_readonly_params_resolved)
                             or method.name in CONST_PARAMS_METHODS)
-        rp = self._get_reassigned_params(method)
+        # A forwarder's body never assigns its parameters.
+        rp = self._get_reassigned_params(method) if forward_to is None else None
         mp = self._get_method_mutated_params(method, record_name)
         ae = self._get_method_addr_escapes(method, record_name)
         # C++ rejects default arguments repeated on both the in-class declaration
@@ -1693,8 +1732,12 @@ class FunctionGenerator:
             sig_static_prefix = static_prefix
             sig_override_suffix = override_suffix
 
-        out.write("\n")
-        if mode == "decl":
+        # A forwarder's declaration sits directly under its variant's.
+        if forward_to is None or mode != "decl":
+            out.write("\n")
+        if forward_to is not None:
+            pass
+        elif mode == "decl":
             self.ctx.emit_declaration_echo(out, method.loc, sig_indent)
         else:
             self.ctx.emit_definition_echo(out, method.loc, sig_indent)
@@ -1730,6 +1773,12 @@ class FunctionGenerator:
             return
         out.write(f"{sig_line} {{\n")
 
+        if forward_to is not None:
+            out.write(f"{body_indent}return "
+                      f"{self._forward_call(method, record_name, forward_to, new_method_params)};\n")
+            out.write(f"{sig_indent}}}\n")
+            return
+
         # Consuming methods on types with __del__: suppress destructor at method entry.
         # Walk the parent chain since __del__ may be inherited.
         if method.is_consuming and record_info is not None and self.ctx.record_or_ancestor_has_del(record_name):
@@ -1742,6 +1791,24 @@ class FunctionGenerator:
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")
+
+    def _forward_call(self, method: TpyFunction, record_name: str,
+                      variant: str, own_type_params: list[str]) -> str:
+        """A forwarder's call of its named variant: its own parameters
+        handed on (`forward_param`), the method's own type parameters
+        spelled where the variant's template head opens with them, the
+        variant reached as a member or, static, through its class (a
+        parameter may share its name), a consuming receiver moved."""
+        args = ", ".join(forward_param(escape_cpp_name(n), t)
+                         for n, t in method.params)
+        targs = f"<{', '.join(own_type_params)}>" if own_type_params else ""
+        keyword = "template " if targs else ""
+        if method.is_staticmethod:
+            q = self.protocols.record_cpp_qualifier(record_name)
+            return f"{q}::{keyword}{variant}{targs}({args})"
+        if method.is_consuming:
+            return f"std::move(*this).{keyword}{variant}{targs}({args})"
+        return f"this->{keyword}{variant}{targs}({args})"
 
     def gen_body(self, out: TextIO, func: TpyFunction,
                  indent_level: int = 1, return_cpp: str | None = None) -> None:

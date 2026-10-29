@@ -69,7 +69,7 @@ struct Meters {
     ::tpy::BigInt value() const;
 
     friend Meters operator+(const Meters& lhs, Meters other) {
-        return lhs.__add__(other);
+        return lhs.__add__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Meters";
 };

@@ -878,7 +878,7 @@ def test_sema_links_each_mutable_clone_to_its_const_clone(accessors: Program) ->
 @pytest.mark.parametrize("record,name,member", [
     ("Plain", "__eq__", None),          # explicit dunder call: an operator template
     ("Plain", "generic", "generic"),    # generic method
-    ("Plain", "put", "put"),            # a @dispatch group has two bodies
+    ("Plain", "put", "put__int32"),     # a @dispatch group has two bodies
     ("Box", "get", "get"),              # generic record
 ])
 def test_an_unproven_call_target_has_no_callee_at_either_side(negatives: Program, record: str, name: str,

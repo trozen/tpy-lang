@@ -79,11 +79,11 @@ void main() {
     std::cout << "builtins:" << " " << ::tpy::TuplePrinter(::tpy::divmod_bigint(::tpy::BigInt(7), ::tpy::BigInt(2))) << " " << (::tpy::BigInt(2)).pow(::tpy::BigInt(10)) << "\n" << ::tpy::check_signals;
     std::cout << "free_function:" << " " << ::tpyapp::main::m__int32(3) << " " << ::tpyapp::main::w__int64(3) << "\n" << ::tpy::check_signals;
     std::cout << "free_function:" << " " << ::tpyapp::main::fw__float(static_cast<double>(3)) << "\n" << ::tpy::check_signals;
-    std::cout << "method:" << " " << V().k(::tpy::BigInt(3)) << " " << V().k(0.5) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << V().k__int(::tpy::BigInt(3)) << " " << V().k__float(0.5) << "\n" << ::tpy::check_signals;
     V v = V();
     ::tpy::BigInt n;
     ::tpy::BigInt y;
-    std::cout << "method:" << " " << v.narrow(((n = 100)).to_fixed_check<int64_t>()) << " " << ::tpy::print_float(v.f(static_cast<float>(static_cast<double>((y = 3))))) << " " << n << " " << y << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << v.narrow__int64(((n = 100)).to_fixed_check<int64_t>()) << " " << ::tpy::print_float(v.f__float32(static_cast<float>(static_cast<double>((y = 3))))) << " " << n << " " << y << "\n" << ::tpy::check_signals;
     std::vector<int32_t> calls = std::vector<int32_t>{};
     ::tpy::BigInt z;
     std::cout << "union:" << " " << ::tpyapp::main::take(::tpy::Union<int32_t, std::string>(((z = 3)).to_fixed_check<int32_t>())) << " " << ::tpyapp::main::take(::tpy::Union<int32_t, std::string>((((::tpyapp::main::tick(calls)) ? (::tpy::BigInt(3)) : (::tpy::BigInt(3)))).to_fixed_check<int32_t>())) << " " << z << " " << ::tpy::__len__(calls) << "\n" << ::tpy::check_signals;

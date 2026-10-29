@@ -539,5 +539,5 @@ contexts.
    `"a_b"` give one suffix), so `name_overload_variants` gives a variant
    whose readable name collides -- inside its set or with a name the
    module binds -- its declaration index (`pick__lit_a_b__v0`). Method
-   variants still take the readable name only, with no fallback
-   (BUGS.md#method-literal-variant-name-two-sites).
+   variants are named the same way since 2026-10-27, reserved against the
+   record's whole member namespace.

@@ -86,21 +86,25 @@ struct ArrayList {
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> auto_readonly[T]:
+    ::tpy::val_or_ref_t<T> __getitem____int32(int32_t index);
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> auto_readonly[T]:
+    ::tpy::val_or_cref_t<T> __getitem____int32(int32_t index) const;
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const;
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+    std::span<T> __getitem____basic_slice(::tpy::BasicSlice index);
     std::span<T> __getitem__(::tpy::BasicSlice index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+    std::span<const T> __getitem____basic_slice(::tpy::BasicSlice index) const;
     std::span<const T> __getitem__(::tpy::BasicSlice index) const;
 
     // def __setitem__(self, index: int32, value: Own[T]) -> None:
@@ -438,10 +442,15 @@ inline int32_t ArrayList<T, N>::__len__() const {
 //     assert ui < self._size
 //     return self._storage.load(ui)
 template<typename T, std::size_t N>
-inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem__(int32_t index) {
+inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem____int32(int32_t index) {
     uint32_t ui = static_cast<uint32_t>(index);
     if (!((ui < this->_size))) ::tpy::raise_assertion_error();
     return this->_storage.load(ui);
+}
+
+template<typename T, std::size_t N>
+inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem__(int32_t index) {
+    return this->__getitem____int32(index);
 }
 
 // @dispatch
@@ -451,19 +460,15 @@ inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem__(int32_t index) {
 //     assert ui < self._size
 //     return self._storage.load(ui)
 template<typename T, std::size_t N>
-inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::__getitem__(int32_t index) const {
+inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::__getitem____int32(int32_t index) const {
     uint32_t ui = static_cast<uint32_t>(index);
     if (!((ui < this->_size))) ::tpy::raise_assertion_error();
     return this->_storage.load(ui);
 }
 
-// @dispatch
-// @auto_readonly
-// def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
-//     return self.__span__()[index]
 template<typename T, std::size_t N>
-inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
-    return ::tpy::list_slice(this->__span__(), index);
+inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::__getitem__(int32_t index) const {
+    return this->__getitem____int32(index);
 }
 
 // @dispatch
@@ -471,8 +476,27 @@ inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
 // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
 //     return self.__span__()[index]
 template<typename T, std::size_t N>
-inline std::span<const T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) const {
+inline std::span<T> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) {
     return ::tpy::list_slice(this->__span__(), index);
+}
+
+template<typename T, std::size_t N>
+inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
+    return this->__getitem____basic_slice(index);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+//     return self.__span__()[index]
+template<typename T, std::size_t N>
+inline std::span<const T> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) const {
+    return ::tpy::list_slice(this->__span__(), index);
+}
+
+template<typename T, std::size_t N>
+inline std::span<const T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) const {
+    return this->__getitem____basic_slice(index);
 }
 
 // def __setitem__(self, index: int32, value: Own[T]) -> None:

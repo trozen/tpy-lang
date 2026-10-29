@@ -66,9 +66,9 @@ void main() {
     ::tpy::ordered_map<::tpystd::datetime::date, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::date, std::string>({{::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), "a"}});
     std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::date>({::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(1), ::tpy::BigInt(1)), ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))}).contains(d))) << "\n" << ::tpy::check_signals;
-    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))) - (d)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))).__sub____date(d)) << "\n" << ::tpy::check_signals;
     std::cout << ((d) + (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n" << ::tpy::check_signals;
-    std::cout << ((d) - (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ((d).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n" << ::tpy::check_signals;
     std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1)))).isoformat() << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2000), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n" << ::tpy::check_signals;
     {

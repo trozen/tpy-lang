@@ -300,7 +300,7 @@ void main() {
     OvlHolder ovl = OvlHolder();
     OvlOuter::Inner oin = OvlOuter::Inner();
     oin.n = ::tpy::add_check<int32_t>(oin.n, 1);
-    std::cout << "overload" << " " << ovl.use(oin) << " " << ovl.use(3) << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ovl.use__OvlOuter_Inner(oin) << " " << ovl.use__int32(3) << "\n" << ::tpy::check_signals;
     PropHolder prop = PropHolder();
     std::cout << "property get" << " " << prop.value().n << "\n" << ::tpy::check_signals;
     PropOuter::Inner pv = PropOuter::Inner();

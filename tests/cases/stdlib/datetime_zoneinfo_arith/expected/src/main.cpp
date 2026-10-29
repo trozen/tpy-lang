@@ -61,20 +61,20 @@ void main() {
     ::tpystd::datetime::datetime before = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     ::tpystd::datetime::datetime after = ((before) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2))));
     std::cout << after << " " << ::tpy::print_optional_val(after.utcoffset()) << " " << after.fold() << "\n" << ::tpy::check_signals;
-    std::cout << ((after) - (before)) << " " << ::tpy::print_float(((after.timestamp()) - (before.timestamp()))) << "\n" << ::tpy::check_signals;
+    std::cout << ((after).__sub____datetime(before)) << " " << ::tpy::print_float(((after.timestamp()) - (before.timestamp()))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime day_later = ((before) + (::tpystd::datetime::timedelta(::tpy::BigInt(1))));
     std::cout << day_later << " " << ::tpy::print_optional_val(day_later.utcoffset()) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(((((day_later) - (::tpystd::datetime::timedelta(::tpy::BigInt(1))))) == (before))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((((day_later).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(1))))) == (before))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime folded = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2, ::tpy::BigInt(1));
     ::tpystd::datetime::datetime moved = ((folded) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
     std::cout << moved << " " << moved.fold() << "\n" << ::tpy::check_signals;
-    std::cout << ((folded) - (::tpystd::datetime::timedelta(::tpy::BigInt(0)))).fold() << "\n" << ::tpy::check_signals;
+    std::cout << ((folded).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(0)))).fold() << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime w = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4);
-    std::cout << ((w) - (n)) << "\n" << ::tpy::check_signals;
+    std::cout << ((w).__sub____datetime(n)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((w) == (n))) << " " << ::tpy::print_bool(((w) < (n))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ny;
     std::cout << ::tpy::print_bool(((w) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(6), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_5)))) << "\n" << ::tpy::check_signals;
@@ -87,7 +87,7 @@ void main() {
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = waw;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_8)) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9)))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = fixed2;
-    std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_10)) - (w)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_10)).__sub____datetime(w)) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
     std::cout << ::tpy::print_bool(((naive) == (w))) << "\n" << ::tpy::check_signals;
     {
@@ -99,7 +99,7 @@ void main() {
     }
     {
         try {
-            std::cout << ((naive) - (w)) << "\n" << ::tpy::check_signals;
+            std::cout << ((naive).__sub____datetime(w)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TypeError&) {
             std::cout << "TypeError-sub" << "\n" << ::tpy::check_signals;
         }

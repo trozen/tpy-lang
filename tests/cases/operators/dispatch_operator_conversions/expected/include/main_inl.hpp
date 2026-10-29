@@ -27,7 +27,7 @@ inline std::expected<bool, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         x = *((*__for_it_0))++;
         __state = S_RESUME_0;
-        return ((c) == (::tpy::BigInt(x)));
+        return ((c).__eq____int(::tpy::BigInt(x)));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

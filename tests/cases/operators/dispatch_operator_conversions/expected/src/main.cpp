@@ -41,7 +41,7 @@ C make_c(std::string_view s) {
 //     # does, in every spelling (CPython runs the `int` variants).
 //     print("literal_value:", b * k, b.__mul__(k), BN().mul(k))  # tpyc: ok
 void lit34(int32_t k, const B& b) {
-    std::cout << "literal_value:" << " " << ((b) * (::tpy::BigInt(k))) << " " << (b) * (::tpy::BigInt(k)) << " " << BN().mul(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_value:" << " " << ((b).__mul____int(::tpy::BigInt(k))) << " " << (b).__mul____int(::tpy::BigInt(k)) << " " << BN().mul__int(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
 }
 
 // def lit_slots(k: Literal[3, 4]) -> None:
@@ -74,7 +74,7 @@ void lit_slots(int32_t k) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = ((o).__floordiv__(::tpy::BigInt(n)));
+        int32_t __tpy_async_ret = ((o).__floordiv____int(::tpy::BigInt(n)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -226,36 +226,36 @@ void main() {
     W w = W();
     C c = C();
     G g = G();
-    std::cout << "arith:" << " " << ((b) * (::tpy::BigInt(n32))) << " " << ((b) * (::tpy::BigInt(n8))) << " " << ((b) * (static_cast<double>(f32))) << " " << ((w) * (static_cast<int16_t>(n8))) << "\n" << ::tpy::check_signals;
-    std::cout << "arith:" << " " << ((::tpy::BigInt(n32)) * (b)) << " " << ((static_cast<double>(f32)) * (b)) << "\n" << ::tpy::check_signals;
-    std::cout << "literal:" << " " << ((b) * (::tpy::BigInt(3))) << " " << ((::tpy::BigInt(3)) * (b)) << "\n" << ::tpy::check_signals;
+    std::cout << "arith:" << " " << ((b).__mul____int(::tpy::BigInt(n32))) << " " << ((b).__mul____int(::tpy::BigInt(n8))) << " " << ((b).__mul____float(static_cast<double>(f32))) << " " << ((w).__mul____int16(static_cast<int16_t>(n8))) << "\n" << ::tpy::check_signals;
+    std::cout << "arith:" << " " << ((b).__rmul____int(::tpy::BigInt(n32))) << " " << ((b).__rmul____float(static_cast<double>(f32))) << "\n" << ::tpy::check_signals;
+    std::cout << "literal:" << " " << ((b).__mul____int(::tpy::BigInt(3))) << " " << ((b).__rmul____int(::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::lit34(3, b);
     VI vi = VI();
-    vi.__iadd__(::tpy::BigInt(n32));
-    vi.__iadd__(static_cast<double>(f32));
+    vi.__iadd____int(::tpy::BigInt(n32));
+    vi.__iadd____float(static_cast<double>(f32));
     V v = V();
-    v.__iadd__(::tpy::BigInt(n32));
+    v.__iadd____int(::tpy::BigInt(n32));
     std::cout << "inplace:" << " " << vi.log << " " << v.log << "\n" << ::tpy::check_signals;
-    bool eq = ((c) == (::tpy::BigInt(m)));
-    bool lt = ((c) < (::tpy::BigInt(m)));
-    bool ne = (!((c) == (::tpy::BigInt(m))));
+    bool eq = ((c).__eq____int(::tpy::BigInt(m)));
+    bool lt = ((c).__lt____int(::tpy::BigInt(m)));
+    bool ne = (!((c).__eq____int(::tpy::BigInt(m))));
     std::cout << "compare:" << " " << ::tpy::print_bool(eq) << " " << ::tpy::print_bool(lt) << " " << ::tpy::print_bool(ne) << "\n" << ::tpy::check_signals;
-    bool r_eq = ((c) == (::tpy::BigInt(3)));
-    bool r_ne = (!((c) == (::tpy::BigInt(3))));
-    bool r_meq = ((c) == (::tpy::BigInt(m)));
-    bool r_lt = ((c) > (::tpy::BigInt(3)));
-    bool r_mlt = ((c) > (::tpy::BigInt(m)));
+    bool r_eq = ((c).__eq____int(::tpy::BigInt(3)));
+    bool r_ne = (!((c).__eq____int(::tpy::BigInt(3))));
+    bool r_meq = ((c).__eq____int(::tpy::BigInt(m)));
+    bool r_lt = ((c).__gt____int(::tpy::BigInt(3)));
+    bool r_mlt = ((c).__gt____int(::tpy::BigInt(m)));
     bool r_g = ((g) > (3));
     std::cout << "reflected:" << " " << ::tpy::print_bool(r_eq) << " " << ::tpy::print_bool(r_ne) << " " << ::tpy::print_bool(r_meq) << " " << ::tpy::print_bool(r_lt) << " " << ::tpy::print_bool(r_mlt) << " " << ::tpy::print_bool(r_g) << "\n" << ::tpy::check_signals;
-    bool chained = ({ auto&& _cmp1 = ::tpyapp::main::make_c("mid"); ((_cmp1) > (::tpy::BigInt(1))) && ((_cmp1) < (::tpy::BigInt(3))); });
+    bool chained = ({ auto&& _cmp1 = ::tpyapp::main::make_c("mid"); ((_cmp1).__gt____int(::tpy::BigInt(1))) && ((_cmp1).__lt____int(::tpy::BigInt(3))); });
     std::cout << "chained:" << " " << ::tpy::print_bool(chained) << " " << ::tpy::ListPrinter((*trace)) << "\n" << ::tpy::check_signals;
     trace->clear();
     CF cf = CF();
-    bool chained_conv = ({ auto&& _cmp1 = ::tpyapp::main::tick("mid", 2); ((c) < (::tpy::BigInt(_cmp1))) && ((cf) > (static_cast<double>(_cmp1))); });
+    bool chained_conv = ({ auto&& _cmp1 = ::tpyapp::main::tick("mid", 2); ((c).__lt____int(::tpy::BigInt(_cmp1))) && ((cf) > (static_cast<double>(_cmp1))); });
     std::cout << "chained_conv:" << " " << ::tpy::print_bool(chained_conv) << " " << ::tpy::ListPrinter((*trace)) << "\n" << ::tpy::check_signals;
     trace->clear();
     bool chained_cast = ({ auto&& _cmp1 = ::tpy::any_cast_or_panic<int32_t>(::tpyapp::main::any_mid("cast")); (0 < _cmp1) && (_cmp1 < 3); });
-    bool chained_cast_conv = ({ auto&& _cmp1 = ::tpy::any_cast_or_panic<int32_t>(::tpyapp::main::any_mid("conv")); ((c) < (::tpy::BigInt(_cmp1))) && ((cf) > (static_cast<double>(_cmp1))); });
+    bool chained_cast_conv = ({ auto&& _cmp1 = ::tpy::any_cast_or_panic<int32_t>(::tpyapp::main::any_mid("conv")); ((c).__lt____int(::tpy::BigInt(_cmp1))) && ((cf) > (static_cast<double>(_cmp1))); });
     std::cout << "chained_cast:" << " " << ::tpy::print_bool(chained_cast) << " " << ::tpy::print_bool(chained_cast_conv) << " " << ::tpy::ListPrinter((*trace)) << "\n" << ::tpy::check_signals;
     trace->clear();
     ::tpy::Bytes lo = ::tpy::Bytes(::tpy::bytes_literal("a", 1));
@@ -269,7 +269,7 @@ void main() {
     std::cout << "record_reflected:" << " " << ::tpy::print_bool(((ga) > (a0))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::timedelta d = ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(10));
     int32_t k = 4;
-    std::cout << "timedelta:" << " " << ((d) * (::tpy::BigInt(k))) << " " << ((::tpy::BigInt(k)) * (d)) << " " << ((d) / (::tpy::BigInt(k))) << " " << ((d).__floordiv__(::tpy::BigInt(k))) << " " << ((d) * (static_cast<double>(f32))) << "\n" << ::tpy::check_signals;
+    std::cout << "timedelta:" << " " << ((d).__mul____int(::tpy::BigInt(k))) << " " << ((d).__rmul____int(::tpy::BigInt(k))) << " " << ((d).__truediv____int(::tpy::BigInt(k))) << " " << ((d).__floordiv____int(::tpy::BigInt(k))) << " " << ((d).__mul____float(static_cast<double>(f32))) << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << Holder().scaled(n32) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> hits = ({
         std::vector<int32_t> __result;
@@ -279,7 +279,7 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            if (((c) < (::tpy::BigInt(x)))) {
+            if (((c).__lt____int(::tpy::BigInt(x)))) {
                 __result.push_back(x);
             }
         }
@@ -289,7 +289,7 @@ void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
     std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpyapp::main::gen(c, __tmp_1))) << "\n" << ::tpy::check_signals;
     auto scale = [&b](int32_t x) -> int32_t {
-        return ((b) * (::tpy::BigInt(x)));
+        return ((b).__mul____int(::tpy::BigInt(x)));
     };
     std::cout << "closure:" << " " << scale(n32) << "\n" << ::tpy::check_signals;
     int32_t i = 0;
@@ -299,7 +299,7 @@ void main() {
     std::cout << "while:" << " " << i << "\n" << ::tpy::check_signals;
     Pt p = Pt(1);
     Pick pick = Pick();
-    const Pt& got = ((pick) | (p));
+    const Pt& got = ((pick).__or____Pt(p));
     p.x = ::tpy::add_check<int32_t>(p.x, 10);
     std::cout << "reference:" << " " << got.x << " " << p.x << "\n" << ::tpy::check_signals;
     Child ch = Child();
@@ -311,23 +311,23 @@ void main() {
     ::tpyapp::main::lit_slots(4);
     Ops o = Ops();
     double f = 1.5;
-    std::cout << "division:" << " " << ((o).__floordiv__(::tpy::BigInt(n32))) << " " << ((o).__rfloordiv__(::tpy::BigInt(n32))) << " " << ((o) / (::tpy::BigInt(n32))) << " " << ((::tpy::BigInt(n32)) / (o)) << " " << ((o).__floordiv__(f)) << " " << ((f) / (o)) << " " << ((o) % (::tpy::BigInt(n32))) << "\n" << ::tpy::check_signals;
-    std::cout << "bitwise:" << " " << ((o) & (::tpy::BigInt(n32))) << " " << ((::tpy::BigInt(n32)) | (o)) << " " << ((o) ^ (::tpy::BigInt(n32))) << " " << ((o) & (f)) << " " << ((f) | (o)) << "\n" << ::tpy::check_signals;
-    std::cout << "shift:" << " " << ((o) << (::tpy::BigInt(n32))) << " " << ((::tpy::BigInt(n32)) >> (o)) << " " << ((o) << (f)) << " " << ((f) >> (o)) << "\n" << ::tpy::check_signals;
+    std::cout << "division:" << " " << ((o).__floordiv____int(::tpy::BigInt(n32))) << " " << ((o).__rfloordiv____int(::tpy::BigInt(n32))) << " " << ((o).__truediv____int(::tpy::BigInt(n32))) << " " << ((o).__rtruediv____int(::tpy::BigInt(n32))) << " " << ((o).__floordiv____float(f)) << " " << ((o).__rtruediv____float(f)) << " " << ((o).__mod____int(::tpy::BigInt(n32))) << "\n" << ::tpy::check_signals;
+    std::cout << "bitwise:" << " " << ((o).__and____int(::tpy::BigInt(n32))) << " " << ((o).__ror____int(::tpy::BigInt(n32))) << " " << ((o).__xor____int(::tpy::BigInt(n32))) << " " << ((o).__and____float(f)) << " " << ((o).__ror____float(f)) << "\n" << ::tpy::check_signals;
+    std::cout << "shift:" << " " << ((o).__lshift____int(::tpy::BigInt(n32))) << " " << ((o).__rrshift____int(::tpy::BigInt(n32))) << " " << ((o).__lshift____float(f)) << " " << ((o).__rrshift____float(f)) << "\n" << ::tpy::check_signals;
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::scaled_later(o, n32))) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << "try_body:" << " " << ::tpy::print_bool(((c) == (::tpy::BigInt(n32)))) << "\n" << ::tpy::check_signals;
+            std::cout << "try_body:" << " " << ::tpy::print_bool(((c).__eq____int(::tpy::BigInt(n32)))) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally:" << " " << ::tpy::print_bool((!((c) == (::tpy::BigInt(n32))))) << "\n" << ::tpy::check_signals;
+            std::cout << "finally:" << " " << ::tpy::print_bool((!((c).__eq____int(::tpy::BigInt(n32))))) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally:" << " " << ::tpy::print_bool((!((c) == (::tpy::BigInt(n32))))) << "\n" << ::tpy::check_signals;
+        std::cout << "finally:" << " " << ::tpy::print_bool((!((c).__eq____int(::tpy::BigInt(n32))))) << "\n" << ::tpy::check_signals;
     }
     auto& __match_subject_1 = n32;
     switch (__match_subject_1) {
     case 5: {
-        if (((c) > (::tpy::BigInt(3)))) {
+        if (((c).__gt____int(::tpy::BigInt(3)))) {
             std::cout << "match_guard: hit" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
@@ -366,7 +366,7 @@ void __tpy_init() {
     static Ops __global_slot_2 = Ops();
     mod_o = &__global_slot_2;
     mod_n = 4;
-    std::cout << "module:" << " " << (((*mod_o)).__floordiv__(::tpy::BigInt(mod_n))) << " " << (((*mod_o)).__rfloordiv__(::tpy::BigInt(mod_n))) << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << (((*mod_o)).__floordiv____int(::tpy::BigInt(mod_n))) << " " << (((*mod_o)).__rfloordiv____int(::tpy::BigInt(mod_n))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

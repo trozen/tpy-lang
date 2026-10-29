@@ -1309,9 +1309,12 @@ def pins_const_receiver(winner: FunctionInfo, overloads: list[FunctionInfo],
     ranked only because no mutating variant applied
     (`rank_overload_candidates`) -- beside mutating variants of the same
     C++ name, which C++ would prefer for the mutable receiver whenever it
-    can convert the arguments."""
+    can convert the arguments. A named variant shares its C++ name with
+    its clone family only (`variant_cpp_name`)."""
     return (winner.is_readonly and not readonly_receiver
-            and any(not m.is_readonly for m in overloads))
+            and any(not m.is_readonly
+                    and m.variant_cpp_name == winner.variant_cpp_name
+                    for m in overloads))
 
 
 

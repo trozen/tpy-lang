@@ -104,10 +104,12 @@ struct B {
 
     // @dispatch
     // def __contains__(self, x: int16) -> bool:
+    bool __contains____int16(int16_t x) const;
     bool __contains__(int16_t x) const;
 
     // @dispatch
     // def __contains__(self, x: int32) -> bool:
+    bool __contains____int32(int32_t x) const;
     bool __contains__(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
@@ -125,10 +127,12 @@ struct BLit {
 
     // @dispatch
     // def __contains__(self, x: int32) -> bool:
+    bool __contains____int32(int32_t x) const;
     bool __contains__(int32_t x) const;
 
     // @dispatch
     // def __contains__(self, x: int16) -> bool:
+    bool __contains____int16(int16_t x) const;
     bool __contains__(int16_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.BLit";
 };
@@ -147,10 +151,12 @@ struct G {
 
     // @dispatch
     // def __contains__(self, x: int16) -> bool:
+    bool __contains____int16(int16_t x) const;
     bool __contains__(int16_t x) const;
 
     // @dispatch
     // def __contains__(self, x: int32) -> bool:
+    bool __contains____int32(int32_t x) const;
     bool __contains__(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.G";
 };
@@ -169,10 +175,12 @@ struct Words {
 
     // @dispatch
     // def __contains__(self, x: str) -> bool:
+    bool __contains____str(std::string_view x) const;
     bool __contains__(std::string_view x) const;
 
     // @dispatch
     // def __contains__(self, x: bool) -> bool:
+    bool __contains____bool(bool x) const;
     bool __contains__(bool x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Words";
 };
@@ -469,18 +477,26 @@ inline B::B() {
 // def __contains__(self, x: int16) -> bool:
 //     print("B.i16")
 //     return True
-inline bool B::__contains__(int16_t x) const {
+inline bool B::__contains____int16(int16_t x) const {
     std::cout << "B.i16" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool B::__contains__(int16_t x) const {
+    return this->__contains____int16(x);
 }
 
 // @dispatch
 // def __contains__(self, x: int32) -> bool:
 //     print("B.i32")
 //     return False
-inline bool B::__contains__(int32_t x) const {
+inline bool B::__contains____int32(int32_t x) const {
     std::cout << "B.i32" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+inline bool B::__contains__(int32_t x) const {
+    return this->__contains____int32(x);
 }
 
 // def __init__(self) -> None:
@@ -492,18 +508,26 @@ inline BLit::BLit() {
 // def __contains__(self, x: int32) -> bool:
 //     print("BLit.i32")
 //     return True
-inline bool BLit::__contains__(int32_t x) const {
+inline bool BLit::__contains____int32(int32_t x) const {
     std::cout << "BLit.i32" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool BLit::__contains__(int32_t x) const {
+    return this->__contains____int32(x);
 }
 
 // @dispatch
 // def __contains__(self, x: int16) -> bool:
 //     print("BLit.i16")
 //     return False
-inline bool BLit::__contains__(int16_t x) const {
+inline bool BLit::__contains____int16(int16_t x) const {
     std::cout << "BLit.i16" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+inline bool BLit::__contains__(int16_t x) const {
+    return this->__contains____int16(x);
 }
 
 // def __init__(self) -> None:
@@ -515,18 +539,26 @@ inline Words::Words() {
 // def __contains__(self, x: str) -> bool:
 //     print("Words.str")
 //     return True
-inline bool Words::__contains__(std::string_view x) const {
+inline bool Words::__contains____str(std::string_view x) const {
     std::cout << "Words.str" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+inline bool Words::__contains__(std::string_view x) const {
+    return this->__contains____str(x);
 }
 
 // @dispatch
 // def __contains__(self, x: bool) -> bool:
 //     print("Words.bool")
 //     return False
-inline bool Words::__contains__(bool x) const {
+inline bool Words::__contains____bool(bool x) const {
     std::cout << "Words.bool" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+inline bool Words::__contains__(bool x) const {
+    return this->__contains____bool(x);
 }
 
 // def __init__(self) -> None:
@@ -657,7 +689,7 @@ inline Holder::Holder() : b(B()) {}
 //     # A method body with a field receiver: the same conversion.
 //     return n8 in self.b  # tpyc: ok
 inline bool Holder::probe(int8_t n8) const {
-    return this->b.__contains__(static_cast<int16_t>(n8));
+    return this->b.__contains____int16(static_cast<int16_t>(n8));
 }
 
 // def __init__(self) -> None:
@@ -671,9 +703,14 @@ inline G<T>::G() {
 //     print("G.i16")
 //     return True
 template<typename T>
-inline bool G<T>::__contains__(int16_t x) const {
+inline bool G<T>::__contains____int16(int16_t x) const {
     std::cout << "G.i16" << "\n" << ::tpy::check_signals;
     return true;
+}
+
+template<typename T>
+inline bool G<T>::__contains__(int16_t x) const {
+    return this->__contains____int16(x);
 }
 
 // @dispatch
@@ -681,9 +718,14 @@ inline bool G<T>::__contains__(int16_t x) const {
 //     print("G.i32")
 //     return False
 template<typename T>
-inline bool G<T>::__contains__(int32_t x) const {
+inline bool G<T>::__contains____int32(int32_t x) const {
     std::cout << "G.i32" << "\n" << ::tpy::check_signals;
     return false;
+}
+
+template<typename T>
+inline bool G<T>::__contains__(int32_t x) const {
+    return this->__contains____int32(x);
 }
 
 // def __init__(self) -> None:
@@ -704,7 +746,7 @@ inline bool OneT<T>::__contains__(::tpy::readonly_form_t<T> x) const {
 //     return n8 in g  # tpyc: ok
 template<typename T>
 bool via(const G<T>& g, int8_t n8) {
-    return g.__contains__(static_cast<int16_t>(n8));
+    return g.__contains____int16(static_cast<int16_t>(n8));
 }
 // def via_t[T](g: OneT[T], x: T) -> bool:
 //     # A needle typed by the generic function's own T.

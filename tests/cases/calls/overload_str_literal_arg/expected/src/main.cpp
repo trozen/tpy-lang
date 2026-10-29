@@ -65,8 +65,8 @@ void main() {
     std::cout << ::tpyapp::main::gen_ov__T<std::string>("hi") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::echo("hi") << "\n" << ::tpy::check_signals;
     C c = C();
-    std::cout << c.kind(std::string_view("ok")) << "\n" << ::tpy::check_signals;
-    std::cout << c.kind(true) << "\n" << ::tpy::check_signals;
+    std::cout << c.kind__str("ok") << "\n" << ::tpy::check_signals;
+    std::cout << c.kind__bool(true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -218,10 +218,12 @@ struct Ov {
 
     // @overload
     // def f(self, x: int32) -> int32: ...
+    int32_t f__int32(int32_t x);
     int32_t f(int32_t x);
 
     // @overload
     // def f(self, x: str) -> int32: ...
+    int32_t f__str(std::string_view x);
     int32_t f(std::string_view x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ov";
 };
@@ -414,8 +416,12 @@ struct Counts {
 
     // @overload
     // def __iter__(self) -> Iterator[int32]: ...
-    auto __iter__(int32_t mode = 0) const {
+    auto __iter____noargs(int32_t mode = 0) const {
         return ::tpy::__iter__(this->items);
+    }
+
+    auto __iter__(int32_t mode = 0) const {
+        return this->__iter____noargs(mode);
     }
 
     // @overload
@@ -568,18 +574,22 @@ struct EqA {
 
     // @dispatch
     // def __eq__(self, o: EqA) -> bool:
+    bool __eq____EqA(const EqA& o) const;
     bool __eq__(const EqA& o) const;
 
     // @dispatch
     // def __eq__(self, o: EqB) -> bool:
+    bool __eq____EqB(const EqB& o) const;
     bool __eq__(const EqB& o) const;
 
     // @dispatch
     // def __ne__(self, o: EqA) -> bool:
+    bool __ne____EqA(const EqA& o) const;
     bool __ne__(const EqA& o) const;
 
     // @dispatch
     // def __ne__(self, o: EqB) -> bool:
+    bool __ne____EqB(const EqB& o) const;
     bool __ne__(const EqB& o) const;
 
     friend bool operator==(const EqA& lhs, const EqA& o) {
@@ -799,16 +809,24 @@ inline Plain::Plain() : base(100) {}
 
 // @overload
 // def f(self, x: int32) -> int32: ...
-inline int32_t Ov::f(int32_t x) {
+inline int32_t Ov::f__int32(int32_t x) {
     Outer::In __tmp_1 = Outer::In(x);
     return ::tpyapp::main::takes(__tmp_1);
 }
 
+inline int32_t Ov::f(int32_t x) {
+    return this->f__int32(x);
+}
+
 // @overload
 // def f(self, x: str) -> int32: ...
-inline int32_t Ov::f(std::string_view x) {
+inline int32_t Ov::f__str(std::string_view x) {
     Outer::In __tmp_1 = Outer::In(::tpy::__len__(x));
     return ::tpyapp::main::takes(__tmp_1);
+}
+
+inline int32_t Ov::f(std::string_view x) {
+    return this->f__str(x);
 }
 
 // def __init__(self) -> None:
@@ -854,29 +872,45 @@ inline EqA::EqA(int32_t n) : n(n) {}
 // @dispatch
 // def __eq__(self, o: EqA) -> bool:
 //     return self.n == o.n
-inline bool EqA::__eq__(const EqA& o) const {
+inline bool EqA::__eq____EqA(const EqA& o) const {
     return (this->n == o.n);
+}
+
+inline bool EqA::__eq__(const EqA& o) const {
+    return this->__eq____EqA(o);
 }
 
 // @dispatch
 // def __eq__(self, o: EqB) -> bool:
 //     return self.n == o.m
-inline bool EqA::__eq__(const EqB& o) const {
+inline bool EqA::__eq____EqB(const EqB& o) const {
     return (this->n == o.m);
+}
+
+inline bool EqA::__eq__(const EqB& o) const {
+    return this->__eq____EqB(o);
 }
 
 // @dispatch
 // def __ne__(self, o: EqA) -> bool:
 //     return self.n != o.n
-inline bool EqA::__ne__(const EqA& o) const {
+inline bool EqA::__ne____EqA(const EqA& o) const {
     return (this->n != o.n);
+}
+
+inline bool EqA::__ne__(const EqA& o) const {
+    return this->__ne____EqA(o);
 }
 
 // @dispatch
 // def __ne__(self, o: EqB) -> bool:
 //     return self.n != o.m
-inline bool EqA::__ne__(const EqB& o) const {
+inline bool EqA::__ne____EqB(const EqB& o) const {
     return (this->n != o.m);
+}
+
+inline bool EqA::__ne__(const EqB& o) const {
+    return this->__ne____EqB(o);
 }
 
 // def __init__(self, m: int32) -> None:

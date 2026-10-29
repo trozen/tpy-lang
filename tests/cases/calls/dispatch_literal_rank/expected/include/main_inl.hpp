@@ -43,11 +43,11 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
         __state = S_DONE;  // until a yield sets where to resume
         v.emplace(V());
         __state = S_RESUME_0;
-        return (*v).mm(::tpy::BigInt(3));
+        return (*v).mm__int(::tpy::BigInt(3));
     }
     case S_RESUME_0: {  // after: yield v.mm(3)  # tpyc: ok
         __state = S_RESUME_1;
-        return (*v).mm(::tpy::BigInt(-2));
+        return (*v).mm__int(::tpy::BigInt(-2));
     }
     case S_RESUME_1: {  // after: yield v.mm(-2)  # tpyc: ok
         __state = S_DONE;

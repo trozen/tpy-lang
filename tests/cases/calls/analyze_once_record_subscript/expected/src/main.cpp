@@ -18,13 +18,13 @@ void main() {
     bool flag = true;
     B __slot_1 = B(1);
     B* c = &__slot_1;
-    std::cout << "field:" << " " << t[std::move(*c).take().v] << "\n" << ::tpy::check_signals;
+    std::cout << "field:" << " " << t.__getitem____int32(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_2;
     c = &*(__slot_2 = B(2));
-    std::cout << "fstring:" << " " << t[std::format("{}", std::move(*c).take().v)] << "\n" << ::tpy::check_signals;
+    std::cout << "fstring:" << " " << t.__getitem____str(std::format("{}", std::move(*c).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
-    std::cout << "select-arm:" << " " << t[((flag) ? (std::move(*c).take().v) : (0))] << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << t.__getitem____int32(((flag) ? (std::move(*c).take().v) : (0))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

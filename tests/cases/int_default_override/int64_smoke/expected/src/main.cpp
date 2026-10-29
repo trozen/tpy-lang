@@ -49,7 +49,7 @@ void __tpy_init() {
     std::cout << ::tpy::__getitem__((*items), 0) << "\n" << ::tpy::check_signals;
     static Widths __global_slot_2 = Widths();
     w = &__global_slot_2;
-    std::cout << "dunder:" << " " << (((*w)) + (static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "dunder:" << " " << (((*w)).__add____int64(static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -58,10 +58,12 @@ struct Vet {
 
     // @overload
     // def treat(self, animal: Dog) -> str: ...
+    std::string treat__Dog(Dog& animal);
     std::string treat(Dog& animal);
 
     // @overload
     // def treat(self, animal: Cat) -> str: ...
+    std::string treat__Cat(Cat& animal);
     std::string treat(Cat& animal);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vet";
 };
@@ -86,16 +88,24 @@ inline Vet::Vet() : count(::tpy::BigInt(0)) {}
 
 // @overload
 // def treat(self, animal: Dog) -> str: ...
-inline std::string Vet::treat(Dog& animal) {
+inline std::string Vet::treat__Dog(Dog& animal) {
     this->count = ((this->count) + (::tpy::BigInt(1)));
     return (::tpy::str_concat("Treated dog: ", animal.name));
 }
 
+inline std::string Vet::treat(Dog& animal) {
+    return this->treat__Dog(animal);
+}
+
 // @overload
 // def treat(self, animal: Cat) -> str: ...
-inline std::string Vet::treat(Cat& animal) {
+inline std::string Vet::treat__Cat(Cat& animal) {
     this->count = ((this->count) + (::tpy::BigInt(1)));
     return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+}
+
+inline std::string Vet::treat(Cat& animal) {
+    return this->treat__Cat(animal);
 }
 void __tpy_init();
 } // namespace tpyapp::main

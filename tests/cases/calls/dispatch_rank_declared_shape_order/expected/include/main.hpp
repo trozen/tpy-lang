@@ -491,10 +491,12 @@ struct Keeper {
 
     // @dispatch
     // def f(self, x: Animal) -> str:
+    std::string f__Animal(Animal& x) const;
     std::string f(Animal& x) const;
 
     // @dispatch
     // def f(self, x: Dog) -> str:
+    std::string f__Dog(Dog& x) const;
     std::string f(Dog& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Keeper";
 };
@@ -597,10 +599,12 @@ struct Walker {
 
     // @dispatch
     // def go(self, x: int) -> str:
+    std::string go__int(const ::tpy::BigInt& x) const;
     std::string go(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def go(self, x: int64) -> str:
+    std::string go__int64(int64_t x) const;
     std::string go(int64_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
 };
@@ -618,18 +622,22 @@ struct LitHome {
 
     // @dispatch
     // def mv(self, x: int) -> int:
+    ::tpy::BigInt mv__int(const ::tpy::BigInt& x) const;
     ::tpy::BigInt mv(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def mv(self, x: bool) -> int:
+    ::tpy::BigInt mv__bool(bool x) const;
     ::tpy::BigInt mv(bool x) const;
 
     // @dispatch
     // def opt(self, x: float | None) -> str:
+    std::string opt__float_None(std::optional<double> x) const;
     std::string opt(std::optional<double> x) const;
 
     // @dispatch
     // def opt(self, x: int | None) -> str:
+    std::string opt__int_None(std::optional<::tpy::BigInt> x) const;
     std::string opt(std::optional<::tpy::BigInt> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.LitHome";
 };
@@ -647,10 +655,12 @@ struct OpList {
 
     // @dispatch
     // def __add__(self, xs: list[int64]) -> int32:
+    int32_t __add____list_int64(const std::vector<int64_t>& xs) const;
     int32_t __add__(const std::vector<int64_t>& xs) const;
 
     // @dispatch
     // def __add__(self, xs: list[int32]) -> int32:
+    int32_t __add____list_int32(const std::vector<int32_t>& xs) const;
     int32_t __add__(const std::vector<int32_t>& xs) const;
 
     friend int32_t operator+(const OpList& lhs, const std::vector<int64_t>& xs) {
@@ -678,50 +688,62 @@ struct OpNum {
 
     // @dispatch
     // def __mul__(self, x: float) -> int32:
+    int32_t __mul____float(double x) const;
     int32_t __mul__(double x) const;
 
     // @dispatch
     // def __mul__(self, x: int) -> int32:
+    int32_t __mul____int(const ::tpy::BigInt& x) const;
     int32_t __mul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __rmul__(self, x: float) -> int32:
+    int32_t __rmul____float(double x) const;
     int32_t __rmul__(double x) const;
 
     // @dispatch
     // def __rmul__(self, x: int) -> int32:
+    int32_t __rmul____int(const ::tpy::BigInt& x) const;
     int32_t __rmul__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __iadd__(self, x: float) -> "OpNum":
+    OpNum& __iadd____float(double x);
     OpNum& __iadd__(double x);
 
     // @dispatch
     // def __iadd__(self, x: int) -> "OpNum":
+    OpNum& __iadd____int(const ::tpy::BigInt& x);
     OpNum& __iadd__(const ::tpy::BigInt& x);
 
     // @dispatch
     // def __lt__(self, x: float) -> bool:
+    bool __lt____float(double x) const;
     bool __lt__(double x) const;
 
     // @dispatch
     // def __lt__(self, x: int) -> bool:
+    bool __lt____int(const ::tpy::BigInt& x) const;
     bool __lt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __gt__(self, x: float) -> bool:
+    bool __gt____float(double x) const;
     bool __gt__(double x) const;
 
     // @dispatch
     // def __gt__(self, x: int) -> bool:
+    bool __gt____int(const ::tpy::BigInt& x) const;
     bool __gt__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __eq__(self, x: float) -> bool:
+    bool __eq____float(double x) const;
     bool __eq__(double x) const;
 
     // @dispatch
     // def __eq__(self, x: int) -> bool:
+    bool __eq____int(const ::tpy::BigInt& x) const;
     bool __eq__(const ::tpy::BigInt& x) const;
 
     friend int32_t operator*(const OpNum& lhs, double x) {
@@ -782,10 +804,12 @@ struct OpAcc {
 
     // @dispatch
     // def __add__(self, x: float) -> Own["OpAcc"]:
+    OpAcc __add____float(double x) const;
     OpAcc __add__(double x) const;
 
     // @dispatch
     // def __add__(self, x: int) -> Own["OpAcc"]:
+    OpAcc __add____int(const ::tpy::BigInt& x) const;
     OpAcc __add__(const ::tpy::BigInt& x) const;
 
     friend OpAcc operator+(const OpAcc& lhs, double x) {
@@ -811,18 +835,22 @@ struct OpWidth {
 
     // @dispatch
     // def __add__(self, x: int64) -> int32:
+    int32_t __add____int64(int64_t x) const;
     int32_t __add__(int64_t x) const;
 
     // @dispatch
     // def __add__(self, x: int32) -> int32:
+    int32_t __add____int32(int32_t x) const;
     int32_t __add__(int32_t x) const;
 
     // @dispatch
     // def __sub__(self, x: int32) -> int32:
+    int32_t __sub____int32(int32_t x) const;
     int32_t __sub__(int32_t x) const;
 
     // @dispatch
     // def __sub__(self, x: float | None) -> int32:
+    int32_t __sub____float_None(std::optional<double> x) const;
     int32_t __sub__(std::optional<double> x) const;
 
     friend int32_t operator+(const OpWidth& lhs, int64_t x) {
@@ -856,14 +884,17 @@ struct OpLitWidth {
 
     // @dispatch
     // def __add__(self, x: int) -> int32:
+    int32_t __add____int(const ::tpy::BigInt& x) const;
     int32_t __add__(const ::tpy::BigInt& x) const;
 
     // @dispatch
     // def __add__(self, x: int64) -> int32:
+    int32_t __add____int64(int64_t x) const;
     int32_t __add__(int64_t x) const;
 
     // @dispatch
     // def __add__(self, x: int32) -> int32:
+    int32_t __add____int32(int32_t x) const;
     int32_t __add__(int32_t x) const;
 
     friend int32_t operator+(const OpLitWidth& lhs, const ::tpy::BigInt& x) {
@@ -893,10 +924,12 @@ struct OpText {
 
     // @dispatch
     // def __add__(self, x: String) -> int32:
+    int32_t __add____String(const ::tpy::String& x) const;
     int32_t __add__(const ::tpy::String& x) const;
 
     // @dispatch
     // def __add__(self, x: str) -> int32:
+    int32_t __add____str(std::string_view x) const;
     int32_t __add__(std::string_view x) const;
 
     friend int32_t operator+(const OpText& lhs, const ::tpy::String& x) {
@@ -922,18 +955,22 @@ struct OpOptStr {
 
     // @dispatch
     // def __add__(self, x: bool) -> int32:
+    int32_t __add____bool(bool x) const;
     int32_t __add__(bool x) const;
 
     // @dispatch
     // def __add__(self, x: str | None) -> int32:
+    int32_t __add____str_None(std::optional<std::string_view> x) const;
     int32_t __add__(std::optional<std::string_view> x) const;
 
     // @dispatch
     // def m(self, x: bool) -> str:
+    std::string m__bool(bool x) const;
     std::string m(bool x) const;
 
     // @dispatch
     // def m(self, x: str | None) -> str:
+    std::string m__str_None(std::optional<std::string_view> x) const;
     std::string m(std::optional<std::string_view> x) const;
 
     friend int32_t operator+(const OpOptStr& lhs, bool x) {
@@ -981,10 +1018,12 @@ struct InSet {
 
     // @dispatch
     // def __contains__(self, x: int32) -> bool:
+    bool __contains____int32(int32_t x) const;
     bool __contains__(int32_t x) const;
 
     // @dispatch
     // def __contains__(self, x: int16) -> bool:
+    bool __contains____int16(int16_t x) const;
     bool __contains__(int16_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.InSet";
 };
@@ -1002,10 +1041,12 @@ struct InWords {
 
     // @dispatch
     // def __contains__(self, x: bool) -> bool:
+    bool __contains____bool(bool x) const;
     bool __contains__(bool x) const;
 
     // @dispatch
     // def __contains__(self, x: str) -> bool:
+    bool __contains____str(std::string_view x) const;
     bool __contains__(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.InWords";
 };
@@ -1023,10 +1064,12 @@ struct InLit {
 
     // @dispatch
     // def __contains__(self, x: int16) -> bool:
+    bool __contains____int16(int16_t x) const;
     bool __contains__(int16_t x) const;
 
     // @dispatch
     // def __contains__(self, x: int32) -> bool:
+    bool __contains____int32(int32_t x) const;
     bool __contains__(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.InLit";
 };
@@ -1132,18 +1175,26 @@ inline Keeper::Keeper() {
 // def f(self, x: Animal) -> str:
 //     x.hits += 1
 //     return "animal"
-inline std::string Keeper::f(Animal& x) const {
+inline std::string Keeper::f__Animal(Animal& x) const {
     x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
     return "animal";
+}
+
+inline std::string Keeper::f(Animal& x) const {
+    return this->f__Animal(x);
 }
 
 // @dispatch
 // def f(self, x: Dog) -> str:
 //     x.hits += 10
 //     return "dog"
-inline std::string Keeper::f(Dog& x) const {
+inline std::string Keeper::f__Dog(Dog& x) const {
     x.hits = ::tpy::add_check<int32_t>(x.hits, 10);
     return "dog";
+}
+
+inline std::string Keeper::f(Dog& x) const {
+    return this->f__Dog(x);
 }
 
 // def __init__(self) -> None:
@@ -1193,15 +1244,23 @@ inline Walker::Walker() {
 // @dispatch
 // def go(self, x: int) -> str:
 //     return "int"
-inline std::string Walker::go(const ::tpy::BigInt& x) const {
+inline std::string Walker::go__int(const ::tpy::BigInt& x) const {
     return "int";
+}
+
+inline std::string Walker::go(const ::tpy::BigInt& x) const {
+    return this->go__int(x);
 }
 
 // @dispatch
 // def go(self, x: int64) -> str:
 //     return "int64"
-inline std::string Walker::go(int64_t x) const {
+inline std::string Walker::go__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string Walker::go(int64_t x) const {
+    return this->go__int64(x);
 }
 
 // def __init__(self) -> None:
@@ -1212,29 +1271,45 @@ inline LitHome::LitHome() {
 // @dispatch
 // def mv(self, x: int) -> int:
 //     return 3
-inline ::tpy::BigInt LitHome::mv(const ::tpy::BigInt& x) const {
+inline ::tpy::BigInt LitHome::mv__int(const ::tpy::BigInt& x) const {
     return ::tpy::BigInt(3);
+}
+
+inline ::tpy::BigInt LitHome::mv(const ::tpy::BigInt& x) const {
+    return this->mv__int(x);
 }
 
 // @dispatch
 // def mv(self, x: bool) -> int:
 //     return 2
-inline ::tpy::BigInt LitHome::mv(bool x) const {
+inline ::tpy::BigInt LitHome::mv__bool(bool x) const {
     return ::tpy::BigInt(2);
+}
+
+inline ::tpy::BigInt LitHome::mv(bool x) const {
+    return this->mv__bool(x);
 }
 
 // @dispatch
 // def opt(self, x: float | None) -> str:
 //     return "floatopt"
-inline std::string LitHome::opt(std::optional<double> x) const {
+inline std::string LitHome::opt__float_None(std::optional<double> x) const {
     return "floatopt";
+}
+
+inline std::string LitHome::opt(std::optional<double> x) const {
+    return this->opt__float_None(x);
 }
 
 // @dispatch
 // def opt(self, x: int | None) -> str:
 //     return "intopt"
-inline std::string LitHome::opt(std::optional<::tpy::BigInt> x) const {
+inline std::string LitHome::opt__int_None(std::optional<::tpy::BigInt> x) const {
     return "intopt";
+}
+
+inline std::string LitHome::opt(std::optional<::tpy::BigInt> x) const {
+    return this->opt__int_None(std::move(x));
 }
 
 // def __init__(self) -> None:
@@ -1245,15 +1320,23 @@ inline OpList::OpList() {
 // @dispatch
 // def __add__(self, xs: list[int64]) -> int32:
 //     return 64
-inline int32_t OpList::__add__(const std::vector<int64_t>& xs) const {
+inline int32_t OpList::__add____list_int64(const std::vector<int64_t>& xs) const {
     return 64;
+}
+
+inline int32_t OpList::__add__(const std::vector<int64_t>& xs) const {
+    return this->__add____list_int64(xs);
 }
 
 // @dispatch
 // def __add__(self, xs: list[int32]) -> int32:
 //     return 32
-inline int32_t OpList::__add__(const std::vector<int32_t>& xs) const {
+inline int32_t OpList::__add____list_int32(const std::vector<int32_t>& xs) const {
     return 32;
+}
+
+inline int32_t OpList::__add__(const std::vector<int32_t>& xs) const {
+    return this->__add____list_int32(xs);
 }
 
 // def __init__(self) -> None:
@@ -1263,89 +1346,137 @@ inline OpNum::OpNum() : hits(0) {}
 // @dispatch
 // def __mul__(self, x: float) -> int32:
 //     return 1
-inline int32_t OpNum::__mul__(double x) const {
+inline int32_t OpNum::__mul____float(double x) const {
     return 1;
+}
+
+inline int32_t OpNum::__mul__(double x) const {
+    return this->__mul____float(x);
 }
 
 // @dispatch
 // def __mul__(self, x: int) -> int32:
 //     return 2
-inline int32_t OpNum::__mul__(const ::tpy::BigInt& x) const {
+inline int32_t OpNum::__mul____int(const ::tpy::BigInt& x) const {
     return 2;
+}
+
+inline int32_t OpNum::__mul__(const ::tpy::BigInt& x) const {
+    return this->__mul____int(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: float) -> int32:
 //     return 10
-inline int32_t OpNum::__rmul__(double x) const {
+inline int32_t OpNum::__rmul____float(double x) const {
     return 10;
+}
+
+inline int32_t OpNum::__rmul__(double x) const {
+    return this->__rmul____float(x);
 }
 
 // @dispatch
 // def __rmul__(self, x: int) -> int32:
 //     return 20
-inline int32_t OpNum::__rmul__(const ::tpy::BigInt& x) const {
+inline int32_t OpNum::__rmul____int(const ::tpy::BigInt& x) const {
     return 20;
+}
+
+inline int32_t OpNum::__rmul__(const ::tpy::BigInt& x) const {
+    return this->__rmul____int(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: float) -> "OpNum":
 //     self.hits += 1
 //     return self
-inline OpNum& OpNum::__iadd__(double x) {
+inline OpNum& OpNum::__iadd____float(double x) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return (*this);
+}
+
+inline OpNum& OpNum::__iadd__(double x) {
+    return this->__iadd____float(x);
 }
 
 // @dispatch
 // def __iadd__(self, x: int) -> "OpNum":
 //     self.hits += 2
 //     return self
-inline OpNum& OpNum::__iadd__(const ::tpy::BigInt& x) {
+inline OpNum& OpNum::__iadd____int(const ::tpy::BigInt& x) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
     return (*this);
+}
+
+inline OpNum& OpNum::__iadd__(const ::tpy::BigInt& x) {
+    return this->__iadd____int(x);
 }
 
 // @dispatch
 // def __lt__(self, x: float) -> bool:
 //     return False
-inline bool OpNum::__lt__(double x) const {
+inline bool OpNum::__lt____float(double x) const {
     return false;
+}
+
+inline bool OpNum::__lt__(double x) const {
+    return this->__lt____float(x);
 }
 
 // @dispatch
 // def __lt__(self, x: int) -> bool:
 //     return True
-inline bool OpNum::__lt__(const ::tpy::BigInt& x) const {
+inline bool OpNum::__lt____int(const ::tpy::BigInt& x) const {
     return true;
+}
+
+inline bool OpNum::__lt__(const ::tpy::BigInt& x) const {
+    return this->__lt____int(x);
 }
 
 // @dispatch
 // def __gt__(self, x: float) -> bool:
 //     return False
-inline bool OpNum::__gt__(double x) const {
+inline bool OpNum::__gt____float(double x) const {
     return false;
+}
+
+inline bool OpNum::__gt__(double x) const {
+    return this->__gt____float(x);
 }
 
 // @dispatch
 // def __gt__(self, x: int) -> bool:
 //     return True
-inline bool OpNum::__gt__(const ::tpy::BigInt& x) const {
+inline bool OpNum::__gt____int(const ::tpy::BigInt& x) const {
     return true;
+}
+
+inline bool OpNum::__gt__(const ::tpy::BigInt& x) const {
+    return this->__gt____int(x);
 }
 
 // @dispatch
 // def __eq__(self, x: float) -> bool:
 //     return True
-inline bool OpNum::__eq__(double x) const {
+inline bool OpNum::__eq____float(double x) const {
     return true;
+}
+
+inline bool OpNum::__eq__(double x) const {
+    return this->__eq____float(x);
 }
 
 // @dispatch
 // def __eq__(self, x: int) -> bool:
 //     return False
-inline bool OpNum::__eq__(const ::tpy::BigInt& x) const {
+inline bool OpNum::__eq____int(const ::tpy::BigInt& x) const {
     return false;
+}
+
+inline bool OpNum::__eq__(const ::tpy::BigInt& x) const {
+    return this->__eq____int(x);
 }
 
 // def __init__(self, n: int32) -> None:
@@ -1355,15 +1486,23 @@ inline OpAcc::OpAcc(int32_t n) : n(n) {}
 // @dispatch
 // def __add__(self, x: float) -> Own["OpAcc"]:
 //     return OpAcc(self.n + 1)
-inline OpAcc OpAcc::__add__(double x) const {
+inline OpAcc OpAcc::__add____float(double x) const {
     return OpAcc((::tpy::add_check<int32_t>(this->n, 1)));
+}
+
+inline OpAcc OpAcc::__add__(double x) const {
+    return this->__add____float(x);
 }
 
 // @dispatch
 // def __add__(self, x: int) -> Own["OpAcc"]:
 //     return OpAcc(self.n + 2)
-inline OpAcc OpAcc::__add__(const ::tpy::BigInt& x) const {
+inline OpAcc OpAcc::__add____int(const ::tpy::BigInt& x) const {
     return OpAcc((::tpy::add_check<int32_t>(this->n, 2)));
+}
+
+inline OpAcc OpAcc::__add__(const ::tpy::BigInt& x) const {
+    return this->__add____int(x);
 }
 
 // def __init__(self) -> None:
@@ -1374,29 +1513,45 @@ inline OpWidth::OpWidth() {
 // @dispatch
 // def __add__(self, x: int64) -> int32:
 //     return 64
-inline int32_t OpWidth::__add__(int64_t x) const {
+inline int32_t OpWidth::__add____int64(int64_t x) const {
     return 64;
+}
+
+inline int32_t OpWidth::__add__(int64_t x) const {
+    return this->__add____int64(x);
 }
 
 // @dispatch
 // def __add__(self, x: int32) -> int32:
 //     return 32
-inline int32_t OpWidth::__add__(int32_t x) const {
+inline int32_t OpWidth::__add____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t OpWidth::__add__(int32_t x) const {
+    return this->__add____int32(x);
 }
 
 // @dispatch
 // def __sub__(self, x: int32) -> int32:
 //     return 32
-inline int32_t OpWidth::__sub__(int32_t x) const {
+inline int32_t OpWidth::__sub____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t OpWidth::__sub__(int32_t x) const {
+    return this->__sub____int32(x);
 }
 
 // @dispatch
 // def __sub__(self, x: float | None) -> int32:
 //     return 1
-inline int32_t OpWidth::__sub__(std::optional<double> x) const {
+inline int32_t OpWidth::__sub____float_None(std::optional<double> x) const {
     return 1;
+}
+
+inline int32_t OpWidth::__sub__(std::optional<double> x) const {
+    return this->__sub____float_None(x);
 }
 
 // def __init__(self) -> None:
@@ -1407,22 +1562,34 @@ inline OpLitWidth::OpLitWidth() {
 // @dispatch
 // def __add__(self, x: int) -> int32:
 //     return 0
-inline int32_t OpLitWidth::__add__(const ::tpy::BigInt& x) const {
+inline int32_t OpLitWidth::__add____int(const ::tpy::BigInt& x) const {
     return 0;
+}
+
+inline int32_t OpLitWidth::__add__(const ::tpy::BigInt& x) const {
+    return this->__add____int(x);
 }
 
 // @dispatch
 // def __add__(self, x: int64) -> int32:
 //     return 64
-inline int32_t OpLitWidth::__add__(int64_t x) const {
+inline int32_t OpLitWidth::__add____int64(int64_t x) const {
     return 64;
+}
+
+inline int32_t OpLitWidth::__add__(int64_t x) const {
+    return this->__add____int64(x);
 }
 
 // @dispatch
 // def __add__(self, x: int32) -> int32:
 //     return 32
-inline int32_t OpLitWidth::__add__(int32_t x) const {
+inline int32_t OpLitWidth::__add____int32(int32_t x) const {
     return 32;
+}
+
+inline int32_t OpLitWidth::__add__(int32_t x) const {
+    return this->__add____int32(x);
 }
 
 // def __init__(self) -> None:
@@ -1433,15 +1600,23 @@ inline OpText::OpText() {
 // @dispatch
 // def __add__(self, x: String) -> int32:
 //     return 2
-inline int32_t OpText::__add__(const ::tpy::String& x) const {
+inline int32_t OpText::__add____String(const ::tpy::String& x) const {
     return 2;
+}
+
+inline int32_t OpText::__add__(const ::tpy::String& x) const {
+    return this->__add____String(x);
 }
 
 // @dispatch
 // def __add__(self, x: str) -> int32:
 //     return 1
-inline int32_t OpText::__add__(std::string_view x) const {
+inline int32_t OpText::__add____str(std::string_view x) const {
     return 1;
+}
+
+inline int32_t OpText::__add__(std::string_view x) const {
+    return this->__add____str(x);
 }
 
 // def __init__(self) -> None:
@@ -1452,29 +1627,45 @@ inline OpOptStr::OpOptStr() {
 // @dispatch
 // def __add__(self, x: bool) -> int32:
 //     return 2
-inline int32_t OpOptStr::__add__(bool x) const {
+inline int32_t OpOptStr::__add____bool(bool x) const {
     return 2;
+}
+
+inline int32_t OpOptStr::__add__(bool x) const {
+    return this->__add____bool(x);
 }
 
 // @dispatch
 // def __add__(self, x: str | None) -> int32:
 //     return 1
-inline int32_t OpOptStr::__add__(std::optional<std::string_view> x) const {
+inline int32_t OpOptStr::__add____str_None(std::optional<std::string_view> x) const {
     return 1;
+}
+
+inline int32_t OpOptStr::__add__(std::optional<std::string_view> x) const {
+    return this->__add____str_None(x);
 }
 
 // @dispatch
 // def m(self, x: bool) -> str:
 //     return "bool"
-inline std::string OpOptStr::m(bool x) const {
+inline std::string OpOptStr::m__bool(bool x) const {
     return "bool";
+}
+
+inline std::string OpOptStr::m(bool x) const {
+    return this->m__bool(x);
 }
 
 // @dispatch
 // def m(self, x: str | None) -> str:
 //     return "opt"
-inline std::string OpOptStr::m(std::optional<std::string_view> x) const {
+inline std::string OpOptStr::m__str_None(std::optional<std::string_view> x) const {
     return "opt";
+}
+
+inline std::string OpOptStr::m(std::optional<std::string_view> x) const {
+    return this->m__str_None(x);
 }
 
 // def __init__(self) -> None:
@@ -1506,15 +1697,23 @@ inline InSet::InSet() {
 // @dispatch
 // def __contains__(self, x: int32) -> bool:
 //     return False
-inline bool InSet::__contains__(int32_t x) const {
+inline bool InSet::__contains____int32(int32_t x) const {
     return false;
+}
+
+inline bool InSet::__contains__(int32_t x) const {
+    return this->__contains____int32(x);
 }
 
 // @dispatch
 // def __contains__(self, x: int16) -> bool:
 //     return True
-inline bool InSet::__contains__(int16_t x) const {
+inline bool InSet::__contains____int16(int16_t x) const {
     return true;
+}
+
+inline bool InSet::__contains__(int16_t x) const {
+    return this->__contains____int16(x);
 }
 
 // def __init__(self) -> None:
@@ -1525,15 +1724,23 @@ inline InWords::InWords() {
 // @dispatch
 // def __contains__(self, x: bool) -> bool:
 //     return False
-inline bool InWords::__contains__(bool x) const {
+inline bool InWords::__contains____bool(bool x) const {
     return false;
+}
+
+inline bool InWords::__contains__(bool x) const {
+    return this->__contains____bool(x);
 }
 
 // @dispatch
 // def __contains__(self, x: str) -> bool:
 //     return True
-inline bool InWords::__contains__(std::string_view x) const {
+inline bool InWords::__contains____str(std::string_view x) const {
     return true;
+}
+
+inline bool InWords::__contains__(std::string_view x) const {
+    return this->__contains____str(x);
 }
 
 // def __init__(self) -> None:
@@ -1544,15 +1751,23 @@ inline InLit::InLit() {
 // @dispatch
 // def __contains__(self, x: int16) -> bool:
 //     return False
-inline bool InLit::__contains__(int16_t x) const {
+inline bool InLit::__contains____int16(int16_t x) const {
     return false;
+}
+
+inline bool InLit::__contains__(int16_t x) const {
+    return this->__contains____int16(x);
 }
 
 // @dispatch
 // def __contains__(self, x: int32) -> bool:
 //     return True
-inline bool InLit::__contains__(int32_t x) const {
+inline bool InLit::__contains____int32(int32_t x) const {
     return true;
+}
+
+inline bool InLit::__contains__(int32_t x) const {
+    return this->__contains____int32(x);
 }
 
 // def __init__(self) -> None:

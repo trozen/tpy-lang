@@ -26,7 +26,7 @@ void main() {
     }
     std::vector<int32_t> src = {10, 20, 30};
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> from_name = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(src));
-    std::cout << ::tpy::__len__(from_dict) << " " << ::tpy::__len__(from_name) << " " << from_name[2] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(from_dict) << " " << ::tpy::__len__(from_name) << " " << from_name.__getitem____int32(2) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

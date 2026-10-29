@@ -657,7 +657,7 @@ std::string vsink(::tpy::varargs<const std::string> xs, int32_t k) {
         }
     }
     case S_JOIN_10: {
-        r11 = (*mm).o(__await_ternary_10);
+        r11 = (*mm).o__str__int32(__await_ternary_10);
         std::cout << "dispatch-method-def" << " " << r11 << "\n" << ::tpy::check_signals;
         if (c) {
             __sub_22.emplace("y");
@@ -670,7 +670,7 @@ std::string vsink(::tpy::varargs<const std::string> xs, int32_t k) {
         }
     }
     case S_JOIN_11: {
-        r12 = (*mm).o(__await_ternary_11, 7);
+        r12 = (*mm).o__str__int32(__await_ternary_11, 7);
         std::cout << "dispatch-method-kw" << " " << r12 << "\n" << ::tpy::check_signals;
         if (c) {
             __sub_24.emplace("y");

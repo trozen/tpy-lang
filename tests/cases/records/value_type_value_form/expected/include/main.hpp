@@ -355,7 +355,7 @@ struct Noisy {
     static Noisy fresh();
 
     friend bool operator==(const Noisy& lhs, Noisy other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Noisy";
 };
@@ -383,7 +383,7 @@ struct Calm {
     bool __eq__(Calm other) const;
 
     friend bool operator==(const Calm& lhs, Calm other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calm";
 };
@@ -460,7 +460,7 @@ struct Outer {
     std::string __repr__() const;
 
     friend bool operator==(const Outer& lhs, Outer other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -580,7 +580,7 @@ struct Settings {
     std::string __repr__() const;
 
     friend bool operator==(const Settings& lhs, Settings other) {
-        return lhs.__eq__(other);
+        return lhs.__eq__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Settings";
 };

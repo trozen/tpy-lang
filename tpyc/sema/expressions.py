@@ -3399,10 +3399,13 @@ class ExpressionAnalyzer:
         if expr.op == "!=" and result.method.name == "__eq__":
             # No __ne__: `!=` is the negated __eq__. Kept when it is a
             # record's, whose operator is the call, when the method can't
-            # use raw C++ != (a native freestanding function), or when C++
-            # would pick among the variants of a set sharing one operator
+            # use raw C++ != (a native freestanding function), when the
+            # variant is named (its call is the operator,
+            # `FunctionInfo.variant_cpp_name`), or when C++ would pick among
+            # the variants of a set sharing one operator
             # (`FunctionInfo.reresolved_by_cpp`) again.
             if not (received or result.method.native_function
+                    or result.method.variant_cpp_name is not None
                     or result.method.reresolved_by_cpp):
                 return
         expr.resolved_binop = result

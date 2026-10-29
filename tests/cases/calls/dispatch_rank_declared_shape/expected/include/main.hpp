@@ -455,10 +455,12 @@ struct Keeper {
 
     // @dispatch
     // def f(self, x: Dog) -> str:
+    std::string f__Dog(Dog& x) const;
     std::string f(Dog& x) const;
 
     // @dispatch
     // def f(self, x: Animal) -> str:
+    std::string f__Animal(Animal& x) const;
     std::string f(Animal& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Keeper";
 };
@@ -571,10 +573,12 @@ struct Walker {
 
     // @dispatch
     // def go(self, x: int64) -> str:
+    std::string go__int64(int64_t x) const;
     std::string go(int64_t x) const;
 
     // @dispatch
     // def go(self, x: int) -> str:
+    std::string go__int(const ::tpy::BigInt& x) const;
     std::string go(const ::tpy::BigInt& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
 };
@@ -680,18 +684,26 @@ inline Keeper::Keeper() {
 // def f(self, x: Dog) -> str:
 //     x.hits += 10
 //     return "dog"
-inline std::string Keeper::f(Dog& x) const {
+inline std::string Keeper::f__Dog(Dog& x) const {
     x.hits = ::tpy::add_check<int32_t>(x.hits, 10);
     return "dog";
+}
+
+inline std::string Keeper::f(Dog& x) const {
+    return this->f__Dog(x);
 }
 
 // @dispatch
 // def f(self, x: Animal) -> str:
 //     x.hits += 1
 //     return "animal"
-inline std::string Keeper::f(Animal& x) const {
+inline std::string Keeper::f__Animal(Animal& x) const {
     x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
     return "animal";
+}
+
+inline std::string Keeper::f(Animal& x) const {
+    return this->f__Animal(x);
 }
 
 // def __init__(self) -> None:
@@ -759,15 +771,23 @@ inline Walker::Walker() {
 // @dispatch
 // def go(self, x: int64) -> str:
 //     return "int64"
-inline std::string Walker::go(int64_t x) const {
+inline std::string Walker::go__int64(int64_t x) const {
     return "int64";
+}
+
+inline std::string Walker::go(int64_t x) const {
+    return this->go__int64(x);
 }
 
 // @dispatch
 // def go(self, x: int) -> str:
 //     return "int"
-inline std::string Walker::go(const ::tpy::BigInt& x) const {
+inline std::string Walker::go__int(const ::tpy::BigInt& x) const {
     return "int";
+}
+
+inline std::string Walker::go(const ::tpy::BigInt& x) const {
+    return this->go__int(x);
 }
 
 // def __init__(self) -> None:

@@ -33,7 +33,7 @@ struct Meters {
     Meters __rfloordiv__(int32_t other) const;
 
     friend double operator/(const Meters& lhs, Meters other) {
-        return lhs.__truediv__(other);
+        return lhs.__truediv__(std::move(other));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Meters";
 };
