@@ -1658,8 +1658,8 @@ def two(h: Holder, ys: list[tuple[P, P]]) -> int:
 
 def test_the_hoist_kinds_with_no_cpp_form() -> None:
     # No program reaches these: a const borrow rebound to rvalues is the
-    # const pointer at an if (and a match) and no form elsewhere; a
-    # move-through payload outside the owned-slot family has none; and a
+    # const pointer at every statement; a move-through payload outside the
+    # owned-slot family has none; and a
     # resumable body's non-value hoist has none outside a loop head's plain
     # non-value (planned here without the frame, whose members take every
     # resumable local). No form is the one kind `hoist.plain`.
@@ -1670,10 +1670,6 @@ from tpy import readonly
 
 
 def pick(c: bool, o: readonly[Outer], m: P | None) -> int:
-    try:
-        x = o.p
-    except ValueError:
-        x = o.p
     if c:
         y = o.p
     else:
@@ -1682,7 +1678,7 @@ def pick(c: bool, o: readonly[Outer], m: P | None) -> int:
         z = m
     except ValueError:
         z = m
-    return x.v + y.v + (z.v if z is not None else 0)
+    return y.v + (z.v if z is not None else 0)
 
 
 def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
@@ -1697,12 +1693,11 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
     yield a.v + b.v + (d.v if d is not None else 0)
 '''
     compiler, func, inp = _plan_inputs(
-        src, "pick", rvalue_reassigned=frozenset({"x", "y"}),
+        src, "pick", rvalue_reassigned=frozenset({"y"}),
         move_through=frozenset({"z"}))
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
     kinds = {r.name: _shape(r) for r in table.records()}
-    assert kinds["x"] == ("hoist", F.NONE, None)
     assert kinds["y"] == ("hoist", F.POINTER, None)
     assert kinds["z"] == ("hoist", F.NONE, None)
     compiler, func, inp = _plan_inputs(src, "gen")

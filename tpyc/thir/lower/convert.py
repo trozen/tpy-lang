@@ -920,7 +920,7 @@ def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
     if whole:
         member = slot_t
     elif (binding is not None and binding.type is not None
-          and binding.pointer and _ptr_opt(slot_t)):
+          and binding.reads_as_pointer and _ptr_opt(slot_t)):
         # A POINTER-bound source is already the borrow form of the
         # pointer-repr Optional slot: it lifts whole, never dereffed.
         member = slot_t

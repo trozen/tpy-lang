@@ -8225,7 +8225,7 @@ def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     exactly the type that most obviously is one. Takes an EXPRESSION, not a
     name, so subscript and field sources are covered too."""
     if isinstance(expr, TpyName):
-        if lc.binding(expr.name).pointer:
+        if lc.binding(expr.name).reads_as_pointer:
             return True
         if expr.name == lc.self_receiver and lc.self_is_pointer:
             return True

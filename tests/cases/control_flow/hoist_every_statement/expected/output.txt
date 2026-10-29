@@ -7,4 +7,36 @@ while_reseat 3 5 99
 try_reseat 3 10 99
 with_reseat 3 15 99
 for_reseat 3 20 99
+nbt_while 2
+nbt_with 3
+nbt_try_except 4
+nbt_try_finally 5
+nbt_for 6
+nbt_if_in_loop 7
+bt_while 8
+bt_with 9
+cr_try 21
+cr_while 22
+cr_with 23
+cr_for 24
+wal_for 10 2
+wal_try 9 2
+wal_with 9 2
+addr_for 101 105
+addr_while 101 105
+addr_with 101 105
+addr_try 101 105
+addr_if 2
+own_opt_elem False 1 4
+own_opt_elem True 2 -1
+ret_opt 6
+field_opt 8
+field_opt_kept 7 7
+storage_opt_elem 1 False
+storage_opt_elem 2 True
+storage_opt_elem after 5
+method_nbt_while 2
+closure_bt_with 2
+gen_addr 103
+gen_addr 104
 module_try 10 100

@@ -455,6 +455,30 @@ class BindingRepr:
         return self.form is BindingForm.FRAME_SLOT
 
     @property
+    def reads_as_pointer(self) -> bool:
+        """The bare name is a `T*`: a pointer record whose storage is not an
+        owning `std::optional<T>`. A hoist's owned slot is engaged whenever
+        it is read, so it is the object, addressed as `&((*x))`; an
+        `Own[P | None]` parameter may be empty (`nullable_storage`)."""
+        return self.pointer and not self.optional_storage
+
+    @property
+    def nullable_storage(self) -> bool:
+        """A `std::optional<P>` storage of a pointer-repr Optional that may
+        be empty -- a storage-optional unpack target, an `Own[P | None]`
+        parameter (`std::optional<P>&&`): its `T*` is
+        `::tpy::optional_to_ptr(x)`, never the object addressed."""
+        return self.storage_opt or (self.optional_storage and self.owned)
+
+    @property
+    def owned_slot_object(self) -> bool:
+        """An owned `std::optional<T>` slot read as the object it holds (a
+        walrus's, a hoist's), through its deref -- not a rebound record's
+        slot of its own, which reads as the `T*` aiming at it."""
+        return (self.form is BindingForm.OWNED_SLOT
+                and not self.reads_as_pointer)
+
+    @property
     def optional_borrow_tuple(self) -> bool:
         """`std::optional<std::tuple<.., T*>>`."""
         return self.form is BindingForm.OPT_BORROW_TUPLE
@@ -626,7 +650,7 @@ class Source:
         captured one: its binding is a result's storage itself
         (`std::optional<P>&&`)."""
         return (self.binding is not None and self.binding.owned
-                and self.binding.optional_storage)
+                and self.binding.nullable_storage)
 
 
 def _element_type(t: 'TpyType | None', index: int) -> 'TpyType | None':

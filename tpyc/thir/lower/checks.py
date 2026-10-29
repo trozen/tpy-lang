@@ -1757,7 +1757,8 @@ def _opt_ptr_addr_of_record_source(init, declared: dict[str, TpyType],
     already had that proved for it."""
     if not isinstance(init, TpyName):
         return False
-    # A pointer-slot global is a pointer record.
+    # A pointer-slot global is a pointer record; an owned slot is the
+    # object, addressed.
     if init.name in pointers:
         return False
     if not (init.name in declared or init.name in prescan.param_names):
@@ -1852,7 +1853,8 @@ def _borrow_local_binding(stmt: 'TpyVarDecl | BindingSource',
     F1-record receiver and an F1-record local (REF_ALIAS / POINTER) / inner
     (OPTIONAL_TO_PTR) type. REF_ALIAS and POINTER are the single-assignment and
     reassigned shapes of the same plain-record lvalue lift; POINTER's reseats are
-    validated by declaration lowering."""
+    validated by declaration lowering. `pointers`: the names whose bare read
+    is a `T*` (`reads_as_pointer`)."""
     binding = _local_binding_shape(
         target_type, stmt.init, analyzer, name=stmt.name, rebound=rebound,
         hoisted=prescan.hoisted, move_through=prescan.move_through)

@@ -2095,7 +2095,7 @@ def _with_target_arm(item, declared: dict[str, TpyType], lc: '_LowerCtx'
             and record_like(resolved, lc.analyzer)
             and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[item.target]))) == resolved)
-        if rec.pointer and same_record and not rec.optional_storage:
+        if rec.reads_as_pointer and same_record:
             return WithTargetArm.ASSIGN_PTR, resolved
         return None
     arm = _WITH_ARMS.get(fresh.form)
@@ -2139,11 +2139,9 @@ def _register_frame_hoist(name: str, raw: TpyType,
 
 @dataclass(frozen=True)
 class _Hoist:
-    """One statement's predecl pass: the statement, whether it sits in a
-    branch, and the predecls' model its node collects (THIRIf / THIRWhile /
-    THIRForEach)."""
+    """One statement's predecl pass: the statement and the predecls' model
+    its node collects (THIRIf / THIRWhile / THIRForEach)."""
     stmt: TpyStmt
-    in_branch: bool = False
     bindings: 'list[THIRHoistedBinding] | None' = None
 
 
@@ -2172,11 +2170,11 @@ def _hoist_type(rec: BindingRepr, analyzer) -> TpyType:
 
 def _opt_btuple_hoist_ok(h: _Hoist, name: str, rec: BindingRepr,
                          lc: '_LowerCtx') -> bool:
-    """Storage-lvalue / None sources at the chain head's own scope only --
-    an owning-call source would need a hoisted rebind slot (unwitnessed);
-    const bindings keep rejecting."""
+    """Storage-lvalue / None sources only -- an owning-call source would
+    need a hoisted rebind slot (unwitnessed); const bindings keep
+    rejecting."""
     srcs = _borrow_tuple_binding_sources(name, lc) or ()
-    return (not h.in_branch and not rec.const and bool(srcs)
+    return (not rec.const and bool(srcs)
             and all(isinstance(s, TpyNoneLiteral)
                     or (isinstance(s, (TpyFieldAccess, TpySubscript))
                         and _borrow_tuple_source_ok(s, lc))
@@ -3765,18 +3763,20 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
             cpp_type=lc.render_type(vtype), is_const=is_const, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and isinstance(stmt.init, TpyName)
-            and _opt_ptr_addr_of_record_source(stmt.init, declared,
-                                               lc.names_with("pointer"), lc.prescan,
-                                               lc.analyzer)):
+            and _opt_ptr_addr_of_record_source(
+                stmt.init, declared, lc.names_with("reads_as_pointer"),
+                lc.prescan, lc.analyzer)):
         # A plain record lvalue source (`p: Pet | None = d`): the decl takes
         # the address of the lvalue (`Pet* p = &(d);`) -- the same PTR_ADDR
         # emit the plain-record pointer alias uses, one slot family over. A
         # SUBCLASS source binds implicitly, so nothing spells the derived
-        # type; the gate proved the relation.
+        # type; the gate proved the relation. An owned slot's read is the
+        # object it holds (`Pet* p = &((*d));`).
         _witness("decl.opt_name_addr")
         return THIRPtrLocalDecl(
             name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
-            init=_lower_expr(stmt.init, lc, declared),
+            init=_lower_expr(stmt.init, lc, declared,
+                             use=_ExprUse(forms=_ONLY_INDIRECT_READ)),
             cpp_type=lc.render_type(unwrap_readonly(vopt.inner)),
             is_const=is_const, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
@@ -7317,8 +7317,8 @@ def _scope_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
             _witness("stmt.tuple_unpack.global_ptr_target")
             return THIRAssign(target=THIRName(name=name, result_type=tt),
                               value=value, binding=rec, loc=loc)
-    if (is_ref and not owned and rec.pointer and not rec.global_slot
-            and not rec.optional_storage and name in declared
+    if (is_ref and not owned and rec.reads_as_pointer
+            and not rec.global_slot and name in declared
             and src.refers_into(i)):
         # A pointer binding in scope (a predeclared or reassigned record
         # local) is re-pointed at the element, as `x = t[i]` re-points it,
@@ -9708,9 +9708,8 @@ def _reseat_lvalue_source(stmt: TpyVarDecl, want: TpyType, lc: '_LowerCtx',
         return _ConvertSource(_lower_field_source(stmt.init, lc, declared))
     if (isinstance(stmt.init, TpyName)
             and stmt.init.name in declared
-            and not lc.binding(stmt.init.name).pointer
+            and not lc.binding(stmt.init.name).reads_as_pointer
             and not lc.binding(stmt.init.name).rebind_slot
-            and not lc.binding(stmt.init.name).optional_storage
             and stmt.init.name not in lc.narrow.narrowed
             and _reseat_const_ok(stmt.name, lc)
             and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
@@ -9724,9 +9723,10 @@ def _reseat_lvalue_source(stmt: TpyVarDecl, want: TpyType, lc: '_LowerCtx',
         # storage. The `&` lives in the PTR_ADDR emit (a FormConvert over
         # the BORROW-form name read would be the no-op node the validator
         # rejects). Pointer-form and narrowed sources stay on their own
-        # rungs.
+        # rungs; an owned slot's read is the object it holds (`&((*b))`).
         _witness("reseat.storage_name")
-        source = _lower_expr(stmt.init, lc, declared)
+        source = _lower_expr(stmt.init, lc, declared,
+                             use=_ExprUse(forms=_ONLY_INDIRECT_READ))
         return THIRPtrLocalRebind(
             alias_binding=alias_binding(source, target, const, analyzer),
             name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
@@ -10352,7 +10352,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                     # is the pointer-slot-global consumer class --
                     # blocked on TODO.md's one-place consumer guard,
                     # not admitted piecemeal here.
-                    and lc.binding(stmt.init.name).pointer
+                    and lc.binding(stmt.init.name).reads_as_pointer
                     and unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(
                             declared.get(stmt.init.name))))
@@ -12808,7 +12808,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # partial registration is fine -- the whole body raises and the
         # partially-mutated lc is discarded with it.
         hoisted_bindings: list[THIRHoistedBinding] = []
-        if_hoist = _Hoist(stmt, scope.in_branch, hoisted_bindings)
+        if_hoist = _Hoist(stmt, bindings=hoisted_bindings)
         _admit_hoists(if_hoist, hoists, declared, lc)
         hoist_decls = _lower_hoist_predecls(if_hoist, hoists, declared, lc)
         # Per-branch narrowing facts for a condition NO narrowing arm claims

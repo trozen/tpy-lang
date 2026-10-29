@@ -11,11 +11,16 @@ struct Bad;
 struct Box;
 struct Pin;
 struct Holder;
+struct BoxPair;
 struct Ctx;
+struct OptHolder;
+struct Walker;
 
 extern Box* mod_src;
 extern Box* mod_alias;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_addr;
 
 // @error_return(Bad)
 // def decode(n: int32) -> Own[Box]:
@@ -40,6 +45,66 @@ void with_reseat(Box& a, int32_t n);
 void for_reseat(Box& a, int32_t n);
 // def make_box(v: int32) -> Own[Box]:
 Box make_box(int32_t v);
+// def nbt_while(h: Holder) -> None:
+void nbt_while(Holder& h);
+// def nbt_with(h: Holder) -> None:
+void nbt_with(Holder& h);
+// def nbt_try_except(h: Holder) -> None:
+void nbt_try_except(Holder& h);
+// def nbt_try_finally(h: Holder) -> None:
+void nbt_try_finally(Holder& h);
+// def nbt_for(h: Holder) -> None:
+void nbt_for(Holder& h);
+// def nbt_if_in_loop(h: Holder) -> None:
+void nbt_if_in_loop(Holder& h);
+// def bt_while(h: Holder) -> None:
+void bt_while(Holder& h);
+// def bt_with(h: Holder) -> None:
+void bt_with(Holder& h);
+// def pick(b: readonly[Box]) -> readonly[Box]:
+const Box& pick(const Box& b);
+// def cr_try(a: readonly[Box], src: Box) -> None:
+void cr_try(const Box& a, Box& src);
+// def cr_while(a: readonly[Box], src: Box) -> None:
+void cr_while(const Box& a, Box& src);
+// def cr_with(a: readonly[Box], src: Box) -> None:
+void cr_with(const Box& a, Box& src);
+// def cr_for(a: readonly[Box], src: Box) -> None:
+void cr_for(const Box& a, Box& src);
+// def make_pair(n: int32) -> Own[tuple[int32, Box]]:
+std::tuple<int32_t, Box> make_pair(int32_t n);
+// def wal_for(h: BoxPair) -> None:
+void wal_for(BoxPair& h);
+// def wal_try(h: BoxPair) -> None:
+void wal_try(BoxPair& h);
+// def wal_with(h: BoxPair) -> None:
+void wal_with(BoxPair& h);
+// def take_opt(x: Box | None) -> int32:
+int32_t take_opt(Box* x);
+// def addr_for(n: int32) -> None:
+void addr_for(int32_t n);
+// def addr_while(n: int32) -> None:
+void addr_while(int32_t n);
+// def addr_with(n: int32) -> None:
+void addr_with(int32_t n);
+// def addr_try(n: int32) -> None:
+void addr_try(int32_t n);
+// def addr_if(n: int32) -> None:
+void addr_if(int32_t n);
+// def own_opt_elem(o: Own[Box | None], n: int32) -> None:  # tpyc: warning(/never consumed/)
+void own_opt_elem(std::optional<Box>&& o, int32_t n);
+// def ret_opt(n: int32) -> Own[Box | None]:
+std::optional<Box> ret_opt(int32_t n);
+// def field_opt(h: OptHolder, n: int32) -> None:
+void field_opt(OptHolder& h, int32_t n);
+// def field_opt_kept(h: OptHolder, n: int32) -> None:
+void field_opt_kept(OptHolder& h, int32_t n);
+// def storage_opt_elem(opts: list[Box | None]) -> None:
+void storage_opt_elem(std::vector<std::optional<Box>>& opts);
+// def closure_bt_with(h: Holder) -> None:
+void closure_bt_with(Holder& h);
+// def gen_addr(n: int32) -> Iterator[int32]:
+__gen_gen_addr gen_addr(int32_t n);
 // def main() -> None:
 void main();
 
@@ -115,6 +180,22 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+// class BoxPair:
+struct BoxPair {
+    // pair: tuple[int32, Box]
+    std::tuple<int32_t, Box> pair;
+
+    // def __init__(self, v: int32) -> None:
+    BoxPair() = default;
+    explicit BoxPair(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.BoxPair";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const BoxPair& obj) {
+    ::tpy::print_object_default(os, "BoxPair", obj);
+    return os;
+}
+
 // class Ctx:
 struct Ctx {
 
@@ -132,6 +213,73 @@ inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
     return os;
 }
 
+// class OptHolder:
+struct OptHolder {
+    // opt: Box | None
+    std::optional<Box> opt;
+
+    // def __init__(self) -> None:
+    OptHolder();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
+    ::tpy::print_object_default(os, "OptHolder", obj);
+    return os;
+}
+
+// class Walker:
+struct Walker {
+    // pair: tuple[int32, Pin]
+    std::tuple<int32_t, Pin> pair;
+
+    // def __init__(self, v: int32) -> None:
+    Walker() = default;
+    explicit Walker(int32_t v);
+    // non-copyable
+    Walker(const Walker&) = delete;
+    Walker& operator=(const Walker&) = delete;
+    Walker(Walker&&) = default;
+    Walker& operator=(Walker&&) = default;
+
+    // def nbt_while(self) -> None:
+    void nbt_while();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
+    ::tpy::print_object_default(os, "Walker", obj);
+    return os;
+}
+
+// def gen_addr(n: int32) -> Iterator[int32]:
+struct __gen_gen_addr : public ::tpy::next_iter_mixin<__gen_gen_addr, int32_t> {
+    ::tpy::frame_state __state;
+    int32_t n;
+    std::tuple<int32_t, Box*> t;
+    int32_t r;
+    int32_t _i;
+    ::tpy::frame_slot<Box> b;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_addr(int32_t n_)
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_addr& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_addr&) {
+        return os << "<generator gen_addr>";
+    }
+};
+
 
 // def __init__(self, v: int32) -> None:
 //     self.val = v
@@ -148,6 +296,10 @@ inline Holder::Holder(int32_t v)
     : box(Box(v)),
       pair(std::tuple<int32_t, Pin>{v, Pin(v)}) {}
 
+// def __init__(self, v: int32) -> None:
+//     self.pair = (v, Box(v))
+inline BoxPair::BoxPair(int32_t v) : pair(std::tuple<int32_t, Box>{v, Box(v)}) {}
+
 // def __enter__(self) -> int32:
 //     return 0
 inline int32_t Ctx::__enter__() const {
@@ -157,6 +309,34 @@ inline int32_t Ctx::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     pass
 inline void Ctx::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
+}
+
+// def __init__(self) -> None:
+//     self.opt = None
+inline OptHolder::OptHolder() : opt(std::nullopt) {}
+
+// def __init__(self, v: int32) -> None:
+//     self.pair = (v, Pin(v))
+inline Walker::Walker(int32_t v) : pair(std::tuple<int32_t, Pin>{v, Pin(v)}) {}
+
+// def nbt_while(self) -> None:
+//     # Method body: a nullable borrow tuple bound inside a while.
+//     while True:
+//         t: tuple[int32, Pin] | None = self.pair  # tpyc: ok
+//         break
+//     if t is not None:
+//         t[1].n += 1
+//     print("method_nbt_while", self.pair[1].n)
+inline void Walker::nbt_while() {
+    std::optional<std::tuple<int32_t, Pin*>> t;
+    while (true) {
+        t = std::optional<std::tuple<int32_t, Pin*>>{std::tuple<int32_t, Pin*>{std::get<0>(this->pair), &(std::get<1>(this->pair))}};
+        break;
+    }
+    if ((t.has_value())) {
+        std::get<1>((*t))->n = ::tpy::add_check<int32_t>(std::get<1>((*t))->n, 1);
+    }
+    std::cout << "method_nbt_while" << " " << std::get<1>(this->pair).n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

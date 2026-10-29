@@ -2119,6 +2119,10 @@ class ExpressionAnalyzer:
                 return self.ctx.builtin_names[expr.name]
             # Lazy promotion of loop-scoped variables referenced after the loop
             if self._promote_pending_loop_var(expr.name, expr):
+                # The read resolves to the promoted local, not to module
+                # storage it resolved to before the promotion defined it.
+                self.ctx.read_bindings[expr] = resolve_read(self.ctx,
+                                                            expr.name)
                 typ = self.ctx.func.current_scope.lookup(expr.name)
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)

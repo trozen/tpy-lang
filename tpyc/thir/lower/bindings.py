@@ -405,9 +405,9 @@ def _value_opt_kind(rec: BindingRepr | None, analyzer
 
 def walrus_owned_slot(rec: BindingRepr) -> bool:
     """A walrus's deferred-init `std::optional<T>` of an owned non-value:
-    read through its `(*x)` deref, where a hoist's owned slot (`pointer`
-    and `optional_storage`) and a rebound record's slot of its own
-    (`pointer`) read as the `T*` that aims at it."""
+    read through its `(*x)` deref, as a hoist's owned slot (`pointer` and
+    `optional_storage`, not `reads_as_pointer`) is; a rebound record's slot
+    of its own (`pointer`) reads as the `T*` that aims at it."""
     return (rec.site_kind == "walrus" and rec.form is F.OWNED_SLOT
             and not rec.pointer)
 
@@ -442,8 +442,7 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
     if rec is not None and rec.ptr_tuple is not None:
         # Every element a pointer, whatever `Own` the declared type carries.
         return Held.BORROWED
-    if rec is not None and walrus_owned_slot(rec):
-        # The walrus's own `std::optional<T>` slot, read through its deref.
+    if rec is not None and rec.owned_slot_object:
         return Held.STORAGE
     if kind is ValueOptKind.SCALAR:
         return Held.VALUE
@@ -1363,7 +1362,8 @@ def _decl_local_binding(site, typ, inp: 'PlanInputs', visible
     try:
         return _checks._borrow_local_binding(
             source, typ, ctx.declared_view, inp.prescan, inp.analyzer,
-            ctx.names_with("pointer"), ctx, rebound=site.storage.pointer)
+            ctx.names_with("reads_as_pointer"), ctx,
+            rebound=site.storage.pointer)
     except ThirUnsupported:  # a refusal is no binding
         return None
 
@@ -1585,11 +1585,9 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
             and pointer_repr_optional(vtype) is not None
             and name not in pre.reassigned):
         # `decl.opt_own_param_lift`: `y = x` off an `Own[P | None]` param
-        # (the
-        # param is the only `optional_storage` binding whose declared type
-        # is the owning storage optional).
+        # whose Optional is `y`'s type.
         src = visible(init.name)
-        if (src is not None and src.optional_storage
+        if (src is not None and src.nullable_storage
                 and _p._own_storage_opt_param(
                     ctx.declared_view.get(init.name), an) == vtype):
             return _mk(site, name, typ, F.POINTER, BC.OPT_OWN_PARAM_LIFT,
@@ -2148,7 +2146,6 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
     if rung is None:
         return None
     form = rung.form
-    stmt = site.node
     if form is F.BORROW_TUPLE:
         # A pointer tuple (`ptr_tuple_form`): each binding owning an element
         # backs it at its own site; an alias of one owns none.
@@ -2159,16 +2156,14 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
             return _mk(site, name, typ, form, None, ptr_tuple=ptt,
                        effective_type=ptt)
         # Otherwise an owning tuple-call source (a walrus's) fills the
-        # binding's one rebind slot, planned only when the hoisting
-        # statement is an `if`, and a mixed call's binding holds its
+        # binding's one rebind slot, and a mixed call's binding holds its
         # hybrid render.
         return _mk(site, name, typ, form, None,
                    borrow_tuple_mixed=any(
                        _p._mixed_own_btuple_call(s, ctx.analyzer)
                        for s in srcs),
-                   rebind_slot=(isinstance(stmt, TpyIf)
-                                and any(_p._btuple_owning_call_init(
-                                    s, ctx.analyzer) for s in srcs)))
+                   rebind_slot=any(_p._btuple_owning_call_init(
+                       s, ctx.analyzer) for s in srcs))
     if form is F.DYN:
         return _mk(site, name, typ, form, None, pointer=True,
                    move_exception=M.DYN)
@@ -2205,15 +2200,13 @@ class _HoistRung(NamedTuple):
 def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
                          inp: 'PlanInputs', ctx) -> '_HoistRung | None':
     """How a branch-first non-value hoist predecls, for every statement:
-    an if chain's nullable borrow tuple, the borrow tuple a branch (if /
-    try) or a loop variable binds, an if chain's `@dynamic` base pointer, a
-    for head's container unpack target (the pointer the head re-points); a
-    plain non-value bound once is the owned slot (`std::optional<T>`);
-    reassigned or borrow-only, or a pointer-repr Optional (the nullable
-    pointer over its inner), the pointer local; a borrow-decl const bit or
-    a readonly type the const pointer, unless rvalue reseats would write
-    through it (an if chain's reseats write the owned slot's address
-    through it). A resumable body has no function-top drain for the line
+    a nullable borrow tuple, a borrow tuple, an if chain's `@dynamic` base
+    pointer, a for head's container unpack target (the pointer the head
+    re-points); a plain non-value bound once is the owned slot
+    (`std::optional<T>`); reassigned or borrow-only, or a pointer-repr
+    Optional (the nullable pointer over its inner), the pointer local; a
+    borrow-decl const bit or a readonly type the const pointer (an rvalue
+    reseat re-points it at a slot of its own). A resumable body has no function-top drain for the line
     (a resumable loop head's plain non-value takes the owned slot), and a
     move-through payload outside the owned-slot family no form. None: no
     non-value hoist of this type. A pointer's facts say whether it is the
@@ -2223,12 +2216,11 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
     stmt = site.node
     at_if = isinstance(stmt, TpyIf)
     at_match = isinstance(stmt, TpyMatch)
-    if at_if and _p._optional_borrow_tuple(var_type, an) is not None:
+    if _p._optional_borrow_tuple(var_type, an) is not None:
         return _HoistRung(F.OPT_BORROW_TUPLE)
     var_opt = pointer_repr_optional(var_type)
     ptr_opt = var_opt is not None and not _readonly_opt_pointee(var_type)
-    btuple = (isinstance(stmt, (TpyIf, TpyTry, TpyForEach))
-              and isinstance(var_type, TupleType)
+    btuple = (isinstance(var_type, TupleType)
               and (var_type.has_pointer_repr_element()
                    or (_p._binding_form_tuple(var_type, an) is not None
                        and not _open_t_escaping_capture(site, name, var_type,
@@ -2260,7 +2252,6 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
     # Const when every source bound into this slot is a const borrow
     # (`_plan_const`, a capture's subject included).
     const_borrow = SlotKey.of(stmt, name) in inp.const_slots
-    rebound = name in pre.rvalue_reassigned
     # A readonly-TYPED hoist (`v = r.view()` at a `readonly[T]` return) is
     # the same const borrow sema's stmt-borrow bit names.
     readonly = _readonly_type(var_type)
@@ -2274,13 +2265,7 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
         return no_form
     const_pointer = _HoistRung(F.POINTER, const=True,
                                borrowed_capture=borrowed)
-    if const_borrow:
-        # An if chain's or a match's rvalue reseats fill a slot the const
-        # pointer then points at; any other statement's would write
-        # through it.
-        return (no_form if rebound and not (at_if or at_match)
-                else const_pointer)
-    if readonly:
+    if const_borrow or readonly:
         return const_pointer
     if ptr_opt or site.storage.pointer or borrow_only:
         return _HoistRung(F.POINTER, borrowed_capture=borrowed)
@@ -3745,9 +3730,9 @@ _BORROW_TUPLE_FORMS = frozenset({F.BORROW_TUPLE, F.OPT_BORROW_TUPLE})
 def _is_slot(rec: BindingRepr) -> bool:
     # A pointer-variant union (`::tpy::Union<A*, B*>`) is a pointer slot
     # too, and so is a borrow tuple: its element pointers are one const.
-    return ((rec.pointer or rec.ptr_variant or rec.ptr_tuple is not None
-             or rec.form in _BORROW_TUPLE_FORMS)
-            and not rec.optional_storage and _slot_family(rec))
+    return ((rec.reads_as_pointer or rec.ptr_variant
+             or rec.ptr_tuple is not None or rec.form in _BORROW_TUPLE_FORMS)
+            and _slot_family(rec))
 
 
 def _slot_const(rec: BindingRepr, const_slots: AbstractSet, an) -> bool:

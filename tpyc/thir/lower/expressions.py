@@ -9091,8 +9091,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             src_rec = (lc.binding(src.name) if isinstance(src, TpyName)
                        else None)
             already_ptr = (isinstance(lowered_value, THIRName)
-                           and src_rec is not None and src_rec.pointer
-                           and not src_rec.optional_storage)
+                           and src_rec is not None
+                           and src_rec.reads_as_pointer)
             if already_ptr:
                 # The comma form consumes the raw pointer; the value-read
                 # deref belongs to the `*n` tail, not the source.
@@ -14066,6 +14066,14 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         result_type=et_bare, form=Form.BORROW,
                         loc=getattr(elem, "loc", None))
                 elif (isinstance(elem, TpyName) and elem.name in declared
+                      and lc.binding(elem.name).nullable_storage):
+                    # Storage that may be empty: the lift, as the call
+                    # argument's (`optptr.storage_name_lift`).
+                    node = THIROptionalPtrArg(
+                        result_type=et_bare, form=Form.BORROW,
+                        value=_lower_expr(elem, lc, declared),
+                        lift=True, loc=getattr(elem, "loc", None))
+                elif (isinstance(elem, TpyName) and elem.name in declared
                       and elem.name not in lc.narrow.narrowed
                       # This row only knows the addr_of render, so an
                       # already-pointer source defers rather than lifting.
@@ -14077,7 +14085,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         result_type=et_bare, form=Form.BORROW,
                         value=_lower_expr(
                             elem, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.RECEIVER)),
+                            use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                         pos=SinkPos.CONTAINER_ELEM)),
                         addr_of=True, loc=getattr(elem, "loc", None))
                 elif (isinstance(elem, TpyName) and elem.name in declared
                       and elem.name not in lc.narrow.narrowed
@@ -14295,9 +14304,14 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # above (its object is a borrow-form tuple, so `std::get<i>` yields
         # the element pointer); the generic tuple-subscript arm has no row
         # for that read on its own.
+        # An owned-slot name lifts the object it holds (`&((*b))`); a name
+        # that is already the `T*` passes through bare.
         elem_lowered = _lower_expr(
             elem, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.RECEIVER),
+            use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                         pos=(SinkPos.CONTAINER_ELEM
+                              if lift and isinstance(elem, TpyName)
+                              else SinkPos.UNSPECIFIED)),
             subscript_prechecked=_btuple_elem_passthrough)
         if _btuple_elem_passthrough:
             if elem_lowered.reads_raw_pointer:
@@ -17811,16 +17825,12 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # alias inside _lower_expr and the 'name' face's `&(...)` wrap spells
     # `&(__u)` over it (see _optional_ptr_arg).
     if (isinstance(a, TpyName)
-            and (lc.binding(a.name).storage_opt
-                 # An `Own[P | None]` param (`std::optional<P>&&`) at a `T*`
-                 # slot: the same storage-form lift.
-                 or (lc.binding(a.name).optional_storage
-                     and _own_storage_opt_param(declared.get(a.name),
-                                                lc.analyzer) is not None))
+            and lc.binding(a.name).nullable_storage
             and _optional_ptr_arg_slot(ptype, lc.analyzer) is not None):
-        # A storage-optional unpack target at a `T*` slot lifts the bare
-        # storage read (`borrow(::tpy::optional_to_ptr(p))`) -- the NAME
-        # sibling of the field 'lift' face below.
+        # A storage-optional unpack target or an `Own[P | None]` param at a
+        # `T*` slot lifts the bare storage read
+        # (`borrow(::tpy::optional_to_ptr(p))`) -- the NAME sibling of the
+        # field 'lift' face below.
         _witness("optptr.storage_name_lift")
         return THIROptionalPtrArg(
             result_type=_optional_ptr_arg_slot(ptype, lc.analyzer),
@@ -17968,7 +17978,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                              record_ctor=_RecordCtorUse.NESTED_ARG,
                              allow_temps=temp_args or nested_temps))
         elif opt_face == 'pass' or (isinstance(a, TpyName)
-                                    and lc.binding(a.name).pointer):
+                                    and lc.binding(a.name).reads_as_pointer):
             _witness("optptr.pass")
             # Already `T*` -- bare, no deref retag. RECEIVER is what SAYS
             # that: the slot binds the pointer itself, so the value-position
@@ -17980,10 +17990,13 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                              record_ctor=_RecordCtorUse.NESTED_ARG))
         else:  # 'name': a plain record lvalue takes the address-of
             _witness("optptr.name")
+            # An owned-slot name is the object it holds, `&((*b))`.
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW,
                                       value=_lower_expr(
                                           a, lc, declared,
-                                          use=_NESTED_ARG_USE),
+                                          use=replace(
+                                              _NESTED_ARG_USE,
+                                              pos=SinkPos.CALL_ARG)),
                                       addr_of=True,
                                       loc=loc)
     if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):

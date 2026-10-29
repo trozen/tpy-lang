@@ -281,7 +281,7 @@ def _named(fn: MIRFunction, sid: MIRSlotId) -> str | None:
     return next(s.name for s in fn.slots if s.id == sid)
 
 
-@pytest.mark.parametrize("name,holder", [("refill_hoist", "saved"), ("refill_reseat", "keep")])
+@pytest.mark.parametrize("name,holder", [("refill_reseat", "keep")])
 def test_a_refill_of_the_same_alternative_replaces_the_retained_record(lowered: Lowered, name: str,
                                                                       holder: str) -> None:
     # A record has identity: refilling the selected alternative replaces the
@@ -291,6 +291,12 @@ def test_a_refill_of_the_same_alternative_replaces_the_retained_record(lowered: 
     conflict, = _retention(fn).conflicts
     assert conflict.affected.place == MIRPlace(sum_slot.id, (MIRUnionPayload(1),))
     assert _named(fn, conflict.holder.root) == holder
+
+
+def test_a_hoisted_owned_slot_reseated_into_an_optional_is_refused(lowered: Lowered) -> None:
+    # `saved = cell` re-points the Optional at the owned slot's object
+    # (`saved = &((*cell));`), the PTR_ADDR reseat MIR does not cover yet.
+    assert lowered[0]["refill_hoist"] == "unsupported optional reseat"
 
 
 @pytest.mark.parametrize("name", ["refill_hoist_ok", "refill_reseat_ok"])
