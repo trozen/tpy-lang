@@ -27,7 +27,6 @@ from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
     THIRTupleUnpack, THIRUnionArgLift, THIREvalThen, THIRIsinstance,
     THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti)
 from . import validate as _validate
-from .source import UNBOUND
 from .lower import iter_module_callables, iter_module_constructors, lower_constructor, lower_function
 from .lower import resumable as _lower_resumable_mod
 from .testutil import _compile, _entry, _lower_fn
@@ -738,11 +737,6 @@ class TestNodeStructuralRules:
         with pytest.raises(THIRValidationError, match="elif link carries"):
             validate_function(
                 self._chain({}, {"hoist_decls": (HoistDecl("r", "int32_t"),)}))
-
-    def test_slot_on_an_elif_link_fails(self):
-        with pytest.raises(THIRValidationError, match="elif link carries"):
-            validate_function(
-                self._chain({}, {"hoist_slots": (UNBOUND,)}))
 
     def test_template_args_with_native_callee_fails(self):
         # A native or cpp_template callee spells its own template arguments.

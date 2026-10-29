@@ -14,7 +14,6 @@ from ...identity_map import IdentityMap
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
-    SourceLocation,
     TpyAssign,
     TpyBinOp,
     TpyBoolLiteral,
@@ -99,13 +98,10 @@ from ..nodes import (
     THIRExpr,
     THIRFunction,
     THIRFunctionLayout,
-    THIRIf,
     THIRLiteral,
     THIRMilInit,
     THIRParam,
     THIRAssign,
-    THIRName,
-    THIRNestedDef,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
     THIRTupleUnpack,
@@ -987,8 +983,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             body_terminates=stmts_terminate(func.body),
             receiver=receiver,
         )
-        if _rejects_lambda_hoist(fn.body):
-            raise ThirUnsupported("nested_def.rebind_slot_hoist")
         plan = prepare_temporaries(fn.body)
         # The facts bind the signature's result contract by identity (the
         # adapter re-validates against that very object); a twin body's own
@@ -1269,8 +1263,6 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             body=_lower_stmts(body_stmts, lc, body_declared,
                               function_body=True),
         )
-        if _rejects_lambda_hoist(ctor.body):
-            raise ThirUnsupported("nested_def.rebind_slot_hoist")
         plan = prepare_temporaries(ctor.body)
         ctor = replace(ctor, temp_plan=plan, storage_facts=collect_storage_facts(
             ctor.body, plan, ctor.mil_inits + ctor.base_inits))
@@ -1885,94 +1877,18 @@ def module_native_globals(module: TpyModule) -> dict[str, str]:
     naming one never write-seeds (see lower_function)."""
     return module_native_global_names(module.top_level_stmts)
 
-def _needs_held_back_slot(node) -> bool:
-    """A THIR statement predeclaring a name whose owning-call writes fill
-    the binding's one slot (`THIRIf.hoist_slots`).
-
-    That slot is declared before the body-level statement its earliest write
-    sits in. A body rendered into a C++ lambda is a body of its own, whose
-    slots the nested-def emitter declares INSIDE the lambda (the enclosing
-    body is outside its capture list); what remains guarded here is the cross-scope
-    `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
-    `_rejects_global_slot`: every statement predeclaring such a name must be
-    represented here."""
-    if isinstance(node, THIRIf):
-        return bool(node.hoist_slots)
-    return False
-
-
-def _slot_owning_name(node) -> 'str | None':
-    """The local a pre-declared rebind slot belongs to, if `node` reserves one."""
-    return getattr(node, "name", None) if _needs_held_back_slot(node) else None
-
-
-def _rebound_name(node) -> 'str | None':
-    """The local `node` rebinds, for the nodes whose emit consumes a slot."""
-    if isinstance(node, THIRPtrLocalRebind):
-        return node.name
-    if isinstance(node, THIRAssign) and isinstance(node.target, THIRName):
-        return node.target.name
-    return None
-
-
-def cross_scope_rebind_site(
-        outer, inner) -> 'tuple[str, SourceLocation | None] | None':
-    """The `(name, loc)` of a rebind in a LAMBDA-rendered body that CONSUMES a
-    rebind slot the ENCLOSING scope reserved, or None.
-
-    The slot is declared in the enclosing body, outside the lambda's capture
-    list: inside the lambda it dies each invocation while the pointer
-    aliasing it is captured and outlives it, and outside it the lambda cannot
-    name it. Nothing checks it at emit time, so this predicate is
-    its entire protection. A lambda body reserving its OWN slot is not a hazard
-    -- the emitters drain it inside the lambda.
-
-    The offending rebind is returned rather than a bare verdict because the
-    user-facing diagnostic points at the name's REBIND, not at the body that
-    holds it.
-
-    A rebind whose name the lambda body itself reserves a slot for is a SHADOW,
-    not a cross-scope consume: the two operands are two Python scopes, and
-    within one of them a name is either local or `nonlocal`, never both.
-    """
-    outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(outer))
-                        if n is not None}
-    if not outer_slot_names:
-        return None
-    own = {n for n in (_slot_owning_name(x) for x in _iter_thir(inner))
-           if n is not None}
-    for n in _iter_thir(inner):
-        rb = _rebound_name(n)
-        if rb is not None and rb in outer_slot_names and rb not in own:
-            return rb, n.loc
-    return None
-
-
-def _rejects_lambda_hoist(body) -> bool:
-    """The nested-def flavor of `cross_scope_rebind_site`.
-
-    `own` is deliberately not computed across a further nesting level -- sema
-    rejects a nested def inside a nested def, so there is none.
-
-    A verdict only, never the diagnostic: a local first declared in a branch
-    rides `THIRIf.hoist_slots`, whose owner `_slot_owning_name` cannot read, so
-    the shadow exemption misses it and this over-rejects -- a valid shape can
-    land on the `nested_def.rebind_slot_hoist` reject.
-    """
-    return any(cross_scope_rebind_site(body, nd.body) is not None
-               for nd in _iter_thir(body)
-               if isinstance(nd, THIRNestedDef))
-
-
 def _rejects_global_slot(node) -> bool:
     """A THIR statement whose emit allocates a `__slot_N` off the shared
     counter. At module scope every slot must spell `static __global_slot_N`,
     and only GLOBAL_RVALUE is wired for that -- its three sibling writes
     (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL`,
     `GLOBAL_PTR_COPY` and the PTR_ADDR RESEAT allocate none) call
-    `next_slot()` nowhere. A rebind's own slot is no such slot: it is
-    declared before its anchor, a body-level statement, with the scope's
-    static spelling (`StorageSlots`). The THIRPtrLocalDecl arm stays a blanket reject
+    `next_slot()` nowhere. A rebind's per-write slot (`StorageSlots.claim`,
+    an OWN reseat's) is no such slot: it is declared before its anchor, a
+    body-level statement, with the scope's static spelling. The one slot
+    every write of a borrow tuple refills (`StorageSlots.claim_shared`) has
+    only a function-local spelling and is refused where it is decided, in
+    `_borrow_tuple_hoist_entry`. The THIRPtrLocalDecl arm stays a blanket reject
     although its slot-less kinds (OPT_NONE, PTR_ADDR, UNION_ADDR,
     DYN_PROTOCOL_ERASED) draw none: exempting them would admit module-level
     shapes no case covers.
@@ -1980,7 +1896,10 @@ def _rejects_global_slot(node) -> bool:
     THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
     block-scoped `__slot_N` at namespace scope leaves the global pointing at a
     dead frame the moment `__tpy_init` returns. Every emit site that calls
-    `_EmitState.next_slot()` must be represented here. The traversal is
+    `_EmitState.next_slot()` must be represented here, or refused at
+    lowering where its slot is decided -- the second such site is the
+    borrow-tuple shared-slot refusal in `_borrow_tuple_hoist_entry`
+    (statements.py). The traversal is
     generic (`validate._iter_children` walks dataclass fields), so only this
     predicate needs maintaining; inverting it to an allowlist would make the
     failure mode a spurious reject instead of a dangling pointer."""
@@ -2009,8 +1928,6 @@ def _rejects_global_slot(node) -> bool:
                                  # the hoist lines, spelled with the same
                                  # slot_static/slot_prefix pair.
                                  PtrSlotKind.GLOBAL_HOIST_RVALUE)
-    if isinstance(node, THIRIf):
-        return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):
         # The F2d rvalue pointer-local allocates its init slot; it carries no
         # `slot_cpp`, so the tail below cannot see it.

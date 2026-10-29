@@ -6,7 +6,6 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
-from ..thir.source import UNBOUND
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
@@ -331,7 +330,7 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
     assert "Cell* value;" in cpp and "std::optional<Cell>" in cpp
 
 
-@pytest.mark.parametrize("damage", ["missing", "name", "duplicate", "assigned", "placement", "type", "conflict", "extra"])
+@pytest.mark.parametrize("damage", ["missing", "name", "duplicate", "assigned", "placement", "type", "conflict"])
 def test_incomplete_or_inconsistent_hoist_facts_fail_closed(hoists: Hoists, damage: str) -> None:
     functions, _, definitions, _ = hoists
     fn = functions["scalar"]
@@ -349,11 +348,9 @@ def test_incomplete_or_inconsistent_hoist_facts_fail_closed(hoists: Hoists, dama
         stmt = replace(stmt, hoisted_bindings=(replace(fact, placement=th.THIRStoragePlacement.BODY),))
     elif damage == "type":
         stmt = replace(stmt, hoisted_bindings=(replace(fact, type=BOOL),))
-    elif damage == "conflict":
+    else:
         stmt = replace(stmt, hoisted_bindings=(replace(fact, optional_layout=th.THIROptionalLayout(INT32),
                                                        tuple_layout=th.THIRTupleLayout((INT32,))),))
-    else:
-        stmt = replace(stmt, hoist_slots=(UNBOUND,))
     result = lower_function(replace(fn, body=(stmt, *rest)), MIRBodyId("bad", damage), definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
 

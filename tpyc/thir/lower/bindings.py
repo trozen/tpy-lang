@@ -2125,13 +2125,7 @@ def _hoist_row(site, name, typ, inp: 'PlanInputs', visible):
         return None
     ctx = _PlanCtx(inp, visible, site.func or inp.func)
     vt = _p.resolve_pending_container(typ, an) or typ
-    if isinstance(site.node, TpyIf):
-        # An if chain tries its non-value flavors before the value family.
-        rec = _nonvalue_hoist(site, name, typ, vt, inp, ctx)
-        if rec is None and _try_hoist_type_ok(vt, an):
-            rec = _value_hoist(site, name, typ, an)
-        return rec
-    if _try_hoist_type_ok(typ, an):
+    if _try_hoist_type_ok(vt, an):
         return _value_hoist(site, name, typ, an)
     return _nonvalue_hoist(site, name, typ, vt, inp, ctx)
 
@@ -2147,8 +2141,8 @@ def _value_hoist(site, name, typ, an) -> BindingRepr:
 def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
                     ) -> 'BindingRepr | None':
     """The record of a non-value hoist, by `_nonvalue_hoist_rung`. A
-    pointer an if chain's or a match's rvalue reseats re-fill has the
-    statement's rebind slot; any other pointer hoist takes an rvalue reseat
+    pointer rvalue reseats re-fill has the statement's rebind slot; a
+    nullable, const or for-head pointer hoist takes an rvalue reseat
     through a slot the reseat allocates at function top."""
     rung = _nonvalue_hoist_rung(site, name, vt, inp, ctx)
     if rung is None:
@@ -2164,9 +2158,10 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
         if ptt is not None:
             return _mk(site, name, typ, form, None, ptr_tuple=ptt,
                        effective_type=ptt)
-        # Otherwise an owning tuple-call source (a walrus's) fills a rebind
-        # slot the if chain's head declares, and a mixed call's binding
-        # holds its hybrid render.
+        # Otherwise an owning tuple-call source (a walrus's) fills the
+        # binding's one rebind slot, planned only when the hoisting
+        # statement is an `if`, and a mixed call's binding holds its
+        # hybrid render.
         return _mk(site, name, typ, form, None,
                    borrow_tuple_mixed=any(
                        _p._mixed_own_btuple_call(s, ctx.analyzer)
@@ -2184,8 +2179,7 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
     if form is F.POINTER:
         const = rung.const
         nullable = pointer_repr_optional(vt) is not None
-        slot = (not const and isinstance(stmt, (TpyIf, TpyMatch))
-                and site.storage.pointer and not nullable)
+        slot = not const and site.storage.pointer and not nullable
         return _mk(site, name, typ, form, None, pointer=True,
                    const=const,
                    move_exception=M.CONST_SLOT if const else None,

@@ -33,8 +33,8 @@ from .lower.bindings import (BindingTable, PlanInputs, ScopeNode,
 from .lower.comprehensions import _clause_bindings, _clause_route
 from .lower.context import (BindingTableError, FrameLocalClass, _LowerCtx,
                             _LowerScope, _Prescan, ValueOptKind)
-from .lower.statements import _admit_hoist, _Hoist, _lower_first_decl
-from .reject import ThirUnsupported, begin_stmt
+from .lower.statements import _lower_first_decl
+from .reject import ThirUnsupported
 from .source import BindingConstruct as C
 from .source import BindingForm as F
 from .source import BindingRefinement as R
@@ -42,7 +42,7 @@ from .source import BindingRepr, Held
 from .source import MoveRow as M
 from .testutil import (_assert_byte_identical, _compile, _entry,
                        lower_bodies)
-from ..typesys import (OwnType, PendingListType, TupleType, unwrap_readonly,
+from ..typesys import (PendingListType, TupleType, unwrap_readonly,
                        unwrap_ref_type)
 from .lower.storage import tuple_layout
 from .validate import (THIRValidationError, _contract_problem,
@@ -1387,47 +1387,6 @@ def alias(p: tuple[Own[P], Own[P]]) -> int:
     assert rec.tuple_layout is layout and rec.pointer
 
 
-def test_a_borrow_tuple_hoist_is_the_branch_or_the_loop_kind() -> None:
-    # The branch-bound borrow tuple (if / try) spells its const from the
-    # fixpoint and, off an owning call, is the pointer tuple whose owning
-    # binding backs its elements at its own site; the loop variable's is the
-    # plain borrow spelling; a with body's has no predecl.
-    func, table = _plan('''
-def make(v: int) -> tuple[Own[P], Own[P]]:
-    return (P(v), P(v))
-
-
-def pick(c: bool, a: P, b: P) -> int:
-    if c:
-        t = (a, b)
-    else:
-        t = make(1)
-    for u in [(a, b), (b, a)]:
-        pass
-    try:
-        w = (a, b)
-    except ValueError:
-        w = (b, a)
-    with Ctx() as x:
-        z = (a, b)
-    return t[0].v + u[0].v + w[1].v + z[0].v
-''', "pick")
-    if_stmt, for_stmt, try_stmt, with_stmt, _ret = func.body
-    t = table.declared_by(if_stmt, "t")
-    assert _shape(t) == ("hoist", F.BORROW_TUPLE, None) and not t.rebind_slot
-    assert t.ptr_tuple is not None
-    assert all(not isinstance(et, OwnType) for et in t.ptr_tuple.element_types)
-    # The statement keys the loop variable too.
-    u, = (r for r in table.sites[for_stmt]
-          if r.name == "u" and r.site_kind == "hoist")
-    assert _shape(u) == ("hoist", F.BORROW_TUPLE, None) and not u.rebind_slot
-    assert u.ptr_tuple is None
-    w = table.declared_by(try_stmt, "w")
-    assert _shape(w) == ("hoist", F.BORROW_TUPLE, None) and not w.rebind_slot
-    assert w.ptr_tuple is None
-    assert _shape(table.declared_by(with_stmt, "z")) == ("hoist", F.NONE, None)
-
-
 def test_a_nested_match_pointer_hoist_off_const_subjects_is_const() -> None:
     # Neither subject is written, so every source of the `q` both matches
     # re-seat is const: one `const Inner*`, and `r = q` aliases const.
@@ -1755,104 +1714,6 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
     assert kinds["d"] == ("hoist", F.NONE, None)
 
 
-def _admit_tag(compiler, stmt, ladder: str, rec: BindingRepr) -> str | None:
-    """The reject tag `_admit_hoist` records for `rec` at `stmt`."""
-    with activate_compiler(compiler):
-        begin_stmt()
-        with pytest.raises(ThirUnsupported):
-            _admit_hoist(_Hoist(stmt, ladder), rec.name, rec, None)
-        return compiler._thir_reject_detail
-
-
-def test_a_hoist_with_no_cpp_form_rejects_with_its_statement_tag() -> None:
-    # A hoist with no C++ form is `hoist.plain` whatever the reason, and the
-    # statement rejects by that kind alone, with its one tag. Planned
-    # without the frame, whose members take every resumable local.
-    src = '''
-from typing import Iterator
-
-from tpy import readonly
-
-
-def pick(c: bool, o: readonly[Outer], m: P | None, k: int) -> int:
-    try:
-        x = o.p
-    except ValueError:
-        x = o.p
-    if c:
-        w = m
-    else:
-        w = m
-    if c:
-        g = 1
-    else:
-        g = 2
-    while True:
-        h = k
-        break
-    return x.v + g + h + (w.v if w is not None else 0)
-
-
-def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
-    if c:
-        a = o.p
-    else:
-        a = P(1)
-    if c:
-        d: Pet = Dog(1)
-    else:
-        d = Dog(2)
-    if c:
-        t = (o.p, o.p)
-    else:
-        t = (o.p, a)
-    while True:
-        e = m
-        break
-    for u in [(o.p, o.p)]:
-        pass
-    yield a.v + d.size() + t[0].v + (e.v if e is not None else 0) + u[0].v
-'''
-    compiler, func, inp = _plan_inputs(
-        src, "pick", rvalue_reassigned=frozenset({"x"}),
-        move_through=frozenset({"w"}), global_seeded=frozenset({"g", "h"}))
-    # The names read as module globals own nothing, as sema says of a name
-    # the body declares `global`.
-    ctx = inp.analyzer.ctx
-    body = ctx.body_ownership[func]
-    ctx.body_ownership[func] = replace(body, locals={
-        n: o for n, o in body.locals.items() if n not in ("g", "h")})
-    with activate_compiler(compiler):
-        table = plan_bindings(inp, func.body)
-    try_x, if_w, if_g, while_h, _ret = func.body
-    cases = [(try_x, "try", "x", ("hoist", F.NONE, None), "try.hoist"),
-             (if_w, "if", "w", ("hoist", F.NONE, None), "if.hoist_type"),
-             (if_g, "if", "g", ("hoist", F.NONE, None), "if.hoist_type"),
-             (while_h, "while", "h", ("hoist", F.NONE, None),
-              "while.hoist_type")]
-    compiler_g, func_g, inp_g = _plan_inputs(src, "gen")
-    with activate_compiler(compiler_g):
-        table_g = plan_bindings(inp_g, func_g.body)
-    if_a, if_d, if_t, while_e, for_u, _yield = func_g.body
-    cases_g = [(if_a, "if", "a", ("hoist", F.NONE, None), "if.hoist_type"),
-               (if_d, "if", "d", ("hoist", F.NONE, None), "if.hoist_type"),
-               (if_t, "if", "t", ("hoist", F.NONE, None), "if.hoist_type"),
-               (while_e, "while", "e", ("hoist", F.NONE, None),
-                "while.hoist_type")]
-    for stmt, ladder, name, kind, tag in cases:
-        rec = table.declared_by(stmt, name)
-        assert _shape(rec) == kind, name
-        assert _admit_tag(compiler, stmt, ladder, rec) == tag, name
-    for stmt, ladder, name, kind, tag in cases_g:
-        rec = table_g.declared_by(stmt, name)
-        assert _shape(rec) == kind, name
-        assert _admit_tag(compiler_g, stmt, ladder, rec) == tag, name
-    u, = (r for r in table_g.sites[for_u]
-          if r.name == "u" and r.site_kind == "hoist")
-    assert _shape(u) == ("hoist", F.NONE, None)
-    assert _admit_tag(compiler_g, for_u, "foreach", u) == "foreach.hoist_type"
-
-
 _LADDER = '''
 from tpy import readonly
 
@@ -1959,13 +1820,6 @@ def borrow_only(o: Outer, c: bool) -> int:
 
 
 @pytest.mark.parametrize("func_name, facts, expected", [
-    # Owned then re-pointed at an lvalue: the pointer local at an if, a try
-    # and a match alike, rebound (the storage policy) -- the rebind slot at
-    # an if and a match, none at a try.
-    ("owned_then_lvalue", {}, {
-        "x": (("hoist", F.POINTER, None), False, True, False),
-        "y": (("hoist", F.POINTER, None), False, False, False),
-        "z": (("hoist", F.POINTER, None), False, True, False)}),
     # A readonly type: the const pointer at an if and a match.
     ("readonly_rebound", {}, {
         "x": (("hoist", F.POINTER, None), True, False, False),
@@ -1979,11 +1833,6 @@ def borrow_only(o: Outer, c: bool) -> int:
     ("const_capture", {}, {
         "x": (("hoist", F.POINTER, None), True, False, False),
         "z": (("hoist", F.POINTER, None), True, False, True)}),
-    # Rvalue-rebound: the rebind slot at an if and a match, none at a try.
-    ("owned_rebound", {}, {
-        "x": (("hoist", F.POINTER, None), False, True, False),
-        "y": (("hoist", F.POINTER, None), False, False, False),
-        "z": (("hoist", F.POINTER, None), False, True, False)}),
     # Borrow-only: the pointer local at both; the match's is the capture a
     # nested match re-seats by address. The if's, bound in both arms, is
     # rebound: its rebind slot.

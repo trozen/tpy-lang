@@ -284,3 +284,20 @@ def test_units_lowered_during_emission_are_not_called_rejected():
     assert "top-level __tpy_init: <not attempted:" in out, out
 
 
+
+
+def test_anchored_rebind_slot_is_rendered():
+    # A rebind slot is declared ahead of the body-level statement that
+    # anchors it, not by the write that fills it, so the dump prints it at
+    # that statement or the slot vanishes from the IR view.
+    out = _dump(
+        "from tpy import int32\n\n"
+        "class Box:\n"
+        "    val: int32\n"
+        "    def __init__(self, v: int32) -> None:\n        self.val = v\n\n"
+        "def f(a: Box, c: bool) -> int32:\n"
+        "    x = a\n"
+        "    if c:\n        x = Box(2)\n"
+        "    return x.val\n\n"
+        "def main() -> None:\n    pass\nmain()\n")
+    assert "slot %x: std::optional<Box>" in out, out

@@ -11,7 +11,7 @@ class Box:
 
 
 def pick(b: readonly[Box], c: bool) -> int32:
-    if c:  # tpyc: error(/if.hoist_type/)
+    if c:  # tpyc: error(/hoist.borrow_tuple/)
         t = (1, b)
     else:
         t = (2, b)

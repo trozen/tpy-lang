@@ -60,8 +60,9 @@ the scope ends and is safe within this analysis's coverage.
   nested. A loop-local record captured by an outer alias can also become
   function-hoisted backing. Neither ends at the loop-body boundary.
 - `THIRIf.hoist_decls` and `THIRWhile.hoist_decls` precede their control
-  statement. `THIRIf.hoist_slots` reserves deferred backing, emitted at
-  function scope when used. These remain uncovered until structured facts
+  statement. A borrow tuple's shared rebind slot (`StorageSlots.claim_shared`)
+  is declared before the function-body-level statement that anchors it
+  (`THIRStmt.anchored_slots`). These remain uncovered until structured facts
   describe their placement; do not parse their C++ strings.
 - A `while`-`else` body has its own emitted braces after the loop. A `break`
   skips it. Its loop frame has already been popped, so control transfers

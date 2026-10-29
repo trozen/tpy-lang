@@ -67,14 +67,16 @@ filed branch-local dangling-reference defect.
 - `mir/scope_lifetime.py` already computes may-initialization, including
   possibly unengaged body-hoisted OWN sites. It filters possible ends by
   both physical placement and whether construction may have happened.
-- THIR's `_lower_if_hoist_predecls` and `_lower_hoist_predecls` decide actual
-  ordinary hoist flavors. `_register_frame_hoist` is the separate resumable
+- THIR's `_lower_hoist_predecls`, one driver for every compound statement,
+  decides actual ordinary hoist flavors. `_register_frame_hoist` is the separate resumable
   precedent: a frame member registers a binding without another declaration.
   Ordinary MIR must not infer its own flavor from emitted C++ strings.
 - `THIRIf.hoist_decls` and `THIRWhile.hoist_decls` describe declarations
   immediately before those control statements, in their containing scope.
-  `THIRIf.hoist_slots` is different: the emitter reserves deferred backing;
-  `_use_rebind_slot` drains a used slot to function-level `hoist_lines`.
+  A borrow tuple's shared rebind slot is different: every write of the
+  binding refills one slot (`StorageSlots.claim_shared`), declared
+  immediately before the earliest function-body-level statement filling it
+  (`THIRStmt.anchored_slots`).
 - The ordinary function producer currently leaves
   `THIRFunctionLayout.hoisted_locals` empty, even for real hoists. That field
   is not a sufficient inventory of emitted backing.
@@ -178,7 +180,8 @@ MIR assigned set cannot encode those two starts independently. Treating the
 predecl as a source assignment is wrong; treating its first source assignment
 as physical construction is also wrong. Their later design must represent
 that distinction. Optional-storage record predecls and owning/mixed tuple
-backing have the same additional obligation. Nonempty `hoist_slots`, general
+backing have the same additional obligation. A borrow tuple's shared rebind
+slot (`StorageSlots.claim_shared`, anchored through `anchored_slots`), general
 factories and unsupported rebind forms remain uncovered in this step.
 
 ## Factored scope matrix

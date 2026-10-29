@@ -9,7 +9,7 @@ class A:
 
 
 def f(x: tuple[A, str], z: tuple[A, str], flag: bool) -> None:
-    if flag:  # tpyc: error(/if\.hoist_type/)
+    if flag:  # tpyc: error(/hoist\.borrow_tuple/)
         y = x
     else:
         y = z

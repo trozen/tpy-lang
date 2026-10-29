@@ -1054,8 +1054,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # typed `std::optional<T>` copy and registers the name so its body reads
     # ride the value-opt binding arms -- deref-on-narrow, the whole-optional
     # None-test / truthiness / arg renders).
-    "foreach.hoist_ptr_null",       # hoisted container unpack target ->
-                                    # `T* v = nullptr;` predecl
     "foreach.value_opt_elem",
     # A ptr-repr Optional[F1-record] element loop var (`for v in d.values():`
     # over `dict[str, P | None]`): the STORAGE-form binding registers in the
@@ -1074,13 +1072,26 @@ THIR_FACES: frozenset[str] = frozenset({
     # Str-literal for-each iterable (lowering; `for ch in "abc":` -- the
     # owning `auto __obj_N = std::string_view("abc");` capture, char elems).
     "foreach.str_literal",
-    # Branch-first-declared value locals used after the loop -> `{cpp} {name};`
-    # predecls before the loop (lowering; the branch-decl predecls, shared with
-    # the if/try/with hoist family). Includes the loop var when hoisted.
-    "foreach.hoist_decl",
-    "while.hoist_decl",             # body-declared var read after a while loop -> predecl before it
+    # The predecl of a local first bound inside a compound statement (if /
+    # while / for / try / with / match), one face per form: the same builder
+    # serves every statement.
+    "hoist.value",                  # value family -> `T name;`
+    "hoist.optional_storage",       # single-bind non-value -> optional<T> name;
+    "hoist.ptr_local",              # reassigned/borrow non-value -> T* name;
+    "hoist.ptr_slot",               # ... rvalue-reseated: its reseats fill
+                                    # the statement rebind slot
+    "hoist.const_ptr",              # const borrow -> const T* name;
+    "hoist.opt_ptr_local",          # ptr-repr Optional -> nullable T* name;
+    "hoist.ptr_null",               # a for head's container unpack target ->
+                                    # `T* v = nullptr;`
+    "hoist.borrow_tuple",           # ptr-repr tuple -> std::tuple<..., T*> name;
+    "hoist.mixed_own_tuple",        # ... whose sources are MIXED own+borrow
+                                    # tuple CALLS: per-element arrow reads
+    "hoist.opt_borrow_tuple",       # nullable borrow tuple:
+                                    # `std::optional<std::tuple<.., T*>> t;`
+    "hoist.dyn_protocol",           # @dynamic -> Base* name;
     # The hoist the resumable frame already declares: registration only, no
-    # decl line, shared by every ladder (for/while/if/try/with/match).
+    # decl line, shared by every statement.
     "hoist.frame_declared",
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
     # brace + its `__after_else_N:;` label -- run on normal completion,
@@ -2115,9 +2126,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.exc_val",                 # `&__exc_N` passed to __exit__
     "with.cleanup_only",            # elided BaseException catch (common shape)
     "with.multi",                   # multiple managers in one statement
-    "with.hoist_decl",              # sema-hoisted plain-value predecls
-    "with.hoist_optional_storage",  # single-bind non-value -> optional<T> name;
-    "with.hoist_ptr_local",         # borrow-only non-value (hoisted with target) -> T* name;
     "with.manager_frame_ctx",       # leaf owned manager frame home: `__with_ctx_K.emplace(...)`
     "with.frame_slot_target",       # leaf frame_slot target: `<name>.emplace(__enter__());`
     "with.frame_field_target",      # leaf plain frame-field target: `<name> = __enter__();`
@@ -2133,24 +2141,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.binding",                  # `as e` -> the catch parameter
     "try.else",                     # goto __after_else_N past the handlers
     "try.except_finally",           # throw tier wrapped in the finally frame
-    "try.hoist_decl",               # sema-hoisted plain-value predecls
-    "try.hoist_const_ptr",          # const borrow-decl hoist -> const T* name;
     "try.body_terminates",          # normal-path finally copy elided
-    "try.hoist_borrow_tuple",       # branch-bound ptr-repr tuple predecl at
-                                    # the try (the if cascade's sibling row)
-    "try.hoist_mixed_own_tuple",    # ... whose sources are MIXED own+borrow
-                                    # tuple CALLS: per-element arrow reads
     "try.finally_terminates",       # raise/return-ending finally: no rethrow
-    # if/elif/else (lowering, per statement).
-    "if.hoist_decl",                # sema-hoisted plain-value branch predecls
-    "if.hoist_optional_storage",    # single-bind non-value -> optional<T> name;
-    "if.hoist_borrow_tuple",
-    # ... whose sources are MIXED own+borrow tuple CALLS: the predecl also
-    # registers the per-element arrow the decl arm would have.
-    "if.hoist_mixed_own_tuple",        # ptr-repr tuple -> std::tuple<..., T*> name;
-    "if.hoist_opt_btuple",          # nullable borrow-tuple branch decl:
-                                    # `std::optional<std::tuple<.., T*>> t;`
-    "foreach.hoist_borrow_tuple",   # hoisted tuple loop var -> borrow predecl + lift bind
     "subscript.tuple_elem_recv",    # container tuple elem lvalue under std::get
     "setitem.record_method_rvalue", # d[k] = rc.clone() -- bare method rvalue value
     # A MIXED own+borrow tuple-returning CALL reseat: the hybrid render is
@@ -2179,10 +2171,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ptr_tuple.owning_call_holder", # ... of an owning tuple call
     "move.own_tuple_ptr_lift",      # its last use at an owning slot, element
                                     # by element: S{std::move(*std::get<0>(t)), ..}
-    "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
-    "if.hoist_const_ptr",           # const borrow-decl -> const T* name;
-                                    # (the with/try const_pointer rung)
-    "if.hoist_dyn_protocol",        # @dynamic branch decl -> Base* name;
     "reseat.opt_storage",           # plain assign into an OPTIONAL_STORAGE hoist
     "reseat.opt_storage_comp",      # ... its comprehension source (the whole
                                     # stmt-expr assigns into the optional)
@@ -2639,16 +2627,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.bind_assign_move",       # hoisted opt slot: `name = std::move(subject);`
     "match.subject_rvalue",         # call rvalue subject: owned `auto` dispatch-local
     "match.scalar_rvalue_subject",  # switch-tier non-lvalue subject: `auto` copy
-    "match.hoist_ptr_local",        # capture hoist: `T* name;` borrow-only form
-    "match.hoist_ptr_const",        # nested-reuse const rung: the shared
-                                    # capture slot spells `const T*`
     "match.bind_reuse_ptr",         # a nested match re-seats an enclosing
                                     # match's `T*` capture hoist
-    "match.hoist_ptr_slot",         # rvalue-reassigned hoist: T* + rebind slot
-    "match.hoist_opt_ptr_local",    # ptr-repr Optional capture hoist: `T* name;`
     "match.field_bind_opt_ptr_frame",  # the capture assign lifts through
                                        # optional_to_ptr into that member
-    "match.hoist_optional_storage",  # capture hoist: `std::optional<T> name;` slot
     "match.if_elif_guarded",        # standalone-if + goto __match_end_N (M3b)
     "match.guard_isinstance",       # a bare isinstance guard -> the holds
                                     # test (the if-condition render)
@@ -2735,7 +2717,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.bind_as_capture",        # `case x as y:` -> two binding lines
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail
-    "match.hoist_decl",             # sema-hoisted plain-value predecls
     # Emit-side finally-frame walks (recorded at emission -- the chain is
     # structural, so lowering never sees it; a no-op outside a compilation).
     # The with/try prefix keys on the walked segment's frame arms, so a

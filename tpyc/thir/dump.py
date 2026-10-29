@@ -482,10 +482,10 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     # A predeclaration is part of where a name lives, so the dump shows it at
     # the statement that owns it.
     pad = "  " * depth
-    slots = {rec.name for rec in getattr(stmt, "hoist_slots", ())}
     lines = [f"{pad}hoist %{h.name}: {h.cpp_type}"
-             + (" [slot]" if h.name in slots else "")
              for h in getattr(stmt, "hoist_decls", ())]
+    lines += [f"{pad}slot %{s.name}: std::optional<{s.cpp}>"
+              for s in stmt.anchored_slots]
     return lines + _stmt_body_lines(stmt, depth)
 
 

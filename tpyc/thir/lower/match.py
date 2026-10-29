@@ -1510,16 +1510,11 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     predeclared = set(declared)
-    hoist = _statements._Hoist(stmt, "match")
-    hoist_decls: list[HoistDecl] = []
-    for name, raw, rec in route.hoist_types:
-        decl = _statements._build_hoist(hoist, name, raw, rec, declared, lc)
-        if decl is not None:
-            hoist_decls.append(decl)
+    hoist_decls = _statements._lower_hoist_predecls(
+        _statements._Hoist(stmt),
+        {name: raw for name, raw, _rec in route.hoist_types}, declared, lc)
     # The names this match predeclares; their records say how.
     hoisted = frozenset(name for name, _raw, _rec in route.hoist_types)
-    if hoist_decls:
-        _witness("match.hoist_decl")
     if kind == "switch_union":
         if route.union_route == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,

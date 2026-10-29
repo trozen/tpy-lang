@@ -661,7 +661,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # The emitter prints only the chain head's predecls: a flattened
         # `else if` link has no block of its own to hold one.
         for link in if_chain(node)[1:]:
-            if link.hoist_decls or link.hoist_slots:
+            if link.hoist_decls:
                 _fail(owner, link, "elif link carries a predeclaration")
     if isinstance(node, THIRForEach) and node.iteration is not None:
         fact = node.iteration

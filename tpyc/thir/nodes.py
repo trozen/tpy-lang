@@ -3296,17 +3296,12 @@ class THIRIf(THIRStmt):
     `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
     protocols. `hoisted_bindings` records semantic facts for eligible
     predeclarations; incomplete inventories are not usable for analysis.
-    `hoist_slots` names the branch-bound borrow-tuple locals with an
-    owning-call source, whose writes fill the binding's one owning slot
-    (`own_slot`, declared before the body-level statement of the earliest
-    write: the predeclaration is a pointer tuple).
     The narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
     hoist_decls: tuple[HoistDecl, ...] = ()
-    hoist_slots: tuple['BindingRepr', ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
     # keyword renders `if constexpr`. Per-node -- an

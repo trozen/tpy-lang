@@ -2150,16 +2150,12 @@ def _register_frame_hoist(name: str, raw: TpyType,
 
 @dataclass(frozen=True)
 class _Hoist:
-    """One statement's predecl pass: the statement, its ladder (which names
-    its witnesses and reject tags: 'if' 'while' 'foreach' 'try' 'with'
-    'match'), and what its node collects -- the predecls' model for the
-    THIRIf / THIRWhile / THIRForEach node, and the chain head's rebind
-    slots for THIRIf."""
+    """One statement's predecl pass: the statement, whether it sits in a
+    branch, and the predecls' model its node collects (THIRIf / THIRWhile /
+    THIRForEach)."""
     stmt: TpyStmt
-    ladder: str
     in_branch: bool = False
     bindings: 'list[THIRHoistedBinding] | None' = None
-    slots: 'list[BindingRepr] | None' = None
 
 
 def _hoist_record(stmt: TpyStmt, name: str, lc: '_LowerCtx') -> BindingRepr:
@@ -2208,30 +2204,23 @@ def _never(h: _Hoist, name: str, rec: BindingRepr, lc: '_LowerCtx') -> bool:
     return False
 
 
-# A hoist form's precondition at its statement, and the if chain's tag when
-# it fails (every other ladder rejects with its one tag); a hoist the
-# planner gives no C++ form never passes.
+# A hoist form's precondition at its statement, and the form's reject tag
+# when it fails; a hoist the planner gives no C++ form never passes.
 _HOIST_ADMIT: dict = {
-    BindingForm.OPT_BORROW_TUPLE: (_opt_btuple_hoist_ok, "if.hoist_type"),
-    BindingForm.BORROW_TUPLE: (_btuple_hoist_ok, "if.hoist_type"),
-    BindingForm.NONE: (_never, "if.hoist_type"),
+    BindingForm.OPT_BORROW_TUPLE: (_opt_btuple_hoist_ok,
+                                   "hoist.opt_borrow_tuple"),
+    BindingForm.BORROW_TUPLE: (_btuple_hoist_ok, "hoist.borrow_tuple"),
+    BindingForm.NONE: (_never, "hoist.no_form"),
 }
-_HOIST_REJECT_TAG = {"while": "while.hoist_type",
-                     "foreach": "foreach.hoist_type", "try": "try.hoist",
-                     "with": "with.hoist"}
 
 
 def _admit_hoist(h: _Hoist, name: str, rec: BindingRepr,
                  lc: '_LowerCtx') -> None:
     """Reject a hoist its statement cannot predeclare."""
-    check, if_tag = (_HOIST_ADMIT.get(rec.form, (None, None))
-                     if rec.site_kind == "hoist" else (None, None))
+    check, tag = (_HOIST_ADMIT.get(rec.form, (None, None))
+                  if rec.site_kind == "hoist" else (None, None))
     if check is None or check(h, name, rec, lc):
         return
-    if h.ladder != "if":
-        tag = _HOIST_REJECT_TAG[h.ladder]
-    else:
-        tag = if_tag
     note_detail(tag)
     raise ThirUnsupported(stmt_reject_reason(h.stmt))
 
@@ -2257,21 +2246,19 @@ def _build_hoist(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
 
 
 def _lower_hoist_predecls(h: _Hoist, hoists: dict,
-                          declared: dict[str, TpyType], lc: '_LowerCtx',
-                          witness_tag: str) -> list[HoistDecl]:
-    """Chain-head predecls for the branch-first decls of a try / with /
-    for-each / while, each by its record (`_HOIST_BUILDERS`), admitted
-    first (`_admit_hoists`). A name enters the CALLER's `declared` at
-    function scope; one already declared (bound outside an enclosing loop)
+                          declared: dict[str, TpyType], lc: '_LowerCtx'
+                          ) -> list[HoistDecl]:
+    """The statement-head predecls for the branch-first decls of any
+    compound statement, each by its record (`_HOIST_BUILDERS`), admitted
+    first (`_admit_hoists`, or match's `_route_hoists`). A name enters the
+    CALLER's `declared`: the predecl's C++ scope is the block holding the
+    statement. One already declared (bound outside an enclosing loop)
     needs no predecl."""
     hoist_decls: list[HoistDecl] = []
     for name, raw in hoists.items():
         # This predecl IS the sema hoist's declaration, so it settles the
         # residue ledger for the name -- including one already declared
-        # further out, which needs no second declaration. Drained here, at
-        # the shared emitter, rather than only in the callers that remember
-        # to: the loop ladders did not, and rejected bodies whose hoist they
-        # had in fact emitted.
+        # further out, which needs no second declaration.
         lc.unhandled_hoists.discard(name)
         if name in declared:
             continue
@@ -2279,8 +2266,6 @@ def _lower_hoist_predecls(h: _Hoist, hoists: dict,
                             declared, lc)
         if decl is not None:
             hoist_decls.append(decl)
-    if hoist_decls:
-        _witness(witness_tag)
     return hoist_decls
 
 
@@ -2294,8 +2279,7 @@ def _hoist_frame_member(h: _Hoist, name: str, raw: TpyType,
 
 def _hoist_value(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
                  declared: dict[str, TpyType], lc: '_LowerCtx') -> HoistDecl:
-    if h.ladder == "if":
-        _witness("if.hoist_decl")
+    _witness("hoist.value")
     return _value_hoist_entry(rec, _hoist_type(rec, lc.analyzer), declared,
                               lc, h.bindings)
 
@@ -2305,8 +2289,7 @@ def _hoist_opt_storage(h: _Hoist, name: str, raw: TpyType,
                        lc: '_LowerCtx') -> HoistDecl:
     # A single-bind rvalue local: plain assigns engage the optional, reads
     # deref through it.
-    _witness(f"{h.ladder if h.ladder in ('if', 'match') else 'with'}"
-             ".hoist_optional_storage")
+    _witness("hoist.optional_storage")
     return _optional_storage_hoist_entry(name, _hoist_type(rec, lc.analyzer),
                                          declared, lc, h.bindings)
 
@@ -2318,25 +2301,18 @@ def _hoist_pointer(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
     `const T*` for a const one; a pointer-repr Optional is the same
     nullable pointer over its inner, `declared` keeping the Optional so
     reads narrow on it (unproven reads draw their None check). An rvalue
-    reseat of one with a rebind slot (an if chain's or a match's
-    rvalue-reassigned pointer) fills that slot; the others allocate one at
-    function top (BRANCH_RVALUE). A match's borrow-only pointer re-seats
-    ride the hoisted-record arms."""
+    reseat of one with a rebind slot fills that slot; the nullable and
+    const ones allocate one at function top (BRANCH_RVALUE). A match's
+    borrow-only pointer re-seats ride the hoisted-record arms."""
     vtype = _hoist_type(rec, lc.analyzer)
     vopt = pointer_repr_optional(vtype)
     pointee = unwrap_readonly(vtype if vopt is None else vopt.inner)
     _record_hoisted_binding(h.bindings, rec, vtype, lc)
     declared[name] = vtype
-    if h.ladder == "match":
-        _witness("match.hoist_opt_ptr_local" if vopt is not None
-                 else "match.hoist_ptr_slot" if rec.rebind_slot
-                 else "match.hoist_ptr_local")
-        if rec.const:
-            _witness("match.hoist_ptr_const")
-    else:
-        head = ('if' if h.ladder == 'if' else 'try' if rec.const
-                else 'with')
-        _witness(f"{head}.hoist_{'const_ptr' if rec.const else 'ptr_local'}")
+    _witness("hoist.opt_ptr_local" if vopt is not None
+             else "hoist.const_ptr" if rec.const
+             else "hoist.ptr_slot" if rec.rebind_slot
+             else "hoist.ptr_local")
     return HoistDecl(name, _const_pointee(rec, lc.render_type(pointee)) + "*")
 
 
@@ -2348,30 +2324,16 @@ def _hoist_ptr_null(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
     deref)."""
     vtype = _hoist_type(rec, lc.analyzer)
     declared[name] = vtype
-    _witness("foreach.hoist_ptr_null")
+    _witness("hoist.ptr_null")
     return HoistDecl(name, f"{lc.render_type(vtype)}*", " = nullptr")
 
 
-def _hoist_btuple_loop(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
-                       declared: dict[str, TpyType], lc: '_LowerCtx'
-                       ) -> HoistDecl:
-    """A hoisted borrow-tuple loop variable (`std::tuple<..., T*> name;`):
-    the head lends it element by element per iteration;
-    reads key on the declared TupleType like a branch-bound one's."""
-    vtype = rec.ptr_tuple or _hoist_type(rec, lc.analyzer)
-    declared[name] = vtype
-    cpp = vtype.to_cpp_return()
-    _witness("foreach.hoist_borrow_tuple")
-    return HoistDecl(name, cpp, emit_prims.placeholder_init(vtype, cpp))
-
-
-def _hoist_btuple_branch(h: _Hoist, name: str, raw: TpyType,
-                         rec: BindingRepr, declared: dict[str, TpyType],
-                         lc: '_LowerCtx') -> HoistDecl:
-    _witness(f"{h.ladder}.hoist_borrow_tuple")
+def _hoist_borrow_tuple(h: _Hoist, name: str, raw: TpyType,
+                        rec: BindingRepr, declared: dict[str, TpyType],
+                        lc: '_LowerCtx') -> HoistDecl:
+    _witness("hoist.borrow_tuple")
     return _borrow_tuple_hoist_entry(
-        rec, _hoist_type(rec, lc.analyzer), declared, lc,
-        f"{h.ladder}.hoist_mixed_own_tuple", h.slots, h.bindings)
+        rec, _hoist_type(rec, lc.analyzer), declared, lc, h.bindings)
 
 
 def _hoist_opt_btuple(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
@@ -2382,7 +2344,7 @@ def _hoist_opt_btuple(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
     vtype = _hoist_type(rec, lc.analyzer)
     obt = _optional_borrow_tuple(vtype, lc.analyzer)
     declared[name] = vtype
-    _witness("if.hoist_opt_btuple")
+    _witness("hoist.opt_borrow_tuple")
     return HoistDecl(name, f"std::optional<{obt.to_cpp_return()}>")
 
 
@@ -2392,7 +2354,7 @@ def _hoist_dyn(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
     DYN_PROTOCOL rebind arm)."""
     vtype = _hoist_type(rec, lc.analyzer)
     declared[name] = vtype
-    _witness("if.hoist_dyn_protocol")
+    _witness("hoist.dyn_protocol")
     return HoistDecl(name, f"{dynamic_base_name(vtype, lc.analyzer)}*")
 
 
@@ -2403,6 +2365,7 @@ _HOIST_BUILDERS: dict[BindingForm, _HoistBuilder] = {
     BindingForm.VALUE: _hoist_value,
     BindingForm.OWNED_SLOT: _hoist_opt_storage,
     BindingForm.POINTER: _hoist_pointer,
+    BindingForm.BORROW_TUPLE: _hoist_borrow_tuple,
     BindingForm.OPT_BORROW_TUPLE: _hoist_opt_btuple,
     BindingForm.DYN: _hoist_dyn,
 }
@@ -2410,17 +2373,14 @@ _HOIST_BUILDERS: dict[BindingForm, _HoistBuilder] = {
 
 def _hoist_builder(rec: BindingRepr) -> '_HoistBuilder | None':
     """The predecl builder of a hoist's record: a resumable frame member's,
-    else by the hoist's form -- the for head's re-pointed null pointer, and
-    the borrow tuple a loop variable or a branch binds, apart."""
+    else by the hoist's form -- the for head's re-pointed null pointer
+    apart."""
     if rec.site_kind == "frame":
         return _hoist_frame_member
     if rec.site_kind != "hoist":
         return None
     if rec.head_target:
         return _hoist_ptr_null
-    if rec.form is BindingForm.BORROW_TUPLE:
-        return (_hoist_btuple_loop if isinstance(rec.site, TpyForEach)
-                else _hoist_btuple_branch)
     return _HOIST_BUILDERS.get(rec.form)
 
 
@@ -2711,12 +2671,12 @@ def _record_hoisted_binding(bindings: list[THIRHoistedBinding] | None,
                             rec: BindingRepr, typ: TpyType,
                             lc: '_LowerCtx') -> None:
     """The node's model of one hoisted predecl, from its record: a pointer
-    or a branch-bound borrow tuple borrows, const where the record is (a
-    branch-bound borrow tuple by the whole-body const fixpoint)."""
+    or a borrow tuple borrows, const where the record is (a borrow tuple by
+    the whole-body const fixpoint)."""
     if bindings is None:
         return
-    btuple = (rec.site_kind == "hoist" and rec.form is BindingForm.BORROW_TUPLE
-              and not isinstance(rec.site, TpyForEach))
+    btuple = (rec.site_kind == "hoist"
+              and rec.form is BindingForm.BORROW_TUPLE)
     fact = hoisted_binding(
         rec.name, typ, lc.analyzer, borrow=rec.pointer or btuple,
         readonly=rec.const)
@@ -3177,30 +3137,32 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
 
 def _borrow_tuple_hoist_entry(rec: BindingRepr, var_type: 'TupleType',
                               declared: dict[str, TpyType],
-                              lc: '_LowerCtx', mixed_witness: str,
-                              hoist_slots: 'list[BindingRepr] | None',
+                              lc: '_LowerCtx',
                               bindings: list[THIRHoistedBinding] | None = None,
                               ) -> HoistDecl:
-    """One branch-BOUND borrow-form tuple hoist predecl (`std::tuple<...,
-    T*> name;`, default-constructed null pointers) plus its read model: the
-    local aliases whichever arm's source bound it, and reads key on the
-    declared ptr-repr TupleType like a borrow-tuple param's. The pointer
-    tuple (`rec.ptr_tuple`) is the same predecl over its own type, each
-    owning binding backing its element at its own site. Otherwise an owning
-    tuple-call source fills the chain head's rebind slot
-    (`std::optional<std::tuple<...>> __slot_N;`, the record's
-    `rebind_slot`), collected in `hoist_slots`. The element const-ness
+    """One borrow-form tuple hoist predecl (`std::tuple<..., T*> name;`,
+    default-constructed null pointers) plus its read model, for a tuple a
+    branch binds or a loop head lends element by element: the local
+    aliases whichever source bound it, and reads key on the declared
+    ptr-repr TupleType like a borrow-tuple param's. The pointer tuple
+    (`rec.ptr_tuple`) is the same predecl over its own type, each owning
+    binding backing its element at its own site. Otherwise an owning
+    tuple-call source fills the binding's one rebind slot (the record's
+    `rebind_slot`, `StorageSlots.claim_shared`). The element const-ness
     comes from the whole-body fixpoint (`const Box*` when nothing mutates
     through the local), the verdict the reseat renders target."""
     name = rec.name
     if rec.ptr_tuple is not None:
         var_type = rec.ptr_tuple
-    if rec.rebind_slot:
-        hoist_slots.append(rec)
+    if rec.rebind_slot and lc.top_level_scope:
+        # Only function-local slot spellings exist for this slot: at module
+        # scope the global would point into `__tpy_init`'s dead frame.
+        raise ThirUnsupported("top_level.slot_alloc",
+                              loc=getattr(rec.site, "loc", None))
     if rec.borrow_tuple_mixed:
         # A MIXED-call-bound hoist keeps the per-element arrow: the local
         # holds the hybrid render, so `std::get<1>(p)->val`.
-        _witness(mixed_witness)
+        _witness("hoist.mixed_own_tuple")
     declared[name] = var_type
     if not rec.borrow_tuple_mixed and not rec.rebind_slot:
         _record_hoisted_binding(bindings, rec, var_type, lc)
@@ -3230,33 +3192,6 @@ def _optional_storage_hoist_entry(name: str, var_type: TpyType,
         bindings.append(THIRHoistedBinding(name, var_type, optional_record_storage=record))
     return HoistDecl(name, f"std::optional<{lc.render_type(var_type)}>")
 
-
-def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
-                             declared: dict[str, TpyType], lc: '_LowerCtx',
-                             in_branch: bool, bindings: list[THIRHoistedBinding],
-                             ) -> tuple[list[HoistDecl],
-                                        list[BindingRepr]]:
-    """The if chain's branch-first predecls, each admitted and built by its
-    record in cascade (dict) order. Returns `(hoist_decls, hoist_slots)`
-    for THIRIf: every predecl renders `{cpp_type} {name};` at the chain
-    head; a slot entry names a borrow tuple whose owning-call writes fill
-    the binding's one slot (`StorageSlots.claim_shared`).
-
-    An INNER-scope if (a loop / branch / with / try body) hoists at its own
-    head like the with and try families: the predecl's C++ scope IS the
-    enclosing block, and the name enters the caller's branch-local
-    `declared`."""
-    hoist = _Hoist(stmt, "if", in_branch, bindings, [])
-    hoist_decls: list[HoistDecl] = []
-    for name, raw in hoists.items():
-        if name in declared:
-            continue
-        rec = _hoist_record(stmt, name, lc)
-        _admit_hoist(hoist, name, rec, lc)
-        decl = _build_hoist(hoist, name, raw, rec, declared, lc)
-        if decl is not None:
-            hoist_decls.append(decl)
-    return hoist_decls, hoist.slots
 
 def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None':
     """The `as`-binding's type, exactly as sema binds it: the class the
@@ -12882,8 +12817,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # partial registration is fine -- the whole body raises and the
         # partially-mutated lc is discarded with it.
         hoisted_bindings: list[THIRHoistedBinding] = []
-        hoist_decls, hoist_slots = _lower_if_hoist_predecls(
-            stmt, hoists, declared, lc, scope.in_branch, hoisted_bindings)
+        if_hoist = _Hoist(stmt, scope.in_branch, hoisted_bindings)
+        _admit_hoists(if_hoist, hoists, declared, lc)
+        hoist_decls = _lower_hoist_predecls(if_hoist, hoists, declared, lc)
         # Per-branch narrowing facts for a condition NO narrowing arm claims
         # (set in the plain-condition arm below; every arm that returns from
         # here on emits its own extraction).
@@ -13213,7 +13149,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             else_body=else_stmts,
             else_is_nested=else_is_nested,
             hoist_decls=tuple(hoist_decls),
-            hoist_slots=tuple(hoist_slots),
             hoisted_bindings=tuple(hoisted_bindings),
             loc=loc,
         )
@@ -13409,11 +13344,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # mode as OPT_STORAGE, as at the for head).
         while_hoists = analyzer.if_branch_decls.get(stmt, {})
         while_bindings: list[THIRHoistedBinding] = []
-        while_hoist = _Hoist(stmt, "while", bindings=while_bindings)
+        while_hoist = _Hoist(stmt, bindings=while_bindings)
         _admit_hoists(while_hoist, while_hoists, declared, lc)
         while_hoist_decls = tuple(
-            _lower_hoist_predecls(while_hoist, while_hoists, declared, lc,
-                                  "while.hoist_decl"))
+            _lower_hoist_predecls(while_hoist, while_hoists, declared, lc))
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         oinfo = (_or_chain_narrow_info(stmt.condition, declared, analyzer)
                  if info is None else None)
@@ -13621,11 +13555,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # includes the loop var itself when it is hoisted (used after the loop).
         foreach_hoists = analyzer.if_branch_decls.get(stmt, {})
         foreach_bindings: list[THIRHoistedBinding] = []
-        foreach_hoist = _Hoist(stmt, "foreach", bindings=foreach_bindings)
+        foreach_hoist = _Hoist(stmt, bindings=foreach_bindings)
         _admit_hoists(foreach_hoist, foreach_hoists, declared, lc)
         foreach_hoist_decls = tuple(
-            _lower_hoist_predecls(foreach_hoist, foreach_hoists, declared, lc,
-                                  "foreach.hoist_decl"))
+            _lower_hoist_predecls(foreach_hoist, foreach_hoists, declared, lc))
         body_declared = dict(declared)
         # An owned element stays in the iterator's step slot for the
         # iteration; the name binds it like a local, and the consuming move
@@ -14322,14 +14255,13 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     # `declared`, which is narrower than Python's function scope; that gap
     # is fail-safe, since a read after the branch finds no binding and
     # rejects (`name.global_read`) rather than mis-rendering.
-    try_hoist = _Hoist(stmt, "try")
+    try_hoist = _Hoist(stmt)
     _admit_hoists(try_hoist, hoists, declared, lc)
     for handler in stmt.handlers:
         if (handler.binding
                 and _handler_binding_type(handler, lc.analyzer) is None):
             raise ThirUnsupported(stmt_reject_reason(stmt))
-    hoist_decls = _lower_hoist_predecls(try_hoist, hoists, declared, lc,
-                                        "try.hoist_decl")
+    hoist_decls = _lower_hoist_predecls(try_hoist, hoists, declared, lc)
     body_terminates = try_terminates_ignoring_finally(stmt)
     if stmt.tier is TryTier.FINALLY_ONLY:
         _witness("try.finally_only")
@@ -14493,7 +14425,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     # A with inside a branch / loop hoists here rather than at function top,
     # like the try sibling: the predecl is emitted at the with itself, and
     # the name enters the caller's branch-local `declared`.
-    with_hoist = _Hoist(stmt, "with")
+    with_hoist = _Hoist(stmt)
     _admit_hoists(with_hoist, hoists, declared, lc)
     items: list[THIRWithItem] = []
     for item_idx, item in enumerate(_bindings.scoped(lc, stmt.items)):
@@ -14720,8 +14652,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             declared[item.target] = et
     if len(stmt.items) > 1:
         _witness("with.multi")
-    hoist_decls = _lower_hoist_predecls(with_hoist, hoists, declared, lc,
-                                        "with.hoist_decl")
+    hoist_decls = _lower_hoist_predecls(with_hoist, hoists, declared, lc)
     n_returns_before = len(lc.nested_returns)
     # Sema declares every body name in front of the block except a
     # generator it keeps there, which nothing after the block reads. A

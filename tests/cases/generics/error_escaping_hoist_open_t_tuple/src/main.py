@@ -20,7 +20,7 @@ def factory[T](a: Own[T], f: Fn[[T], int32], flag: bool) -> Callable[[], int32]:
     o = mko(a)
     p = mk(o)
     # the hoisted y is what the returned closure captures
-    if flag:  # tpyc: error(/if\.hoist_type/)
+    if flag:  # tpyc: error(/hoist\.no_form/)
         y = p
     else:
         y = p
