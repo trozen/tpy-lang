@@ -2688,8 +2688,9 @@ as the corpus grows).
   lifecycle hooks `__del__` / `__copy__` / `__move__`, which the generated
   special members run around, so their `self` is no initialized object
   borrowed for a call (`TpyFunction.is_lifecycle_hook`), a constructor
-  body (`TpyFunction.is_initializer`: a second `@dispatch` `__init__`
-  reaches the predicate, and its `self` is storage under construction),
+  body (`TpyFunction.is_initializer`: its `self` is storage under
+  construction; a class has one TPy-bodied `__init__`, sema refusing a
+  constructor set, and it lowers as the constructor, not as a method),
   static and class methods, consuming, generic, async and generator
   methods and auto-own clones. Property getters and setters and both
   clones of an `@auto_readonly` def are method bodies too, under the

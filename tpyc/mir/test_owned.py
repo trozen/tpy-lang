@@ -512,21 +512,21 @@ def inspect() -> int32:
 
 def test_overloaded_constructor_cannot_be_stamped_unique() -> None:
     source = """\
-from typing import overload
-from tpy import int32
+from tpy import int32, dispatch
+from tpy.extern import cpp_template
 
 class Record:
     value: int32
 
-    @overload
-    def __init__(self, value: int32): ...
+    @dispatch
+    @cpp_template("ns::Record({0})")
+    def __init__(self, value: int32) -> None: ...
 
-    @overload
-    def __init__(self, value: int32, other: int32): ...
-
-    def __init__(self, value: int32, other: int32 = 0):
-        self.value = value
+    @dispatch
+    @cpp_template("ns::Record({0}, {1})")
+    def __init__(self, value: int32, other: int32) -> None: ...
 """
+    # A TPy-bodied class takes one `__init__`, so the set is a binding one.
     compiler, modules = _compile(source)
     typ = NominalType("Record", _module_qname="__main__.Record")
     # The normal constructor path excludes overloads before emitting its THIR.

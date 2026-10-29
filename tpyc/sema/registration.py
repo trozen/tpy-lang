@@ -70,7 +70,7 @@ from ..parse import (
 )
 from .call_lends import NO_CALLS
 from .storage_walk import holder_root
-from ..parse.nodes import (COPY_HOOK, DefaultReferent,
+from ..parse.nodes import (COPY_HOOK, INIT_METHOD, DefaultReferent,
                           NON_CONSTANT_DEFAULT_MSG, OverloadForm,
                           SourceLocation,
                           is_base_init_call, walk_body_stmts, written_names)
@@ -1944,6 +1944,7 @@ class TypeRegistrar:
             seen_method_names.add(method.name)
 
         self._collect_method_overload_groups(record)
+        self._refuse_constructor_set(record)
 
         # Extract native_field() renames on @native classes. The call is not a
         # real default -- it's stripped here so the const validation below
@@ -4945,6 +4946,37 @@ class TypeRegistrar:
             impl = impls.get(method.name)
             if impl is not None and not stubs:
                 self.ctx.overload_twins[method] = impl
+
+    def _refuse_constructor_set(self, record: TpyRecord) -> None:
+        """A construction names what it builds, so a class takes one
+        `__init__` with a TPy body: an `__init__` written in set form -- a
+        `@dispatch` variant or a `typing.overload` stub, a lone one
+        included -- is refused at the first such def. A set whose every
+        variant (the `@dispatch` variants, or the implementation the stubs
+        declare) is a binding stays: C++ chooses among the bound
+        constructors. An `auto_readonly` / `auto_own` clone is the
+        expansion of one source def, not a variant."""
+        inits = [m for m in record.methods
+                 if m.name == INIT_METHOD
+                 and not m.is_auto_readonly_mutable_clone
+                 and not m.is_auto_own_borrowing_clone]
+        first = next((m for m in inits if m.is_overload_stub), None)
+        if first is None:
+            return
+        if all(is_bodyless_binding(m) for m in inits
+               if not m.is_typing_overload_stub):
+            return
+        name = f"'{record.display_name}.__init__'"
+        if first.is_typing_overload_stub:
+            msg = (f"{name} cannot be @overload: a class takes one "
+                   f"__init__ -- drop the @overload stubs and keep the "
+                   f"implementation (its parameters are the "
+                   f"constructor's), or use a @classmethod factory")
+        else:
+            msg = (f"{name} cannot be @dispatch: a class takes one "
+                   f"__init__ -- use a union parameter, parameter "
+                   f"defaults, or a @classmethod factory")
+        raise SemanticError(msg, first.loc or record.loc)
 
     def _validate_method_overload_groups(self, record: TpyRecord) -> None:
         saved_type_params = self.ctx.record_ctx.type_params

@@ -1,0 +1,1 @@
+main.py:13: error: 'Q.__init__' cannot be @overload: a class takes one __init__ -- drop the @overload stubs and keep the implementation (its parameters are the constructor's), or use a @classmethod factory

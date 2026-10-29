@@ -15012,8 +15012,8 @@ def _raw_record_ctor_fi(rtype: 'TpyType | None',
     handed the SUBSTITUTED slots, so the genericity of the emitted parameter
     (`explicit Boxed(const T& value)`) is only readable here. The first
     entry: a call resolves to a synthetic constructor FunctionInfo, not to
-    an `__init__` entry, and an `__init__` overload set does not lower
-    (BUGS.md#dispatch-ctor-group-unlowered)."""
+    an `__init__` entry, and a TPy-bodied class has one `__init__` (sema
+    refuses a constructor set; only a binding class has several)."""
     overloads = _raw_record_overloads(rtype, "__init__", analyzer)
     return overloads[0] if overloads else None
 

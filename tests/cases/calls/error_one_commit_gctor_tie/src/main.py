@@ -1,6 +1,8 @@
-# A generic class's `@dispatch __init__` group ranks as a function's: a crossed
-# tie is ambiguous, never the first declared (BUGS.md#dispatch-ctor-group-unlowered).
+# A generic class's `@dispatch __init__` binding set ranks as a function's
+# overloads: a crossed tie is ambiguous, never the first declared
+# (docs/LANGUAGE_FEATURES.md: "A genuine tie ... is an `Ambiguous overload`").
 from tpy import int32, dispatch
+from tpy.extern import native, cpp_template
 
 
 class Animal:
@@ -15,16 +17,17 @@ class Dog(Animal):
         super().__init__()
 
 
+@native("ns::G")
 class G[T]:
     r: str
 
     @dispatch
-    def __init__(self, x: Dog, y: Animal, z: T) -> None:
-        self.r = "DA"
+    @cpp_template("ns::G({0}, {1}, {2})")
+    def __init__(self, x: Dog, y: Animal, z: T) -> None: ...
 
     @dispatch
-    def __init__(self, x: Animal, y: Dog, z: T) -> None:
-        self.r = "AD"
+    @cpp_template("ns::G({0}, {1}, {2})")
+    def __init__(self, x: Animal, y: Dog, z: T) -> None: ...
 
 
 def main() -> None:

@@ -297,6 +297,7 @@ def test_a_pending_value_widens_after_an_ambiguous_preparation():
 
 _UNION_PARAM = _MEMBERS + """
 from tpy import dispatch
+from tpy.extern import native, cpp_template
 
 
 class H:
@@ -319,16 +320,17 @@ def g(v: str, k: int32) -> int32:
     return 2
 
 
+@native("ns::K")
 class K:
     n: int32
 
     @dispatch
-    def __init__(self, v: A | B, k: int32) -> None:
-        self.n = 1
+    @cpp_template("ns::K({0}, {1})")
+    def __init__(self, v: A | B, k: int32) -> None: ...
 
     @dispatch
-    def __init__(self, v: str, k: int32) -> None:
-        self.n = 2
+    @cpp_template("ns::K({0}, {1})")
+    def __init__(self, v: str, k: int32) -> None: ...
 
 
 def f(h: H, p: A) -> None:
@@ -363,8 +365,8 @@ def _calls_in_f_of(modules: list[CompiledModule]) -> list:
 def test_member_of_a_union_parameter_ranks_alike_at_every_call_kind():
     """A member value at a union parameter, beside a variant that does not
     take the call: the method, the free function and the constructor group
-    each pick the union variant (the constructor group is not lowered yet,
-    BUGS.md#dispatch-ctor-group-unlowered, so sema's pick is pinned here)."""
+    each pick the union variant (a constructor set is a binding set: a
+    TPy-bodied class takes one `__init__`, so sema's pick is pinned here)."""
     picked = {}
     for call in _calls_in_f(HEADER + _UNION_PARAM):
         fi = call.resolved_function_info
@@ -476,18 +478,20 @@ def test_raise_takes_the_union_variant_of_its_constructor_group():
     constructor call outside a `raise` does."""
     source = HEADER + _MEMBERS + """
 from tpy import dispatch
+from tpy.extern import native, cpp_template
 
 
+@native("ns::E")
 class E(Exception):
     n: int32
 
     @dispatch
-    def __init__(self, v: A | B, k: int32) -> None:
-        self.n = 1
+    @cpp_template("ns::E({0}, {1})")
+    def __init__(self, v: A | B, k: int32) -> None: ...
 
     @dispatch
-    def __init__(self, v: str, k: int32) -> None:
-        self.n = 2
+    @cpp_template("ns::E({0}, {1})")
+    def __init__(self, v: str, k: int32) -> None: ...
 
 
 def f(p: A) -> None:

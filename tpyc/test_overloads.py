@@ -19,6 +19,7 @@ End-to-end overload dispatch is covered by the snippet tests under
 from __future__ import annotations
 
 import dataclasses
+import re
 
 import pytest
 
@@ -898,48 +899,48 @@ def test_overload_query_leaves_the_literal_record_alone(slot):
 
 
 _SEMA_PRELUDE = """from tpy import dispatch, int8, int32, int64
+from tpy.extern import native, cpp_template
 def a64() -> int64: return 1099511627776
 """
 
 
-# A user class's constructor group, which does not lower
-# (BUGS.md#dispatch-ctor-group-unlowered): `k` is shared, `b` and the
-# defaults differ per candidate.
-_KW_GROUP = """class G:
+# A constructor set is a binding set (a TPy-bodied class takes one
+# `__init__`): `k` is shared, `b` and the defaults differ per candidate.
+_KW_GROUP = """@native("ns::G")
+class G:
     v: int32
     @dispatch
-    def __init__(self, a: int32, *, k: int32 = 5) -> None:
-        self.v = a + k
+    @cpp_template("ns::G({0}, {1})")
+    def __init__(self, a: int32, *, k: int32 = 5) -> None: ...
     @dispatch
-    def __init__(self, s: str, b: int32 = 7, *, k: int32 = 6) -> None:
-        self.v = b * 10 + k
+    @cpp_template("ns::G({0}, {1}, {2})")
+    def __init__(self, s: str, b: int32 = 7, *, k: int32 = 6) -> None: ...
 """
 
 
 @pytest.mark.parametrize(
     ("body", "message"),
     [
-        # The overloaded `raise` constructor: its winner decides the local,
-        # which its user exception's codegen cannot show end to end
-        # (BUGS.md#dispatch-ctor-group-unlowered).
+        # The overloaded `raise` constructor (a binding set): its winner
+        # decides the local.
         pytest.param(
-            "class E(Exception):\n    n: int32\n"
-            "    @dispatch\n    def __init__(self, xs: list[int32]) -> None:\n"
-            "        self.n = len(xs)\n"
-            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
-            "        self.n = -1\n"
+            "@native('ns::E')\nclass E(Exception):\n    n: int32\n"
+            "    @dispatch\n    @cpp_template('ns::E({0})')\n"
+            "    def __init__(self, xs: list[int32]) -> None: ...\n"
+            "    @dispatch\n    @cpp_template('ns::E({0})')\n"
+            "    def __init__(self, s: str) -> None: ...\n"
             "def main() -> None:\n    ms = [1, 2]\n    try:\n"
             "        raise E(ms)\n    except E as e:\n        print(e.n)\n"
             "    ms.append(a64())\n",
-            r"^'ms' holds int32 elements since line 14 \(passed as "
+            r"^'ms' holds int32 elements since line 16 \(passed as "
             r"list\[int32\]\), and this value is int64",
             id="raise-group-then-wider"),
         pytest.param(
-            "class E(Exception):\n    n: int32\n"
-            "    @dispatch\n    def __init__(self, xs: list[str]) -> None:\n"
-            "        self.n = 1\n"
-            "    @dispatch\n    def __init__(self, xs: list[int64]) -> None:\n"
-            "        self.n = 2\n"
+            "@native('ns::E')\nclass E(Exception):\n    n: int32\n"
+            "    @dispatch\n    @cpp_template('ns::E({0})')\n"
+            "    def __init__(self, xs: list[str]) -> None: ...\n"
+            "    @dispatch\n    @cpp_template('ns::E({0})')\n"
+            "    def __init__(self, xs: list[int64]) -> None: ...\n"
             "def main() -> None:\n    xs = []\n    raise E(xs)\n",
             r"^Ambiguous overload for 'E\.__init__': multiple candidates match "
             r"equally:\n  __init__\(list\[str\]\)\n  __init__\(list\[int64\]\)$",
@@ -954,30 +955,30 @@ _KW_GROUP = """class G:
             "def t(x: list[int32] | str) -> int32:\n    return 7\n"
             "def main() -> None:\n    ms = [5, 6]\n    print(t(ms))\n"
             "    ms.append(a64())\n",
-            r"^'ms' holds int32 elements since line 12 \(passed as "
+            r"^'ms' holds int32 elements since line 13 \(passed as "
             r"list\[int32\]\), and this value is int64",
             id="typing-overload-then-wider"),
         # The constructor overload a local is passed to decides its element:
         # a later wider value is refused, as after a call to that one
         # constructor.
         pytest.param(
-            "class K:\n    n: int32\n"
-            "    @dispatch\n    def __init__(self, xs: list[int32]) -> None:\n"
-            "        self.n = len(xs)\n"
-            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
-            "        self.n = -1\n"
+            "@native('ns::K')\nclass K:\n    n: int32\n"
+            "    @dispatch\n    @cpp_template('ns::K({0})')\n"
+            "    def __init__(self, xs: list[int32]) -> None: ...\n"
+            "    @dispatch\n    @cpp_template('ns::K({0})')\n"
+            "    def __init__(self, s: str) -> None: ...\n"
             "def main() -> None:\n    ms = [1, 2]\n    k = K(ms)\n"
             "    ms.append(a64())\n    print(k.n)\n",
-            r"^'ms' holds int32 elements since line 13 \(passed as "
+            r"^'ms' holds int32 elements since line 15 \(passed as "
             r"list\[int32\]\), and this value is int64",
             id="ctor-group-then-wider"),
         # No constructor of the group may narrow the local's int32.
         pytest.param(
-            "class K:\n    n: int32\n"
-            "    @dispatch\n    def __init__(self, xs: list[int8]) -> None:\n"
-            "        self.n = len(xs)\n"
-            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
-            "        self.n = -1\n"
+            "@native('ns::K')\nclass K:\n    n: int32\n"
+            "    @dispatch\n    @cpp_template('ns::K({0})')\n"
+            "    def __init__(self, xs: list[int8]) -> None: ...\n"
+            "    @dispatch\n    @cpp_template('ns::K({0})')\n"
+            "    def __init__(self, s: str) -> None: ...\n"
             "def main() -> None:\n    ms = [1, 2]\n    print(K(ms).n)\n",
             r"^No matching overload for 'K' with argument types \(list\[int32\]\)",
             id="ctor-group-no-match"),
@@ -1100,3 +1101,91 @@ def test_ctor_group_keyword_binds_the_winner() -> None:
         "s", "b", "k"]
     assert [p.name for p in first.resolved_function_info.params] == [
         "a", "k"]
+
+
+_CTOR_DISPATCH_MSG = (
+    "'Q.__init__' cannot be @dispatch: a class takes one __init__ -- use a "
+    "union parameter, parameter defaults, or a @classmethod factory")
+_CTOR_OVERLOAD_MSG = (
+    "'Q.__init__' cannot be @overload: a class takes one __init__ -- drop "
+    "the @overload stubs and keep the implementation (its parameters are "
+    "the constructor's), or use a @classmethod factory")
+_CTOR_PRELUDE = (_SEMA_PRELUDE + "from typing import overload\n"
+                 "from tpy import auto_readonly\n")
+_CTOR_STUB_LINE = _CTOR_PRELUDE.count("\n") + 4
+
+
+@pytest.mark.parametrize("body, msg", [
+    pytest.param("    @dispatch\n"
+                 "    def __init__(self, x: int32) -> None: self.v = 1\n"
+                 "    @dispatch\n"
+                 "    def __init__(self, x: str) -> None: self.v = 1\n",
+                 _CTOR_DISPATCH_MSG, id="dispatch-pair"),
+    pytest.param("    @dispatch\n"
+                 "    def __init__(self, x: int32) -> None: self.v = 1\n",
+                 _CTOR_DISPATCH_MSG, id="lone-dispatch"),
+    pytest.param("    @overload\n"
+                 "    def __init__(self, x: int32) -> None: ...\n"
+                 "    def __init__(self, x: int32) -> None: self.v = 1\n",
+                 _CTOR_OVERLOAD_MSG, id="single-overload-stub"),
+    pytest.param("    @dispatch\n"
+                 "    async def __init__(self, x: int32) -> None: self.v = 1\n"
+                 "    @dispatch\n"
+                 "    async def __init__(self, x: str) -> None: self.v = 1\n",
+                 _CTOR_DISPATCH_MSG, id="async-dispatch-pair"),
+    pytest.param("    @overload\n"
+                 "    async def __init__(self, x: int32) -> None: ...\n"
+                 "    @overload\n"
+                 "    async def __init__(self, x: str) -> None: ...\n"
+                 "    async def __init__(self, x: int32 | str) -> None: self.v = 1\n",
+                 _CTOR_OVERLOAD_MSG, id="async-overload"),
+    # One binding variant does not make a bodied sibling a binding.
+    pytest.param("    @dispatch\n"
+                 "    def __init__(self, x: int32) -> None: self.v = 1\n"
+                 "    @dispatch\n"
+                 "    @cpp_template('ns::Q({0})')\n"
+                 "    def __init__(self, x: str) -> None: ...\n",
+                 _CTOR_DISPATCH_MSG, id="mixed-binding-and-body"),
+])
+def test_constructor_set_is_refused(body: str, msg: str) -> None:
+    # Any `__init__` in set form with a TPy-bodied variant is refused at
+    # the first set-form def, before any construction is analyzed
+    # (docs/LANGUAGE_FEATURES.md, "a class takes one `__init__`").
+    source = _CTOR_PRELUDE + "class Q:\n    v: int32\n" + body
+    with pytest.raises(SemanticError, match="^" + re.escape(msg) + "$") as err:
+        Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"]).compile()
+    assert err.value.loc is not None
+    assert err.value.loc.line == _CTOR_STUB_LINE
+
+
+@pytest.mark.parametrize("source", [
+    # One source def whose `auto_readonly` parameter expands into two
+    # methods: the expansion is not a set. Neither a field read off `x` nor
+    # a construction compiles yet (BUGS.md#auto-readonly-param-ctor-unusable),
+    # so only the class definition is pinned.
+    pytest.param("class X:\n    v: int32\n"
+                 "    def __init__(self, x: int32) -> None:\n"
+                 "        self.v = x\n"
+                 "class Q:\n"
+                 "    def __init__(self, x: auto_readonly[X]) -> None:\n"
+                 "        print(x.v)\n",
+                 id="auto-readonly-param"),
+    # A set of bindings binds C++ constructor overloads.
+    pytest.param("@native('ns::Q')\nclass Q:\n    v: int32\n"
+                 "    @dispatch\n"
+                 "    @cpp_template('ns::Q({0})')\n"
+                 "    def __init__(self, x: int32) -> None: ...\n"
+                 "    @dispatch\n"
+                 "    @cpp_template('ns::Q({0})')\n"
+                 "    def __init__(self, x: str) -> None: ...\n",
+                 id="binding-set"),
+    # On a `@native` class a plain `...` implementation is a binding too.
+    pytest.param("@native('ns::Q')\nclass Q:\n"
+                 "    @overload\n"
+                 "    def __init__(self, x: int32) -> None: ...\n"
+                 "    def __init__(self, x: int32) -> None: ...\n",
+                 id="native-overload-stub"),
+])
+def test_constructor_shape_is_accepted(source: str) -> None:
+    Compiler.from_source(_CTOR_PRELUDE + source,
+                         lib_dirs=[get_lib_dir() / "tpy"]).compile()

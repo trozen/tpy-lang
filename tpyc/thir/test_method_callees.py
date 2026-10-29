@@ -154,18 +154,17 @@ class Child(Parent):
 
 class Built:
     n: int32
-    @dispatch
-    def __init__(self, n: int32) -> None:
+    def __init__(self, n: int32 = 0) -> None:
         self.n = n
-    @dispatch
-    def __init__(self) -> None:
-        self.n = 0
     @auto_readonly
     def get(self) -> int32:
         return self.n
 
 def built(b: Built) -> int32:
     return b.get()
+
+def reinit(b: Built) -> None:
+    b.__init__(1)
 
 def calls(p: Plain, q: Plain, b: Box[int32], c: Child) -> int32:
     t = 0
@@ -439,9 +438,12 @@ def test_a_lifecycle_hook_has_no_receiver_fact(negatives: Program, name: str) ->
 
 
 def test_a_constructor_body_has_no_receiver_fact(negatives: Program) -> None:
-    # The second `@dispatch` body is fed as a method; its `self` is under construction.
-    init, = negatives.functions[("Built", "__init__")]
-    assert init.receiver is None and init.resolved_callee is None
+    # A class's one `__init__` lowers as the constructor, never as a method
+    # body, and an explicit `b.__init__(...)` call carries no callee: the
+    # body's `self` is storage under construction, not a borrowed receiver.
+    assert ("Built", "__init__") not in negatives.functions
+    call, = negatives.calls(None, "reinit")["__init__"]
+    assert call.resolved_callee is None
     assert negatives.builder("Built", "__init__") is None
 
 

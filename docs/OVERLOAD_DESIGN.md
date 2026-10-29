@@ -167,8 +167,19 @@ and two constrained templates over unrelated protocols are unordered).
   an ancestor's) may not be a set: the slot is one virtual, chosen by its
   name. *'C.m' implements @dynamic protocol method 'DP.m' and cannot be a
   @dispatch set; give the other variants different names*.
-- Constructors still share one C++ name per set
-  (BUGS.md#dispatch-ctor-group-unlowered).
+- A constructor written in TPy is one `__init__`; a constructor set only
+  declares the C++ constructors a class binds. An `__init__` in set form
+  (`@dispatch` `__init__` variants, or `typing.overload` stubs over an
+  implementation, a lone one included) with a TPy-bodied variant is refused at its first set-form def in sema, before any body
+  is analyzed: *'Q.__init__' cannot be @dispatch: a class takes one
+  __init__ -- use a union parameter, parameter defaults, or a
+  @classmethod factory* (the `@overload` form advises dropping the stubs
+  and keeping the implementation). A construction names what it builds -- as Rust's
+  named constructors -- so a second way to build is a named factory, and
+  no ranking runs at a construction beyond a binding set: `@native` /
+  `@cpp_template` `__init__` stubs bind C++ constructor overloads (the
+  builtin types, the exception family), which sema ranks as any set and
+  C++ then chooses among.
 - A literal argument is pinned to the parameter sema picked: a call to a
   TPy overload set (not generic, not `@native` / `@cpp_template`) renders a
   str or numeric literal as a value of that parameter's own type, so the
