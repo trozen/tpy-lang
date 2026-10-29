@@ -1376,7 +1376,8 @@ def is_reference_local(var_type: TpyType | None,
     return not inner.is_value_type() and view_family_for_type(inner) is None
 
 
-def stamp_bind_kind(ctx: 'SemanticContext', stmt: 'TpyVarDecl | TpyAssign',
+def stamp_bind_kind(ctx: 'SemanticContext',
+                    stmt: 'TpyVarDecl | TpyAssign | TpyNamedExpr',
                     name: str, value: TpyExpr | None,
                     var_type: TpyType | None, *, rebind: bool) -> None:
     """Record what the binding writes, and mark an rvalue REBIND of a

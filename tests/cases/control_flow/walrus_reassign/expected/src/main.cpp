@@ -4,6 +4,45 @@
 namespace tpyapp::main {
 
 
+// # A value walrus rebound by every test of a `while` condition takes the
+// # binding record of its declaration: read after the loop, its last use
+// # moves it out.
+// def while_rebind_int(xs: list[int32]) -> int32:
+//     i = 0
+//     total = 0
+//     while (c := xs[i] + 1) < 3:
+//         i += 1
+//     total = c  # the walrus target's last use: moved
+//     return total
+int32_t while_rebind_int(const std::vector<int32_t>& xs) {
+    int32_t i = 0;
+    int32_t total = 0;
+    int32_t c;
+    while (((c = (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, i), 1))) < 3)) {
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    total = std::move(c);
+    return total;
+}
+
+// def while_rebind_str(xs: list[str]) -> str:
+//     i = 0
+//     kept = ""
+//     while len(w := xs[i] + "!") < 3:
+//         i += 1
+//     kept = w  # the walrus target's last use: moved
+//     return kept
+std::string while_rebind_str(const std::vector<std::string>& xs) {
+    int32_t i = 0;
+    std::string kept = "";
+    ::tpy::String w;
+    while ((::tpy::__len__((w = (::tpy::str_concat(::tpy::__getitem__(xs, i), "!")))) < 3)) {
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    kept = std::move(w);
+    return kept;
+}
+
 // def main() -> None:
 //     n = 5
 //     while (n := n - 1) > 0:
@@ -27,6 +66,9 @@ namespace tpyapp::main {
 //     m: int32 = 10
 //     xs = [m for _ in range(3) if (m := m - 1) > 0]
 //     print(m, len(xs))
+//
+//     print("while_rebind", while_rebind_int([1, 5]),
+//           while_rebind_str(["a", "bb"]))
 void main() {
     int32_t n = 5;
     while (((n = (::tpy::sub_check<int32_t>(n, 1))) > 0)) {
@@ -57,6 +99,9 @@ void main() {
         std::move(__result);
     });
     std::cout << m << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = {1, 5};
+    std::vector<std::string> __tmp_2 = {"a", "bb"};
+    std::cout << "while_rebind" << " " << ::tpyapp::main::while_rebind_int(__tmp_1) << " " << ::tpyapp::main::while_rebind_str(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

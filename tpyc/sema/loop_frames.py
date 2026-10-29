@@ -96,7 +96,7 @@ from ..typesys import (
 )
 from ..value_category import (call_returns_cpp_ref, is_iterator_protocol,
                               peel_coerce)
-from .iter_loans import iterated_storage
+from .iter_loans import iterated_storage, iteration_yields_copies
 from .own_copy import holds_only_values
 from .receiver_calls import ImplicitCall, implicit_calls
 from .call_lends import NO_CALLS, MayLend, may_hold_pointer
@@ -876,6 +876,31 @@ def for_live_region(loop: TpyForEach) -> LiveRegion:
 def comp_live_region(exprs: 'Iterable[TpyExpr | None]') -> LiveRegion:
     """A comprehension clause's conditions, element(s) and later clauses."""
     return LiveRegion(exprs=tuple(e for e in exprs if e is not None))
+
+
+def worth_const_ref(elem_type: TpyType) -> bool:
+    """Whether a loop or comprehension variable of `elem_type` may bind
+    const-ref at all: a reference type, or a value type expensive to copy
+    (BigInt, String, a tuple holding one). A cheap primitive is better
+    copied into a register than read through a pointer."""
+    unwrapped = unwrap_qualifiers(elem_type)
+    return not unwrapped.is_value_type() or unwrapped.is_expensive_copy()
+
+
+def decide_copies_var(ctx: 'SemanticContext',
+                      node: 'TpyForEach | TpyComprehensionGenerator',
+                      iterable: 'TpyExpr', iterable_type: 'TpyType | None',
+                      region: Callable[[], LiveRegion],
+                      elem_type: TpyType, *, handed_over: bool) -> None:
+    """The copy verdict (`copies_var`) of a loop or comprehension variable
+    over `region`, its live span: whether the loop may write the storage
+    it lends its element from while the variable is live. Only an
+    iteration that lends asks -- not one whose step is handed over (a
+    consuming loop, an owning step) nor one yielding copies."""
+    if (handed_over or iterable_type is None
+            or iteration_yields_copies(ctx, iterable_type)):
+        return
+    note_source_writes(ctx, node, iterable, region(), elem_type)
 
 
 @dataclass

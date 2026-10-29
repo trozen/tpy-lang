@@ -9,6 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def while_rebind_int(xs: list[int32]) -> int32:
+int32_t while_rebind_int(const std::vector<int32_t>& xs);
+// def while_rebind_str(xs: list[str]) -> str:
+std::string while_rebind_str(const std::vector<std::string>& xs);
 // def main() -> None:
 void main();
 

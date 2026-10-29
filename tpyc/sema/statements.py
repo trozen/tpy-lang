@@ -117,7 +117,7 @@ from .receiver_calls import (
     record_implicit_call, record_receiver_edges,
 )
 from .aug_hold import aug_hold_parts
-from .loop_frames import for_live_region, note_source_writes
+from .loop_frames import decide_copies_var, for_live_region, worth_const_ref
 from .binding_ownership import step_handover_paths
 from .iter_loans import (
     IterElementSource, iter_element_source, record_iteration_pull,
@@ -303,12 +303,15 @@ def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
                         *, fresh: bool,
                         init_type: TpyType | None) -> BindingOwns:
     """The binding record of `name = init` (`fresh`: `name` binds for the
-    first time), alike for a declaration and a walrus: hoist eligibility
-    (`rvalue_vars`), the move-through of a name source at its last use, the
-    ownership record (`record_binding_ownership`) and the fresh-ctor fact."""
+    first time), alike for every binding of a name -- a declaration, an
+    assignment, a walrus: hoist eligibility (`rvalue_vars`), the
+    move-through of a name source at its last use, the ownership record
+    (`record_binding_ownership`), the fresh-ctor fact, the loans and the
+    provenance."""
     owns = _classify_name_binding(an, name, var_type, init, fresh=fresh,
                                   init_type=init_type)
     note_binding_loans(an.ctx, name, var_type, init)
+    note_binding_provenance(an, name, var_type, init)
     return owns
 
 
@@ -695,6 +698,30 @@ def _local_points_into_source(t: TpyType) -> bool:
     return ((isinstance(bare, TupleType) and bare.has_pointer_repr_element())
             or (isinstance(bare, OptionalType)
                 and bare.wraps_pointer_repr_tuple()))
+
+
+def update_ephemeral_alias_fact(ctx: SemanticContext, name: str,
+                                var_type: 'TpyType | None',
+                                init_expr: 'TpyExpr | None') -> None:
+    """Propagate (or clear) the ephemeral-borrow fact through an aliasing
+    binding of `name`, alike for every binding of a name: `q = p` (or
+    `q = p.field` for a non-value field) of an ephemeral loop var is the
+    same stale-slot borrow under another name, so escapes through the
+    alias must reject like the direct form. Value bindings COPY and carry
+    no fact; any other rebind clears it.
+
+    The alias inherits the root's KIND, so a GATE_ONLY hold reaches the
+    slot verdict through an alias exactly as the direct form does.
+    """
+    eph = ctx.func.ephemeral_borrow_vars
+    root = None
+    if init_expr is not None and var_type is not None:
+        if _local_points_into_source(var_type):
+            root = ephemeral_borrow_root(eph, init_expr)
+    if root is not None:
+        eph[name] = eph[root]
+    else:
+        eph.pop(name, None)
 
 
 class StatementAnalyzer:
@@ -3072,15 +3099,13 @@ class StatementAnalyzer:
                 # the unpack has elements that need mutable references --
                 # const tuple prevents T& bindings via std::get.
                 unwrapped = unwrap_qualifiers(elem_type)
-                worth_const_ref = (not unwrapped.is_value_type()
-                                   or unwrapped.is_expensive_copy())
                 needs_mut_unpack = False
                 if stmt.is_tuple_unpack and stmt.body:
                     first = stmt.body[0]
                     if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
                         needs_mut_unpack = True
                 self.ctx.loop_binders.append((stmt, (
-                    worth_const_ref
+                    worth_const_ref(elem_type)
                     and stmt.var not in self.ctx.func.consumed_loop_vars
                     and not needs_mut_unpack)))
                 # Auto-consuming iteration: use consuming __iter__ when the
@@ -5752,17 +5777,13 @@ class StatementAnalyzer:
     def _decide_loop_copies_var(self, stmt: TpyForEach,
                                 iterable_type: TpyType,
                                 elem_type: TpyType) -> None:
-        """Whether, while the loop variable is live, the loop may write
-        the storage it lends its element from -- decided over the body and
-        `else` clause once they are analyzed, for an iteration that lends
-        (not a step copy, not a consuming loop). The variable then holds
-        its own copy: the planner binds a value element by value, and a
-        str / bytes view owns."""
-        if (stmt.consuming_iter_fi is not None
-                or iteration_yields_copies(self.ctx, iterable_type)):
-            return
-        note_source_writes(self.ctx, stmt, stmt.iterable,
-                           for_live_region(stmt), elem_type)
+        """The loop variable's copy verdict, over the body and `else`
+        clause once they are analyzed. A variable the loop may write the
+        source of holds its own copy: the planner binds a value element by
+        value, and a str / bytes view owns."""
+        decide_copies_var(self.ctx, stmt, stmt.iterable, iterable_type,
+                          lambda: for_live_region(stmt), elem_type,
+                          handed_over=stmt.consuming_iter_fi is not None)
 
     def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType, *,
                                          open_param_borrows: bool = False) -> bool:
@@ -5862,29 +5883,6 @@ class StatementAnalyzer:
         instantiations, so it answers the slot verdict alone."""
         return ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars, expr,
                                      EphemeralKind.HARD)
-
-    def _update_ephemeral_alias_fact(self, name: str,
-                                     var_type: 'TpyType | None',
-                                     init_expr: 'TpyExpr | None') -> None:
-        """Propagate (or clear) the ephemeral-borrow fact through an aliasing
-        binding: `q = p` (or `q = p.field` for a non-value field) of an
-        ephemeral loop var is the same stale-slot borrow under another name,
-        so escapes through the alias must reject like the direct form. Value
-        bindings COPY and carry no fact; any other rebind clears it.
-
-        The alias inherits the root's KIND, so a GATE_ONLY hold reaches the
-        slot verdict through an alias exactly as the direct form does.
-        """
-        root = None
-        if init_expr is not None and var_type is not None:
-            if _local_points_into_source(var_type):
-                root = ephemeral_borrow_root(
-                    self.ctx.func.ephemeral_borrow_vars, init_expr)
-        if root is not None:
-            self.ctx.func.ephemeral_borrow_vars[name] = (
-                self.ctx.func.ephemeral_borrow_vars[root])
-        else:
-            self.ctx.func.ephemeral_borrow_vars.pop(name, None)
 
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
@@ -6966,7 +6964,7 @@ class StatementAnalyzer:
         # non-value member (would dangle at a later bare-name yield/return);
         # clears on any other reassignment.
         self.compat.update_tuple_member_local_facts(stmt.name, var_type, stmt.init)
-        self._update_ephemeral_alias_fact(stmt.name, var_type, stmt.init)
+        update_ephemeral_alias_fact(self.ctx, stmt.name, var_type, stmt.init)
         # Reassigning a loop variable prevents const-ref binding
         if existing_type is not None:
             mark_roots(self.ctx, [StorageKey.of_name(stmt.name)],
@@ -7099,8 +7097,6 @@ class StatementAnalyzer:
             record_name_binding(self, stmt.name, var_type, stmt.init,
                                 fresh=existing_type is None,
                                 init_type=init_type)
-        if stmt.init:
-            note_binding_provenance(self, stmt.name, var_type, stmt.init)
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
@@ -8083,8 +8079,8 @@ class StatementAnalyzer:
             self.ctx.func.consumed_vars.discard(stmt.target.name)
             self.compat.update_tuple_member_local_facts(
                 stmt.target.name, target_type, stmt.value)
-            self._update_ephemeral_alias_fact(
-                stmt.target.name, target_type, stmt.value)
+            update_ephemeral_alias_fact(
+                self.ctx, stmt.target.name, target_type, stmt.value)
             # Borrow tracking: reassignment breaks aliases in both directions.
             # Retarget runs before remove_borrower so borrowers of the target
             # get re-pointed to the upstream source (with promoted kind),
@@ -8095,8 +8091,6 @@ class StatementAnalyzer:
             # the binding owns) are annotated.
             bind_value, bind_type = stmt.value, target_type
             bt.rebind_borrower(stmt.target.name, stmt.value)
-            warn_value_call_binding(
-                self.ctx, stmt.value, f"local '{stmt.target.name}'")
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
@@ -8113,19 +8107,6 @@ class StatementAnalyzer:
                     for key in self.ctx.declared_var_types:
                         if key[1] == stmt.target.name:
                             self.ctx.declared_var_types[key] = resolved
-
-        # Disallow reassignment of non-value-type params and loop vars
-        if isinstance(stmt.target, TpyName):
-            # Update rvalue/ownership status for hoist eligibility and copy detection
-            lvalue = self.compat.is_lvalue(stmt.value)
-            if lvalue:
-                self.ctx.func.rvalue_vars.discard(stmt.target.name)
-            else:
-                self.ctx.func.rvalue_vars.add(stmt.target.name)
-            record_binding_ownership(
-                self.ctx, stmt.target.name,
-                self.ctx.get_expr_type(stmt.value), stmt.value,
-                lvalue=lvalue)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):
@@ -8254,8 +8235,11 @@ class StatementAnalyzer:
                     stmt.value, unwrap_ref_type(target_type),
                     TupleSink.LOCAL, per_leaf=True,
                     binds=stmt)
-            _register_tuple_binding_borrows(
-                self.ctx, stmt.target.name, stmt.value, target_type)
+            # The declaration rebind's binding record (`x = v`), the one
+            # every binding of a name takes.
+            record_name_binding(self, stmt.target.name, target_type,
+                                stmt.value, fresh=False,
+                                init_type=value_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if (stmt.loc is not None and not copy_warning_fired
                     and not takes_elements):
@@ -8273,10 +8257,6 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             self._mark_bound_loop_var_sources(stmt.target.name, target_type,
                                               stmt.value)
-
-        if isinstance(stmt.target, TpyName):
-            note_binding_provenance(self, stmt.target.name, target_type,
-                                    stmt.value)
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):

@@ -7,3 +7,4 @@ asd!
 asd!
 3
 7 3
+while_rebind 6 bb!

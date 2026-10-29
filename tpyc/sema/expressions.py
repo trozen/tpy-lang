@@ -81,13 +81,12 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, ephemeral_borrow_root, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
-from .alias_rebind import (bind_kind_of, note_tuple_elem_borrows,
-                           tuple_elem_owned, unpack_target_records)
+from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import resolve_read, step_handover_paths
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, truthy_operands
@@ -129,8 +128,8 @@ from .receiver_calls import (check_implicit_readonly_receiver,
 from .storage_walk import StorageKey
 from .nonlocal_binding import enclosing_scope_facts
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
-                         iteration_yields_copies, register_iteration_loans)
-from .loop_frames import comp_live_region, note_source_writes
+                         register_iteration_loans)
+from .loop_frames import comp_live_region, decide_copies_var, worth_const_ref
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
@@ -4835,9 +4834,6 @@ class ExpressionAnalyzer:
     def _analyze_named_expr(self, expr: TpyNamedExpr) -> TpyType:
         """Analyze walrus operator: (x := expr)."""
         name = expr.target
-        # Whether the binding record (`record_name_binding`) decided the
-        # hoist-eligibility fact.
-        recorded = False
         # A store into a local whose bindings decide its type takes a value
         # whose type is decided with it -- inside a comprehension too, whose
         # walrus binds the enclosing body's local (PEP 572).
@@ -4966,16 +4962,8 @@ class ExpressionAnalyzer:
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, declared)
-            # A fresh rvalue is owned (feeds the branch-decl owned form and
-            # last-use moves); a borrow records the statement-level borrow
-            # fact and registers the alias for mutation tracking, by the one
-            # ownership record every binding form takes.
-            owned = tuple_elem_owned(self.ctx, expr.value, resolved)
-            if owned is not None:
-                self.ctx.tuple_elem_owned[expr] = owned
-            note_tuple_elem_borrows(self.ctx, name, expr.value, resolved)
-            self.ctx.func.bind_kinds[expr] = bind_kind_of(
-                self.ctx, expr.value, owned)
+            stamp_bind_kind(self.ctx, expr, name, expr.value, resolved,
+                            rebind=False)
             # The walrus binds a fresh local, so its literal members take the
             # local sink's copy rule, as the decl `u = (1, (2, c))` does.
             bound_lit = peel_value_wrappers(expr.value)
@@ -4984,63 +4972,36 @@ class ExpressionAnalyzer:
                     and isinstance(bound_tuple, TupleType)):
                 self.compat.check_tuple_literal_members(
                     bound_lit, bound_tuple, TupleSink.LOCAL, "owned storage")
-            if not unwrap_readonly(resolved).is_value_type():
-                if holds_frame_object(resolved):
-                    record_frame_binding_roots(
-                        self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
-                # The declaration's binding record (`p = v`), the one every
-                # binding form takes. Local import: statements imports this
-                # module.
-                from .statements import record_name_binding
-                record_name_binding(self, name, resolved, expr.value,
-                                    fresh=True, init_type=value_type)
-                recorded = True
+            if (not unwrap_readonly(resolved).is_value_type()
+                    and holds_frame_object(resolved)):
+                record_frame_binding_roots(
+                    self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
             result_type = _walrus_result_type(resolved, value_type,
                                               declared=declared)
 
         if rebinds:
             self.narrowing.update_after_write(name, resolved, value_type,
                                               expr.value)
-        # Local import: statements imports this module.
-        from .statements import note_binding_provenance
-        note_binding_provenance(self, name, resolved, expr.value)
+        # The declaration's binding record (`p = v`), the one every binding
+        # of a name takes. Local import: statements imports this module.
+        from .statements import (record_name_binding,
+                                 update_ephemeral_alias_fact)
+        self.ctx.func.borrow_tracker.rebind_borrower(name, expr.value)
+        record_name_binding(self, name, resolved, expr.value,
+                            fresh=not rebinds, init_type=value_type)
         self.ctx.func.definitely_assigned.add(name)
-        if not recorded:
-            self.ctx.func.rvalue_vars.add(name)
         if name not in self.ctx.func.var_scope_depth:
             self.ctx.declare_local(name, target_scope.depth)
 
         # Mirror the VarDecl tuple facts: a walrus-bound pointer-repr tuple
-        # carries the same owns-fresh hazard as `t = (1, Box(5))`, and an
-        # lvalue-sourced binding ((t := items[0])) aliases its storage, so
-        # the borrow must be registered for the return-root gate and the
-        # deferred mutation-marking to see it. A rebind drops/retargets the
-        # old chain first, like the VarDecl path.
+        # carries the same owns-fresh hazard as `t = (1, Box(5))`.
         # Peel Own for the tuple bookkeeping: a walrus bound from an
         # owning-tuple call carries the same facts as the VarDecl binding,
         # whose inferred local type is already Own-stripped.
         facts_type = unwrap_own(unwrap_readonly(resolved))
         self.compat.update_tuple_member_local_facts(name, facts_type,
                                                     expr.value)
-        res_bare = unwrap_readonly(facts_type)
-        is_borrow_tuple = (isinstance(res_bare, TupleType)
-                           and res_bare.has_pointer_repr_element())
-        if is_borrow_tuple:
-            bt = self.ctx.func.borrow_tracker
-            bt.rebind_borrower(name, expr.value)
-            # Local import avoids the statements <-> expressions cycle.
-            from .statements import register_binding_loans
-            register_binding_loans(self.ctx, name, expr.value, facts_type)
-        # An alias of an ephemeral borrow is the same stale-slot borrow under
-        # another name (mirrors the VarDecl _update_ephemeral_alias_fact).
-        eph = self.ctx.func.ephemeral_borrow_vars
-        eph_root = (ephemeral_borrow_root(eph, expr.value)
-                    if (not resolved.is_value_type() or is_borrow_tuple)
-                    else None)
-        if eph_root is not None:
-            eph[name] = eph[eph_root]
-        else:
-            eph.pop(name, None)
+        update_ephemeral_alias_fact(self.ctx, name, resolved, expr.value)
         if self.compat.settles_body_local(name, module=True):
             # The binding is an owning sink of what it owns
             # (`SinkRead.binds`).
@@ -6397,9 +6358,6 @@ class ExpressionAnalyzer:
         # unwrap_qualifiers (not unwrap_readonly) so a wrapped value-type
         # element still counts as value-type, matching the for-loop predicate
         # in sema/statements.py.
-        unwrapped = unwrap_qualifiers(elem_type)
-        worth_const_ref = (not unwrapped.is_value_type()
-                           or unwrapped.is_expensive_copy())
         names = gen.targets
         if not step:
             # Clear any prior marks in case an outer scope already used these
@@ -6445,8 +6403,13 @@ class ExpressionAnalyzer:
         # last-use sink can move it -- mirrors the consuming for-loop, which
         # excludes consumed vars from the const-ref binding.
         self.ctx.loop_binders.append(
-            (gen, worth_const_ref and not gen.step_handover))
-        self._decide_comp_copies_var(expr, k, elem_type)
+            (gen, worth_const_ref(elem_type) and not gen.step_handover))
+        # The clause variable is live over its conditions, every later
+        # clause and the element(s).
+        decide_copies_var(
+            self.ctx, gen, gen.iterable, self.ctx.get_expr_type(gen.iterable),
+            lambda: comp_live_region(_comp_clause_body(expr, k)), elem_type,
+            handed_over=bool(gen.step_handover))
         return result
 
     def _comp_clause_head(
@@ -6490,24 +6453,6 @@ class ExpressionAnalyzer:
             self.ctx.func.pending_elem_type_fields.append(
                 (head, "target_types"))
         return head
-
-    def _decide_comp_copies_var(
-        self,
-        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
-        k: int,
-        elem_type: TpyType,
-    ) -> None:
-        """The for statement's copy verdict (`copies_var`) for clause `k`: its
-        variable is live over its conditions, every later clause and the
-        element(s)."""
-        gen = expr.generators[k]
-        iterable_type = self.ctx.get_expr_type(gen.iterable)
-        if (gen.step_handover or iterable_type is None
-                or iteration_yields_copies(self.ctx, iterable_type)):
-            return
-        live = _comp_clause_body(expr, k)
-        note_source_writes(self.ctx, gen, gen.iterable, comp_live_region(live),
-                           elem_type)
 
     def _register_comp_iter_loans(self, gen: TpyComprehensionGenerator,
                                   names: list[str],

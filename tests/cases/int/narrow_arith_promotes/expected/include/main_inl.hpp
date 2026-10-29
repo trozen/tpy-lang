@@ -101,7 +101,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_bindings_gen::_
     case S_RESUME_0: {  // after: yield x + 0
         if (((y = (::tpy::add_check<int32_t>((y = 255), 1))) > 0)) {
             __state = S_RESUME_1;
-            return y;
+            return std::move(y);
         } else {
             __state = S_JOIN_0;
             continue;

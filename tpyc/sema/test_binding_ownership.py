@@ -1125,8 +1125,7 @@ def test_owned_optional_name_source_keeps_its_marker() -> None:
     # `y = x` over an owning `Own[A] | None` binding (a parameter, a local
     # bound to a call's result) binds owned storage the read moves into: no
     # copy warning. Codegen still refuses the declaration
-    # (BUGS.md#own-optional-target-alias-rejects); a walrus target is not
-    # recorded as owning yet (BUGS.md#own-optional-walrus-target-not-owned).
+    # (BUGS.md#own-optional-target-alias-rejects).
     ctx, funcs = _module(_OWN_OPT + """\
 def f(x: Own[A] | None) -> Own[A] | None:
     y = x
