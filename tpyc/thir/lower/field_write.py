@@ -78,11 +78,10 @@ from .checks import (
     _container_comp_arg,
     _container_literal_shape_ok,
     _container_storage_field,
-    _field_over_container_subscript_ok,
     _class_const_write_target_ok,
     _lambda_routable,
     _container_field_write_slot,
-    _method_recv_field_write_ok,
+    _field_write_receiver_ok,
     _nondef_ctor_field,
     _optional_container_storage_inner,
     _scalar_field_write_ok,
@@ -102,9 +101,6 @@ from .predicates import (
     record_like,
     _f1_tuple,
     _nested_storage_tuple,
-    _field_over_subscript_ok,
-    _field_receiver_ok,
-    _field_receiver_or_unbound_self_ok,
     _peel_coerce,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -205,18 +201,10 @@ def _classify_opt_none(stmt: TpyAssign, slot: _ExprUse,
                        pointers: AbstractSet[str]) -> _OptNonePlan | None:
     if not isinstance(stmt.value, TpyNoneLiteral):
         return None
-    # A SUBSCRIPT receiver -- a container element or a record-typed tuple
-    # element -- is a plain record borrow lvalue, so the member spells the
-    # same postfix off the bare element read that the scalar field write
-    # already renders there. Only the target varies with the receiver; the
-    # `std::nullopt` value render is receiver-blind.
-    if not (_field_receiver_ok(stmt.target, declared, lc.analyzer)
-            or _field_over_subscript_ok(stmt.target, declared, lc.analyzer)
-            or _field_over_container_subscript_ok(stmt.target, declared,
-                                                  lc.analyzer, lc.names_with("pointer"))):
-        return None
     ft = _slot_type(slot)
-    if not isinstance(ft, OptionalType):
+    if not (isinstance(ft, OptionalType)
+            and _receiver_ok(stmt, slot, lc, declared, pointers,
+                             view_fence=False)):
         return None
     return _OptNonePlan(ftype=ft)
 
@@ -343,7 +331,7 @@ def _classify_value(stmt: TpyAssign, slot: _ExprUse,
               and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                   b.type))) == unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(ftype)))
-              and _field_receiver_ok(stmt.target, declared, analyzer))
+              and _receiver_ok(stmt, slot, lc, declared, pointers))
         return plan if ok else None
     narrowed = lc.narrow.narrowed.keys()
     if not (_scalar_field_write_ok(stmt, declared, analyzer, pointers,
@@ -432,6 +420,32 @@ def _holds_viewfam(t: TpyType, analyzer) -> bool:
     return False
 
 
+def _receiver_ok(stmt: TpyAssign, slot: _ExprUse, lc: _LowerCtx,
+                 declared: dict[str, TpyType],
+                 pointers: AbstractSet[str], *,
+                 view_fence: bool = True) -> bool:
+    """Whether the write's receiver is one the store can land through: a
+    target-side fact, the same for every family, keyed on the slot in two
+    places only. A slot holding a str / bytes buffer excludes the receivers
+    the borrow tracker cannot key (a live view of the field would survive
+    the write) -- except for a `None` clear, whose dangle of an explicit
+    view is left for MIR to warn
+    (BUGS.md#explicit-view-local-source-mutation-unguarded); a record slot
+    also takes the user-Deref receiver."""
+    analyzer = lc.analyzer
+    slot_t = _slot_type(slot)
+    target = stmt.target
+    if (view_fence and slot_t is not None
+            and _holds_viewfam(slot_t, analyzer)):
+        return _viewfam_field_write_receiver_ok(target, declared, analyzer,
+                                                pointers)
+    return (_field_write_receiver_ok(target, declared, analyzer, pointers)
+            or (record_like(slot_t, analyzer)
+                and _user_deref_field_recv_ok(
+                    target, declared, lc.narrow.narrowed.keys(), analyzer,
+                    pointers)))
+
+
 @dataclass(frozen=True)
 class _StoragePlan:
     """A field write into a storage slot. The slot alone decides the plan;
@@ -452,26 +466,7 @@ def _classify_storage(stmt: TpyAssign, slot: _ExprUse, lc: _LowerCtx,
     if (slot.lifetime is SlotLifetime.OUTLIVES_STATEMENT
             and not view_slot_shape_ok(slot_t, stmt.value, analyzer)):
         return None
-    target = stmt.target
-    narrowed = lc.narrow.narrowed.keys()
-    # The receivers each slot shape admits are the target side's own facts:
-    # a view-family slot excludes the receivers the borrow tracker cannot
-    # key (a live view of the field would survive the write), a reference
-    # slot takes the unbound-self and user-Deref receivers, an Optional one
-    # the mutable-ref method receiver.
-    if record_like(slot_t, analyzer):
-        ok = (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
-              or _user_deref_field_recv_ok(target, declared, narrowed,
-                                           analyzer, pointers))
-    elif _holds_viewfam(slot_t, analyzer):
-        ok = _viewfam_field_write_receiver_ok(target, declared, analyzer,
-                                              pointers)
-    elif isinstance(slot_t, OptionalType):
-        ok = (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
-              or _method_recv_field_write_ok(target, declared, analyzer))
-    else:
-        ok = _field_receiver_ok(target, declared, analyzer)
-    if not ok:
+    if not _receiver_ok(stmt, slot, lc, declared, pointers):
         return None
     # A demoted ctor init of a field with no default constructor has no
     # default state to assign over; the diagnostic belongs to the ctor.
@@ -784,7 +779,7 @@ def _classify_any(stmt: TpyAssign, slot: _ExprUse,
     # deduce inside the `make_any` wrap, so it stays out.
     if isinstance(_peel_coerce(stmt.value), CONTAINER_LITERAL_NODES):
         return None
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
+    if not _receiver_ok(stmt, slot, lc, declared, pointers):
         return None
     return _AnyFieldPlan(ftype)
 
@@ -822,8 +817,8 @@ def _classify_residual(stmt: TpyAssign, slot: _ExprUse,
     if (_scalar_field_write_ok(stmt, declared, analyzer, pointers, ftype)
             or _btuple_elem_field_write_ok(stmt, declared, lc, ftype)):
         return _ResidualPlan(ftype, rows=True)
-    if ftype is None or not _field_receiver_ok(stmt.target, declared,
-                                               analyzer):
+    if ftype is None or not _receiver_ok(stmt, slot, lc, declared,
+                                         pointers):
         return None
     return _ResidualPlan(ftype, rows=False)
 

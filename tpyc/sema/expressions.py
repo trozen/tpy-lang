@@ -5858,10 +5858,16 @@ class ExpressionAnalyzer:
         # it reads directly; the loop's loan on the param alone would not see
         # a growth through that name. A name free in the body resolves there
         # to the same storage it does here.
-        source_loans = () if range_args else tuple(
-            (key, loan)
-            for key, loan in iterated_storage(self.ctx, gen.iterable).loans
+        source_storage = (None if range_args
+                          else iterated_storage(self.ctx, gen.iterable))
+        source_loans = () if source_storage is None else tuple(
+            (key, loan) for key, loan in source_storage.loans
             if key.root in free_names)
+        # The frame's own loop files the loan on its param; whether the
+        # source has a loan key at all is decided here, as a comprehension
+        # clause's is.
+        gen.iter_borrow_unplaceable = (source_storage is not None
+                                       and source_storage.unplaceable)
         assert self.ctx.analyze_genexpr_function is not None
         self.ctx.analyze_genexpr_function(
             func, source_loans,
@@ -6467,11 +6473,10 @@ class ExpressionAnalyzer:
         scope that name is the target."""
         iterable_type = self.ctx.get_expr_type(gen.iterable)
         assert iterable_type is not None
-        # `loan.unplaceable` needs no stamp here: a chain too deep for a loan
-        # key never lowers as a comprehension source.
         loan = register_iteration_loans(self.ctx, IterHolder(gen),
                                         gen.iterable, iterable_type,
                                         excluded_roots=excluded)
+        gen.iter_borrow_unplaceable = loan.unplaceable
         # Read before the targets are bound: a target may shadow the
         # source's root (`[n.bump() for n in n.kids]`).
         self.ctx.record_loop_sources(

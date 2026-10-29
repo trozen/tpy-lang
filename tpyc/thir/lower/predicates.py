@@ -7023,6 +7023,43 @@ def _chained_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
         return False
     return _lvalue_chain_root(e, declared, analyzer, pointers) is not None
 
+def _iterated_field_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
+                       pointers: 'AbstractSet[str]') -> bool:
+    """A field read that is iterated IN PLACE -- a loop, a comprehension, a
+    container constructor or a membership haystack: off a declared record
+    name, through a `Ptr` (`none_attr(p, "c").c` / `p->c`), or off a rooted
+    lvalue chain. The capture binds whatever storage the field's own arm
+    renders, so the receiver is the same question for every iterated
+    position. A loop -- a `for` or a comprehension / generator-expression
+    clause -- also asks whether sema found a loan key for the source
+    (`_iterated_source_refusal`). A constructor argument or a membership
+    haystack files no loan: it is drained in one call. User code can still
+    run meanwhile (an `__iter__` / `__next__`, a haystack element's
+    `__eq__`), but a field source is no worse there than a NAME source,
+    which files no loan either
+    (BUGS.md#mutating-callee-non-name-arg-unchecked). Narrower than the
+    field-WRITE ladder (`_field_write_receiver_ok`): a property-getter or
+    method-call receiver has no loan key for a loop to hold
+    (BUGS.md#property-iter-loan-misses-getter-storage)."""
+    return (_field_receiver_ok(e, declared, analyzer)
+            or _ptr_value_field_recv_ok(e, declared, analyzer)
+            or _chained_field_receiver_ok(e, declared, analyzer, pointers))
+
+def _iterated_source_refusal(e: TpyExpr, holder, declared: dict[str, TpyType],
+                             analyzer, pointers: 'AbstractSet[str]'
+                             ) -> 'str | None':
+    """Why a LOOP cannot iterate the field `e` in place, or None: no
+    iterated-field receiver reaches it (`foreach.field_parent`), or sema
+    found no loan key for it (`foreach.iter_borrow_unplaceable`, stamped on
+    the `holder` -- the `for` statement or the comprehension /
+    generator-expression clause), so a mutation of what is iterated would
+    go unseen."""
+    if not _iterated_field_ok(e, declared, analyzer, pointers):
+        return "foreach.field_parent"
+    if holder.iter_borrow_unplaceable:
+        return "foreach.iter_borrow_unplaceable"
+    return None
+
 def _tparam_protocol_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    bounds: 'dict | None') -> bool:
     """`item.value` off a protocol-BOUND type-param binding (`item: T` under
@@ -7288,15 +7325,17 @@ def _unbound_self_field_decl_type(e: TpyExpr, analyzer) -> 'TpyType | None':
                                    analyzer)
 
 def _container_field_bare_read(e: TpyExpr, declared: dict[str, TpyType],
-                               analyzer) -> bool:
+                               analyzer,
+                               pointers: 'AbstractSet[str]') -> bool:
     """A container FIELD read whose bare member render IS the whole
-    argument -- the `::tpy::seq_contains` haystack and the callable-field
-    call's `T&` arg slot. The caller witnesses its own face; DECLARED-type
-    keyed so a narrowed Optional-container read (which unwraps) stays
-    out."""
+    argument -- the `::tpy::seq_contains` haystack, a container
+    constructor's iterable and the callable-field call's `T&` arg slot --
+    off any receiver an iterated field takes (`_iterated_field_ok`). The
+    caller witnesses its own face; DECLARED-type keyed so a narrowed
+    Optional-container read (which unwraps) stays out."""
     return (isinstance(e, TpyFieldAccess)
             and _plain_container_read(_field_decl_type(e, declared, analyzer))
-            and _field_receiver_ok(e, declared, analyzer))
+            and _iterated_field_ok(e, declared, analyzer, pointers))
 
 def _method_member_cpp(fi, name: str) -> str:
     """The member-name rule for a resolved call: the variant's own name

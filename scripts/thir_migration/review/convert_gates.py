@@ -243,6 +243,7 @@ AUDIT_STOP = {
     "_field_write_receiver_ok": "target / receiver ladder",
     "_viewfam_field_write_receiver_ok": "target / receiver ladder",
     "_method_recv_field_write_ok": "target / receiver ladder",
+    "_iterated_field_ok": "target / receiver ladder",
     "_container_field_write_slot": "target (the declared slot of the field)",
     # literal construction
     "_storage_literal": "literal construction",

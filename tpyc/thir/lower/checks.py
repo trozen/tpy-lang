@@ -279,6 +279,7 @@ from .predicates import (
     _borrow_tuple_local_type,
     _tuple_opt_elem_subscript,
     _field_receiver_ok,
+    _iterated_field_ok,
     _field_receiver_or_unbound_self_ok,
     copy_call_arg,
     storage_tuple_name_source,
@@ -14692,7 +14693,7 @@ def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
 
 
 def _user_iterable_ctor_arg(a: TpyExpr, declared: dict[str, TpyType],
-                            analyzer) -> bool:
+                            analyzer, pointers: 'AbstractSet[str]') -> bool:
     """A user iterable LVALUE -- a name, `self` or a field read off an
     admitted receiver -- at a container constructor's `Iterable[T]` slot
     (`list(bag)`): a record in the `__iter__`/`__next__` family with no
@@ -14707,7 +14708,7 @@ def _user_iterable_ctor_arg(a: TpyExpr, declared: dict[str, TpyType],
         else:
             return False
     elif isinstance(a, TpyFieldAccess):
-        if not _field_receiver_ok(a, declared, analyzer):
+        if not _iterated_field_ok(a, declared, analyzer, pointers):
             return False
         t = _field_decl_type(a, declared, analyzer)
     else:

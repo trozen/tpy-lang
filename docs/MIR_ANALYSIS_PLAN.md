@@ -3704,9 +3704,9 @@ and setter and `getter_through_field`; `mir/method_calls`
   - An `Own[R]` parameter forwarded to another owning parameter (`return
     consume(p)` with `p: Own[Point]`), "unsupported record argument"
     (probed).
-  - Two-level member writes and member borrows into a local (`f.line.a =
-    v`, `held = f.line.a`) are THIR rejects (`assign.field_write_shape`,
-    `decl.slot_type`; probed); MIR reaches two levels through a call
+  - Two-level member borrows into a local (`held = f.line.a`) are THIR
+    rejects (`decl.slot_type`; probed); two-level member writes (`f.line.a
+    = v`) lower since 2026-10-29. MIR reaches two levels through a call
     (`held = f.line.first()`) and pins the two-level reach with
     `affects()` rows.
   - Full-expression temporaries of a record with a record member:

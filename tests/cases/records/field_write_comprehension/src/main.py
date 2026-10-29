@@ -6,8 +6,8 @@
 # slot's own container in place and assigns bare (`this->data = ({ ... });`),
 # the render the member-init prefix already had. Every stored container is
 # grown afterwards through the slot so a silent copy would show. A nested
-# field target (`p.inner.data = ...`) is its own gap, for every container
-# source (error_field_write_comprehension_nested_target). The with, try,
+# field target (`p.inner.data = ...`) takes the same render
+# (records/field_through_ptr_receiver). The with, try,
 # match, async and @error_return positions are not sectioned: the write sinks
 # are position-independent, and the generator, closure and module-level
 # sections cover the positions with a different variable model.

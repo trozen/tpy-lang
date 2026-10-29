@@ -1,0 +1,1 @@
+main.py:62: warning: Method 'ItemBag.__iter__' hides 'Bag.__iter__' -- any 'Bag' reference will call 'Bag.__iter__', not 'ItemBag.__iter__' (differs from Python's dynamic dispatch)

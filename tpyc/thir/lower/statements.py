@@ -251,7 +251,7 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _narrowed_opt_container_field, _bound_call_of, _dunder_render,
     _method_member_cpp,
     _subscript_call, _field_markers_clean, _field_receiver_ok,
-    _chained_field_receiver_ok, _lvalue_chain_root, _typed_dict_recv_ok,
+    _iterated_source_refusal, _lvalue_chain_root, _typed_dict_recv_ok,
     _for_each_elem_binding_ok, _foreach_storage_opt_elem,
     _foreach_value_opt_elem, _is_borrow_ptr_local, _is_string_owned,
     _is_type_param_slot, _own_type_param_slot, _narrow_fact_member,
@@ -262,7 +262,7 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _callable_value, _optional_narrow_facts_ok, _opt_pointee_wide,
     _optional_ptr_borrow, _own_storage_opt_param,
     _nullable_static_protocol_param, _ptr_opt_borrow_call_ret,
-    _ptr_value_field_recv_ok, _storage_optional_return_wide,
+    _storage_optional_return_wide,
     _optional_ptr_borrow_name, _optional_ptr_borrow_wide,
     _optional_ptr_borrow_wide_name, _wrapper_union_like,
     _wrapper_ref_tuple_return, _storage_optional_return_type, _unwrap_own,
@@ -1269,30 +1269,14 @@ def _for_each_container_route(
             return None
         it_type = unwrap_readonly(unwrap_send_sync(it_type))
     elif isinstance(it, TpyFieldAccess):
-        if not (_field_receiver_ok(it, declared, analyzer)
-                # A container member reached THROUGH a Ptr binding
-                # (`for seg in subsector.segs:` on `subsector:
-                # Ptr[SubSector]`): the field's own pointer arm renders the
-                # `none_attr(subsector, "segs").segs` hop, and the lvalue capture
-                # binds to it exactly as to a plain member read.
-                or _ptr_value_field_recv_ok(it, declared, analyzer)
-                # ... or a rooted lvalue CHAIN receiver (`self.inner.xs`,
-                # `rows[0].cells`, `table[k].cells`): each hop lowers
-                # through its own arm and stays an lvalue, so the capture
-                # binds live storage exactly as a one-hop member read does.
-                or _chained_field_receiver_ok(it, declared, analyzer,
-                                              pointers)):
-            # A module-attr GLOBAL iterable is a user record in every
-            # witnessed shape, so it rides the user-iterator route's own
-            # module-var leg -- no admission here (a native-container
-            # module var has no witness; this route would need one).
-            note_detail("foreach.field_parent")
-            return None
-        if stmt.iter_borrow_unplaceable:
-            # Same rule as the element arm: a chain deeper than a loan key can
-            # be spelled (`self.inner.xs`, `table[k].cells`) leaves every
-            # mutation of what is iterated invisible to the invalidation check.
-            note_detail("foreach.iter_borrow_unplaceable")
+        # A module-attr GLOBAL iterable is a user record in every witnessed
+        # shape, so it rides the user-iterator route's own module-var leg --
+        # no admission here (a native-container module var has no witness;
+        # this route would need one).
+        refusal = _iterated_source_refusal(it, stmt, declared, analyzer,
+                                           pointers)
+        if refusal is not None:
+            note_detail(refusal)
             return None
         it_type = _resolved_viewfam_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
@@ -1535,6 +1519,7 @@ def _unpack_head_iterable_ok(stmt: TpyForEach) -> bool:
 def _for_iter_proto_route(
         stmt: TpyForEach, analyzer,
         declared: dict[str, TpyType],
+        pointers: 'AbstractSet[str]',
         iterator_objects: 'AbstractSet[str]' = frozenset(),
         *, protocol_param_ok: bool = False,
         tparam_bounds: 'dict | None' = None,
@@ -1606,10 +1591,13 @@ def _for_iter_proto_route(
         # user-iterator name; the field read lowers through the field arm.
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             analyzer.get_expr_type(it))))
-        if not (_field_receiver_ok(it, declared, analyzer)
-                # A module-attr GLOBAL iterable (`for k in os.environ:`):
-                # the same lvalue capture over the `(*slot)` deref.
-                or _module_var_recv(it, declared, analyzer)):
+        # A module-attr GLOBAL iterable (`for k in os.environ:`): the same
+        # lvalue capture over the `(*slot)` deref.
+        refusal = (None if _module_var_recv(it, declared, analyzer)
+                   else _iterated_source_refusal(it, stmt, declared,
+                                                 analyzer, pointers))
+        if refusal is not None:
+            note_detail(refusal)
             return None
         if isinstance(u, TypeParamRef):
             # An open-T FIELD (`for x in self.items:` on `Summer[T:
@@ -1940,7 +1928,7 @@ def _select_for_each_route(
                                               tparam_bounds=tparam_bounds)
         if route is None:
             route = _for_iter_proto_route(stmt, analyzer, declared,
-                                          iterator_objects,
+                                          pointers, iterator_objects,
                                           protocol_param_ok=protocol_param_ok,
                                           tparam_bounds=tparam_bounds,
                                           shadowable_globals=(

@@ -4527,7 +4527,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
               # same `.contains` member as a name receiver.
               or (isinstance(e.right, TpyFieldAccess)
                   and _container_field_bare_read(e.right, declared,
-                                                 analyzer)
+                                                 analyzer,
+                                                 lc.names_with("pointer"))
                   and _witness("binop.contains_field_recv"))):
             if isinstance(e.right, TpyName) and e.right.name not in declared:
                 reject()
@@ -4678,7 +4679,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # than admitted at RECEIVER in the ladder, which would also re-route
         # method receivers this arm says nothing about.
         recv_prechecked = (
-            _container_field_bare_read(e.right, declared, analyzer)
+            _container_field_bare_read(e.right, declared, analyzer,
+                                       lc.names_with("pointer"))
             and _witness("binop.membership_container_field"))
         needle_t = analyzer.get_expr_type(e.left)
         needle_tu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -4771,8 +4773,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # result gate (the ranges arm does the same) so it renders as the
         # bare member read.
         recv_prechecked = (isinstance(e.right, TpyFieldAccess)
-                           and _container_field_bare_read(e.right, declared,
-                                                          analyzer))
+                           and _container_field_bare_read(
+                               e.right, declared, analyzer,
+                               lc.names_with("pointer")))
         # The NEEDLE of a native container's lookup is compared inside the
         # test, the haystack's own transient position one operand over; a
         # str-family FIELD needle renders the bare member read. A bytes
@@ -10270,7 +10273,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                         retention=arg_retention(
                                             inst_fi, _inst_i, e, analyzer,
                                             arg)))
-                elif _user_iterable_ctor_arg(arg, declared, analyzer):
+                elif _user_iterable_ctor_arg(arg, declared, analyzer,
+                                             lc.names_with("pointer")):
                     # A user iterable lvalue (`list(bag)` ->
                     # `::tpy::construct<std::vector<T>>(bag)`): the template
                     # drains the iterator its `__iter__()` returns.
@@ -10280,7 +10284,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         arg, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                      forms=_ONLY_INDIRECT_READ)))
-                elif _container_field_bare_read(arg, declared, analyzer):
+                elif _container_field_bare_read(arg, declared, analyzer,
+                                                lc.names_with("pointer")):
                     # A container FIELD read (`list(item.dirnames)`): the
                     # member render binds the construct template bare. No
                     # move leg -- last-use movability is keyed on a NAME,
@@ -11064,7 +11069,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             assert cf_info is not None
             cf_args = []
             for i, arg in enumerate(e.args):
-                if _container_field_bare_read(arg, declared, analyzer):
+                if _container_field_bare_read(arg, declared, analyzer,
+                                              lc.names_with("pointer")):
                     _witness("cfield.container_arg")
                 cf_args.append(_lower_free_call_arg(
                     e, arg, cf_info.params[i].type, ("local", ""), lc, declared,

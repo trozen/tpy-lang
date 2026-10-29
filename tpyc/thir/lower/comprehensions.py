@@ -72,7 +72,7 @@ from .predicates import (
     _callable_value,
     record_like,
     _field_decl_type,
-    _field_receiver_ok,
+    _iterated_source_refusal,
     _for_each_elem_binding_ok,
     _foreach_storage_opt_elem,
     _is_range_call,
@@ -200,6 +200,10 @@ def _comp_sized_iterable(t: TpyType) -> bool:
             or is_dict_view(t))
 
 
+def _pointers(lc: '_LowerCtx | None') -> AbstractSet[str]:
+    return lc.names_with("pointer") if lc is not None else frozenset()
+
+
 def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
                           lc: '_LowerCtx | None') -> '_SourceRoute | None':
     """The `__iter__`/`__next__` family as a comprehension source
@@ -223,7 +227,8 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
             return None
         lvalue = True
     elif isinstance(it, TpyFieldAccess):
-        if not _field_receiver_ok(it, declared, analyzer):
+        if _iterated_source_refusal(it, gen, declared, analyzer,
+                                    _pointers(lc)) is not None:
             return None
         t = _field_decl_type(it, declared, analyzer)
         lvalue = True
@@ -394,7 +399,8 @@ def _source_route(gen, declared: dict[str, TpyType],
             # type (codegen's get_resolved_type source), so a narrowed
             # Optional/union field (which would need a `(*...)` unwrap) is not
             # iterable at that type and rejects below.
-            if not _field_receiver_ok(it, declared, analyzer):
+            if _iterated_source_refusal(it, gen, declared, analyzer,
+                                        _pointers(lc)) is not None:
                 return None
             ft = _field_decl_type(it, declared, analyzer)
             if ft is None:

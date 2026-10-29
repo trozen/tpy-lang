@@ -1,0 +1,4 @@
+ptr local 5
+ptr field 6
+nested 5
+for 7

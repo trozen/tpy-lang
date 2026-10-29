@@ -856,6 +856,9 @@ class TpyComprehensionGenerator:
     # iteration hands over (`step_handover_paths`), as `TpyForEach` stamps
     # them; a sink moves a bare last-use target that owns its element.
     step_handover: frozenset[tuple[int, ...]] = frozenset()
+    # Set by sema at the ITER registration, as `TpyForEach` stamps it: the
+    # source names storage no loan key can spell.
+    iter_borrow_unplaceable: bool = False
     # Set by sema on an unpack clause: its head, the per-target unpack of
     # the clause variable (the step), stamped as a for head's is.
     head: 'TpyTupleUnpack | None' = None

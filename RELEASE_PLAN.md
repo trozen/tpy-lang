@@ -40,7 +40,7 @@ release commit (annotated; the build hook bakes `git describe`), then
   reference elements -- TODO: "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
   landed, the owned outer clause and its `for`-statement twin included
-- `collections.defaultdict` -- TODO: "collections: the rest of the
+- `collections.defaultdict` (postponed 2026-10-29 behind the `[thir] RULE` mechanisms) -- TODO: "collections: the rest of the
   module"
 - Per-instantiation result form for a generic body, then builtin
   keyword arguments (landed), then iterator provenance, in that order
