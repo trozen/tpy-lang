@@ -28,8 +28,8 @@ main::own_store_local@273:0: covered (storage: no_proof_required), conflicts: st
 main::own_store_param@283:0: covered (storage: no_proof_required), summary: known
 main::consume_built@289:0: covered (storage: no_proof_required), summary: known
 main::consume_named@295:0: covered (storage: no_proof_required), summary: known
-main::change@303:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::private_own_alias@313:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::change@303:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::private_own_alias@313:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::store_replace@323:0: covered (storage: no_proof_required), summary: known
 main::own_write_transfer@330:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::wrap_copy@346:0: covered (storage: no_proof_required), summary: known

@@ -21,3 +21,7 @@ after_raise raised
 record_alias 1
 record_objects 1 1 1
 match_arm a
+drop_and_read True 2
+replace_and_read True r
+replace_then_read_global True r
+summary_inverse 1 4 2

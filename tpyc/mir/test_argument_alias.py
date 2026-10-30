@@ -276,7 +276,7 @@ def _conflict(written: MIRReferent, retained: MIRReferent) -> MIRRetentionConfli
 def test_only_two_parameters_external_storage_is_an_obligation() -> None:
     parameters = {P0: 0, P1: 1}
 
-    def obligation(written: MIRReferent, retained: MIRReferent) -> MIRAliasObligation | None:
+    def obligation(written: MIRReferent, retained: MIRReferent) -> MIRAliasObligation | str | None:
         return alias_obligation(_conflict(written, retained), parameters, {}, no_layouts())
 
     grown = MIRReferent(MIRPlace(P0, (MIRContainerStructure(),)), external=True)
@@ -286,9 +286,16 @@ def test_only_two_parameters_external_storage_is_an_obligation() -> None:
     # One parameter's own storage: the body conflicts whatever the caller passes.
     own = MIRReferent(MIRPlace(P0, (MIRContainerElements(),)), external=True)
     assert obligation(grown, own) is None
-    # A stored loan's storage has no known place; a global is no parameter.
-    assert obligation(grown, MIRReferent(MIRPlace(P1), external=True, held=True)) is None
-    assert obligation(grown, MIRReferent(MIRPlace(G), external=True)) is None
+    # The caller's arguments can create these, but no obligation states them:
+    # a stored loan's storage has no known place, a global is no parameter.
+    held = MIRReferent(MIRPlace(P1), external=True, held=True)
+    assert obligation(grown, held) == "a stored loan the caller chooses"
+    assert obligation(held, lent) == "a stored loan the caller chooses"
+    # A stored loan within one parameter is still the caller's choice.
+    assert obligation(MIRReferent(MIRPlace(P1, (MIRContainerStructure(),)), external=True),
+                      held) == "a stored loan the caller chooses"
+    assert obligation(grown, MIRReferent(MIRPlace(G), external=True)) == "a global against the caller's arguments"
+    assert obligation(MIRReferent(MIRPlace(G), external=True), lent) == "a global against the caller's arguments"
     # The body's own storage.
     assert obligation(MIRReferent(MIRPlace(P0, (MIRContainerStructure(),))),
                       MIRReferent(MIRPlace(P0, (MIRContainerElements(),)))) is None

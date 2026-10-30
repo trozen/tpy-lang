@@ -374,8 +374,8 @@ int32_t consume_named(int32_t k) {
 
 // # free function: a replacement through a lent parameter may reach what the Own parameter's object views
 // # (BUGS.md#record-view-member-source-replaced)
-// # the Own parameter is only read or written in place, never handed on: the warning is right
-// def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(known) warning(/never consumed/)
+// # the Own parameter is only read or written in place: the warning is right; its view is the caller's choice (opaque summary)
+// def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(opaque /summary retention/) warning(/never consumed/)
 //     if flag:
 //         a.buf = mk(5)
 //     return len(b.s)
@@ -387,10 +387,10 @@ int32_t change(R& a, R&& b, bool flag) {
 }
 
 // # free function: one named record lent and handed over stays refused, which keeps an Own
-// # parameter's object private to the callee: the handed-over argument is the temporary sema's
-// # copy builds, which no owned argument form admits (the owned-argument reason still reads
-// # "constructor argument type")
-// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^constructor argument type$/)
+// # parameter's object private to the callee: the call refuses first at the callee's opaque
+// # summary; behind it, the handed-over argument is the temporary sema's copy builds, which no
+// # owned argument form admits
+// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 //     r = R(mk(k), "static")
 //     v: StrView = r.buf
 //     r.s = v

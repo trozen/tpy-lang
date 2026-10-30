@@ -2687,6 +2687,48 @@ alongside related feature work; only the big-rock deferrals live here.
     - The caller's half: a generator handle's summary (the parameters whose
       loans the handle holds), so a caller mutating a lent argument between
       steps is judged by MIR rather than by sema's coarse retention.
+      **Deferred (user 2026-10-30) until decomposed loops lower in generator
+      bodies** (the first gap above): the 42 generator bodies that lower hold
+      no loan across a suspension, so the half would catch no filed bug
+      (`BUGS.md#frame-iter-loan-blind-to-caller`'s generator is refused
+      `loop across a suspension`). Order: loops in generator bodies, then
+      this. Two design rounds settled what it must meet:
+      - Source: the generator's covered body, through the one summary
+        derivation (a frame gets a summary identity; the suspension set is
+        read at the `MIRSuspend` arm of `summaries`, from `MIRLiveness`).
+        Never THIR's frame record alone: it misses pointer frame locals
+        (`b = o.boxes[0]; yield b.n; yield b.n`), writes through POINTER /
+        tuple captures and the receiver, and would need a second place
+        lowering for loop iterables.
+      - Loans: a cursor is open only from the pull that starts its loop, so
+        a handle holds its captures at creation and what the body keeps at
+        the suspension it stopped at after a pull -- per suspension, never
+        the union (a union warns on valid code when a value is dead at a
+        later yield, and hides a real hazard when a second loan fails the
+        witness's every-referent test). Each loan is checked on its own.
+        Both sets resolve at the creation call (a pull has no arguments; an
+        aliased or conditional handle has no single creation call), and a
+        captured whole container stays a whole-object loan (not projected
+        to its elements as `resolve_call_returns` does).
+      - Pull: one form (a call on the handle, effects through
+        `statement_call`), applying what the body does up to the next
+        suspension -- its writes, stored-loan transfers and obligations --
+        never the whole body's writes at every pull; a loan read only
+        conditionally after the suspension is not a definite use.
+      - Handle: classified by its `Iterator` protocol type, not by callee;
+        `h = g` aliases one handle whose loan state every pull updates.
+        Reference yields (`yield b` of a record from a borrowed source,
+        `val_or_ref`) stay refused; element replacement under a live frame
+        is `BUGS.md#setitem-write-under-live-element-borrow`'s face.
+      - THIR: a sync generator call (free and method) publishes its callee
+        when the lift is keyed on `is_generator` at `_bound_by_body`,
+        `_closed_signature` (an `Iterator[T]` result reads as a template)
+        and `method_receiver`, measured C++-neutral over 344 cases; its
+        published passing of a by-value parameter reads CONST_REF, so MIR
+        binds generator parameters from the frame's binding facts.
+      Later slices: builtin iterators, genexprs, user `__iter__`,
+      `Iterator[T]` parameters (`BUGS.md#handle-and-source-passed-to-mutating-callee`),
+      stub consumers, `next(g)`, `with`, async.
   - **Per-resume-block temporary plans and storage facts for frames.** MIR's
     lowering of frames needs two derivations the frame move did not add: a
     temporary-plan scope per resume block (a block's temporaries die at its
@@ -2810,7 +2852,14 @@ alongside related feature work; only the big-rock deferrals live here.
     reaches every element holder (element identity), so such an overlap at
     a call stays a `replacement` conflict of the caller, not a warning;
     (c) a stored loan (`held`) or a global retained across a callee's
-    write stays a body conflict, never an obligation; (d) the body keeps
+    write is no obligation: since 2026-10-30 it makes the callee's summary
+    opaque ("summary retention: ..."), so its callers are uncovered rather
+    than falsely covered. Publishing these endpoints as obligations -- the
+    caller checks what its own argument's view member holds, or that it
+    does not pass the global's storage -- would let callers of these
+    callees be covered (5 corpus callee summaries are opaque this way, e.g.
+    `tests/cases/mir/view_fields` late_read, alias_late, pick_late; the
+    callees themselves stay covered); (d) the body keeps
     each published obligation as an `alias_obligation` conflict (relief is
     its own item above), and the storage certificate reports the external
     replacement behind it as a gap;

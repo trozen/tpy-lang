@@ -91,9 +91,9 @@ int32_t own_store_param(Tok&& t, std::string_view s);
 int32_t consume_built(int32_t k);
 // def consume_named(k: int32) -> int32:  # tpyc: mir(covered)
 int32_t consume_named(int32_t k);
-// def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(known) warning(/never consumed/)
+// def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(opaque /summary retention/) warning(/never consumed/)
 int32_t change(R& a, R&& b, bool flag);
-// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^constructor argument type$/)
+// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 int32_t private_own_alias(int32_t k);
 // def store_replace(t: Tok, s: str, b: Own[Buf], flag: bool) -> None:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 void store_replace(Tok& t, std::string_view s, Buf&& b, bool flag);

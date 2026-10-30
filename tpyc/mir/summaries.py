@@ -10,7 +10,7 @@ from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
     MIRLoanTransfer, MIRParameterWrite, MIRPathWalks, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, body_result, bound_params, call_result, obligation_problem, parameter_binding,
+    MIRSummaryState, body_result, bound_params, call_result, parameter_binding,
     return_origin_problem, summary_problem, write_problem, summary_path,
 )
 from .call_effects import resolve_call_writes
@@ -613,7 +613,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                              frozenset(returns), transfers, not body.exceptional_exits,
                              frozenset(global_reads))
     assert isinstance(prepared, MIRPrepared)
-    obligations = _obligations(prepared, definitions, summary)
+    obligations = _obligations(prepared)
     if isinstance(obligations, str):
         return MIRSummaryResult.opaque(obligations)
     summary = replace(summary, obligations=obligations)
@@ -633,14 +633,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
     return MIRSummaryResult(MIRSummaryState.KNOWN, summary=summary)
 
 
-def _obligations(prepared: MIRPrepared, definitions: MIRDefinitions,
-                 summary: MIRCallSummary) -> frozenset[MIRAliasObligation] | str:
+def _obligations(prepared: MIRPrepared) -> frozenset[MIRAliasObligation] | str:
     """The no-alias obligations the body's retention conflicts between two
-    parameters are (`alias_obligation`), each published when the summary
-    can state it (`obligation_problem`, its fields members of the layouts
-    on the way); one it cannot state stays a conflict of the body. A body
-    whose conflicts are unknown has no summary: a caller could not tell
-    which arguments it must keep apart."""
+    parameters are (`alias_obligation`). A body with a conflict its
+    caller's arguments can create but no obligation states has no summary,
+    nor does one whose conflicts are unknown: a caller could not tell which
+    arguments it must keep apart. One the summary cannot state is refused
+    with the rest of it (`summary_problem`)."""
     body = prepared.function
     retention = analyze_retention(prepared)
     if isinstance(retention, MIRNotCovered):
@@ -650,8 +649,9 @@ def _obligations(prepared: MIRPrepared, definitions: MIRDefinitions,
     found: set[MIRAliasObligation] = set()
     for conflict in retention.conflicts:
         obligation = alias_obligation(conflict, parameters, slots, body.record_layouts)
-        if obligation is None or obligation_problem(obligation, summary, definitions.layouts) is not None:
-            continue
-        found.add(obligation)
+        if isinstance(obligation, str):
+            return f"summary retention: {obligation}"
+        if obligation is not None:
+            found.add(obligation)
     return frozenset(found)
 

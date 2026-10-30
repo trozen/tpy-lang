@@ -18,7 +18,12 @@ struct Named;
 struct NamedLine;
 struct Points;
 struct Frame;
+struct Hv;
+struct Rb;
+struct Rs;
+struct Box;
 
+extern std::string GS;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def mk(c: str) -> str:
@@ -96,6 +101,24 @@ int32_t other_element(std::vector<P>& ps, int32_t i, int32_t j);
 int32_t through_param(const Tok& t, std::vector<std::string>& xs);
 // def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t dict_insert(::tpy::ordered_map<int32_t, int32_t>& d);
+// def drop_and_read(xs: list[P], h: Hv) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+bool drop_and_read(std::vector<P>& xs, const Hv& h);
+// def drop_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+void drop_and_read_call();
+// def replace_and_read(r: Rb) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+bool replace_and_read(Rb& r);
+// def replace_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+void replace_and_read_call();
+// def replace_then_read_global(r: Rs) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+bool replace_then_read_global(Rs& r);
+// def replace_then_read_global_call() -> None:  # tpyc: mir(uncovered /known summary/)
+void replace_then_read_global_call();
+// def one_object(h: Box, flag: bool) -> int32:  # tpyc: mir_summary(known)
+int32_t one_object(Box& h, bool flag);
+// def grow_keep(xs: list[P], p: P) -> int32:  # tpyc: mir_summary(known) mir(conflict /alias_obligation/)
+int32_t grow_keep(std::vector<P>& xs, const P& p);
+// def summary_inverse_call() -> None:
+void summary_inverse_call();
 // def main() -> None:
 void main();
 
@@ -299,6 +322,71 @@ inline std::ostream& operator<<(std::ostream& os, const Frame& obj) {
     return os;
 }
 
+// class Hv:
+struct Hv {
+    // v: StrView
+    std::string_view v;
+
+    // def __init__(self, v: StrView) -> None:
+    Hv() = default;
+    explicit Hv(std::string_view v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hv";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hv& obj) {
+    ::tpy::print_object_default(os, "Hv", obj);
+    return os;
+}
+
+// class Rb:
+struct Rb {
+    // buf: str
+    std::string buf;
+    // s: StrView
+    std::string_view s;
+
+    // def __init__(self, buf: str, s: StrView) -> None:
+    Rb() = default;
+    explicit Rb(std::string_view buf, std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rb";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rb& obj) {
+    ::tpy::print_object_default(os, "Rb", obj);
+    return os;
+}
+
+// class Rs:
+struct Rs {
+    // s: str
+    std::string s;
+
+    // def __init__(self, s: str) -> None:
+    Rs() = default;
+    explicit Rs(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rs";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rs& obj) {
+    ::tpy::print_object_default(os, "Rs", obj);
+    return os;
+}
+
+// class Box:
+struct Box {
+    // items: list[P]
+    std::vector<P> items;
+
+    // def __init__(self) -> None:
+    Box();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+    ::tpy::print_object_default(os, "Box", obj);
+    return os;
+}
+
 
 // def __init__(self, s: StrView, n: int32) -> None:
 //     self.s = s
@@ -456,5 +544,24 @@ inline Points::Points()
 // def __init__(self) -> None:
 //     self.pts = Points()
 inline Frame::Frame() : pts(Points()) {}
+
+// def __init__(self, v: StrView) -> None:
+//     self.v = v
+inline Hv::Hv(std::string_view v) : v(v) {}
+
+// def __init__(self, buf: str, s: StrView) -> None:
+//     self.buf = buf
+//     self.s = s
+inline Rb::Rb(std::string_view buf, std::string_view s)
+    : buf(buf),
+      s(s) {}
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline Rs::Rs(std::string_view s) : s(s) {}
+
+// def __init__(self) -> None:
+//     self.items = [P(1)]
+inline Box::Box() : items(std::vector<P>{P(1)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

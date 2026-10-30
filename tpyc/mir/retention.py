@@ -165,27 +165,33 @@ def parameter_indices(fn: MIRFunction) -> dict[MIRSlotId, int]:
 
 
 def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlotId, int],
-                     slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRAliasObligation | None:
-    """The one classification of a retention conflict as a no-alias
-    obligation: one whose written and retained referents are both the
-    caller's storage, in two objects the parameters lend (two parameters,
-    or two members of one tuple parameter), exists only when the caller
-    passes arguments that overlap, so each call decides it. A conflict
-    inside one lent object, a stored loan (`held`, whose storage has no
-    known place), a global or the body's own storage stays a replacement.
+                     slots: Mapping[MIRSlotId, MIRSlot],
+                     records: MIRRecords) -> MIRAliasObligation | str | None:
+    """The one classification of a retention conflict against the caller:
+    one whose written and retained referents both lie in objects the
+    parameters lend, in two of them (two parameters, or two members of one
+    tuple parameter), exists only when the caller passes arguments that
+    overlap, so each call decides it -- a no-alias obligation. None for a
+    conflict the body has whatever the caller passes: on the body's own
+    storage, or inside one lent object. A reason for one the caller's
+    arguments can create but no obligation can state -- a stored loan
+    (`held`, whose storage the caller chooses) or a global on either side:
+    a KNOWN summary that dropped it would let the caller look covered.
     A published obligation is still a conflict of the body, of its own
     kind (`classify_retention`): only callers MIR analyzes check it."""
     written, retained = conflict.affected, conflict.retained
-    if not (written.external and retained.external) or written.held or retained.held:
-        return None
-    if written.static or retained.static:
+    if written.held or retained.held:
+        return "a stored loan the caller chooses"
+    # `reaches` never pairs the body's storage with the caller's, nor static
+    # storage: a conflict off the caller's storage is the body's own.
+    if not (written.external and retained.external):
         return None
     j, i = parameters.get(written.place.root), parameters.get(retained.place.root)
     if i is None or j is None:
-        return None
+        return "a global against the caller's arguments"
     write_object, retained_object = parameter_object(written.place, slots), parameter_object(retained.place, slots)
     if write_object is None or retained_object is None:
-        return None
+        return "a parameter object the body does not describe"
     if i == j and not (write_object and retained_object and distinct_lent_objects(
             slots[written.place.root].shape, write_object, retained_object)):
         return None

@@ -3,6 +3,7 @@
 
 namespace tpyapp::main {
 
+std::string GS;
 
 // def mk(c: str) -> str:
 //     return c * 40
@@ -513,6 +514,108 @@ int32_t dict_insert(::tpy::ordered_map<int32_t, int32_t>& d) {
     return n;
 }
 
+// # summary, two parameters: a stored view the caller chooses may view what the body grows, so no
+// # known summary can drop the conflict
+// def drop_and_read(xs: list[P], h: Hv) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+//     xs.append(P(2))
+//     return h.v == "keep"
+bool drop_and_read(std::vector<P>& xs, const Hv& h) {
+    xs.push_back(P(2));
+    return (h.v == "keep");
+}
+
+// # uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+// def drop_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+//     xs = [P(1)]
+//     h = Hv("keep")
+//     r = drop_and_read(xs, h)
+//     print("drop_and_read", r, len(xs))
+void drop_and_read_call() {
+    std::vector<P> xs = {P(1)};
+    Hv h = Hv("keep");
+    bool r = ::tpyapp::main::drop_and_read(xs, h);
+    std::cout << "drop_and_read" << " " << ::tpy::print_bool(r) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+}
+
+// # summary, one parameter: its stored view may view the buffer the body replaces in the same object
+// def replace_and_read(r: Rb) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+//     r.buf = mk("r")
+//     return r.s == "keep"
+bool replace_and_read(Rb& r) {
+    r.buf = ::tpyapp::main::mk("r");
+    return (r.s == "keep");
+}
+
+// # uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+// def replace_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+//     rb = Rb("a", "keep")
+//     r = replace_and_read(rb)
+//     print("replace_and_read", r, rb.buf[0])
+void replace_and_read_call() {
+    Rb rb = Rb("a", "keep");
+    bool r = ::tpyapp::main::replace_and_read(rb);
+    std::cout << "replace_and_read" << " " << ::tpy::print_bool(r) << " " << ::tpy::__getitem__(rb.buf, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # summary, a global against a parameter: the caller may pass the global's storage
+// def replace_then_read_global(r: Rs) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+//     r.s = mk("r")
+//     return GS == "keep"
+bool replace_then_read_global(Rs& r) {
+    r.s = ::tpyapp::main::mk("r");
+    return (GS == "keep");
+}
+
+// # uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+// def replace_then_read_global_call() -> None:  # tpyc: mir(uncovered /known summary/)
+//     rs = Rs("a")
+//     r = replace_then_read_global(rs)
+//     print("replace_then_read_global", r, rs.s[0])
+void replace_then_read_global_call() {
+    Rs rs = Rs("a");
+    bool r = ::tpyapp::main::replace_then_read_global(rs);
+    std::cout << "replace_then_read_global" << " " << ::tpy::print_bool(r) << " " << ::tpy::__getitem__(rs.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # summary, inverse: a conflict inside one lent object is the body's own, whatever the caller passes
+// def one_object(h: Box, flag: bool) -> int32:  # tpyc: mir_summary(known)
+//     p = h.items[0]
+//     if flag:
+//         h.items.append(P(3))  # tpyc: warning(/'append' may invalidate references/) warning(/may move the elements of 'h.items'/)
+//     return p.x
+int32_t one_object(Box& h, bool flag) {
+    P& p = ::tpy::__getitem__(h.items, 0);
+    if (flag) {
+        h.items.push_back(P(3));
+    }
+    return p.x;
+}
+
+// # summary, inverse: a conflict between two parameters stays a published no-alias obligation
+// def grow_keep(xs: list[P], p: P) -> int32:  # tpyc: mir_summary(known) mir(conflict /alias_obligation/)
+//     xs.append(P(3))
+//     return p.x
+int32_t grow_keep(std::vector<P>& xs, const P& p) {
+    xs.push_back(P(3));
+    return p.x;
+}
+
+// def summary_inverse_call() -> None:
+//     h = Box()
+//     n = one_object(h, False)
+//     xs = [P(1)]
+//     p = P(4)
+//     m = grow_keep(xs, p)
+//     print("summary_inverse", n, m, len(xs))
+void summary_inverse_call() {
+    Box h = Box();
+    int32_t n = ::tpyapp::main::one_object(h, false);
+    std::vector<P> xs = {P(1)};
+    P p = P(4);
+    int32_t m = ::tpyapp::main::grow_keep(xs, p);
+    std::cout << "summary_inverse" << " " << n << " " << m << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     local_buf(False)
 //     local_buf_named(True)
@@ -548,6 +651,10 @@ int32_t dict_insert(::tpy::ordered_map<int32_t, int32_t>& d) {
 //     fr = Frame()
 //     print("record_objects", record_list_object(fr, False), record_field(fr, False), lent_list_object(fr, False))
 //     match_arm(1, False)
+//     drop_and_read_call()
+//     replace_and_read_call()
+//     replace_then_read_global_call()
+//     summary_inverse_call()
 void main() {
     ::tpyapp::main::local_buf(false);
     ::tpyapp::main::local_buf_named(true);
@@ -601,14 +708,21 @@ void main() {
     Frame fr = Frame();
     std::cout << "record_objects" << " " << ::tpyapp::main::record_list_object(fr, false) << " " << ::tpyapp::main::record_field(fr, false) << " " << ::tpyapp::main::lent_list_object(fr, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_arm(1, false);
+    ::tpyapp::main::drop_and_read_call();
+    ::tpyapp::main::replace_and_read_call();
+    ::tpyapp::main::replace_then_read_global_call();
+    ::tpyapp::main::summary_inverse_call();
 }
 
+// GS: str = "keep"
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    GS = "keep";
     ::tpyapp::main::main();
 }
 

@@ -22,9 +22,11 @@ from . import value as value_module
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .testutil import lower_function
-from .nodes import MIRBodyId, MIRFunction, MIRPlace, MIRSlotKind, MIRStorageDuration
+from .nodes import MIRBlockId, MIRBodyId, MIRFunction, MIRPlace, MIRSlotKind, MIRStorageDuration
 from .shapes import MIRTupleIndex, MIRUnionPayload, distinct_lent_objects
-from .reach import origin, parameter_objects
+from .reach import MIRReferent, origin, parameter_objects
+from .liveness import MIRPoint
+from .retention import MIRRetentionConflict, alias_obligation, parameter_indices
 from .summaries import summarize_function
 from .testutil import no_layouts, reaccess, prepared
 from .value import Declared, Local, MIRHolding, MIRRole, Passing, loan_access, shape_problem, thir_member, value_shape
@@ -453,6 +455,18 @@ def test_two_members_of_one_tuple_parameter_publish_an_obligation_between_them(a
     assert distinct_lent_objects(tuple_value, (MIRTupleIndex(0),), (MIRTupleIndex(1),))
     assert not distinct_lent_objects(tuple_value, (MIRTupleIndex(1),), (MIRTupleIndex(1),))
     assert not distinct_lent_objects(union_value, (MIRUnionPayload(0),), (MIRUnionPayload(1),))
+
+
+def test_a_conflict_entering_no_lent_member_of_a_wrapper_parameter_fails_the_summary_closed(
+        active: _Program) -> None:
+    # No obligation can say which lent object the conflict is in, and the caller may make it either.
+    body = _body(active, "two_members")
+    slot, = (s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)
+    whole = MIRReferent(MIRPlace(slot.id), external=True)
+    member = MIRReferent(MIRPlace(slot.id, (MIRTupleIndex(0),)), external=True)
+    conflict = MIRRetentionConflict(MIRPoint(MIRBlockId(body.id, 0), 0), whole, MIRPlace(slot.id), member)
+    assert alias_obligation(conflict, parameter_indices(body), {s.id: s for s in body.slots},
+                            body.record_layouts) == "a parameter object the body does not describe"
 
 
 def test_a_scalar_tuple_parameter_by_reference_is_caller_storage(active: _Program) -> None:

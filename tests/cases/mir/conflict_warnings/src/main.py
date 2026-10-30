@@ -419,6 +419,103 @@ def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(conflict /replacem
     return n
 
 
+class Hv:
+    v: StrView
+
+    def __init__(self, v: StrView) -> None:
+        self.v = v
+
+
+# summary, two parameters: a stored view the caller chooses may view what the body grows, so no
+# known summary can drop the conflict
+def drop_and_read(xs: list[P], h: Hv) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+    xs.append(P(2))
+    return h.v == "keep"
+
+
+# uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+def drop_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+    xs = [P(1)]
+    h = Hv("keep")
+    r = drop_and_read(xs, h)
+    print("drop_and_read", r, len(xs))
+
+
+class Rb:
+    buf: str
+    s: StrView
+
+    def __init__(self, buf: str, s: StrView) -> None:
+        self.buf = buf
+        self.s = s
+
+
+# summary, one parameter: its stored view may view the buffer the body replaces in the same object
+def replace_and_read(r: Rb) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+    r.buf = mk("r")
+    return r.s == "keep"
+
+
+# uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+def replace_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
+    rb = Rb("a", "keep")
+    r = replace_and_read(rb)
+    print("replace_and_read", r, rb.buf[0])
+
+
+GS: str = "keep"
+
+
+class Rs:
+    s: str
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+# summary, a global against a parameter: the caller may pass the global's storage
+def replace_then_read_global(r: Rs) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
+    r.s = mk("r")
+    return GS == "keep"
+
+
+# uncovered until such endpoints publish as obligations (TODO "Argument-alias obligations" (c))
+def replace_then_read_global_call() -> None:  # tpyc: mir(uncovered /known summary/)
+    rs = Rs("a")
+    r = replace_then_read_global(rs)
+    print("replace_then_read_global", r, rs.s[0])
+
+
+class Box:
+    items: list[P]
+
+    def __init__(self) -> None:
+        self.items = [P(1)]
+
+
+# summary, inverse: a conflict inside one lent object is the body's own, whatever the caller passes
+def one_object(h: Box, flag: bool) -> int32:  # tpyc: mir_summary(known)
+    p = h.items[0]
+    if flag:
+        h.items.append(P(3))  # tpyc: warning(/'append' may invalidate references/) warning(/may move the elements of 'h.items'/)
+    return p.x
+
+
+# summary, inverse: a conflict between two parameters stays a published no-alias obligation
+def grow_keep(xs: list[P], p: P) -> int32:  # tpyc: mir_summary(known) mir(conflict /alias_obligation/)
+    xs.append(P(3))
+    return p.x
+
+
+def summary_inverse_call() -> None:
+    h = Box()
+    n = one_object(h, False)
+    xs = [P(1)]
+    p = P(4)
+    m = grow_keep(xs, p)
+    print("summary_inverse", n, m, len(xs))
+
+
 def main() -> None:
     local_buf(False)
     local_buf_named(True)
@@ -454,6 +551,10 @@ def main() -> None:
     fr = Frame()
     print("record_objects", record_list_object(fr, False), record_field(fr, False), lent_list_object(fr, False))
     match_arm(1, False)
+    drop_and_read_call()
+    replace_and_read_call()
+    replace_then_read_global_call()
+    summary_inverse_call()
 
 
 main()

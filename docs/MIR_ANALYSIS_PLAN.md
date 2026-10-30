@@ -4108,7 +4108,8 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   (`sibling_view`, the parameter's member viewing its sibling field;
   `aliased_params`; `late_read`, `alias_late`, `loop_alias`, an alias
   reseated in a loop, and `pick_late`, through a borrowed record result
-  reaching both arguments), and when a view read off the member outlives
+  reaching both arguments; these bodies' summaries are opaque, see
+  "Argument-alias obligations"), and when a view read off the member outlives
   the record (`detached_view`); `scope_end` when the source is a
   temporary of the declaration (`temporary_source`: `Tok(mk(k), 1)`).
   Through stores (`view_field_stores`): `replacement` after a callee's
@@ -4529,8 +4530,12 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   different parameter slots, exists only if a caller passes aliasing
   arguments. `retention.alias_obligation` (the one home of that rule) turns
   it into a `MIRAliasObligation(parameter, path, written)` that the body's
-  KNOWN summary publishes (`summaries`, validated by `obligation_problem`);
-  an obligation the summary cannot state keeps the body conflict.
+  KNOWN summary publishes (`summaries`, validated by `obligation_problem`:
+  an obligation the summary cannot state makes it opaque). A conflict the
+  caller's arguments can create but no obligation states -- a stored loan
+  (`held`) or a global on either side -- makes the summary opaque
+  ("summary retention: ..."), so its callers are uncovered, never falsely
+  covered; a conflict inside one lent object is the body's own.
 - **Discharge.** At each call to a summary with obligations, the argument for
   the retained parameter acts as a holder, the write through the other
   parameter is resolved on its argument, and overlap is tested with the

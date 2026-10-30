@@ -34,9 +34,18 @@ main::after_raise@372:0: covered (storage: no_proof_required), conflicts: replac
 main::overwritten@381:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
 main::restore@390:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
 main::other_element@399:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
-main::through_param@407:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+main::through_param@407:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
 main::dict_insert@413:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::main@422:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::drop_and_read@431:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::drop_and_read_call@437:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::replace_and_read@454:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::replace_and_read_call@460:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::replace_then_read_global@477:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a global against the caller's arguments)
+main::replace_then_read_global_call@483:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::one_object@497:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::grow_keep@505:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::summary_inverse_call@510:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@519:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Tok.adopt@14:4: covered (storage: no_proof_required), summary: known
 main::Bag.grow@74:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::Bag.grow_copy@83:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
@@ -54,3 +63,7 @@ main::Named.__init__@283:4: covered (storage: no_proof_required), summary: known
 main::NamedLine.__init__@291:4: covered (storage: no_proof_required), summary: known
 main::Points.__init__@299:4: covered (storage: no_proof_required), summary: known
 main::Frame.__init__@307:4: covered (storage: no_proof_required), summary: known
+main::Hv.__init__@425:4: covered (storage: no_proof_required), summary: known
+main::Rb.__init__@448:4: covered (storage: no_proof_required), summary: known
+main::Rs.__init__@472:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@492:4: covered (storage: no_proof_required), summary: known
