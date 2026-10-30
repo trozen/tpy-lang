@@ -391,3 +391,24 @@ case comment narrated the warning as the rule.
 
 **Check.** For each warning in the diagnostics of a valid program, decide from the language
 definition whether the named property holds; the surrounding comment is not evidence.
+
+## Review rounds
+
+### `review-fix-probed`
+
+**Rule.** A fix written in answer to a review finding states, before it is applied, the shape
+the finding names, the C++ or output the fix must produce there, and the nearest shape that
+must keep working -- each checked on the current tree, not predicted -- and both shapes land as
+test sections. An unprobed fix instruction is a guess about generated code, and the next round
+pays for it.
+
+**Example.** A finding: `{c!s:>3}` on a `char` builds a temporary string although the bare
+`std::format("{:>3}", c)` already matches CPython. The fix "drop the string conversion for a
+char under `!s` with a spec" was applied without a probe; `{c!s:.2}`, the neighbour it traded
+away, then failed the C++ build (`std::format` refuses a precision on `char`), where CPython
+prints `x`. The probed fix keeps `std::format("{:.2}", ::tpy::__str__(c))` for that neighbour.
+The same branch lost a second round the same way: an f-string `None` arm keyed on the type
+instead of the literal skipped evaluating `f"{mk().n}"`.
+
+**Check.** For each item a review round applied, find its test section and the section for its
+nearest neighbour shape in the round's commit; an item without both is unverified.
