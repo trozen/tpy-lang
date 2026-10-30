@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::make_borrow@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::singleton_append@20:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::singleton_append@20:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::tuple_append@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::singleton_dict@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::tuple_dict@41:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

@@ -5,6 +5,6 @@ main::collect_while@24:0: covered (storage: no_proof_required), summary: known
 main::collect_cond@33:0: covered (storage: no_proof_required), summary: known
 main::generic_collect@41:0: uncovered (generic body)
 main::total@48:0: covered (storage: no_proof_required), summary: known
-main::collect_refs@59:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::collect_refs@59:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::main@68:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::Counter.__init__@55:4: covered (storage: no_proof_required), summary: known

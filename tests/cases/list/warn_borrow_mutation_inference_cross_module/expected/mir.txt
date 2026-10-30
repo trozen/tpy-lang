@@ -1,6 +1,6 @@
 helpers::__tpy_init: uncovered (module initialization)
 helpers::sum_points@11:0: covered (storage: no_proof_required), summary: known
-helpers::add_point@18:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+helpers::add_point@18:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 helpers::add_point_wrapper@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 helpers::read_wrapper@26:0: covered (storage: no_proof_required), summary: known
 helpers::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

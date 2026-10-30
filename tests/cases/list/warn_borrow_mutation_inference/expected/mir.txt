@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::sum_points@13:0: covered (storage: no_proof_required), summary: known
 main::first_x@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::add_point@24:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::add_point@24:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::replace_first@28:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::remove_first@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::read_point@37:0: covered (storage: no_proof_required), summary: known

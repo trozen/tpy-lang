@@ -437,11 +437,6 @@ def test_base_initializer_refusals(program: _Program) -> None:
     copied = _built(_base_init(moved, moved.base_inits[0].args[0].value), definitions)
     assert isinstance(copied, MIRFunction), copied.reason
     assert isinstance(_argument_value(copied, _base_calls(copied)[0]), MIRCopy)
-    # A borrowed name into an owning base parameter: no owned argument (the
-    # C++ would build the base's `str` from a view).
-    lent = program.constructors["Base"].params[0]
-    borrowed = _base_init(replace(moved, params=(lent,)), replace(th.THIRName(STR, lent.name), form=th.Form.BORROW))
-    assert _refusal(borrowed, definitions) == "argument form disagrees with its passing"
     # A skipped base is value-initialized: its constructor never runs.
     assert program.constructors["Skip"].base_inits[0].args == ()
     assert program.verdicts["Skip.__init__"].reason == "base constructor not called"

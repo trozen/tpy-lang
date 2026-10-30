@@ -916,11 +916,6 @@ class _Lowering:
         else any admitted scalar expression, evaluated into a temporary
         before the call (a scalar global is read there). Evaluation order
         among arguments is the caller's rule."""
-        # THIR converts every argument at its parameter, a base initializer's
-        # included, so a borrowed name never reaches a parameter that owns its
-        # value unconverted: C++ would not build the owned value from it.
-        _require(arg, not (binding.storage and isinstance(arg, th.THIRName) and arg.form is th.Form.BORROW),
-                 "argument form disagrees with its passing")
         match binding.cls, binding.storage:
             case MIRClass.OPTIONAL, _:
                 return self.optional_operand(arg, binding.value)
