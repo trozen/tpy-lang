@@ -908,6 +908,7 @@ class RecordGenerator:
                 defaults=init_defaults,
                 emit_defaults=emit_defaults,
                 is_member=True,
+                passings=self.functions.published_passings(init),
             )
             template_header = ""
             if proto_params:

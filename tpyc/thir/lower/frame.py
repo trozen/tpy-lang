@@ -20,6 +20,8 @@ from functools import partial
 from typing import TYPE_CHECKING, NoReturn
 
 from ...identity_map import IdentityMap
+from .callables import body_passings
+from .predicates import _owning_fi
 from ...prescan import loop_bindings_of
 from ...parse.nodes import (
     RebindStorage, TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl,
@@ -54,7 +56,7 @@ from ...sema.storage_policy import first_binding_storage
 from ...type_def_registry import (
     is_str_type, is_str_category, is_big_int_type, is_bytes_type,
     is_bytes_category, is_owned_in_coro_frame, is_str_view_type,
-    is_bytes_view_type, is_free_copy_scalar, iter_yields_ref_tuple_proxies,
+    is_bytes_view_type, is_free_copy_scalar, iter_yields_ref_tuple_proxies, ParamPassing,
 )
 from ...typesys import (polymorphic_subclass_into_optional,
                         returns_cpp_reference_shape)
@@ -820,14 +822,23 @@ class FrameBuilder:
 
     def publish(self, cfg) -> THIRResumableFrame:
         func, state = self.func, self.state
-        const_params = frozenset(
-            pname for pname, _ in func.params
-            if pname in self.env.const_ref_params
-            or pname in self.env.deep_const_borrow_params)
-        params = tuple(THIRParam(name=pname, type=ptype)
-                       for pname, ptype in func.params)
+        # Published before any signature prints: the factory's signature,
+        # like the body's definition and its callers, reads each passing.
+        passings = body_passings(
+            func, _owning_fi(func, self.analyzer, self.record_name))
+        params = tuple(THIRParam(name=pname, type=ptype, passing=passing)
+                       for (pname, ptype), passing in zip(func.params, passings))
         captures = tuple(capture_kind(func, pname, ptype, self.deps.is_static_protocol_param)
                          for pname, ptype in func.params)
+        # A reference capture is const as its parameter is passed. Any other
+        # capture (a pointer-repr union or tuple, a `Ptr[readonly[T]]`) holds
+        # its const inside its own spelling, which a POINTER or VALUE passing
+        # does not carry: that is the capture's own fact.
+        const_params = frozenset(
+            p.name for p, kind in zip(params, captures)
+            if (p.passing is ParamPassing.CONST_REF
+                if kind is FrameCaptureKind.REF
+                else p.name in self.env.deep_const_borrow_params))
         frame_locals = self.frame_locals
         edges = (list(state.frame_dep_units)
                  + self._for_src_generator_targets(func)

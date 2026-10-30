@@ -300,7 +300,7 @@ struct Elem {
     Elem();
 
     // def ping(self) -> int32:
-    int32_t ping() const;
+    int32_t ping();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Elem";
 };
 
@@ -317,7 +317,7 @@ struct ElemReader {
 
     // def take(self, p: Pinger) -> int32:
     template<Pinger T_p>
-    int32_t take(const T_p& p) const;
+    int32_t take(T_p& p) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ElemReader";
 };
 
@@ -505,8 +505,10 @@ inline int32_t TakerImpl::take_p(Bumper& p) {
 inline Elem::Elem() : n(3) {}
 
 // def ping(self) -> int32:
+//     self.n += 1
 //     return self.n
-inline int32_t Elem::ping() const {
+inline int32_t Elem::ping() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
     return this->n;
 }
 
@@ -530,7 +532,7 @@ inline void Bag<T>::put(::tpy::own_param_t<T> v) {
 // def take(self, p: Pinger) -> int32:
 //     return p.ping()
 template<Pinger T_p>
-inline int32_t ElemReader::take(const T_p& p) const {
+inline int32_t ElemReader::take(T_p& p) const {
     return p.ping();
 }
 

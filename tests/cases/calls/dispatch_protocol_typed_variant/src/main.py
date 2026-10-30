@@ -1,8 +1,6 @@
 # A @dispatch method set holding a protocol-typed variant beside a concrete
 # one builds: `c.m(d)` names the concrete variant (`m__Dog`) and `c.m(cat)`
-# the protocol one, deduced at `Cat`. The Dog variant renames its argument
-# (a protocol parameter cannot be written through yet:
-# BUGS.md#protocol-param-method-mutation-inferred-const).
+# the protocol one, deduced at `Cat`. The Dog variant renames its argument.
 from typing import Protocol
 from tpy import dispatch, int32, StrView
 

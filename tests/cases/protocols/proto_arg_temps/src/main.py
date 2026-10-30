@@ -265,6 +265,7 @@ class Elem:
         self.n = 3
 
     def ping(self) -> int32:
+        self.n += 1
         return self.n
 
 
@@ -281,8 +282,8 @@ def take_free(p: Pinger) -> int32:
 
 
 def via_elem(r: ElemReader, d: dict[str, Elem]) -> None:
-    # A record element at a structural-protocol parameter is copied whole
-    # into `auto __tmp_N` (BUGS.md#record-element-protocol-param-copies).
+    # A record element at a structural-protocol parameter binds the
+    # caller's element: the write through the parameter reaches d["k"].
     # The protocol-receiver form of this call does not build yet
     # (BUGS.md#protocol-param-structural-protocol-concept), so the record
     # and free forms pin the render.

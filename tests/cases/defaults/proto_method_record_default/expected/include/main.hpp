@@ -74,7 +74,7 @@ struct Holder {
 
     // def method(self, d: Drawable, v: Vec | None = None) -> int64:
     template<Drawable T_d>
-    int64_t method(const T_d& d, std::optional<Vec> v = std::nullopt) const;
+    int64_t method(T_d& d, std::optional<Vec> v = std::nullopt) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -111,7 +111,7 @@ inline Holder::Holder(int64_t base) : base(base) {}
 //         return got
 //     return got + v.x
 template<Drawable T_d>
-inline int64_t Holder::method(const T_d& d, std::optional<Vec> v) const {
+inline int64_t Holder::method(T_d& d, std::optional<Vec> v) const {
     int64_t got = (::tpy::add_check<int64_t>(this->base, d.draw()));
     if ((!v.has_value())) {
         return got;

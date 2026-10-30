@@ -219,7 +219,7 @@ void main() {
     Plain pl = Plain();
     Later lm = pl.m<double>(1.5);
     lm.v = ::tpy::add_check<int32_t>(lm.v, 1);
-    auto __tmp_1 = Five();
+    Five __tmp_1 = Five();
     Later lp = pl.p(__tmp_1);
     lp.v = ::tpy::add_check<int32_t>(lp.v, 1);
     std::cout << "c" << " " << lm.v << " " << lp.v << "\n" << ::tpy::check_signals;

@@ -22,7 +22,7 @@ int32_t maybe_add(std::optional<int32_t> x, int32_t y) {
 void main() {
     std::cout << ::tpyapp::main::maybe_add(3, 4) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::maybe_add(std::nullopt, 10) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = Wrapper(42);
+    Wrapper __tmp_1 = Wrapper(42);
     ::tpyapp::main::show(__tmp_1);
 }
 

@@ -24,7 +24,7 @@ void main() {
     std::cout << ::tpyapp::main::get_measure(b) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::double_resize(b) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::get_measure(b) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = Box(5);
+    Box __tmp_1 = Box(5);
     ::tpyapp::main::copy_measure(__tmp_1, b);
     std::cout << b.measure() << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};

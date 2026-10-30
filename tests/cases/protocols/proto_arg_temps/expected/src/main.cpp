@@ -141,18 +141,16 @@ void via_opt_dyn(DSink* o, const std::vector<std::string>& xs) {
 }
 
 // def via_elem(r: ElemReader, d: dict[str, Elem]) -> None:
-//     # A record element at a structural-protocol parameter is copied whole
-//     # into `auto __tmp_N` (BUGS.md#record-element-protocol-param-copies).
+//     # A record element at a structural-protocol parameter binds the
+//     # caller's element: the write through the parameter reaches d["k"].
 //     # The protocol-receiver form of this call does not build yet
 //     # (BUGS.md#protocol-param-structural-protocol-concept), so the record
 //     # and free forms pin the render.
 //     print("elem record", r.take(d["k"]), d["k"].n)  # tpyc: ok
 //     print("elem free", take_free(d["k"]), d["k"].n)  # tpyc: ok
 void via_elem(const ElemReader& r, ::tpy::ordered_map<std::string, Elem>& d) {
-    auto __tmp_1 = ::tpy::__getitem__(d, "k");
-    std::cout << "elem record" << " " << r.take(__tmp_1) << " " << ::tpy::__getitem__(d, "k").n << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpy::__getitem__(d, "k");
-    std::cout << "elem free" << " " << ::tpyapp::main::take_free(__tmp_2) << " " << ::tpy::__getitem__(d, "k").n << "\n" << ::tpy::check_signals;
+    std::cout << "elem record" << " " << r.take(::tpy::__getitem__(d, "k")) << " " << ::tpy::__getitem__(d, "k").n << "\n" << ::tpy::check_signals;
+    std::cout << "elem free" << " " << ::tpyapp::main::take_free(::tpy::__getitem__(d, "k")) << " " << ::tpy::__getitem__(d, "k").n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -168,7 +166,7 @@ void via_elem(const ElemReader& r, ::tpy::ordered_map<std::string, Elem>& d) {
 //     via_opt_dyn(Impl(), ["b"])
 //     via_elem(ElemReader(), {"k": Elem()})
 void main() {
-    auto __tmp_1 = Impl();
+    Impl __tmp_1 = Impl();
     std::vector<int32_t> __tmp_2 = {1, 2};
     std::vector<int32_t> __tmp_3 = std::vector<int32_t>{3};
     ::tpyapp::main::via_proto("proto", __tmp_1, __tmp_2, &(__tmp_3));
@@ -183,7 +181,7 @@ void main() {
     std::vector<int32_t> __tmp_10 = {1, 2};
     std::vector<int32_t> __tmp_11 = std::vector<int32_t>{3};
     ::tpyapp::main::via_own("own", std::make_unique<Impl>(Impl()), __tmp_10, &(__tmp_11));
-    auto __tmp_12 = OptImpl();
+    OptImpl __tmp_12 = OptImpl();
     ::tpyapp::main::via_opt(__tmp_12);
     Bag<std::string> b = Bag<std::string>();
     std::vector<std::string> __tmp_13 = {"a"};

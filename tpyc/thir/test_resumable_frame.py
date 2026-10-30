@@ -520,14 +520,14 @@ def test_leaf_verdict_rules_reject(async_ctx):
 
 
 def test_leaf_params_complete_the_frames(async_ctx):
-    # The frame publishes its params once, with names and types; the leaves
-    # carry them completed with the binding table's layout facts, and the
-    # frame is not changed after it is published.
+    # The frame publishes its params once, with names, types and passings
+    # (read by the factory's signature); the leaves carry them completed
+    # with the binding table's layout facts, and the frame is not changed
+    # after it is published.
     leaves = _leaves(async_ctx, "f")
-    assert ([(p.name, p.type) for p in leaves.params]
-            == [(p.name, p.type) for p in leaves.frame.params])
+    assert ([(p.name, p.type, p.passing) for p in leaves.params]
+            == [(p.name, p.type, p.passing) for p in leaves.frame.params])
     assert all(p.passing is not None for p in leaves.params)
-    assert all(p.passing is None for p in leaves.frame.params)
     with pytest.raises(THIRValidationError,
                        match="leaf params do not mirror the frame's"):
         validate_resumable_leaves("f", dataclasses.replace(

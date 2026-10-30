@@ -1,0 +1,68 @@
+main::__tpy_init: uncovered (module initialization)
+main::f_area@79:0: uncovered (unsupported parameter type)
+main::f_grow@83:0: uncovered (unsupported parameter type)
+main::outer_grow@87:0: uncovered (unsupported parameter type)
+main::sum_span@129:0: uncovered (unsupported parameter type)
+main::replaced_read@137:0: uncovered (unsupported parameter type)
+main::gen_grow@143:0: uncovered (unsupported parameter type)
+main::async_grow@150:0: uncovered (async body)
+main::ov_grow@156:0: uncovered (no body to lower)
+main::ov_grow@158:0: uncovered (no body to lower)
+main::ov_grow@159:0: uncovered (overloaded callable)
+main::through_writes@221:0: uncovered (unsupported parameter type)
+main::through_sees@225:0: uncovered (unsupported parameter type)
+main::bump_span@239:0: uncovered (unsupported parameter type)
+main::read_span@246:0: uncovered (unsupported parameter type)
+main::first@254:0: uncovered (generic body)
+main::ro_area@263:0: uncovered (no body to lower)
+main::ro_area@266:0: uncovered (no body to lower)
+main::ro_area@267:0: uncovered (overloaded callable)
+main::m_len@271:0: uncovered (unsupported parameter type)
+main::s_free@283:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::s_value@301:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::s_resumable@312:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::s_overload@323:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::s_span@333:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::s_declared@340:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::s_redeclared@345:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::s_method@351:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::s_ctor@371:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::s_cond@394:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::s_kept@400:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@408:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rect.area@26:4: covered (storage: no_proof_required), summary: known
+main::Rect.grow@29:4: covered (storage: no_proof_required), summary: known
+main::Holder.get_rect@48:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.prect@52:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.prect@52:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Num.area@62:4: uncovered (missing receiver fact)
+main::Num.grow@65:4: covered (storage: no_proof_required)
+main::NumBox.replace@75:4: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Meter.area_of@96:4: uncovered (unsupported parameter type)
+main::Meter.grow_it@99:4: uncovered (unsupported parameter type)
+main::Meter.s_grow@105:4: uncovered (unsupported parameter type)
+main::Tagged.grow_with@124:4: uncovered (generic body)
+main::OvMeter.area_of@169:4: uncovered (no body to lower)
+main::OvMeter.area_of@171:4: uncovered (no body to lower)
+main::OvMeter.area_of@172:4: uncovered (overloaded callable)
+main::Wide.width@203:4: covered (storage: no_proof_required), summary: known
+main::OvReader.w_of@214:4: uncovered (no body to lower)
+main::OvReader.w_of@216:4: uncovered (no body to lower)
+main::OvReader.w_of@217:4: uncovered (overloaded callable)
+main::Cell.get@235:4: covered (storage: no_proof_required), summary: known
+main::Lens.m_len@279:4: uncovered (unsupported parameter type)
+main::Loud.area@390:4: covered (storage: no_proof_required), summary: known
+main::Rect.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Num.__init__@59:4: uncovered (missing record layout)
+main::NumBox.__init__@72:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
+main::Meter.__init__@93:4: covered (storage: no_proof_required), summary: known
+main::Grower.__init__@112:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Tagged.__init__@121:4: uncovered (generic constructor)
+main::OvMeter.__init__@165:4: covered (storage: no_proof_required), summary: known
+main::Wide.__init__@199:4: covered (storage: no_proof_required), summary: known
+main::OvReader.__init__@208:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@232:4: covered (storage: no_proof_required), summary: known
+main::Lens.__init__@276:4: covered (storage: no_proof_required), summary: known
+main::Loud.__init__@386:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

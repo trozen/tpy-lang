@@ -105,6 +105,7 @@ from ...typesys import (
     is_any_str_type,
     is_dyn_protocol,
     is_protocol_type,
+    peel_binding,
     is_void_like_type,
     make_array,
     make_dict,
@@ -197,7 +198,7 @@ from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
 from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import numeric_literal_truth
-from ..param_contract import (ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
+from ..param_contract import (Adapts, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
                               instantiation_storage, pack_element_contract, param_const, param_contract,
                               protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
@@ -15623,6 +15624,12 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                 call=call, arg=a, recv=recv)
     if site_retention is not None:
         contract = replace(contract, retention=site_retention[0])
+    structural = _structural_record_slot(a, ptype, contract, callee_fi, lc)
+    if structural is not None:
+        # The protocol is a template parameter C++ deduces from the
+        # argument: the slot holds the argument's own record, under the
+        # callee's contract, as a generic call holds its instantiation.
+        inst = structural
     keep = contract.retention
     cls = param_slot_class(ptype, contract)
     if (cls is ParamSlotClass.REFERENCE
@@ -15694,6 +15701,35 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _peel_coerce(a), owned, lc, declared, callee_fi=None,
             arg_index=-1, temps=True, site_retention=(keep,),
             reason=reason, family_note=family_note))
+
+
+def _structural_record_slot(a: TpyExpr, ptype: TpyType,
+                            contract: ParamContract,
+                            callee_fi: 'FunctionInfo | None',
+                            lc: '_LowerCtx') -> 'TpyType | None':
+    """The record a structural, non-generic protocol parameter of a callee
+    with a lowered body binds at argument `a`: the argument's own record
+    type (a place or a fresh record). None where the argument's rows
+    decide: a callee whose declaration is what the argument meets (a
+    binding, an inline template), a generic protocol, and any argument but
+    a reference-type record -- a value-type record is copied, as at its
+    concrete parameter, since the storage holding it may be replaced
+    while the callee reads it."""
+    if (contract.adapts is not Adapts.STRUCTURAL or callee_fi is None
+            or contract.declared_only or contract.instantiation_storage):
+        return None
+    proto = protocol_slot(ptype)
+    if proto is None or proto.type_args:
+        return None
+    at = lc.analyzer.get_expr_type(a)
+    if not isinstance(at, TpyType):
+        return None
+    u = peel_binding(at)
+    if (not record_like(u, lc.analyzer) or u.is_value_type()
+            or _f1_container_ref(u) or isinstance(u, ConcreteFrameType)
+            or is_protocol_type(u)):
+        return None
+    return u
 
 
 def _reference_object_slot(t: TpyType, analyzer) -> bool:

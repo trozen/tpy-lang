@@ -5333,7 +5333,10 @@ class UnionType(TpyType):
         return f"const {self.to_cpp()}&"
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
-        if self.needs_wrapper():
+        # A union of structural protocols with no None is one deduced
+        # template parameter, bound by reference like a single protocol.
+        if self.needs_wrapper() or (is_protocol_union(self) and not any(
+                is_void_like_type(m) for m in self.members)):
             return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
         if self.uses_pointer_repr():
             return ParamPassing.POINTER
@@ -8764,8 +8767,8 @@ class FunctionInfo:
         return len(self.params)
 
 
-def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None', *,
-               sema_method: bool = False) -> 'FunctionInfo | None':
+def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None'
+               ) -> 'FunctionInfo | None':
     if func.is_nested_def or not candidates:
         # A nested def is bound in its enclosing body's namespace only; a
         # same-named registry entry belongs to another callable.
@@ -8776,22 +8779,31 @@ def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None', *,
             f"Internal error: {len(found)} FunctionInfos carry the body of '{func.name}'")
     if found:
         return found[0]
-    return overload_facts_stub(candidates, sema_method=sema_method)
+    return overload_facts_stub(candidates)
 
 
-def overload_facts_stub(candidates: 'list[FunctionInfo]', *,
-                        sema_method: bool) -> 'FunctionInfo | None':
+def stamp_overload_facts(stubs: 'list[FunctionInfo]', implementation: 'TpyFunction', *,
+                         method: bool) -> None:
+    """Pick the stub of a `typing.overload` group that receives its
+    implementation's facts -- a method group's first, a free function
+    group's last -- and stamp it (`FunctionInfo.facts_implementation`), the
+    one stub `overload_facts_stub` reads. Nothing for a group with a body
+    of its own."""
+    if stubs and all(fi.root.body is None for fi in stubs):
+        stubs[0 if method else -1].facts_implementation = implementation
+
+
+def overload_facts_stub(candidates: 'list[FunctionInfo]') -> 'FunctionInfo | None':
     """The stub of a `typing.overload` group that carries its
-    implementation's facts, None for a group with a body of its own. Its
-    FunctionInfos are the bodyless stubs and the implementation (or a
-    per-stub specialization built from it) has none, so the facts take one
-    stub by position -- the first of a method group on sema's side (where
-    they are written and read back), the last everywhere else. The two
-    disagree on a method group of several stubs
+    implementation's facts: the one registration stamped with the
+    implementation (`FunctionInfo.facts_implementation`). None for a group
+    with a body of its own, or one not stamped (yet). Its FunctionInfos are
+    the bodyless stubs and the implementation has none, so the facts land on
+    that one stub; the others get none
     (BUGS.md#overload-group-borrow-facts-last-entry)."""
     if not candidates or any(fi.root.body is not None for fi in candidates):
         return None
-    return candidates[0 if sema_method else -1]
+    return next((fi for fi in candidates if fi.facts_implementation is not None), None)
 
 
 def body_function_info(registry: 'TypeRegistry', func: 'TpyFunction') -> 'FunctionInfo | None':
@@ -8800,20 +8812,19 @@ def body_function_info(registry: 'TypeRegistry', func: 'TpyFunction') -> 'Functi
     return _body_info(func, registry.get_function(func.name))
 
 
-def body_method_info(record: 'RecordInfo | None', method: 'TpyFunction', *,
-                     sema: bool = False) -> 'FunctionInfo | None':
+def body_method_info(record: 'RecordInfo | None', method: 'TpyFunction'
+                     ) -> 'FunctionInfo | None':
     """The FunctionInfo carrying the analysis facts of method body `method`
     of `record`: its own entry in the method's overload list, or a property
-    accessor's in the property. `sema` marks body analysis's own writers
-    and readers, which a `typing.overload` group answers differently."""
+    accessor's in the property."""
     if record is None:
         return None
     if method.is_property_getter or method.is_property_setter:
         prop = record.properties.get(
             (method.property_name or method.name) if method.is_property_setter else method.name)
         return _body_info(method, prop.accessors if prop is not None else None,
-                          sema_method=sema)
-    return _body_info(method, record.get_method_overloads(method.name), sema_method=sema)
+)
+    return _body_info(method, record.get_method_overloads(method.name))
 
 
 def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:

@@ -113,6 +113,46 @@ def _build_parent_protocol_subst(
     return subst
 
 
+def protocol_methods(protocol_info: 'ProtocolInfo | None',
+                     type_ops: 'TypeOperations | None' = None,
+                     visited: set[str] | None = None) -> list[MethodSignature]:
+    """The methods a protocol requires, its parents' included; a method
+    shadows a same-named one it inherits. With `type_ops`, an inherited
+    method's parent type parameters are substituted with the parent
+    reference's type arguments, so a child of `Iterable[T]` sees
+    `__iter__(self) -> Iterator[T]` in its own type-parameter scope."""
+    if protocol_info is None:
+        return []
+    if visited is None:
+        visited = set()
+    if protocol_info.qualified_name() in visited:
+        return []
+    visited.add(protocol_info.qualified_name())
+    methods_by_name: dict[str, MethodSignature] = {
+        m.name: m for m in protocol_info.methods}
+    for parent in protocol_info.parent_protocols:
+        parent_info = protocol_info_of(parent)
+        type_subst = (_build_parent_protocol_subst(parent, parent_info)
+                      if type_ops is not None else {})
+        for method in protocol_methods(parent_info, type_ops, visited):
+            if method.name not in methods_by_name:
+                methods_by_name[method.name] = (
+                    _substitute_method_signature(method, type_subst, type_ops)
+                    if type_ops is not None else method)
+    return list(methods_by_name.values())
+
+
+def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
+    """Nothing called through the protocol writes the object: the protocol
+    is `@readonly`, or every method it requires is."""
+    if protocol_info is None:
+        return False
+    if protocol_info.is_readonly:
+        return True
+    methods = protocol_methods(protocol_info)
+    return bool(methods) and all(m.is_readonly for m in methods)
+
+
 def _substitute_method_signature(
     method: MethodSignature, subst: dict[str, TpyType], type_ops: 'TypeOperations',
 ) -> MethodSignature:
@@ -962,39 +1002,11 @@ class ProtocolChecker:
             return self.type_conforms_to_protocol(unwrapped, expected)
         return False
 
-    def collect_protocol_methods(self, protocol_info: 'ProtocolInfo | None',
-                                 visited: set[str] | None = None) -> list[MethodSignature]:
-        """Collect methods from a protocol and all its parents.
-
-        Avoids duplicates by name (direct methods take precedence over inherited).
-        Substitutes a parent's type parameters with the parent reference's
-        type arguments so a child of `Iterable[T]` sees `__iter__(self) ->
-        Iterator[T]` in the child's own type-param scope.
-        """
-        if protocol_info is None:
-            return []
-        if visited is None:
-            visited = set()
-        if protocol_info.qualified_name() in visited:
-            return []  # Prevent cycles
-        visited.add(protocol_info.qualified_name())
-
-        # Start with direct methods
-        methods_by_name: dict[str, MethodSignature] = {}
-        for method in protocol_info.methods:
-            methods_by_name[method.name] = method
-
-        # Add inherited methods (only if not already defined directly)
-        for parent in protocol_info.parent_protocols:
-            parent_info = protocol_info_of(parent)
-            type_subst = _build_parent_protocol_subst(parent, parent_info)
-            for method in self.collect_protocol_methods(parent_info, visited):
-                if method.name not in methods_by_name:
-                    methods_by_name[method.name] = _substitute_method_signature(
-                        method, type_subst, self.type_ops,
-                    )
-
-        return list(methods_by_name.values())
+    def collect_protocol_methods(self, protocol_info: 'ProtocolInfo | None'
+                                 ) -> list[MethodSignature]:
+        """The protocol's methods, its parents' included, in its own
+        type-parameter scope (`protocol_methods`)."""
+        return protocol_methods(protocol_info, self.type_ops)
 
     def collect_protocol_fields(self, protocol_info: 'ProtocolInfo | None',
                                 visited: set[str] | None = None) -> list[tuple[str, TpyType]]:

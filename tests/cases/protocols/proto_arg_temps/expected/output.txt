@@ -45,5 +45,5 @@ generic items ['ax']
 dyn param ctor 2
 optdyn union local 1
 optdyn str_own owned 2 bx
-elem record 3 3
-elem free 3 3
+elem record 4 4
+elem free 5 5

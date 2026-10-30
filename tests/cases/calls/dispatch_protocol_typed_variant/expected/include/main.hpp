@@ -78,9 +78,9 @@ struct Clinic {
     // @dispatch
     // def m(self, x: Named) -> int32:
     template<Named T_x>
-    int32_t m__Named(const T_x& x) const;
+    int32_t m__Named(T_x& x) const;
     template<Named T_x>
-    int32_t m(const T_x& x) const;
+    int32_t m(T_x& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Clinic";
 };
 
@@ -144,12 +144,12 @@ inline int32_t Clinic::m(Dog& x) const {
 // def m(self, x: Named) -> int32:
 //     return 20 + len(x.name())
 template<Named T_x>
-inline int32_t Clinic::m__Named(const T_x& x) const {
+inline int32_t Clinic::m__Named(T_x& x) const {
     return (::tpy::add_check<int32_t>(20, ::tpy::__len__(x.name())));
 }
 
 template<Named T_x>
-inline int32_t Clinic::m(const T_x& x) const {
+inline int32_t Clinic::m(T_x& x) const {
     return this->m__Named(x);
 }
 

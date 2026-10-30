@@ -26,6 +26,7 @@ from .context import (
     escape_cpp_name, qualified_cpp_name, expand_cpp_template, forward_param,
 )
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
+from ..sema.protocols import protocol_is_const
 from ..sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_forward_ok,
                                 record_inherits_dynamic)
 from ..symbol_binding import lookup_imported, SymbolKind
@@ -876,19 +877,6 @@ class ProtocolGenerator:
     def collect_concept_methods(self, pi: 'ProtocolInfo | None') -> list[MethodSignature]:
         return self.ctx.analyzer.protocols.collect_protocol_methods(pi)
 
-    def is_protocol_const(self, pi: 'ProtocolInfo | None') -> bool:
-        """Check if a protocol is functionally const (all methods are readonly).
-
-        True when the protocol-level is_readonly flag is set, or when every
-        method (including inherited ones) is individually @readonly.
-        """
-        if pi is None:
-            return False
-        if pi.is_readonly:
-            return True
-        all_methods = self.collect_concept_methods(pi)
-        return bool(all_methods) and all(m.is_readonly for m in all_methods)
-
     def collect_concept_fields(self, pi: 'ProtocolInfo | None') -> list[tuple[str, TpyType]]:
         return self.ctx.analyzer.protocols.collect_protocol_fields(pi)
 
@@ -948,7 +936,7 @@ class ProtocolGenerator:
         if not all_methods and not all_fields_for_decl:
             out.write(f"concept {concept_name} = true;\n")
             return True
-        if self.is_protocol_const(protocol_info):
+        if protocol_is_const(protocol_info):
             out.write(f"concept {concept_name} = requires(const T& t) {{\n")
         else:
             out.write(f"concept {concept_name} = requires(T& t) {{\n")

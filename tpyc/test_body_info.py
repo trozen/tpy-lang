@@ -33,12 +33,15 @@ def test_a_body_the_group_does_not_hold_has_none() -> None:
     assert body_function_info(registry, _func("f", is_nested_def=True)) is None
 
 
-def test_overload_group_keeps_the_positional_pick() -> None:
+def test_overload_group_reads_the_stamped_stub() -> None:
     stubs = [FunctionInfo("f", [], INT32), FunctionInfo("f", [], INT32)]
     registry = TypeRegistry()
     registry.register_function_group("f", stubs)
     implementation = _func("f")
-    assert body_function_info(registry, implementation) is stubs[-1]
+    # Unstamped, no stub carries the implementation's facts.
+    assert body_function_info(registry, implementation) is None
+    stubs[0].facts_implementation = implementation
+    assert body_function_info(registry, implementation) is stubs[0]
 
 
 def test_two_infos_claiming_one_body_is_an_internal_error() -> None:

@@ -135,6 +135,16 @@ def decide_param_const(
     return ParamConstDecision(signature_const=True, deep_borrow_const=True)
 
 
+def declared_param_consts(types: 'tuple[TpyType, ...]', *, is_pure: bool,
+                          is_readonly: bool, is_method: bool) -> tuple[bool, ...]:
+    """The const verdict a declaration states per parameter of `types`,
+    with no body inferred: a `readonly[...]` parameter, or a whole-callable
+    promise -- `@pure`, or `@readonly` on a free function, which sema reads
+    as "mutates no argument" (on a method it is a receiver fact only)."""
+    whole = is_pure or (is_readonly and not is_method)
+    return tuple(whole or isinstance(unwrap_ref_type(t), ReadonlyType) for t in types)
+
+
 def populate_const_borrow_params(fi: FunctionInfo) -> None:
     """Populate FunctionInfo.const_borrow_params.
 

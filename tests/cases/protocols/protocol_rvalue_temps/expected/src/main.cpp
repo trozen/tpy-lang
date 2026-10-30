@@ -25,17 +25,14 @@ namespace tpyapp::main {
 //     show(container[0])
 //     show(container[2])
 void main() {
-    auto __tmp_1 = IntBox(42);
+    IntBox __tmp_1 = IntBox(42);
     ::tpyapp::main::show(__tmp_1);
     BoxContainer container = BoxContainer();
-    auto __tmp_2 = container[1];
+    ::tpyapp::main::show(container[1]);
+    IntBox __tmp_2 = IntBox(100);
     ::tpyapp::main::show(__tmp_2);
-    auto __tmp_3 = IntBox(100);
-    ::tpyapp::main::show(__tmp_3);
-    auto __tmp_4 = container[0];
-    ::tpyapp::main::show(__tmp_4);
-    auto __tmp_5 = container[2];
-    ::tpyapp::main::show(__tmp_5);
+    ::tpyapp::main::show(container[0]);
+    ::tpyapp::main::show(container[2]);
 }
 
 // """Test rvalue expressions passed to protocol-typed parameters.

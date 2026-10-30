@@ -52,9 +52,9 @@ void bytesio_read_size() {
 //     print("proto-text:", via_protocol(io.StringIO("abcdefgh")))     # abcd|efgh
 //     print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
 void protocol_params() {
-    auto __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
+    ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
     std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
+    ::tpystd::io::BytesIO __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
     std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(__tmp_2)) << "\n" << ::tpy::check_signals;
 }
 

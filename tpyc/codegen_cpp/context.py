@@ -1713,12 +1713,6 @@ class CodeGenContext:
     # FunctionGenerator.gen_body right after the opening brace and then
     # cleared so inner bodies don't re-emit them.
     overload_missing_param_locals: list[tuple[str, 'TpyType', object]] = field(default_factory=list)
-    # THIR interception key for the per-stub emission in flight:
-    # (id(impl), id(stub)). id(func) alone cannot key a specialization --
-    # the impl body is emitted once per stub, and the method path emits a
-    # synthetic clone whose id matches nothing. gen_body CONSUMES the key
-    # on entry so bodies nested under the specialization never inherit it.
-    thir_overload_key: "tuple[TpyFunction, TpyFunction] | None" = None
 
     # --- Iterator loop counter ---
     iter_counter: int = 0

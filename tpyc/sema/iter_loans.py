@@ -29,7 +29,7 @@ from ..parse import (
 )
 from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
-                                 iter_yields_owned_elements)
+                                 iter_yields_owned_elements, protocol_info_of)
 from ..typesys import (
     FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
     ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
@@ -54,6 +54,7 @@ from .receiver_calls import (
     check_receiver_call_loans, credit_implicit_receiver_call,
 )
 from .own_copy import contains_reference_type
+from .protocols import protocol_is_const
 from .scope_tracker import lend_places
 
 if TYPE_CHECKING:
@@ -698,10 +699,13 @@ def register_iteration_loans(
         if isinstance(iterable, TpyName) and not storage.unplaceable:
             # A protocol- or TypeParamRef-typed iterable is advanced
             # through a method that mutates iterator state, so the
-            # generated param must be `T&`, not `const T&`. A concrete
+            # generated param must be `T&`, not `const T&` -- unless the
+            # protocol's methods all promise not to write it. A concrete
             # type gets the same verdict from the call itself.
             inner = unwrap_ref_type(unwrap_readonly(iterable_type))
-            if isinstance(inner, TypeParamRef) or is_protocol_type(inner):
+            if isinstance(inner, TypeParamRef) or (
+                    is_protocol_type(inner)
+                    and not protocol_is_const(protocol_info_of(inner))):
                 mark_roots(ctx, [StorageKey.of_name(iterable.name)], MarkRequest())
         return IterationLoan(unplaceable=storage.unplaceable,
                              loans=storage.loans)

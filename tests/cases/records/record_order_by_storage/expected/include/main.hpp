@@ -936,8 +936,8 @@ struct OvlHolder {
 
     // @overload
     // def use(self, value: OvlOuter.Inner) -> int32: ...  # tpyc: ok
-    int32_t use__OvlOuter_Inner(OvlOuter::Inner& value);
-    int32_t use(OvlOuter::Inner& value);
+    int32_t use__OvlOuter_Inner(const OvlOuter::Inner& value);
+    int32_t use(const OvlOuter::Inner& value);
 
     // @overload
     // def use(self, value: int32) -> int32: ...
@@ -1717,11 +1717,11 @@ inline DedOuter::DedOuter() : items(std::vector<DedOuter::Inner>{}) {}
 
 // @overload
 // def use(self, value: OvlOuter.Inner) -> int32: ...  # tpyc: ok
-inline int32_t OvlHolder::use__OvlOuter_Inner(OvlOuter::Inner& value) {
+inline int32_t OvlHolder::use__OvlOuter_Inner(const OvlOuter::Inner& value) {
     return value.n;
 }
 
-inline int32_t OvlHolder::use(OvlOuter::Inner& value) {
+inline int32_t OvlHolder::use(const OvlOuter::Inner& value) {
     return this->use__OvlOuter_Inner(value);
 }
 

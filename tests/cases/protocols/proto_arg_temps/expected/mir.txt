@@ -7,9 +7,9 @@ main::via_opt@183:0: uncovered (unsupported parameter type)
 main::via_generic@206:0: uncovered (unsupported parameter type)
 main::via_dyn_param@242:0: uncovered (unsupported parameter type)
 main::via_opt_dyn@247:0: uncovered (unsupported parameter type)
-main::take_free@279:0: uncovered (unsupported parameter type)
-main::via_elem@283:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@293:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::take_free@280:0: uncovered (unsupported parameter type)
+main::via_elem@284:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@294:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::Impl.take_rec@55:4: covered (storage: no_proof_required)
 main::Impl.take_list@60:4: uncovered (unsupported native container element)
 main::Impl.take_str@65:4: covered (storage: no_proof_required)
@@ -21,7 +21,7 @@ main::Bag.put@202:4: uncovered (generic body)
 main::Counter.bump@224:4: covered (storage: no_proof_required)
 main::TakerImpl.take_p@238:4: uncovered (unsupported parameter type)
 main::Elem.ping@267:4: covered (storage: no_proof_required), summary: known
-main::ElemReader.take@275:4: uncovered (unsupported parameter type)
+main::ElemReader.take@276:4: uncovered (unsupported parameter type)
 main::R.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Other.__init__@19:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@26:4: covered (storage: no_proof_required), summary: known
@@ -31,4 +31,4 @@ main::Bag.__init__@199:4: uncovered (generic constructor)
 main::Counter.__init__@221:4: covered (storage: no_proof_required), summary: known
 main::TakerImpl.__init__@235:4: covered (storage: no_proof_required), summary: known
 main::Elem.__init__@264:4: covered (storage: no_proof_required), summary: known
-main::ElemReader.__init__@272:4: covered (storage: no_proof_required), summary: known
+main::ElemReader.__init__@273:4: covered (storage: no_proof_required), summary: known

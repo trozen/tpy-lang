@@ -39,7 +39,7 @@ from ..typesys import (
     variant_cpp_name_of,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
+from ..type_def_registry import ParamPassing, is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
@@ -47,7 +47,7 @@ from ..parse.nodes import (
 )
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, forward_param, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
 from . import emit_prims
-from .param_const import decide_param_const, ParamConstDecision
+from .param_const import decide_param_const, declared_param_consts, ParamConstDecision
 from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
@@ -109,6 +109,13 @@ def default_emittable(defaults: list, i: int, n_params: int,
     emits = func is None or emits_cpp_defaults(func)
     return (default_emittable_at(slots, i, is_member, emits)
             if i < len(slots) else False)
+
+
+def _const_ref(passing: ParamPassing) -> bool:
+    """A protocol parameter's published passing, a reference to the type
+    deduced from (or adapted to) its argument: whether it is const."""
+    assert passing in (ParamPassing.CONST_REF, ParamPassing.MUT_REF), passing
+    return passing is ParamPassing.CONST_REF
 
 
 def _narrow_overload_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
@@ -568,17 +575,18 @@ class FunctionGenerator:
                                    defaults: list | None = None,
                                    emit_defaults: bool = False,
                                    func: 'TpyFunction | None' = None,
-                                   is_member: bool = False) -> str:
+                                   is_member: bool = False,
+                                   passings: 'dict[str, ParamPassing]') -> str:
         """Generate function parameter list, using template types for protocol params.
 
-        Static protocols use template types (T_paramname).
-        @dynamic protocols use concrete base class& reference params.
+        Static protocols use template types (T_paramname) and @dynamic ones
+        concrete base class& reference params, each const as `passings`
+        (`published_passings`) says.
         Nullable protocol params emit const T_paramname* (pointer repr).
-        const_params: emit const T_x& for static protocols, const Base& for @dynamic,
-        and to_cpp_const_param for non-protocol params.
+        const_params: emit to_cpp_const_param for non-protocol params.
         mutated_params: frozenset of param indices with confirmed mutations (same
-        semantics as gen_params). When provided, non-mutated protocol params use
-        const T_x& / const Base& instead of T_x& / Base&.
+        semantics as gen_params), for non-protocol params and a nullable
+        @dynamic one.
 
         `func` carries the same member fallback as gen_params: a default's C++
         legality depends on whether the declaration sits inside a record, so a
@@ -610,12 +618,9 @@ class FunctionGenerator:
                     part = f"const T_{pname}* {cpp_pname}"
                 elif is_own_protocol or has_own_arg:
                     part = f"T_{pname}&& {cpp_pname}"
-                elif (const_params or isinstance(ptype, ReadonlyType)
-                        or self._all_protocols_readonly(info)
-                        or (mutated_params is not None and i not in mutated_params)):
-                    part = f"const T_{pname}& {cpp_pname}"
                 else:
-                    part = f"T_{pname}& {cpp_pname}"
+                    const_kw = "const " if _const_ref(passings[pname]) else ""
+                    part = f"{const_kw}T_{pname}& {cpp_pname}"
             else:
                 # Check for @dynamic protocol
                 inner_unwrapped = unwrapped.inner if isinstance(unwrapped, OptionalType) else unwrapped
@@ -624,8 +629,15 @@ class FunctionGenerator:
                         and (pi := protocol_info_of(resolved))
                         and pi.is_dynamic):
                     base_type = self.protocols.get_dynamic_base_name(resolved)
-                    is_const = (isinstance(ptype, ReadonlyType)
-                                or (mutated_params is not None and i not in mutated_params))
+                    if isinstance(unwrapped, OptionalType):
+                        # Its published passing is a pointer, which carries
+                        # no const: the declared and mutation verdicts
+                        # decide it here.
+                        is_const = (isinstance(ptype, ReadonlyType)
+                                    or (mutated_params is not None
+                                        and i not in mutated_params))
+                    else:
+                        is_const = _const_ref(passings[pname])
                     const_kw = "const " if is_const else ""
                     if isinstance(unwrapped, OptionalType):
                         # Nullable @dynamic protocol param needs pointer-repr (a
@@ -656,12 +668,30 @@ class FunctionGenerator:
         infos = self.protocols.get_all_protocol_params([(pname, ptype)])
         return infos[0] if infos else None
 
-    def _all_protocols_readonly(self, info: ProtocolParamInfo | None) -> bool:
-        """Check if all protocols in a ProtocolParamInfo are functionally const."""
-        if info is None or not info.protocols:
-            return False
-        return all(self.protocols.is_protocol_const(protocol_info_of(p))
-                   for p in info.protocols)
+    def published_passings(self, func: TpyFunction, lowered=None, *,
+                           declared: bool = False) -> dict[str, ParamPassing]:
+        """How each parameter of `func` is passed, as THIR publishes it
+        (`THIRParam.passing`), by parameter name: read off `lowered` (an
+        `@overload` specialization), else the module's lowered function or
+        constructor, or the published resumable frame. A declaration with no
+        lowered body -- and one whose signature must stay its declaration's
+        (`declared`: a `@dynamic` override matching its vtable slot) --
+        passes as declared."""
+        if not declared:
+            for table in (self.ctx.thir_functions, self.ctx.thir_constructors,
+                          self.ctx.thir_resumable_frames):
+                if lowered is None:
+                    lowered = table.get(func)
+            assert lowered is not None or not (func.is_generator or func.is_async), (
+                "a resumable frame publishes its parameters before its signature", func.name)
+        if lowered is None:
+            types = tuple(t for _, t in func.params)
+            consts = declared_param_consts(
+                types, is_pure=func.is_pure, is_readonly=func.is_readonly,
+                is_method=func.is_method)
+            return {n: t.param_passing(c)
+                    for (n, _), t, c in zip(func.params, types, consts)}
+        return {n: p.passing for (n, _), p in zip(func.params, lowered.params)}
 
     def shim_return_cpp(self, method: TpyFunction) -> str:
         """The return a shim delegating to `method` (an operator, the call
@@ -887,9 +917,11 @@ class FunctionGenerator:
                         return_type_override=stub.return_type,
                     )
             else:
+                per_stub = self.ctx.thir_overload_functions.get(func)
                 for stub in overload_stubs:
                     self._gen_function_forward_decl_single(
-                        out, stub, cpp_name=self._emitted_name(stub))
+                        out, stub, cpp_name=self._emitted_name(stub),
+                        lowered=per_stub.get(stub) if per_stub is not None else None)
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
@@ -905,8 +937,10 @@ class FunctionGenerator:
     def _gen_function_forward_decl_single(
         self, out: TextIO, func: TpyFunction, *,
         cpp_name: str | None = None, return_type_override: TpyType | None = None,
+        lowered=None,
     ) -> None:
-        """Emit a single function forward declaration."""
+        """Emit a single function forward declaration; `lowered` is the
+        specialization an `@overload` stub declares."""
         self.ctx.emit_declaration_echo(out, func.loc)
         name = escape_cpp_name(cpp_name or func.name)
         proto_params = self.protocols.get_all_protocol_params(func.params)
@@ -930,7 +964,8 @@ class FunctionGenerator:
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True,
-                                                     func=func)
+                                                     func=func,
+                                                     passings=self.published_passings(func, lowered))
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -942,7 +977,8 @@ class FunctionGenerator:
             params = (self.gen_params_with_protocols(func.params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True,
-                                                     func=func)
+                                                     func=func,
+                                                     passings=self.published_passings(func, lowered))
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -1012,7 +1048,8 @@ class FunctionGenerator:
                 out.write(self._gen_template_header_with_fn(func, proto_params))
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params,
-                                                         mutated_params=mp)
+                                                         mutated_params=mp,
+                                                         passings=self.published_passings(func))
                           if has_proto_params or has_dynamic
                           else self.gen_params(func.params, func.type_params,
                                                reassigned_params=rp, mutated_params=mp, func=func))
@@ -1026,7 +1063,8 @@ class FunctionGenerator:
             return False
         ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
                                               error_return=func.error_return)
-        params = (self.gen_params_with_protocols(func.params, mutated_params=mp)
+        params = (self.gen_params_with_protocols(func.params, mutated_params=mp,
+                                                 passings=self.published_passings(func))
                   if has_dynamic
                   else self.gen_params(func.params, func.type_params,
                                        reassigned_params=rp, mutated_params=mp, func=func))
@@ -1107,7 +1145,8 @@ class FunctionGenerator:
             ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
                                                   error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
-                                                     mutated_params=mp)
+                                                     mutated_params=mp,
+                                                     passings=self.published_passings(func))
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
@@ -1116,7 +1155,9 @@ class FunctionGenerator:
         else:
             ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
                                                   error_return=func.error_return)
-            params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
+            params = (self.gen_params_with_protocols(func.params, mutated_params=mp,
+                                                     passings=self.published_passings(func))
+                      if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            addr_escapes_params=ae, func=func))
@@ -1163,12 +1204,12 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
-        self.ctx.thir_overload_key = (impl, stub)
+        per_stub = self.ctx.thir_overload_functions.get(impl)
         try:
-            self.gen_body(out, impl, return_cpp=ret_type)
+            self.gen_body(out, impl, return_cpp=ret_type,
+                          lowered=per_stub.get(stub) if per_stub is not None else None)
         finally:
             self.ctx.literal_overload_facts = {}
-            self.ctx.thir_overload_key = None
 
         out.write("}\n")
 
@@ -1207,6 +1248,7 @@ class FunctionGenerator:
         proto_params = self.protocols.get_all_protocol_params(stub.params)
         has_dynamic = self._has_dynamic_protocol_params(stub.params)
         has_proto_params = bool(proto_params)
+        per_stub = self.ctx.thir_overload_functions.get(impl)
 
         if is_generic or has_proto_params:
             out.write(self.protocols.gen_combined_template_header(
@@ -1214,15 +1256,23 @@ class FunctionGenerator:
                 emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(stub.params, stub.type_params,
-                                                     mutated_params=mp)
+            params = (self.gen_params_with_protocols(
+                          stub.params, stub.type_params, mutated_params=mp,
+                          passings=self.published_passings(
+                              stub,
+                              lowered=None if per_stub is None else per_stub.get(stub)))
                       if has_proto_params or has_dynamic
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
             out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(stub))}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
+            params = (self.gen_params_with_protocols(
+                          stub.params, mutated_params=mp,
+                          passings=self.published_passings(
+                              stub,
+                              lowered=None if per_stub is None else per_stub.get(stub)))
+                      if has_dynamic
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
             inline_kw = "inline " if in_header else ""
@@ -1237,14 +1287,13 @@ class FunctionGenerator:
         # equality-based dead-branch elim (if count == 0:) works alongside
         # isinstance-based elim (if x is None:).
         self._inject_literal_overload_facts(overload_types)
-        self.ctx.thir_overload_key = (impl, stub)
         try:
-            self.gen_body(out, impl, return_cpp=ret_type)
+            self.gen_body(out, impl, return_cpp=ret_type,
+                          lowered=per_stub.get(stub) if per_stub is not None else None)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
             self.ctx.literal_overload_facts = {}
-            self.ctx.thir_overload_key = None
 
         out.write("}\n")
 
@@ -1357,17 +1406,17 @@ class FunctionGenerator:
         self._inject_literal_overload_facts(overload_types)
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
             missing_params, impl_defaults, start_idx=len(stub.params))
-        self.ctx.thir_overload_key = (impl, stub)
         try:
+            per_stub = self.ctx.thir_overload_functions.get(impl)
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
                                 mode=mode,
-                                variant_of=stub)
+                                variant_of=stub,
+                                lowered=per_stub.get(stub) if per_stub is not None else None)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
             self.ctx.literal_overload_facts = {}
-            self.ctx.thir_overload_key = None
 
     def _gen_literal_specialized_method(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
@@ -1434,14 +1483,14 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
-        self.ctx.thir_overload_key = (impl, stub)
         try:
+            per_stub = self.ctx.thir_overload_functions.get(impl)
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
-                                mode=mode, variant_of=stub)
+                                mode=mode, variant_of=stub,
+                                lowered=per_stub.get(stub) if per_stub is not None else None)
         finally:
             self.ctx.literal_overload_facts = {}
-            self.ctx.thir_overload_key = None
 
     def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
         """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.
@@ -1512,7 +1561,8 @@ class FunctionGenerator:
                        dynamic_overrides: dict[str, bool] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None,
                        mode: MethodEmitMode = "inline",
-                       variant_of: TpyFunction | None = None) -> None:
+                       variant_of: TpyFunction | None = None,
+                       lowered=None) -> None:
         """Generate a method definition for a record. ``mode`` is
         forwarded to ``_gen_method_overload``. ``variant_of`` is the def
         `method` specializes (a `typing.overload` stub), when it is not
@@ -1549,6 +1599,7 @@ class FunctionGenerator:
         if dynamic_overrides and method.name in dynamic_overrides:
             override_const = dynamic_overrides[method.name]
 
+        passings = self.published_passings(method, lowered)
         names = [(cpp_name, None)]
         if forward_to is not None:
             names.append((plain_name, forward_to))
@@ -1560,13 +1611,15 @@ class FunctionGenerator:
                 self._gen_method_overload(out, method, record_name, name, cpp_return_type,
                                           const=True, override=is_override,
                                           record_type_param_bounds=record_type_param_bounds,
-                                          mode=mode, forward_to=target)
+                                          mode=mode, forward_to=target, passings=passings,
+                                          lowered=lowered)
             else:
                 is_override = override_const is False and not is_static  # base is non-const
                 self._gen_method_overload(out, method, record_name, name, cpp_return_type,
                                           const=False, static=is_static, override=is_override,
                                           record_type_param_bounds=record_type_param_bounds,
-                                          mode=mode, forward_to=target)
+                                          mode=mode, forward_to=target, passings=passings,
+                                          lowered=lowered)
 
     def method_return_cpp(self, method: TpyFunction, record_name: str,
                           cpp_return_type: TpyType | None = None, *,
@@ -1615,6 +1668,8 @@ class FunctionGenerator:
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
         mode: MethodEmitMode = "inline", forward_to: str | None = None,
+        passings: 'dict[str, ParamPassing] | None' = None,
+        lowered=None,
     ) -> None:
         """Emit a single method overload. See ``MethodEmitMode`` for the
         contract of ``mode``. With ``forward_to``, the member is a
@@ -1663,17 +1718,20 @@ class FunctionGenerator:
         # @dynamic overrides become THIR-eligible.
         declared_const_only = override
         if use_protocol_params:
+            if passings is None or declared_const_only:
+                passings = self.published_passings(
+                    method, declared=declared_const_only)
             if use_const_params and not declared_const_only:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
                                                         mutated_params=mp,
                                                         defaults=dfl, emit_defaults=emit_defaults,
-                                                        func=method)
+                                                        func=method, passings=passings)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         mutated_params=None if declared_const_only else mp,
                                                         defaults=dfl, emit_defaults=emit_defaults,
-                                                        func=method)
+                                                        func=method, passings=passings)
         else:
             ctp = class_type_params or None
             if use_const_params and not declared_const_only:
@@ -1787,7 +1845,8 @@ class FunctionGenerator:
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
         self.gen_body(out, method,
-                      indent_level=body_indent_level, return_cpp=ret_type)
+                      indent_level=body_indent_level, return_cpp=ret_type,
+                      lowered=lowered)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")
@@ -1811,23 +1870,15 @@ class FunctionGenerator:
         return f"this->{keyword}{variant}{targs}({args})"
 
     def gen_body(self, out: TextIO, func: TpyFunction,
-                 indent_level: int = 1, return_cpp: str | None = None) -> None:
-        """Emit one function/method body from its lowered THIR."""
+                 indent_level: int = 1, return_cpp: str | None = None,
+                 lowered=None) -> None:
+        """Emit one function/method body from its lowered THIR: `lowered`
+        (an `@overload` specialization), else the module's lowering of
+        `func`."""
         # Local import: `thir.emit` reaches back into `codegen_cpp`, so an
         # eager import here would close a codegen_cpp <-> thir cycle.
         from ..thir.emit import ModuleCounter, TempSink, emit_thir_body
-        overload_key = self.ctx.thir_overload_key
-        if overload_key is not None:
-            # Per-stub specialization in flight: only the (impl, stub) entry
-            # may emit this body -- falling back to the plain map would hijack
-            # the specialization with the unspecialized lowering. Consume the
-            # key so nested bodies never see it.
-            self.ctx.thir_overload_key = None
-            impl, stub = overload_key
-            per_stub = self.ctx.thir_overload_functions.get(impl)
-            thir_fn = None if per_stub is None else per_stub.get(stub)
-        else:
-            thir_fn = self.ctx.thir_functions.get(func)
+        thir_fn = lowered if lowered is not None else self.ctx.thir_functions.get(func)
         if thir_fn is None:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)

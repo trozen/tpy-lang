@@ -1249,7 +1249,7 @@ class SemanticAnalyzer:
                 # keep them mutable so the pair generates both overloads correctly.
                 if method.is_auto_readonly_mutable_clone:
                     continue
-                fi = body_method_info(record_info, method, sema=True)
+                fi = body_method_info(record_info, method)
                 if fi is None or not fi.is_readonly or fi.root.const_withheld:
                     continue
                 method.is_readonly = True
@@ -1277,7 +1277,7 @@ class SemanticAnalyzer:
                 # it would produce a different C++ signature and break the override.
                 if (method.readonly_opt_out
                         or self._dynamic_proto_requires_nonconst(record_info, method.name)):
-                    fi = body_method_info(record_info, method, sema=True)
+                    fi = body_method_info(record_info, method)
                     if fi is not None:
                         fi.root.const_withheld = True
 
@@ -1353,7 +1353,7 @@ class SemanticAnalyzer:
                 # via its own ReadonlyType wrapping at clone time.
                 if method.is_auto_readonly_mutable_clone:
                     continue
-                method_fi = body_method_info(rec_info, method, sema=True)
+                method_fi = body_method_info(rec_info, method)
                 if method_fi is None:
                     continue
                 pin_nonconst = self._dynamic_proto_pins_vararg_nonconst(
@@ -3096,7 +3096,7 @@ class SemanticAnalyzer:
             # and Phase 2 / const inference work through that one.
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is not None and analyzes_body(method):
-                method_fi = body_method_info(record_info, method, sema=True)
+                method_fi = body_method_info(record_info, method)
                 if (method_fi is not None
                         and method_fi.direct_mutated_params is None
                         and method_fi.originating_module == self.ctx.module_name):

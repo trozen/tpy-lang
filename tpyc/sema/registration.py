@@ -29,7 +29,7 @@ def _adopt_skeleton(skeleton, full):
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
-    mark_overload_group, name_overload_variants, overload_facts_stub,
+    mark_overload_group, name_overload_variants, stamp_overload_facts,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     InteriorMutableType,
@@ -2364,11 +2364,9 @@ class TypeRegistrar:
                 # Implementation following stubs (or its clone twin): stubs
                 # are the callable overloads. Don't add the implementation to
                 # the method list -- callers resolve against stubs only.
-                facts_stub = overload_facts_stub(methods.get(method.name, []),
-                                                 sema_method=True)
-                if facts_stub is not None:
-                    facts_stub.facts_implementation = (
-                        self.ctx.overload_twins.get(method, method))
+                stamp_overload_facts(methods.get(method.name, []),
+                                     self.ctx.overload_twins.get(method, method),
+                                     method=True)
             elif (method.name in methods
                   and any(m.is_readonly != func_info.is_readonly
                           or m.is_consuming != func_info.is_consuming
@@ -5300,9 +5298,8 @@ class TypeRegistrar:
                     skeleton_list.clear()
                     skeleton_list.extend(infos)
                     infos = skeleton_list
-            if impl is not None and (
-                    facts_stub := overload_facts_stub(infos, sema_method=False)) is not None:
-                facts_stub.facts_implementation = impl
+            if impl is not None:
+                stamp_overload_facts(infos, impl, method=False)
             self.ctx.registry.register_function_group(infos[0].name, infos)
             self.ctx.global_ns.bind(NameBinding(
                 kind=BindingKind.FUNCTION,

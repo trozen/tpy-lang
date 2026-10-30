@@ -560,8 +560,8 @@ class CodeGenerator:
             if stubs:
                 # Per-stub seeding: an @overload impl body is emitted
                 # once per stub, so each (impl, stub) pair lowers with
-                # that stub's facts and keys its own entry (the
-                # thir_overload_key seam). All-or-nothing: the body
+                # that stub's facts and keys its own
+                # `thir_overload_functions` entry. All-or-nothing: the body
                 # routes only when EVERY stub's specialization lowers
                 # (a partial set would leave hybrid per-stub emission).
                 entries = []

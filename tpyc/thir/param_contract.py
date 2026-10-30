@@ -35,7 +35,7 @@ the argument or the call's kind:
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from ..codegen_cpp.param_const import decide_param_const
+from ..codegen_cpp.param_const import decide_param_const, declared_param_consts
 from ..parse.nodes import TpyExpr
 from ..sema.call_lends import Retention, retention_channel
 from ..type_def_registry import ParamPassing, has_view_param_form
@@ -104,8 +104,8 @@ def stub_param_consts(fi: FunctionInfo) -> tuple[bool, ...]:
     `@readonly` on a free function, which sema reads as "mutates no
     argument" for a callee it cannot analyze (on a method it is a receiver
     fact only)."""
-    whole = fi.is_pure or (fi.is_readonly and not fi.is_method)
-    return tuple(whole or isinstance(unwrap_ref_type(p.type), ReadonlyType) for p in fi.params)
+    return declared_param_consts(tuple(p.type for p in fi.params), is_pure=fi.is_pure,
+                                 is_readonly=fi.is_readonly, is_method=fi.is_method)
 
 
 def method_stub_param_consts(fi: FunctionInfo, types: tuple[TpyType, ...]) -> tuple[bool, ...]:

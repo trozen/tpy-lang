@@ -328,7 +328,7 @@ void main(bool flag) {
     ::tpyapp::defs::MadeLater fresh = ::tpyapp::defs::MadeLater();
     std::cout << "factory order" << " " << ::tpy::__len__(late.xs) << " " << late.list << " " << ::tpy::__len__(fresh.xs) << " " << fresh.list << "\n" << ::tpy::check_signals;
     std::cout << "classvar" << " " << ::tpyapp::defs::fcv(::tpyapp::defs::CV::V, 9) << " " << ::tpyapp::defs::fcv() << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = ::tpyapp::defs::Stepper();
+    ::tpyapp::defs::Stepper __tmp_1 = ::tpyapp::defs::Stepper();
     std::cout << "protocol" << " " << ::tpyapp::main::through_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
     std::cout << "param" << " " << ::tpyapp::main::param(5) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ctor_param(8);

@@ -1622,7 +1622,7 @@ def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
     already split the impl into a mutable and a const clone -- so only one of
     the two is registered. THAT one is emitted once per stub, taking each
     specialization's const-ness from the stub, and the twin is never named:
-    every `thir_overload_key` for the group points at the registered impl.
+    every specialization of the group is keyed by the registered impl.
     Attempting the twin would lower a body that does not exist."""
     out: set[int] = set()
     for record in module.records:

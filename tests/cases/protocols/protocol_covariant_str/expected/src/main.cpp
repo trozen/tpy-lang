@@ -9,11 +9,11 @@ namespace tpyapp::main {
 //     greet(Cat("Whiskers"))
 //     greet(Bird("Tweety"))
 void main() {
-    auto __tmp_1 = Dog("Rex");
+    Dog __tmp_1 = Dog("Rex");
     ::tpyapp::main::greet(__tmp_1);
-    auto __tmp_2 = Cat("Whiskers");
+    Cat __tmp_2 = Cat("Whiskers");
     ::tpyapp::main::greet(__tmp_2);
-    auto __tmp_3 = Bird("Tweety");
+    Bird __tmp_3 = Bird("Tweety");
     ::tpyapp::main::greet(__tmp_3);
 }
 
