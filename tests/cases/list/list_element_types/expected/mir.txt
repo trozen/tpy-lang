@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::local_mixed@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::sum_span@31:0: covered (storage: no_proof_required), summary: known
+main::test_local_span@42:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::sum_span_bigint@49:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)

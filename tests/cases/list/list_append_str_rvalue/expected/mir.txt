@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_word@7:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::main@10:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)

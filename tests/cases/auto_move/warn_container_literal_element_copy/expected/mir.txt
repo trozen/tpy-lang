@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
+main::K.__eq__: covered (storage: no_proof_required)
+main::K.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::K.__hash__: covered (storage: no_proof_required), summary: known
+main::P.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::K.__init__: covered (storage: no_proof_required), summary: known

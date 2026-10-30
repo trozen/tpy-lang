@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::tag@16:0: uncovered (generic body)
+main::pick_or@22:0: uncovered (generic body)
+main::pair@31:0: uncovered (generic body)
+main::main@35:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

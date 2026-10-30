@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk_list@12:0: covered (storage: no_proof_required), summary: known
+main::mk_dict@16:0: covered (storage: no_proof_required), summary: known
+main::mk_set@20:0: covered (storage: no_proof_required), summary: known
+main::mk_bytes@24:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk_array@28:0: covered (storage: no_proof_required), summary: known
+main::mk_boxes@32:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::opt_list@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_dict@43:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_set@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_bytes@55:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_array@61:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_boxes@67:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::size@73:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@99:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

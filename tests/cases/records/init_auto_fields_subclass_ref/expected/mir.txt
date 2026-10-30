@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Bag.__init__@8:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

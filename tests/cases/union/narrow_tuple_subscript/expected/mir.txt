@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@19:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Rec.__init__@9:4: covered (storage: no_proof_required), summary: known

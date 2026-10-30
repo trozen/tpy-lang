@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::negate@3:0: covered (storage: no_proof_required), summary: known
+main::main@6:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

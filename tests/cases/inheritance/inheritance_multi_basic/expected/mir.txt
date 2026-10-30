@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Named.describe@10:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Counted.inc@17:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Counted.value@20:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Widget.__init__@25:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

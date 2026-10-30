@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Point.__eq__: covered (storage: no_proof_required)
+main::Point.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__hash__: covered (storage: no_proof_required), summary: known
+main::Config.__eq__: covered (storage: no_proof_required)
+main::Config.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Config.__hash__: covered (storage: no_proof_required), summary: known
+main::Point.__init__: covered (storage: no_proof_required), summary: known
+main::Config.__init__: covered (storage: no_proof_required), summary: known

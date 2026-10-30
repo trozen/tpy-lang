@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (temporary needs full-expression boundary), summary: opaque (temporary needs full-expression boundary)
+main::Point.sum@9:4: covered (storage: no_proof_required), summary: known
+main::Ref.__deref__@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ref.__deref__@17:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Ref.__init__@14:4: covered (storage: no_proof_required), summary: known

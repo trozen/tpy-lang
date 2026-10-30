@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@47:0: uncovered (unsupported parameter type)
+main::bump@51:0: uncovered (unsupported parameter type)
+main::main@55:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Box.get@27:4: covered (storage: no_proof_required), summary: known
+main::Box.set@30:4: covered (storage: no_proof_required), summary: known
+main::Ratio.get@40:4: covered (storage: no_proof_required), summary: known
+main::Ratio.set@43:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Ratio.__init__@37:4: covered (storage: no_proof_required), summary: known

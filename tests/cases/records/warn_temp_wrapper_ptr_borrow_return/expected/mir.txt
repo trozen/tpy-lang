@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_field@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::take_global@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::take_field_copy@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Wrapper.get@31:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::Obj.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@28:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

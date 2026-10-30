@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe_expr@33:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::show_value@42:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@50:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::Lit.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::BinOp.__init__@17:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Neg.__init__@29:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

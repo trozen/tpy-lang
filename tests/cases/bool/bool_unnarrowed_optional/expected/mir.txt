@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::if_test@45:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::not_test@51:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::and_test@57:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::while_test@63:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::len_test@72:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::observe@78:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::call_test@83:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::str_test@92:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::field_test@98:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::elem_test@106:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@113:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Flag.__bool__@19:4: covered (storage: no_proof_required), summary: known
+main::Bag.__len__@34:4: covered (storage: no_proof_required), summary: known
+main::Flag.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@41:4: covered (storage: no_proof_required), summary: known

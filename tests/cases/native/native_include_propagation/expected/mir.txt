@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+nativelib::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+nativelib.ops::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+nativelib.ops::native_add@9:0: uncovered (no body to lower)

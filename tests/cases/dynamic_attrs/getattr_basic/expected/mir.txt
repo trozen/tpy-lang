@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::consumed_receiver@30:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::counted_receiver@58:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Config.__getattr__@13:4: uncovered (unsupported return type)
+main::Echo.__setattr__@24:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Echo.__delattr__@27:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Holder.get@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Config.__init__@10:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Point.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@50:4: covered (storage: no_proof_required), summary: known

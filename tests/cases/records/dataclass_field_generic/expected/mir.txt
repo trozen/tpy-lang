@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Pair.__eq__@11:4: uncovered (generic body)
+main::Wrapper.__eq__: uncovered (uncertified binary operation)
+main::Wrapper.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Pair.__init__@8:4: uncovered (generic constructor)
+main::Wrapper.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

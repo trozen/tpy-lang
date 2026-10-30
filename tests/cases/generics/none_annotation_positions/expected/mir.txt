@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::takes_none@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@41:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Field.take@23:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Guard.__enter__@28:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@32:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Field.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

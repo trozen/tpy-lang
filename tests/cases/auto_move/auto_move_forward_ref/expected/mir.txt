@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@9:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::sink@13:0: uncovered (generic body)
+main::wrapper@17:0: uncovered (generic body)
+main::main@21:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

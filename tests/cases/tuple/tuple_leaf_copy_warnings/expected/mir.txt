@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::s1a@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::s1b@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::s1c@39:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::s1d@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::s1e@60:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::s1f@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::s2d@83:0: uncovered (generic body)
+main::main@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@8:4: covered (storage: no_proof_required), summary: known

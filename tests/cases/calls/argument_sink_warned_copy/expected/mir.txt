@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::eat_a@27:0: covered (storage: no_proof_required), summary: known
+main::keep@32:0: covered (storage: no_proof_required), summary: known
+main::empty@38:0: uncovered (no body to lower)
+main::main@41:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::PH.borrow@23:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::A.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::PH.__init__@20:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::rewrite@60:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::setitem@66:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)
+main::container_element@73:0: covered (storage: no_proof_required), summary: known
+main::qualified_decl@79:0: covered (storage: no_proof_required), summary: known
+main::variant_copy@87:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::optional_copy@108:0: covered (storage: no_proof_required), summary: known
+main::main@120:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.brec@40:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.bctr@43:4: covered (storage: no_proof_required), summary: known
+main::Payload.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@51:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::OptSink.__init__@104:4: covered (storage: no_proof_required), summary: known

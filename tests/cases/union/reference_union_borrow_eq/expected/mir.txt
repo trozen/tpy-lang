@@ -1,0 +1,56 @@
+main::__tpy_init: uncovered (module initialization)
+main::eq@177:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::ne@181:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::order@185:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::dunder_ne@195:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::only_ne@199:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::only_ne_eq@203:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::opt_ne@207:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::readonly_mixed@214:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::local_vs_param@218:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::anon_eq@223:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::anon_ne@227:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::held_eq@231:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::mixed_eq@235:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::elem_eq@258:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::count_eq@269:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::gen_eq@274:0: uncovered (unsupported pointer capture)
+main::in_closure@278:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_async@285:0: uncovered (async body)
+main::in_with@289:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_try@294:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_error_return@302:0: uncovered (error-return body)
+main::in_match@306:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump@318:0: covered (storage: no_proof_required), summary: known
+main::amain@323:0: uncovered (async body)
+main::main@327:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Guard.__enter__@19:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@22:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Dog.__eq__@32:4: uncovered (unsupported expression type)
+main::Dog.__lt__@40:4: covered (storage: no_proof_required)
+main::Dog.__le__@43:4: covered (storage: no_proof_required)
+main::Dog.__gt__@46:4: covered (storage: no_proof_required)
+main::Dog.__ge__@49:4: covered (storage: no_proof_required)
+main::Cat.__eq__@59:4: uncovered (unsupported expression type)
+main::Cat.__lt__@64:4: covered (storage: no_proof_required)
+main::Cat.__le__@67:4: covered (storage: no_proof_required)
+main::Cat.__gt__@70:4: covered (storage: no_proof_required)
+main::Cat.__ge__@73:4: covered (storage: no_proof_required)
+main::Tag.__eq__@85:4: uncovered (unsupported expression type)
+main::Tag.__ne__@90:4: uncovered (unsupported expression type)
+main::Mark.__eq__@102:4: uncovered (unsupported expression type)
+main::OnlyNe.__ne__@116:4: uncovered (unsupported expression type)
+main::Locked.__eq__@146:4: uncovered (unsupported expression type)
+main::Sealed.__eq__@159:4: uncovered (unsupported expression type)
+main::Shelter.same@250:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Shelter.same_ro@254:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Dog.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@56:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@82:4: covered (storage: no_proof_required), summary: known
+main::Mark.__init__@99:4: covered (storage: no_proof_required), summary: known
+main::OnlyNe.__init__@113:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@128:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@135:4: covered (storage: no_proof_required), summary: known
+main::Locked.__init__@143:4: covered (storage: no_proof_required), summary: known
+main::Sealed.__init__@156:4: covered (storage: no_proof_required), summary: known
+main::Shelter.__init__@246:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)

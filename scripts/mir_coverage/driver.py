@@ -188,10 +188,9 @@ def normalize(reason: str) -> str:
     return _NUM.sub("N", _QUOTED.sub("'X'", reason))
 
 
-def reason_category(raw: str, node_kind: str | None) -> str:
+def reason_category(raw: str, node_kind: str | None, mir_refusal: bool) -> str:
     r = raw
-    if r.startswith("MIR not covered: "):
-        r = r[len("MIR not covered: "):]
+    if mir_refusal:
         if node_kind and r in _GENERIC_REASONS:
             return f"{r} [{node_kind}]"
         r = normalize(r)
@@ -369,9 +368,10 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
     ranges = body_ranges.setdefault(module.name, [])
 
     def rec(body, position, status, raw, *, node_kind=None, extra=None, feats=(), line=None, events=None,
-            btype=None, measured=None):
+            btype=None, measured=None, mir_refusal=False):
         r = {"module": module.name, "qualname": body.declaration, "user": user, "position": position,
-             "status": status, "reason_raw": raw, "reason_cat": reason_category(raw, node_kind) if raw else None,
+             "status": status, "reason_raw": raw,
+             "reason_cat": reason_category(raw, node_kind, mir_refusal) if raw else None,
              "node_kind": node_kind, "features": sorted(feats), "blocker_line": line, "events": events or {},
              "blocker_type": btype, "lowered": status == "covered"}
         r.update(extra or {})
@@ -406,7 +406,8 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
             return {"status": "covered", "raw": None,
                     "measured": lowered_columns(verdict) | obligation_columns(source, verdict)}
         return {"status": "no_body" if refusal.kind is MIRRefusalKind.NO_BODY else "not_covered",
-                "raw": refusal.display, "node_kind": refusal.node_kind,
+                "raw": refusal.reason, "mir_refusal": refusal.kind is MIRRefusalKind.MIR_NOT_COVERED,
+                "node_kind": refusal.node_kind,
                 "line": refusal.loc.line if refusal.loc is not None else None,
                 "btype": blocker_type(refusal.reason), "measured": obligation_columns(source, verdict)}
 

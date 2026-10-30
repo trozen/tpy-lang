@@ -1,0 +1,29 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_own@61:0: covered (storage: no_proof_required), summary: known
+main::use_flat@66:0: covered (storage: no_proof_required), summary: known
+main::ctor_borrow@71:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::ctor_mutated_slot@78:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ctor_set_dict@84:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::ctor_nested_call@90:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::make@95:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::ctor_element_and_condition@100:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::own_slots@109:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::own_stub_elem@122:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::own_marker_and_pending@136:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::rebind_slot_reseat@148:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::closure@171:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::blocks@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::hoisted_reseat@198:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::label@206:0: covered (storage: no_proof_required), summary: known
+main::str_append_temp@214:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::error_return_body@223:0: uncovered (error-return body)
+main::main@228:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Keep.reset@38:4: covered (storage: no_proof_required), summary: known
+main::CM.__enter__@50:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::CM.__exit__@53:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Site.bump@164:4: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Flat.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Grow.__init__@27:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Keep.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Site.__init__@159:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

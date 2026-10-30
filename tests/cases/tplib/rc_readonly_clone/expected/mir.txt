@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::observe@16:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_readonly_weak@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::downgrade_readonly@30:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@47:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Registry.handle@43:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Counter.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Registry.__init__@39:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

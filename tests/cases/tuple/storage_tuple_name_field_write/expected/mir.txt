@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::copy_alias@21:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@27:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Elem.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@17:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

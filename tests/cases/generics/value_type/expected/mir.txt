@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Vec2.total@13:4: uncovered (missing receiver fact)
+main::Rect.origin_sum@26:4: uncovered (unsupported expression)
+main::Vec2.__init__@9:4: uncovered (missing record layout)
+main::Rect.__init__@22:4: uncovered (missing record layout)

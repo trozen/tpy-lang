@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::leaf_count@8:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@32:0: uncovered (unsupported local type or form), summary: opaque (recursive or recursion-dependent call)
+main::Holder.get@25:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Holder.matches@28:4: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::Holder.__init__@22:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

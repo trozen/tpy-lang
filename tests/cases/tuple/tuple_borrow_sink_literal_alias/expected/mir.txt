@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_first@15:0: covered (storage: no_proof_required), summary: known
+main::read_pair@21:0: covered (storage: no_proof_required), summary: known
+main::relay@25:0: uncovered (generic body)
+main::main@29:0: uncovered (unsupported metadata: spelled), summary: opaque (unsupported metadata: spelled)
+main::Item.__init__@11:4: covered (storage: no_proof_required), summary: known

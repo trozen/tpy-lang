@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::free@14:0: certified, summary: known
+main::condition@23:0: certified, summary: known
+main::main@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Runner.read@38:4: certified, summary: known
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@33:4: certified, summary: known

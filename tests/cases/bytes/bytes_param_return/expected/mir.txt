@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::echo@7:0: covered (storage: no_proof_required), summary: known
+main::first_or_empty@11:0: covered (storage: no_proof_required), summary: known
+main::opt_or_default@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

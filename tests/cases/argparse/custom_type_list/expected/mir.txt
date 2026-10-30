@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_help_1@28:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@28:11: uncovered (unsupported record fields)
+main::Tag.from_arg@17:4: covered (storage: no_proof_required)
+main::Tag.__repr__@20:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tag.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_1.__init__@28:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

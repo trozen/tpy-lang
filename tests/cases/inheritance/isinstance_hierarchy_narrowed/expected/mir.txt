@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::upcast_in_branch@28:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::downcast_in_branch@35:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Puppy.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@24:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,55 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@44:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::gen_pos@89:0: uncovered (read before definite assignment)
+main::async_pos@97:0: uncovered (async body)
+main::nested_def_pos@105:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_def_in_body@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::if_arm@129:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::nested_loops@139:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::nested_outer_unprovable@148:0: covered (storage: no_proof_required), summary: known
+main::while_parity@157:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::literal_local@166:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::narrowed_bound@174:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::literal_head@183:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::range_step_pos@191:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
+main::range_step_neg@198:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::pre_assigned@205:0: covered (storage: no_proof_required), summary: known
+main::loop_var_after@213:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::with_body@220:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@228:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@238:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::break_above_bind@250:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::while_true_break@260:0: covered (storage: no_proof_required), summary: known
+main::next_val@270:0: covered (storage: no_proof_required), summary: known
+main::while_walrus_break@276:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_walrus_and@287:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_walrus_or@299:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_walrus_and_subscript@308:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_walrus_or_else@321:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_not_or_body@333:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_nested_or_after@345:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::if_head_walrus@354:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::search@365:0: covered (storage: no_proof_required), summary: known
+main::else_free_fn@377:0: covered (storage: no_proof_required), summary: known
+main::else_while@386:0: covered (storage: no_proof_required), summary: known
+main::else_enum@396:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::else_nested_def@405:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::else_match_arm@417:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::else_error_return@431:0: uncovered (error-return body)
+main::pair@443:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::else_tuple_str@447:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::else_ref@457:0: covered (storage: not_covered: THIRPtrLocalRebind: borrowed operation has no MIR correspondence), summary: known
+main::else_join@468:0: covered (storage: no_proof_required), summary: known
+main::else_read_in_else@479:0: covered (storage: no_proof_required), summary: known
+main::else_inner_break@492:0: covered (storage: no_proof_required), summary: known
+main::else_gen@502:0: covered (storage: no_facts: storage facts have not been published)
+main::else_async@513:0: uncovered (async body)
+main::main@524:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Guard.__enter__@36:4: covered (storage: no_proof_required), summary: known
+main::Guard.__exit__@39:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.bump@60:4: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::ElseHolder.widen@80:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Guard.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@54:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::ElseHolder.__init__@72:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

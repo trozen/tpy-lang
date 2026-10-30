@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@3:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::<genexpr>@20:13: uncovered (generator expression)
+main::<genexpr>@21:13: uncovered (generator expression)
+main::<genexpr>@22:13: uncovered (generator expression)
+main::<genexpr>@23:13: uncovered (generator expression)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@37:0: uncovered (async body)
+main::main@44:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::AIter.__anext__@17:4: uncovered (async body)
+main::Source.__aiter__@30:4: covered (storage: no_proof_required), summary: known
+main::AIter.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Source.__init__@27:4: covered (storage: no_proof_required), summary: known

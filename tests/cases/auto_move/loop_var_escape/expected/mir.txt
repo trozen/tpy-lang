@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@32:0: covered (storage: no_proof_required), summary: known
+main::ident@36:0: certified, summary: known
+main::junk@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::alias_in_if@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::call_alias@62:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::try_alias@75:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::while_hoist@90:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested_loop@104:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::member@118:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ptr_field@131:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::declared_view@146:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ident_call@159:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::relend_after@172:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::reused_name@187:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::moved_while_borrowed@204:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::moved_while_call_borrowed@216:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::moved_out@230:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@239:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.get@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::C.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@28:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

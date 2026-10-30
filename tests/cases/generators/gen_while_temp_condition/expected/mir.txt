@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::eat@7:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::fresh_each_pull@14:0: uncovered (call needs finalized known summary)
+main::fresh_each_pull_framed@23:0: uncovered (call needs finalized known summary)
+main::if_cond_temp@31:0: uncovered (loop across a suspension)
+main::walrus_gen@38:0: uncovered (unsupported hoisted value)
+main::main@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

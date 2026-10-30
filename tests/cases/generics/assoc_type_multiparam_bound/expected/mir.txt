@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_first@43:0: uncovered (generic body)
+main::take_second@47:0: uncovered (generic body)
+main::head@51:0: uncovered (generic body)
+main::main@55:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::IntStr.first@21:4: covered (storage: no_proof_required), summary: known
+main::IntStr.second@24:4: covered (storage: no_proof_required), summary: known
+main::ListStr.first@36:4: covered (storage: no_proof_required), summary: known
+main::ListStr.second@39:4: covered (storage: no_proof_required), summary: known
+main::IntStr.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::ListStr.__init__@32:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Point.magnitude_sq@14:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

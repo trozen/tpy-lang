@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_factory@16:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Factory.create@12:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Product.__init__@7:4: covered (storage: no_proof_required), summary: known

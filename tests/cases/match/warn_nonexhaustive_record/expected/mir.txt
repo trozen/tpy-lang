@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe_guarded@9:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::describe_literal@15:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::describe_exhaustive@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@5:4: covered (storage: no_proof_required), summary: known

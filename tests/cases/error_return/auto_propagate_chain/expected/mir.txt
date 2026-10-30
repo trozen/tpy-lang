@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@8:0: uncovered (error-return body)
+main::lookup_twice@15:0: uncovered (error-return body)
+main::lookup_sum@21:0: uncovered (error-return body)
+main::main@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

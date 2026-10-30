@@ -1,0 +1,40 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@30:0: covered (storage: no_proof_required), summary: known
+main::free_fn@36:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::whole_name@45:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::nested@55:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mixed@64:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::call_member@74:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::container_member@84:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::str_member@95:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::outer_own@106:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::with_body@115:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::match_arm@125:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rebind_member@139:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rebind_scalar@148:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::rebind_own_param@157:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rebind_other@165:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk@177:0: covered (storage: no_proof_required), summary: known
+main::peek@181:0: covered (storage: no_proof_required), summary: known
+main::arg_temp_member@186:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::aug_record@216:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::aug_list@224:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::aug_set@232:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::aug_rebinds@244:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::er_body@260:0: uncovered (error-return body)
+main::closure@300:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::async_body@313:0: uncovered (async body)
+main::async_rebind@323:0: uncovered (async body)
+main::drive@332:0: uncovered (async body)
+main::main@339:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Ctx.__enter__@23:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Ctx.__exit__@26:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Acc.__iadd__@200:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Plus.__add__@211:4: covered (storage: no_proof_required)
+main::Maker.make@277:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Taker.take@292:4: uncovered (unsupported return type)
+main::Box.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Acc.__init__@197:4: covered (storage: no_proof_required), summary: known
+main::Plus.__init__@208:4: covered (storage: no_proof_required), summary: known
+main::Maker.__init__@273:4: covered (storage: no_proof_required), summary: known
+main::Taker.__init__@288:4: covered (storage: no_proof_required), summary: known

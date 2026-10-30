@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::dbl@23:0: covered (storage: no_proof_required), summary: known
+main::odd@27:0: covered (storage: no_proof_required), summary: known
+main::node_pos@31:0: covered (storage: no_proof_required), summary: known
+main::make_nodes@35:0: covered (storage: no_proof_required), summary: known
+main::main@39:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Node.bump@18:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@15:4: covered (storage: no_proof_required), summary: known

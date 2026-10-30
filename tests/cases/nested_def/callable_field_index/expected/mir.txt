@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::inc@17:0: covered (storage: no_proof_required), summary: known
+main::touch@21:0: covered (storage: no_proof_required), summary: known
+main::notify@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::make_values@30:0: covered (storage: no_proof_required), summary: known
+main::key@34:0: covered (storage: no_proof_required), summary: known
+main::arg@39:0: covered (storage: no_proof_required), summary: known
+main::generate@94:0: uncovered (unsupported metadata: callee_expr)
+main::async_read@99:0: uncovered (async body)
+main::mutate_then_read@103:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::error_return_read@129:0: uncovered (error-return body)
+main::main@133:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::App.read@63:4: uncovered (unsupported metadata: callee_expr), summary: opaque (unsupported metadata: callee_expr)
+main::App.write@67:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::App.selected@71:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::App.selected@71:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Generic.invoke@90:4: uncovered (generic body)
+main::App.__init__@52:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@80:4: uncovered (member definition: unsupported record fields), summary: opaque (member definition: unsupported record fields)
+main::Generic.__init__@87:4: uncovered (generic constructor)

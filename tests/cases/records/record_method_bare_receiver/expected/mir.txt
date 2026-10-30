@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::combine@37:0: covered (storage: no_proof_required), summary: known
+main::narrowed_receiver@43:0: covered (storage: no_proof_required), summary: known
+main::inherited@50:0: covered (storage: no_proof_required), summary: known
+main::main@55:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::Counter.bump@12:4: covered (storage: no_proof_required), summary: known
+main::Counter.add_from@15:4: covered (storage: no_proof_required), summary: known
+main::Counter.diff@18:4: covered (storage: no_proof_required), summary: known
+main::Counter.get@21:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Label.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::FancyCounter.__init__@33:4: covered (storage: no_proof_required), summary: known

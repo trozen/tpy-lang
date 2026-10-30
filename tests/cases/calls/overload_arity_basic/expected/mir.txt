@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::log@6:0: uncovered (no body to lower)
+main::log@9:0: uncovered (no body to lower)
+main::log@11:0: uncovered (overloaded callable)
+main::main@17:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

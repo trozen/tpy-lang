@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::double@10:0: uncovered (async body)
+main::run_twice@15:0: uncovered (async body)
+main::main_coro@22:0: uncovered (async body)
+main::main@26:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)

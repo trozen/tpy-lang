@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::serve@10:0: uncovered (async body)
+main::main@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

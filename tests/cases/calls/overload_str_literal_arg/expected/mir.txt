@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::kind@9:0: uncovered (no body to lower)
+main::kind@12:0: uncovered (no body to lower)
+main::sv@17:0: uncovered (no body to lower)
+main::sv@20:0: uncovered (no body to lower)
+main::gen_ov@27:0: uncovered (no body to lower)
+main::gen_ov@30:0: uncovered (no body to lower)
+main::echo@34:0: covered (storage: no_proof_required), summary: known
+main::main@47:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::C.kind@40:4: uncovered (no body to lower)
+main::C.kind@43:4: uncovered (no body to lower)

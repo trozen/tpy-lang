@@ -1,0 +1,11 @@
+helper::__tpy_init: uncovered (module initialization)
+helper::mk_labels@12:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::read_g@10:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::read_final@14:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::label_owned@18:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::read_items@22:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
+main::shadow@26:0: covered (storage: no_proof_required), summary: known
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.m@37:4: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::C.__init__@34:4: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

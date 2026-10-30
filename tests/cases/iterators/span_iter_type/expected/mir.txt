@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_iterable@5:0: uncovered (unsupported parameter type)
+main::sum_readonly@11:0: uncovered (view of container storage), summary: opaque (view of container storage)
+main::main@15:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)

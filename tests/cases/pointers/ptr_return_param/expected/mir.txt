@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::addr_param@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::addr_global@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

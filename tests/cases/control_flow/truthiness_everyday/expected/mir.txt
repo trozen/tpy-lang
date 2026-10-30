@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::width@23:0: covered (storage: no_proof_required), summary: known
+main::zero@27:0: covered (storage: no_proof_required), summary: known
+main::scalar_shapes@31:0: uncovered (condition requires bool), summary: opaque (condition requires bool)
+main::moded_shapes@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::operand_positions@72:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
+main::guard_shapes@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::drain@104:0: uncovered (condition requires bool), summary: opaque (condition requires bool)
+main::mutate_through_field@112:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@120:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.size@19:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@17:0: uncovered (async body)
+main::A.tag@8:4: uncovered (async body)
+main::B.tag@13:4: uncovered (async body)

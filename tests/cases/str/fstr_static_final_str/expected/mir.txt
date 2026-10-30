@@ -1,0 +1,6 @@
+const_mod::__tpy_init: uncovered (module initialization)
+label_infra::__tpy_init: uncovered (module initialization)
+label_infra::tag@6:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+label_infra::emit@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

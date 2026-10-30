@@ -276,7 +276,7 @@ def test_hoisted_copy_skipped_paths_and_constructor_tail(hoists: Hoists, skip: b
 def test_debug_collection_includes_optional_copy_writes(hoists: Hoists) -> None:
     dumped = hoists[2]
     assert "in_place" in dumped and " = copy " in dumped
-    uncovered = [line for line in dumped.splitlines() if "MIR not covered" in line]
+    uncovered = [line for line in dumped.splitlines() if "<uncovered (" in line]
     assert len(uncovered) == 1
     assert "__tpy_init" in uncovered[0] and "module initialization" in uncovered[0]
     assert re.search(r"^fn \S+::Runner\.static@\S+ -> int32", dumped, re.MULTILINE), dumped

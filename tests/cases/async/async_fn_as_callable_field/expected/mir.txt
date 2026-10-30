@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::handle@19:0: uncovered (async body)
+main::main_coro@42:0: uncovered (async body)
+main::main@47:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Dispatcher.run@32:4: uncovered (async body)
+main::Conn.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Dispatcher.__init__@28:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Rect.area@10:4: covered (storage: no_proof_required), summary: known
+main::Rect.scale@13:4: covered (storage: no_proof_required), summary: known
+main::Rect.__eq__: covered (storage: no_proof_required)
+main::Rect.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Rect.__init__: covered (storage: no_proof_required), summary: known

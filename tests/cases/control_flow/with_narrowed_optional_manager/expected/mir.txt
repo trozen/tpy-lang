@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::value_enter@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::record_enter@48:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@57:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.__enter__@13:4: covered (storage: no_proof_required), summary: known
+main::Counter.__exit__@16:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.__enter__@33:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.__exit__@36:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@30:4: covered (storage: no_proof_required), summary: known

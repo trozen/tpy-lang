@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_param@6:0: covered (storage: no_proof_required), summary: known
+main::from_param_sliced@9:0: covered (storage: no_proof_required), summary: known
+main::from_literal@12:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::main@16:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)

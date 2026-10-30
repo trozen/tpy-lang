@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Cell.get@14:4: uncovered (generic body)
+main::Cell.pick@17:4: uncovered (generic body)
+main::Cell.echo@20:4: uncovered (generic body)
+main::Cell.store@23:4: uncovered (generic body)
+main::Cell.__init__@10:4: uncovered (generic constructor)

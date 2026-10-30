@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::each@16:0: uncovered (generic body)
+main::each_mono@27:0: uncovered (unsupported parameter type)
+main::count_mono@39:0: uncovered (async body)
+main::reference_element@46:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::value_element@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::reused_source@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@20:0: uncovered (error-return body)
+main::chain@27:0: uncovered (error-return body)
+main::main@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Sink.fill@38:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Payload.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@35:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@21:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::make_copy@26:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::owned@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::owned_copy@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::owned_method@50:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::owned_method_copy@56:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.updated@16:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Factory.make@46:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Factory.__init__@43:4: covered (storage: no_proof_required), summary: known

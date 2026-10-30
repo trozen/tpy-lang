@@ -1,0 +1,25 @@
+main::__tpy_init: uncovered (module initialization)
+main::probe_view@19:0: uncovered (no body to lower)
+main::probe_plain@23:0: uncovered (no body to lower)
+main::probe_tick@27:0: uncovered (no body to lower)
+main::probe_text@32:0: uncovered (no body to lower)
+main::probe_fill@36:0: uncovered (no body to lower)
+main::probe_bump@40:0: uncovered (no body to lower)
+main::unmarked@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::unmarked_nullary@70:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::text_of_scalar@75:0: uncovered (stub result may borrow a scalar argument), summary: opaque (stub result may borrow a scalar argument)
+main::mut_ref@80:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::mutable_leaf@85:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::view_result@90:0: covered (storage: no_proof_required), summary: known
+main::ring_total@96:0: covered (storage: no_proof_required), summary: known
+main::ring_first@104:0: covered (storage: no_proof_required), summary: known
+main::ring_grow@109:0: covered (storage: no_proof_required), summary: known
+main::ring_push_in_loop@114:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::ring_put_in_loop@125:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::main@134:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Ring.__iter__@50:4: uncovered (no body to lower)
+main::Ring.__getitem__@55:4: uncovered (no body to lower)
+main::Ring.put@58:4: uncovered (no body to lower)
+main::Ring.push@61:4: uncovered (no body to lower)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Ring.__init__@45:4: uncovered (no body to lower)

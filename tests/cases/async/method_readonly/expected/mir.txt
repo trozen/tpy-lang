@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@17:0: uncovered (async body)
+main::Reporter.describe@13:4: uncovered (async body)
+main::Reporter.__init__@10:4: covered (storage: no_proof_required), summary: known

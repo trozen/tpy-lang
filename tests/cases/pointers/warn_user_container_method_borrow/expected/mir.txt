@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::NumberList.add@15:4: covered (storage: no_proof_required), summary: known
+main::NumberList.set_label@18:4: covered (storage: no_proof_required), summary: known
+main::NumberList.__iter__@21:4: uncovered (unsupported return type)
+main::NumberList.__init__@11:4: covered (storage: no_proof_required), summary: known

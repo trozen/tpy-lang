@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::find_first@21:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::bump@25:0: covered (storage: no_proof_required), summary: known
+main::test@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.get@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@14:4: covered (storage: no_proof_required), summary: known

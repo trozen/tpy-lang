@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@15:0: covered (storage: no_proof_required), summary: known
+main::total@19:0: covered (storage: no_proof_required), summary: known
+main::main@26:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

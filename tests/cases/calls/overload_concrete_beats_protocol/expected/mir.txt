@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@26:0: uncovered (no body to lower)
+main::describe@31:0: uncovered (no body to lower)
+main::main@35:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.name@21:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@18:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@10:0: uncovered (generic body)
+main::via_ternary@16:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::via_branches@23:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::main@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

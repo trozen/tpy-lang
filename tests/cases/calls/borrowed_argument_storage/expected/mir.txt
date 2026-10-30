@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::observe@29:0: certified, summary: known
+main::choose@34:0: certified, summary: known
+main::payload@38:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::fixed@43:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::external@49:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::loops@57:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@70:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.inspect@13:4: certified, summary: known
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Caller.__init__@22:4: certified, summary: known

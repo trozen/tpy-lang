@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::enum_first@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::enum_middle@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::int_or_group@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::int_or_group_last@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::str_table@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::opt_enum@87:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::steps@118:0: uncovered (match across a suspension)
+main::main@131:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Light.rank@107:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Light.__init__@104:4: covered (storage: no_proof_required), summary: known

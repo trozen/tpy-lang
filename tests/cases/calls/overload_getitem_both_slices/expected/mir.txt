@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::Window.__getitem__@13:4: uncovered (no body to lower)
+main::Window.__getitem__@16:4: uncovered (no body to lower)
+main::Window.__getitem__@18:4: uncovered (overloaded callable)
+main::Window.__init__@9:4: covered (storage: no_proof_required), summary: known

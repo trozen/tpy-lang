@@ -116,13 +116,13 @@ def _compile_reusing(library: conftest.LibraryEmission, req, tmp_path: Path,
     monkeypatch.setattr(fork_compile, "_library", library)
     compiler = _prepared("base", tmp_path)
     generated: set[str] = set()
-    generate_code = compiler.generate_code
+    generate_code = compiler.generate_code_and_context
 
     def recording(mod, *args, **kwargs):
         generated.add(mod.name)
         return generate_code(mod, *args, **kwargs)
 
-    compiler.generate_code = recording
+    compiler.generate_code_and_context = recording
     result = compile_case(compiler, lambda: compiler.finish(req.src_file, reuse=True), req)
     return result, generated
 
@@ -453,9 +453,24 @@ def test_live_annotation_checks_follow_update_mode(update, tmp_path, servers):
         assert errors == (
             ["Line 2: expected type 'str' for 'x' but got 'int32'"],
             ["Line 1: expected mir(conflict /nothing/) for 'main' but MIR says covered "
-             "(storage: no_proof_required)"],
+             "(storage: no_proof_required), summary: opaque (summary output effect)"],
             ["Line 3: expected mir_owned(y) in 'main' but MIR writes y as scalar"])
 
+
+
+def test_forked_mir_text_is_the_in_process_text(tmp_path, servers):
+    """The verdicts stay in the child; the rendered text crosses the pipe
+    and must read as an in-process compile's, library modules included."""
+    from test_mir_snapshot import NAMES, names_program
+    src = names_program(tmp_path / "case")
+    req = dataclasses.replace(case_request(src, tmp_path / "case" / "__tpyc__"),
+                              snapshot_lib_modules=frozenset({"typing"}))
+    forked = _forked(req)
+    plain = _plain(req)
+    assert forked.mir_text == plain.mir_text
+    lines = forked.mir_text.splitlines()
+    assert [line.split(": ", 1)[0] for line in lines if not line.startswith("typing::")] == NAMES
+    assert any(line.startswith("typing::") for line in lines)
 
 
 def test_request_and_result_records_cross_the_pipe():

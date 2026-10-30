@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@9:0: covered (storage: no_proof_required), summary: known
+main::make_bytes@13:0: covered (storage: no_proof_required), summary: known
+main::main@17:0: uncovered (unsupported view source), summary: opaque (unsupported view source)

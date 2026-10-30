@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::tpy_log@10:0: uncovered (unsupported parameter type)
+main::greet@14:0: uncovered (unsupported parameter type)
+main::main@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

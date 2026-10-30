@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_through_get@42:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::write_through_get@46:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::mutate_through_get@50:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::aug_through_get@54:0: uncovered (unsupported metadata: held), summary: opaque (unsupported metadata: held)
+main::alias_read@58:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::alias_write@63:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::elem_alias_write@68:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary record: record member holds a borrow)
+main::read_user_accessor@73:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::write_user_accessor@77:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::peek_user_accessor@81:0: covered (storage: no_proof_required), summary: known
+main::sum_boxes@85:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@92:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Inner.bump@13:4: covered (storage: no_proof_required), summary: known
+main::Cell.get@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cell.get@25:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cell.peek@29:4: covered (storage: no_proof_required), summary: known
+main::Cell.peek@29:4#2: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@37:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

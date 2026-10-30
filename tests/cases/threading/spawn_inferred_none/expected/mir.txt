@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Beacon.run@17:4: covered (storage: no_proof_required), summary: known
+main::Beacon.__init__@14:4: covered (storage: no_proof_required), summary: known

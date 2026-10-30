@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::One.run@7:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

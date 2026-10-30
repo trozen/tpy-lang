@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::nested_warn@4:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

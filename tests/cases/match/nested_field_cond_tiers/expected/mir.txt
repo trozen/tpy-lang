@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::opt_chain@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::poly@66:0: uncovered (unsupported parameter type)
+main::record@74:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::steps@97:0: uncovered (match across a suspension)
+main::main@108:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.speak@46:4: covered (storage: no_proof_required)
+main::Cat.speak@51:4: covered (storage: no_proof_required)
+main::Kennel.label@89:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Inner.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Collar.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::Kennel.__init__@86:4: covered (storage: no_proof_required), summary: known

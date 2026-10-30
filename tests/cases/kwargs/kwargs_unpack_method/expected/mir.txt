@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Client.connect@13:4: uncovered (unmodeled record)
+main::Client.__init__@11:4: covered (storage: no_proof_required), summary: known

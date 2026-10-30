@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@23:0: covered (storage: no_proof_required), summary: known
+main::inferred_view@27:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::pinned_view@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::slice_view@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bytearray_slice_view@48:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

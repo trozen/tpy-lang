@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_storage@6:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::consume@19:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_pass_own@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

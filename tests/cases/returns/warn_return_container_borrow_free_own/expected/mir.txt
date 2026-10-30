@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@11:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take@15:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take_copy@21:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@25:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

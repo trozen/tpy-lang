@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@13:0: covered (storage: no_proof_required), summary: known
+main::test_list_one_branch@17:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::test_own_list_both_branches@25:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::test_list_reassigned_mixed@33:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::test_record_one_branch@43:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_record_both_branches@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_optional_record_one_branch@59:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::main@68:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

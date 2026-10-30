@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::upto@28:0: covered (storage: no_facts: storage facts have not been published)
+main::upto_final@36:0: covered (storage: no_facts: storage facts have not been published)
+main::bounded@44:0: covered (storage: no_facts: storage facts have not been published)
+main::head@54:0: uncovered (generic body)
+main::main@111:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.upto_m@70:4: covered (storage: no_facts: storage facts have not been published)
+main::Box.bounded_m@77:4: covered (storage: no_facts: storage facts have not been published)
+main::Box.shapes@85:4: uncovered (unsupported pointer capture)
+main::Box2.take@101:4: uncovered (generic body)
+main::Rec.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@66:4: covered (storage: no_proof_required), summary: known
+main::Box2.__init__@97:4: uncovered (generic constructor)

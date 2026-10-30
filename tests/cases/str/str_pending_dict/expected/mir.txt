@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_dict_value@4:0: covered (storage: no_proof_required), summary: known
+main::in_dict_key@8:0: covered (storage: no_proof_required), summary: known
+main::in_dict_var@12:0: covered (storage: no_proof_required), summary: known
+main::in_dict_literal@17:0: covered (storage: no_proof_required), summary: known
+main::in_dict_comp@21:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

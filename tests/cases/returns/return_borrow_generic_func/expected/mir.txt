@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@19:0: uncovered (generic body)
+main::test_borrow_warn@24:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::get_first_concrete@32:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::get_first_generic@38:0: uncovered (generic body)
+main::test_return_through_local@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_method_ref_semantics@64:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::get_first_from_box@73:0: uncovered (generic body)
+main::test_method_return_through_local@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@85:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.first@59:4: uncovered (generic body)
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@56:4: uncovered (generic constructor)

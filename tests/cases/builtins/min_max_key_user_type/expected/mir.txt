@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Priority.__lt__@9:4: covered (storage: no_proof_required)
+main::Priority.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Task.__init__@15:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse_digit@15:0: uncovered (error-return body)
+main::handler_declares@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::handler_binding_declares@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_body_declares@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@59:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

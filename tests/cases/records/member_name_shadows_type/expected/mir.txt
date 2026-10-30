@@ -1,0 +1,24 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@121:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::square.area@32:4: covered (storage: no_proof_required), summary: known
+main::clock.day@41:4: covered (storage: no_proof_required), summary: known
+main::widget.kind@49:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::gauge.read@55:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::base.day@60:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::sub.build@65:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::factory.day@71:4: covered (storage: no_proof_required)
+main::factory.relabel@73:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::canvas.shape@78:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::canvas.draw@80:4: uncovered (unsupported parameter type)
+main::meter.build@85:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::meter.day@88:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::fsub.build@101:4: covered (storage: no_proof_required), summary: known
+main::printer.emit@109:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::holder.boxed@117:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::day.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::square.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::clock.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::widget.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::fbase.__init__@94:4: covered (storage: no_proof_required), summary: known
+main::fsub.__init__@99:4: covered (storage: no_proof_required), summary: known
+main::holder.__init__@115:4: covered (storage: no_proof_required), summary: known

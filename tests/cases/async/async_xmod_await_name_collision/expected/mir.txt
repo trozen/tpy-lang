@@ -1,0 +1,7 @@
+helper::__tpy_init: uncovered (module initialization)
+helper::step@7:0: uncovered (async body)
+helper::other@12:0: uncovered (async body)
+main::__tpy_init: uncovered (module initialization)
+main::step@11:0: uncovered (async body)
+main::other@15:0: uncovered (async body)
+main::amain@19:0: uncovered (async body)

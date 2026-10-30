@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@21:0: uncovered (unsupported native container element)
+main::main@26:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Res.__del__@15:4: covered (storage: no_proof_required)
+main::Res.__init__@12:4: uncovered (custom record special member), summary: opaque (custom record special member)

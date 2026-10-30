@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::cb@8:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::use@15:0: uncovered (unsupported parameter type)
+main::main@19:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

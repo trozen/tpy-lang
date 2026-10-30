@@ -1,0 +1,30 @@
+main::__tpy_init: uncovered (module initialization)
+main::original@9:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::steps32@17:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::steps64@66:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::steps_big@115:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::binding_forms@164:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::comprehension_forms@205:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure_forms@258:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::context_forms@303:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::control_edges@314:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::parameter_target@355:0: covered (storage: no_proof_required), summary: known
+main::bound@362:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::bound_order@367:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
+main::generator@377:0: uncovered (loop across a suspension)
+main::async_body@388:0: uncovered (async body)
+main::error_body@405:0: uncovered (error-return body)
+main::match_body@414:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::generic_count@427:0: uncovered (generic body)
+main::concrete_count@438:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::readonly32@448:0: covered (storage: no_proof_required), summary: known
+main::readonly_big@456:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::container_inverse@473:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@488:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Worker.method@238:4: covered (storage: no_proof_required), summary: known
+main::Worker.static@249:4: covered (storage: no_proof_required)
+main::Gate.__enter__@295:4: covered (storage: no_proof_required), summary: known
+main::Gate.__exit__@298:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Worker.__init__@231:4: covered (storage: no_proof_required), summary: known
+main::Gate.__init__@292:4: covered (storage: no_proof_required), summary: known
+main::Item.__init__@469:4: covered (storage: no_proof_required), summary: known

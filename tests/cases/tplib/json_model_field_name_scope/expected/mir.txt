@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Msg.__eq__: covered (storage: no_proof_required)
+main::Msg.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Msg.__json_decode__: uncovered (error-return body)
+main::Msg.from_json: uncovered (missing constructor definition)
+main::Msg.try_from_json: uncovered (error-return body)
+main::Msg.__json_encode__: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Msg.to_json: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Msg.save_json: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Msg.load_json: uncovered (unsupported statement)
+main::Msg.try_load_json: uncovered (error-return body)
+main::Item.__eq__: uncovered (uncertified binary operation)
+main::Item.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Registry.update@28:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Msg.__init__: covered (storage: no_proof_required), summary: known
+main::Item.__init__: covered (storage: no_proof_required), summary: known
+main::Registry.__init__@25:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

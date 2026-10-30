@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::set_it@18:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::main@22:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::Headers.__setattr__@13:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Headers.__init__@9:4: covered (storage: no_proof_required), summary: known

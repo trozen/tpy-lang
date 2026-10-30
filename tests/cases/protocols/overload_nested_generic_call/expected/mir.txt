@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::double_wrap@25:0: uncovered (no body to lower)
+main::double_wrap@30:0: uncovered (no body to lower)
+main::main@34:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Dog.name@20:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@18:4: covered (storage: no_proof_required), summary: known

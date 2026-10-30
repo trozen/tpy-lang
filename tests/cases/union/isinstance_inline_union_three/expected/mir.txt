@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::classify@35:0: covered (storage: no_proof_required), summary: known
+main::main@42:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::D.__init__@31:4: covered (storage: no_proof_required), summary: known

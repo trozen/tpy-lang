@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_int@30:0: covered (storage: no_proof_required), summary: known
+main::take_i64@34:0: covered (storage: no_proof_required), summary: known
+main::ret_wide@38:0: covered (storage: no_proof_required), summary: known
+main::gen_wide@42:0: covered (storage: no_facts: storage facts have not been published)
+main::sinks@49:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::formatting@70:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::unary@77:0: uncovered (unsupported literal value), summary: opaque (unsupported literal value)
+main::operands@82:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::unsigned@96:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::unproven@124:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::union_narrowed@129:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::enum_compare@139:0: uncovered (unsupported metadata: right_cast), summary: opaque (unsupported metadata: right_cast)
+main::comprehensions@147:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::declined@159:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@177:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.bump@13:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: covered (storage: no_proof_required), summary: known

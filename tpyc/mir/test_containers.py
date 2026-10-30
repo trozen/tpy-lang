@@ -981,7 +981,7 @@ def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
 
 def test_a_container_copied_into_an_own_parameter_is_refused(calls) -> None:
     # A live slice keeps `xs` borrowed, so the argument is an implicit copy.
-    assert calls[0]["after_slice"][0].endswith("<MIR not covered: constructor argument type>")
+    assert "<uncovered (constructor argument type)" in calls[0]["after_slice"][0]
 
 
 def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:

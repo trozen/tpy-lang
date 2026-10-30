@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@82:0: covered (storage: no_proof_required), summary: known
+main::main@105:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tags.reset@42:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Blob.reset@59:4: covered (storage: no_proof_required), summary: known
+main::Viewer.retarget@92:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Tags.__init__@29:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Blob.__init__@54:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Walrus.__init__@68:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Owned.__init__@78:4: covered (storage: no_proof_required), summary: known
+main::Viewer.__init__@89:4: covered (storage: no_proof_required), summary: known

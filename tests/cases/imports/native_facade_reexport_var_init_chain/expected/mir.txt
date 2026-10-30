@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+pkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+pkg.state::__tpy_init: uncovered (module initialization)
+pkg.state::_seed@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

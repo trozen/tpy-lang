@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::kind@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::make_dict@25:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::is_null@30:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::kind_after_null_guard@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::flat_kind@61:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::kind_guarded@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@95:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

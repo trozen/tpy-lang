@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::mutate@26:0: covered (storage: no_proof_required), summary: known
+main::use_fn@30:0: uncovered (unsupported parameter type)
+main::use_callable@38:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::use_local@46:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::use_direct@55:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::main@63:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::P.__init__@22:4: covered (storage: no_proof_required), summary: known

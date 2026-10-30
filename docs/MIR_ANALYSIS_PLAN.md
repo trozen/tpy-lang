@@ -993,7 +993,11 @@ behind the existing source gate, capability transfer directions and malformed
 operations. No compiler test reads the snippet-test corpus. The other direction
 holds: the snippet harness runs MIR over every case that reaches codegen
 (`tpyc/mir/collect.py`: one `MIRBodyVerdict` per body, the record `--dump-mir`
-and the coverage tool also render), so a MIR exception fails the case, and a case pins a
+and the coverage tool also render), so a MIR exception fails the case; every
+body's verdict line (`MIRBodyVerdict.describe()`) is snapshotted in the case's
+`expected/mir.txt`, so a body that stops being covered, or changes verdict,
+is snapshot churn in the regular suite, with no full-corpus `--dump-mir`
+compare; and a case pins a
 body's verdict with `# tpyc: mir(...)` / `mir_summary(...)` on its `def` line.
 A statement line pins exact per-line facts with the line-level fact family
 (`mir_owned` / `mir_borrowed` / `mir_copy` / `mir_write` /
@@ -2808,7 +2812,8 @@ as the corpus grows).
   language defect behind the shape is
   `BUGS.md#method-property-name-clash-miscompile`).
 - **Limits.** `--dump-mir` and the snippet harness analyse the modules
-  under the entry point's directory only, so a method of a record defined
+  under the entry point's directory only (the harness's `mir.txt` adds the
+  library modules a case snapshots, in a workspace of their own), so a method of a record defined
   in a library module has no summary there ("call needs finalized known
   summary"). The lifecycle hooks (`LIFECYCLE_HOOKS`) and the constructor
   (`INIT_METHOD`) are the names the language defines them by, decided once

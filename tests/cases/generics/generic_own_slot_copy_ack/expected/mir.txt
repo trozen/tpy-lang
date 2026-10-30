@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::collect_ack@26:0: uncovered (generic body)
+main::relay_owned@31:0: uncovered (generic body)
+main::dup_bounded@51:0: uncovered (generic body)
+main::dup_bounded_twin@66:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::sec_value_bound@70:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::apply_generic@84:0: uncovered (generic body)
+main::apply_twin@89:0: uncovered (unsupported parameter type)
+main::ret_generic@94:0: uncovered (generic body)
+main::ret_twin@98:0: uncovered (unsupported parameter type)
+main::sec_callable_value@102:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::sec_ack@112:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sec_moved@120:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::main@127:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::GHolder.borrow@21:4: uncovered (generic body)
+main::VHolder.borrow@41:4: uncovered (generic body)
+main::IntHolder.borrow@62:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::GHolder.__init__@18:4: uncovered (generic constructor)
+main::VHolder.__init__@38:4: uncovered (generic constructor)
+main::IntHolder.__init__@59:4: covered (storage: no_proof_required), summary: known

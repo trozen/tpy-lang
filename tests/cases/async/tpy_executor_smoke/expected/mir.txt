@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::returns_value@36:0: uncovered (async body)
+main::void_coro@40:0: uncovered (async body)
+main::test_spawn_and_run@44:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_multiple_spawns@59:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_timer_fires_immediately@72:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_drain_with_no_tasks@86:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_drain_cancels_live_task@93:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@108:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::CancellableForever.__poll__@27:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::CancellableForever.cancel@32:4: covered (storage: no_proof_required), summary: known
+main::CancellableForever.__init__@24:4: covered (storage: no_proof_required), summary: known

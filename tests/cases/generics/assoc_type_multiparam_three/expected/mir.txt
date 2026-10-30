@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_a@34:0: uncovered (generic body)
+main::get_b@38:0: uncovered (generic body)
+main::get_c@42:0: uncovered (generic body)
+main::main@46:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Rec.a@24:4: covered (storage: no_proof_required), summary: known
+main::Rec.b@27:4: covered (storage: no_proof_required), summary: known
+main::Rec.c@30:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@19:4: covered (storage: no_proof_required), summary: known

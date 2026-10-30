@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::g@39:0: uncovered (reference yield)
+main::main@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.pair@29:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Box.walk@33:4: uncovered (reference yield)
+main::P.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@26:4: covered (storage: no_proof_required), summary: known

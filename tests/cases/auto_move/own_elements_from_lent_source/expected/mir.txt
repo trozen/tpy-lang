@@ -1,0 +1,41 @@
+main::__tpy_init: uncovered (module initialization)
+main::collect@20:0: uncovered (unsupported native container element)
+main::via_closure@40:0: uncovered (unsupported parameter type)
+main::via_try@51:0: uncovered (unsupported parameter type)
+main::via_match@61:0: uncovered (unsupported parameter type)
+main::via_comp@72:0: uncovered (unsupported native container element)
+main::via_gen@76:0: uncovered (unsupported parameter type)
+main::via_async@83:0: uncovered (async body)
+main::capture@91:0: uncovered (unsupported parameter type)
+main::unpack_pairs@100:0: uncovered (unsupported parameter type)
+main::collect_union@114:0: uncovered (unsupported parameter type)
+main::sum_cells@121:0: uncovered (unsupported parameter type)
+main::total@142:0: uncovered (unsupported parameter type)
+main::flatten@151:0: uncovered (unsupported parameter type)
+main::drop@158:0: uncovered (unsupported parameter type)
+main::keep_items@166:0: uncovered (unsupported parameter type)
+main::finish_all@173:0: uncovered (unsupported parameter type)
+main::keep_opts@180:0: uncovered (unsupported parameter type)
+main::cell_ns@187:0: uncovered (unsupported parameter type)
+main::total_c@202:0: uncovered (unsupported parameter type)
+main::make_cells@209:0: covered (storage: no_proof_required), summary: known
+main::make_cs@216:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::make_pairs@222:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::fresh_cs@228:0: uncovered (reference yield)
+main::lend_keys@246:0: uncovered (unsupported native container element)
+main::keep_c@251:0: uncovered (unsupported native container element)
+main::first@255:0: uncovered (unsupported parameter type)
+main::take@261:0: covered (storage: no_proof_required), summary: known
+main::take_cell@265:0: covered (storage: no_proof_required), summary: known
+main::repeat@269:0: uncovered (reference yield)
+main::main@274:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Sink.absorb@34:4: uncovered (unsupported parameter type)
+main::Item.finish@138:4: uncovered (missing receiver fact)
+main::C.__copy__@197:4: uncovered (custom record special member)
+main::Key.__hash__@239:4: covered (storage: no_proof_required), summary: known
+main::Key.__eq__@242:4: covered (storage: no_proof_required)
+main::Cell.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@31:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Item.__init__@132:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@194:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Key.__init__@236:4: covered (storage: no_proof_required), summary: known

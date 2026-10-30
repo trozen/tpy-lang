@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::g@11:0: uncovered (by-value capture of a borrowed parameter)
+main::g_loop@21:0: uncovered (unsupported native container element)
+main::g_whole@27:0: uncovered (by-value capture of a borrowed parameter)
+main::g_frame_whole@33:0: uncovered (by-value capture of a borrowed parameter)
+main::g_global@43:0: uncovered (missing or inconsistent optional read)
+main::g_view@52:0: uncovered (unsupported parameter type)
+main::main@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

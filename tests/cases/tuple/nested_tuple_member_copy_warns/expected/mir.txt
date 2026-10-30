@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_list_literal@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::via_inner_lvalue@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::via_append@40:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::via_field@51:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::via_setitem@57:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::three_levels@66:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::acknowledged@72:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::fresh_member@79:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::no_reference_member@86:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@92:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

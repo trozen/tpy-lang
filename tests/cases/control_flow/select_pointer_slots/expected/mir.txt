@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::bump@24:0: covered (storage: no_proof_required), summary: known
+main::local_records@29:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::local_containers@39:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::local_narrowed@49:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::local_narrowed_plain@58:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::local_none_arm@68:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::return_select@77:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::arg_select@86:0: uncovered (unsupported optional argument), summary: opaque (unsupported optional argument)
+main::receiver_mutate@96:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::receiver_read@103:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::receiver_pointer_local@109:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::main@117:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::C.bump@13:4: covered (storage: no_proof_required), summary: known
+main::C.area@16:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@10:4: covered (storage: no_proof_required), summary: known

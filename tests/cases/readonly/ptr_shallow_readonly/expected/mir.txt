@@ -1,0 +1,100 @@
+main::__tpy_init: uncovered (module initialization)
+main::peek_local@153:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::peek_walrus@158:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::peek_match@163:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::peek_closure@172:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::peek_branch@179:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::peek_ro@187:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::va_local@293:0: uncovered (container name type mismatch)
+main::va_closure@299:0: uncovered (container name type mismatch)
+main::va_match@307:0: uncovered (unsupported statement)
+main::va_unpack@316:0: uncovered (container name type mismatch)
+main::va_write@323:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence)
+main::value_sum@365:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::value_methods@371:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::value_total@377:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::value_await@386:0: uncovered (async body)
+main::value_proto@413:0: uncovered (unsupported parameter type)
+main::value_dyn@419:0: uncovered (unsupported parameter type)
+main::poke_ro@479:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::peek_n@543:0: uncovered (async body)
+main::via_ro@549:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::use@554:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::bump_all@562:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::bump_list@568:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::bump_or_zero@574:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@583:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::A.bump@24:4: covered (storage: no_proof_required), summary: known
+main::M.tick@62:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::M.tick_alias@67:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::M.through_places@73:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::M.poke_opt@83:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::M.poke@89:4: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::M.tick_all@93:4: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::M.get@98:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::M.pick@103:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::M.peek@111:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::M.own_ro@117:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
+main::M.own_pure@122:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
+main::M.via_closure@126:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::M.bump_each@132:4: uncovered (loop across a suspension)
+main::M.tick_async@138:4: uncovered (async body)
+main::M.get_or_fail@144:4: uncovered (error-return body)
+main::Fixed.poke@200:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::PBox.get@222:4: uncovered (generic body)
+main::PBox.ga@227:4: uncovered (generic body)
+main::PBox.ga@227:4#2: uncovered (generic body)
+main::PHold.touch@240:4: uncovered (generic body)
+main::PHoldA.touch@251:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Key.bump@262:4: covered (storage: no_proof_required), summary: known
+main::Key.__eq__@265:4: covered (storage: no_proof_required)
+main::Key.__hash__@268:4: covered (storage: no_proof_required), summary: known
+main::Frozen.first@278:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Frozen.mut@283:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Frozen.pick@287:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Frozen.pick@287:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Frozen.__eq__: uncovered (uncertified binary operation)
+main::Frozen.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Frozen.__hash__: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Va.first@339:4: uncovered (container name type mismatch)
+main::GV.__add__@351:4: uncovered (generic body)
+main::GV.aread@354:4: uncovered (async body)
+main::GV.get@358:4: uncovered (generic body)
+main::GV.rget@361:4: uncovered (generic body)
+main::IntSrc.get@409:4: covered (storage: no_proof_required), summary: known
+main::Sh.__add__@435:4: uncovered (unsupported return type)
+main::Sh.__rmul__@438:4: uncovered (unsupported return type)
+main::Sh.__call__@441:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::G.both@455:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::FrozenPair.both@463:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::FrozenPair.__eq__: uncovered (uncertified binary operation)
+main::FrozenPair.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::FrozenPair.__hash__: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::V.poke@475:4: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::UH.bump_match@505:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::UH.bump_local@512:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Stored.get@527:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::RBox.peek@539:4: uncovered (async body)
+main::A.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::M.__init__@53:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Fixed.__init__@197:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Starter.__init__@210:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::PBox.__init__@219:4: uncovered (generic constructor)
+main::PHold.__init__@237:4: uncovered (generic constructor)
+main::PHoldA.__init__@248:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Key.__init__@259:4: covered (storage: no_proof_required), summary: known
+main::Frozen.__init__: covered (storage: no_proof_required), summary: known
+main::Va.__init__@336:4: covered (storage: no_proof_required), summary: known
+main::GV.__init__@348:4: uncovered (generic constructor)
+main::IntSrc.__init__@406:4: covered (storage: no_proof_required), summary: known
+main::Sh.__init__@432:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@451:4: covered (storage: no_proof_required), summary: known
+main::FrozenPair.__init__: covered (storage: no_proof_required), summary: known
+main::V.__init__@472:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Leaf.__init__@488:4: covered (storage: no_proof_required), summary: known
+main::UPayload.__init__@495:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::UH.__init__@502:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Stored.__init__@523:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::RBox.__init__@535:4: uncovered (generic constructor)

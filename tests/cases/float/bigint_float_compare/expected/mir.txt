@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_eq@2:0: uncovered (unsupported metadata: left_cast), summary: opaque (unsupported metadata: left_cast)
+main::test_ordering@8:0: uncovered (unsupported metadata: left_cast), summary: opaque (unsupported metadata: left_cast)
+main::test_float_gt_int@16:0: uncovered (unsupported metadata: right_cast), summary: opaque (unsupported metadata: right_cast)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::KeyEcho.__getitem__@19:4: covered (storage: no_proof_required)
+main::KeyEcho.__getitem__@19:4#2: covered (storage: no_proof_required)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::KeyEcho.__init__@16:4: covered (storage: no_proof_required), summary: known

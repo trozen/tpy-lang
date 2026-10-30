@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::addr_global@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_local@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_alias@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_both_branches@33:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_ternary@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@46:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known

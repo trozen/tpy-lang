@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Animal.greet@12:4: uncovered (no body to lower)
+main::Animal.greet@16:4: uncovered (no body to lower)
+main::Animal.__init__@8:4: covered (storage: no_proof_required), summary: known

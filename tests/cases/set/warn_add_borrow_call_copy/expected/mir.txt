@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Key.__eq__: covered (storage: no_proof_required)
+main::Key.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Key.__hash__: covered (storage: no_proof_required), summary: known
+main::Holder.borrow@22:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Key.__init__: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known

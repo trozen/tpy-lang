@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@35:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Holder.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Wrap.__init__@13:4: uncovered (generic constructor)
+main::DictHolder.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::SetHolder.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::DataError.__init__@30:4: uncovered (missing record layout)

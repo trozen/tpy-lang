@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_field@10:0: uncovered (no body to lower)
+main::get_field@13:0: uncovered (no body to lower)
+main::get_field@16:0: uncovered (no body to lower)
+main::get_field@18:0: uncovered (overloaded callable)
+main::main@49:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Record.get@35:4: uncovered (no body to lower)
+main::Record.get@38:4: uncovered (no body to lower)
+main::Record.get@41:4: uncovered (no body to lower)
+main::Record.get@43:4: uncovered (overloaded callable)
+main::Record.__init__@30:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Version.__eq__: covered (storage: no_proof_required)
+main::Version.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Version.__hash__: covered (storage: no_proof_required), summary: known
+main::Version.__lt__: covered (storage: no_proof_required)
+main::Version.__le__: covered (storage: no_proof_required)
+main::Version.__gt__: covered (storage: no_proof_required)
+main::Version.__ge__: covered (storage: no_proof_required)
+main::Version.__init__: covered (storage: no_proof_required), summary: known

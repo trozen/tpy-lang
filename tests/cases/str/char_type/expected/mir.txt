@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_char_literals@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_char_from_string_index@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_char_comparison@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_char_in_string@61:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::is_vowel@75:0: covered (storage: no_proof_required), summary: known
+main::count_vowels@89:0: covered (storage: no_proof_required), summary: known
+main::test_char_function_param@99:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_char_iteration@114:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::test_vowel_counting@120:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_chr_function@127:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::accepts_str@160:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_char_to_str_coercion@164:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

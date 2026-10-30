@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::process@7:0: uncovered (no body to lower)
+main::process@9:0: uncovered (no body to lower)
+main::process@11:0: uncovered (no body to lower)
+main::process@12:0: uncovered (overloaded callable)
+main::dispatch@19:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

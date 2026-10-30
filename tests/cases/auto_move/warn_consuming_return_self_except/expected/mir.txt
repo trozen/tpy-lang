@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Widget.consume@17:4: uncovered (unsupported statement)
+main::Widget.__init__@14:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::relay@31:0: covered (storage: no_proof_required), summary: known
+main::main@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Graph.link@23:4: covered (storage: no_proof_required), summary: known
+main::Graph.stash@27:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Graph.__init__@19:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::whole@17:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::direct@23:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::nested@28:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::main@42:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Reader.show@37:4: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::Reader.__init__@33:4: covered (storage: no_proof_required), summary: known

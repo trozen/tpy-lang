@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::driver@15:0: uncovered (async body)
+main::main_coro@21:0: uncovered (async body)
+main::main@25:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Svc.fetch@10:4: uncovered (async body)

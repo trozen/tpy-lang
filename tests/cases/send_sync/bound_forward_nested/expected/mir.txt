@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::sink@6:0: uncovered (generic body)
+main::forward@10:0: uncovered (generic body)
+main::main@28:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Box.__init__@17:4: uncovered (generic constructor)
+main::Wrap.__init__@24:4: uncovered (generic constructor)

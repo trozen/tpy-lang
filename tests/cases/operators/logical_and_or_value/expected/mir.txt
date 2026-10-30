@@ -1,0 +1,29 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_or_int@5:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_and_int@16:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_or_str@27:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::test_and_str@37:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::test_or_float@47:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_and_float@58:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_or_bigint@69:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::test_chained@75:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_or_with_literal@88:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::accepts_int@93:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::returns_int@96:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_as_arg_and_return@99:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_bool_operands@105:0: covered (storage: no_proof_required), summary: known
+main::test_mixed_returns_bool@109:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
+main::test_condition_context@116:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
+main::test_record_with_bool@138:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_record_without_bool@151:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_record_or_constructor@165:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_annotated@174:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_literal_or_literal@195:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::test_literal_lhs_free@209:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::gen_literal_lhs@235:0: uncovered (unsupported value select)
+main::main@241:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.__bool__@128:4: covered (storage: no_proof_required), summary: known
+main::LiteralLhs.pick@231:4: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::Counter.__init__@126:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@134:4: covered (storage: no_proof_required), summary: known
+main::LiteralLhs.__init__@228:4: covered (storage: no_proof_required), summary: known

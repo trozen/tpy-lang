@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_stop_snapshot@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_all_args_snapshot@13:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
+main::get_stop@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::fall_through@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::early_return@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tracker.__enter__@7:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Tracker.__exit__@11:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

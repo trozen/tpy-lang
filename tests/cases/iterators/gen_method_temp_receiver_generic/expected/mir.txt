@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Holder.walk@13:4: uncovered (generic body)
+main::Holder.__init__@10:4: uncovered (generic constructor)

@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_snapshot@43:0: uncovered (loop across a suspension)
+main::tick@48:0: uncovered (async body)
+main::drain@53:0: uncovered (async body)
+main::main@94:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Snap.snapshot@28:4: covered (storage: no_proof_required), summary: known
+main::Snap.yield_own@37:4: uncovered (reference yield)
+main::Holder.rec@77:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.rec@77:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.data@81:4: covered (storage: no_proof_required), summary: known
+main::Holder.data@81:4#2: covered (storage: no_proof_required), summary: known
+main::Holder.yield_rec@86:4: uncovered (reference yield)
+main::Holder.yield_data@90:4: uncovered (reference yield)
+main::Snap.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@64:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@72:4: covered (storage: no_proof_required), summary: known

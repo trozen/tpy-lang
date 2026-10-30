@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@6:0: covered (storage: no_proof_required), summary: known
+main::uniq@10:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@14:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

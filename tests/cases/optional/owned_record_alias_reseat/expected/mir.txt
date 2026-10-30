@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_reseat@13:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@61:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Host.retained@49:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Host.__init__@38:4: covered (storage: no_proof_required), summary: known

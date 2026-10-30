@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::asum@17:0: uncovered (async body)
+main::gsum@22:0: uncovered (unsupported pointer capture)
+main::pick@27:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::main_coro@33:0: uncovered (async body)
+main::main@48:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Tag.__init__@13:4: covered (storage: no_proof_required), summary: known

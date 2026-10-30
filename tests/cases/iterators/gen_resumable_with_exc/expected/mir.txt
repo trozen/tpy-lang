@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@23:0: uncovered (with across a suspension)
+main::main@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Suppressor.__enter__@13:4: covered (storage: no_proof_required), summary: known
+main::Suppressor.__exit__@16:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Suppressor.__init__@10:4: covered (storage: no_proof_required), summary: known

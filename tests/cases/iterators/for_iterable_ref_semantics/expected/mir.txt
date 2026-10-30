@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::mutate_via_iterable@12:0: uncovered (unsupported parameter type)
+main::mutate_via_iterator@16:0: uncovered (unsupported parameter type)
+main::gen_double_x@20:0: uncovered (unsupported parameter type)
+main::main@25:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

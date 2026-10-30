@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::step@8:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_path@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@36:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Writer.run@28:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Writer.__init__@23:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

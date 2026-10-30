@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_array@18:0: covered (storage: no_proof_required), summary: known
+main::print_span@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::nested_sum@40:0: covered (storage: no_proof_required), summary: known
+main::rebind_iterated@61:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::gen_rebind_iterated@79:0: uncovered (loop across a suspension)
+main::Node.__init__@57:4: covered (storage: no_proof_required), summary: known

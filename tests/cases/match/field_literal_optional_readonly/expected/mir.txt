@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@28:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::R.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

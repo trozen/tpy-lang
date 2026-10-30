@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::app_init@6:0: uncovered (stub declares no contract)
+mathlib::__tpy_init: uncovered (module initialization)
+mathlib.funcs::__tpy_init: uncovered (module initialization)
+mathlib.funcs::abs@5:0: uncovered (no body to lower)
+mathlib.funcs::get_clock@8:0: uncovered (no body to lower)

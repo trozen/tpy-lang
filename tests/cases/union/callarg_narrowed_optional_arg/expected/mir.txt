@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_opt@23:0: covered (storage: no_proof_required), summary: known
+main::bump_opt@29:0: covered (storage: no_proof_required), summary: known
+main::read_narrowed@34:0: covered (storage: no_proof_required), summary: known
+main::mutate_narrowed@40:0: covered (storage: no_proof_required), summary: known
+main::inline_narrowed@47:0: uncovered (unsupported optional argument), summary: opaque (unsupported optional argument)
+main::main@53:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@19:4: covered (storage: no_proof_required), summary: known

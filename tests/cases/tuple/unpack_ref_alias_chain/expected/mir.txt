@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::alias_chain@22:0: certified, summary: opaque (summary output effect)
+main::unpack_method_and_ternary@30:0: certified, summary: opaque (summary output effect)
+main::reassign_to_ref@41:0: certified, summary: opaque (summary output effect)
+main::Counter.get@15:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.bump@18:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@12:4: covered (storage: no_proof_required), summary: known

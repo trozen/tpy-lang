@@ -1,0 +1,55 @@
+main::__tpy_init: uncovered (module initialization)
+main::glob@140:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::walk@150:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::find@158:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::as_base@166:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::echo@171:0: uncovered (reference yield)
+main::gen_pos@175:0: uncovered (unsupported expression)
+main::async_pos@180:0: uncovered (async body)
+main::er_pos@186:0: uncovered (error-return body)
+main::free_fn@193:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::method_fn@200:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::container_fn@207:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::same_ptr@230:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::arr_first@234:0: covered (storage: no_proof_required), summary: known
+main::literal_fn@240:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::nested_fn@269:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::none_pair_fn@278:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::as_right@284:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::ro_same@289:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::objects_fn@293:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::closure_narrow_fn@305:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::first_ptr@329:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_ptr@334:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::kid_via_ptr@341:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::kid_or_none@349:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::kid_or_none_ro@355:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::chain_value@362:0: covered (storage: no_proof_required), summary: known
+main::ptr_self@369:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_chain@374:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::ptr_fn@380:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::optional_fn@394:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::derived_fn@424:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::same_rc@429:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::rc_fn@433:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::positions_fn@446:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@490:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.same@18:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Holder.first@42:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.set_kid@45:4: covered (storage: no_proof_required), summary: known
+main::Outer.has@56:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Outer.kid_is_kid@61:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Res.__enter__@125:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Res.__exit__@128:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::A.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@26:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Holder.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@71:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Base.__init__@78:4: covered (storage: no_proof_required), summary: known
+main::Left.__init__@85:4: covered (storage: no_proof_required), summary: known
+main::Right.__init__@92:4: covered (storage: no_proof_required), summary: known
+main::Both.__init__@98:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@110:4: covered (storage: no_proof_required), summary: known
+main::Derived.__init__@115:4: covered (storage: no_proof_required), summary: known
+main::Res.__init__@122:4: covered (storage: no_proof_required), summary: known

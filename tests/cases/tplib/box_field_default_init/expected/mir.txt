@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Val.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@17:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

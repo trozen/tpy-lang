@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@7:0: uncovered (try across a suspension)
+main::temp_source@15:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::named_source@22:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::exhausted@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

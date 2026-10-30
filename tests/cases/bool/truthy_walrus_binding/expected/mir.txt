@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@23:0: covered (storage: no_proof_required), summary: known
+main::pick@27:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@31:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Rec.__init__@19:4: covered (storage: no_proof_required), summary: known

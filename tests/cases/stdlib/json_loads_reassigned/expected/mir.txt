@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_function@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::in_generator@35:0: uncovered (unsupported hoisted value)
+main::in_async@42:0: uncovered (async body)
+main::in_closure@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.run@28:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Holder.__init__@22:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

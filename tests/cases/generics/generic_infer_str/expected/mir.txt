@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@5:0: uncovered (generic body)
+main::first@8:0: uncovered (generic body)
+main::test_literal_infers_str@11:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::test_explicit_str@17:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::test_explicit_strview@21:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::make_str@25:0: covered (storage: no_proof_required), summary: known
+main::test_non_literal_str@28:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)

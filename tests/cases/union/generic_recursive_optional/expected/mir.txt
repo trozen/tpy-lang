@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_count@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@16:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+treelib::__tpy_init: uncovered (module initialization)
+treelib::leaf_count@6:0: uncovered (generic body)

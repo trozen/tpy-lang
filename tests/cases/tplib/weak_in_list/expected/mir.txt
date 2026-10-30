@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::observed_values@16:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Node.__init__@12:4: covered (storage: no_proof_required), summary: known

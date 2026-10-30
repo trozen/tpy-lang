@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_ro@15:0: covered (storage: no_proof_required)
+main::forward_mutable@22:0: uncovered (call needs resolved ordinary callee)
+main::forward_readonly@26:0: uncovered (call needs resolved ordinary callee)
+main::main@30:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

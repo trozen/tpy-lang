@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::ternary@15:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::or_chain@22:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::and_chain@28:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::nested@35:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::field_arm@41:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::bytes_ternary@47:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.__init__@11:4: covered (storage: no_proof_required), summary: known

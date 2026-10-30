@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk_box@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::write_both@20:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_live@26:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

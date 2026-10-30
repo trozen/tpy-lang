@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::setter@34:0: covered (storage: no_proof_required), summary: known
+main::assign@38:0: covered (storage: no_proof_required), summary: known
+main::selected@43:0: certified, summary: known
+main::both@51:0: covered (storage: no_proof_required), summary: known
+main::observe@56:0: covered (storage: no_proof_required), summary: known
+main::lazy@62:0: covered (storage: no_proof_required), summary: known
+main::main@67:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Cell.update@17:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@25:4: certified, summary: known

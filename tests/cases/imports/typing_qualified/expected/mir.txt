@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_add@5:0: covered (storage: no_proof_required), summary: known
+main::show@20:0: uncovered (unsupported parameter type)
+main::main@23:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Wrapper.get_val@17:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@15:4: covered (storage: no_proof_required), summary: known

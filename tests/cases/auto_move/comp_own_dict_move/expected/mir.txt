@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::widgets@17:0: uncovered (reference yield)
+main::nodes@37:0: uncovered (reference yield)
+main::value_moves_key_field@44:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::value_only@54:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::key_does_not_move@62:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::filtered_value_moves@73:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::same_var_key_and_value@83:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@90:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__hash__@30:4: covered (storage: no_proof_required), summary: known
+main::Node.__eq__@33:4: covered (storage: no_proof_required)
+main::Widget.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@27:4: covered (storage: no_proof_required), summary: known

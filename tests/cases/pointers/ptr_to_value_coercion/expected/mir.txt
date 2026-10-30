@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_point@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::get_sum@15:0: covered (storage: no_proof_required), summary: known
+main::modify_point@18:0: covered (storage: no_proof_required), summary: known
+main::deref_and_return@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_ptr_to_value@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_to_value_assign@39:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_to_value_return@48:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

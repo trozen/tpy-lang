@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::source@19:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::main@25:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Widget.blank@15:4: covered (storage: no_proof_required)
+main::Widget.__init__@11:4: covered (storage: no_proof_required), summary: known

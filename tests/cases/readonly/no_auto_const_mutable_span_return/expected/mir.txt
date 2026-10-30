@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Buffer.items@16:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::Buffer.__init__@13:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

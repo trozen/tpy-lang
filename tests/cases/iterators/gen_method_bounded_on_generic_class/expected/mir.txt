@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@49:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::RangeIter.__next__@17:4: uncovered (error-return body)
+main::MyRange.__iter__@33:4: covered (storage: no_proof_required), summary: known
+main::Summer.each_doubled@43:4: uncovered (generic body)
+main::RangeIter.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::MyRange.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Summer.__init__@40:4: uncovered (generic constructor)

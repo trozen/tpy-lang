@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Logger.log@15:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Box.__init__@10:4: uncovered (generic constructor)
+main::IntBox.__init__@20:4: uncovered (missing record layout)

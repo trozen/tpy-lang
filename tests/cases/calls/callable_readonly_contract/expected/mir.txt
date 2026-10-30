@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@9:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::use_fn@13:0: uncovered (unsupported parameter type)
+main::use_callable@20:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@27:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

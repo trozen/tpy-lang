@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@47:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Cell.singleton@14:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::Cell.mixed@20:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::Cell.inferred@26:4: certified, summary: known
+main::Cell.optional@32:4: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::Cell.owned_copy@40:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::boom@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::multi@57:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::suppress@62:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ref_target@69:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::deref_manager@78:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_exits@91:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_through@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@107:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Gate.__enter__@13:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Gate.__exit__@17:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sup.__enter__@22:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Sup.__exit__@25:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Guard.__enter__@38:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Guard.__exit__@42:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Gate.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Guard.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@49:4: covered (storage: no_proof_required), summary: known

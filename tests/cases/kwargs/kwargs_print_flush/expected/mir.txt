@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@22:0: uncovered (unsupported metadata: flush), summary: opaque (unsupported metadata: flush)
+main::CountingSink.write@14:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::CountingSink.flush@18:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::CountingSink.__init__@10:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

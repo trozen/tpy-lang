@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::InfiniteCounter.__iter__@11:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::InfiniteCounter.__next__@15:4: uncovered (error-return body)
+main::InfiniteCounter.__init__@8:4: covered (storage: no_proof_required), summary: known

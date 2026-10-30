@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_hash_basic@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_dict_key@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_set_element@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_bytes_view_hash@22:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

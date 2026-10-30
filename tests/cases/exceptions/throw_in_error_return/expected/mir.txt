@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@16:0: uncovered (error-return body)
+main::main@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::BadKey.__init__@9:4: uncovered (missing record layout)

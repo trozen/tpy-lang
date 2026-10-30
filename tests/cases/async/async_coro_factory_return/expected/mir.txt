@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::add_one@10:0: uncovered (async body)
+main::make@14:0: uncovered (unsupported return type)
+main::spawn_via@18:0: uncovered (async body)
+main::main@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

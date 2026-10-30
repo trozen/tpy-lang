@@ -1,0 +1,59 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ternary_gen@26:0: uncovered (reference yield)
+main::print_gen@36:0: uncovered (unsupported hoisted value)
+main::print_co@48:0: uncovered (async body)
+main::walrus_alias_gen@57:0: uncovered (unsupported hoisted value)
+main::walrus_alias_co@67:0: uncovered (async body)
+main::unpack_gen@79:0: uncovered (unsupported hoisted value)
+main::unpack_co@90:0: uncovered (async body)
+main::mk2@103:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::unpack_only_gen@107:0: uncovered (unsupported hoisted value)
+main::unpack_only_co@117:0: uncovered (async body)
+main::unpack_only_loop_gen@128:0: uncovered (loop across a suspension)
+main::unpack_only_loop_co@139:0: uncovered (async body)
+main::walrus_first_gen@152:0: uncovered (unsupported hoisted value)
+main::walrus_first_co@163:0: uncovered (async body)
+main::with_rvalue_gen@187:0: uncovered (with across a suspension)
+main::with_lvalue_gen@197:0: uncovered (with across a suspension)
+main::with_rvalue_co@208:0: uncovered (async body)
+main::with_leaf_gen@219:0: uncovered (unsupported hoisted value)
+main::with_lent_gen@244:0: uncovered (with across a suspension)
+main::with_lent_co@254:0: uncovered (async body)
+main::with_lent_param_gen@266:0: uncovered (with across a suspension)
+main::with_lent_param_co@277:0: uncovered (async body)
+main::with_readonly_gen@304:0: uncovered (with across a suspension)
+main::with_readonly_co@316:0: uncovered (async body)
+main::with_readonly_leaf_gen@331:0: uncovered (unsupported hoisted value)
+main::with_generic_gen@357:0: uncovered (unsupported parameter type)
+main::with_generic_rvalue_gen@368:0: uncovered (unsupported parameter type)
+main::with_generic_co@378:0: uncovered (async body)
+main::with_target_bound_gen@404:0: uncovered (unsupported hoisted value)
+main::with_target_bound_co@414:0: uncovered (async body)
+main::with_target_rebound_gen@425:0: uncovered (unsupported hoisted value)
+main::with_target_rebound_co@436:0: uncovered (async body)
+main::loop_gen@448:0: uncovered (unsupported native container element)
+main::mkc@483:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::compare_gen@490:0: uncovered (with across a suspension)
+main::main@507:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Ctx.__enter__@178:4: covered (storage: no_proof_required), summary: known
+main::Ctx.__exit__@181:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::LentCtx.__enter__@235:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::LentCtx.__exit__@238:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::RoCtx.__enter__@294:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::RoCtx.__exit__@297:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::GCtx.__enter__@348:4: uncovered (generic body)
+main::GCtx.__exit__@351:4: uncovered (generic body)
+main::Res.__enter__@395:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Res.__exit__@398:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cl.__lt__@466:4: covered (storage: no_proof_required)
+main::ClCtx.__enter__@476:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::ClCtx.__exit__@479:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::P.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Ctx.__init__@175:4: covered (storage: no_proof_required), summary: known
+main::LentCtx.__init__@232:4: covered (storage: no_proof_required), summary: known
+main::RoCtx.__init__@291:4: covered (storage: no_proof_required), summary: known
+main::GCtx.__init__@345:4: uncovered (generic constructor)
+main::Res.__init__@392:4: covered (storage: no_proof_required), summary: known
+main::Cl.__init__@463:4: covered (storage: no_proof_required), summary: known
+main::ClCtx.__init__@473:4: covered (storage: no_proof_required), summary: known

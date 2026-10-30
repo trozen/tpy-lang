@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Bag.__getitem__@24:4: uncovered (no body to lower)
+main::Bag.__getitem__@24:4#2: uncovered (no body to lower)
+main::Bag.__getitem__@28:4: uncovered (no body to lower)
+main::Bag.__getitem__@28:4#2: uncovered (no body to lower)
+main::Bag.__init__@20:4: uncovered (no body to lower)

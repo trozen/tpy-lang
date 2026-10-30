@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@14:0: certified, summary: known
+main::make_new@17:0: covered (storage: no_proof_required), summary: known
+main::set_x@20:0: certified, summary: known
+main::main@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Tagged.__init__@10:4: uncovered (missing record layout)
+main::Labelled.__init__@16:4: uncovered (missing record layout)
+main::Numbered.__init__@24:4: uncovered (missing record layout)
+main::Formatted.__init__@33:4: uncovered (missing record layout)

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::Shape.area@9:4: covered (storage: no_proof_required), summary: known
+main::Shape.describe@12:4: covered (storage: no_proof_required), summary: known
+main::Square.area@23:4: covered (storage: no_proof_required), summary: known
+main::Rectangle.area@36:4: covered (storage: no_proof_required), summary: known
+main::Shape.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Rectangle.__init__@31:4: covered (storage: no_proof_required), summary: known

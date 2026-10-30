@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::widen@22:0: covered (storage: no_proof_required), summary: known
+main::forward@26:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::reflected@33:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::composite@40:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::main@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.__add__@15:4: covered (storage: no_proof_required)
+main::Bag.__radd__@18:4: covered (storage: no_proof_required)
+main::Bag.__init__@12:4: covered (storage: no_proof_required), summary: known

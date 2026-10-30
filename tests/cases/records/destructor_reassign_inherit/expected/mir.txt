@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_inherit@22:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Base.__del__@10:4: uncovered (missing receiver fact)
+main::Child.__del__@18:4: uncovered (missing receiver fact)
+main::Base.__init__@7:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Child.__init__@15:4: uncovered (custom record special member), summary: opaque (custom record special member)

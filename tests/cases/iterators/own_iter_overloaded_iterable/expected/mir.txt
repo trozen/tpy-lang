@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::each@18:0: uncovered (generic body)
+main::each_twice@25:0: uncovered (generic body)
+main::total@32:0: uncovered (no body to lower)
+main::total@34:0: uncovered (no body to lower)
+main::total@35:0: uncovered (overloaded callable)
+main::keysum@45:0: uncovered (no body to lower)
+main::keysum@47:0: uncovered (no body to lower)
+main::keysum@48:0: uncovered (overloaded callable)
+main::main@57:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Item.__lt__@14:4: covered (storage: no_proof_required)
+main::Item.__init__@12:4: covered (storage: no_proof_required), summary: known

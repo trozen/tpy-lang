@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::value_of@22:0: covered (storage: no_proof_required), summary: known
+main::pick@28:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::walk@38:0: uncovered (unsupported hoisted value)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@18:4: covered (storage: no_proof_required), summary: known

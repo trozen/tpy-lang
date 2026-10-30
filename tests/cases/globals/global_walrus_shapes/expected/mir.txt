@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::narrow@18:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::other_types@32:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::main@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Widget.retitle@26:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)

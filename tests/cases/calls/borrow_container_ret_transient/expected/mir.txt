@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_items@24:0: covered (storage: no_proof_required), summary: known
+main::mk@28:0: covered (storage: no_proof_required), summary: known
+main::truthy@33:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::while_head@44:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::membership@53:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::temp_receiver@64:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::gen@87:0: uncovered (unsupported expression)
+main::coro@93:0: uncovered (async body)
+main::main@100:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::B.items_m@20:4: covered (storage: no_proof_required), summary: known
+main::Reader.read@80:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::B.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@74:4: uncovered (unsupported expression), summary: opaque (unsupported expression)

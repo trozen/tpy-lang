@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::Acc.__iadd__@19:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Acc.__init__@16:4: covered (storage: no_proof_required), summary: known

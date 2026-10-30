@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@8:0: uncovered (match across a suspension)
+main::acoro@26:0: uncovered (async body)
+main::amain@47:0: uncovered (async body)
+main::main@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

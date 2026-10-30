@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@27:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Canvas.shape@24:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Canvas.shape@24:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Circle.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Canvas.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@13:0: covered (storage: no_proof_required), summary: known
+main::ret_rep@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::async_rep@24:0: uncovered (async body)
+main::nested_rep@48:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_member@57:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::yld_live@65:0: uncovered (unsupported hoisted value)
+main::yld_rep@71:0: uncovered (unsupported hoisted value)
+main::main@76:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Maker.rep@39:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Maker.__init__@32:4: covered (storage: no_proof_required), summary: known

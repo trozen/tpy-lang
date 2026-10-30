@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@6:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.colors::__tpy_init: uncovered (module initialization)

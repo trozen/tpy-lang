@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Vec.add@8:4: uncovered (no body to lower)
+main::Vec.clear@11:4: uncovered (no body to lower)
+main::Vec.pop_last@14:4: uncovered (no body to lower)
+main::Vec.count@19:4: uncovered (no body to lower)
+main::Vec.get@24:4: uncovered (no body to lower)

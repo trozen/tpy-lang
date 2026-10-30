@@ -1,0 +1,5 @@
+consts::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::use_alias@9:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::greet@13:0: covered (storage: no_proof_required), summary: known
+main::main@17:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

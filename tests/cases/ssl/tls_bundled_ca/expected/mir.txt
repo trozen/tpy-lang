@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::write_fixtures@42:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bundle_embedded@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::default_context_rejects_self_signed@56:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bare_context_trusts_nothing@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@122:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

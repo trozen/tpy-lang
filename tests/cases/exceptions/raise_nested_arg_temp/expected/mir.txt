@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@17:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::fail_nested@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fail_direct@25:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@29:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Tag.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::TagError.__init__@12:4: uncovered (missing record layout)

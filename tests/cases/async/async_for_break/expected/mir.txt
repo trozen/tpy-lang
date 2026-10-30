@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_above@23:0: uncovered (async body)
+main::main@32:0: uncovered (async body)
+main::Counter.__anext__@13:4: uncovered (async body)
+main::Counts.__aiter__@19:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known

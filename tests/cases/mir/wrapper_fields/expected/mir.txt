@@ -1,0 +1,61 @@
+main::__tpy_init: uncovered (module initialization)
+main::clear@80:0: covered (storage: no_proof_required), summary: known
+main::read@85:0: covered (storage: no_proof_required), summary: known
+main::alias@92:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: alias_obligation, summary: known
+main::alias_call@102:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::alias_read_first@107:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::alias_other_field@117:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::callee@126:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+main::fresh@136:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
+main::fresh_alias@145:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+main::fresh_call@153:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+main::empties@160:0: covered (storage: no_proof_required), summary: known
+main::fresh_condition@166:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+main::keep_other_field@173:0: covered (storage: no_proof_required), summary: known
+main::own_field_write@181:0: covered (storage: no_proof_required), summary: known
+main::holders@191:0: covered (storage: no_proof_required), summary: known
+main::keep_record_field@217:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::keep_leaf_field@225:0: covered (storage: no_proof_required), summary: known
+main::keep_root@233:0: covered (storage: no_proof_required), summary: known
+main::keep_root_condition@244:0: covered (storage: no_proof_required), summary: known
+main::keep_initialization@254:0: covered (storage: no_proof_required), summary: known
+main::keep_backing@263:0: covered (storage: no_proof_required), summary: known
+main::loop_write@274:0: covered (storage: no_proof_required), summary: known
+main::refill@285:0: covered (storage: no_proof_required), summary: known
+main::copy_field@293:0: covered (storage: no_proof_required), summary: known
+main::copy_param@298:0: covered (storage: no_proof_required), summary: known
+main::copy_both@303:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::written_then_read@310:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
+main::copied_then_read@316:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::find@323:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::store_found@328:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
+main::bump_payload@333:0: covered (storage: no_proof_required), summary: known
+main::payload_borrow@339:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
+main::payload_return@348:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::id_p@354:0: certified, summary: known
+main::payload_return_call@359:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::set_s@379:0: covered (storage: no_proof_required), summary: known
+main::keep_payload@385:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::payload_sub_return@396:0: covered (storage: no_proof_required), summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::set_field@402:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::payload_return_warning@408:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::payload_write@416:0: uncovered (optional field payload write), summary: opaque (optional field payload write)
+main::ro_read@422:0: covered (storage: no_proof_required), summary: known
+main::local@429:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::local_forms@437:0: covered (storage: no_proof_required), summary: known
+main::built_forms@446:0: covered (storage: no_proof_required), summary: known
+main::local_temporary@455:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@461:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::P.bump@13:4: covered (storage: no_proof_required), summary: known
+main::H.reset@27:4: covered (storage: no_proof_required), summary: known
+main::H.via_self@31:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Empty.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@60:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Ro.__init__@68:4: covered (storage: no_proof_required), summary: known
+main::Num.__init__@76:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::HL.__init__@209:4: covered (storage: no_proof_required), summary: known
+main::S.__init__@368:4: covered (storage: no_proof_required), summary: known
+main::SH.__init__@375:4: covered (storage: no_proof_required), summary: known

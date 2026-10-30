@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@43:0: covered (storage: no_proof_required), summary: known
+main::main@59:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Inner.__lt__@17:4: covered (storage: no_proof_required)
+main::Rec.shared@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rec.get_inner@39:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Team.ranked@53:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Inner.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Team.__init__@50:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

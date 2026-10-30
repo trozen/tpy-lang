@@ -1,0 +1,26 @@
+main::__tpy_init: uncovered (module initialization)
+main::upcast@31:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::gen@39:0: uncovered (unsupported hoisted value)
+main::reseat@48:0: uncovered (alias source mismatch), summary: opaque (alias source mismatch)
+main::union@56:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::union_opt@64:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::take@71:0: covered (storage: no_proof_required), summary: known
+main::arg@77:0: uncovered (payload copy type or access mismatch), summary: opaque (payload copy type or access mismatch)
+main::take_union@82:0: covered (storage: no_proof_required), summary: known
+main::take_union_opt@87:0: covered (storage: no_proof_required), summary: known
+main::arg_union@93:0: uncovered (union has no matching record alternative), summary: opaque (union has no matching record alternative)
+main::give@100:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ret@105:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::give_union@112:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::give_union_opt@116:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ret_union@122:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::coro@135:0: uncovered (async body)
+main::field@151:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen_same@158:0: uncovered (unsupported hoisted value)
+main::same_type@166:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::main@183:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pet.rename@16:4: covered (storage: no_proof_required), summary: known
+main::Pet.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@146:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::grow@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::relabel@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::view_holder@56:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::N.__init__@51:4: covered (storage: no_proof_required), summary: known

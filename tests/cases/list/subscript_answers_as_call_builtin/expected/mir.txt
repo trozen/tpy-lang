@@ -1,0 +1,50 @@
+main::__tpy_init: uncovered (module initialization)
+main::wide@19:0: covered (storage: no_proof_required), summary: known
+main::fresh_list@23:0: covered (storage: no_proof_required), summary: known
+main::fresh_dict@27:0: covered (storage: no_proof_required), summary: known
+main::ops@31:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::free_fn@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen@70:0: covered (storage: no_facts: storage facts have not been published)
+main::coro@81:0: uncovered (async body)
+main::checked@97:0: uncovered (error-return body)
+main::comp_pos@108:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::closure_pos@115:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_pos@130:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_pos@143:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::error_return_pos@156:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_pos@165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_pos@180:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::async_pos@186:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::positions@192:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::keys@206:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::receivers@234:0: uncovered (unsupported local type or form)
+main::proven@256:0: uncovered (unsupported parameter type)
+main::bump@287:0: covered (storage: no_proof_required), summary: known
+main::bump_proven@291:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::proven_mutation@300:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::own_first@306:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::first_ro@312:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::opt_reads@319:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::generic_store@324:0: uncovered (generic body)
+main::references@330:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::recv@355:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::k@361:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::v@366:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::side_effects@371:0: uncovered (unsupported metadata: held), summary: opaque (unsupported metadata: held)
+main::nested@381:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pending@391:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::record_keys@437:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::explicit_calls@447:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::union_store@470:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::popped_keys@481:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::main@502:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.run@62:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Grid.__getitem__@417:4: covered (storage: no_proof_required), summary: known
+main::ByP.__getitem__@425:4: covered (storage: no_proof_required), summary: known
+main::Named.__getitem__@433:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Q.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@53:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Grid.__init__@414:4: covered (storage: no_proof_required), summary: known
+main::ByP.__init__@422:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@430:4: covered (storage: no_proof_required), summary: known

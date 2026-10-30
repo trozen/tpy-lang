@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::comp_method@26:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::literal_param@35:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
+main::gen_params@41:0: uncovered (loop across a suspension)
+main::pick@46:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::empty_seeded@53:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::B.rec_m@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::R.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@18:4: covered (storage: no_proof_required), summary: known

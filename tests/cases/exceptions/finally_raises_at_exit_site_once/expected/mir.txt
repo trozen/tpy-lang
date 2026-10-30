@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@10:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::ret_out@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::brk_out@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::cont_out@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_ret@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@63:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Err.__init__@18:4: uncovered (missing record layout)

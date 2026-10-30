@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::pend@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::free_function@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::apply@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::lambda_body@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::counting@39:0: uncovered (try across a suspension)
+main::generator_body@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::lookup@63:0: uncovered (error-return body)
+main::error_return_body@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::flushed@84:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sink_nested_print@112:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sink_tail@139:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::printing@149:0: uncovered (async body)
+main::async_body@158:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::worker_thread@173:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@183:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Echo.write@99:4: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Echo.flush@106:4: covered (storage: no_proof_required), summary: known
+main::Record.write@128:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Record.flush@132:4: covered (storage: no_proof_required), summary: known
+main::Worker.run@166:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Echo.__init__@96:4: covered (storage: no_proof_required), summary: known
+main::Record.__init__@125:4: covered (storage: no_proof_required), summary: known

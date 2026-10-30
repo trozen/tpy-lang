@@ -1,0 +1,7 @@
+bags::__tpy_init: uncovered (module initialization)
+bags::Bag.__iter__@12:4: uncovered (loop across a suspension)
+bags::Bag.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.__iter__@20:4: uncovered (loop across a suspension)
+main::Bag.__init__@17:4: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)

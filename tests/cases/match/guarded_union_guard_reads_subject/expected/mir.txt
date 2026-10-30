@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::field_cond@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::as_bind@60:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::same_index@70:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_none@82:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_blocks@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_closure@139:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_match_arm@151:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@164:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Gate.__enter__@32:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Gate.__exit__@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.bump@107:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Third.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@97:4: uncovered (unsupported statement), summary: opaque (unsupported statement)

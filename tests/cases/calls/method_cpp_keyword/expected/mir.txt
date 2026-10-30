@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Box.double@14:4: covered (storage: no_proof_required), summary: known
+main::Box.delete@17:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

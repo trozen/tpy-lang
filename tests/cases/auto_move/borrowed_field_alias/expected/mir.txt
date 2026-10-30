@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Keeper.take@27:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Inner.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Keeper.__init__@24:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

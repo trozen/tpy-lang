@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@20:0: covered (storage: no_proof_required), summary: known
+main::ret@49:0: covered (storage: no_proof_required), summary: known
+main::ret_fresh@54:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::local_fresh@59:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@64:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.reset@32:4: covered (storage: no_proof_required), summary: known
+main::H.refill@36:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::P.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@44:4: uncovered (reference needs local name), summary: opaque (reference needs local name)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@20:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@24:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Storage.__del__@13:4: uncovered (unsupported expression type)
+main::Storage.get@16:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Storage.__init__@9:4: uncovered (custom record special member), summary: opaque (custom record special member)

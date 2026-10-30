@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::classify@43:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::classify_direct@54:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@65:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::BaseExc.what@23:4: covered (storage: no_proof_required)
+main::ValErr.what@31:4: covered (storage: no_proof_required)
+main::OsErr.what@39:4: covered (storage: no_proof_required)
+main::BaseExc.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::ValErr.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::OsErr.__init__@36:4: covered (storage: no_proof_required), summary: known

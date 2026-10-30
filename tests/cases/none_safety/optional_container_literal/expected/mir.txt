@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_list@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_dict@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_set@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_init@32:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@56:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.fill@48:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Bag.__init__@44:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::Holder.get@12:4: uncovered (generic body)
+main::Holder.set@15:4: uncovered (generic body)
+main::Holder.take@19:4: uncovered (generic body)
+main::Holder.__init__@8:4: uncovered (generic constructor)

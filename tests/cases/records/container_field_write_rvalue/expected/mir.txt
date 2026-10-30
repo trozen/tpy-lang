@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk_arr@7:0: covered (storage: no_proof_required), summary: known
+main::mk_ba@11:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::borrow_arr@15:0: covered (storage: no_proof_required), summary: known
+main::main@51:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Buf.load@33:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Buf.own_call@37:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Buf.repeat@41:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Buf.alias@44:4: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::Buf.__init__@24:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

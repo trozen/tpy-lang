@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_text@9:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.m_text@21:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Box.m_name@24:4: covered (storage: no_proof_required), summary: known
+main::Box.text@28:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Box.tagged@32:4: covered (storage: no_proof_required), summary: known
+main::Box.name@36:4: covered (storage: no_proof_required), summary: known
+main::Box.raw@40:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Box.__init__@17:4: covered (storage: no_proof_required), summary: known

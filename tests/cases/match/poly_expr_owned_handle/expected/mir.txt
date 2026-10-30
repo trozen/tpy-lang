@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_box@31:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::describe@37:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Snake.__init__@27:4: covered (storage: no_proof_required), summary: known

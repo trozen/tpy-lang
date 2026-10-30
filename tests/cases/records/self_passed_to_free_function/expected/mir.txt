@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::on_init@50:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::on_announce@54:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::get_description@59:0: covered (storage: no_proof_required), summary: known
+main::to_upper@63:0: covered (storage: no_proof_required), summary: known
+main::append_item@67:0: covered (storage: no_proof_required), summary: known
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Module.log@17:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Module.init@22:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Module.describe@26:4: covered (storage: no_proof_required), summary: known
+main::Module.name_upper@31:4: covered (storage: no_proof_required), summary: known
+main::Module.reinit@36:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Module.announce@41:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Module.add_item@46:4: covered (storage: no_proof_required), summary: known
+main::Module.__init__@12:4: covered (storage: no_proof_required), summary: known

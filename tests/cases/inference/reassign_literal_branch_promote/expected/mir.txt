@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_big@4:0: covered (storage: no_proof_required), summary: known
+main::test_augassign@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_binop@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_elif_chain@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_c@15:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@20:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::C.__init__@11:4: covered (storage: no_proof_required), summary: known

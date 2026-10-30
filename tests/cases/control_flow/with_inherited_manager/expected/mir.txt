@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::BaseCM.__enter__@9:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::BaseCM.__exit__@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::BaseCM.__init__@6:4: covered (storage: no_proof_required), summary: known

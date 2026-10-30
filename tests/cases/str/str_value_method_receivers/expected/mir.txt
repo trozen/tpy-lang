@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::shout@7:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

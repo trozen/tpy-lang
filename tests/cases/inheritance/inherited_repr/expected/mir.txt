@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@49:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Animal.__repr__@11:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Cat.__repr__@22:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Speaker.__str__@31:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Animal.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Speaker.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Echo.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Pet.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::LoudCat.__init__@46:4: covered (storage: no_proof_required), summary: known

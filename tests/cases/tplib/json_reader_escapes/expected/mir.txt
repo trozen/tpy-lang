@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_reader_standard@6:0: uncovered (error-return body)
+main::test_reader_bf@16:0: uncovered (error-return body)
+main::test_reader_unicode@26:0: uncovered (error-return body)
+main::test_writer_control_chars@34:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_roundtrip@46:0: uncovered (error-return body)
+main::main@60:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

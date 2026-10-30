@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@38:0: uncovered (generic body)
+main::via_free@55:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::via_ctor@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::via_super@84:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::via_gen@90:0: uncovered (unsupported metadata: template_args_cpp)
+main::via_async@95:0: uncovered (async body)
+main::via_comp@100:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::via_finally@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_match@114:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main_coro@122:0: uncovered (async body)
+main::main@137:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Driver.via_method@66:4: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Driver.via_self@72:4: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::NPt.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Pt.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@45:4: uncovered (generic constructor)
+main::Wrap.__init__@50:4: uncovered (missing record layout)
+main::Driver.__init__@62:4: covered (storage: no_proof_required), summary: known

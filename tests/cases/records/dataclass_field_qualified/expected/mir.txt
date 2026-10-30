@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Foo.__eq__: uncovered (uncertified binary operation)
+main::Foo.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Foo.__init__: covered (storage: no_proof_required), summary: known

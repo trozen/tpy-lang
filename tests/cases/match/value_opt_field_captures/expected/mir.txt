@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::WithScalar.__init__@10:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::WithStr.__init__@17:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Other.__init__@24:4: covered (storage: no_proof_required), summary: known

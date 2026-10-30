@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@61:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@68:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Pool.__del__@25:4: uncovered (generic body)
+main::Pool.__move__@28:4: uncovered (generic body)
+main::Pool.push@33:4: uncovered (generic body)
+main::Pool.get@38:4: uncovered (generic body)
+main::Tagged.__del__@48:4: covered (storage: no_proof_required)
+main::Tagged.__move__@51:4: uncovered (custom record special member)
+main::Item.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Pool.__init__@21:4: uncovered (generic constructor)
+main::Tagged.__init__@45:4: uncovered (custom record special member), summary: opaque (custom record special member)

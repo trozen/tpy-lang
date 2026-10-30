@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::trusted@14:0: certified, summary: known
+main::pick_view@18:0: covered (storage: no_proof_required), summary: known
+main::param_then_trusted@22:0: certified, summary: known
+main::trusted_then_param@31:0: certified, summary: known
+main::strview_param_then_trusted@40:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@49:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known

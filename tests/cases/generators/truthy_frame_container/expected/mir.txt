@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::drain_list@49:0: uncovered (unsupported expression)
+main::drain_dict@56:0: uncovered (unsupported expression)
+main::drain_set@65:0: uncovered (unsupported expression)
+main::str_branch@70:0: uncovered (unsupported expression)
+main::bytes_branch@76:0: uncovered (unsupported expression)
+main::record_len_branch@82:0: uncovered (unsupported expression)
+main::record_bool_branch@88:0: uncovered (unsupported expression)
+main::enum_branch@97:0: uncovered (unsupported expression)
+main::int_enum_branch@103:0: uncovered (unsupported expression)
+main::plain_record_branch@109:0: uncovered (unsupported expression)
+main::any_branch@115:0: uncovered (unsupported parameter type)
+main::and_branch@121:0: uncovered (unsupported expression)
+main::peephole_or@129:0: uncovered (unsupported hoisted value)
+main::main@140:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Bag.__len__@35:4: covered (storage: no_proof_required), summary: known
+main::Flag.__bool__@45:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Flag.__init__@42:4: covered (storage: no_proof_required), summary: known

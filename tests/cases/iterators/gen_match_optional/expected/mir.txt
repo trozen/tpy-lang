@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@12:0: uncovered (unsupported parameter type)
+main::chain@21:0: uncovered (match across a suspension)
+main::chain_capture@34:0: uncovered (match across a suspension)
+main::chain_guarded@50:0: uncovered (match across a suspension)
+main::main@62:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::passthrough@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::passthrough_ro@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::first@30:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::find@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::consume@46:0: covered (storage: no_proof_required), summary: known
+main::consume_ro@53:0: covered (storage: no_proof_required), summary: known
+main::first_pair@60:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::take_ptr_node@74:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_collapse_passthrough@80:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::test_optional_return_into_ptr_local@89:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_value_into_optional_return@96:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::test_readonly_variant@104:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_into_optional_call_arg@112:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_into_optional_tuple_slot@118:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::test_mutable_to_readonly_widening@124:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_storage_form_optional_lifts_to_ptr@130:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@135:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@70:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)

@@ -1,0 +1,7 @@
+a::__tpy_init: uncovered (module initialization)
+a::Bag.count@16:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+a::Bag.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+b::__tpy_init: uncovered (module initialization)
+b::count_bag@11:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

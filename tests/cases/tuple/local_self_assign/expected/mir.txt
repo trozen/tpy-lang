@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)

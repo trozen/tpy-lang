@@ -1,0 +1,50 @@
+main::__tpy_init: uncovered (module initialization)
+main::hit_miss@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ro@28:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::temp_default@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen@61:0: uncovered (unsupported native container element)
+main::co@75:0: uncovered (async body)
+main::comp@88:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::branches@93:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::explicit_copy@107:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::derived_default@118:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ret@126:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::field_store@137:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_values@144:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::generic@155:0: uncovered (generic body)
+main::generic_use@159:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::generic_opt@169:0: uncovered (generic body)
+main::read_int@184:0: covered (storage: no_proof_required), summary: known
+main::read_p@188:0: covered (storage: no_proof_required), summary: known
+main::generic_opt_use@192:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::values@202:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::walrus@214:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::try_hit@223:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ro_branches@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ro_gen@246:0: uncovered (unsupported native container element)
+main::ro_co@260:0: uncovered (async body)
+main::field_hop@279:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_elements@301:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_list_values@338:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_optional@357:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::reseated_tuple@367:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_set@378:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_empty@397:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::bound_then_stored@426:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_empty_gen@438:0: uncovered (unsupported native container element)
+main::owned_gen@447:0: uncovered (unsupported native container element)
+main::ro_copy@455:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@464:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::logged@528:0: covered (storage: no_proof_required), summary: known
+main::default_in_place@535:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::H.bump@55:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::K.__hash__@291:4: covered (storage: no_proof_required), summary: known
+main::K.__eq__@294:4: covered (storage: no_proof_required)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@50:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.__init__@133:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@267:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@274:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@288:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@389:4: covered (storage: no_proof_required), summary: known
+main::N.__init__@523:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

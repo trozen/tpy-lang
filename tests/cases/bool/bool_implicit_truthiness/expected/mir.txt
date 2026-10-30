@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Container.__bool__@9:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@6:4: covered (storage: no_proof_required), summary: known

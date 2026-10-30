@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_borrowing@22:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_last_use@33:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Pair.first@19:4: uncovered (generic body)
+main::Pair.first@19:4#2: uncovered (generic body)
+main::Node.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@15:4: uncovered (generic constructor)

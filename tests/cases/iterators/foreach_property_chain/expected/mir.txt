@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_chain@52:0: covered (storage: no_proof_required), summary: known
+main::bump_one_hop@58:0: uncovered (loop across a suspension)
+main::gen_nosusp@66:0: covered (storage: no_facts: storage facts have not been published)
+main::tick@74:0: uncovered (async body)
+main::bump_await@80:0: uncovered (async body)
+main::main_coro@89:0: uncovered (async body)
+main::main@93:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Inner.items@30:4: covered (storage: no_proof_required), summary: known
+main::Inner.items@30:4#2: covered (storage: no_proof_required), summary: known
+main::Inner.bump_own@34:4: covered (storage: no_proof_required), summary: known
+main::Outer.bump@46:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@42:4: covered (storage: no_proof_required), summary: known

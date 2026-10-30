@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Vehicle.get_brand@13:4: covered (storage: no_proof_required), summary: known
+main::Car.__str__@43:4: covered (storage: no_proof_required), summary: known
+main::Car.weight@46:4: covered (storage: no_proof_required), summary: known
+main::Car.describe@49:4: covered (storage: no_proof_required), summary: known
+main::Vehicle.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Car.__init__@38:4: covered (storage: no_proof_required), summary: known

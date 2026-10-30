@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::_cookie_line@11:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::cookies_arg_not_persisted@19:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@45:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_local@26:0: uncovered (unsupported hoisted value)
+main::gen_with@37:0: uncovered (with across a suspension)
+main::gen_match@46:0: uncovered (unsupported parameter type)
+main::async_local@57:0: uncovered (async body)
+main::async_loop_var@66:0: uncovered (async body)
+main::main@78:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Mgr.__enter__@19:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Mgr.__exit__@22:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cell.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Mgr.__init__@16:4: covered (storage: no_proof_required), summary: known

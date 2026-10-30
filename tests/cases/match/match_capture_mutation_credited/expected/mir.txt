@@ -1,0 +1,40 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_union@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::free_record@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_sub_capture@57:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::optional_subject@66:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::add_one@74:0: covered (storage: no_proof_required), summary: known
+main::via_callee@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::reseated@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::reseated_callee@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::subscript_subject@149:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::positional_sub_capture@167:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::poly_subject@214:0: uncovered (unsupported parameter type)
+main::gen_body@226:0: uncovered (unsupported pointer capture)
+main::async_body@236:0: uncovered (async body)
+main::read_only@248:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::clone_of@256:0: covered (storage: no_proof_required), summary: known
+main::rvalue_subject@262:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::scalar_capture@272:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::local_subject@282:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@290:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.bump@95:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.value@100:4: covered (storage: no_proof_required), summary: known
+main::Owner.touch@136:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Owner.value@143:4: covered (storage: no_proof_required), summary: known
+main::Slot.__eq__: covered (storage: no_proof_required)
+main::Slot.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Pair.__eq__: uncovered (uncertified binary operation)
+main::Pair.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::UnionHolder.bump@183:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::UnionHolder.value@190:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Kitty.bump@209:4: covered (storage: no_proof_required)
+main::Cat.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@90:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@127:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__: covered (storage: no_proof_required), summary: known
+main::Pair.__init__: covered (storage: no_proof_required), summary: known
+main::UnionHolder.__init__@177:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Kitty.__init__@206:4: covered (storage: no_proof_required), summary: known

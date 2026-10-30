@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@10:0: uncovered (unknown reference source), summary: opaque (unknown reference source)

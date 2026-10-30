@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::NegBig.__len__@8:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::NegI32.__len__@13:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Empty.__len__@18:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Full.__len__@23:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

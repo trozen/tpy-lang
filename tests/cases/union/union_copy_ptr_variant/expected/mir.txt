@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_copy_param@15:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::copy_module_spelling@22:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::main@30:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Dog.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@12:4: covered (storage: no_proof_required), summary: known

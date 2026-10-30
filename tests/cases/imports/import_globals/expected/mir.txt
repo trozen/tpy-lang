@@ -1,0 +1,4 @@
+config::__tpy_init: uncovered (module initialization)
+config::get_max@5:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

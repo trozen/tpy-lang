@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::or_skips_fallible@5:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::and_skips_fallible@10:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::logged@15:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::or_skips_side_effect@20:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::and_skips_side_effect@25:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::and_runs_rhs_when_truthy@30:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::chained_or_skips_tail@35:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::chained_and_skips_tail@40:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

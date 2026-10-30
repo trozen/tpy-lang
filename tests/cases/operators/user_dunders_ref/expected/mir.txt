@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::add_params@52:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::scale_param@57:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::negate_param@62:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::compare_params@67:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::test_field_ops@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_param_ops@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_chained@93:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_binop_assign@104:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_iadd_ref@112:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@119:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Vec.__add__@14:4: covered (storage: no_proof_required)
+main::Vec.__sub__@17:4: covered (storage: no_proof_required)
+main::Vec.__mul__@20:4: covered (storage: no_proof_required)
+main::Vec.__neg__@23:4: covered (storage: no_proof_required)
+main::Vec.__eq__@26:4: covered (storage: no_proof_required)
+main::Vec.__iadd__@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Segment.diff@43:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Segment.midpoint@47:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Vec.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Segment.__init__@39:4: covered (storage: no_proof_required), summary: known

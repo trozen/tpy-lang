@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::simple_while@6:0: covered (storage: no_proof_required), summary: known
+main::multiple_optionals@16:0: covered (storage: no_proof_required), summary: known
+main::outer_if_inner_while_narrowing@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::for_loop_variant@41:0: covered (storage: no_proof_required), summary: known
+main::main@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

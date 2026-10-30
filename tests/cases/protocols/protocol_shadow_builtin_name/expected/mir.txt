@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_user_comparable@22:0: uncovered (unsupported parameter type)
+main::main@25:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Widget.compare_to@19:4: covered (storage: no_proof_required), summary: known
+main::Widget.__init__@17:4: covered (storage: no_proof_required), summary: known

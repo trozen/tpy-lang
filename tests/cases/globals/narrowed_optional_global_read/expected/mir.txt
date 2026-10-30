@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::enable@9:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)
+main::read_ret@14:0: uncovered (missing or inconsistent optional read), summary: opaque (missing or inconsistent optional read)
+main::read_sink@20:0: uncovered (missing or inconsistent optional read), summary: opaque (missing or inconsistent optional read)
+main::read_aug@26:0: uncovered (missing or inconsistent optional read), summary: opaque (missing or inconsistent optional read)
+main::write_from@33:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)
+main::write_plain@39:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::main@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

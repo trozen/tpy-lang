@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::tls_ver@14:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::write_fixtures@46:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::drive@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::handshake_ok@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::hostname_mismatch@95:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::cert_none@126:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@145:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

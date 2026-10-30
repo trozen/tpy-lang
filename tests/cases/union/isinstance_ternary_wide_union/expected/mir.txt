@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@25:0: covered (storage: no_proof_required), summary: known
+main::then_reads@30:0: covered (storage: no_proof_required), summary: known
+main::label@35:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::pair@41:0: covered (storage: no_proof_required), summary: known
+main::main@54:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Reader.pick@50:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@46:4: covered (storage: no_proof_required), summary: known

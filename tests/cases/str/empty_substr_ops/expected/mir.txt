@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_count_empty@4:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::test_replace_empty@9:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::test_count_nonempty@14:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::test_replace_nonempty@18:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_vec@19:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Vec.push@11:4: uncovered (generic body)
+main::Vec.data@15:4: uncovered (generic body)
+main::Vec.data@15:4#2: uncovered (generic body)
+main::Vec.__init__@8:4: uncovered (generic constructor)

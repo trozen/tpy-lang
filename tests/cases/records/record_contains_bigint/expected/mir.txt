@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.__contains__@13:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Bag.__init__@10:4: covered (storage: no_proof_required), summary: known

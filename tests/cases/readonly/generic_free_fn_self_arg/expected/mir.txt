@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::trigger@12:0: uncovered (generic body)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.bump@22:4: covered (storage: no_proof_required), summary: known
+main::Counter.step@25:4: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Counter.__init__@19:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::empty_function@5:0: covered (storage: no_proof_required), summary: known
+main::function_with_pass_branch@8:0: covered (storage: no_proof_required), summary: known
+main::pass_in_loop@15:0: covered (storage: no_proof_required), summary: known
+main::pass_in_elif@26:0: covered (storage: no_proof_required), summary: known
+main::test_class_with_pass@50:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.do_nothing@41:4: covered (storage: no_proof_required), summary: known
+main::Counter.maybe_increment@44:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@38:4: covered (storage: no_proof_required), summary: known

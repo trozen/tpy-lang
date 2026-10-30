@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Score.__eq__@16:4: covered (storage: no_proof_required)
+main::Score.__lt__@18:4: covered (storage: no_proof_required)
+main::Score.__ge__@20:4: covered (storage: no_proof_required)
+main::Score.__le__: uncovered (uncertified binary operation)
+main::Score.__gt__: uncovered (uncertified binary operation)
+main::Score.__init__@14:4: covered (storage: no_proof_required), summary: known

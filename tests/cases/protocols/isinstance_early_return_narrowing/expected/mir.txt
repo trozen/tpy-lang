@@ -1,0 +1,29 @@
+main::__tpy_init: uncovered (module initialization)
+main::bare_negative@61:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bare_raise@70:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bare_const@78:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::optional_negative@86:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::positive_then_more@98:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::sequential_negative@107:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::triple_chain@122:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::assert_then_assert@135:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::assert_then_early_return@146:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sibling_vars@157:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::narrow_in_for_body@174:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::narrow_in_while_body@188:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::narrow_in_try_body@204:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::narrow_in_match_case@218:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::narrow_in_with_body@245:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::safe_raise@257:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@265:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pet.name@25:4: covered (storage: no_proof_required)
+main::Dog.bark@34:4: covered (storage: no_proof_required)
+main::WatchDog.alert@48:4: covered (storage: no_proof_required)
+main::GuardDog.patrol@57:4: covered (storage: no_proof_required)
+main::CM.__enter__@238:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::CM.__exit__@241:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Pet.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@39:4: covered (storage: no_proof_required), summary: known
+main::WatchDog.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::GuardDog.__init__@53:4: covered (storage: no_proof_required), summary: known

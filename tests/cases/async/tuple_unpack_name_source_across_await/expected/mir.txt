@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_two@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::f@19:0: uncovered (async body)
+main::amain@28:0: uncovered (async body)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

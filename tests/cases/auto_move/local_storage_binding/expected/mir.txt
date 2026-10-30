@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::scoped@52:0: covered (storage: no_proof_required), summary: known
+main::branch@67:0: covered (storage: no_proof_required), summary: known
+main::scoped_branch@78:0: covered (storage: no_proof_required), summary: known
+main::hoisted_chain@87:0: uncovered (move needs fixed movable owned local), summary: opaque (move needs fixed movable owned local)
+main::closure_collision@101:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::hoisted_loops@119:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::native_loop@136:0: covered (storage: no_proof_required), summary: known
+main::managed@146:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::finalized@155:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::matched@165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::propagated@177:0: uncovered (error-return body)
+main::containers@217:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::hoisted_containers@239:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::aliases@259:0: certified, summary: opaque (summary output effect)
+main::copies@274:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::escape_copy@294:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::position_aliases@305:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::closure_controls@347:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::frame_aliases@369:0: uncovered (loop across a suspension)
+main::resumed_value@385:0: uncovered (async body)
+main::async_aliases@389:0: uncovered (async body)
+main::take_cell@405:0: covered (storage: no_proof_required), summary: known
+main::downstream_moves@417:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::caught_alias@438:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::escape_move@449:0: certified, summary: opaque (summary output effect)
+main::binding_controls@460:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@472:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Manager.__enter__@41:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Manager.__exit__@44:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Runner.method@198:4: covered (storage: no_proof_required), summary: known
+main::Runner.static@207:4: covered (storage: no_proof_required)
+main::Cell.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Item.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::MoveWrapper.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@190:4: covered (storage: no_proof_required), summary: known
+main::StoredCell.__init__@413:4: covered (storage: no_proof_required), summary: known

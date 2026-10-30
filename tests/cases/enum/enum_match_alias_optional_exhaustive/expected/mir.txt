@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::label@7:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@19:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+palette::__tpy_init: uncovered (module initialization)

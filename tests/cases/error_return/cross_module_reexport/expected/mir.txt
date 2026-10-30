@@ -1,0 +1,5 @@
+errors_impl::__tpy_init: uncovered (module initialization)
+errors_impl::parse_int@8:0: uncovered (error-return body)
+main::__tpy_init: uncovered (module initialization)
+main::parse_pair@8:0: uncovered (error-return body)
+main::main@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

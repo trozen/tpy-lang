@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::TaggedItem.__eq__: uncovered (uncertified binary operation)
+main::TaggedItem.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::TaggedItem.__init__: covered (storage: no_proof_required), summary: known

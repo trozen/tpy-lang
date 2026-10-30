@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Stack.push@11:4: covered (storage: no_proof_required), summary: known
+main::Stack.__span__@15:4: uncovered (unsupported metadata: wrap)
+main::Stack.__span__@15:4#2: uncovered (unsupported metadata: wrap)
+main::Stack.__iter__@19:4: uncovered (view of container storage)
+main::Stack.__iter__@19:4#2: uncovered (view of container storage)
+main::Stack.sum@23:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Stack.__repr__@29:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Stack.__init__@8:4: covered (storage: no_proof_required), summary: known

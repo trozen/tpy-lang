@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::push_kw@8:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::push_kw_rev@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::wipe_held@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mymod::__tpy_init: uncovered (module initialization)
+mymod::push@13:0: uncovered (no body to lower)
+mymod::wipe@17:0: uncovered (no body to lower)
+mymod::P.__init__@8:4: covered (storage: no_proof_required), summary: known

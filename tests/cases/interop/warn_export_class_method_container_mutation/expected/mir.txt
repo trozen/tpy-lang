@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Sink.push@17:4: covered (storage: no_proof_required), summary: known
+main::Sink.fill@20:4: covered (storage: no_proof_required), summary: known
+main::Sink.toggle@23:4: covered (storage: no_proof_required), summary: known
+main::Sink.scale@26:4: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::Sink.read_only@30:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@14:4: covered (storage: no_proof_required), summary: known

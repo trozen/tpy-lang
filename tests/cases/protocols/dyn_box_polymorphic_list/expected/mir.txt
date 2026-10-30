@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Parrot.name@19:4: covered (storage: no_proof_required)
+main::Dog.name@27:4: covered (storage: no_proof_required), summary: known
+main::Parrot.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@25:4: covered (storage: no_proof_required), summary: known

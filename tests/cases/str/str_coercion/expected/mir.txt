@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_str@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::take_string@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::take_strview@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

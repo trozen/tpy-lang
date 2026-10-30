@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_gen@58:0: uncovered (unsupported parameter type)
+main::ro_gen@78:0: uncovered (unsupported parameter type)
+main::generic_gen@84:0: uncovered (unsupported parameter type)
+main::forward_gen@93:0: uncovered (unsupported parameter type)
+main::own_gen@107:0: uncovered (unsupported parameter type)
+main::main@113:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Impl.get@35:4: covered (storage: no_proof_required), summary: known
+main::Impl.bump@38:4: covered (storage: no_proof_required), summary: known
+main::Inh.get@50:4: covered (storage: no_proof_required)
+main::Inh.bump@53:4: covered (storage: no_proof_required)
+main::Holder.walk@71:4: uncovered (unsupported parameter type)
+main::Impl.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Inh.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@67:4: covered (storage: no_proof_required), summary: known

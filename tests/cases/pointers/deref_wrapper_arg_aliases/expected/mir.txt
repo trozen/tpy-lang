@@ -1,0 +1,29 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@75:0: covered (storage: no_proof_required), summary: known
+main::bump_n@79:0: covered (storage: no_proof_required), summary: known
+main::bump_q@84:0: covered (storage: no_proof_required), summary: known
+main::show_ro@88:0: covered (storage: no_proof_required), summary: known
+main::n_of@92:0: covered (storage: no_proof_required), summary: known
+main::via_param@96:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::via_optional@100:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::via_ro@105:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::via_tuple@109:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::gen@113:0: uncovered (call needs borrowed record name)
+main::gen_frame@118:0: covered (storage: no_facts: storage facts have not been published)
+main::coro@123:0: uncovered (async body)
+main::main@129:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::R.__deref__@23:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::R.__deref__@23:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::R.bump_self@26:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::RQ.__deref__@44:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::RQ.__deref__@44:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::RO.__deref__@55:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::H.r_prop@68:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::H.r_prop@68:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::H.bump_mine@71:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::P.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Q.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::RQ.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::RO.__init__@51:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@63:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

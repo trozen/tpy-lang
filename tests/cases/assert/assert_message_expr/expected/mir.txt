@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::check_positive@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check_error@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check_property@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check_method@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@48:0: uncovered (unsupported statement)
+main::coro@53:0: uncovered (async body)
+main::main@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Error.detail@14:4: covered (storage: no_proof_required), summary: known
+main::Error.described@17:4: covered (storage: no_proof_required), summary: known
+main::Checker.check@43:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Error.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Checker.__init__@39:4: covered (storage: no_proof_required), summary: known

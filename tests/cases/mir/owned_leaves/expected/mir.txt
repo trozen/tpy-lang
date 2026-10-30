@@ -1,0 +1,81 @@
+main::__tpy_init: uncovered (module initialization)
+main::param_borrow@38:0: covered (storage: no_proof_required), summary: known
+main::by_value@43:0: covered (storage: no_proof_required), summary: known
+main::local@48:0: covered (storage: no_proof_required), summary: known
+main::temporary@55:0: covered (storage: no_proof_required), summary: known
+main::ret_copy@60:0: covered (storage: no_proof_required), summary: known
+main::global_read@65:0: covered (storage: no_proof_required), summary: known
+main::global_print@70:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::prints@75:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::element@80:0: covered (storage: no_proof_required), summary: known
+main::param_copy@86:0: covered (storage: no_proof_required), summary: known
+main::append@92:0: covered (storage: no_proof_required), summary: known
+main::convert@100:0: covered (storage: no_proof_required), summary: known
+main::literal@107:0: covered (storage: no_proof_required), summary: known
+main::promoted@112:0: covered (storage: no_proof_required), summary: known
+main::promoted_compare@116:0: covered (storage: no_proof_required), summary: known
+main::big_copy@121:0: covered (storage: no_proof_required), summary: known
+main::loop@126:0: covered (storage: no_proof_required), summary: known
+main::float_big@134:0: covered (storage: no_proof_required), summary: known
+main::mixed@138:0: covered (storage: no_proof_required), summary: known
+main::neg@142:0: covered (storage: no_proof_required), summary: known
+main::takes@147:0: covered (storage: no_proof_required), summary: known
+main::takes_big@151:0: covered (storage: no_proof_required), summary: known
+main::takes_own@155:0: covered (storage: no_proof_required), summary: known
+main::scaled@159:0: covered (storage: no_proof_required), summary: known
+main::calls_with_str@164:0: covered (storage: no_proof_required), summary: known
+main::lends@168:0: covered (storage: no_proof_required), summary: known
+main::copies@173:0: covered (storage: no_proof_required), summary: known
+main::literal_arguments@178:0: covered (storage: no_proof_required), summary: known
+main::own_result@182:0: covered (storage: no_proof_required), summary: known
+main::owned_result_caller@187:0: covered (storage: no_proof_required), summary: known
+main::fresh_result@192:0: covered (storage: no_proof_required), summary: known
+main::temporary_argument@196:0: covered (storage: no_proof_required), summary: known
+main::result_local@200:0: covered (storage: no_proof_required), summary: known
+main::global_arguments@206:0: covered (storage: no_proof_required), summary: known
+main::overlap@211:0: covered (storage: no_proof_required), summary: known
+main::overlap_write@216:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::bytes_print@223:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::expression_arguments@228:0: covered (storage: no_proof_required), summary: known
+main::print_call@233:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bytes_literal@238:0: covered (storage: no_proof_required), summary: known
+main::take_point@243:0: covered (storage: no_proof_required), summary: known
+main::rvalue_temp@248:0: certified, summary: known
+main::lent_big@259:0: covered (storage: no_proof_required), summary: known
+main::take_big@263:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_return@268:0: certified, summary: known
+main::lent_temp_bind@273:0: certified, summary: known
+main::lent_temp_cond@279:0: certified, summary: known
+main::lent_temp_scoped@286:0: certified, summary: known
+main::lent_temp_and@293:0: certified, summary: known
+main::lent_temp_select@298:0: certified, summary: known
+main::made@309:0: covered (storage: no_proof_required), summary: known
+main::view_len@313:0: covered (storage: no_proof_required), summary: known
+main::lent_view_temp@318:0: uncovered (named temporary needs stable scalar operands), summary: opaque (named temporary needs stable scalar operands)
+main::make@338:0: covered (storage: no_proof_required), summary: known
+main::temp_ctor_bump@343:0: covered (storage: no_proof_required), summary: known
+main::temp_call_bump@348:0: covered (storage: no_proof_required), summary: known
+main::temp_ctor_read@353:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::conditional_hoist@358:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::view_local@368:0: covered (storage: no_proof_required), summary: known
+main::str_field@374:0: covered (storage: no_proof_required), summary: known
+main::str_field_write@379:0: covered (storage: no_proof_required), summary: known
+main::global_write@384:0: uncovered (owned-leaf global write), summary: opaque (owned-leaf global write)
+main::view_return@390:0: covered (storage: no_proof_required), summary: known
+main::buffer@395:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::global_copy@400:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::view_caller@405:0: covered (storage: no_proof_required), summary: known
+main::fstring@410:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::concat_mixed@415:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::no_init@420:0: uncovered (owned-leaf declaration needs an initializer), summary: opaque (owned-leaf declaration needs an initializer)
+main::string_as_str@430:0: covered (storage: no_proof_required), summary: known
+main::countdown@436:0: uncovered (unsupported hoisted value)
+main::main@443:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Rec.positive_x@23:4: covered (storage: no_proof_required), summary: known
+main::Gauge.bump@329:4: covered (storage: no_proof_required), summary: known
+main::Gauge.read@334:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::BigP.__init__@255:4: covered (storage: no_proof_required), summary: known
+main::ViewP.__init__@305:4: covered (storage: no_proof_required), summary: known
+main::Gauge.__init__@326:4: covered (storage: no_proof_required), summary: known

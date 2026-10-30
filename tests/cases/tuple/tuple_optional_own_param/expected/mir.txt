@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_subscript@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_all_last_use@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_mixed_last_use_and_explicit_copy@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_fresh_constructor_literals@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_none_only@59:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_storage_form_source@63:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::test_subscript_access_in_body@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@18:4: covered (storage: no_proof_required), summary: known

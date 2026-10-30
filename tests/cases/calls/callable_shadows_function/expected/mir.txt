@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@9:0: covered (storage: no_proof_required), summary: known
+main::wide@13:0: covered (storage: no_proof_required), summary: known
+main::double@17:0: covered (storage: no_proof_required), summary: known
+main::same_arity@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::diff_arity@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_binding@33:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Runner.run@43:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Runner.__init__@39:4: covered (storage: no_proof_required), summary: known

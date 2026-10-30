@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_pair@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@19:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known

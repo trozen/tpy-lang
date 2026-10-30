@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@79:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Rows.run@19:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Counter.run@43:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Summer.run@59:4: covered (storage: no_proof_required), summary: known
+main::Driver.collect@72:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Rows.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::Summer.__init__@56:4: covered (storage: no_proof_required), summary: known
+main::Driver.__init__@69:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::literal_position@43:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::none_arm_position@56:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@66:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::F.make@20:4: covered (storage: no_proof_required), summary: known
+main::Builder.build@31:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::F.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Builder.__init__@27:4: covered (storage: no_proof_required), summary: known

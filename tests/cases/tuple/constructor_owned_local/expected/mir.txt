@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::free@14:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::branch@21:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::repeated@32:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::main@66:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Runner.method@57:4: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@49:4: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)

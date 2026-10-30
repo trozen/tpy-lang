@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@12:0: certified, summary: known
+main::clone_point@15:0: covered (storage: no_proof_required), summary: known
+main::double@18:0: covered (storage: no_proof_required), summary: known
+main::main@21:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

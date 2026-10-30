@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::branch_count@11:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@22:0: uncovered (unsupported local type or form), summary: opaque (recursive or recursion-dependent call)

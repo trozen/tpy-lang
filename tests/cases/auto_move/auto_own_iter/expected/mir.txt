@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Stack.consume@12:4: uncovered (unsupported local type or form)
+main::Stack.consume@12:4#2: uncovered (unsupported return type)
+main::Stack.__init__@9:4: covered (storage: no_proof_required), summary: known

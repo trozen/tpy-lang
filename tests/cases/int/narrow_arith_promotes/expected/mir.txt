@@ -1,0 +1,45 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::gen@83:0: covered (storage: no_facts: storage facts have not been published)
+main::async_fn@89:0: uncovered (async body)
+main::comp@95:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::cm_body@109:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::er_body@126:0: uncovered (error-return body)
+main::match_arm@133:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::slots@142:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::lookups@154:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bytes_store@166:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::take64@205:0: covered (storage: no_proof_required), summary: known
+main::w32@209:0: covered (storage: no_proof_required), summary: known
+main::apply_one@214:0: uncovered (no body to lower)
+main::apply_one@219:0: uncovered (no body to lower)
+main::pick@223:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::converts@234:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::targets@274:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::targets_gen@291:0: uncovered (loop across a suspension)
+main::targets_async@298:0: uncovered (async body)
+main::targets_rebound@309:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::targets_walrus@338:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::targets_walrus_gen@357:0: uncovered (walrus type mismatch)
+main::nested_bindings@365:0: uncovered (non-local name), summary: opaque (non-local name)
+main::nested_bindings_gen@375:0: uncovered (stub declares no contract)
+main::setters@398:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::literal_retype@423:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::lookup_keys@432:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bytes_widths@443:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@507:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Ctx.__enter__@18:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Ctx.__exit__@21:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Counter.bump@33:4: covered (storage: no_proof_required), summary: known
+main::Acc.add@183:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Box.set@193:4: uncovered (generic body)
+main::S.__mul__@201:4: covered (storage: no_proof_required)
+main::Prop.v@389:4: covered (storage: no_proof_required), summary: known
+main::Prop.v@393:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Acc.__init__@180:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@190:4: uncovered (generic constructor)
+main::S.__init__@198:4: covered (storage: no_proof_required), summary: known
+main::Prop.__init__@385:4: covered (storage: no_proof_required), summary: known

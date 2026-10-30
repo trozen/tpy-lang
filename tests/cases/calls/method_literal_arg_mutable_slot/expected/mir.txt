@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::sink@80:0: covered (storage: no_proof_required), summary: known
+main::mk@84:0: covered (storage: no_proof_required), summary: known
+main::push_gen@90:0: uncovered (generic body)
+main::push_free@95:0: covered (storage: no_proof_required), summary: known
+main::main@100:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::K.fill@28:4: covered (storage: no_proof_required), summary: known
+main::K.fill_recs@32:4: covered (storage: no_proof_required), summary: known
+main::K.fill_dict@36:4: covered (storage: no_proof_required), summary: known
+main::K.fill_set@40:4: covered (storage: no_proof_required), summary: known
+main::K.fill_nested@44:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::K.pick@50:4: covered (storage: no_proof_required), summary: known
+main::K.stash@55:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::K.total@60:4: covered (storage: no_proof_required), summary: known
+main::K.ro@66:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::K.fill_static@70:4: covered (storage: no_proof_required)
+main::K.fill_static_dict@75:4: covered (storage: no_proof_required)
+main::Rec.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@24:4: covered (storage: no_proof_required), summary: known

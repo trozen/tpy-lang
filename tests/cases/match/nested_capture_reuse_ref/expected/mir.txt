@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::outer_untouched@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::reseats_mutable@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::as_pattern_mutable@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@61:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Inner.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known

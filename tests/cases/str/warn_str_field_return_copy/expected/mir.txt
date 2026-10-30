@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Item.get_name@16:4: covered (storage: no_proof_required), summary: known
+main::Item.get_desc@20:4: covered (storage: no_proof_required), summary: known
+main::Item.get_label@24:4: uncovered (conversion aliases its source), summary: opaque (conversion aliases its source)
+main::Item.__str__@28:4: covered (storage: no_proof_required), summary: known
+main::Item.__init__@10:4: covered (storage: no_proof_required), summary: known

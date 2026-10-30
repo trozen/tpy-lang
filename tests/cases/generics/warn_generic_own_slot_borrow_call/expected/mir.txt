@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::collect_generic@37:0: uncovered (generic body)
+main::collect_twin@42:0: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::dup_return@60:0: uncovered (generic body)
+main::dup_return_twin@65:0: covered (storage: no_proof_required), summary: known
+main::sec_own_param@91:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sec_return@98:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sec_generic@109:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sec_twin@117:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sec_method@125:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@133:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::GHolder.borrow@22:4: uncovered (generic body)
+main::Twin.borrow@32:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::GRelay.take@53:4: uncovered (generic body)
+main::GBox.get@76:4: uncovered (generic body)
+main::GBox.get@76:4#2: uncovered (generic body)
+main::GBox.dup@87:4: uncovered (generic body)
+main::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::GHolder.__init__@19:4: uncovered (generic constructor)
+main::Twin.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::GRelay.__init__@50:4: uncovered (generic constructor)
+main::GBox.__init__@72:4: uncovered (generic constructor)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@29:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Event.kind@14:4: covered (storage: no_proof_required)
+main::ClickEvent.kind@25:4: covered (storage: no_proof_required)
+main::Event.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::ClickEvent.__init__@21:4: covered (storage: no_proof_required), summary: known

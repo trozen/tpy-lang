@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::f32d@8:0: uncovered (no body to lower)
+main::f32d@13:0: uncovered (no body to lower)
+main::rebind@17:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

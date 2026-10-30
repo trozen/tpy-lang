@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::field_test@38:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::while_test@45:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::chain_test@54:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::elem_test@61:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::subscript_recv_test@68:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reader.has@81:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Node.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Scalar.__init__@33:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Reader.__init__@77:4: covered (storage: no_proof_required), summary: known

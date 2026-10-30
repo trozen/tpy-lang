@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::scale@7:0: covered (storage: no_proof_required), summary: known
+main::main@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.bump@18:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@14:4: covered (storage: no_proof_required), summary: known

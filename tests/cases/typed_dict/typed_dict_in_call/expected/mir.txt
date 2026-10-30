@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@16:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::main@22:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

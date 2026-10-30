@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::deref_protocol@11:0: uncovered (unsupported parameter type)
+main::main@14:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Box.__deref__@8:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@6:4: covered (storage: no_proof_required), summary: known

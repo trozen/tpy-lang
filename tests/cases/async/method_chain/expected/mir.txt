@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@23:0: uncovered (async body)
+main::Math.double_base@15:4: uncovered (async body)
+main::Math.quad_base@18:4: uncovered (async body)
+main::Math.__init__@12:4: covered (storage: no_proof_required), summary: known

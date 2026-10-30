@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::takes_int32@6:0: covered (storage: no_proof_required), summary: known
+main::return_as_int32@11:0: covered (storage: no_proof_required), summary: known
+main::var_decl_test@16:0: covered (storage: no_proof_required), summary: known
+main::assign_test@22:0: covered (storage: no_proof_required), summary: known
+main::loop_test@29:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::constructor_test@37:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::literal_ops_local@49:0: covered (storage: no_proof_required), summary: known

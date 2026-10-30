@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_union@22:0: uncovered (async body)
+main::via_optional@29:0: uncovered (async body)
+main::via_ref@36:0: uncovered (async body)
+main::via_mixed@44:0: uncovered (async body)
+main::main@51:0: uncovered (async body)
+main::Dog.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@18:4: covered (storage: no_proof_required), summary: known

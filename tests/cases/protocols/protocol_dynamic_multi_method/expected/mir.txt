@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Circle.area@20:4: covered (storage: no_proof_required)
+main::Circle.name@23:4: covered (storage: no_proof_required)
+main::Circle.scale@26:4: covered (storage: no_proof_required)
+main::Circle.__init__@17:4: covered (storage: no_proof_required), summary: known

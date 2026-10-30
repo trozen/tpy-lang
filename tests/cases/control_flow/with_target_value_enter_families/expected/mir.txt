@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_pair@45:0: covered (storage: no_proof_required), summary: known
+main::first_byte@49:0: covered (storage: no_proof_required), summary: known
+main::main@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Pair.__enter__@15:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Pair.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Blob.__enter__@23:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Blob.__exit__@26:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Either.__enter__@36:4: uncovered (view return), summary: opaque (view return)
+main::Either.__exit__@41:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Pair.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Either.__init__@33:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::while_rebind_int@10:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::while_rebind_str@19:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@28:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)

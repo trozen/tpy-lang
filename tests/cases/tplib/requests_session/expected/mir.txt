@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::merge_and_clear@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::session_post@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::context_manager_closes@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

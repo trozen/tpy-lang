@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::owned_return@16:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::owned_local@20:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::view_positions@26:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::owned_slot@37:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::frame_view@48:0: uncovered (unsupported hoisted value)
+main::main@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

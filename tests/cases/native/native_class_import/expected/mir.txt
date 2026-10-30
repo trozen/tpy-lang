@@ -1,0 +1,7 @@
+lib::__tpy_init: uncovered (module initialization)
+lib::rect_area@22:0: uncovered (no body to lower)
+lib::Vec2.sum@9:4: uncovered (no body to lower)
+lib::MyRect.area@18:4: uncovered (no body to lower)
+main::__tpy_init: uncovered (module initialization)
+main::vec2_sum@7:0: uncovered (no body to lower)
+main::main@9:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

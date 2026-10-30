@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::fire_direct@54:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::main@60:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::ExecutorA.mark@19:4: covered (storage: no_proof_required)
+main::ExecutorB.mark@28:4: covered (storage: no_proof_required)
+main::Notifier.aim@41:4: uncovered (unsupported parameter type)
+main::Notifier.fire@45:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::ExecutorA.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::ExecutorB.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Notifier.__init__@37:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

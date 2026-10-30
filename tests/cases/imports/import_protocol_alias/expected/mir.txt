@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@18:0: uncovered (unsupported parameter type)
+main::main@22:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Message.to_string@14:4: covered (storage: no_proof_required), summary: known
+main::Message.__init__@11:4: covered (storage: no_proof_required), summary: known
+traits::__tpy_init: uncovered (module initialization)

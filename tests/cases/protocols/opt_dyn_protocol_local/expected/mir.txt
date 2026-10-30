@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@29:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::describe_structural@38:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.name@17:4: covered (storage: no_proof_required)
+main::Dog.bark@20:4: covered (storage: no_proof_required)
+main::Cat.name@25:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

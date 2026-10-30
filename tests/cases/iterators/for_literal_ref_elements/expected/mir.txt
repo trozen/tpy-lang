@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_function@35:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::nocopy_element@42:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::container_element@49:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::in_generator@73:0: uncovered (unsupported metadata: frame_src_field)
+main::in_async@82:0: uncovered (async body)
+main::in_closure@89:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@98:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.bump@19:4: covered (storage: no_proof_required), summary: known
+main::Tag.bump@30:4: covered (storage: no_proof_required), summary: known
+main::Holder.run@66:4: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@59:4: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)

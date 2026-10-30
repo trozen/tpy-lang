@@ -1,0 +1,30 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@18:0: covered (storage: no_proof_required), summary: known
+main::sec_free@64:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_ctor@70:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_generic@76:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::gen_copies@84:0: uncovered (unsupported hoisted value)
+main::sec_generator@90:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::copy_in_task@98:0: uncovered (async body)
+main::sec_async@103:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::sec_comprehension@108:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::sec_closure@114:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sec_with@129:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sec_try_finally@136:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_copy@150:0: uncovered (error-return body)
+main::sec_error_return@155:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sec_match@163:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::peek@172:0: certified, summary: known
+main::main@182:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::Holder.get@30:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.get@30:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.sec_method@35:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Holder.sec_borrow_ret@41:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::GHolder.get@53:4: uncovered (generic body)
+main::GHolder.get@53:4#2: uncovered (generic body)
+main::GHolder.cloned@59:4: uncovered (generic body)
+main::Guard.__enter__@121:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Guard.__exit__@124:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cell.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::GHolder.__init__@49:4: uncovered (generic constructor)

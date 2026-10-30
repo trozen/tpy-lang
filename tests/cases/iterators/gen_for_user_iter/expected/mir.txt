@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::doubled_range@31:0: uncovered (loop across a suspension)
+main::main@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::RangeIter.__next__@13:4: uncovered (error-return body)
+main::NumberRange.__iter__@28:4: covered (storage: no_proof_required), summary: known
+main::RangeIter.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::NumberRange.__init__@24:4: covered (storage: no_proof_required), summary: known

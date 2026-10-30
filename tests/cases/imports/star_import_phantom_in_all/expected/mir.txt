@@ -1,0 +1,3 @@
+lib::__tpy_init: uncovered (module initialization)
+lib::real_fn@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::__tpy_init: uncovered (module initialization)

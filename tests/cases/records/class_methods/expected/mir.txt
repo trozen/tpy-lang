@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::Counter.increment@9:4: covered (storage: no_proof_required), summary: known
+main::Counter.add@12:4: covered (storage: no_proof_required), summary: known
+main::Counter.get@15:4: covered (storage: no_proof_required), summary: known
+main::Counter.reset@18:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@6:4: covered (storage: no_proof_required), summary: known

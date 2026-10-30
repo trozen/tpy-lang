@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::find@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::passthrough@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@26:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::Rec.__init__@10:4: covered (storage: no_proof_required), summary: known

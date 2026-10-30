@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::val_scalar@18:0: covered (storage: no_facts: storage facts have not been published)
+main::val_str@28:0: uncovered (unsupported hoisted value)
+main::make_pair@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::val_tuple@42:0: uncovered (unsupported hoisted value)
+main::owning@53:0: uncovered (unsupported hoisted value)
+main::borrow_alias@65:0: uncovered (unsupported native container element)
+main::pick@75:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::value_of@81:0: covered (storage: no_proof_required), summary: known
+main::opt_ptr@89:0: uncovered (unsupported hoisted value)
+main::borrow_pair@102:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::borrow_tuple@108:0: uncovered (unsupported hoisted value)
+main::own_pair@118:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple@125:0: uncovered (unsupported hoisted value)
+main::raiser@142:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::exc_binding@151:0: uncovered (try across a suspension)
+main::exc_binding_for@166:0: uncovered (loop across a suspension)
+main::main@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Src.gen@184:4: covered (storage: no_facts: storage facts have not been published)
+main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Boom.__init__@137:4: uncovered (missing record layout)
+main::Src.__init__@181:4: covered (storage: no_proof_required), summary: known

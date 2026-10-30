@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::both@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@22:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known

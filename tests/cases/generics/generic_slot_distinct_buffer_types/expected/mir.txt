@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::has_item@10:0: uncovered (generic body)
+main::has_item_str@19:0: covered (storage: no_proof_required), summary: known
+main::has_item_string@26:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::has_item_bytes@33:0: covered (storage: no_proof_required), summary: known
+main::size_of@40:0: covered (storage: no_proof_required), summary: known
+main::echo_ref@46:0: uncovered (generic body)
+main::store@53:0: uncovered (generic body)
+main::store_str@58:0: covered (storage: no_proof_required), summary: known
+main::store_bytes@62:0: covered (storage: no_proof_required), summary: known
+main::str_family@77:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::bytes_family@87:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::u8_list@112:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::storing@124:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::readonly_method@138:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Peeker.peek@67:4: uncovered (generic body)

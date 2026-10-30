@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+utils::__tpy_init: uncovered (module initialization)
+utils::get_name@1:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)

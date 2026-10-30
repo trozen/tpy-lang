@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_measure@20:0: uncovered (unsupported parameter type)
+main::double_resize@25:0: uncovered (unsupported parameter type)
+main::copy_measure@31:0: uncovered (unsupported parameter type)
+main::print_area@55:0: uncovered (unsupported parameter type)
+main::main@73:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Rect.area@50:4: covered (storage: no_proof_required), summary: known
+main::Box.measure@66:4: covered (storage: no_proof_required), summary: known
+main::Box.resize@69:4: covered (storage: no_proof_required), summary: known
+main::Rect.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@62:4: covered (storage: no_proof_required), summary: known

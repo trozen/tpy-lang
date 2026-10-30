@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::process_dict@14:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::process_list@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::consume_dict@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::consume_list@29:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::make_dict@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::make_list@37:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@11:4: covered (storage: no_proof_required), summary: known

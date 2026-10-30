@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::squares@5:0: covered (storage: no_facts: storage facts have not been published)
+main::main@11:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

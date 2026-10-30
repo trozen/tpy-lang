@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@25:0: covered (storage: no_proof_required), summary: known
+main::inline_chain@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::stmtexpr_chain@36:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::stmtexpr_chain_long@42:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::first_pair_only@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Probe.__init__@18:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

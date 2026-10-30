@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::sums@5:0: uncovered (unsupported native container element)
+main::firsts@10:0: uncovered (unsupported native container element)
+main::multi@14:0: uncovered (unsupported native container element)
+main::main@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

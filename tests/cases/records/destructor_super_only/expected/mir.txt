@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Base.__del__@4:4: covered (storage: no_proof_required)
+main::Child.__del__@8:4: covered (storage: no_proof_required)

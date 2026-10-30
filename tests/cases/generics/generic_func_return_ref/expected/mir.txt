@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@21:0: uncovered (generic body)
+main::process@25:0: uncovered (generic body)
+main::test@30:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Point.mutate@17:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known

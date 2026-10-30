@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known

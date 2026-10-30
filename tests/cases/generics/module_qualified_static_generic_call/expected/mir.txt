@@ -1,0 +1,5 @@
+helpers::__tpy_init: uncovered (module initialization)
+helpers::Util.second@4:4: uncovered (generic body)
+main::__tpy_init: uncovered (module initialization)
+main::use@8:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::main@12:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,5 @@
+colors::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::local_roundtrip@11:0: covered (storage: no_proof_required), summary: known
+main::foreign_roundtrip@15:0: covered (storage: no_proof_required), summary: known
+main::main@19:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Pet.ro_names@26:4: uncovered (unsupported expression)
+main::Pet.counts@32:4: uncovered (unsupported expression)
+main::Pet.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@43:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::up_one@27:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::up_two@30:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::up_one_from_grandchild@33:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::same@36:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::unrelated@39:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tuple_any_ancestor@42:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tuple_no_match@45:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Puppy.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@23:4: covered (storage: no_proof_required), summary: known

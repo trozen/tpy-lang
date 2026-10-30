@@ -1,0 +1,28 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@130:0: certified, summary: known
+main::through_param@135:0: certified, summary: known
+main::get_global@142:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::fresh@149:0: covered (storage: no_proof_required), summary: known
+main::Box.me@32:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.itself@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.itself@36:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.get_inner@39:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.pick_inner@44:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.swap_alt@49:4: covered (storage: no_proof_required), summary: known
+main::Box.get_alt@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.__iter__@57:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.__getitem__@62:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.__getitem__@62:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.__next__@67:4: uncovered (error-return body)
+main::FieldIter.__iter__@81:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rebound.reset@94:4: covered (storage: no_proof_required), summary: known
+main::Rebound.__getitem__@97:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rebound.__getitem__@97:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rebound.__setitem__@103:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Flat.itself@116:4: uncovered (unsupported return type)
+main::Flat.__getitem__@122:4: uncovered (unsupported return type)
+main::Inner.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::FieldIter.__init__@78:4: covered (storage: no_proof_required), summary: known
+main::Rebound.__init__@91:4: covered (storage: no_proof_required), summary: known
+main::Flat.__init__@113:4: uncovered (missing record layout)

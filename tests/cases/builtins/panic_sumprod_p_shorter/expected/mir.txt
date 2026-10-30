@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@6:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

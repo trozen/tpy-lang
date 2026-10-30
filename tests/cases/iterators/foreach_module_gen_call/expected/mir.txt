@@ -1,0 +1,5 @@
+itersrc::__tpy_init: uncovered (module initialization)
+itersrc::counts@5:0: covered (storage: no_facts: storage facts have not been published)
+main::__tpy_init: uncovered (module initialization)
+main::total@8:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@15:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

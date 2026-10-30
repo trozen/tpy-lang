@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test@19:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@15:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::free_position@56:0: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+main::method_position@64:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ctor_position@70:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen@77:0: uncovered (unsupported metadata: move)
+main::coro@85:0: uncovered (async body)
+main::main@92:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pet.rename@16:4: covered (storage: no_proof_required), summary: known
+main::Holder.refill@34:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+main::Pet.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::CtorHolder.__init__@44:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)

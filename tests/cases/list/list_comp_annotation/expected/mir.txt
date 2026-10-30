@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_bigints@4:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::accept_wide@8:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@11:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

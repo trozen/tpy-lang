@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+pa::__tpy_init: uncovered (module initialization)
+pa::Box.__init__@2:4: covered (storage: no_proof_required), summary: known
+pb::__tpy_init: uncovered (module initialization)
+pb::Box.__init__@2:4: covered (storage: no_proof_required), summary: known

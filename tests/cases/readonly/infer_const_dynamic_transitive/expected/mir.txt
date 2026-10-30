@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@40:0: uncovered (unsupported parameter type)
+main::grow@44:0: uncovered (unsupported parameter type)
+main::main@48:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Parent.value@25:4: covered (storage: no_proof_required)
+main::Parent.bump@28:4: covered (storage: no_proof_required)
+main::Child.value@36:4: covered (storage: no_proof_required)
+main::Parent.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@33:4: covered (storage: no_proof_required), summary: known

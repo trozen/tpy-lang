@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::relay@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@27:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::Holder.get_pair@19:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known

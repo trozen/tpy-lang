@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::takes@10:0: covered (storage: no_proof_required), summary: known
+main::view_param@15:0: covered (storage: no_proof_required), summary: known
+main::slice_local@22:0: covered (storage: no_proof_required), summary: known
+main::slice_bounds@28:0: covered (storage: no_proof_required), summary: known
+main::slice_of_owned@34:0: covered (storage: no_proof_required), summary: known
+main::literal_view@41:0: covered (storage: no_proof_required), summary: known
+main::view_return@47:0: covered (storage: no_proof_required), summary: known
+main::view_return_caller@52:0: covered (storage: no_proof_required), summary: known
+main::owned_from_view@58:0: covered (storage: no_proof_required), summary: known
+main::explicit_view_param@64:0: covered (storage: no_proof_required), summary: known
+main::string_as_str_param@69:0: covered (storage: no_proof_required), summary: known
+main::string_as_str_sink@74:0: covered (storage: no_proof_required), summary: known
+main::bytes_slice@80:0: covered (storage: no_proof_required), summary: known
+main::stepped@86:0: uncovered (stepped slice), summary: opaque (stepped slice)
+main::span_param@91:0: covered (storage: no_proof_required), summary: known
+main::reassigned_param@98:0: covered (storage: no_proof_required), summary: known
+main::loop_rebind@105:0: covered (storage: no_proof_required), summary: known
+main::live_conflict@115:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::last_use@124:0: covered (storage: no_proof_required), summary: known
+main::live_conflict_bytes@133:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::bytes_tail@141:0: covered (storage: no_proof_required), summary: known
+main::bytes_twins@146:0: covered (storage: no_proof_required), summary: known
+main::returns_global_view@156:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::read_len@186:0: covered (storage: no_proof_required), summary: known
+main::read_copy@191:0: covered (storage: no_proof_required), summary: known
+main::write_field@196:0: covered (storage: no_proof_required), summary: known
+main::append_field@201:0: covered (storage: no_proof_required), summary: known
+main::write_then_reuse@208:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::field_view@215:0: covered (storage: no_proof_required), summary: known
+main::rename@221:0: covered (storage: no_proof_required), summary: known
+main::forwarded_write@226:0: covered (storage: no_proof_required), summary: known
+main::field_view_then_write@231:0: covered (storage: no_proof_required), summary: known
+main::forwarded_then_reuse@239:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::sibling@245:0: covered (storage: no_proof_required), summary: known
+main::local_record@250:0: covered (storage: no_proof_required), summary: known
+main::method_view@257:0: covered (storage: no_proof_required), summary: known
+main::ctor_from_view@263:0: covered (storage: no_proof_required), summary: known
+main::ctor_from_string@270:0: covered (storage: no_proof_required), summary: known
+main::method_write@276:0: covered (storage: no_proof_required), summary: known
+main::lit_then_write@281:0: covered (storage: no_proof_required), summary: known
+main::main@287:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Rec.name_len@167:4: covered (storage: no_proof_required), summary: known
+main::Rec.name_view@171:4: covered (storage: no_proof_required), summary: known
+main::Rec.rename_m@175:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@162:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@181:4: covered (storage: no_proof_required), summary: known

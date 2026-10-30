@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::Base.__init__@9:4: uncovered (generic constructor)
+main::Typed.__init__@22:4: uncovered (generic constructor)

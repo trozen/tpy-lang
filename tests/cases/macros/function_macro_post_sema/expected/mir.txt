@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::sentinel@7:0: covered (storage: no_proof_required), summary: known
+main::combine@12:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

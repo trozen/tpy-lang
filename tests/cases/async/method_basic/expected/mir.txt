@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@18:0: uncovered (async body)
+main::Adder.add@14:4: uncovered (async body)
+main::Adder.__init__@11:4: covered (storage: no_proof_required), summary: known

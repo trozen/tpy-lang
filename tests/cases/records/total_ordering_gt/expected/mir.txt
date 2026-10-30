@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Rank.__eq__@12:4: covered (storage: no_proof_required)
+main::Rank.__gt__@14:4: covered (storage: no_proof_required)
+main::Rank.__lt__: uncovered (uncertified binary operation)
+main::Rank.__le__: uncovered (uncertified binary operation)
+main::Rank.__ge__: uncovered (uncertified binary operation)
+main::Rank.__init__@10:4: covered (storage: no_proof_required), summary: known

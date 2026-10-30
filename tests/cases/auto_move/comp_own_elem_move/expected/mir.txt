@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::widgets@16:0: uncovered (reference yield)
+main::nodes@36:0: uncovered (reference yield)
+main::collect_list_nocopy@43:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::collect_set@50:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::borrow_source_copies@55:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::filtered_moves@62:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__hash__@29:4: covered (storage: no_proof_required), summary: known
+main::Node.__eq__@32:4: covered (storage: no_proof_required)
+main::Widget.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@26:4: covered (storage: no_proof_required), summary: known

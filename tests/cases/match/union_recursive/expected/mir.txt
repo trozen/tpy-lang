@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@12:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@20:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Leaf.__init__@5:4: covered (storage: no_proof_required), summary: known

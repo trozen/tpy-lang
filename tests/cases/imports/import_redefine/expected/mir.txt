@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+utils::__tpy_init: uncovered (module initialization)
+utils::get_max@5:0: covered (storage: no_proof_required), summary: known

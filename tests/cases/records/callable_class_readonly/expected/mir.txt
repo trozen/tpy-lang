@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Negate.__call__@6:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::ScaleBy.__call__@14:4: covered (storage: no_proof_required), summary: known
+main::ScaleBy.__init__@11:4: covered (storage: no_proof_required), summary: known

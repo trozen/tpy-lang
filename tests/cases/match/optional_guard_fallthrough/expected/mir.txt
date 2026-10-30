@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::with_wildcard@7:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_capture@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

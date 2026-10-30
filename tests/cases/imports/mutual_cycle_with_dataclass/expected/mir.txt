@@ -1,0 +1,10 @@
+a::__tpy_init: uncovered (module initialization)
+a::add_pair@11:0: covered (storage: no_proof_required), summary: known
+a::Pair.__eq__: covered (storage: no_proof_required)
+a::Pair.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+a::Pair.__init__: covered (storage: no_proof_required), summary: known
+b::__tpy_init: uncovered (module initialization)
+b::sum_pair@4:0: covered (storage: no_proof_required), summary: known
+b::make_pair_sum@11:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)

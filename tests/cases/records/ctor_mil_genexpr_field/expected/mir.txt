@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::<genexpr>@12:21: uncovered (generator expression)
+main::<genexpr>@20:25: uncovered (generator expression)
+main::N.inner@22:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::H.__init__@10:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::N.__init__@18:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

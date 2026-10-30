@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::remove_literal@15:0: covered (storage: no_proof_required), summary: known
+main::remove_param@19:0: covered (storage: no_proof_required), summary: known
+main::remove_view_local@23:0: covered (storage: no_proof_required), summary: known
+main::remove_slice@28:0: covered (storage: no_proof_required), summary: known
+main::remove_stripped@33:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::remove_view_elem@38:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::remove_owned_local@47:0: covered (storage: no_proof_required), summary: known
+main::remove_element_read@54:0: covered (storage: no_proof_required), summary: known
+main::find@59:0: covered (storage: no_proof_required), summary: known
+main::tally@63:0: covered (storage: no_proof_required), summary: known
+main::drop_bytes_literal@67:0: covered (storage: no_proof_required), summary: known
+main::drop_bytes_param@73:0: covered (storage: no_proof_required), summary: known
+main::empty_keys@77:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::key_len@86:0: covered (storage: no_proof_required), summary: known
+main::main@92:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::voice@16:0: uncovered (async body)
+main::amain@25:0: uncovered (async body)
+main::Dog.sound@7:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Cat.sound@12:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

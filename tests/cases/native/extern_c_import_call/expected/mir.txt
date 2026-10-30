@@ -1,0 +1,5 @@
+lib::__tpy_init: uncovered (module initialization)
+lib::abs@5:0: uncovered (no body to lower)
+lib::get_clock@8:0: uncovered (no body to lower)
+main::__tpy_init: uncovered (module initialization)
+main::app_init@6:0: uncovered (stub declares no contract)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::stepped@16:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::basic@22:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::upper_only@29:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@35:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Holder.blank@12:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Holder.__init__@9:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

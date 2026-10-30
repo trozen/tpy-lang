@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@5:0: uncovered (unsupported parameter type)
+main::double@8:0: covered (storage: no_proof_required), summary: known
+main::main@16:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Handler.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

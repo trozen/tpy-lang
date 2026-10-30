@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Pile.total@17:4: uncovered (generic body)
+main::Box.__init__@12:4: uncovered (generic constructor)

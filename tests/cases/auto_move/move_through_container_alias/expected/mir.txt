@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::list_scalars@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::nocopy_elements@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::other_kinds@37:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::read_after@72:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::readonly_source@80:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::in_generator@86:0: uncovered (unsupported hoisted value)
+main::main@93:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.run@64:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Tag.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@57:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

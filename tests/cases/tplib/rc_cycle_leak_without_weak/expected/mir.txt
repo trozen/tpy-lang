@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::acyclic@23:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::cyclic@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__del__@19:4: uncovered (missing receiver fact)
+main::Node.__init__@14:4: uncovered (custom record special member), summary: opaque (custom record special member)

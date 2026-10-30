@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::repr_param@8:0: covered (storage: no_proof_required), summary: known
+main::section_bytes@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::section_bytearray@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::section_bytesview@37:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::section_fstring@45:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::section_container@54:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::section_range@62:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::section_str_range@73:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::section_small_range@79:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::section_method@97:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::reprs@102:0: uncovered (unsupported owned-leaf expression)
+main::section_generator@108:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::section_inverse@113:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::main@122:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.show@91:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Holder.__init__@88:4: covered (storage: no_proof_required), summary: known

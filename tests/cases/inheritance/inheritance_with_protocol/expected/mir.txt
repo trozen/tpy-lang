@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::Entity.get_name@13:4: covered (storage: no_proof_required), summary: known
+main::Person.__str__@31:4: covered (storage: no_proof_required), summary: known
+main::Entity.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Person.__init__@27:4: covered (storage: no_proof_required), summary: known

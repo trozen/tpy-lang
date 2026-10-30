@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::then_side@35:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::else_side@42:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::unread_subject@50:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ref_union@59:0: covered (storage: no_proof_required), summary: known
+main::main@69:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@10:4: uncovered (missing record layout)
+main::B.__init__@17:4: uncovered (missing record layout)
+main::Node.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Leaf.__init__@31:4: covered (storage: no_proof_required), summary: known

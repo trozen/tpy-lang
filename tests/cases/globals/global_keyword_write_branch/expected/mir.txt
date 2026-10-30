@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::update@3:0: uncovered (owned-leaf global write), summary: opaque (owned-leaf global write)

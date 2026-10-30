@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@25:0: covered (storage: no_proof_required), summary: known
+main::and_skips_rhs@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::and_runs_rhs@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::or_skips_rhs@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::or_runs_rhs@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ternary_skips_else@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ternary_skips_then@50:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested_and@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested_mixed@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested_ternary@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::unconditional@75:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Probe.__init__@18:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

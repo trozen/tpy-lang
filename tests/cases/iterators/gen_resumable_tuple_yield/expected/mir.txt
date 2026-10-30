@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::pairs@16:0: uncovered (reference yield)
+main::show@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known

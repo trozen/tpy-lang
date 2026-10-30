@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rect.width@13:4: covered (storage: no_proof_required), summary: known
+main::Rect.width@17:4: covered (storage: no_proof_required), summary: known
+main::Rect.height@21:4: covered (storage: no_proof_required), summary: known
+main::Rect.area@25:4: covered (storage: no_proof_required), summary: known
+main::Rect.describe@28:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Rect.scale@31:4: covered (storage: no_proof_required), summary: known
+main::Rect.__init__@8:4: covered (storage: no_proof_required), summary: known

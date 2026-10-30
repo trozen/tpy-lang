@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::none_then_literal@55:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::call_then_literal@66:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::literal_then_literal@76:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::literal_none_literal@87:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::branch_hoisted@117:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::gen_literal@132:0: uncovered (unsupported hoisted value)
+main::gen_call_then_literal@145:0: uncovered (unsupported hoisted value)
+main::coro_literal@155:0: uncovered (async body)
+main::coro_call_then_literal@168:0: uncovered (async body)
+main::gen_find_loop@180:0: uncovered (unsupported native container element)
+main::gen_find_param@188:0: uncovered (unsupported hoisted value)
+main::coro_find_loop@196:0: uncovered (async body)
+main::main@205:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::F.make@29:4: covered (storage: no_proof_required), summary: known
+main::Tree.find@47:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Tree.find@47:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Holder.build@105:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::F.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Tree.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@102:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_data@18:0: uncovered (error-return body)
+main::get_value@25:0: uncovered (error-return body)
+main::main@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Data.__init__@13:4: covered (storage: no_proof_required), summary: known

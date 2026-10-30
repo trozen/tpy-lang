@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::str_param@43:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::bytes_param@51:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::strview_local@59:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::branch_first@92:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::str_field@104:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::chained_field@113:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::field_off_subscript@122:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::bytes_field@134:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::strview_field@143:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::call_source@153:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::branch_str_field@162:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::branch_bytes_field@173:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::branch_strview_field@184:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::main@195:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.label@38:4: covered (storage: no_proof_required), summary: known
+main::Holder.tagged@76:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Holder.own_field@83:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Inner.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@71:4: covered (storage: no_proof_required), summary: known

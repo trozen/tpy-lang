@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::named@8:0: covered (storage: no_proof_required), summary: known
+main::consume@12:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::free_bindings@16:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen@90:0: uncovered (unsupported hoisted value)
+main::async_bindings@98:0: uncovered (async body)
+main::nested_bindings@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::branching_bindings@114:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::error_return_binding@148:0: uncovered (error-return body)
+main::main@154:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Registry.replace@81:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Registry.invoke@85:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Registry.__init__@76:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

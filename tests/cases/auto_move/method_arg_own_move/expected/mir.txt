@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::forward@24:0: covered (storage: no_proof_required), summary: known
+main::main@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Sink.absorb@20:4: covered (storage: no_proof_required), summary: known
+main::Payload.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@17:4: covered (storage: no_proof_required), summary: known

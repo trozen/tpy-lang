@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::append_then_return@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::append_then_raise@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

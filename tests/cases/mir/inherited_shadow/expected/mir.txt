@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_shadow@50:0: covered (storage: no_proof_required), summary: known
+main::main@56:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Base.bump@14:4: covered (storage: no_proof_required), summary: known
+main::Base.base_n@18:4: covered (storage: no_proof_required), summary: known
+main::Shadow.own_bump@30:4: covered (storage: no_proof_required), summary: known
+main::Shadow.both@35:4: covered (storage: no_proof_required), summary: known
+main::Deeper.mid@45:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Shadow.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Deeper.__init__@40:4: covered (storage: no_proof_required), summary: known

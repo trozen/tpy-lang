@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::value_union@24:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::recursive_wrapper@31:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Factory.un@13:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Factory.make@19:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Factory.__init__@10:4: covered (storage: no_proof_required), summary: known
+tree_types::__tpy_init: uncovered (module initialization)

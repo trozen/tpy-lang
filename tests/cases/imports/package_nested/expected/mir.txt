@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+outer::__tpy_init: uncovered (module initialization)
+outer.inner::__tpy_init: uncovered (module initialization)
+outer.inner.mod::__tpy_init: uncovered (module initialization)
+outer.inner.mod::func@1:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

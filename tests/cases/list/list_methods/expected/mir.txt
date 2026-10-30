@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_list@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_pop@12:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_insert@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_remove@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_clear@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_extend@69:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_combined_operations@91:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

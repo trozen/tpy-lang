@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@17:0: certified, summary: known
+main::main@20:0: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@14:4: covered (storage: no_proof_required), summary: known

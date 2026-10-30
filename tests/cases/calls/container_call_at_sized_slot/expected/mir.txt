@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::empty_set@6:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::f@10:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

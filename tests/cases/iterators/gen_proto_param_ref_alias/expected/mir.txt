@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@17:0: uncovered (unsupported parameter type)
+main::doubled@24:0: uncovered (unsupported parameter type)
+main::main@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known

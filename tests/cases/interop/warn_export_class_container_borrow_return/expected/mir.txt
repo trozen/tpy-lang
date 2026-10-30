@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@30:0: covered (storage: no_proof_required), summary: known
+main::Holder.same@19:4: covered (storage: no_proof_required), summary: known
+main::Holder.fresh@22:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@38:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Tally.add@22:4: uncovered (generic body)
+main::Tally.get@25:4: uncovered (generic body)
+main::Tally.pairs@28:4: uncovered (generic body)
+main::Item.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@19:4: uncovered (generic constructor)

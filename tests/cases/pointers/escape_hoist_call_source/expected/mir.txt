@@ -1,0 +1,51 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@88:0: certified, summary: known
+main::second_of@92:0: certified, summary: known
+main::either@96:0: certified, summary: known
+main::reseated@103:0: certified, summary: known
+main::alias_of_other@111:0: certified, summary: known
+main::method_section@118:0: certified, summary: opaque (summary output effect)
+main::method_arg_section@130:0: certified, summary: opaque (summary output effect)
+main::free_function_section@142:0: certified, summary: opaque (summary output effect)
+main::chain_section@154:0: certified, summary: opaque (summary output effect)
+main::second_arg_section@166:0: certified, summary: opaque (summary output effect)
+main::chain_of_calls_section@179:0: certified, summary: opaque (summary output effect)
+main::ternary_section@191:0: certified, summary: opaque (summary output effect)
+main::optional_section@204:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::while_nested_section@221:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::two_roots_section@252:0: certified, summary: opaque (summary output effect)
+main::nocopy_section@264:0: certified, summary: opaque (summary output effect)
+main::outliving_storage_section@278:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::callee_shape_section@305:0: certified, summary: opaque (summary output effect)
+main::nested_def_section@333:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::later@374:0: certified, summary: known
+main::wraps_later@380:0: certified, summary: known
+main::lends_first@385:0: certified, summary: known
+main::wrapper_of_later_section@390:0: certified, summary: opaque (summary output effect)
+main::gen_host@402:0: uncovered (nested def)
+main::copy_section@413:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::inverse_section@425:0: certified, summary: opaque (summary output effect)
+main::main@442:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Mid.rec_m@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.opt@36:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.opt@36:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.rec_m@39:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.mid_m@42:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.at@45:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.opt_m@48:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.alias_m@52:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.mid_rec@57:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.own_m@60:4: covered (storage: no_proof_required), summary: known
+main::B.val_m@63:4: covered (storage: no_proof_required), summary: known
+main::Sealed.rec_m@74:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Shelf.bs_m@84:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Runner.run@243:4: certified, summary: known
+main::Forward.run@354:4: certified, summary: opaque (summary output effect)
+main::Forward.own_q@370:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rec.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Sealed.__init__@71:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@81:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Runner.__init__@240:4: covered (storage: no_proof_required), summary: known
+main::Forward.__init__@351:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::check_list@3:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::check_str@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::check_and_or@15:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@19:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

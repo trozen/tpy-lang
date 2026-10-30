@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::view_items@59:0: covered (storage: no_proof_required), summary: known
+main::sum_items@64:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::first_two@72:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@76:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reg.view@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Reg.bump@28:4: covered (storage: no_proof_required), summary: known
+main::Reader.read@40:4: certified, summary: known
+main::Writer.pick@48:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
+main::Writer.touch@53:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Reg.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@35:4: covered (storage: no_proof_required), summary: known

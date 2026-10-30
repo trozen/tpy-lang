@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Dog.make_noise@11:4: covered (storage: no_proof_required)
+main::Cat.make_noise@15:4: covered (storage: no_proof_required)

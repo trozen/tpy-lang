@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_readable@24:0: uncovered (unsupported parameter type)
+main::GoodReader.read@20:4: covered (storage: no_proof_required), summary: known
+main::GoodReader.__init__@16:4: covered (storage: no_proof_required), summary: known

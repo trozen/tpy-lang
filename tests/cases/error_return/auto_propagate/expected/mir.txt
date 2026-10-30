@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse_digit@8:0: uncovered (error-return body)
+main::validate@16:0: uncovered (error-return body)
+main::parse_two_digits@21:0: uncovered (error-return body)
+main::main@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

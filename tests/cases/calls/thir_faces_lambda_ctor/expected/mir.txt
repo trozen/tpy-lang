@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::g@22:0: covered (storage: no_proof_required), summary: known
+main::const_rvalue_arg@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::h@39:0: covered (storage: no_proof_required), summary: known
+main::own_scalar_peel@43:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Inner.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Cnt.__init__@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

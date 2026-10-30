@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_param@74:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::read_call@82:0: certified, summary: known
+main::main@92:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Store.__getitem__@28:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Store.__getitem__@28:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Store.get@34:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Store.get@34:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Store.first@40:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Store.first@40:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Outer.read_sub@50:4: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Outer.read_named@57:4: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Outer.bump@66:4: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Cell.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Store.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@47:4: covered (storage: no_proof_required), summary: known

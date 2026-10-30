@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::rvalue_manager@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::lvalue_manager@41:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reg.__enter__@21:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Reg.__exit__@24:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Reg.__del__@27:4: uncovered (missing receiver fact)
+main::Reg.__init__@18:4: uncovered (custom record special member), summary: opaque (custom record special member)

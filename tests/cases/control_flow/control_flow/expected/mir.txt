@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::classify@3:0: covered (storage: no_proof_required), summary: known
+main::check_range@12:0: covered (storage: no_proof_required), summary: known
+main::check_bounds@18:0: covered (storage: no_proof_required), summary: known
+main::complex_condition@24:0: covered (storage: no_proof_required), summary: known
+main::nested_else_if@33:0: covered (storage: no_proof_required), summary: known

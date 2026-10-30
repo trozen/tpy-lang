@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@39:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Cell.bump@16:4: covered (storage: no_proof_required), summary: known
+main::Counter.__del__@27:4: uncovered (stub declares no contract)
+main::Counter.tick@31:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Counter.value@35:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::Cell.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@24:4: uncovered (custom record special member), summary: opaque (custom record special member)

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::use_annotated@42:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::drain@50:0: uncovered (loop across a suspension)
+main::use_view@71:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::main@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Snap.snapshot@21:4: covered (storage: no_proof_required), summary: known
+main::Snap.widen@28:4: covered (storage: no_proof_required), summary: known
+main::Holder.view@64:4: covered (storage: no_proof_required), summary: known
+main::Snap.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@60:4: covered (storage: no_proof_required), summary: known

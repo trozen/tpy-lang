@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_a@5:0: covered (storage: no_facts: storage facts have not been published)
+main::gen_b@9:0: covered (storage: no_facts: storage facts have not been published)
+main::main@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

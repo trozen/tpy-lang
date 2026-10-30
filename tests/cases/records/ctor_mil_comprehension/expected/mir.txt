@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Grid.__init__@22:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

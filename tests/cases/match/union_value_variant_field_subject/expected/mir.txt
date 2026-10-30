@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::W.get_label@23:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::A.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

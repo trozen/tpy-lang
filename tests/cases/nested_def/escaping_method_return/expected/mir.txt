@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Factory.make_adder@6:4: uncovered (unsupported return type), summary: opaque (unsupported return type)

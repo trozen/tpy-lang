@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::run@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Owner.__enter__@23:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: custom record special member)
+main::Owner.__exit__@26:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Owner.__del__@29:4: covered (storage: no_proof_required)
+main::Item.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@20:4: uncovered (custom record special member), summary: opaque (custom record special member)

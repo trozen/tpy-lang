@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@18:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::main@24:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Box.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@14:4: covered (storage: no_proof_required), summary: known

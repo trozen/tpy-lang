@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+treea::__tpy_init: uncovered (module initialization)
+treea::leaf_count@6:0: uncovered (generic body)
+treeb::__tpy_init: uncovered (module initialization)
+treeb::leaf_count@6:0: uncovered (generic body)

@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::opt_wrapper@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_nested@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::deep3@57:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::positional_nested@66:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::nested_pos_extract@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_combo@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check_float@111:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check_bool@121:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@133:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Cat.__eq__: covered (storage: no_proof_required)
+main::Cat.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Dog.__eq__: covered (storage: no_proof_required)
+main::Dog.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Cat.__init__: covered (storage: no_proof_required), summary: known
+main::Dog.__init__: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@17:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@23:4: uncovered (generic constructor)
+main::Tag.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::FloatHolder.__init__@101:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::BoolHolder.__init__@107:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

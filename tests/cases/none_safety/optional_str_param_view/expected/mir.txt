@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::pass_through@4:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::assign_local@7:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::unwrap@14:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::append_to_list@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::normalize@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@27:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

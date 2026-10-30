@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::run@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Logger.__enter__@13:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Logger.__exit__@16:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Logger.__init__@10:4: covered (storage: no_proof_required), summary: known

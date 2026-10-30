@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::touch_readonly@11:0: covered (storage: no_proof_required), summary: known
+main::main@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Holder.first@2:0: covered (storage: no_proof_required), summary: known
+main::Holder.first@2:0#2: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@1:0: covered (storage: no_proof_required), summary: known

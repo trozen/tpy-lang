@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::widen@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::widen_opt@56:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::widen_owned@61:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ret_opt_moved@66:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::show@72:0: covered (storage: no_proof_required), summary: known
+main::main@76:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.put@32:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::G.put_fresh@46:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+main::Base.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Sub.__init__@15:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+main::H.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::G.__init__@42:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Point.origin@18:4: uncovered (assignment needs local or field target)
+main::Point.diagonal@23:4: uncovered (call needs resolved ordinary callee)
+main::Point.scaled@27:4: covered (storage: no_proof_required)
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known

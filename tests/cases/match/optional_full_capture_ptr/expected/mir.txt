@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::unproven@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::after_none@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::a_bump@77:0: uncovered (async body)
+main::in_try@89:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::field_src@113:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::amain@124:0: uncovered (async body)
+main::main@128:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.bump@65:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Cat.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@54:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@108:4: covered (storage: no_proof_required), summary: known

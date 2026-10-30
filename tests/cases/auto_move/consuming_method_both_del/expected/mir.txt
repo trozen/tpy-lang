@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@38:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Base.__del__@16:4: uncovered (stub declares no contract)
+main::Child.__del__@29:4: covered (storage: no_proof_required)
+main::Child.take@32:4: uncovered (stub declares no contract)
+main::Base.__init__@11:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Child.__init__@24:4: uncovered (custom record special member), summary: opaque (custom record special member)

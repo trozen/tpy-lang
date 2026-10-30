@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::drive@26:0: uncovered (async body)
+main::Holder.direct@14:4: uncovered (async body)
+main::Holder.reguard@19:4: uncovered (async body)
+main::Holder.__init__@11:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

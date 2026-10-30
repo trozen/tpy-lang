@@ -1,0 +1,37 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@50:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::keep@54:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::keep_m@59:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::keep2@64:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::sink@68:0: covered (storage: no_proof_required), summary: known
+main::take_opt@73:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::nested_borrow@78:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::nested_own@84:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::flat_borrow@88:0: covered (storage: no_proof_required), summary: known
+main::local_last_use@93:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::local_live@99:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::local_alias_same_stmt@107:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::forward_own@115:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::append_own@120:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mixed_call@125:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::field_read@130:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::literal@136:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::borrowed_local@143:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::element_last_use@150:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::element_live@155:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::amp_slot@174:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::optional_member@184:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested@190:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::const_borrow@195:0: covered (storage: no_proof_required), summary: known
+main::ctor_sources@200:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::ctor_element@210:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::bigint_name@215:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@221:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.mixed_element@167:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::HN.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::K.__init__@34:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::KB.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@46:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@164:4: covered (storage: no_proof_required), summary: known

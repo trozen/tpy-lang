@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::repeat_n@9:0: uncovered (generic body)
+main::take@16:0: uncovered (generic body)
+main::wrap@26:0: uncovered (loop across a suspension)
+main::take_iter@33:0: uncovered (generic body)
+main::doubled@43:0: uncovered (loop across a suspension)
+main::main@48:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

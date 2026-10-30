@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::ident@20:0: uncovered (generic body)
+main::owned_param@52:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@57:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::B.take@16:4: uncovered (missing receiver fact)
+main::O.m@26:4: uncovered (no body to lower)
+main::O.m@30:4: uncovered (no body to lower)
+main::O.m@34:4: uncovered (no body to lower)
+main::O.m@38:4: uncovered (no body to lower)
+main::O.pair@42:4: uncovered (no body to lower)
+main::O.pair@47:4: uncovered (no body to lower)
+main::B.__init__@13:4: covered (storage: no_proof_required), summary: known

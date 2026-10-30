@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@14:0: uncovered (async body)
+main::driver@19:0: uncovered (async body)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

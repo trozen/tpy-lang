@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::value_type_branches@13:0: covered (storage: no_proof_required), summary: known
+main::else_returns@22:0: covered (storage: no_proof_required), summary: known
+main::multi_var@31:0: covered (storage: no_proof_required), summary: known
+main::rvalue_branch@42:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::reassign_after@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::nested_if@61:0: covered (storage: no_proof_required), summary: known
+main::param_branch@74:0: covered (storage: not_covered: THIRPtrLocalRebind: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::mixed_init@83:0: covered (storage: not_covered: THIRPtrLocalRebind: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

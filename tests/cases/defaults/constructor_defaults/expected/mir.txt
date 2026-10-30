@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@14:4: covered (storage: no_proof_required), summary: known

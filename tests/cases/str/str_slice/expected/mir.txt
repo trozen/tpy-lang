@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_basic@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_negative@13:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_clamping@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_empty@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_param@36:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_local_type@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_single_char@47:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

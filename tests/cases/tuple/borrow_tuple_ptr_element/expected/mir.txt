@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@13:0: covered (storage: no_proof_required), summary: known
+main::via_local@17:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::via_param@23:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_subscript@27:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::via_plain@31:0: covered (storage: no_proof_required), summary: known
+main::main@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::raise_from_finally@7:0: uncovered (async body)
+main::amain@17:0: uncovered (async body)
+main::main@24:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

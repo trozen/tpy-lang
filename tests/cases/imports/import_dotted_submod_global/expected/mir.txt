@@ -1,0 +1,5 @@
+geo::__tpy_init: uncovered (module initialization)
+geo.codec::__tpy_init: uncovered (module initialization)
+geo.codec::hi_nibble@6:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::__tpy_init: uncovered (module initialization)
+main::main@6:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

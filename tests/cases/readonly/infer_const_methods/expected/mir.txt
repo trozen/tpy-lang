@@ -1,0 +1,39 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@139:0: uncovered (unsupported parameter type)
+main::read_counter@152:0: covered (storage: no_proof_required), summary: known
+main::read_holder@156:0: covered (storage: no_proof_required), summary: known
+main::bump_counter@160:0: covered (storage: no_proof_required), summary: known
+main::read_valued@164:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::poke_holder@168:0: covered (storage: no_proof_required), summary: known
+main::bump_gen@179:0: covered (storage: no_facts: storage facts have not been published)
+main::bump_async@185:0: uncovered (async body)
+main::use_static@202:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@206:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Counter.increment@17:4: covered (storage: no_proof_required), summary: known
+main::Counter.increment_twice@20:4: covered (storage: no_proof_required), summary: known
+main::Counter.get@24:4: covered (storage: no_proof_required), summary: known
+main::Counter.is_zero@27:4: covered (storage: no_proof_required), summary: known
+main::Box.push@37:4: covered (storage: no_proof_required), summary: known
+main::Box.push_default@40:4: covered (storage: no_proof_required), summary: known
+main::Box.size@43:4: covered (storage: no_proof_required), summary: known
+main::SortableBox.fill@56:4: covered (storage: no_proof_required), summary: known
+main::SortableBox.sort_items@60:4: covered (storage: no_proof_required), summary: known
+main::SortableBox.get_first@63:4: covered (storage: no_proof_required), summary: known
+main::Inner.get@76:4: covered (storage: no_proof_required), summary: known
+main::Inner.set@79:4: covered (storage: no_proof_required), summary: known
+main::Outer.sum_items@90:4: covered (storage: no_proof_required), summary: known
+main::Outer.get_extra@96:4: covered (storage: no_proof_required), summary: known
+main::Outer.mutate_extra@99:4: covered (storage: no_proof_required), summary: known
+main::WithOpt.get_child_value@111:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Valued.value@135:4: covered (storage: no_proof_required)
+main::Bumper.bump@174:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Calc.add@198:4: covered (storage: no_proof_required)
+main::Counter.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::SortableBox.__init__@53:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@73:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@86:4: covered (storage: no_proof_required), summary: known
+main::WithOpt.__init__@108:4: covered (storage: no_proof_required), summary: known
+main::Valued.__init__@132:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@148:4: covered (storage: no_proof_required), summary: known
+main::Calc.__init__@194:4: covered (storage: no_proof_required), summary: known

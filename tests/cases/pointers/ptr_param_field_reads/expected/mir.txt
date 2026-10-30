@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_elem@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_cond@35:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::grow@41:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::count_readonly@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pic_width@54:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::has_pic@61:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::main@65:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Picture.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Sector.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Seg.__init__@27:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

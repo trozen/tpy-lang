@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::feed@47:0: uncovered (generic body)
+main::total_area@75:0: uncovered (unsupported parameter type)
+main::apply@94:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@98:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Key.__lt__@15:4: uncovered (no body to lower)
+main::Key.__lt__@19:4: uncovered (no body to lower)
+main::Key.__str__@22:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Box.put@37:4: uncovered (no body to lower)
+main::Box.put@42:4: uncovered (no body to lower)
+main::Sq.area@63:4: covered (storage: no_proof_required), summary: known
+main::Sq.scale@67:4: uncovered (no body to lower)
+main::Sq.scale@71:4: uncovered (no body to lower)
+main::Adder.__call__@86:4: uncovered (no body to lower)
+main::Adder.__call__@90:4: uncovered (no body to lower)
+main::Key.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@60:4: covered (storage: no_proof_required), summary: known
+main::Adder.__init__@82:4: covered (storage: no_proof_required), summary: known

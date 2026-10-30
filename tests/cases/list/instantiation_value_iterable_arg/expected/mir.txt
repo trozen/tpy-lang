@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_range@12:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::set_from_range@19:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::from_str@26:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::from_span@32:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::from_array@39:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::borrow@47:0: covered (storage: no_proof_required), summary: known
+main::from_borrow_call@51:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@67:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reader.count@62:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Reader.__init__@58:4: covered (storage: no_proof_required), summary: known

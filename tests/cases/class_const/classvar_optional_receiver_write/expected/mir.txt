@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::store@15:0: uncovered (unsupported metadata: recv_eval), summary: opaque (unsupported metadata: recv_eval)
+main::main@19:0: uncovered (assignment needs local or field target), summary: opaque (assignment needs local or field target)
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known

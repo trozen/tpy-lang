@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::Bag.__post_init__@11:4: covered (storage: no_proof_required), summary: known
+main::Bag.__eq__: uncovered (uncertified binary operation)
+main::Bag.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Bag.__init__: covered (storage: no_proof_required), summary: known

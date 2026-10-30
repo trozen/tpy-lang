@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::float_seed@7:0: covered (storage: no_proof_required), summary: known
+main::float_seed_add@12:0: covered (storage: no_proof_required), summary: known
+main::chain@17:0: covered (storage: no_proof_required), summary: known
+main::float_of_int_seed@23:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::float32_stays@29:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::fail@16:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::DeviceError.__init__@12:4: uncovered (missing record layout)

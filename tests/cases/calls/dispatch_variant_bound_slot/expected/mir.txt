@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::mkr@11:0: covered (storage: no_proof_required), summary: known
+main::main@41:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::P.tk2@22:4: uncovered (no body to lower)
+main::P.tk2@26:4: uncovered (no body to lower)
+main::P.m@31:4: uncovered (no body to lower)
+main::P.m@36:4: uncovered (no body to lower)
+main::R.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@18:4: covered (storage: no_proof_required), summary: known

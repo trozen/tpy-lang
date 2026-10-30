@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_weak_after_arc_dies@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Cell.__del__@15:4: uncovered (missing receiver fact)
+main::Cell.__init__@12:4: uncovered (custom record special member), summary: opaque (custom record special member)

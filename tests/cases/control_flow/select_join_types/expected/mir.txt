@@ -1,0 +1,32 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_c@23:0: covered (storage: no_proof_required), summary: known
+main::make_f@27:0: covered (storage: no_proof_required), summary: known
+main::record_or@31:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::list_or@42:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::int64_literal_arm@55:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::empty_literal_arm@66:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::method_result_arm@85:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::literal_left@95:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::nested_select@103:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::int_widen_or@116:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::int_literal_pair@129:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::float_literal_elem@138:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::float_or@146:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
+main::int_float_select@152:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::half_ternary@182:0: covered (storage: no_proof_required), summary: known
+main::half_or@187:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::declared_containers@192:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::tuple_literal_arm@207:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::int_float_optional_slot@213:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::show_float@221:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::int_float_slots@225:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::int_float_guard@244:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::int_float_conditions@255:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
+main::mixed_truth_arms@285:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::not_or@295:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::readonly_join@302:0: certified, summary: opaque (summary output effect)
+main::main@311:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@276:35: uncovered (generator expression)
+main::F.__bool__@19:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::F.__init__@16:4: covered (storage: no_proof_required), summary: known

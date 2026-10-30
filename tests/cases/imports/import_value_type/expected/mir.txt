@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::length_sq@6:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+main::main@10:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+shapes::__tpy_init: uncovered (module initialization)
+shapes::Vec2.__init__@9:4: uncovered (missing record layout)

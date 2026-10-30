@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Score.__lt__@9:4: covered (storage: no_proof_required)
+main::Score.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Item.__init__@15:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.speak@14:4: covered (storage: no_proof_required)
+main::Cat.speak@21:4: covered (storage: no_proof_required)
+main::Announcer.announce@36:4: uncovered (unsupported parameter type)
+main::Dog.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Recorder.__init__@27:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Announcer.__init__@33:4: covered (storage: no_proof_required), summary: known

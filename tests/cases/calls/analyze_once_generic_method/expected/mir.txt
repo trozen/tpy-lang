@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@42:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::B.take@14:4: uncovered (missing receiver fact)
+main::Bag.put@24:4: uncovered (generic body)
+main::K.m@34:4: uncovered (generic body)
+main::K.first@38:4: uncovered (generic body)
+main::B.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@21:4: uncovered (generic constructor)
+main::K.__init__@31:4: covered (storage: no_proof_required), summary: known

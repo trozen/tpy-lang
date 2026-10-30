@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Pair.get_first@11:4: uncovered (generic body)
+main::Pair.get_second@14:4: uncovered (generic body)
+main::Pair.__init__@7:4: uncovered (generic constructor)

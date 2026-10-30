@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::Box.rebind_alt@32:4: covered (storage: no_proof_required), summary: known
+main::Box.items@36:4: covered (storage: no_proof_required), summary: known
+main::Box.items@36:4#2: covered (storage: no_proof_required), summary: known
+main::Box.inner@40:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.inner@40:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.alt@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.alt@46:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Box.snapshot@50:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@27:4: covered (storage: no_proof_required), summary: known

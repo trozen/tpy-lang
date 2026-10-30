@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@9:0: covered (storage: no_proof_required), summary: known
+main::at@13:0: covered (storage: no_proof_required), summary: known
+main::sum_two@17:0: covered (storage: no_proof_required), summary: known
+main::dget@21:0: covered (storage: no_proof_required), summary: known
+main::read_through_call@35:0: covered (storage: no_proof_required), summary: known
+main::main@39:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Box.get@31:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@28:4: covered (storage: no_proof_required), summary: known

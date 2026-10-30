@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Foo.items@7:4: uncovered (generic body)

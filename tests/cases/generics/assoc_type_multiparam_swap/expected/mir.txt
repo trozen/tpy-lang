@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_k@29:0: uncovered (generic body)
+main::get_v@33:0: uncovered (generic body)
+main::main@37:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::IntStr.first@21:4: covered (storage: no_proof_required), summary: known
+main::IntStr.second@24:4: covered (storage: no_proof_required), summary: known
+main::IntStr.__init__@17:4: covered (storage: no_proof_required), summary: known

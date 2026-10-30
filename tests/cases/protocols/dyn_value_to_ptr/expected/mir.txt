@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_waker@25:0: uncovered (unsupported parameter type)
+main::_consume@30:0: uncovered (unsupported parameter type)
+main::read_only_take@34:0: uncovered (unsupported return type)
+main::main@48:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Executor.mark@44:4: covered (storage: no_proof_required)
+main::Holder.__init__@20:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Executor.__init__@42:4: covered (storage: no_proof_required), summary: known

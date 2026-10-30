@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_raise_in_finally@2:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_raise_in_finally_no_exception@12:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

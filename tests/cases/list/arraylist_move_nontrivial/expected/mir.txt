@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_full@29:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_empty@38:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@42:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Item.__init__@17:4: covered (storage: no_proof_required), summary: known

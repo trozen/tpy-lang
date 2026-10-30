@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_holder@19:0: covered (storage: no_proof_required), summary: known
+main::test_init_from_temp@25:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::test_rebind_from_temp@34:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::test_rebind_in_block@43:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@15:4: covered (storage: no_proof_required), summary: known

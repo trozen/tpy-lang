@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Leaf.as_pair@24:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Leaf.__init__@20:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

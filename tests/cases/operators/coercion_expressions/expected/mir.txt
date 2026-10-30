@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::return_expr_as_int32@49:0: covered (storage: no_proof_required), summary: known
+main::take_int32@52:0: covered (storage: no_proof_required), summary: known
+main::test_bigint_expr_to_int32@56:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::modify_via_ptr@89:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_via_const_ptr@92:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_field_access_to_ptr@96:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_nested_field_to_ptr@109:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_literal_expr_to_int32@122:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.get@17:4: covered (storage: no_proof_required), summary: known
+main::Counter.add@20:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@43:4: covered (storage: no_proof_required), summary: known

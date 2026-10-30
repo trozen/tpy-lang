@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::cell@15:0: uncovered (unsupported hoisted value)
+main::copied@29:0: uncovered (unsupported hoisted value)
+main::main@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

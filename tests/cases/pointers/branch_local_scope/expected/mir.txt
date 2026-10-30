@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::branch_rvalue_independent@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::branch_rvalue_three_way@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::branch_mixed_scope@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known

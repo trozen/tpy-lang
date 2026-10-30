@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::observe@11:0: covered (storage: no_proof_required), summary: known
+main::store@15:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::loop_until@22:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::then_plain@29:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::in_comprehension@35:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

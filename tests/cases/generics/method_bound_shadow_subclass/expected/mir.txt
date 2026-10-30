@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@51:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Bag.add@16:4: uncovered (generic body)
+main::Bag.contains@19:4: uncovered (generic body)
+main::Bag.biggest@25:4: uncovered (generic body)
+main::Bag.__init__@13:4: uncovered (generic constructor)

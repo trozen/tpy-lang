@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Tag.__eq__: covered (storage: no_proof_required)
+main::Tag.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tag.__hash__: covered (storage: no_proof_required), summary: known
+main::SetItem.__eq__: uncovered (uncertified binary operation)
+main::SetItem.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::DictItem.__eq__: uncovered (uncertified binary operation)
+main::DictItem.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tag.__init__: covered (storage: no_proof_required), summary: known
+main::SetItem.__init__: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::DictItem.__init__: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

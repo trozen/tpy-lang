@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::classify@9:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mixed@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_guard@37:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::multi_guard@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_overlap@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

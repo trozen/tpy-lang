@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::A.__del__@15:4: uncovered (missing receiver fact)
+main::B.__del__@27:4: uncovered (missing receiver fact)
+main::A.__init__@11:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::B.__init__@23:4: uncovered (custom record special member), summary: opaque (custom record special member)

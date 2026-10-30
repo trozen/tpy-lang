@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::absent_case@11:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::present_case@20:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::__tpy_builder_argparse_help_1@15:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@15:11: uncovered (unsupported owned-leaf expression type)
+main::__tpy_builder_argparse_help_2@24:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_2@24:11: uncovered (unsupported owned-leaf expression type)
+main::__tpy_builder_argparse_args_1.__init__@15:11: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_2.__init__@24:11: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,8 @@
+geo::__tpy_init: uncovered (module initialization)
+geo.hexcodec::__tpy_init: uncovered (module initialization)
+geo.hexcodec::hex_byte@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+geo.hexcodec::offset_sum@21:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+geo.units::__tpy_init: uncovered (module initialization)
+geo.units::scaled@6:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)

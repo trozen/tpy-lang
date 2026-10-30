@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Speaker.greet@6:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Greeter.greet@11:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Both.greet@16:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

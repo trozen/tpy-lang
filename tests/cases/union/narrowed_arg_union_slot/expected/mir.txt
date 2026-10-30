@@ -1,0 +1,65 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@31:0: covered (storage: no_proof_required), summary: known
+main::peek@38:0: covered (storage: no_proof_required), summary: known
+main::free@84:0: covered (storage: no_proof_required), summary: known
+main::comprehension@92:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::bump_and_read@99:0: covered (storage: no_proof_required), summary: known
+main::with_body@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::error_body@129:0: uncovered (error-return body)
+main::match_arm@137:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_capture@147:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_body@157:0: uncovered (unsupported pointer capture)
+main::gen_match@165:0: uncovered (match across a suspension)
+main::async_body@177:0: uncovered (async body)
+main::async_match@187:0: uncovered (async body)
+main::inline@198:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::walrus@203:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::readonly_slot@213:0: covered (storage: no_proof_required), summary: known
+main::loop_var@220:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ctor_slot@230:0: certified, summary: known
+main::str_member@237:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::str_total@243:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::total@252:0: covered (storage: no_proof_required), summary: known
+main::const_member@259:0: covered (storage: no_proof_required), summary: known
+main::ctor_call_arg@287:0: certified, summary: known
+main::own_forward@293:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::loop_const@298:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen_total@306:0: uncovered (unsupported pointer capture)
+main::async_total@312:0: uncovered (async body)
+main::loop_method@319:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::closure_narrow@328:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::closure_forward@337:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::wrap_then_mutate@346:0: covered (storage: no_proof_required), summary: known
+main::forward_union@352:0: covered (storage: no_proof_required), summary: known
+main::pick_isinstance@358:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick_match@364:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::value_union@378:0: covered (storage: no_proof_required), summary: known
+main::value_union_match@385:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::vu_total@393:0: covered (storage: no_proof_required), summary: known
+main::vu_peek@399:0: covered (storage: no_proof_required), summary: known
+main::value_union_method@425:0: covered (storage: no_proof_required), summary: known
+main::value_union_ctor@432:0: certified, summary: known
+main::value_union_comp@440:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::value_union_readonly@448:0: covered (storage: no_proof_required), summary: known
+main::big_total@454:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::value_union_big@461:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pt_total@474:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::value_union_record@481:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::assign_narrowed@489:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::async_main@495:0: uncovered (async body)
+main::main@504:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Guard.__enter__@55:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@58:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Relay.go@73:4: covered (storage: no_proof_required), summary: known
+main::Reader.read@271:4: covered (storage: no_proof_required), summary: known
+main::VuBox.go@411:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Relay.__init__@65:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@266:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@281:4: covered (storage: no_proof_required), summary: known
+main::VuBox.__init__@408:4: covered (storage: no_proof_required), summary: known
+main::VuSink.__init__@420:4: covered (storage: no_proof_required), summary: known
+main::Pt.__init__@470:4: uncovered (missing record layout)

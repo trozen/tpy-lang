@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::scale@13:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::total@19:0: covered (storage: no_proof_required), summary: known
+main::peek@27:0: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_branch@18:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Wrapper.take@11:4: uncovered (owned-leaf move)
+main::Wrapper.get@15:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@8:4: covered (storage: no_proof_required), summary: known

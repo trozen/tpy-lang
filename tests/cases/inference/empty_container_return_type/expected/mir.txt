@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::empty_list@6:0: covered (storage: no_proof_required), summary: known
+main::empty_dict@11:0: covered (storage: no_proof_required), summary: known
+main::empty_set@16:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::empty_str_set@28:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::empty_record_dict@33:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@38:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Point.__init__@24:4: covered (storage: no_proof_required), summary: known

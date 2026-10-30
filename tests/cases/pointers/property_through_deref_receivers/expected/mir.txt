@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_param@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_optional@41:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::gen@46:0: uncovered (unsupported expression)
+main::through_async@51:0: uncovered (async body)
+main::main@55:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Node.twice@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.read@28:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

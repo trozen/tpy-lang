@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Point.__eq__: covered (storage: no_proof_required)
+main::Point.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::PairHolder.__eq__: uncovered (unsupported metadata: template_override)
+main::PairHolder.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__: covered (storage: no_proof_required), summary: known
+main::PairHolder.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

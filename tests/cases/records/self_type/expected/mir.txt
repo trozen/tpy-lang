@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_builder@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_generic@65:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Builder.set_name@13:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Builder.set_value@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Builder.with_offset@21:4: covered (storage: no_proof_required), summary: known
+main::Builder.find_match@25:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Builder.find_match@25:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Stack.push@57:4: uncovered (generic body)
+main::Stack.describe@62:4: uncovered (generic body)
+main::Builder.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Stack.__init__@53:4: uncovered (generic constructor)

@@ -1,0 +1,23 @@
+await_sel_mod::__tpy_init: uncovered (module initialization)
+await_sel_mod::mf@4:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::__tpy_init: uncovered (module initialization)
+main::v@10:0: uncovered (async body)
+main::sink@15:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::dsink@20:0: uncovered (no body to lower)
+main::dsink@25:0: uncovered (no body to lower)
+main::gsink@29:0: uncovered (generic body)
+main::vsink@33:0: uncovered (unsupported owned-leaf expression)
+main::go@75:0: uncovered (async body)
+main::tsink@144:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::macro_sections@148:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::M.m@41:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::M.o@45:4: uncovered (no body to lower)
+main::M.o@49:4: uncovered (no body to lower)
+main::M.__call__@52:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::P.__eq__: covered (storage: no_proof_required)
+main::P.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::M.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@57:4: covered (storage: no_proof_required), summary: known
+main::Outer.Inner.__init__@64:8: covered (storage: no_proof_required), summary: known
+main::Err.__init__@70:4: uncovered (missing record layout)
+main::P.__init__: covered (storage: no_proof_required), summary: known

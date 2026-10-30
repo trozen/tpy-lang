@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::show_optional@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Rec.__eq__: uncovered (uncertified binary operation)
+main::Rec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Rec.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

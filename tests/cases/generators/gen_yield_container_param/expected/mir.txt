@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::repeat_list@8:0: uncovered (reference yield)
+main::repeat_dict@15:0: uncovered (reference yield)
+main::repeat_set@22:0: uncovered (reference yield)
+main::repeat_buf@29:0: uncovered (unsupported parameter type)
+main::repeat_arr@36:0: uncovered (reference yield)
+main::main@43:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

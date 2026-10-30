@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::nested_ok@4:0: covered (storage: no_proof_required), summary: known

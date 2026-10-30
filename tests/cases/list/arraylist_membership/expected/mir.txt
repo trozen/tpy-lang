@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::SimpleBuffer.__span__@19:4: uncovered (unsupported metadata: wrap)
+main::SimpleBuffer.__span__@19:4#2: uncovered (unsupported metadata: wrap)
+main::SimpleBuffer.__iter__@23:4: uncovered (view of container storage)
+main::SimpleBuffer.__iter__@23:4#2: uncovered (view of container storage)
+main::SimpleBuffer.__init__@14:4: covered (storage: no_proof_required), summary: known

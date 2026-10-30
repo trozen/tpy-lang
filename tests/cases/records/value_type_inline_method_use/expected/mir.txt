@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::TimerEntry.__lt__@17:4: uncovered (unsupported reference parameter passing)
+main::Owner.add@27:4: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::TimerEntry.__init__@13:4: uncovered (missing record layout)
+main::Owner.__init__@24:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

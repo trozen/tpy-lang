@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_string@8:0: covered (storage: no_proof_required), summary: known
+main::forward@12:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::main@18:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

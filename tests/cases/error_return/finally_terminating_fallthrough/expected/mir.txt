@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::may_fail@12:0: uncovered (error-return body)
+main::falls_through@19:0: uncovered (error-return body)
+main::returns_from_finally@32:0: uncovered (error-return body)
+main::call_it@48:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::opt_param@51:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::opt_local@58:0: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)
+main::escape_hoisted@68:0: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)
+main::field_operand@80:0: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)
+main::foreach@85:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::union_alt@93:0: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)
+main::gen@114:0: uncovered (unsupported pointer capture)
+main::coro@120:0: uncovered (async body)
+main::main@130:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.__neg__@29:4: covered (storage: no_proof_required)
+main::Cell.__pos__@32:4: covered (storage: no_proof_required)
+main::Cell.__invert__@35:4: covered (storage: no_proof_required)
+main::Cell.__add__@38:4: covered (storage: no_proof_required)
+main::Reader.read@109:4: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)
+main::Tag.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@103:4: uncovered (uncertified unary operation), summary: opaque (uncertified unary operation)

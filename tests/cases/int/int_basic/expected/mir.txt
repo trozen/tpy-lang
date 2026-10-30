@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::factorial@4:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::test_arithmetic@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_comparison@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

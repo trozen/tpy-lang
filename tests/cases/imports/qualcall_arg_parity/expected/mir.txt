@@ -1,0 +1,33 @@
+main::__tpy_init: uncovered (module initialization)
+main::tick@38:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::mk@50:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::wrap_b@54:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen_codes@59:0: uncovered (unsupported union argument temporary)
+main::async_code@64:0: uncovered (async body)
+main::cond@70:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@75:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::Base.code@13:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Sub.code@20:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::GBox.ov@30:4: uncovered (no body to lower)
+main::GBox.ov@34:4: uncovered (no body to lower)
+main::Holder.take_list@45:4: uncovered (unsupported owned-leaf expression type)
+main::GBox.__init__@26:4: uncovered (generic constructor)
+pets::__tpy_init: uncovered (module initialization)
+pets::code@16:0: covered (storage: no_proof_required), summary: known
+pets::bump@22:0: covered (storage: no_proof_required), summary: known
+pets::ls@51:0: covered (storage: no_proof_required), summary: known
+pets::ls_mut@55:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+pets::dct@60:0: covered (storage: no_proof_required), summary: known
+pets::total@64:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+pets::request@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+pets::ov@76:0: uncovered (no body to lower)
+pets::ov@81:0: uncovered (no body to lower)
+pets::gen_tags@85:0: covered (storage: no_facts: storage facts have not been published)
+pets::gen_sizes@90:0: covered (storage: no_facts: storage facts have not been published)
+pets::seq@94:0: covered (storage: no_proof_required), summary: known
+pets::K.static_code@29:4: covered (storage: no_proof_required)
+pets::K.cls_code@35:4: covered (storage: no_proof_required)
+pets::K.sov@42:4: uncovered (no body to lower)
+pets::K.sov@47:4: uncovered (no body to lower)
+pets::Cat.__init__@7:4: covered (storage: no_proof_required), summary: known
+pets::Dog.__init__@12:4: covered (storage: no_proof_required), summary: known

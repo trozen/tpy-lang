@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_of_pair@4:0: uncovered (generic body)
+main::swap@7:0: uncovered (generic body)
+main::main@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__repr__@16:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::main_coro@63:0: uncovered (async body)
+main::main@88:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Counter.bump@16:4: covered (storage: no_proof_required), summary: known
+main::_OwnPair.cancel@27:4: covered (storage: no_proof_required), summary: known
+main::_OwnPair.__poll__@30:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::_ValPair.cancel@39:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::_ValPair.__poll__@42:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::_RefPair.cancel@55:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::_RefPair.__poll__@58:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Counter.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::_OwnPair.__init__@24:4: covered (storage: no_proof_required), summary: known

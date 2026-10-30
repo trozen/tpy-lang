@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::Color.__eq__: covered (storage: no_proof_required)
+main::Color.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Color.__init__: covered (storage: no_proof_required), summary: known

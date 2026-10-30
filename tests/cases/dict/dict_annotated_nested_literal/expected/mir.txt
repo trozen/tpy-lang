@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::build@58:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take@62:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::rows@67:0: uncovered (loop across a suspension)
+main::main@74:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Guard.__enter__@27:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Guard.__exit__@30:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Reg.grow@49:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Point.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@39:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Reg.__init__@46:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

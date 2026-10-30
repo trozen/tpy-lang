@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@63:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::Store.__getitem__@16:4: covered (storage: no_proof_required), summary: known
+main::Store.__setitem__@21:4: covered (storage: no_proof_required), summary: known
+main::Store.__delitem__@27:4: covered (storage: no_proof_required), summary: known
+main::IntBox.__getitem__@40:4: covered (storage: no_proof_required), summary: known
+main::IntBox.__setitem__@43:4: covered (storage: no_proof_required), summary: known
+main::IntBox.__delitem__@46:4: covered (storage: no_proof_required), summary: known
+main::Sink.__setitem__@56:4: covered (storage: no_proof_required), summary: known
+main::Sink.__delitem__@59:4: covered (storage: no_proof_required), summary: known
+main::Store.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::IntBox.__init__@37:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@53:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::set_same_name@10:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::set_renamed@14:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::main@18:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

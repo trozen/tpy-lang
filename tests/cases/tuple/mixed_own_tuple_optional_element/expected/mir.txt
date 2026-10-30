@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_none@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::write_through@24:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::read_direct@32:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::none_element@41:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

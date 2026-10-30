@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Shape.make@14:4: covered (storage: no_proof_required)
+main::Square.make@20:4: covered (storage: no_proof_required)
+main::Shape.__init__@10:4: covered (storage: no_proof_required), summary: known

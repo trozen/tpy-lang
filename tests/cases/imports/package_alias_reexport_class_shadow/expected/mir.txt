@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg::__tpy_init: uncovered (module initialization)
+pkg::Foo.__init__@12:4: covered (storage: no_proof_required), summary: known
+pkg.sub::__tpy_init: uncovered (module initialization)
+pkg.sub::Foo.__init__@4:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_empty_list@4:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::test_empty_list_int32@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_constructor@19:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_list_constructor_int32@26:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

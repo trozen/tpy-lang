@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_nodes@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_extend_ref_type_warns@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_extend_value_type_no_warn@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_extend_copy_no_warn@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_extend_last_use_no_warn@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_extend_rvalue_no_warn@40:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Node.__init__@6:4: covered (storage: no_proof_required), summary: known

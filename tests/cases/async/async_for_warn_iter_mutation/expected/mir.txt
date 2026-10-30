@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::runner@46:0: uncovered (async body)
+main::post_loop@54:0: uncovered (async body)
+main::nested@64:0: uncovered (async body)
+main::hop@85:0: uncovered (async body)
+main::field_hop@93:0: uncovered (async body)
+main::elem_distinct@103:0: uncovered (async body)
+main::elem_unknown@111:0: uncovered (async body)
+main::elem_container@119:0: uncovered (async body)
+main::ptr_iter@164:0: uncovered (async body)
+main::main@170:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::SrcIter.__anext__@23:4: uncovered (async body)
+main::Source.__aiter__@39:4: covered (storage: no_proof_required), summary: known
+main::Source.push@42:4: covered (storage: no_proof_required), summary: known
+main::Feed.__aiter__@138:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Feed.note@141:4: covered (storage: no_proof_required), summary: known
+main::FeedIter.__anext__@153:4: uncovered (async body)
+main::SrcIter.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Source.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@78:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Feed.__init__@131:4: covered (storage: no_proof_required), summary: known
+main::FeedIter.__init__@149:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

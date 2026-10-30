@@ -1,0 +1,31 @@
+main::__tpy_init: uncovered (module initialization)
+main::comprehension@96:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::context_manager@110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::manager_is_getter@119:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::frame_manager@128:0: uncovered (with across a suspension)
+main::try_finally@134:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::error_return_body@143:0: uncovered (error-return body)
+main::sink@150:0: covered (storage: no_proof_required), summary: known
+main::free_fn_arg@154:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::method_arg@165:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::borrow_out@171:0: certified, summary: known
+main::return_pos@175:0: uncovered (unsupported metadata: held), summary: opaque (unsupported metadata: held)
+main::container_insert@183:0: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::tuple_literal@194:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::match_subject@200:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@218:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::Guard.__enter__@47:4: covered (storage: no_proof_required), summary: known
+main::Guard.__exit__@51:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Bag.items@68:4: covered (storage: no_proof_required), summary: known
+main::Bag.items@68:4#2: covered (storage: no_proof_required), summary: known
+main::Bag.rec@72:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.rec@72:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.kind@76:4: covered (storage: no_proof_required), summary: known
+main::Bag.guard@80:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.guard@80:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Sinker.take@161:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Rec.__init__@37:4: covered (storage: no_proof_required), summary: known
+main::Guard.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@90:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

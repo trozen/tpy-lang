@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_while_basic@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_while_increment_before_access@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_while_no_literal_init@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_while_negative_init@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_while_list@37:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_while_bigint_index@45:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_while_post_loop_not_safe@53:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

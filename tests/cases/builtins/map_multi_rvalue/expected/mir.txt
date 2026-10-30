@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_xs@4:0: covered (storage: no_proof_required), summary: known
+main::make_ys@7:0: covered (storage: no_proof_required), summary: known
+main::add@10:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

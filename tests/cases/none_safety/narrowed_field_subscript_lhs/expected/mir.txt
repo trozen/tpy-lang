@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Buffer.step@17:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Buffer.show@29:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Buffer.__init__@9:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

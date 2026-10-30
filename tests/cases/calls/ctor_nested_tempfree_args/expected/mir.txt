@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Rec.ping@24:4: covered (storage: no_proof_required), summary: known
+main::KList.ping@43:4: covered (storage: no_proof_required), summary: known
+main::KMut.ping@54:4: covered (storage: no_proof_required), summary: known
+main::KRec.ping@64:4: covered (storage: no_proof_required), summary: known
+main::KOpt.ping@74:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::KList.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::KMut.__init__@50:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::KRec.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::KOpt.__init__@71:4: covered (storage: no_proof_required), summary: known

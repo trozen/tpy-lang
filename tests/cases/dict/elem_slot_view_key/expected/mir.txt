@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_param@12:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::get_param@16:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::has_param@20:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::drop_param@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::push_literal@28:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pop_literal@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::empty_key@38:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::read_bytes_param@46:0: covered (storage: no_proof_required), summary: known
+main::get_bytes_param@50:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::drop_bytes_param@54:0: covered (storage: no_proof_required), summary: known
+main::pop_bytes_param@58:0: covered (storage: no_proof_required), summary: known
+main::main@62:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

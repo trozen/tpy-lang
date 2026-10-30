@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@10:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cat.__init__@6:4: covered (storage: no_proof_required), summary: known

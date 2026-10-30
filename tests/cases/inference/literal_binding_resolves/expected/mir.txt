@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::<genexpr>@12:16: uncovered (generator expression)

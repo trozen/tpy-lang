@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_alias@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_closure@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_closure_rebind@35:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::opt_via_closure@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::closure_dels_other@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::untouched@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::del_other_local@91:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@101:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@50:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Dog.speak@13:4: covered (storage: no_proof_required), summary: known
+main::Cat.speak@21:4: covered (storage: no_proof_required), summary: known
+main::Zoo.voices@31:4: uncovered (match across a suspension)
+main::Zoo.names@40:4: uncovered (match across a suspension)
+main::Dog.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Zoo.__init__@28:4: covered (storage: no_proof_required), summary: known

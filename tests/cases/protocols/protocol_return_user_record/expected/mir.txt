@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_point@19:0: uncovered (generic body)
+main::main@22:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::DefaultFactory.create_point@16:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

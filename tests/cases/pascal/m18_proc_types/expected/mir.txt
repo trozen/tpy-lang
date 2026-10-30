@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::shout@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::whisper@19:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

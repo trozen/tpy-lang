@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::list_scalar@16:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::list_tuple_member@21:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::dict_value@26:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::exempt_fresh@31:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::exempt_copy@36:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::exempt_value@41:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@46:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known

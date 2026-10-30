@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::extend_iterable@5:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::join_iterable@12:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::update_dict@18:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::update_set@26:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::main@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

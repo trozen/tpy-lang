@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::live_sub@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::elem_of_local@53:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::elem_of_param@60:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@83:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Name.take@16:4: uncovered (unmodeled record)
+main::Name.dup@19:4: uncovered (unmodeled record)
+main::Tree.kid@79:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Tree.kid@79:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Name.__init__@13:4: uncovered (missing record layout)
+main::W.__init__@26:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::W2.__init__@32:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+main::P.__init__@49:4: covered (storage: no_proof_required), summary: known
+main::Leaf.__init__@68:4: covered (storage: no_proof_required), summary: known
+main::Tree.__init__@75:4: covered (storage: no_proof_required), summary: known

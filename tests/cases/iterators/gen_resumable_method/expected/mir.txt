@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Source.windowed@15:4: uncovered (try across a suspension)
+main::Source.doubled@25:4: covered (storage: no_facts: storage facts have not been published)
+main::Source.__init__@12:4: covered (storage: no_proof_required), summary: known

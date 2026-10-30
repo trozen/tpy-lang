@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.run@7:4: uncovered (generic body)

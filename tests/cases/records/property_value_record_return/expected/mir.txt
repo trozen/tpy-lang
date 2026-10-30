@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@43:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Coord.__eq__@18:4: uncovered (unsupported reference parameter passing)
+main::Track.position@33:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Track.goal@37:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Coord.__init__@14:4: uncovered (missing record layout)
+main::Track.__init__@27:4: covered (storage: no_proof_required), summary: known

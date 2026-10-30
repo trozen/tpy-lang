@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_key@32:0: covered (storage: no_proof_required), summary: known
+main::helper@36:0: covered (storage: no_proof_required), summary: known
+main::ns@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::free@44:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen@84:0: uncovered (unsupported native container element)
+main::co@92:0: uncovered (async body)
+main::comp@102:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@114:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.score@15:4: covered (storage: no_proof_required), summary: known
+main::Rec.__lt__@18:4: covered (storage: no_proof_required)
+main::Key.__lt__@28:4: covered (storage: no_proof_required)
+main::Holder.show@75:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Key.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@72:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

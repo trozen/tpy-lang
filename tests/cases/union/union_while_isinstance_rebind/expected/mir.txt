@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::drain@20:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::invariant@30:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::compound@40:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::or_rebind@50:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::not_rebind@62:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::main@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@16:4: covered (storage: no_proof_required), summary: known

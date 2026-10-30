@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Processor.process@18:4: uncovered (unsupported parameter type)
+main::Ruler.measure@26:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Walker.walk@30:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Processor.__init__@15:4: covered (storage: no_proof_required), summary: known

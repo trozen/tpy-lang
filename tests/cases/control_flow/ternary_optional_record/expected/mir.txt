@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_or_none@9:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::narrowed_field@17:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@21:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Point.__init__@5:4: covered (storage: no_proof_required), summary: known

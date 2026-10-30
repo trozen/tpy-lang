@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::report@44:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::BaseExc.what@24:4: covered (storage: no_proof_required)
+main::ValErr.what@32:4: covered (storage: no_proof_required)
+main::OsErr.what@40:4: covered (storage: no_proof_required)
+main::BaseExc.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::ValErr.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::OsErr.__init__@37:4: covered (storage: no_proof_required), summary: known

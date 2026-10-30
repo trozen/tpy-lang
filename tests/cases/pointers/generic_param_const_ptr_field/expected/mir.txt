@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@49:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Counter.value@20:4: covered (storage: no_proof_required), summary: known
+main::RWView.read@33:4: uncovered (generic body)
+main::ROView.read@45:4: uncovered (generic body)
+main::Counter.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::RWView.__init__@30:4: uncovered (generic constructor)
+main::ROView.__init__@42:4: uncovered (generic constructor)

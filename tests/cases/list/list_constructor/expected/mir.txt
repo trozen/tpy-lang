@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_local_list@4:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known

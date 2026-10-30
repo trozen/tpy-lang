@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_convert@68:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::in_field@81:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.m@17:4: uncovered (no body to lower)
+main::C.m@22:4: uncovered (no body to lower)
+main::C.w@28:4: uncovered (no body to lower)
+main::C.w@33:4: uncovered (no body to lower)
+main::C.__contains__@39:4: uncovered (no body to lower)
+main::C.__contains__@44:4: uncovered (no body to lower)
+main::D.via_self@54:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::D.via_super@58:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::D.via_base@63:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::C.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::D.__init__@50:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@77:4: covered (storage: no_proof_required), summary: known

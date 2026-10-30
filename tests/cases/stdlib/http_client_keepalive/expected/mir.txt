@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::keepalive_cycles@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::will_close_response@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::will_close_variants@62:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@84:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

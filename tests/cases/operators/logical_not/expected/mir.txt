@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_not_with_bool_literals@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_not_with_comparisons@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_not_in_conditions@36:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_double_negation@60:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::is_valid@72:0: covered (storage: no_proof_required), summary: known
+main::test_not_with_function_call@76:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_not_in_while@86:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

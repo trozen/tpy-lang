@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rows.__init__@9:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

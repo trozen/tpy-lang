@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::is_small@7:0: covered (storage: no_proof_required), summary: known
+main::skip_first@12:0: uncovered (generic body)
+main::gtakewhile@24:0: uncovered (generic body)
+main::tag@33:0: uncovered (loop across a suspension)
+main::first_n@49:0: uncovered (generic body)
+main::main@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Doubler.each_twice@42:4: uncovered (loop across a suspension)

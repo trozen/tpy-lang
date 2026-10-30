@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::borrow_only@16:0: covered (storage: no_proof_required), summary: known
+main::forward@20:0: covered (storage: no_proof_required), summary: known
+main::passthrough@24:0: covered (storage: no_proof_required), summary: known
+main::copy_store@28:0: covered (storage: no_proof_required), summary: known
+main::value_type_borrow@33:0: uncovered (generic body)
+main::partial_consume@37:0: covered (storage: no_proof_required), summary: known
+main::both_branches@44:0: covered (storage: no_proof_required), summary: known
+main::early_return@52:0: covered (storage: no_proof_required), summary: known
+main::loop_consume@58:0: covered (storage: no_proof_required), summary: known
+main::match_partial_arm@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_all_arms@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@83:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@12:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+container::__tpy_init: uncovered (module initialization)
+container::Box.__init__@4:4: uncovered (generic constructor)
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_path@85:0: covered (storage: no_proof_required), summary: known
+main::read_deep@90:0: covered (storage: no_proof_required), summary: known
+main::write_scalar@95:0: covered (storage: no_proof_required), summary: known
+main::replace_member@100:0: covered (storage: no_proof_required), summary: known
+main::mutate_through_member@106:0: certified, summary: known
+main::replace_live@117:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::alias_external@125:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::replace_ancestor@132:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::member_receiver@140:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::reset_live@148:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::sibling_survives@155:0: certified, summary: known
+main::scalar_call_is_not_replacement@163:0: certified, summary: known
+main::copy_does_not_replace_source@170:0: certified, summary: known
+main::copy_then_replace@177:0: covered (storage: no_proof_required), summary: known
+main::name_then_replace@184:0: covered (storage: no_proof_required), summary: known
+main::member_result@192:0: certified, summary: known
+main::build@199:0: covered (storage: no_proof_required), summary: known
+main::build_frame@205:0: covered (storage: no_proof_required), summary: known
+main::owned_local_path@211:0: covered (storage: no_proof_required), summary: known
+main::adopt@221:0: covered (storage: no_proof_required), summary: known
+main::keep_and_store@227:0: certified, summary: known
+main::composed@234:0: covered (storage: no_proof_required), summary: known
+main::hand_over_callers@242:0: covered (storage: no_proof_required), summary: known
+main::adopt_live@251:0: covered (storage: conflict), conflicts: replacement, summary: known
+main::tuple_member@275:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::main@282:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Line.first@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Line.reset@33:4: covered (storage: no_proof_required), summary: known
+main::Line.bump@37:4: covered (storage: no_proof_required), summary: known
+main::Line.swap@41:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Line.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Names.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::WrappedNames.__init__@70:4: covered (storage: no_proof_required), summary: known
+main::Frame.__init__@79:4: covered (storage: no_proof_required), summary: known
+main::Defaults.__init__@266:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_binary_alias@25:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_binary_operand_alias@34:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_reflected_alias@42:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_unary_alias@49:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@56:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.__add__@15:4: covered (storage: no_proof_required)
+main::Acc.__radd__@18:4: covered (storage: no_proof_required)
+main::Acc.__neg__@21:4: covered (storage: no_proof_required)
+main::Acc.__init__@12:4: covered (storage: no_proof_required), summary: known

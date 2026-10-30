@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@38:0: uncovered (unsupported parameter type)
+main::main@43:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Counter.total@21:4: uncovered (unsupported parameter type)
+main::Counter.bump@28:4: covered (storage: no_proof_required)
+main::Counter.width@31:4: uncovered (stub declares no contract)
+main::Counter.__init__@18:4: covered (storage: no_proof_required), summary: known

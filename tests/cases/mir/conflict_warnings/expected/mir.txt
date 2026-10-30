@@ -1,0 +1,56 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@36:0: covered (storage: no_proof_required), summary: known
+main::mk_a@40:0: covered (storage: no_proof_required), summary: known
+main::first@44:0: covered (storage: no_proof_required), summary: known
+main::local_buf@49:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::local_buf_named@58:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::kept@93:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::block_view@101:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+main::block_view_outer@110:0: covered (storage: no_proof_required), summary: known
+main::temp_view@119:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+main::temp_view_bound@125:0: covered (storage: no_proof_required), summary: known
+main::fill@132:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::fill_static@138:0: covered (storage: no_proof_required), summary: known
+main::reassigned@151:0: covered (storage: no_proof_required), conflicts: return_escape, summary: opaque (view result origin outside the parameters)
+main::kept_view@157:0: covered (storage: no_proof_required), summary: known
+main::error_body@190:0: uncovered (error-return body)
+main::try_body@200:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@212:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::r_held@226:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::r_lit@235:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::s_held@244:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::two_returns@253:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::returned_maybe@263:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
+main::returned@272:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+main::record_view@312:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::record_list@320:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::record_list_object@328:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::record_field@337:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::items_of@345:0: covered (storage: no_proof_required), summary: known
+main::lent_list_object@350:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::record_alias@358:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::fail@365:0: covered (storage: no_proof_required), summary: known
+main::after_raise@372:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::overwritten@381:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::restore@390:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::other_element@399:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::through_param@407:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+main::dict_insert@413:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::main@422:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tok.adopt@14:4: covered (storage: no_proof_required), summary: known
+main::Bag.grow@74:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::Bag.grow_copy@83:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::Holder.view@168:4: covered (storage: no_proof_required), summary: known
+main::Holder.view@173:4: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::Holder.twin@179:4: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Holder.twin@179:4#2: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Tok.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@70:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@146:4: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+main::Holder.__init__@164:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@283:4: covered (storage: no_proof_required), summary: known
+main::NamedLine.__init__@291:4: covered (storage: no_proof_required), summary: known
+main::Points.__init__@299:4: covered (storage: no_proof_required), summary: known
+main::Frame.__init__@307:4: covered (storage: no_proof_required), summary: known

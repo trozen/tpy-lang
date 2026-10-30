@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::wide@11:0: covered (storage: no_proof_required), summary: known
+main::take@16:0: uncovered (no body to lower)
+main::take@21:0: uncovered (no body to lower)
+main::take_pos@26:0: uncovered (no body to lower)
+main::take_pos@31:0: uncovered (no body to lower)
+main::main@63:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::T.take@40:4: uncovered (no body to lower)
+main::T.take@44:4: uncovered (no body to lower)
+main::Table.__getitem__@55:4: uncovered (no body to lower)
+main::Table.__getitem__@59:4: uncovered (no body to lower)
+main::T.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Table.__init__@51:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@22:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Source.values@12:4: uncovered (non-local name)

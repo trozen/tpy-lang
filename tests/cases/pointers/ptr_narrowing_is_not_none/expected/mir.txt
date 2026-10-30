@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_ptr@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::test_if_not_none@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_is_none_early_return@23:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_assert@29:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_while@34:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_while_reassign@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_readonly_ptr@48:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_merge_no_guarantee@54:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@59:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.sum@10:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

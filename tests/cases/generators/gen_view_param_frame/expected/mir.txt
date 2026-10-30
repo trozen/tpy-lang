@@ -1,0 +1,42 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_scalars@28:0: uncovered (by-value capture of a borrowed parameter)
+main::bump_records@37:0: uncovered (by-value capture of a borrowed parameter)
+main::read_ro_elems@60:0: uncovered (by-value capture of a borrowed parameter)
+main::read_ro_span@67:0: uncovered (by-value capture of a borrowed parameter)
+main::read_pair@74:0: uncovered (by-value capture of a borrowed parameter)
+main::make_str@79:0: covered (storage: no_proof_required), summary: known
+main::make_bytes@84:0: covered (storage: no_proof_required), summary: known
+main::head_tail@90:0: uncovered (by-value capture of a borrowed parameter)
+main::byte_ends@95:0: uncovered (by-value capture of a borrowed parameter)
+main::async_head@111:0: uncovered (async body)
+main::run_head@116:0: uncovered (async body)
+main::count_view@120:0: uncovered (unsupported parameter type)
+main::total@127:0: uncovered (unsupported parameter type)
+main::view_lens@136:0: uncovered (by-value capture of a borrowed parameter)
+main::bump_async@142:0: uncovered (async body)
+main::run_bump@166:0: uncovered (async body)
+main::ends@177:0: covered (storage: no_facts: storage facts have not been published)
+main::outer_for@200:0: uncovered (argument held across a suspension)
+main::outer_span@207:0: uncovered (argument held across a suspension)
+main::outer_comp@215:0: uncovered (argument held across a suspension)
+main::outer_comp_method@227:0: uncovered (argument held across a suspension)
+main::outer_fstring@234:0: uncovered (argument held across a suspension)
+main::outer_bind@261:0: uncovered (async body)
+main::outer_task@269:0: uncovered (async body)
+main::outer_loop_for@286:0: uncovered (argument held across a suspension)
+main::outer_loop_bind@295:0: uncovered (async body)
+main::outer_async_recv@316:0: uncovered (async body)
+main::outer_task_recv@327:0: uncovered (async body)
+main::main@333:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Scaler.scale@50:4: uncovered (by-value capture of a borrowed parameter)
+main::Tagger.tag@106:4: uncovered (by-value capture of a borrowed parameter)
+main::Adder.add@156:4: uncovered (async body)
+main::Summer.pair@188:4: covered (storage: no_facts: storage facts have not been published)
+main::Outer.run@247:4: uncovered (argument held across a suspension)
+main::Outer.run_recv@254:4: uncovered (argument held across a suspension)
+main::P.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Scaler.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Tagger.__init__@103:4: covered (storage: no_proof_required), summary: known
+main::Adder.__init__@153:4: covered (storage: no_proof_required), summary: known
+main::Summer.__init__@185:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@244:4: covered (storage: no_proof_required), summary: known

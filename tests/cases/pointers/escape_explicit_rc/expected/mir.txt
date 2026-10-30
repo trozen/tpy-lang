@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::rc_is_shared@22:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::rc_outlives_the_loop@33:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::Point.__init__@18:4: covered (storage: no_proof_required), summary: known

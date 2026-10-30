@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::Finder.find_last@15:4: certified, summary: known
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Finder.__init__@12:4: covered (storage: no_proof_required), summary: known

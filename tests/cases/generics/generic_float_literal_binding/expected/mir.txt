@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_of@9:0: uncovered (generic body)
+main::ident@13:0: uncovered (generic body)
+main::pair_first@17:0: uncovered (generic body)
+main::apply@21:0: uncovered (generic body)
+main::swap@25:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::triple@29:0: covered (storage: no_proof_required), summary: known
+main::gen@59:0: uncovered (unsupported metadata: template_args_cpp)
+main::co@65:0: uncovered (async body)
+main::main@71:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::above@172:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
+main::C.pick@39:4: uncovered (generic body)
+main::C.body@42:4: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Bag.add@53:4: uncovered (generic body)
+main::C.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@50:4: uncovered (generic constructor)

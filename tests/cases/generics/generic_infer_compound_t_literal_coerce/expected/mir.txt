@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::push_t@12:0: uncovered (generic body)
+main::put_dict@16:0: uncovered (generic body)
+main::add_to_set@20:0: uncovered (generic body)
+main::take_any@24:0: uncovered (generic body)
+main::pair_any@28:0: uncovered (generic body)
+main::main@32:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

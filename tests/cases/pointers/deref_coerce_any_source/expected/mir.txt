@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@35:0: covered (storage: no_proof_required), summary: known
+main::ret_field@40:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::ret_call@44:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::ret_elem@48:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::arg_sources@53:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::ptr_with@60:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::arg_temp@65:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::decl_field@71:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::reseat_field@77:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@84:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::M.get@21:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::M.ro@24:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::M.P@28:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::M.P@28:4#2: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::M.ptr@31:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::M.__init__@18:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::basic@19:0: covered (storage: no_proof_required), summary: known
+main::negate@25:0: covered (storage: no_proof_required), summary: known
+main::and_rhs@31:0: covered (storage: no_proof_required), summary: known
+main::or_lhs@37:0: covered (storage: no_proof_required), summary: known
+main::single_member_tuple@43:0: covered (storage: no_proof_required), summary: known
+main::match_guard@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@58:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@15:4: covered (storage: no_proof_required), summary: known

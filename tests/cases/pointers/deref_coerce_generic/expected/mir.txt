@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_point@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Box.__deref__@15:4: uncovered (generic body)
+main::Box.__deref__@15:4#2: uncovered (generic body)
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@12:4: uncovered (generic constructor)

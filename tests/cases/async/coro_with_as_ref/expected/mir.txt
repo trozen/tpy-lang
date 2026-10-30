@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@30:0: uncovered (async body)
+main::driver@38:0: uncovered (async body)
+main::CM.__enter__@23:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::CM.__exit__@26:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Item.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::CM.__init__@20:4: covered (storage: no_proof_required), summary: known

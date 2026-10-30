@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::throw_value_error@5:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::throw_my_error@8:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@11:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

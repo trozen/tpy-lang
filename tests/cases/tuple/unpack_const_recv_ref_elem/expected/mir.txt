@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_only@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mutating@37:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::field_read@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@51:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.total@25:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

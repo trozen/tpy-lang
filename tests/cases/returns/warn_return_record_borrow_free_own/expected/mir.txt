@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@17:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::take@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::take_copy@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Payload.__init__@13:4: covered (storage: no_proof_required), summary: known

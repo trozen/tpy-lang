@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_pair@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@24:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::use@30:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::main@36:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

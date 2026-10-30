@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.__call__@8:4: covered (storage: no_proof_required), summary: known
+main::Accumulator.__call__@16:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Accumulator.__init__@14:4: covered (storage: no_proof_required), summary: known

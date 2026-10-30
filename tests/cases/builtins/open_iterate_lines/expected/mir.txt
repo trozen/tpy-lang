@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::stripped@25:0: uncovered (loop across a suspension)
+main::total_length@33:0: uncovered (async body)
+main::count_lines@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::<genexpr>@81:29: uncovered (generator expression)
+main::<genexpr>@96:25: uncovered (generator expression)
+main::Log.count@16:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Log.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::fill@74:0: covered (storage: no_proof_required), summary: known
+main::mk@78:0: covered (storage: no_proof_required), summary: known
+main::main@82:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Rec.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::ListTaker.__init__@37:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::DictTaker.__init__@45:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::SetTaker.__init__@53:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::RecListTaker.__init__@61:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::BufTaker.__init__@69:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

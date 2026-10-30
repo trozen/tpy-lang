@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@30:0: uncovered (unsupported hoisted value)
+main::main@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Animal.name@14:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@25:4: covered (storage: no_proof_required), summary: known

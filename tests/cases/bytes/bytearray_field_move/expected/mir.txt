@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Buf.reset@27:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Buf.retag@31:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
+main::Buf.rebox@35:4: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Buf.__init__@22:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

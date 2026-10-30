@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@51:0: covered (storage: no_proof_required), summary: known
+main::takes_str@55:0: covered (storage: no_proof_required), summary: known
+main::main@76:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::H.data@39:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.data@39:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.head@43:4: covered (storage: no_proof_required), summary: known
+main::H.rec@47:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.rec@47:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::Sink.count_chars@65:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@62:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@72:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

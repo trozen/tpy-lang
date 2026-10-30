@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_s@10:0: uncovered (no body to lower)
+main::main@21:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::M.read@16:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::M.write@18:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::M.__init__@14:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+native_stub::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)

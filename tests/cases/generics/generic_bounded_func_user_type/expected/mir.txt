@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_length@15:0: uncovered (generic body)
+main::main@20:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::MyContainer.__len__@12:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::MyContainer.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,9 @@
+a::__tpy_init: uncovered (module initialization)
+a::aa@4:0: covered (storage: no_proof_required), summary: known
+a::call_b@7:0: covered (storage: no_proof_required), summary: known
+b::__tpy_init: uncovered (module initialization)
+b::bb@4:0: covered (storage: no_proof_required), summary: known
+c::__tpy_init: uncovered (module initialization)
+c::cc@4:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

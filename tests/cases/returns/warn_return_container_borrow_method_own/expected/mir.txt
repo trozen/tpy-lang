@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@21:0: covered (storage: no_proof_required), summary: known
+main::take_copy@27:0: covered (storage: no_proof_required), summary: known
+main::main@31:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Holder.borrow@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@14:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+store::__tpy_init: uncovered (module initialization)
+store::Env.__getitem__@13:4: covered (storage: no_proof_required), summary: known
+store::Env.__setitem__@16:4: covered (storage: no_proof_required), summary: known
+store::Env.__delitem__@19:4: covered (storage: no_proof_required), summary: known
+store::Env.__iter__@22:4: uncovered (unsupported return type)
+store::Env.__init__@10:4: covered (storage: no_proof_required), summary: known

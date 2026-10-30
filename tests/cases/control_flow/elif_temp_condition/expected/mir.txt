@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::has_items@5:0: covered (storage: no_proof_required), summary: known
+main::test@8:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::MyList.__getitem__@13:4: uncovered (no body to lower)
+main::MyList.__getitem__@16:4: uncovered (no body to lower)
+main::MyList.__getitem__@18:4: uncovered (overloaded callable)
+main::MyList.__init__@9:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

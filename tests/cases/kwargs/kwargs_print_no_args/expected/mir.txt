@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_position@23:0: uncovered (unsupported metadata: end_expr), summary: opaque (unsupported metadata: end_expr)
+main::gen@37:0: covered (storage: no_facts: storage facts have not been published)
+main::coro@45:0: uncovered (async body)
+main::try_position@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@61:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Emitter.emit@16:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Emitter.__init__@12:4: covered (storage: no_proof_required), summary: known

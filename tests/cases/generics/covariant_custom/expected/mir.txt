@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@45:0: uncovered (unsupported parameter type)
+main::make_tagged@48:0: uncovered (unsupported return type)
+main::main@51:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Dog.name@15:4: covered (storage: no_proof_required)
+main::Cat.name@22:4: covered (storage: no_proof_required)
+main::Tagged.get@36:4: uncovered (generic body)
+main::Tagged.tag@38:4: uncovered (generic body)
+main::Tagged.__del__@40:4: uncovered (generic body)
+main::Dog.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Tagged.__init__@31:4: uncovered (generic constructor)

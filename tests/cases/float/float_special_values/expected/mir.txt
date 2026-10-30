@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_shadow@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

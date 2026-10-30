@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_reassign_renarrows@4:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)
+main::test_truthiness_short_circuit@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_is_not_none_short_circuit@15:0: covered (storage: no_proof_required), summary: known

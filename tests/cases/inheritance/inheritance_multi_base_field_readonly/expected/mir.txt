@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Combined.total_int_len@20:4: uncovered (storage borrow needs record field), summary: opaque (storage borrow needs record field)
+main::Combined.first_str@25:4: uncovered (storage borrow needs record field), summary: opaque (storage borrow needs record field)
+main::Combined.__init__@15:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

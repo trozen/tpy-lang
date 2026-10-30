@@ -1,0 +1,49 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@21:0: uncovered (no body to lower)
+main::pick@26:0: uncovered (no body to lower)
+main::pick@31:0: uncovered (no body to lower)
+main::literal_section@35:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::g@46:0: uncovered (no body to lower)
+main::g@51:0: uncovered (no body to lower)
+main::mixed_section@55:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::describe@69:0: uncovered (no body to lower)
+main::describe@74:0: uncovered (no body to lower)
+main::describe__Dog@78:0: covered (storage: no_proof_required), summary: known
+main::tag@91:0: uncovered (no body to lower)
+main::tag@96:0: uncovered (no body to lower)
+main::name_clash_section@100:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::cross_module_section@111:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::label@125:0: uncovered (no body to lower)
+main::label@130:0: uncovered (no body to lower)
+main::apply@134:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::reference_section@138:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::kind@144:0: uncovered (no body to lower)
+main::kind@146:0: uncovered (no body to lower)
+main::kind@147:0: uncovered (overloaded callable)
+main::kind__int@155:0: covered (storage: no_proof_required), summary: known
+main::typing_overload_section@159:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::flag@170:0: uncovered (no body to lower)
+main::flag@175:0: uncovered (no body to lower)
+main::guard_section@179:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::wrap@187:0: uncovered (no body to lower)
+main::wrap@192:0: uncovered (no body to lower)
+main::shape_section@196:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::head@212:0: uncovered (no body to lower)
+main::head@217:0: uncovered (no body to lower)
+main::head_section@221:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::peek@240:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::kept_section@244:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@251:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Shelf.first@236:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Shelf.first@236:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Dog.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@64:4: covered (storage: no_proof_required), summary: known
+main::tag__Dog.__init__@86:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@232:4: covered (storage: no_proof_required), summary: known
+variant_lib::__tpy_init: uncovered (module initialization)
+variant_lib::grow@12:0: uncovered (no body to lower)
+variant_lib::grow@18:0: uncovered (no body to lower)
+variant_lib::mode_bits@24:0: uncovered (no body to lower)
+variant_lib::mode_bits@26:0: uncovered (no body to lower)
+variant_lib::mode_bits@27:0: uncovered (overloaded callable)
+variant_lib::Box.__init__@7:4: covered (storage: no_proof_required), summary: known

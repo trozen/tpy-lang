@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::label@50:0: covered (storage: no_proof_required), summary: known
+main::chain_call_subject@54:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guarded_call_subject@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::switch_call_subject@74:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::str_switch_call_subject@84:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_wildcard_switch@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::or_wildcard_chain@115:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::as_capture@124:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::optional_inner_as_capture@132:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::str_switch_as_capture@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::poly_as_capture@167:0: uncovered (unsupported parameter type)
+main::main@180:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.bump@18:4: covered (storage: no_proof_required), summary: known
+main::Dog.bump@34:4: covered (storage: no_proof_required)
+main::Cat.bump@45:4: covered (storage: no_proof_required)
+main::Counter.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@42:4: covered (storage: no_proof_required), summary: known

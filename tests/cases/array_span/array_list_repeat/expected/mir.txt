@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_basic@4:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_nonzero@9:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_multi_element@13:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

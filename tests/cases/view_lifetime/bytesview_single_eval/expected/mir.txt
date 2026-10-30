@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@8:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::single_eval_into_list@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::single_eval_into_field@35:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::single_eval_into_bytearray@43:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::single_eval_into_any@50:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.set_bytes@22:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::Holder.set_str@25:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::Holder.__init__@18:4: covered (storage: no_proof_required), summary: known

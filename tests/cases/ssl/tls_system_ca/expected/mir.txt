@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::write_fixtures@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::drive@50:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::try_verify@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@96:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

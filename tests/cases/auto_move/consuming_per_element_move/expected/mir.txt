@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (unsupported metadata: consuming), summary: opaque (unsupported metadata: consuming)
+main::Item.__init__@9:4: covered (storage: no_proof_required), summary: known

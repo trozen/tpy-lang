@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::<genexpr>@21:13: uncovered (generator expression)
+main::<genexpr>@23:13: uncovered (generator expression)
+main::<genexpr>@24:13: uncovered (generator expression)
+main::<genexpr>@28:13: uncovered (generator expression)
+main::<genexpr>@33:13: uncovered (generator expression)
+main::<genexpr>@34:13: uncovered (generator expression)
+main::P.bump@13:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@10:4: covered (storage: no_proof_required), summary: known

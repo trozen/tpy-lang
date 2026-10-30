@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_set_with_literals@12:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::test_dict_with_literals@21:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::test_dict_with_bytes_keys@32:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

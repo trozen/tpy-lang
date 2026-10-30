@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::gen@15:0: uncovered (loop across a suspension)
+main::drop@20:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

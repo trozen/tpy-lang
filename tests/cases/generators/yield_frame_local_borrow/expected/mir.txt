@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::counter@7:0: uncovered (reference yield)
+main::mutate_observe@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::walk@26:0: uncovered (reference yield)
+main::walk_prune@37:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::no_later_read@50:0: uncovered (reference yield)
+main::read_once@56:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@61:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

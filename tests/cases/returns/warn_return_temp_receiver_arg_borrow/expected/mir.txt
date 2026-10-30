@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::take_copy@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Picker.pick@22:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Row.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Picker.__init__@19:4: covered (storage: no_proof_required), summary: known

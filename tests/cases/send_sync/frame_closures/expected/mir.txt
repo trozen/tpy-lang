@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::free_fn@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

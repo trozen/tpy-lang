@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse_bad@6:0: uncovered (error-return body)
+main::main@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

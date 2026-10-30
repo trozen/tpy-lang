@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::greet_dog@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::greet_cat@15:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@18:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Dog.__init__@4:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@9:4: covered (storage: no_proof_required), summary: known

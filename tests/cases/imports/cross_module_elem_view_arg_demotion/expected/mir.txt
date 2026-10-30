@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_local@15:0: covered (storage: no_proof_required), summary: known
+main::touch_local@19:0: covered (storage: no_proof_required), summary: known
+main::peek_local@23:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::sec_imported_write@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_imported_nowrite@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_imported_readonly@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sec_local_write@47:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_local_nowrite@53:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_local_readonly@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sec_gen@72:0: uncovered (unsupported hoisted value)
+main::sec_alias_bind@80:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_field@88:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@93:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Runner.run@65:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+viewmod::__tpy_init: uncovered (module initialization)
+viewmod::bump@11:0: covered (storage: no_proof_required), summary: known
+viewmod::touch@15:0: covered (storage: no_proof_required), summary: known
+viewmod::peek@19:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+viewmod::peek_rec@23:0: covered (storage: no_proof_required), summary: known
+viewmod::Outer.__init__@7:4: covered (storage: no_proof_required), summary: known

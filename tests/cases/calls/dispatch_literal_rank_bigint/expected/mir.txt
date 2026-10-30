@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::m@7:0: uncovered (no body to lower)
+main::m@12:0: uncovered (no body to lower)
+main::w@17:0: uncovered (no body to lower)
+main::w@22:0: uncovered (no body to lower)
+main::fw@27:0: uncovered (no body to lower)
+main::fw@32:0: uncovered (no body to lower)
+main::take@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::tick@40:0: covered (storage: no_proof_required), summary: known
+main::main@75:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::V.narrow@50:4: uncovered (no body to lower)
+main::V.narrow@54:4: uncovered (no body to lower)
+main::V.f@58:4: uncovered (no body to lower)
+main::V.f@63:4: uncovered (no body to lower)
+main::V.k@67:4: uncovered (no body to lower)
+main::V.k@71:4: uncovered (no body to lower)
+main::V.__init__@46:4: covered (storage: no_proof_required), summary: known

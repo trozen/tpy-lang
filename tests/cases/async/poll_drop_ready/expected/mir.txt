@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_ready@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::drop_path@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::consume_path@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Probe.__del__@16:4: uncovered (unsupported owned-leaf expression)
+main::Probe.__init__@12:4: uncovered (custom record special member), summary: opaque (custom record special member)

@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::test_nocopy_hash@42:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::test_hash_delegation@76:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Key.__hash__@36:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Key.__eq__@39:4: covered (storage: no_proof_required)
+main::Point.__hash__@55:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Point.__eq__@58:4: covered (storage: no_proof_required)
+main::Edge.__hash__@70:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Edge.__eq__@73:4: uncovered (unsupported metadata: template_override)
+main::Key.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@51:4: covered (storage: no_proof_required), summary: known
+main::Edge.__init__@66:4: covered (storage: no_proof_required), summary: known

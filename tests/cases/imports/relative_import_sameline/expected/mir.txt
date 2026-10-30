@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.amod::__tpy_init: uncovered (module initialization)
+pkg.bmod::__tpy_init: uncovered (module initialization)
+pkg.consumer::__tpy_init: uncovered (module initialization)

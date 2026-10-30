@@ -1,0 +1,33 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@25:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::boom@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::check@40:0: uncovered (error-return body)
+main::handler_raise_finally@81:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::outer_handler_reads@94:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::swallowed_raise@108:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::swallowed_call@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_handler_raise_finally@127:0: uncovered (unsupported hoisted value)
+main::async_handler_raise_finally@142:0: uncovered (async body)
+main::error_return_finally@158:0: uncovered (error-return body)
+main::loop_handler_finally@170:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::if_with_swallow@183:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::plain_with@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::handler_return_finally@202:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_target_handler@214:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::finally_consumes_return@226:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm_last_use@235:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::return_or_consume_finally@247:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::handler_last_use@259:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_body_last_use@269:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@279:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Plain.__enter__@50:4: covered (storage: no_proof_required), summary: known
+main::Plain.__exit__@53:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Swallow.__enter__@61:4: covered (storage: no_proof_required), summary: known
+main::Swallow.__exit__@64:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Res.__enter__@74:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Res.__exit__@77:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@18:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Plain.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Swallow.__init__@58:4: covered (storage: no_proof_required), summary: known
+main::Res.__init__@71:4: covered (storage: no_proof_required), summary: known

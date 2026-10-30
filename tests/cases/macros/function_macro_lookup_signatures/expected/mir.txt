@@ -1,0 +1,8 @@
+helpermod::__tpy_init: uncovered (module initialization)
+helpermod::paint@11:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::__tpy_init: uncovered (module initialization)
+main::local_sink@14:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::amb@19:0: uncovered (no body to lower)
+main::amb@24:0: uncovered (no body to lower)
+main::run@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@5:0: uncovered (unsupported parameter type)
+main::get_value@11:0: uncovered (unsupported parameter type)
+main::main@18:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@7:0: covered (storage: no_proof_required), summary: known
+main::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+shapes::__tpy_init: uncovered (module initialization)
+shapes::Circle.__init__@8:4: covered (storage: no_proof_required), summary: known
+shapes::Rect.__init__@15:4: covered (storage: no_proof_required), summary: known

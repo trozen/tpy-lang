@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::native_bump@14:0: uncovered (no body to lower)
+main::native_bumped@18:0: uncovered (no body to lower)
+main::ns@21:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::loop@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::comp@32:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

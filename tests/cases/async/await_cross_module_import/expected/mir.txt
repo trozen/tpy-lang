@@ -1,0 +1,6 @@
+asyncmod::__tpy_init: uncovered (module initialization)
+asyncmod::ping@4:0: uncovered (async body)
+asyncmod::add@8:0: uncovered (async body)
+main::__tpy_init: uncovered (module initialization)
+main::local_double@10:0: uncovered (async body)
+main::amain@14:0: uncovered (async body)

@@ -1,0 +1,6 @@
+explib::__tpy_init: uncovered (module initialization)
+explib::one@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+explib::two@9:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+explib::_private@13:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::__tpy_init: uncovered (module initialization)
+main::main@6:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

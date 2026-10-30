@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_element_borrow_append@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_element_borrow_subscript_assign@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_alias_no_warn@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_value_type_no_borrow@32:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_reassign_clears_borrows@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_reassign_borrower_clears@47:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_element_borrow_del@55:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_field_borrow_write@62:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

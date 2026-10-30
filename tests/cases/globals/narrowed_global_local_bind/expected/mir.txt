@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::clear@9:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)
+main::enable@14:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)
+main::local_bind@19:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::shadowed@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

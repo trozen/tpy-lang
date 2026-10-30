@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::is_dog_or_cat@21:0: uncovered (generic body)
+main::main@24:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Animal.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Puppy.__init__@18:4: covered (storage: no_proof_required), summary: known

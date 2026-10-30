@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::swap@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Vec2.__init__@9:4: uncovered (missing record layout)
+main::Pair.__init__@18:4: uncovered (generic constructor)

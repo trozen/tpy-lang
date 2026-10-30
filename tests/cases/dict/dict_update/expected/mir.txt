@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)

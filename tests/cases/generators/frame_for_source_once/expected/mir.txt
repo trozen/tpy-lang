@@ -1,0 +1,76 @@
+main::__tpy_init: uncovered (module initialization)
+main::churn@132:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::make_cells@139:0: covered (storage: no_proof_required), summary: known
+main::gen_cells@143:0: uncovered (reference yield)
+main::named_src@148:0: uncovered (loop across a suspension)
+main::param_src@157:0: uncovered (loop across a suspension)
+main::subscript_src@164:0: uncovered (unsupported native container element)
+main::accessor_src@171:0: uncovered (loop across a suspension)
+main::property_src@178:0: uncovered (loop across a suspension)
+main::own_call_src@185:0: uncovered (loop across a suspension)
+main::copy_src@192:0: uncovered (loop across a suspension)
+main::literal_src@200:0: uncovered (loop across a suspension)
+main::slice_mut_src@207:0: uncovered (loop across a suspension)
+main::slice_const_src@216:0: uncovered (loop across a suspension)
+main::ternary_lvalues_src@223:0: uncovered (loop across a suspension)
+main::ternary_temps_src@233:0: uncovered (loop across a suspension)
+main::walrus_src@240:0: uncovered (loop across a suspension)
+main::str_temp_src@250:0: uncovered (loop across a suspension)
+main::gen_call_src@256:0: uncovered (loop across a suspension)
+main::async_accessor@263:0: uncovered (async body)
+main::async_slice@273:0: uncovered (async body)
+main::gx_named@282:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::gx_own_call@288:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::gx_accessor@293:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::zip_names_src@298:0: uncovered (loop across a suspension)
+main::enumerate_cells_src@305:0: uncovered (loop across a suspension)
+main::reversed_temp_src@316:0: uncovered (argument held across a suspension)
+main::genexpr_src@324:0: uncovered (loop across a suspension)
+main::genexpr_capture_src@331:0: uncovered (loop across a suspension)
+main::readonly_view_src@337:0: uncovered (unsupported native container element)
+main::const_method_src@344:0: uncovered (loop across a suspension)
+main::ternary_params_src@351:0: uncovered (loop across a suspension)
+main::doubled@360:0: uncovered (unsupported parameter type)
+main::delegate_proto_src@366:0: uncovered (loop across a suspension)
+main::iter_object_src@374:0: uncovered (loop across a suspension)
+main::nested_src@382:0: uncovered (unsupported native container element)
+main::take@391:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::arg_temp_src@395:0: uncovered (loop across a suspension)
+main::nested_combinator_src@403:0: uncovered (loop across a suspension)
+main::combinator_temp_src@411:0: uncovered (argument held across a suspension)
+main::str_literal_src@419:0: uncovered (loop across a suspension)
+main::pairs_of@426:0: uncovered (reference yield)
+main::next_unpack_src@433:0: uncovered (loop across a suspension)
+main::shared_var_src@441:0: uncovered (loop across a suspension)
+main::own_param_iter_src@453:0: uncovered (loop across a suspension)
+main::async_combinator_temp@462:0: uncovered (async body)
+main::async_zip@471:0: uncovered (async body)
+main::async_genexpr@480:0: uncovered (async body)
+main::drain@489:0: uncovered (unsupported parameter type)
+main::main@494:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::<genexpr>@285:14: uncovered (generator expression)
+main::<genexpr>@290:14: uncovered (generator expression)
+main::<genexpr>@295:14: uncovered (generator expression)
+main::<genexpr>@326:13: uncovered (generator expression)
+main::<genexpr>@333:13: uncovered (generator expression)
+main::<genexpr>@483:13: uncovered (generator expression)
+main::Bag.items@35:4: covered (storage: no_proof_required), summary: known
+main::Bag.view@42:4: covered (storage: no_proof_required), summary: known
+main::Bag.view@42:4#2: covered (storage: no_proof_required), summary: known
+main::Bag.walk@45:4: uncovered (loop across a suspension)
+main::Bag.items_m@52:4: covered (storage: no_proof_required), summary: known
+main::Bag.items_m@52:4#2: covered (storage: no_proof_required), summary: known
+main::Bag.pairs@55:4: uncovered (loop across a suspension)
+main::Counter.__iter__@74:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.__next__@77:4: uncovered (error-return body)
+main::Holder.get@92:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cur.__iter__@103:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cur.__next__@106:4: uncovered (error-return body)
+main::Deleg.__iter__@121:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cell.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@70:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@88:4: covered (storage: no_proof_required), summary: known
+main::Cur.__init__@100:4: covered (storage: no_proof_required), summary: known
+main::Deleg.__init__@116:4: covered (storage: no_proof_required), summary: known
+main::Row.__init__@128:4: covered (storage: no_proof_required), summary: known

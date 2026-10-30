@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@37:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::B.rec@30:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.rec@30:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.rec_m@33:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rec.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@26:4: covered (storage: no_proof_required), summary: known

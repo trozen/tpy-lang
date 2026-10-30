@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::write_uni@32:0: covered (storage: no_proof_required), summary: known
+main::read_uni@38:0: covered (storage: no_proof_required), summary: known
+main::scalar_uni@45:0: covered (storage: no_proof_required), summary: known
+main::tup_scalar@52:0: covered (storage: no_proof_required), summary: known
+main::write_tup@57:0: covered (storage: no_proof_required), summary: known
+main::mixed@62:0: covered (storage: no_proof_required), summary: known
+main::pass_uni@67:0: covered (storage: no_proof_required), summary: known
+main::pass_tup@74:0: covered (storage: no_proof_required), summary: known
+main::scal@81:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::tup@86:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::uni@91:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::wuni@99:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::alias_scal@106:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::alias_tup@111:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::alias_named_tup@116:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+main::alias_uni@122:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: known
+main::alias_written_member@128:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::two@133:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::alias_two@140:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::heldscalar@145:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::heldunion@151:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::heldtuple@160:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::same_scalar@169:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::same_union@174:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::same_tuple@179:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::apart_scal@184:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_tup@188:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_named_tup@192:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: alias_obligation, summary: known
+main::apart_uni@197:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_written_member@201:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_two@207:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_two_local@212:0: covered (storage: no_proof_required), summary: known
+main::apart_scalar_twin@218:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_union@222:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::apart_tuple_twin@226:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::fixed_uni@231:0: certified, summary: known
+main::fixed_union@238:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::fixed_tuple@244:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::tup1@250:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::alias_one@256:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+main::main@261:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::P.bump@11:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Q.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@26:4: covered (storage: no_proof_required), summary: known

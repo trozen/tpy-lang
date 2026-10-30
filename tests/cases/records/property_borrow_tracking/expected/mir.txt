@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_borrow_via_property@18:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_iter_via_property@24:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_setter_invalidates_borrow@31:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_value_type_no_warn@37:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Container.items@11:4: covered (storage: no_proof_required), summary: known
+main::Container.items@11:4#2: covered (storage: no_proof_required), summary: known
+main::Container.items@15:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@7:4: covered (storage: no_proof_required), summary: known

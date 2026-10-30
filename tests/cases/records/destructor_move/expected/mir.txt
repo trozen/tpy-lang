@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@12:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tracker.__del__@9:4: uncovered (missing receiver fact)
+main::Tracker.__init__@7:4: uncovered (custom record special member), summary: opaque (custom record special member)

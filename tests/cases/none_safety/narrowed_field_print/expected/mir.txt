@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::show_guarded@17:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::show_truthy@35:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Config.__init__@10:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

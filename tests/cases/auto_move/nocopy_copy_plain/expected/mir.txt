@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Counter.__copy__@12:4: uncovered (custom record special member)
+main::Counter.__init__@9:4: uncovered (custom record special member), summary: opaque (custom record special member)

@@ -478,3 +478,4 @@ def test_error_case_that_compiles_fails_at_once_in_update_mode(tmp_path,
     assert "compiled successfully" in str(info.value)
     assert (case_dir / "expected" / "diag.txt").exists()
     assert not (case_dir / "expected" / "src").exists()
+    assert not (case_dir / "expected" / "mir.txt").exists()

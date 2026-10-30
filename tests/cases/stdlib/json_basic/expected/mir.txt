@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::roundtrip@7:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@12:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

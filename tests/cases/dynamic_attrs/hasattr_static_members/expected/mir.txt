@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.doubled@13:4: covered (storage: no_proof_required), summary: known
+main::Box.label@16:4: covered (storage: no_proof_required), summary: known
+main::Box.__getattr__@19:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@9:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

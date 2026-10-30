@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@45:0: covered (storage: no_proof_required), summary: known
+main::bump_counter@52:0: covered (storage: no_proof_required), summary: known
+main::describe@57:0: covered (storage: no_proof_required), summary: known
+main::via_param@65:0: covered (storage: no_proof_required), summary: known
+main::main@70:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.bump_via_union@26:4: covered (storage: no_proof_required), summary: known
+main::Pair.bump_picked@38:4: certified, summary: known
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@34:4: covered (storage: no_proof_required), summary: known

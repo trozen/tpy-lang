@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::strview_pinned_alias_warns@8:0: uncovered (conversion aliases its source), summary: opaque (conversion aliases its source)
+main::bytesview_pinned_alias_warns@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::view_rebind_clears_pinned_alias@26:0: uncovered (conversion aliases its source), summary: opaque (conversion aliases its source)
+main::multiple_pinned_views_per_source@37:0: uncovered (conversion aliases its source), summary: opaque (conversion aliases its source)

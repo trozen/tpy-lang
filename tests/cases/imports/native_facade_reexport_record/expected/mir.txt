@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@9:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+pkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+pkg.types::__tpy_init: uncovered (module initialization)
+pkg.types::Counter.__init__@7:4: covered (storage: no_proof_required), summary: known

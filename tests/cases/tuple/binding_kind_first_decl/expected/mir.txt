@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::self_rebind_owned@38:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::self_rebind_borrowed@49:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::own_param_lift@63:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_pair@75:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::storage_alias@81:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::pick@90:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rebound_call_source@94:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::elem_cast@106:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::elem_typed_dict@113:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::elem_enum_value@123:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::elem_call_macro@130:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::elem_asdict@138:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::branch_first_self_rebind@162:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::loop_self_rebind@173:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::main@182:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::D.__eq__: covered (storage: no_proof_required)
+main::D.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::K.method_self_rebind@152:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::D.__init__: covered (storage: no_proof_required), summary: known
+main::H.__init__@34:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::K.__init__@149:4: covered (storage: no_proof_required), summary: known

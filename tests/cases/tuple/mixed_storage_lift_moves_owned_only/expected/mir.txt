@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::field_local@40:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::field_borrow@60:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::main@65:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Sink.put@53:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Ctor.__init__@33:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Sink.__init__@50:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

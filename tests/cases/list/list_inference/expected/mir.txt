@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_no_mutation@10:0: covered (storage: no_proof_required), summary: known
+main::test_mutation@15:0: covered (storage: no_proof_required), summary: known
+main::takes_list@21:0: covered (storage: no_proof_required), summary: known
+main::test_list_param@24:0: covered (storage: no_proof_required), summary: known
+main::takes_span@29:0: covered (storage: no_proof_required), summary: known
+main::test_span_param@32:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)

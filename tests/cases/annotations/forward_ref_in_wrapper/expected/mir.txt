@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@20:0: uncovered (unsupported native container element), summary: opaque (recursive or recursion-dependent call)
+main::main@27:0: uncovered (unsupported record fields), summary: opaque (recursive or recursion-dependent call)
+main::Tree.__init__@14:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

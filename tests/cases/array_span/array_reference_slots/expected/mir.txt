@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::fresh@31:0: covered (storage: no_proof_required), summary: known
+main::first_or_none@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@41:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Grid.same_cells@20:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Grid.spare_total@23:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Grid.__init__@16:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

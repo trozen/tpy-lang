@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Bag.__getattr__@13:4: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::Bag.__init__@10:4: covered (storage: no_proof_required), summary: known

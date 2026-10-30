@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::inferred@23:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::explicit@29:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::plain@34:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::main@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.__init__@12:4: uncovered (generic constructor)
+main::D.__init__@18:4: uncovered (unmodeled record), summary: opaque (unmodeled record)

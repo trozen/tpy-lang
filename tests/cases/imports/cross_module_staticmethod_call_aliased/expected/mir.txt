@@ -1,0 +1,5 @@
+factory::__tpy_init: uncovered (module initialization)
+factory::Counter.make@11:4: covered (storage: no_proof_required)
+factory::Counter.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

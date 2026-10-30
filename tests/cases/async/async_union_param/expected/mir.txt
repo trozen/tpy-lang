@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@19:0: uncovered (async body)
+main::main@26:0: uncovered (async body)
+main::Dog.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@15:4: covered (storage: no_proof_required), summary: known

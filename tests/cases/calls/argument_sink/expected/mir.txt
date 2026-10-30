@@ -1,0 +1,171 @@
+main::__tpy_init: uncovered (module initialization)
+main::mkh@25:0: covered (storage: no_proof_required), summary: known
+main::ref@29:0: covered (storage: no_proof_required), summary: known
+main::two@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bump@38:0: covered (storage: no_proof_required), summary: known
+main::os_@43:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::ns@47:0: covered (storage: no_proof_required), summary: known
+main::eats@51:0: covered (storage: no_proof_required), summary: known
+main::mkstr@55:0: covered (storage: no_proof_required), summary: known
+main::poke@105:0: uncovered (generic body)
+main::view_set_add@130:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::maybe_make@153:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::put@159:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take@163:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::narrowed@167:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::g@195:0: uncovered (no body to lower)
+main::g@200:0: uncovered (no body to lower)
+main::eat@220:0: covered (storage: no_proof_required), summary: known
+main::feed@224:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::eat_a@262:0: covered (storage: no_proof_required), summary: known
+main::mk_list@291:0: covered (storage: no_proof_required), summary: known
+main::keep@329:0: covered (storage: no_proof_required), summary: known
+main::eat_strs@351:0: covered (storage: no_proof_required), summary: known
+main::grow@355:0: covered (storage: no_proof_required), summary: known
+main::mk_gh@381:0: covered (storage: no_proof_required), summary: known
+main::take_dict@385:0: uncovered (generic body)
+main::tot3@391:0: uncovered (no body to lower)
+main::tot3@396:0: uncovered (no body to lower)
+main::first_byte@400:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_own_a@411:0: covered (storage: no_proof_required), summary: known
+main::use_union@416:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::reference_args@430:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::poke_gen@546:0: uncovered (generic body)
+main::inc_pod@552:0: covered (storage: no_proof_required), summary: known
+main::more_reference_args@556:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::tick@593:0: covered (storage: no_proof_required), summary: known
+main::mk_rk@598:0: covered (storage: no_proof_required), summary: known
+main::receiver_order@602:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::opt_bump@612:0: covered (storage: no_proof_required), summary: known
+main::uni_bump@619:0: covered (storage: no_proof_required), summary: known
+main::pick_vu@641:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::is_str_vu@647:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mk_dog@661:0: covered (storage: no_proof_required), summary: known
+main::wrap_crate@675:0: uncovered (generic body)
+main::has_crate@681:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pointer_args@685:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::make_ints@711:0: covered (storage: no_proof_required), summary: known
+main::base_init_args@752:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::wkeep@764:0: covered (storage: no_proof_required), summary: known
+main::wkeep_own@768:0: covered (storage: no_proof_required), summary: known
+main::wkeep_l@773:0: covered (storage: no_proof_required), summary: known
+main::walrus_args@785:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::two_scalar@816:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::scalar_order@820:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::make_ab@833:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::use_ab@839:0: covered (storage: no_proof_required), summary: known
+main::some@846:0: uncovered (generic body)
+main::wrap@850:0: uncovered (generic body)
+main::opt_view@856:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::opt_view_b@862:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::opt_view_narrowed@866:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::vu_total@872:0: covered (storage: no_proof_required), summary: known
+main::inline_narrowed@876:0: covered (storage: no_proof_required), summary: known
+main::gen_tick@885:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::gen_args@891:0: uncovered (unsupported hoisted value)
+main::async_args@904:0: uncovered (async body)
+main::measure@935:0: uncovered (unsupported parameter type)
+main::measure_dyn@939:0: uncovered (unsupported parameter type)
+main::apply_fn@943:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::check@971:0: covered (storage: no_proof_required), summary: known
+main::flag_f@975:0: covered (storage: no_proof_required), summary: known
+main::flag_below@980:0: covered (storage: no_proof_required), summary: known
+main::mk@988:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::key@993:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::eat_box@1024:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::total_list@1028:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::str_or_int@1032:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::workarounds@1036:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::positions@1045:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::once@1081:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::tree_v@1129:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::method_slot_args@1145:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::aug_key@1179:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@1192:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::E.take@60:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Cell.bump@91:4: covered (storage: no_proof_required), summary: known
+main::Holder.borrow@101:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Inner.put@115:4: uncovered (generic body)
+main::Outer.put_own@125:4: uncovered (generic body)
+main::Bag.push@186:4: uncovered (generic body)
+main::Bag.echo@189:4: uncovered (generic body)
+main::CBox.run@205:4: uncovered (generic body)
+main::Sink.put@216:4: covered (storage: no_proof_required), summary: known
+main::VH.m@256:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::V3.muls@273:4: covered (storage: no_proof_required), summary: known
+main::V3.absorb@276:4: covered (storage: no_proof_required), summary: known
+main::Soak.soak@282:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Soak.fill@286:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::PH.borrow@322:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::PH.items_m@325:4: covered (storage: no_proof_required), summary: known
+main::PSink.replace@340:4: covered (storage: no_proof_required), summary: known
+main::GH.items@377:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::GH.items@377:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::MaybeHeap.fix@523:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::RK.bump@588:4: covered (storage: no_proof_required), summary: known
+main::PtrSink.opt@634:4: covered (storage: no_proof_required), summary: known
+main::PtrSink.uni@637:4: covered (storage: no_proof_required), summary: known
+main::PetProbe.probe@666:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::WSink.keep@781:4: covered (storage: no_proof_required), summary: known
+main::Sq.area@930:4: covered (storage: no_proof_required), summary: known
+main::Gauge.a@954:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Gauge.a@954:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Gauge.a@958:4: covered (storage: no_proof_required), summary: known
+main::Container.wrap_optional@965:4: uncovered (unsupported return type)
+main::Tally.__getitem__@1006:4: covered (storage: no_proof_required), summary: known
+main::Tally.__setitem__@1009:4: covered (storage: no_proof_required), summary: known
+main::GetH.geth@1020:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Inc.__call__@1117:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::ApplyS.apply@1122:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::TreeSink.take@1141:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::OwnKeyed.__getitem__@1167:4: covered (storage: no_proof_required), summary: known
+main::OwnKeyed.__setitem__@1170:4: covered (storage: no_proof_required), summary: known
+main::RoKeyed.__getitem__@1175:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::A.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@65:4: covered (storage: no_proof_required), summary: known
+main::Keep.__init__@77:4: uncovered (generic constructor)
+main::Cell.__init__@88:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@98:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@112:4: uncovered (generic constructor)
+main::Outer.__init__@122:4: uncovered (generic constructor)
+main::Point.__init__@141:4: covered (storage: no_proof_required), summary: known
+main::PHolder.__init__@149:4: covered (storage: no_proof_required), summary: known
+main::Big.__init__@176:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@183:4: uncovered (generic constructor)
+main::Sink.__init__@213:4: covered (storage: no_proof_required), summary: known
+main::Vec.__init__@241:4: uncovered (missing record layout)
+main::W.__init__@248:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
+main::VH.__init__@253:4: covered (storage: no_proof_required), summary: known
+main::V3.__init__@270:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@296:4: covered (storage: no_proof_required), summary: known
+main::HC.__init__@303:4: covered (storage: no_proof_required), summary: known
+main::Payload.__init__@310:4: covered (storage: no_proof_required), summary: known
+main::PH.__init__@318:4: covered (storage: no_proof_required), summary: known
+main::PSink.__init__@337:4: covered (storage: no_proof_required), summary: known
+main::KeepThing.__init__@347:4: covered (storage: no_proof_required), summary: known
+main::OptBox.__init__@363:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::GH.__init__@373:4: covered (storage: no_proof_required), summary: known
+main::UB.__init__@407:4: covered (storage: no_proof_required), summary: known
+main::Numbers.__init__@426:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::AgesIn.__init__@504:4: covered (storage: no_proof_required), summary: known
+main::AgesOut.__init__@512:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::MaybeHeap.__init__@520:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Pod.__init__@535:4: covered (storage: no_proof_required), summary: known
+main::PodHolder.__init__@542:4: covered (storage: no_proof_required), summary: known
+main::RK.__init__@585:4: covered (storage: no_proof_required), summary: known
+main::PtrSink.__init__@630:4: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Pet.__init__@652:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@657:4: covered (storage: no_proof_required), summary: known
+main::Crate.__init__@671:4: uncovered (generic constructor)
+main::Viewer.__init__@718:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::FreshViewChild.__init__@723:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::TaggedError.__init__@732:4: uncovered (missing record layout)
+main::BufBase.__init__@741:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::FreshBufChild.__init__@746:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::WSink.__init__@778:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@927:4: covered (storage: no_proof_required), summary: known
+main::Gauge.__init__@950:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@1002:4: covered (storage: no_proof_required), summary: known
+main::GetH.__init__@1017:4: covered (storage: no_proof_required), summary: known
+main::OwnKeyed.__init__@1164:4: covered (storage: no_proof_required), summary: known

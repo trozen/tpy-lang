@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_if@8:0: uncovered (unsupported hoisted value)
+main::gen_match@17:0: uncovered (unsupported hoisted value)
+main::main@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

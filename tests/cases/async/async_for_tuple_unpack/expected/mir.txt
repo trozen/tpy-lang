@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_squares@33:0: uncovered (async body)
+main::main@40:0: uncovered (async body)
+main::PairIter.__anext__@16:4: uncovered (async body)
+main::Pairs.__aiter__@29:4: covered (storage: no_proof_required), summary: known
+main::PairIter.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Pairs.__init__@26:4: covered (storage: no_proof_required), summary: known

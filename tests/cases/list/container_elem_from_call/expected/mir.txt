@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_rows@9:0: covered (storage: no_proof_required), summary: known
+main::make_map@17:0: covered (storage: no_proof_required), summary: known
+main::make_set@23:0: covered (storage: no_proof_required), summary: known
+main::make_ints@27:0: covered (storage: no_proof_required), summary: known
+main::gen_lens@56:0: uncovered (unsupported hoisted value)
+main::main@68:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Maker.row@44:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported native container element)
+main::Maker.built@49:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Maker.__init__@36:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

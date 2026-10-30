@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::ret_record@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_list@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_optional@29:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ret_value_int@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_rebound@48:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_param_ref@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_own_param@65:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_from_handler@72:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_finally_override@82:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@93:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known

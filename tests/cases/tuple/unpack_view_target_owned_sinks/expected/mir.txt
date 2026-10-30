@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@8:0: covered (storage: no_proof_required), summary: known
+main::first_of@12:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::first_bytes@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_bytes@22:0: covered (storage: no_proof_required), summary: known
+main::bytes_elements@26:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::bytes_accumulate@33:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::elements@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_arg@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::accumulate@54:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::collect@61:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@69:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)

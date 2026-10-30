@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@49:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::CounterIter.__next__@15:4: uncovered (error-return body)
+main::Counter.__iter__@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.total_through_cls@35:4: uncovered (unsupported statement)
+main::Counter.total_through_name@42:4: uncovered (unsupported statement)
+main::CounterIter.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@27:4: covered (storage: no_proof_required), summary: known

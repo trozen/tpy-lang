@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::get_name@35:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::is_cat@46:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::show_tagged@63:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@73:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Cat.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Tagged.__init__@58:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

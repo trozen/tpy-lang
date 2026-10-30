@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::lent_len@26:0: covered (storage: no_proof_required), summary: known
+main::global_len@31:0: covered (storage: no_proof_required), summary: known
+main::clock@36:0: covered (storage: no_proof_required), summary: known
+main::construct@41:0: covered (storage: no_proof_required), summary: known
+main::smaller@46:0: covered (storage: no_proof_required), summary: known
+main::smaller_is@52:0: covered (storage: no_proof_required), summary: known
+main::smaller_sum@57:0: covered (storage: no_proof_required), summary: known
+main::overloads@63:0: covered (storage: no_proof_required), summary: known
+main::twice@68:0: covered (storage: no_proof_required), summary: known
+main::both@74:0: covered (storage: no_proof_required), summary: known
+main::dict_get_value@81:0: covered (storage: no_proof_required), summary: known
+main::record_len@87:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::main@91:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::Rec.__len__@17:4: covered (storage: no_proof_required), summary: known
+main::Rec.label_len@21:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@14:4: covered (storage: no_proof_required), summary: known

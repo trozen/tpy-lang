@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@29:0: uncovered (unsupported return type)
+main::drive@34:0: uncovered (unsupported parameter type)
+main::main@41:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Bag.put@18:4: covered (storage: no_proof_required)
+main::Bag.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@25:4: covered (storage: no_proof_required), summary: known

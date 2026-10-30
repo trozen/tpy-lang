@@ -1,0 +1,94 @@
+main::__tpy_init: uncovered (module initialization)
+main::call_bump@140:0: covered (storage: no_proof_required), summary: known
+main::call_push@145:0: covered (storage: no_proof_required), summary: known
+main::call_set_at@150:0: covered (storage: no_proof_required), summary: known
+main::call_total@155:0: covered (storage: no_proof_required), summary: known
+main::call_label@160:0: covered (storage: no_proof_required), summary: known
+main::call_in_if@166:0: covered (storage: no_proof_required), summary: known
+main::call_in_while@172:0: covered (storage: no_proof_required), summary: known
+main::call_in_for@180:0: covered (storage: no_proof_required), summary: known
+main::call_readonly@187:0: covered (storage: no_proof_required), summary: known
+main::call_absorb@192:0: covered (storage: no_proof_required), summary: known
+main::call_ahead@197:0: covered (storage: no_proof_required), summary: known
+main::call_me@202:0: certified, summary: known
+main::call_me_ro@208:0: certified, summary: known
+main::call_other@214:0: certified, summary: known
+main::call_first@220:0: covered (storage: no_proof_required), summary: known
+main::take@225:0: covered (storage: no_proof_required), summary: known
+main::call_as_argument@230:0: covered (storage: no_proof_required), summary: known
+main::push_own_total@235:0: covered (storage: no_proof_required), summary: known
+main::count_of@241:0: covered (storage: no_proof_required), summary: known
+main::call_count_of@246:0: covered (storage: no_proof_required), summary: known
+main::two_owners@251:0: covered (storage: no_proof_required), summary: known
+main::grow_under_iter@258:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::push_free@268:0: covered (storage: no_proof_required), summary: known
+main::free_grow_under_iter@275:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::bump_under_iter@285:0: covered (storage: no_proof_required), summary: known
+main::view_across_rename@295:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::view_before_rename@303:0: covered (storage: no_proof_required), summary: known
+main::tag_across_rename@312:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::call_merge@320:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::call_virtual@348:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::read_prop@368:0: covered (storage: no_proof_required), summary: known
+main::write_prop@373:0: covered (storage: no_proof_required), summary: known
+main::call_dunder@393:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::call_bool@398:0: covered (storage: no_proof_required), summary: known
+main::field_receiver@422:0: covered (storage: no_proof_required), summary: known
+main::pick@427:0: certified, summary: known
+main::result_receiver@432:0: covered (storage: no_proof_required), summary: known
+main::temp_receiver@437:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::element_receiver@442:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::generic_record@457:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::generic_method@480:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::consuming@485:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::static_call@491:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::inherited@512:0: covered (storage: no_proof_required), summary: known
+main::call_countdown@517:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::call_all_items@522:0: certified, summary: known
+main::main@528:0: uncovered (order-sensitive eager operands), summary: opaque (recursive or recursion-dependent call)
+main::Counter.bump@19:4: covered (storage: no_proof_required), summary: known
+main::Counter.push@23:4: covered (storage: no_proof_required), summary: known
+main::Counter.set_at@27:4: covered (storage: no_proof_required), summary: known
+main::Counter.rename@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.total@36:4: covered (storage: no_proof_required), summary: known
+main::Counter.label@44:4: covered (storage: no_proof_required), summary: known
+main::Counter.tag@49:4: covered (storage: no_proof_required), summary: known
+main::Counter.absorb@53:4: covered (storage: no_proof_required), summary: known
+main::Counter.ahead_of@58:4: covered (storage: no_proof_required), summary: known
+main::Counter.me@62:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.other@66:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.me_ro@71:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.first@75:4: covered (storage: no_proof_required), summary: known
+main::Counter.bump_twice@79:4: covered (storage: no_proof_required), summary: known
+main::Counter.poke@84:4: covered (storage: no_proof_required), summary: known
+main::Counter.grow_under_iter@90:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::Counter.bump_under_iter@99:4: covered (storage: no_proof_required), summary: known
+main::Counter.merge_from@108:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Counter.countdown@113:4: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::Counter.all_items@119:4: covered (storage: no_proof_required), summary: known
+main::Gauge.bump@131:4: covered (storage: no_proof_required), summary: known
+main::Gauge.read@135:4: covered (storage: no_proof_required), summary: known
+main::Base.grow@335:4: covered (storage: no_proof_required)
+main::Sub.grow@343:4: covered (storage: no_proof_required)
+main::Temp.twice@359:4: covered (storage: no_proof_required), summary: known
+main::Temp.twice@363:4: covered (storage: no_proof_required), summary: known
+main::Pair.__eq__@384:4: covered (storage: no_proof_required)
+main::Pair.__bool__@388:4: covered (storage: no_proof_required), summary: known
+main::Tally.bump@410:4: covered (storage: no_proof_required), summary: known
+main::Cell.get@452:4: uncovered (generic body)
+main::Scaler.same@467:4: uncovered (generic body)
+main::Scaler.finish@471:4: uncovered (missing receiver fact)
+main::Scaler.double@475:4: covered (storage: no_proof_required)
+main::Animal.add_leg@501:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Gauge.__init__@127:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@332:4: covered (storage: no_proof_required), summary: known
+main::Sub.__init__@340:4: covered (storage: no_proof_required), summary: known
+main::Temp.__init__@355:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@380:4: covered (storage: no_proof_required), summary: known
+main::Tally.__init__@406:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@417:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@449:4: uncovered (generic constructor)
+main::Scaler.__init__@464:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@498:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@506:4: covered (storage: no_proof_required), summary: known

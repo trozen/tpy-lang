@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_static@21:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_protocol@28:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::MyHolder.store@13:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Factory.consume@18:4: uncovered (missing constructor definition)

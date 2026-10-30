@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::g@10:0: covered (storage: no_proof_required), summary: known
+main::w@17:0: covered (storage: no_proof_required), summary: known
+main::main@30:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::R.__eq__: covered (storage: no_proof_required)
+main::R.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::R.__init__: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::value@18:0: uncovered (async body)
+main::caller@22:0: uncovered (async body)
+main::main@28:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Resource.__enter__@11:4: covered (storage: no_proof_required), summary: known
+main::Resource.__exit__@14:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Resource.__init__@8:4: covered (storage: no_proof_required), summary: known

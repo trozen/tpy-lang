@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::discard_param@14:0: covered (storage: no_proof_required), summary: known
+main::discard_literal@18:0: covered (storage: no_proof_required), summary: known
+main::remove_param@22:0: covered (storage: no_proof_required), summary: known
+main::remove_literal@26:0: covered (storage: no_proof_required), summary: known
+main::has@30:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::empty_key@34:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@42:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

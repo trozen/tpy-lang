@@ -1,0 +1,7 @@
+blue::__tpy_init: uncovered (module initialization)
+blue::Tag.__init__@2:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::bump@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+red::__tpy_init: uncovered (module initialization)
+red::Tag.__init__@2:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@63:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Tag.__eq__@16:4: covered (storage: no_proof_required)
+main::Tag.__lt__@19:4: covered (storage: no_proof_required)
+main::Count.__eq__@29:4: covered (storage: no_proof_required)
+main::Blob.__eq__@39:4: covered (storage: no_proof_required)
+main::Ratio.__eq__@49:4: covered (storage: no_proof_required)
+main::Initial.__eq__@59:4: covered (storage: no_proof_required)
+main::Tag.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Count.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Blob.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Ratio.__init__@46:4: covered (storage: no_proof_required), summary: known
+main::Initial.__init__@56:4: covered (storage: no_proof_required), summary: known

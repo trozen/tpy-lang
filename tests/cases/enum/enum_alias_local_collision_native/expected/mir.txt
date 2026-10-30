@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::native_label@12:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::main@18:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+nativelib::__tpy_init: uncovered (module initialization)

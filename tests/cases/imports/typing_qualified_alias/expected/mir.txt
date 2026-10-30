@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::safe_inc@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::hello@20:0: uncovered (unsupported parameter type)
+main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Person.greet@17:4: covered (storage: no_proof_required), summary: known
+main::Person.__init__@15:4: covered (storage: no_proof_required), summary: known

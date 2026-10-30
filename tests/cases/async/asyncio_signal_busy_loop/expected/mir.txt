@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::spin@11:0: uncovered (async body)
+main::main@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

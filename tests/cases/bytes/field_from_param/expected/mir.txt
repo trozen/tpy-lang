@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Packet.__init__@4:4: covered (storage: no_proof_required), summary: known
+main::MultiField.__init__@8:4: covered (storage: no_proof_required), summary: known

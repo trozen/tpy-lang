@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_borrow@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::singleton_append@20:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::tuple_append@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::singleton_dict@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::tuple_dict@41:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

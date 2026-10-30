@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::stream_content_length@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::stream_chunked@39:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::stream_raw@59:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::stream_context_manager@78:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::stream_empty_body@104:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::non_streamed_iter_content@124:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@145:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

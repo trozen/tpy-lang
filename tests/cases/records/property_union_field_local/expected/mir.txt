@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.label@29:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::A.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::B.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@25:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

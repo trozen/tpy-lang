@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_read@17:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::main@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Box.get_value@12:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@8:4: covered (storage: no_proof_required), summary: known

@@ -411,10 +411,10 @@ def caller(value: int32, flag: bool) -> int32:
     assert cli._run_cli(False) == 0
     caller = capsys.readouterr().out.split("::caller@", 1)[1].split("\nfn ", 1)[0]
     if qualified:
-        assert "MIR not covered: named argument needs complete temporary plan" in caller
+        assert "uncovered (named argument needs complete temporary plan" in caller
     else:
         assert "call helper::read" in caller and "construct" in caller
-        assert "MIR not covered" not in caller
+        assert "<uncovered (" not in caller
 
 
 @pytest.mark.parametrize("shape", ["scalar", "tuple", "mixed_tuple", "optional", "union"])

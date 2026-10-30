@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::probe@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Alpha.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Beta.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Gamma.__init__@23:4: covered (storage: no_proof_required), summary: known

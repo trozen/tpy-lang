@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_holder@32:0: covered (storage: no_proof_required), summary: known
+main::rebound@38:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::branch_rebound@62:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::main@69:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Driver.run@53:4: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::Point.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Driver.__init__@50:4: covered (storage: no_proof_required), summary: known

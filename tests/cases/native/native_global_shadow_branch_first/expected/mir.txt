@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::probe@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pick@40:0: covered (storage: no_proof_required), summary: known
+main::guarded@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@58:0: covered (storage: no_facts: storage facts have not been published)
+main::routed@68:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::coro@78:0: uncovered (async body)
+main::main@87:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::Engine.step@31:4: covered (storage: no_proof_required), summary: known
+main::Engine.__init__@27:4: covered (storage: no_proof_required), summary: known

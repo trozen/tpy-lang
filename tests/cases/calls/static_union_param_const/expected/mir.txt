@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_read@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@51:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::K.read@34:4: uncovered (unsupported statement)
+main::K.bump@43:4: uncovered (unsupported statement)
+main::R.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@19:4: covered (storage: no_proof_required), summary: known

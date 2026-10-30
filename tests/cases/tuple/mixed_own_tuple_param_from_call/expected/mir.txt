@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_owned@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::take_mixed@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_owned@29:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::relay@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::mutate_borrowed@38:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known

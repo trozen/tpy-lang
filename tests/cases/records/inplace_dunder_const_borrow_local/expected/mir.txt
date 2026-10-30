@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Acc.__iadd__@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Acc.__init__@18:4: covered (storage: no_proof_required), summary: known

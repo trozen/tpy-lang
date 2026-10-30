@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.narrow@24:4: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::P.deep@30:4: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::Inner.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@20:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

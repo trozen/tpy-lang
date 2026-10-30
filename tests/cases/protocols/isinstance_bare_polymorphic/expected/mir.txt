@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::speak@45:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kind@55:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::classify_const@64:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::assert_dog@72:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::short_circuit@81:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@89:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pet.name@22:4: covered (storage: no_proof_required)
+main::Dog.bark@31:4: covered (storage: no_proof_required)
+main::Pet.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Bird.__init__@41:4: covered (storage: no_proof_required), summary: known

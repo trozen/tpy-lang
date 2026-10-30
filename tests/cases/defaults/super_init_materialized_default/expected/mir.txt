@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Fixed.__init__@10:4: uncovered (missing record layout)
+main::Base.__init__@17:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sub.__init__@22:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Passing.__init__@27:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

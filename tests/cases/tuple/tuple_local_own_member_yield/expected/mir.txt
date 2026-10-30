@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_item@28:0: covered (storage: no_proof_required), summary: known
+main::mk@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@36:0: uncovered (unsupported hoisted value)
+main::gen_twice@46:0: uncovered (unsupported hoisted value)
+main::gen_call_init@57:0: uncovered (unsupported hoisted value)
+main::gen_call_init_once@71:0: uncovered (unsupported hoisted value)
+main::gen_call_init_borrowed@83:0: uncovered (unsupported hoisted value)
+main::gen_call_init_borrow_dead@100:0: uncovered (unsupported hoisted value)
+main::gen_preloop@115:0: uncovered (loop across a suspension)
+main::gen_live@123:0: uncovered (unsupported hoisted value)
+main::main@156:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Src.pairs@146:4: uncovered (unsupported hoisted value)
+main::Box.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Src.__init__@142:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_ref@15:0: certified, summary: known
+main::read_opt@21:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::bump@29:0: certified, summary: known
+main::main@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::A.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@11:4: covered (storage: no_proof_required), summary: known

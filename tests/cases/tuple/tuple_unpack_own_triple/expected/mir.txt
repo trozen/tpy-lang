@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_triple@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::consume@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known

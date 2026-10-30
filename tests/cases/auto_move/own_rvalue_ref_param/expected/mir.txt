@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@18:0: covered (storage: no_proof_required), summary: known
+main::use_int@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Container.push@15:4: uncovered (generic body)
+main::Box.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@13:4: uncovered (generic constructor)

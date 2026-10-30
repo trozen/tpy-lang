@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::depth@34:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::unbox@57:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@65:0: uncovered (missing alias binding), summary: opaque (recursive or recursion-dependent call)
+main::Cat.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@53:4: uncovered (generic constructor)

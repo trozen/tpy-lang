@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_holder@37:0: covered (storage: no_proof_required), summary: known
+main::gen@43:0: uncovered (unsupported hoisted value)
+main::coro@52:0: uncovered (async body)
+main::gen_rebind@63:0: uncovered (unsupported hoisted value)
+main::gen_named@72:0: uncovered (unsupported hoisted value)
+main::gen_try@83:0: uncovered (try across a suspension)
+main::gen_branch@95:0: uncovered (unsupported hoisted value)
+main::gen_loop@105:0: uncovered (loop across a suspension)
+main::main@129:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Runner.walk@121:4: uncovered (unsupported hoisted value)
+main::Point.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@117:4: covered (storage: no_proof_required), summary: known

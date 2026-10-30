@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_leaf@10:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_branch@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::leaf_count@18:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_or_default@8:0: covered (storage: no_proof_required), summary: opaque (unsupported return origin type or access)
+main::default_literal_only@17:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::conditional_literal_or_param@23:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::ternary_literal_branch@29:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_span@5:0: uncovered (unsupported parameter type)
+main::test_list@11:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::test_array@15:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::test_span@19:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::test_ro_span@24:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::test_arraylist@29:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

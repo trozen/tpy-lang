@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_x@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::get_mag@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.mag@10:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

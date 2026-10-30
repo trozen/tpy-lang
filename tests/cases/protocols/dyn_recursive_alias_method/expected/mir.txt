@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::run@24:0: uncovered (unsupported parameter type)
+main::main@29:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::LeafCounter.count@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+treelib::__tpy_init: uncovered (module initialization)
+treelib::leaf_count@6:0: uncovered (generic body)

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported statement), summary: opaque (recursive or recursion-dependent call)
+moda::__tpy_init: uncovered (module initialization)
+moda::local_walk@19:0: covered (storage: no_facts: storage facts have not been published)
+moda::free_delegator@25:0: uncovered (loop across a suspension)
+moda::method_delegator@32:0: uncovered (loop across a suspension)
+moda::ping@39:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+moda::Src.steps@14:4: covered (storage: no_facts: storage facts have not been published)
+moda::Src.__init__@11:4: covered (storage: no_proof_required), summary: known
+modb::__tpy_init: uncovered (module initialization)
+modb::pong@6:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

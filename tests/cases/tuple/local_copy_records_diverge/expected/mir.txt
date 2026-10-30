@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::live_member@13:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::live_nested@21:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::param_member@29:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::call_member@46:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::self_local@54:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::K.get@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::A.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@38:4: covered (storage: no_proof_required), summary: known

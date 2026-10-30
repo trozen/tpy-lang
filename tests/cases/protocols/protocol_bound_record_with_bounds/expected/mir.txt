@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@47:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Message.to_str@15:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.print_wrapped@25:4: uncovered (generic body)
+main::DefaultWrapperMaker.make@34:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Container.create_wrapper@44:4: uncovered (generic body)
+main::Message.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@22:4: uncovered (generic constructor)
+main::Container.__init__@41:4: uncovered (generic constructor)

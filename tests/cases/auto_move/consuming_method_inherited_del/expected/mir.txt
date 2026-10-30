@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@35:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Base.__del__@16:4: uncovered (stub declares no contract)
+main::Base.get@21:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::Child.take@29:4: uncovered (stub declares no contract)
+main::Base.__init__@11:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Child.__init__@25:4: uncovered (custom record special member), summary: opaque (custom record special member)

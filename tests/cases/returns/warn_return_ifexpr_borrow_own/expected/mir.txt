@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@23:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::pick_copy@27:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.updated@18:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@15:4: covered (storage: no_proof_required), summary: known

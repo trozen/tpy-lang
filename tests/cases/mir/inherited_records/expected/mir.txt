@@ -1,0 +1,58 @@
+main::__tpy_init: uncovered (module initialization)
+main::skipped_bases@245:0: covered (storage: no_proof_required), summary: known
+main::two_views@253:0: covered (storage: no_proof_required), summary: known
+main::view_replaced@260:0: covered (storage: no_proof_required), conflicts: replacement, argument_alias, summary: known
+main::make_chain@267:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::use_sub@272:0: covered (storage: no_proof_required), summary: known
+main::alias_inherited@282:0: certified, summary: known
+main::view_then_rename@293:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::use_base@300:0: covered (storage: no_proof_required), summary: known
+main::through_base@305:0: covered (storage: no_proof_required), summary: known
+main::read_sub@311:0: covered (storage: no_proof_required), summary: known
+main::use_deep@316:0: covered (storage: no_proof_required), summary: known
+main::use_dog@323:0: covered (storage: no_proof_required), summary: known
+main::use_ab@329:0: covered (storage: no_proof_required), summary: known
+main::make_dog@334:0: covered (storage: no_proof_required), summary: known
+main::elements@341:0: covered (storage: no_proof_required), summary: known
+main::call_super@350:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::call_virtual@356:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::upcast_local@361:0: uncovered (alias source mismatch), summary: opaque (alias source mismatch)
+main::upcast_payload@368:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::main@375:0: uncovered (order-sensitive eager operands), summary: opaque (recursive or recursion-dependent call)
+main::Base.bump@20:4: covered (storage: no_proof_required), summary: known
+main::Base.push@24:4: covered (storage: no_proof_required), summary: known
+main::Base.rename@28:4: covered (storage: no_proof_required), summary: known
+main::Base.total@32:4: covered (storage: no_proof_required), summary: known
+main::Base.view_items@39:4: covered (storage: no_proof_required), summary: known
+main::Base.label@44:4: covered (storage: no_proof_required), summary: known
+main::Sub.bump_twice@57:4: covered (storage: no_proof_required), summary: known
+main::Sub.push_k@62:4: covered (storage: no_proof_required), summary: known
+main::Sub.first@67:4: covered (storage: no_proof_required), summary: known
+main::Sub.bump_super@71:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Deep.bump_deep@83:4: covered (storage: no_proof_required), summary: known
+main::Animal.add_leg@93:4: covered (storage: no_proof_required), summary: known
+main::AB.total@122:4: covered (storage: no_proof_required), summary: known
+main::VBase.grow@137:4: covered (storage: no_proof_required)
+main::VSub.grow@145:4: covered (storage: no_proof_required)
+main::Base.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Sub.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Deep.__init__@79:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@90:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@105:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@112:4: covered (storage: no_proof_required), summary: known
+main::AB.__init__@118:4: covered (storage: no_proof_required), summary: known
+main::VBase.__init__@134:4: covered (storage: no_proof_required), summary: known
+main::VSub.__init__@142:4: covered (storage: no_proof_required), summary: known
+main::Quiet.__init__@150:4: covered (storage: no_proof_required), summary: known
+main::OverQuiet.__init__@158:4: covered (storage: no_proof_required), summary: known
+main::Counted.__init__@165:4: covered (storage: no_proof_required), summary: known
+main::OverCounted.__init__@173:4: covered (storage: no_proof_required), summary: known
+main::Defaulted.__init__@178:4: covered (storage: no_proof_required), summary: known
+main::OverDefaulted.__init__@186:4: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::VA.__init__@193:4: covered (storage: no_proof_required), summary: known
+main::VB.__init__@200:4: covered (storage: no_proof_required), summary: known
+main::VAB.__init__@206:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@214:4: covered (storage: no_proof_required), summary: known
+main::VC.__init__@221:4: covered (storage: no_proof_required), summary: known
+main::VAC.__init__@228:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Chain.__init__@237:4: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

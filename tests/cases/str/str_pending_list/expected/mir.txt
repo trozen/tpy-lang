@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_list@4:0: covered (storage: no_proof_required), summary: known
+main::in_tuple_list@8:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::in_list_var@12:0: covered (storage: no_proof_required), summary: known
+main::in_tuple_list_var@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::in_list_repeat@22:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::in_list_comp@26:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::in_nested_tuple_list@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

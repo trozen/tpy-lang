@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_box@38:0: uncovered (unsupported return type)
+main::main@70:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Inner.bump@24:4: covered (storage: no_proof_required), summary: known
+main::Impl.do_mutate@34:4: covered (storage: no_proof_required), summary: known
+main::S.mutate_via_alias@51:4: certified, summary: opaque (summary record: record member holds a borrow)
+main::S.mutate_via_alias_chained@57:4: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::S.get_inner@62:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
+main::S.bump_lent@66:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Inner.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Impl.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::S.__init__@46:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

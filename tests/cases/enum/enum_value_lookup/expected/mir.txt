@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@10:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::from_int@13:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@16:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

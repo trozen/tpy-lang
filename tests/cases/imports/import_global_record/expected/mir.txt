@@ -1,0 +1,4 @@
+config::__tpy_init: uncovered (module initialization)
+config::Settings.area@13:4: covered (storage: no_proof_required), summary: known
+config::Settings.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)

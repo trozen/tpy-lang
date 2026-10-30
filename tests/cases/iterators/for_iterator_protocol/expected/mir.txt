@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_iter@24:0: uncovered (unsupported parameter type)
+main::main@30:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Counter.__iter__@14:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.__next__@17:4: uncovered (error-return body)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known

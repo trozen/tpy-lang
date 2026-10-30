@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (assignment needs local or field target), summary: opaque (assignment needs local or field target)
+main::Counter.__init__@9:4: uncovered (assignment needs local or field target), summary: opaque (assignment needs local or field target)

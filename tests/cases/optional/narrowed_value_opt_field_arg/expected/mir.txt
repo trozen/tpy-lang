@@ -1,0 +1,7 @@
+dialer::__tpy_init: uncovered (module initialization)
+dialer::dial@5:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Conn.whole@16:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Conn.narrowed@19:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Conn.__init__@12:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

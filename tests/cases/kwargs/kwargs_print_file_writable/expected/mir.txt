@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::raising_sink@37:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sink.write@11:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Sink.flush@15:4: covered (storage: no_proof_required), summary: known
+main::Closed.write@20:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Closed.flush@23:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::NoFlush.write@28:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::NoFlush.flush@31:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Sink.__init__@8:4: covered (storage: no_proof_required), summary: known

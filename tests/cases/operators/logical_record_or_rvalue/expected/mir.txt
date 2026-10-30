@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::or_truthy_skips_ctor@14:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::and_truthy_returns_ctor@21:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@9:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

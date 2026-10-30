@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_val@24:0: uncovered (no body to lower)
+main::get_val@27:0: uncovered (no body to lower)
+main::get_val@29:0: uncovered (overloaded callable)
+main::get_big@37:0: uncovered (no body to lower)
+main::get_big@40:0: uncovered (no body to lower)
+main::get_big@42:0: uncovered (overloaded callable)
+main::get_wide@50:0: uncovered (no body to lower)
+main::get_wide@53:0: uncovered (no body to lower)
+main::get_wide@55:0: uncovered (overloaded callable)
+main::get_cast@63:0: uncovered (no body to lower)
+main::get_cast@66:0: uncovered (no body to lower)
+main::get_cast@68:0: uncovered (overloaded callable)
+main::main@74:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@19:4: covered (storage: no_proof_required), summary: known

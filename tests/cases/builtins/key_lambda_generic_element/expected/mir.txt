@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::ranked@6:0: uncovered (generic body)
+main::by_name@10:0: uncovered (generic body)
+main::smaller@18:0: uncovered (generic body)
+main::larger@22:0: uncovered (generic body)
+main::rebound@30:0: uncovered (generic body)
+main::main@37:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

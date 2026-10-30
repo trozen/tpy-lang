@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::tails@15:0: uncovered (reference yield)
+main::owned_local@22:0: uncovered (unsupported hoisted value)
+main::slice_of_ref_param@30:0: uncovered (unsupported parameter type)
+main::main@37:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

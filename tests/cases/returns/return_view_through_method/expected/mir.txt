@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::borrow_through_method@16:0: covered (storage: no_proof_required), summary: known
+main::main@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Wrapper.get_view@12:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@9:4: covered (storage: no_proof_required), summary: known

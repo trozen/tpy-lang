@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::identity@25:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mixed_in_place@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::borrowed_names@101:0: uncovered (tuple borrow needs parameter capture), summary: opaque (tuple borrow needs parameter capture)
+main::borrowing_call@111:0: uncovered (tuple borrow needs parameter capture), summary: opaque (tuple borrow needs parameter capture)
+main::unpack_borrowed@121:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::frame_literal@131:0: uncovered (loop across a suspension)
+main::main@140:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::both@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::first_only@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::neither@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::T.__init__@10:4: covered (storage: no_proof_required), summary: known

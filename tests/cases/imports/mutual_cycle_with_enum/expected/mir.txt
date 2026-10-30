@@ -1,0 +1,7 @@
+a::__tpy_init: uncovered (module initialization)
+a::lookup@3:0: uncovered (unsupported expression)
+b::__tpy_init: uncovered (module initialization)
+b::describe@8:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+b::describe_default@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

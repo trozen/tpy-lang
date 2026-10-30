@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Strict.__delattr__@13:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Strict.__init__@9:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

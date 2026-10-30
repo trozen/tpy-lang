@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_break@3:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_continue@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_nested_break@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_nested_continue@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

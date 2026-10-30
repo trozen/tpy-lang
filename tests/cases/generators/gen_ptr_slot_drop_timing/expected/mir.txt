@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@22:0: uncovered (unsupported hoisted value)
+main::run@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Resource.__del__@18:4: uncovered (unsupported metadata: is_arrow)
+main::Resource.__init__@15:4: uncovered (custom record special member), summary: opaque (custom record special member)

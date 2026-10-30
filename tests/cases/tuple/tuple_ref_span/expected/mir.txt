@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_first@11:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@14:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

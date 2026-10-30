@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@11:0: covered (storage: no_proof_required)
+main::describe@14:0: covered (storage: no_proof_required)
+main::test@17:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

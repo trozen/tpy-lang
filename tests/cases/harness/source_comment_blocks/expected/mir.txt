@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::shaped@11:0: covered (storage: no_proof_required), summary: known
+main::quoted@21:0: covered (storage: no_proof_required), summary: known
+main::upto@43:0: uncovered (loop across a suspension)
+main::pair@49:0: covered (storage: no_facts: storage facts have not been published)
+main::doubled@56:0: uncovered (async body)
+main::helper@62:0: covered (storage: no_proof_required), summary: known
+main::main@78:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Counter.bump@37:4: covered (storage: no_proof_required), summary: known
+main::Reader.peek@74:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@70:4: covered (storage: no_proof_required), summary: known

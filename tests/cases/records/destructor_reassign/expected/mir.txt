@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::drops@24:0: uncovered (unsupported stub result type), summary: opaque (unsupported stub result type)
+main::test_straight@30:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::test_loop@38:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::test_conditional@46:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Resource.__del__@20:4: uncovered (unsupported metadata: is_arrow)
+main::Resource.__init__@17:4: uncovered (custom record special member), summary: opaque (custom record special member)

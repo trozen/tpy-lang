@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::co@14:0: uncovered (async body)
+main::task_arity_concrete@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::task_arity_generic@24:0: uncovered (generic body)
+main::main_coro@30:0: uncovered (async body)
+main::main@38:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

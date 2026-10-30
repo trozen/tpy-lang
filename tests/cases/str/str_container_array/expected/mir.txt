@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::show_span@4:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@8:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)

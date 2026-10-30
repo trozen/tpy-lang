@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::doubled@16:0: uncovered (loop across a suspension)
+main::main@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Node.__init__@12:4: covered (storage: no_proof_required), summary: known

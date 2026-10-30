@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::pos@40:0: covered (storage: no_proof_required), summary: known
+main::big@44:0: covered (storage: no_proof_required), summary: known
+main::same@48:0: certified, summary: known
+main::valof@52:0: covered (storage: no_proof_required), summary: known
+main::mk@60:0: covered (storage: no_proof_required), summary: known
+main::each@64:0: uncovered (reference yield)
+main::show@69:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::ro_enumerate@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ro_zip@82:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ro_filter@89:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ro_reversed@96:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut_enumerate@105:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut_zip@112:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut_filter@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut_reversed@122:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut_map@127:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_enumerate_filter@134:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_zip_reversed@139:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_map_filter@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_zip_filter@149:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ro_map@158:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::collect_copies@168:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::closure_mut@177:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_ro@190:0: uncovered (loop across a suspension)
+main::gen_mut@195:0: uncovered (loop across a suspension)
+main::gen_zip_mut@200:0: uncovered (loop across a suspension)
+main::genexpr_ro@207:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::genexpr_mut@211:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::comp_shapes@216:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::async_mut@265:0: uncovered (async body)
+main::explicit_ro@276:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::values@285:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::er_body@296:0: uncovered (error-return body)
+main::match_arm@305:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@316:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@208:14: uncovered (generator expression)
+main::<genexpr>@212:14: uncovered (generator expression)
+main::<genexpr>@308:22: uncovered (generator expression)
+main::Cell.bump@24:4: covered (storage: no_proof_required), summary: known
+main::Cell.val@29:4: covered (storage: no_proof_required), summary: known
+main::Bag.total@248:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.bump_all@254:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.comp_total@260:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Cell.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Bag2.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@245:4: covered (storage: no_proof_required), summary: known

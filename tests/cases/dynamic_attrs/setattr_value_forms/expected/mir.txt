@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Bag.__setattr__@20:4: uncovered (unsupported parameter type)
+main::Bag.__getattr__@23:4: uncovered (unsupported return type)
+main::Strict.__setattr__@35:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Bag.__init__@16:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Strict.__init__@31:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,31 @@
+keeper::__tpy_init: uncovered (module initialization)
+keeper::touch_free@51:0: covered (storage: no_proof_required), summary: known
+keeper::Base.bump@17:4: covered (storage: no_proof_required), summary: known
+keeper::Factory.touch@24:4: covered (storage: no_proof_required), summary: known
+keeper::Factory.touch_get@27:4: covered (storage: no_proof_required), summary: known
+keeper::Factory.stouch@32:4: covered (storage: no_proof_required)
+keeper::Factory.ctouch@36:4: covered (storage: no_proof_required)
+keeper::Factory.via_super@39:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+keeper::Rec.__init__@7:4: covered (storage: no_proof_required), summary: known
+keeper::Base.__init__@14:4: covered (storage: no_proof_required), summary: known
+keeper::Anchor.__init__@46:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::__tpy_init: uncovered (module initialization)
+main::via_local@37:0: covered (storage: no_proof_required), summary: known
+main::via_field@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::via_global@51:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::via_static@57:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::via_class@63:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::via_super@69:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::via_ctor@76:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::via_comp@82:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::via_with@89:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_finally@97:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_free@107:0: covered (storage: no_proof_required), summary: known
+main::via_gen@113:0: uncovered (unsupported hoisted value)
+main::via_async@120:0: uncovered (async body)
+main::main_coro@126:0: uncovered (async body)
+main::main@145:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Holder.go@24:4: covered (storage: no_proof_required), summary: known
+main::Guard.__enter__@29:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@32:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.__init__@20:4: uncovered (use of the record before every field is initialized), summary: opaque (use of the record before every field is initialized)

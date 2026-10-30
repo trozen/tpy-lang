@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.take@15:4: uncovered (unsupported return type)
+main::Holder.__init__@12:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

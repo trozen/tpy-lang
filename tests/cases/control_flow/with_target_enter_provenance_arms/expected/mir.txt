@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_nested@56:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::read_two_returns@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@78:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ViaNestedDef.__enter__@29:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ViaNestedDef.__exit__@36:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ViaTwoReturns.__enter__@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::ViaTwoReturns.__exit__@52:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Item.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::ViaNestedDef.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::ViaTwoReturns.__init__@43:4: covered (storage: no_proof_required), summary: known

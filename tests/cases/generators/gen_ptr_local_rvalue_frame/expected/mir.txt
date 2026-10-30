@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_opt@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rvalue_init@19:0: uncovered (loop across a suspension)
+main::rebind_after_alias@28:0: uncovered (unsupported hoisted value)
+main::rebind_after_none@43:0: uncovered (unsupported hoisted value)
+main::own_opt_call@52:0: uncovered (unsupported hoisted value)
+main::loop_rebind@62:0: uncovered (unsupported hoisted value)
+main::main@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

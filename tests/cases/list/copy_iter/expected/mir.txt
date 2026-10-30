@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_extend_copy_iter_no_warn@12:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_extend_copy_iter_value_type@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_iadd_copy_iter_no_warn@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_ctor_copy_iter_no_warn@33:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::test_extend_no_copy_iter_warns@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_for_loop_copy_iter@45:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::Node.__init__@8:4: covered (storage: no_proof_required), summary: known

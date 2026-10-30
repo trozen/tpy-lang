@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::step@15:0: uncovered (async body)
+main::val_scalar@21:0: uncovered (async body)
+main::owning@31:0: uncovered (async body)
+main::borrow_alias@41:0: uncovered (async body)
+main::pick@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_ptr@59:0: uncovered (async body)
+main::drive@73:0: uncovered (async body)
+main::main@84:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::poke@21:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@17:4: covered (storage: no_proof_required), summary: known

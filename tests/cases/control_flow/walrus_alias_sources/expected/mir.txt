@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_global@27:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::from_field@34:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::from_container_field@41:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::from_optional_elem@48:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::readonly_recv@55:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.get@11:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

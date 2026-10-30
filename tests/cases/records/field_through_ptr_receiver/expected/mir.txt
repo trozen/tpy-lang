@@ -1,0 +1,37 @@
+main::__tpy_init: uncovered (module initialization)
+main::write_param@117:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::clear_param@124:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::clear_str@129:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::write_moved@135:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::write_null@141:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::write_slots@149:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::make_grid@155:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::find@159:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::write_local@163:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::write_ptr_field@171:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::write_elem@176:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::write_chain@181:0: covered (storage: no_proof_required), summary: opaque (summary record: member definition: unsupported native container element)
+main::write_nested@186:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::write_rows@196:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen_writes@204:0: uncovered (unsupported parameter type)
+main::gen_iter@211:0: uncovered (unsupported parameter type)
+main::iterate@217:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::find_bag_owner@235:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@239:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::<genexpr>@232:30: uncovered (generator expression)
+main::Bag.__iter__@20:4: uncovered (loop across a suspension)
+main::L.set@64:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::Mid.empty@89:4: covered (storage: no_proof_required), summary: known
+main::Holder.fill@108:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.clear@112:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::R.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@32:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::V.__init__@44:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::N.__init__@52:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::L.__init__@59:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::W.__init__@72:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::Inner.__init__@79:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@86:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@97:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@105:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::inherited@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@41:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Point.sum@9:4: covered (storage: no_proof_required), summary: known
+main::Ref.__deref__@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ref.__deref__@17:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.__deref__@24:4: uncovered (generic body)
+main::Holder.__deref__@24:4#2: uncovered (generic body)
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Ref.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@22:4: uncovered (generic constructor)

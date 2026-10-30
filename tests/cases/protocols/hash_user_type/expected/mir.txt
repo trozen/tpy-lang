@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_hash@13:0: uncovered (unsupported parameter type)
+main::main@16:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Point.__hash__@10:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

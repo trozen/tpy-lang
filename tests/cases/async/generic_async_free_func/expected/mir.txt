@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@29:0: uncovered (async body)
+main::sized_after@33:0: uncovered (async body)
+main::main_coro@46:0: uncovered (async body)
+main::main@59:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Bin.size@25:4: covered (storage: no_proof_required), summary: known
+main::Bin.__init__@21:4: covered (storage: no_proof_required), summary: known

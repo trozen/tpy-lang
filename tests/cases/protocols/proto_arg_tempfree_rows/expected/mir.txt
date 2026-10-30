@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::drive@45:0: uncovered (unsupported parameter type)
+main::main@63:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Sink.take_str@32:4: covered (storage: no_proof_required), summary: known
+main::Sink.take_union@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sink.take_ro_list@38:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Sink.take_opt@41:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::W.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@29:4: covered (storage: no_proof_required), summary: known

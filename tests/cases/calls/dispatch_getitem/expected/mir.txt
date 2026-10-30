@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_store@61:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@67:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Store.add@20:4: uncovered (generic body)
+main::Store.__getitem__@25:4: uncovered (no body to lower)
+main::Store.__getitem__@25:4#2: uncovered (no body to lower)
+main::Store.__getitem__@30:4: uncovered (no body to lower)
+main::Store.__getitem__@30:4#2: uncovered (no body to lower)
+main::Digits.__getitem__@47:4: uncovered (no body to lower)
+main::Digits.__getitem__@52:4: uncovered (no body to lower)
+main::Cell.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Store.__init__@17:4: uncovered (generic constructor)
+main::Digits.__init__@42:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@26:0: covered (storage: no_proof_required), summary: known
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sink.saverow@13:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Sink.count@19:4: covered (storage: no_proof_required), summary: known
+main::Sink.index@22:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@10:4: covered (storage: no_proof_required), summary: known

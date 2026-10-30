@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::fresh@40:0: covered (storage: no_proof_required), summary: known
+main::total@45:0: uncovered (unsupported parameter type)
+main::first_two@58:0: uncovered (error-return body)
+main::pull@69:0: uncovered (unsupported return type)
+main::walk@77:0: uncovered (reference yield)
+main::head@89:0: uncovered (unsupported parameter type)
+main::dead_pass@101:0: uncovered (reference yield)
+main::dead_break@110:0: uncovered (reference yield)
+main::dead_return@119:0: uncovered (reference yield)
+main::nested@131:0: uncovered (unsupported parameter type)
+main::a_first@146:0: uncovered (async body)
+main::a_dead@156:0: uncovered (async body)
+main::a_main@167:0: uncovered (async body)
+main::main@204:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::Indices.__iter__@28:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Indices.__next__@32:4: uncovered (error-return body)
+main::Counter.count@179:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Node.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Indices.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@175:4: covered (storage: no_proof_required), summary: known

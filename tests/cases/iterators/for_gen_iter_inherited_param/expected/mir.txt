@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::drain_sum@29:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::BaseSource.__iter__@15:4: covered (storage: no_facts: storage facts have not been published)
+main::BaseSource.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Source.__init__@24:4: covered (storage: no_proof_required), summary: known

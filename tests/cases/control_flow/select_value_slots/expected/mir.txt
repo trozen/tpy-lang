@@ -1,0 +1,30 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@27:0: covered (storage: no_proof_required), summary: known
+main::fresh@32:0: covered (storage: no_proof_required), summary: known
+main::take@36:0: covered (storage: no_proof_required), summary: known
+main::local_decl@41:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::loop_body@58:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::branch_first@67:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::reassigned@75:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::hoisted@86:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::give@96:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::give_list@101:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::own_return@106:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::or_local@115:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::give_or_name@129:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::give_or_fresh@134:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::give_or_list@139:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::or_return@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::member_init@163:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::give_chain@169:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::or_chain@174:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::own_arg@181:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::give_nocopy@192:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::nocopy_select@197:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::async_body@205:0: uncovered (async body)
+main::gen@215:0: uncovered (unsupported hoisted value)
+main::main@223:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::C.__bool__@14:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::N.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@158:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

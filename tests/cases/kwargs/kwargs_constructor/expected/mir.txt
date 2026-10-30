@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@4:4: covered (storage: no_proof_required), summary: known
+main::Config.__init__@9:4: covered (storage: no_proof_required), summary: known

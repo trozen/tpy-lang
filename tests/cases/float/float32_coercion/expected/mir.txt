@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::accepts_float@4:0: covered (storage: no_proof_required), summary: known
+main::accepts_f32@7:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::returns_f32@10:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_widening_assignment@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_narrowing_assignment@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_param_coercion@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_return_coercion@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_mixed_type_inference@41:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_int_to_float32_coercion@54:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_chained_coercion@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

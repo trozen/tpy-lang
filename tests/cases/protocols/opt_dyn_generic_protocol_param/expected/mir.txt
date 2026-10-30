@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_show@23:0: uncovered (unsupported parameter type)
+main::main@29:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::IntBox.get@19:4: covered (storage: no_proof_required)
+main::IntBox.__init__@16:4: covered (storage: no_proof_required), summary: known

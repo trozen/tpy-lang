@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Holder.set_name@21:4: covered (storage: no_proof_required), summary: known
+main::Holder.set_rvalue@24:4: covered (storage: no_proof_required), summary: known
+main::Holder.get@27:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@18:4: covered (storage: no_proof_required), summary: known

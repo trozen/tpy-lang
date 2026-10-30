@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::del_it@15:0: covered (storage: no_proof_required), summary: known
+main::main@19:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::Tracker.__delattr__@11:4: covered (storage: no_proof_required), summary: known
+main::Tracker.__init__@8:4: covered (storage: no_proof_required), summary: known

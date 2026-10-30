@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::which_g@8:0: uncovered (no body to lower)
+main::which_g@13:0: uncovered (no body to lower)
+main::free_function@17:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

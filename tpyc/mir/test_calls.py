@@ -591,7 +591,7 @@ def caller(n: int32) -> int32:
     out = capsys.readouterr().out
     assert out.count("call helper::value") == 2
     caller = out.split("::caller@", 1)[1].split("\nfn ", 1)[0]
-    assert "MIR not covered" not in caller
+    assert "<uncovered (" not in caller
 
 
 def test_duplicate_or_missing_definition_does_not_resolve(artifacts: Artifacts) -> None:
@@ -630,5 +630,5 @@ def test_ordinary_method_and_constructor_tail_share_call_consumer(artifacts: Art
     out = artifacts[-1]
     method = out.split("::Cell.via_helper@", 1)[1].split("\nfn ", 1)[0]
     ctor = out.split("::Caller.__init__@", 1)[1].split("\nfn ", 1)[0]
-    assert "call main::read" in method and "MIR not covered" not in method
-    assert "call main::identity" in ctor and "MIR not covered" not in ctor
+    assert "call main::read" in method and "<uncovered (" not in method
+    assert "call main::identity" in ctor and "<uncovered (" not in ctor

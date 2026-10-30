@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::eq@6:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::main@10:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_record@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@51:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.bump@17:4: covered (storage: no_proof_required), summary: known
+main::C.p@28:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::C.p@28:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Owner.bump_twice@46:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@42:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::collect@35:0: uncovered (loop across a suspension)
+main::main@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Counter.__next__@23:4: uncovered (error-return body)
+main::Fresh.__iter__@31:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@20:4: covered (storage: no_proof_required), summary: known

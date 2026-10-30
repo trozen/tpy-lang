@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::toks_while@19:0: uncovered (reference yield)
+main::toks_for@26:0: uncovered (loop across a suspension)
+main::main@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Tok.__init__@15:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::capture@43:0: certified, summary: known
+main::nested@53:0: certified, summary: known
+main::shared@61:0: certified, summary: known
+main::tuples@68:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::optional@77:0: covered (storage: no_proof_required), summary: known
+main::union@84:0: covered (storage: no_proof_required), summary: known
+main::main@90:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Outer.touch@19:4: certified, summary: known
+main::Cell.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Deep.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Observer.__init__@36:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

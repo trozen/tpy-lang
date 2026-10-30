@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@17:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@22:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

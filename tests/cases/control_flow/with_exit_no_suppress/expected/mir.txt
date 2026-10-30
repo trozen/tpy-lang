@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bouncer.__enter__@6:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Bouncer.__exit__@10:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

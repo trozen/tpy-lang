@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_p@24:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@30:0: uncovered (async body)
+main::driver@41:0: uncovered (async body)
+main::P.__init__@20:4: covered (storage: no_proof_required), summary: known

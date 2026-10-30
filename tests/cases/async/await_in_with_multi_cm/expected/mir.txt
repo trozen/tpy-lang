@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::value@18:0: uncovered (async body)
+main::caller@22:0: uncovered (async body)
+main::later_item_lambda@63:0: uncovered (async body)
+main::comp_hides_body_hoist@71:0: uncovered (async body)
+main::main@82:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Tracer.__enter__@11:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tracer.__exit__@14:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Count.__enter__@32:4: covered (storage: no_proof_required), summary: known
+main::Count.__exit__@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cb.__enter__@43:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Cb.__exit__@46:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Items.__enter__@56:4: covered (storage: no_proof_required), summary: known
+main::Items.__exit__@59:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Tracer.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Count.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Cb.__init__@40:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Items.__init__@53:4: covered (storage: no_proof_required), summary: known

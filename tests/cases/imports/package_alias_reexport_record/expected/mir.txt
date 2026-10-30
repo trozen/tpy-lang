@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.sub::__tpy_init: uncovered (module initialization)
+pkg.sub::Point.__repr__@9:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+pkg.sub::Point.__init__@5:4: covered (storage: no_proof_required), summary: known

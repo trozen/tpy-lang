@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::bump_param@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::bump_iterable@44:0: uncovered (unsupported parameter type)
+main::total@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen@56:0: uncovered (unsupported parameter type)
+main::co@62:0: uncovered (async body)
+main::main@69:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Bag.__iter__@24:4: uncovered (view of container storage), summary: opaque (view of container storage)
+main::Bag.bump_mine@27:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::A.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

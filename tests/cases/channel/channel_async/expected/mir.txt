@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::producer@20:0: uncovered (async body)
+main::consumer@28:0: uncovered (async body)
+main::main_co@37:0: uncovered (async body)
+main::cancel_consumer@45:0: uncovered (async body)
+main::cancel_producer@55:0: uncovered (async body)
+main::cancel_co@64:0: uncovered (async body)
+main::woken_consumer@85:0: uncovered (async body)
+main::woken_co@95:0: uncovered (async body)
+main::Counter.__init__@16:4: covered (storage: no_proof_required), summary: known

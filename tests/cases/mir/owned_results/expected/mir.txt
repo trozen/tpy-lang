@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@45:0: covered (storage: no_proof_required), summary: known
+main::make_named@50:0: covered (storage: no_proof_required), summary: known
+main::make_local@55:0: covered (storage: no_proof_required), summary: known
+main::duplicate@62:0: covered (storage: no_proof_required), summary: known
+main::pick@67:0: covered (storage: no_proof_required), summary: known
+main::forward@74:0: covered (storage: no_proof_required), summary: known
+main::reassigned@79:0: uncovered (reassigned local returned), summary: opaque (reassigned local returned)
+main::reseat_return@87:0: uncovered (reassigned local returned), summary: opaque (reassigned local returned)
+main::use_result@94:0: covered (storage: no_proof_required), summary: known
+main::use_temp@101:0: certified, summary: known
+main::spawn_temp@106:0: certified, summary: known
+main::reseat@111:0: covered (storage: no_proof_required), summary: known
+main::collect@118:0: covered (storage: no_proof_required), summary: known
+main::named_caller@125:0: covered (storage: no_proof_required), summary: known
+main::spawned@131:0: covered (storage: no_proof_required), summary: known
+main::take@139:0: covered (storage: no_proof_required), summary: known
+main::give@143:0: covered (storage: no_proof_required), summary: known
+main::read@147:0: covered (storage: no_proof_required), summary: known
+main::lend_temp@152:0: certified, summary: known
+main::maybe@157:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::make_pinned@175:0: uncovered (owned record result needs movable record), summary: opaque (owned record result needs movable record)
+main::pin_holder@188:0: covered (storage: no_proof_required), summary: known
+main::make_tok@202:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::make_box@214:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@229:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Point.bump@16:4: covered (storage: no_proof_required), summary: known
+main::Point.total@20:4: covered (storage: no_proof_required), summary: known
+main::Pool.spawn@40:4: covered (storage: no_proof_required), summary: known
+main::Holder.put@225:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Pool.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Pinned.__init__@170:4: covered (storage: no_proof_required), summary: known
+main::PinHolder.__init__@183:4: covered (storage: no_proof_required), summary: known
+main::Tok.__init__@197:4: uncovered (missing record layout)
+main::Box.__init__@209:4: uncovered (generic constructor)
+main::Holder.__init__@221:4: covered (storage: no_proof_required), summary: known

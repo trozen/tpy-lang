@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Widget.split@19:4: uncovered (unsupported return type)
+main::Plain.split@29:4: uncovered (unsupported return type)
+main::Widget.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@26:4: covered (storage: no_proof_required), summary: known

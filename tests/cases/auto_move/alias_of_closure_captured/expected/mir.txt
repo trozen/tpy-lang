@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@16:0: covered (storage: no_proof_required), summary: known
+main::container@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::record@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::still_moves@62:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@73:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.run@51:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@47:4: covered (storage: no_proof_required), summary: known

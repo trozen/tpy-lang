@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_list@7:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::aug_assign@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_dict@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_dict_readonly@32:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_bytearray@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_nested@45:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_user_record@64:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::main@74:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Doubler.__len__@57:4: covered (storage: no_proof_required), summary: known
+main::Doubler.__getitem__@60:4: covered (storage: no_proof_required), summary: known
+main::Doubler.__init__@54:4: covered (storage: no_proof_required), summary: known

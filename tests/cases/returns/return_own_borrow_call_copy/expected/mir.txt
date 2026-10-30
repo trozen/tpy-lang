@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_container@33:0: covered (storage: no_proof_required), summary: known
+main::first@38:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::frec@42:0: certified, summary: known
+main::take_free@46:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take_record@52:0: covered (storage: no_proof_required), summary: known
+main::take_record_free@57:0: covered (storage: no_proof_required), summary: known
+main::take_record_field@61:0: covered (storage: no_proof_required), summary: known
+main::take_record_ifexpr@66:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.bctr@26:4: covered (storage: no_proof_required), summary: known
+main::Holder.brec@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Payload.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@22:4: covered (storage: no_proof_required), summary: known

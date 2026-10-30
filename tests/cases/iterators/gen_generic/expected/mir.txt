@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_each@36:0: uncovered (generic body)
+main::size_each@45:0: uncovered (generic body)
+main::len_each@63:0: uncovered (generic body)
+main::repeat@73:0: uncovered (generic body)
+main::enumerate@79:0: uncovered (generic body)
+main::main@85:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bin.append@28:4: covered (storage: no_proof_required), summary: known
+main::Bin.size@32:4: covered (storage: no_proof_required), summary: known
+main::Bin.__init__@25:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::tail@11:0: uncovered (loop across a suspension)
+main::amain@32:0: uncovered (async body)
+main::main@39:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Holder.total@23:4: uncovered (async body)
+main::Holder.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

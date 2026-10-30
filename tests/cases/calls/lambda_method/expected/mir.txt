@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Processor.apply@11:4: uncovered (unsupported parameter type)
+main::Processor.apply_binary@14:4: uncovered (unsupported parameter type)
+main::Processor.__init__@8:4: covered (storage: no_proof_required), summary: known

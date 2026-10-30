@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_seq@16:0: uncovered (unsupported parameter type)
+main::first@24:0: uncovered (unsupported parameter type)
+main::main@27:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::IntWrapper.__len__@10:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::IntWrapper.__getitem__@13:4: covered (storage: no_proof_required), summary: known
+main::IntWrapper.__init__@7:4: covered (storage: no_proof_required), summary: known

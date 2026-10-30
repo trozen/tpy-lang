@@ -1,0 +1,4 @@
+inner::__tpy_init: uncovered (module initialization)
+inner::shared_helper@1:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::__tpy_init: uncovered (module initialization)
+outer::__tpy_init: uncovered (module initialization)

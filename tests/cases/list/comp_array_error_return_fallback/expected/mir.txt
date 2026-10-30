@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::half@33:0: uncovered (error-return body)
+main::halves@40:0: uncovered (error-return body)
+main::bad@46:0: uncovered (error-return body)
+main::main@51:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Gauge.val@20:4: uncovered (error-return body)
+main::Gauge.scaled@26:4: uncovered (error-return body)
+main::Gauge.__init__@15:4: covered (storage: no_proof_required), summary: known

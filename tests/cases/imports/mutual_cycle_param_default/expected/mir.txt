@@ -1,0 +1,11 @@
+a_user::__tpy_init: uncovered (module initialization)
+a_user::own_call@25:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+a_user::f@29:0: covered (storage: no_proof_required), summary: known
+a_user::Q.add@15:4: uncovered (unsupported expression)
+a_user::Q.add_trailing@20:4: uncovered (unsupported expression)
+a_user::Q.__init__@11:4: covered (storage: no_proof_required), summary: known
+const::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+n_native::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+z_peer::__tpy_init: uncovered (module initialization)
+z_peer::peer_call@14:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

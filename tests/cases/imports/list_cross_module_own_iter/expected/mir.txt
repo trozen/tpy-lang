@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+shapes::__tpy_init: uncovered (module initialization)
+shapes::points@11:0: uncovered (loop across a suspension)
+shapes::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse_digit@13:0: uncovered (error-return body)
+main::match_arms@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_handlers@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_error_return@52:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::none_if@62:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::widen_existing@73:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
+main::capture_types@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::capture_or_stmt@92:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_arms@102:0: uncovered (unsupported statement)
+main::async_arms@113:0: uncovered (async body)
+main::match_hoist_opt@125:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_hoist_none_first@139:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_hoist_opt@152:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_bigint@165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_nested@175:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::if_nested@191:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::try_nested@206:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@223:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::big_value@258:0: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@25:4: covered (storage: no_proof_required), summary: known

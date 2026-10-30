@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::borrow_free@39:0: certified, summary: known
+main::make_mixed@43:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk@47:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::param_lit@51:0: uncovered (reference yield)
+main::borrowed_name@56:0: uncovered (unsupported hoisted value)
+main::lending_call@62:0: uncovered (reference yield)
+main::element@67:0: uncovered (unsupported native container element)
+main::field@72:0: uncovered (reference yield)
+main::live@77:0: uncovered (unsupported hoisted value)
+main::borrow_calls@84:0: uncovered (reference yield)
+main::genexpr_rebind@90:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::to_name@99:0: uncovered (unsupported hoisted value)
+main::to_call@105:0: uncovered (reference yield)
+main::mixed_fin_yield@110:0: uncovered (reference yield)
+main::g_mixed@119:0: uncovered (generic body)
+main::main@126:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::<genexpr>@94:13: uncovered (generator expression)
+main::Holds.borrow@35:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@25:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holds.__init__@32:4: covered (storage: no_proof_required), summary: known

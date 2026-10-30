@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Converter.identity@6:4: uncovered (generic body)
+main::Converter.__init__@3:4: covered (storage: no_proof_required), summary: known

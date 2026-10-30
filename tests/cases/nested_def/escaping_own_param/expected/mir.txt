@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_getter@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::apply@20:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_value@27:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::main@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Config.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Pt.__init__@12:4: uncovered (missing record layout)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Derived.double@14:4: uncovered (missing receiver fact)
+main::Base.__init__@9:4: uncovered (missing record layout)

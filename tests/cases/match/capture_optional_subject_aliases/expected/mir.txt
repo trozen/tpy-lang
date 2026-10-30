@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (owned temporary needs full-expression boundary), summary: opaque (owned temporary needs full-expression boundary)
+main::Box.__init__@4:4: covered (storage: no_proof_required), summary: known

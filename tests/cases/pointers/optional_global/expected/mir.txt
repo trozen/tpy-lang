@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::Point.mag@12:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

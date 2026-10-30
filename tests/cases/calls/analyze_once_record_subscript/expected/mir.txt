@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::B.take@13:4: uncovered (missing receiver fact)
+main::Table.__getitem__@19:4: uncovered (no body to lower)
+main::Table.__getitem__@23:4: uncovered (no body to lower)
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Worker.go@13:4: uncovered (async body)
+main::Worker.__init__@10:4: covered (storage: no_proof_required), summary: known

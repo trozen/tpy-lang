@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::check@27:0: covered (storage: no_proof_required), summary: known
+main::main@32:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Gate.describe@22:4: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::GateBase.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Gate.__init__@18:4: covered (storage: no_proof_required), summary: known

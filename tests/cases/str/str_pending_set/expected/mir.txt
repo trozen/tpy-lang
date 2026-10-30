@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_set@4:0: covered (storage: no_proof_required), summary: known
+main::in_set_comp@8:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

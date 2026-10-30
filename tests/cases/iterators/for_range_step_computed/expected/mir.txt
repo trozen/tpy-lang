@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::stride@7:0: covered (storage: no_proof_required), summary: known
+main::fixed_steps@18:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
+main::bigint_step@40:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
+main::main@50:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Grid.__init__@14:4: covered (storage: no_proof_required), summary: known

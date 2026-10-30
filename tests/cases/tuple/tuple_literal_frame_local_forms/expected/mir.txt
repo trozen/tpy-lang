@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@20:0: covered (storage: no_proof_required), summary: known
+main::make_pair@24:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_elem_pair@29:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::fresh@34:0: uncovered (unsupported hoisted value)
+main::own_call@42:0: uncovered (unsupported hoisted value)
+main::lvalue@51:0: uncovered (unsupported hoisted value)
+main::mixed_fresh_first@59:0: uncovered (unsupported hoisted value)
+main::mixed_lvalue_first@67:0: uncovered (unsupported hoisted value)
+main::moved_last_use@75:0: uncovered (unsupported hoisted value)
+main::loop_reassigned@83:0: uncovered (unsupported hoisted value)
+main::literal_then_call@96:0: uncovered (unsupported hoisted value)
+main::call_then_literal@107:0: uncovered (unsupported hoisted value)
+main::call_reassigned@120:0: uncovered (unsupported hoisted value)
+main::own_elem_call@131:0: uncovered (unsupported hoisted value)
+main::try_body@139:0: uncovered (try across a suspension)
+main::coro@164:0: uncovered (async body)
+main::async_section@171:0: uncovered (async body)
+main::main@176:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::H.g@156:4: uncovered (unsupported hoisted value)
+main::A.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@152:4: covered (storage: no_proof_required), summary: known

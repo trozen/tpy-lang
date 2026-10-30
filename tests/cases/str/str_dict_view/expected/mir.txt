@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_dict_value_view@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_dict_mutation_fallback@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_dict_value_update_fallback@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_dict_int_key_view@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

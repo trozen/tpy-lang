@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Counter.bump_twice@15:4: uncovered (async body)
+main::Counter.steps@28:4: uncovered (nested def)
+main::Counter.__init__@12:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::propagate@28:0: uncovered (error-return body)
+main::main@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::H.view@18:4: uncovered (error-return body)
+main::H.rview@23:4: uncovered (error-return body)
+main::H.__init__@14:4: covered (storage: no_proof_required), summary: known

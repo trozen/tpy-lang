@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::V3.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Material.__init__@20:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Layer.__init__@29:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

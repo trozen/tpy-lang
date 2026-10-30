@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::peek@47:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::main@53:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Box.__getitem__@23:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Box.__getitem__@23:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::GenBox.__getitem__@37:4: uncovered (generic body)
+main::GenBox.__getitem__@37:4#2: uncovered (generic body)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::GenBox.__init__@33:4: uncovered (generic constructor)

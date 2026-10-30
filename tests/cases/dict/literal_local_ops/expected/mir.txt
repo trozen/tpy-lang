@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::dict_ops@10:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::empty_dict@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::set_ops@26:0: covered (storage: no_proof_required), summary: known
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

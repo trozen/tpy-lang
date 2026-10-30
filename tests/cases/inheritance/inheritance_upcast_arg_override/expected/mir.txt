@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@25:0: covered (storage: no_proof_required), summary: known
+main::describe_ptr@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.speak@14:4: covered (storage: no_proof_required), summary: known
+main::Dog.speak@22:4: covered (storage: no_proof_required), summary: known
+main::Parrot.speak@40:4: covered (storage: no_proof_required)
+main::Animal.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Parrot.__init__@38:4: covered (storage: no_proof_required), summary: known

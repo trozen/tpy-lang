@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_return_then_finally_yield@6:0: uncovered (try across a suspension)
+main::gen_exception_then_finally_yield@12:0: uncovered (try across a suspension)
+main::main@22:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

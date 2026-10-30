@@ -1,0 +1,52 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@33:0: covered (storage: no_proof_required), summary: known
+main::make_ba@38:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::take@43:0: covered (storage: no_proof_required), summary: known
+main::take_list@47:0: covered (storage: no_proof_required), summary: known
+main::give_or@51:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::give@56:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::ctor_init@115:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::local_decl@123:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::ctor_arm@132:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::elem_arm@140:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::list_ctor_arm@148:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_literal_arm@156:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::receiver@164:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::container_receiver@172:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::own_arg@180:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::append_arg@189:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::own_return@203:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::fresh_container_arms@210:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::nested_select_arm@227:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::branch_positions@240:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::or_positions@253:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::async_own_sel@264:0: uncovered (async body)
+main::copy_ternary@270:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::own_list_arg@279:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::match_arm@285:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::param_arms@298:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::run_param_arms@310:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::dict_elem_arm@319:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen_receiver@327:0: uncovered (unsupported hoisted value)
+main::async_receiver@335:0: uncovered (async body)
+main::str_receivers@344:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::first_list@350:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::escaping_aliases@354:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::escaping_closure@367:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::loop_body@378:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::comprehension@389:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure@398:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@410:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::C.bump@17:4: covered (storage: no_proof_required), summary: known
+main::C.get@20:4: covered (storage: no_proof_required), summary: known
+main::C.inc@23:4: covered (storage: no_proof_required), summary: known
+main::C.__bool__@27:4: covered (storage: no_proof_required), summary: known
+main::Holder.alias_bump@67:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::Holder.total@73:4: covered (storage: no_proof_required), summary: known
+main::Holder.peek@76:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::Holder.meth@81:4: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
+main::C.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@64:4: covered (storage: no_proof_required), summary: known
+main::Keep.__init__@94:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::KeepNames.__init__@102:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::KeepElem.__init__@110:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_list@5:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::from_array@10:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::from_span@15:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::from_readonly_span@21:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::from_arraylist@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

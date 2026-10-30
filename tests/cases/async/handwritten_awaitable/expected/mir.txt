@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::ReadyAwaitable.__poll__@16:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ReadyAwaitable.__init__@13:4: covered (storage: no_proof_required), summary: known

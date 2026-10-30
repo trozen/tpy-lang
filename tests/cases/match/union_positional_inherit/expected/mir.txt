@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@24:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Base.__eq__: covered (storage: no_proof_required)
+main::Base.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Child.__eq__: covered (storage: no_proof_required)
+main::Child.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Other.__eq__: covered (storage: no_proof_required)
+main::Other.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Base.__init__: covered (storage: no_proof_required), summary: known
+main::Child.__init__: covered (storage: no_proof_required), summary: known
+main::Other.__init__: covered (storage: no_proof_required), summary: known

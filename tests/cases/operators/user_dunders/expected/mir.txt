@@ -1,0 +1,39 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_unary@81:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_contains@90:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_sub_mul@98:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_iadd@108:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_isub@114:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_hash@120:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_len@125:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_eq@129:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_explicit_ne@149:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_inherited_eq@160:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_comparisons@167:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_invert@178:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_builtin_pos@186:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@192:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Vec2.__add__@14:4: covered (storage: no_proof_required)
+main::Vec2.__sub__@17:4: covered (storage: no_proof_required)
+main::Vec2.__mul__@20:4: covered (storage: no_proof_required)
+main::Vec2.__neg__@23:4: covered (storage: no_proof_required)
+main::Vec2.__pos__@26:4: covered (storage: no_proof_required)
+main::Vec2.__eq__@29:4: covered (storage: no_proof_required)
+main::Vec2.__hash__@32:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Vec2.__len__@35:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Vec2.__contains__@38:4: covered (storage: no_proof_required), summary: known
+main::Vec2.__iadd__@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Vec2.__isub__@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Score.__eq__@57:4: covered (storage: no_proof_required)
+main::Score.__lt__@60:4: covered (storage: no_proof_required)
+main::Score.__le__@63:4: covered (storage: no_proof_required)
+main::Score.__gt__@66:4: covered (storage: no_proof_required)
+main::Score.__ge__@69:4: covered (storage: no_proof_required)
+main::Mask.__invert__@78:4: covered (storage: no_proof_required)
+main::Tag.__eq__@143:4: covered (storage: no_proof_required)
+main::Tag.__ne__@146:4: covered (storage: no_proof_required)
+main::Vec2.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Score.__init__@54:4: covered (storage: no_proof_required), summary: known
+main::Mask.__init__@75:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@140:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@157:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::Point.__repr__@8:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@5:4: covered (storage: no_proof_required), summary: known

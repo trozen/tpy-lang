@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::conditions@8:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
+main::filters@52:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::guard@59:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@70:0: uncovered (unsupported boolean operation)
+main::main@89:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::<genexpr>@56:32: uncovered (generator expression)
+main::Counter.run@83:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@80:4: covered (storage: no_proof_required), summary: known

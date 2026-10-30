@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::redundant_same@19:0: covered (storage: no_proof_required), summary: known
+main::dead_other@26:0: covered (storage: no_proof_required), summary: known
+main::assign_then_check@34:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::elif_exhaustive@41:0: covered (storage: no_proof_required), summary: known
+main::main@51:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@15:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Headers.__getattr__@8:4: covered (storage: no_proof_required), summary: known
+main::Headers.__init__@5:4: covered (storage: no_proof_required), summary: known

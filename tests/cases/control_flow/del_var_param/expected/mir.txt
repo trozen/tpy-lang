@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@2:0: uncovered (name type mismatch), summary: opaque (name type mismatch)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Summer.run@17:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Summer.__init__@14:4: covered (storage: no_proof_required), summary: known

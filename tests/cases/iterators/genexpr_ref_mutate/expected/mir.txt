@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::<genexpr>@14:13: uncovered (generator expression)
+main::Node.__init__@8:4: covered (storage: no_proof_required), summary: known

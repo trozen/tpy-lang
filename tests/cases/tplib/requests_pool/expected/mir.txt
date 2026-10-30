@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pooled_reuse@16:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pool_key_shapes@51:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::failed_request_drops_entry@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::exit_closes_pool@80:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@91:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

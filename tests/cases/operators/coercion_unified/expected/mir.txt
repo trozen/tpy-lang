@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_int32@25:0: covered (storage: no_proof_required), summary: known
+main::take_ptr@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_const_ptr@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_point@34:0: covered (storage: no_proof_required), summary: known
+main::take_span@37:0: covered (storage: no_proof_required), summary: known
+main::return_bigint_as_int32@48:0: covered (storage: no_proof_required), summary: known
+main::test_bigint_to_int32@53:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
+main::test_record_to_ptr@77:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_record_to_const_ptr@99:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::return_record_from_ptr@120:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_ptr_to_record@124:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::take_const_ptr_val@153:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_ptr_to_const_ptr@157:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_arraylist_to_span@181:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_array_to_span@195:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::test_list_to_span@206:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::test_subscript_to_ptr@217:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@18:4: covered (storage: no_proof_required), summary: known

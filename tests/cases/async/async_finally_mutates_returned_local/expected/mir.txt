@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@14:0: uncovered (async body)
+main::f_opt@22:0: uncovered (async body)
+main::f_alias@37:0: uncovered (async body)
+main::main@46:0: uncovered (async body)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

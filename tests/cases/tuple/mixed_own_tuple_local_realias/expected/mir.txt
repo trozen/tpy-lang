@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::realias@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@33:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@18:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@21:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::bump_copy@25:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.updated@16:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known

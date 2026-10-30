@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_global@7:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::from_local@13:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@8:13: uncovered (generator expression)
+main::<genexpr>@17:13: uncovered (generator expression)

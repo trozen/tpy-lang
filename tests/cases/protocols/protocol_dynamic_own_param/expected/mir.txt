@@ -1,0 +1,15 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_parrot@39:0: uncovered (unsupported return type)
+main::make_dog@42:0: uncovered (unsupported return type)
+main::make_tabby@45:0: uncovered (unsupported return type)
+main::widen_to_pet@48:0: uncovered (unsupported return type)
+main::speak_and_forward@55:0: uncovered (unsupported return type)
+main::pick@60:0: uncovered (unsupported return type)
+main::main@67:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Parrot.name@20:4: covered (storage: no_proof_required), summary: known
+main::Dog.name@27:4: covered (storage: no_proof_required), summary: known
+main::Tabby.name@34:4: covered (storage: no_proof_required), summary: known
+main::Tabby.species@36:4: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::Parrot.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Tabby.__init__@32:4: covered (storage: no_proof_required), summary: known

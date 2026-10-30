@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@6:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@12:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

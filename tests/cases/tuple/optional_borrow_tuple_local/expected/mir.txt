@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_pair@28:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::alias_storage@32:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::alias_after_owning_call@42:0: uncovered (unsupported metadata: btuple_slot_cpp), summary: opaque (unsupported metadata: btuple_slot_cpp)
+main::conditional@52:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::branch_declared@62:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::reowned@74:0: uncovered (unsupported metadata: btuple_slot_cpp), summary: opaque (unsupported metadata: btuple_slot_cpp)
+main::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

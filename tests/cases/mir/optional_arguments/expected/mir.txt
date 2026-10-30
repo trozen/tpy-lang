@@ -1,0 +1,61 @@
+main::__tpy_init: uncovered (module initialization)
+main::present@53:0: covered (storage: no_proof_required), summary: known
+main::peek@58:0: covered (storage: no_proof_required), summary: known
+main::bump@65:0: covered (storage: no_proof_required), summary: known
+main::put@71:0: covered (storage: no_proof_required), summary: known
+main::call_free@76:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::call_free_temp@85:0: certified, summary: known
+main::call_method@90:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::call_ctor@99:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::call_ctor_temp@112:0: certified, summary: known
+main::call_bump@118:0: covered (storage: no_proof_required), summary: known
+main::items_or@125:0: covered (storage: no_proof_required), summary: known
+main::call_none@132:0: covered (storage: no_proof_required), summary: known
+main::call_items@139:0: certified, summary: known
+main::call_holder@146:0: covered (storage: no_proof_required), summary: known
+main::twice@156:0: covered (storage: no_proof_required), summary: known
+main::plain@162:0: covered (storage: no_proof_required), summary: known
+main::read_q@166:0: covered (storage: no_proof_required), summary: known
+main::call_scalar@171:0: covered (storage: no_proof_required), summary: known
+main::scalar_loops@179:0: covered (storage: no_proof_required), summary: known
+main::via_scalar@189:0: covered (storage: no_proof_required), summary: known
+main::narrowed_plain@196:0: covered (storage: no_proof_required), summary: known
+main::call_scalar_ctor@210:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::call_scalar_ctor_arg@229:0: covered (storage: no_proof_required), summary: known
+main::grow_both@237:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::grow_both_call@246:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::replace_holder@251:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: alias_obligation, summary: known
+main::replace_holder_call@260:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::clear_read@265:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::clear_read_call@272:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::clear_read_method_call@277:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::replace_read@282:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::replace_read_call@289:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::relay@294:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::relay_call@298:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::clear_read_silent@303:0: covered (storage: no_proof_required), summary: known
+main::wr@311:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::wr_call@317:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: argument_alias, summary: known
+main::grow@324:0: covered (storage: no_proof_required), summary: known
+main::grow_under_iter@330:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::grow_then_iter@339:0: covered (storage: no_proof_required), summary: known
+main::put_then_read@348:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+main::store_then_read@357:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+main::read_then_put@366:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::retext@385:0: covered (storage: no_proof_required), summary: known
+main::retext_call@392:0: covered (storage: no_proof_required), summary: known
+main::lend_text@396:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::retext_view@402:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::retext_view_call@408:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::pick@413:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
+main::main@419:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Q.get@12:4: covered (storage: no_proof_required), summary: known
+main::H.peek@35:4: covered (storage: no_proof_required), summary: known
+main::H.store@41:4: covered (storage: no_proof_required), summary: known
+main::H.clear_read@45:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Q.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::S.__init__@206:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::U.__init__@225:4: covered (storage: no_proof_required), summary: known
+main::T.__init__@379:4: covered (storage: no_proof_required), summary: known

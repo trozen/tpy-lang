@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::write_fixtures@42:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::handshaken_pair@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@74:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

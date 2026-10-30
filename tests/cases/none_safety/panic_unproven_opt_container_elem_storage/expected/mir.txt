@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_x@25:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

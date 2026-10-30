@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@4:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::g@7:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::h@11:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@37:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Counter.bump@18:4: uncovered (assignment needs local or field target)
+main::Counter.scaled_start@23:4: uncovered (call needs resolved ordinary callee)
+main::Counter.twice@28:4: uncovered (call needs resolved ordinary callee)
+main::Counter.double@33:4: covered (storage: no_proof_required)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@19:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::P.__init__@11:4: covered (storage: no_proof_required), summary: known

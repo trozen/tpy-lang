@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::IntBox.replicate@25:4: uncovered (unsupported return type)
+main::IntBox.value@29:4: covered (storage: no_proof_required)
+main::IntBox.__init__@21:4: covered (storage: no_proof_required), summary: known

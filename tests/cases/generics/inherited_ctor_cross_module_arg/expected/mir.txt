@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Holder.__init__@11:4: uncovered (generic constructor)
+other::__tpy_init: uncovered (module initialization)
+other::Key.__eq__@10:4: uncovered (unsupported reference parameter passing)
+other::Key.__init__@7:4: uncovered (missing record layout)

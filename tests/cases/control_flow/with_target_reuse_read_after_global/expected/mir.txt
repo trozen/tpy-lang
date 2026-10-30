@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::Reg.__enter__@17:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Reg.__exit__@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Reg.__del__@23:4: uncovered (missing receiver fact)
+main::Reg.__init__@14:4: uncovered (custom record special member), summary: opaque (custom record special member)

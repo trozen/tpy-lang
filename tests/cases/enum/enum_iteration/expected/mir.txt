@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_colors@15:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::count_members@19:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::main@25:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

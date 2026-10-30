@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::step@15:0: uncovered (async body)
+main::ret_after_await@19:0: uncovered (async body)
+main::driver@29:0: uncovered (async body)
+main::main@33:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

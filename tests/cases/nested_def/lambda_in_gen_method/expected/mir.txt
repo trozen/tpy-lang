@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::apply_fn@21:0: uncovered (unsupported parameter type)
+main::push@25:0: covered (storage: no_proof_required), summary: known
+main::two_yield@71:0: uncovered (call needs finalized known summary)
+main::store@79:0: uncovered (call needs finalized known summary)
+main::cell@89:0: uncovered (unsupported hoisted value)
+main::ref_capture@102:0: uncovered (call needs resolved ordinary callee)
+main::own_capture@111:0: uncovered (unmodeled record)
+main::main@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Registry.register@36:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::C.emit@48:4: uncovered (loop across a suspension)
+main::D.emit@63:4: uncovered (call needs finalized known summary)
+main::Pt.__init__@13:4: uncovered (missing record layout)
+main::Registry.__init__@33:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::C.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::D.__init__@56:4: covered (storage: no_proof_required), summary: known

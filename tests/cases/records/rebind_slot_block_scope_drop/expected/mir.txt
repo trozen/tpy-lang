@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_if@20:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::in_loop@29:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Noisy.__del__@16:4: uncovered (missing receiver fact)
+main::Noisy.__init__@13:4: uncovered (custom record special member), summary: opaque (custom record special member)

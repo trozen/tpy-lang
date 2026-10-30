@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@14:0: uncovered (owned-leaf global write), summary: opaque (owned-leaf global write)
+main::main@36:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::P.mid@28:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.first@32:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@24:4: covered (storage: no_proof_required), summary: known

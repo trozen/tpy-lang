@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@7:0: uncovered (loop across a suspension)
+main::evens@16:0: uncovered (loop across a suspension)
+main::stride@23:0: uncovered (loop across a suspension)
+main::upto_range@31:0: uncovered (loop across a suspension)
+main::upto_while@38:0: covered (storage: no_facts: storage facts have not been published)
+main::iter_post_break@47:0: uncovered (loop across a suspension)
+main::post_continue@54:0: uncovered (loop across a suspension)
+main::main@84:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Limiter.first_positives@73:4: uncovered (loop across a suspension)
+main::Limiter.__init__@67:4: covered (storage: no_proof_required), summary: known

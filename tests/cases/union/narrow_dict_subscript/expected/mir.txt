@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_dict@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@20:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known

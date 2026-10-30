@@ -1,0 +1,58 @@
+helpers::__tpy_init: uncovered (module initialization)
+helpers::grow_then_read@2:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::__tpy_init: uncovered (module initialization)
+main::bound@24:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::bump@29:0: covered (storage: no_proof_required), summary: known
+main::walk@34:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::alias_int@43:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::other_int@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::propagated@53:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::local_copy@58:0: covered (storage: no_proof_required), summary: known
+main::local_list@64:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::scalar_field@70:0: covered (storage: no_proof_required), summary: known
+main::iterate_grow@75:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::copied_list@80:0: covered (storage: no_proof_required), summary: known
+main::receiver_field@88:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::receiver_slice@93:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::other_field@98:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::str_local@103:0: covered (storage: no_proof_required), summary: known
+main::list_copy@109:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::alias_external@129:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+main::one_line@136:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::merge_self@152:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::rename@156:0: covered (storage: no_proof_required), summary: known
+main::forwarded_then_reuse@160:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::forwarded@166:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::member_param@186:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::member_self@191:0: covered (storage: no_proof_required), conflicts: replacement, argument_alias, summary: opaque (summary transfer source is a member or element)
+main::gen_caller@196:0: covered (storage: no_facts: storage facts have not been published), conflicts: argument_alias
+main::keyword_alias@212:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::name_index@217:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::negative_index@222:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::unspelled@241:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::renamed@246:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::line_copy@251:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::pick@263:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, alias_obligation, summary: known
+main::caller@270:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::put@284:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::put_int@289:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::same_element@294:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::same_int_element@298:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::touch@303:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::element_field@310:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::main@314:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::H.setname@19:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Counter.merge_from@146:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Log.record_first@207:4: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::Stack.top@234:4: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::Stack.top@234:4#2: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::H.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@117:4: covered (storage: no_proof_required), summary: known
+main::Line.__init__@125:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@143:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@174:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@182:4: covered (storage: no_proof_required), summary: known
+main::Log.__init__@203:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Stack.__init__@229:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@259:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@280:4: covered (storage: no_proof_required), summary: known

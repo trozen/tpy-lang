@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::State.doubled@12:4: covered (storage: no_proof_required), summary: known
+main::State.__init__@9:4: covered (storage: no_proof_required), summary: known

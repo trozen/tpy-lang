@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.keys_of@13:4: uncovered (loop across a suspension)
+main::Holder.__init__@10:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

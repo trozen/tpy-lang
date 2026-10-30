@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::label@49:0: covered (storage: no_proof_required), summary: known
+main::relabel@53:0: uncovered (owned-leaf global write), summary: opaque (owned-leaf global write)
+main::motto@61:0: covered (storage: no_proof_required), summary: known
+main::extend_motto@65:0: uncovered (append needs owned storage), summary: opaque (append needs owned storage)
+main::label_size@78:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::title@83:0: covered (storage: no_proof_required), summary: known
+main::retitle@87:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::read_tagline@98:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::read_count@103:0: covered (storage: no_proof_required), summary: known
+main::bump@108:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::items@115:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::current@122:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::point_at@126:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::banners@132:0: uncovered (reference yield)
+main::main@137:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Registry.banner@44:4: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+main::Slot.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Registry.__init__@40:4: covered (storage: no_proof_required), summary: known

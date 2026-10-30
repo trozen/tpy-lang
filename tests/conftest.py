@@ -20,7 +20,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -847,6 +847,9 @@ class CompileResult:
     # coverage off a green run.
     thir_bodies: int = 0
     thir_faces: dict[str, int] = field(default_factory=dict)
+    # `expected/mir.txt`: rendered where the compile ran, since the verdicts
+    # themselves do not cross a forked compile's pipe.
+    mir_text: str = ""
 
 def _validate_default_int_name(name: str) -> str:
     allowed = {"int32", "int64", "BigInt"}
@@ -1050,11 +1053,13 @@ def _failed(compiler, error_line: str) -> CompileResult:
     return CompileResult(success=False, diagnostics="\n".join(lines) + "\n")
 
 
-def _mir_verdicts(compiler, local_contexts, entry_module) -> tuple[
-        dict[tuple[int, str], tuple[MIRBodyVerdict, ...]], dict[MIRBodyId, MIRLineFacts | None]]:
+def _mir_verdicts(compiler, local_contexts, lib_contexts, entry_module) -> tuple[
+        dict[tuple[int, str], tuple[MIRBodyVerdict, ...]], dict[MIRBodyId, MIRLineFacts | None], str]:
     """MIR over the case's own modules, the program `--dump-mir` sees, with
-    the entry module's per-line facts; the MIR warnings join the modules'
-    diagnostics.
+    the entry module's per-line facts and the `expected/mir.txt` text; the
+    MIR warnings join the modules' diagnostics. The library modules the case
+    snapshots get verdicts in a workspace of their own, so snapshotting one
+    changes neither the case's verdicts nor its warnings.
 
     Runs for every case, annotated or not, so a MIR exception surfaces on the
     whole corpus; it propagates as the case's failure (with its traceback),
@@ -1063,12 +1068,14 @@ def _mir_verdicts(compiler, local_contexts, entry_module) -> tuple[
     verdicts, checked only where an annotation asks."""
     verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
     facts: dict[MIRBodyId, MIRLineFacts | None] = {}
+    per_module: dict[str, tuple[MIRBodyVerdict, ...]] = {}
     try:
         analyzed = IdentityMap()
         with compiler.mir_analysis(local_contexts) as mir:
             for mod, ctx in local_contexts:
-                bodies = enumerate_bodies(mod.ast, mod.analyzer, ctx, mod.name, mir.definitions,
-                                          compiler.thir_reject_by_node, mir.workspace)
+                bodies = per_module[mod.name] = enumerate_bodies(
+                    mod.ast, mod.analyzer, ctx, mod.name, mir.definitions, compiler.thir_reject_by_node,
+                    mir.workspace)
                 analyzed[mod.ast] = [(v.function, v.analyses) for v in bodies if v.analyses is not None]
                 if mod is entry_module:
                     verdicts = key_mir_verdicts(bodies)
@@ -1078,11 +1085,24 @@ def _mir_verdicts(compiler, local_contexts, entry_module) -> tuple[
             # verdicts' analyses. Strict: a MIR exception fails the case
             # instead of silently dropping the warnings.
             compiler.report_mir_warnings(local_contexts, mir, analyzed=analyzed, strict=True)
+        if lib_contexts:
+            with compiler.mir_analysis(lib_contexts) as mir:
+                for mod, ctx in lib_contexts:
+                    per_module[mod.name] = enumerate_bodies(
+                        mod.ast, mod.analyzer, ctx, mod.name, mir.definitions, compiler.thir_reject_by_node,
+                        mir.workspace)
     except (CompileError, SemanticError, ParseError, CodeGenError) as e:
         # The caller's handlers turn these four into a failed compile with a
         # diagnostic; a MIR failure must stay a test failure.
         raise AssertionError(f"MIR raised a compiler error: {e!r}") from e
-    return verdicts, facts
+    return verdicts, facts, render_mir_text(per_module)
+
+
+def render_mir_text(per_module: Mapping[str, Iterable[MIRBodyVerdict]]) -> str:
+    """`expected/mir.txt`: one line per emitted body, modules by name, each
+    module's bodies in `--dump-mir` order."""
+    return "".join(f"{v.body.module}::{v.body.declaration}: {v.describe()}\n"
+                   for name in sorted(per_module) for v in per_module[name])
 
 
 def key_mir_verdicts(bodies) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]]:
@@ -1350,6 +1370,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         snapshot_lib: set[str] = set()
         matched_patterns: set[str] = set()
         lib_paths: dict[str, tuple[Path | None, Path | None]] = {}
+        lib_contexts = []
         reusable = _reusable_emission(compiler, req)
         layout = BuildLayout(output_dir, entry_module.name)
         for mod in lib_mods:
@@ -1361,10 +1382,13 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                 hpp_path, cpp_path = _write_emission(stored, layout, mod.name, compiler)
             else:
                 with _codegen_error_from(mod):
-                    hpp_path, cpp_path = compiler.generate_code(
+                    hpp_path, cpp_path, _sources, mod_ctx = compiler.generate_code_and_context(
                         mod, output_dir, entry_module_name=entry_module.name,
                         options=req.codegen_options
                     )
+                if hits:
+                    # Its MIR verdicts are snapshotted too, read off this emission.
+                    lib_contexts.append((mod, mod_ctx))
             all_modules.append((mod.name, hpp_path, cpp_path, False))
             lib_paths[mod.name] = (hpp_path, cpp_path)
             if hits:
@@ -1391,7 +1415,8 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         # Read after the library emit so a library module's faces count too.
         thir_faces = dict(compiler._thir_face_witnesses)
 
-        mir_verdicts, mir_line_facts = _mir_verdicts(compiler, local_contexts, entry_module)
+        mir_verdicts, mir_line_facts, mir_text = _mir_verdicts(
+            compiler, local_contexts, lib_contexts, entry_module)
         # MIR's warnings joined sema's: the diagnostics are read again.
         diagnostics = "".join(f"{line}\n" for _, line in format_diagnostics(compiler, compiled_modules))
 
@@ -1454,7 +1479,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
                              third_party_c_sources=list(tp_plan.c_sources),
-                             thir_bodies=thir_bodies, thir_faces=thir_faces)
+                             thir_bodies=thir_bodies, thir_faces=thir_faces, mir_text=mir_text)
 
     except (CompileError, SemanticError, ParseError, CodeGenError) as e:
         if isinstance(e, (SemanticError, CodeGenError)) and e.filename is not None:

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_direct@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_alias@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_in_branch@21:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_name_rhs@28:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_set_aug@35:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

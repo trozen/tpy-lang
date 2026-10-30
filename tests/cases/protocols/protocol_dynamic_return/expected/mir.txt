@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::echo@20:0: uncovered (unsupported return type)
+main::get_global@23:0: uncovered (unsupported return type)
+main::main@26:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Dog.name@11:4: covered (storage: no_proof_required)
+main::Cat.name@15:4: covered (storage: no_proof_required)

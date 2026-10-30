@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::each@16:0: uncovered (reference yield)
+main::rep@21:0: uncovered (reference yield)
+main::pairs@26:0: uncovered (reference yield)
+main::step@31:0: uncovered (async body)
+main::late@35:0: uncovered (async body)
+main::late_gen@44:0: covered (storage: no_facts: storage facts have not been published)
+main::amain@51:0: uncovered (async body)
+main::main@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known

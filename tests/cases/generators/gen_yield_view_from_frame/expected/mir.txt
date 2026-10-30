@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::static_source_view@35:0: uncovered (unsupported hoisted value)
+main::static_bytes_view@41:0: uncovered (unsupported hoisted value)
+main::explicit_view_local@47:0: uncovered (by-value capture of a borrowed parameter)
+main::with_view_target@59:0: uncovered (with across a suspension)
+main::peephole_view@68:0: uncovered (unsupported hoisted value)
+main::owned_param_stays_bare@76:0: covered (storage: no_facts: storage facts have not been published)
+main::main@81:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Holder.__enter__@28:4: covered (storage: no_proof_required), summary: known
+main::Holder.__exit__@31:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.__init__@25:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,26 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@54:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::gen@78:0: uncovered (unsupported hoisted value)
+main::work@87:0: uncovered (async body)
+main::try_finally@96:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::err_ret@129:0: uncovered (error-return body)
+main::closure_after@140:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::nonlocal_owned@152:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sub_op@165:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::nocopy_rec@173:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::generic_rec@181:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@189:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::V.__add__@12:4: covered (storage: no_proof_required)
+main::V.__sub__@15:4: covered (storage: no_proof_required)
+main::W.__add__@24:4: covered (storage: no_proof_required)
+main::G.__add__@32:4: uncovered (generic body)
+main::Cm.__enter__@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cm.__exit__@50:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::C.run@70:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::V.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@29:4: uncovered (generic constructor)
+main::Cm.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@63:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

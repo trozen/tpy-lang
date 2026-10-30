@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::P.__init__@9:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::Outer.__init__@16:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

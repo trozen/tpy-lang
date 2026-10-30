@@ -1,0 +1,4 @@
+caps::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Source.gen@15:4: uncovered (global across a suspension)

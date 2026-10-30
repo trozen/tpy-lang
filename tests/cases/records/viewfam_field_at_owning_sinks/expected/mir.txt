@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::sec_insert@44:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::sec_literals@62:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_setitem@77:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_gen@118:0: uncovered (unsupported hoisted value)
+main::sec_comp@129:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::sec_blocks@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@168:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@134:21: uncovered (generator expression)
+main::Gate.__enter__@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Gate.__exit__@39:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Runner.run@96:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Inner.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Gate.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@93:4: covered (storage: no_proof_required), summary: known
+main::Snap.__init__@109:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

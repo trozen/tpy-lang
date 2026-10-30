@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+shapes::__tpy_init: uncovered (module initialization)
+shapes::int_leaves@6:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)

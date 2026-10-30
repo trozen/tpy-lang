@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@14:0: uncovered (async body)
+main::make_bytes@18:0: uncovered (async body)
+main::make_array@22:0: uncovered (async body)
+main::make_boxes@26:0: uncovered (async body)
+main::drive@30:0: uncovered (async body)

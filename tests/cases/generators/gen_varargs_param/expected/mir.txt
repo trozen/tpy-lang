@@ -1,0 +1,29 @@
+main::__tpy_init: uncovered (module initialization)
+main::scalars@44:0: uncovered (loop across a suspension)
+main::strings@53:0: uncovered (loop across a suspension)
+main::merge_shape@63:0: uncovered (generic body)
+main::bump@76:0: uncovered (loop across a suspension)
+main::read_pack@86:0: uncovered (loop across a suspension)
+main::total_of@105:0: uncovered (container name type mismatch)
+main::forward@113:0: uncovered (by-value capture of a borrowed parameter)
+main::indexed@119:0: uncovered (by-value capture of a borrowed parameter)
+main::in_finally@128:0: uncovered (unsupported native container element)
+main::in_with@138:0: uncovered (unsupported native container element)
+main::readonly_param@147:0: uncovered (loop across a suspension)
+main::bump_generic@171:0: uncovered (generic body)
+main::points@179:0: uncovered (reference yield)
+main::readonly_next@190:0: uncovered (unsupported parameter type)
+main::each_pack@204:0: uncovered (unsupported native container element)
+main::grow_both@212:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@235:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.bump@27:4: covered (storage: no_proof_required), summary: known
+main::Trace.__enter__@35:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Trace.__exit__@38:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Collector.sizes@99:4: uncovered (unsupported native container element)
+main::Album.each@162:4: uncovered (loop across a suspension)
+main::Grower.each_pack@226:4: uncovered (unsupported native container element)
+main::Grower.grow_both@230:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Point.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Collector.__init__@96:4: covered (storage: no_proof_required), summary: known
+main::Album.__init__@159:4: covered (storage: no_proof_required), summary: known
+main::Grower.__init__@223:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,39 @@
+main::__tpy_init: uncovered (module initialization)
+main::sized@89:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::shaped@94:0: uncovered (unsupported parameter type)
+main::anyslot@99:0: uncovered (generic body)
+main::listslot@104:0: uncovered (generic body)
+main::show@109:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::leaf_count@124:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::make_leaf@136:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::held@141:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::comprehension@146:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::covariant@152:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::generic_ref_slot@159:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::generic_container_literal@164:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::optptr_container_literal@169:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::recursive_union_literal@175:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::ru_wrapper_literal@180:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::ru_wrapper_ctor@185:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::ru_wrapper_call@190:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::ctor_mut_rvalue@196:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen_recv_temp@201:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::shown@225:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bump@230:0: covered (storage: no_proof_required), summary: known
+main::deref_or_rhs@235:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::deref_ternary@243:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@249:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::Circle.area@26:4: covered (storage: no_proof_required)
+main::Sink.take@48:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Inner.bump@61:4: covered (storage: no_proof_required), summary: known
+main::Counter.items@82:4: covered (storage: no_facts: storage facts have not been published)
+main::Ref.__deref__@221:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ref.__deref__@221:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Circle.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Neg.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@58:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@68:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Counter.__init__@78:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Point.__init__@210:4: covered (storage: no_proof_required), summary: known
+main::Ref.__init__@217:4: covered (storage: no_proof_required), summary: known

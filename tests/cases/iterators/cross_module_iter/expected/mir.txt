@@ -1,0 +1,6 @@
+bag::__tpy_init: uncovered (module initialization)
+bag::make_bag@23:0: uncovered (generic body)
+bag::Bag.__iter__@18:4: uncovered (generic body)
+bag::Bag.__init__@15:4: uncovered (generic constructor)
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

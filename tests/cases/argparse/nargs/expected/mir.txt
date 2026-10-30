@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::__tpy_builder_argparse_help_1@14:9: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@14:9: uncovered (unsupported expression form)
+main::__tpy_builder_argparse_help_2@22:9: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_2@22:9: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_help_3@33:9: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_3@33:9: uncovered (unsupported expression form)
+main::__tpy_builder_argparse_help_4@38:9: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_4@38:9: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_args_1.__init__@14:9: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_2.__init__@22:9: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_args_3.__init__@33:9: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_4.__init__@38:9: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

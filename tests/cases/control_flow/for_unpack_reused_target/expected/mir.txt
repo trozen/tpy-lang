@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::nested_range@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested_container@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::plain_local@45:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen@53:0: uncovered (unsupported native container element)
+main::coro@61:0: uncovered (async body)
+main::main@68:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Runner.run@17:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Runner.__init__@13:4: covered (storage: no_proof_required), summary: known

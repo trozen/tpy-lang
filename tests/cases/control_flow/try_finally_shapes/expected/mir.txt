@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::hoisted@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_through@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bare_ret@43:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::override@52:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_exits@61:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::nested@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mixed@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::term_body@97:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@104:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::CM.__enter__@14:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::CM.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::CM.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::mutate_list@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::read_list@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::count_list@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::safe_read@22:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pass_borrowed_to_mutating_func@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pass_borrowed_to_readonly_func@32:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pass_borrowed_to_pure_func@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pass_borrowed_to_readonly_param@46:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_no_borrow_no_warn@53:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_builtin_pure_no_warn@59:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

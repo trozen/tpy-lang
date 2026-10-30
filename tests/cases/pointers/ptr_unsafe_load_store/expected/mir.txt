@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_store_and_load@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_constptr_load@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

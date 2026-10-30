@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::PyCounter.get@14:4: uncovered (no body to lower)
+main::PyCounter.__init__@12:4: uncovered (no body to lower)

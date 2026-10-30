@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_if@6:0: uncovered (unsupported hoisted value)
+main::gen_elif@15:0: uncovered (unsupported hoisted value)
+main::gen_match@26:0: uncovered (unsupported hoisted value)
+main::main@36:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

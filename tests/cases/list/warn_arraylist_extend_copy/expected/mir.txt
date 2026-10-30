@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_extend_warns@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_extend_value_type_no_warn@20:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ctor_warns@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ctor_last_use_no_warn@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Node.__init__@9:4: covered (storage: no_proof_required), summary: known

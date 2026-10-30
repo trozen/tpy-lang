@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Vec2.__eq__: covered (storage: no_proof_required)
+main::Vec2.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Vec2.__hash__: covered (storage: no_proof_required), summary: known
+main::Vec3.__eq__: covered (storage: no_proof_required)
+main::Vec3.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Vec3.__hash__: covered (storage: no_proof_required), summary: known
+main::Vec2.__init__: covered (storage: no_proof_required), summary: known
+main::Vec3.__init__: covered (storage: no_proof_required), summary: known

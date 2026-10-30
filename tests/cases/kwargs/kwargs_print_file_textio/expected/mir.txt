@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@3:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::work@8:0: uncovered (async body)
+main::amain@12:0: uncovered (async body)
+othermod::__tpy_init: uncovered (module initialization)
+othermod::work@4:0: uncovered (async body)

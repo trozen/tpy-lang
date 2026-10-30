@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tag.__eq__@17:4: covered (storage: no_proof_required)
+main::Sink.store_name@27:4: covered (storage: no_proof_required), summary: known
+main::Sink.store_width@30:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sink.store_blob@33:4: covered (storage: no_proof_required), summary: known
+main::Sink.soak@36:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Tag.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@24:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rebind@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::branch_hoisted@29:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_carried@38:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_hoisted@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::walrus@59:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::relay@65:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_separate@72:0: uncovered (generic body)
+main::mixed_param@78:0: uncovered (generic body)
+main::mixed_param_box@83:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@88:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known

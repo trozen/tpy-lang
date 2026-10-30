@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@16:0: covered (storage: no_proof_required), summary: known
+main::call_source@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ternary_source@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::sink@53:0: covered (storage: no_proof_required), summary: known
+main::owned_still_moves@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Bag.itself@12:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.__init__@9:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Token.__init__@49:4: covered (storage: no_proof_required), summary: known

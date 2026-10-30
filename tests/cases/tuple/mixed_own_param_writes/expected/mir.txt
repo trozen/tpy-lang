@@ -1,0 +1,58 @@
+main::__tpy_init: uncovered (module initialization)
+main::sink@33:0: covered (storage: no_proof_required), summary: known
+main::take@37:0: covered (storage: no_proof_required), summary: known
+main::mut@41:0: covered (storage: no_proof_required), summary: known
+main::free_write@47:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::closure_write@79:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen_write@89:0: uncovered (unsupported parameter type)
+main::async_write@101:0: uncovered (async body)
+main::genexpr_write@112:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::g_inner@119:0: uncovered (generic body)
+main::g_forward@123:0: uncovered (generic body)
+main::set_seven@127:0: covered (storage: no_proof_required), summary: known
+main::nocopy_unpack@132:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mk_tok@138:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mixed_take@142:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_forward@149:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::local_unpack_forward@156:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::local_rebound@164:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mk_box@172:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::borrow_write@176:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::owned_live@183:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::borrow_local@191:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::borrow_local_return@199:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::closure_unpack@207:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::closure_unpack_owned@217:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::closure_unpack_uncalled@228:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::closure_forward@238:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::give_back@247:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::give_tok@253:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::give_local@259:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::peek@265:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::genexpr_param@273:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::genexpr_local@278:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::use_taker@326:0: uncovered (unsupported parameter type)
+main::pair_take@344:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@373:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::reader@418:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::<genexpr>@428:27: uncovered (generator expression)
+main::<genexpr>@113:14: uncovered (generator expression)
+main::<genexpr>@274:14: uncovered (generator expression)
+main::<genexpr>@280:14: uncovered (generator expression)
+main::Box.bump@19:4: covered (storage: no_proof_required), summary: known
+main::H.unpack@62:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Adder.__add__@295:4: uncovered (unsupported parameter type)
+main::Adder.__sub__@299:4: covered (storage: no_proof_required)
+main::TakerImpl.pair@318:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::TakerImpl.one@322:4: covered (storage: no_proof_required), summary: known
+main::TokPair.sum@339:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Slot.put@369:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Tok.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@57:4: covered (storage: no_proof_required), summary: known
+main::Keeper.__init__@72:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Adder.__init__@292:4: covered (storage: no_proof_required), summary: known
+main::TakerImpl.__init__@315:4: covered (storage: no_proof_required), summary: known
+main::TokPair.__init__@335:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Init.__init__@355:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Slot.__init__@366:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

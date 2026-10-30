@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump_and_peek@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::label@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::peek@48:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::from_field@54:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@63:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Leaf.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known

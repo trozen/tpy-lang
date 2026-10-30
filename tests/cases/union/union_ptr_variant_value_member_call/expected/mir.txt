@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_bytes@7:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::make_str@11:0: covered (storage: no_proof_required), summary: known
+main::show@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@23:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)

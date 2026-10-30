@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::SuppressVE.__enter__@10:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::SuppressVE.__exit__@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

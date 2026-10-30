@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::emit@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::emit_first@23:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::emit_only@29:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pair@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::borrow@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@17:4: covered (storage: no_proof_required), summary: known

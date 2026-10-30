@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::view_of@11:0: covered (storage: no_proof_required), summary: known
+main::main@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Sink.add_view@23:4: covered (storage: no_proof_required), summary: known
+main::Sink.add_owned@27:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@19:4: covered (storage: no_proof_required), summary: known

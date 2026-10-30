@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+pkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+pkg.inner::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+pkg.inner.leaf::__tpy_init: uncovered (module initialization)
+pkg.inner.leaf::_seed@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

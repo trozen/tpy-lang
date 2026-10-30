@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_point@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Ref.__deref__@18:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ref.__deref__@18:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Ref.__init__@14:4: covered (storage: no_proof_required), summary: known

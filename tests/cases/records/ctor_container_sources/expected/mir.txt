@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@7:0: covered (storage: no_proof_required), summary: known
+main::main@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.peek@20:4: covered (storage: no_proof_required), summary: known
+main::Grid.fill_own@36:4: covered (storage: no_proof_required), summary: known
+main::Grid.fill_borrow@42:4: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::Holder.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Grid.__init__@30:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

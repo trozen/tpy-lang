@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Shape.area@7:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Shape.describe@10:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Square.area@21:4: covered (storage: no_proof_required), summary: known
+main::Square.describe@25:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@17:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

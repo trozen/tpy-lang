@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::two_member@21:0: covered (storage: no_proof_required), summary: known
+main::three_member@27:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::and_chain@34:0: covered (storage: no_proof_required), summary: known
+main::negated_or@42:0: covered (storage: no_proof_required), summary: known
+main::main@48:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@16:4: covered (storage: no_proof_required), summary: known

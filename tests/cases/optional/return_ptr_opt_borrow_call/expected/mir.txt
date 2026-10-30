@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_opt@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_method@71:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_free@76:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::via_container@81:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::in_generator@86:0: uncovered (unsupported hoisted value)
+main::in_async@93:0: uncovered (async body)
+main::read_x@99:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::main@106:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::B.opt_m@34:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.opt_list_m@37:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.ret_self@41:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.opt_ro@47:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Host.via_method@62:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Host.via_container@66:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::R.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@30:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Host.__init__@58:4: covered (storage: no_proof_required), summary: known

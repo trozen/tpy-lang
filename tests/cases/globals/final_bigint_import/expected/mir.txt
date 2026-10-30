@@ -1,0 +1,3 @@
+constants::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

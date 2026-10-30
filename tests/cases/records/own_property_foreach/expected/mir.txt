@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@40:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::use_method@49:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::main@56:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Snap.snapshot@17:4: covered (storage: no_proof_required), summary: known
+main::Snap.snapshot_m@24:4: covered (storage: no_proof_required), summary: known
+main::Snap.total@31:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::Snap.__init__@13:4: covered (storage: no_proof_required), summary: known

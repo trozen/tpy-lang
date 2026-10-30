@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_a_parse_1@13:11: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_help_1@13:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@13:11: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_a_args_1.__init__@13:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_args_1.__init__@13:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_literal_to_int64_append@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_literal_to_int64_insert@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_same_type_no_widen@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_multiple_widens@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

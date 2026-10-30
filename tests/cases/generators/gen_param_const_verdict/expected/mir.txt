@@ -1,0 +1,27 @@
+main::__tpy_init: uncovered (module initialization)
+main::ro@58:0: uncovered (loop across a suspension)
+main::drive_ro@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mut@73:0: uncovered (reference yield)
+main::sub_hop@81:0: uncovered (unsupported native container element)
+main::chain_hop@92:0: uncovered (loop across a suspension)
+main::achain_hop@99:0: uncovered (async body)
+main::alias_ro@111:0: uncovered (unsupported native container element)
+main::alias_mut@119:0: uncovered (unsupported native container element)
+main::aalias_mut@127:0: uncovered (async body)
+main::bump@137:0: covered (storage: no_proof_required), summary: known
+main::to_mut_callee@142:0: uncovered (loop across a suspension)
+main::items_ro@149:0: uncovered (loop across a suspension)
+main::values_ro@156:0: uncovered (loop across a suspension)
+main::drive_views@161:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_ro@171:0: uncovered (match across a suspension)
+main::drive_match@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::aro@187:0: uncovered (async body)
+main::drive_aro@195:0: uncovered (async body)
+main::drive_scan@199:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@206:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.scan@52:4: uncovered (loop across a suspension)
+main::Rec.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@33:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Depot.__init__@40:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::Bag.__init__@47:4: covered (storage: no_proof_required), summary: known

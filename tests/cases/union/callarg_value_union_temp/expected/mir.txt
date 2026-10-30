@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_vu@8:0: covered (storage: no_proof_required), summary: known
+main::two@14:0: covered (storage: no_proof_required), summary: known
+main::use_decl@18:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::use_reassign@23:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::use_stmt@29:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::use_two@34:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::use_float@38:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

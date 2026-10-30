@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mypackage::__tpy_init: uncovered (module initialization)
+mypackage.utils::__tpy_init: uncovered (module initialization)
+mypackage.utils::helper@1:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

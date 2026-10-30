@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::connect@9:0: uncovered (unmodeled record)
+main::keep@13:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::used_after_own@16:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::used_after_own_method@29:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::main@38:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Conn.connect@26:4: uncovered (unmodeled record)

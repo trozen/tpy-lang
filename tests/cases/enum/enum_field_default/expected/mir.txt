@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Tagged.__init__@24:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+sidemod::__tpy_init: uncovered (module initialization)

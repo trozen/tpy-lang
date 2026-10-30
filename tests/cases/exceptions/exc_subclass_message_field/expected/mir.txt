@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::AppError.detail@8:4: uncovered (missing receiver fact)
+main::AppError.__init__@4:4: uncovered (missing record layout)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@27:0: uncovered (loop across a suspension)
+main::main@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.__iter__@22:4: uncovered (reference yield)
+main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@19:4: covered (storage: no_proof_required), summary: known

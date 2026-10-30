@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::opts@19:0: uncovered (unmodeled record)
+main::pair@28:0: uncovered (unmodeled record)
+main::main@32:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@15:0: covered (storage: no_proof_required), summary: known
+main::render@19:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@24:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::Page.size@11:4: covered (storage: no_proof_required), summary: known
+main::Page.__init__@8:4: covered (storage: no_proof_required), summary: known

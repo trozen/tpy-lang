@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_pair@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::consume@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@25:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Counter.__init__@12:4: covered (storage: no_proof_required), summary: known

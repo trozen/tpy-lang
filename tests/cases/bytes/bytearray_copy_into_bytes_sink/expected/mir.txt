@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::own_return@34:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::tuple_arg@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@44:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Holder.keep@27:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.__init__@24:4: covered (storage: no_proof_required), summary: known

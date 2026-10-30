@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Dog.replicate@22:4: uncovered (unsupported return type)
+main::Dog.name@25:4: covered (storage: no_proof_required)

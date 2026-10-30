@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::test_nocopy_ordering@52:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::Rank.__eq__@37:4: covered (storage: no_proof_required)
+main::Rank.__lt__@40:4: covered (storage: no_proof_required)
+main::Rank.__le__@43:4: covered (storage: no_proof_required)
+main::Rank.__gt__@46:4: covered (storage: no_proof_required)
+main::Rank.__ge__@49:4: covered (storage: no_proof_required)
+main::Rank.__init__@34:4: covered (storage: no_proof_required), summary: known

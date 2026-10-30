@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@30:0: uncovered (unsupported parameter type)
+main::main@33:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::IntBox.get@18:4: covered (storage: no_proof_required), summary: known
+main::BoxContainer.__getitem__@27:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::BoxContainer.__getitem__@27:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::IntBox.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::BoxContainer.__init__@24:4: covered (storage: no_proof_required), summary: known

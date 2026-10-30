@@ -1,0 +1,60 @@
+main::__tpy_init: uncovered (module initialization)
+main::put@79:0: covered (storage: no_proof_required), summary: known
+main::touch_pending@110:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::takes_wipe@142:0: uncovered (no body to lower)
+main::takes_wipe@147:0: uncovered (no body to lower)
+main::deferred_borrow_kw_gap@151:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::deferred_borrow_operand@161:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::deferred_borrow_loop@171:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::deferred_borrow@182:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::pending_borrow@194:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::pending_error_return@207:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::pending_error_return_propagates@222:0: uncovered (error-return body)
+main::deferred_param@230:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::drop_kw@242:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::kw_gap_call@254:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::kw_gap_param@261:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::kw_bump@287:0: uncovered (unmodeled record)
+main::touch@292:0: covered (storage: no_proof_required), summary: known
+main::takes_kwc@299:0: uncovered (no body to lower)
+main::takes_kwc@304:0: uncovered (no body to lower)
+main::routed_keyword@308:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::region_borrow@317:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::region_gen@328:0: uncovered (unsupported hoisted value)
+main::region_async@338:0: uncovered (async body)
+main::region_closure@348:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::region_loop@360:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::region_operand@370:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::region_late_borrow@378:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::touch_num@389:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::dstar_late_borrow@394:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::twice@404:0: covered (storage: no_proof_required), summary: known
+main::gen@419:0: covered (storage: no_facts: storage facts have not been published)
+main::main@424:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Store.__setitem__@67:4: covered (storage: no_proof_required), summary: known
+main::Ap.ap@75:4: uncovered (generic body)
+main::DBag.put@94:4: uncovered (generic body)
+main::DBag.touch@97:4: uncovered (generic body)
+main::DBag.wipe@100:4: uncovered (generic body)
+main::DBag.check@104:4: uncovered (generic body)
+main::Wipe.put@125:4: uncovered (generic body)
+main::WipeKw.put@137:4: uncovered (generic body)
+main::Dropper.drop@250:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::KwC.put@283:4: uncovered (generic body)
+main::Maker.go@414:4: certified, summary: opaque (summary output effect)
+main::P.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@25:4: uncovered (generic constructor)
+main::K.__init__@37:4: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Cb.__init__@44:4: uncovered (generic constructor)
+main::CbFixed.__init__@51:4: uncovered (generic constructor)
+main::Sink.__init__@58:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Store.__init__@64:4: covered (storage: no_proof_required), summary: known
+main::Ap.__init__@72:4: covered (storage: no_proof_required), summary: known
+main::DBag.__init__@90:4: uncovered (generic constructor)
+main::Wipe.__init__@121:4: uncovered (generic constructor)
+main::WipeKw.__init__@132:4: uncovered (generic constructor)
+main::WipeKwN.__init__@238:4: covered (storage: no_proof_required), summary: known
+main::Dropper.__init__@247:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@271:4: covered (storage: no_proof_required), summary: known
+main::KwC.__init__@280:4: uncovered (generic constructor)
+main::Maker.__init__@411:4: covered (storage: no_proof_required), summary: known

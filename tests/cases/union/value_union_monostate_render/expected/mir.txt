@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::same@10:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::widened@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::started_none@21:0: uncovered (union read type or form mismatch), summary: opaque (union read type or form mismatch)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

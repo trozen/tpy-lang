@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::keep@28:0: covered (storage: no_proof_required), summary: known
+main::fresh@32:0: uncovered (loop across a suspension)
+main::make@37:0: covered (storage: no_proof_required), summary: known
+main::param_source@47:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::generator_body@53:0: uncovered (unsupported hoisted value)
+main::named_adapter@59:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::generic_reversed@85:0: uncovered (generic body)
+main::generic_pending@90:0: uncovered (generic body)
+main::generic_value_bound@95:0: uncovered (generic body)
+main::generic@100:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::warned@107:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::quiet@150:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::acknowledged@167:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::later@189:0: uncovered (reference yield)
+main::later_t@194:0: uncovered (generic body)
+main::main@199:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@138:12: uncovered (generator expression)
+main::Bag.each@18:4: uncovered (reference yield)
+main::Bag.field_source@22:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::C.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@15:4: covered (storage: no_proof_required), summary: known

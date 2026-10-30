@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@18:0: uncovered (async body)
+main::main@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Summer.__init__@14:4: uncovered (generic constructor)

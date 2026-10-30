@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_list_of_tuples@4:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::from_items_view@12:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::from_empty_list@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::with_int_keys@25:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::with_duplicate_keys@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

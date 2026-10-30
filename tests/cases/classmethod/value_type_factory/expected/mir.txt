@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Vec2.zero@17:4: uncovered (unsupported return type)
+main::Vec2.diagonal@21:4: uncovered (unsupported return type)
+main::Vec2.__init__@12:4: uncovered (missing record layout)

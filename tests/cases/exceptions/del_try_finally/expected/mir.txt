@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Logged.__del__@13:4: uncovered (unsupported statement)
+main::Logged.__init__@10:4: uncovered (custom record special member), summary: opaque (custom record special member)

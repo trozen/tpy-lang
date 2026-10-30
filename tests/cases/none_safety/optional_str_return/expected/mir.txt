@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@5:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::forward@11:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@15:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

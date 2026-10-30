@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_nr@15:0: uncovered (no body to lower)
+main::go@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::NR.__init__@11:4: uncovered (no body to lower)

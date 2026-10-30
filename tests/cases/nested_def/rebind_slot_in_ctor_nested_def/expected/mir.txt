@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.bump@14:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

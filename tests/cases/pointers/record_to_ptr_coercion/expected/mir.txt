@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::modify_point@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_point@14:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_coercion@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

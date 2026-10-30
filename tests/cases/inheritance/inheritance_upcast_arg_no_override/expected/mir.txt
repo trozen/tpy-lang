@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::name_of@22:0: covered (storage: no_proof_required), summary: known
+main::main@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Animal.describe@10:4: covered (storage: no_proof_required), summary: known
+main::Dog.bark@19:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@16:4: covered (storage: no_proof_required), summary: known

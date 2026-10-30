@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@35:0: covered (storage: no_proof_required), summary: known
+main::take@39:0: covered (storage: no_proof_required), summary: known
+main::sec_free@44:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::sec_chain_write@66:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::zap@75:0: covered (storage: no_proof_required), summary: known
+main::zap_deep@82:0: covered (storage: no_proof_required), summary: known
+main::peek@86:0: covered (storage: no_proof_required), summary: known
+main::peek_ro@90:0: covered (storage: no_proof_required), summary: known
+main::peek_ro_one@94:0: covered (storage: no_proof_required), summary: known
+main::sec_callee@100:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_one_hop@117:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::zapg@127:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::sec_global@135:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::sec_alias@143:0: certified, summary: opaque (summary output effect)
+main::sec_alias_rev@154:0: certified, summary: opaque (summary output effect)
+main::sec_onehop_alias@163:0: certified, summary: opaque (summary output effect)
+main::sec_onehop_alias_rev@172:0: certified, summary: opaque (summary output effect)
+main::sec_onehop_method@180:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_hidden_call@197:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::sec_readonly_root@204:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sec_gen@232:0: uncovered (unsupported hoisted value)
+main::sec_blocks@252:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::sec_comp@275:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@280:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Inner.rename@20:4: covered (storage: no_proof_required), summary: known
+main::Hidden.inner@191:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Hidden.inner@191:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Runner.run@215:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Gate.__enter__@244:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Gate.__exit__@247:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Inner.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Hidden.__init__@187:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@212:4: covered (storage: no_proof_required), summary: known
+main::Snap.__init__@225:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Gate.__init__@241:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::chain_raise@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::chain_if_else@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::chain_try_finally@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::chain_break@75:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::union_nested_match@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::union_while_true@101:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::union_assert_false@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::union_break@127:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::switch_while_true@140:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::switch_try_finally@153:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::same_capture@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@188:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Dog.__eq__: covered (storage: no_proof_required)
+main::Dog.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Cat.__eq__: covered (storage: no_proof_required)
+main::Cat.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Dog.__init__: covered (storage: no_proof_required), summary: known
+main::Cat.__init__: covered (storage: no_proof_required), summary: known
+main::OptN.__init__@167:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::PlainN.__init__@173:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::opt_branch@9:0: uncovered (async body)
+main::list_branch@16:0: uncovered (async body)
+main::str_while@23:0: uncovered (async body)
+main::and_branch@32:0: uncovered (async body)
+main::main_async@41:0: uncovered (async body)

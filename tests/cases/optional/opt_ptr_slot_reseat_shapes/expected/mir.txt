@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::param_reseat@46:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::double_rvalue_reseat@55:0: covered (storage: no_proof_required), summary: known
+main::lvalue_reseat@64:0: uncovered (unsupported optional field borrow), summary: opaque (unsupported optional field borrow)
+main::pick@72:0: certified, summary: known
+main::borrow_call@76:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::dunder@85:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::dunder_gen@99:0: uncovered (unsupported hoisted value)
+main::call_ternary@111:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::main@120:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.__add__@31:4: covered (storage: no_proof_required)
+main::Cell.__neg__@34:4: covered (storage: no_proof_required)
+main::Cell.keep@37:4: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::Inner.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@28:4: covered (storage: no_proof_required), summary: known

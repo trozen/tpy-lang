@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_try@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::er_value@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_while@53:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::in_if@59:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::readonly_walrus@66:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::make@71:0: covered (storage: no_proof_required), summary: known
+main::owned_walrus@76:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@82:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.view@17:4: covered (storage: no_proof_required), summary: known
+main::H.rview@21:4: covered (storage: no_proof_required), summary: known
+main::H.poke@25:4: uncovered (error-return body)
+main::H.er_view@29:4: uncovered (error-return body)
+main::H.__init__@14:4: covered (storage: no_proof_required), summary: known

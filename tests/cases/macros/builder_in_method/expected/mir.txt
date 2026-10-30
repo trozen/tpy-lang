@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@20:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::__tpy_builder_build_counter_1@16:14: covered (storage: no_proof_required)
+main::Holder.make@12:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::__tpy_builder_counter_1.total: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_counter_1.__init__@16:14: covered (storage: no_proof_required), summary: known

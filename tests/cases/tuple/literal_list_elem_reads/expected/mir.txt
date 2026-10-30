@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@15:0: covered (storage: no_proof_required), summary: known
+main::bump@19:0: covered (storage: no_proof_required), summary: known
+main::unpack_value@23:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::unpack_record@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::as_argument@39:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::local_binding@48:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::float_member@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested@64:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::co_reads@97:0: uncovered (async body)
+main::closure_reads@106:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comp_reads@117:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::match_reads@124:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen_reads@137:0: uncovered (unsupported hoisted value)
+main::scalar_read@152:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::dict_read@159:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@166:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reader.read@77:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@74:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@89:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_adder@31:0: uncovered (generic body)
+main::main@37:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Sink.add@17:4: covered (storage: no_proof_required), summary: known
+main::Adder.push@27:4: uncovered (generic body)
+main::Sink.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Adder.__init__@24:4: uncovered (generic constructor)

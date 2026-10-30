@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Holder.value@21:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Inner.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@17:4: covered (storage: no_proof_required), summary: known

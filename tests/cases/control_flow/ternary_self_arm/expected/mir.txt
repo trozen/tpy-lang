@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_then_arm_aliases_self@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_then_arm_aliases_other@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_else_arm_aliases_self@42:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_readonly_arm@50:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@57:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.bump_larger@12:4: certified, summary: known
+main::Acc.bump_smaller@16:4: certified, summary: known
+main::Acc.larger_n@21:4: certified, summary: known
+main::Acc.__init__@9:4: covered (storage: no_proof_required), summary: known

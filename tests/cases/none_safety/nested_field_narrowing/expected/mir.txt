@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_value@14:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::get_value_truthy@19:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@24:0: uncovered (member definition: unsupported record fields), summary: opaque (member definition: unsupported record fields)
+main::Inner.__init__@6:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Outer.__init__@11:4: uncovered (member definition: unsupported record fields), summary: opaque (member definition: unsupported record fields)

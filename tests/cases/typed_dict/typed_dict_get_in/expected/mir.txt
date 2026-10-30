@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_in_total_true@17:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_in_nullable_field@23:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_in_total_false@29:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_get_total_true@41:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_get_nullable_field@51:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_get_total_false@63:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::test_get_str_param_default@81:0: uncovered (unmodeled record), summary: opaque (unmodeled record)

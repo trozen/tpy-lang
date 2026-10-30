@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::sync_first_section@23:0: certified, summary: opaque (summary output effect)
+main::rebind_in_loop_section@33:0: certified, summary: opaque (summary output effect)
+main::branch_arms_section@47:0: certified, summary: opaque (summary output effect)
+main::dead_alias_section@60:0: certified, summary: opaque (summary output effect)
+main::none_rebind_section@70:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
+main::container_insert_section@81:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::rebound_ptr_section@91:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::hatch_copy_section@101:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::hatch_rc_section@111:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::hatch_fresh_name_section@120:0: certified, summary: opaque (summary output effect)
+main::main@129:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.bump@17:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known

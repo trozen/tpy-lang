@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_int_membership@4:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_str_membership@13:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_single_element@20:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::get_val@29:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_call_lhs@34:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

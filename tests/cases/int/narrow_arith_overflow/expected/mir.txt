@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::stores@42:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::lookups@54:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::er_body@69:0: uncovered (error-return body)
+main::pick@83:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::take64@89:0: covered (storage: no_proof_required), summary: known
+main::rebind@93:0: covered (storage: no_proof_required), summary: known
+main::former_refusals@99:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::setter@159:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pow_store@169:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::deferred_elision@179:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::er_checked@190:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@197:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::S.__mul__@79:4: covered (storage: no_proof_required)
+main::Prop.v@150:4: covered (storage: no_proof_required), summary: known
+main::Prop.v@154:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::S.__init__@76:4: covered (storage: no_proof_required), summary: known
+main::Prop.__init__@146:4: covered (storage: no_proof_required), summary: known

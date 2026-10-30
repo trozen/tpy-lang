@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_ternary@2:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::test_or@16:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::test_and@27:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)

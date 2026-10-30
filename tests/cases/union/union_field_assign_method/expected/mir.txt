@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Pen.set_pet@18:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Dog.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Pen.__init__@15:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

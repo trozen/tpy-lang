@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::inc@9:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::main@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

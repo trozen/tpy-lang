@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@20:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Handle.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: uncovered (generic constructor)

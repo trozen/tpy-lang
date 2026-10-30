@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::desc@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@22:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

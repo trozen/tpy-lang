@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::bound@8:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::gen_free@15:0: covered (storage: no_facts: storage facts have not been published)
+main::gen_while@41:0: covered (storage: no_facts: storage facts have not been published)
+main::gen_alias@49:0: covered (storage: no_facts: storage facts have not been published), conflicts: argument_alias
+main::scalar_local@54:0: covered (storage: no_facts: storage facts have not been published)
+main::reused_local@59:0: covered (storage: no_facts: storage facts have not been published)
+main::conditional_local@65:0: covered (storage: no_facts: storage facts have not been published)
+main::reassigned_local@73:0: covered (storage: no_facts: storage facts have not been published)
+main::tagged@81:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::last_use_hazard@86:0: covered (storage: no_facts: storage facts have not been published), conflicts: argument_alias
+main::gen_owned@93:0: covered (storage: no_facts: storage facts have not been published)
+main::not_async@98:0: uncovered (async body)
+main::not_for@103:0: uncovered (loop across a suspension)
+main::not_try@109:0: uncovered (try across a suspension)
+main::main@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::<genexpr>@159:29: uncovered (generator expression)
+main::Counter.ticks@34:4: covered (storage: no_facts: storage facts have not been published)
+main::Counter.__init__@30:4: covered (storage: no_proof_required), summary: known

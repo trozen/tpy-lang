@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::teardown@7:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_ro@24:0: covered (storage: no_proof_required), summary: known
+main::main@30:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::ROBuffer.__span__@11:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::MutBuffer.__span__@21:4: uncovered (unsupported metadata: wrap)
+main::MutBuffer.__span__@21:4#2: uncovered (unsupported metadata: wrap)
+main::ROBuffer.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::MutBuffer.__init__@17:4: covered (storage: no_proof_required), summary: known

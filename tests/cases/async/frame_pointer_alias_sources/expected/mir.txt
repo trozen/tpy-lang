@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::enter_each@48:0: uncovered (async body)
+main::iterate_each@57:0: uncovered (async body)
+main::main_coro@66:0: uncovered (async body)
+main::main@79:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Gate.__aenter__@13:4: uncovered (async body)
+main::Gate.__aexit__@17:4: uncovered (async body)
+main::Steps.__anext__@29:4: uncovered (async body)
+main::Source.__aiter__@44:4: covered (storage: no_proof_required), summary: known
+main::Gate.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Steps.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Source.__init__@41:4: covered (storage: no_proof_required), summary: known

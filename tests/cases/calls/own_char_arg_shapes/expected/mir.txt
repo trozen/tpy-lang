@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::feed@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@25:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sink.put@15:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sink.__init__@11:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Headers.__getattr__@5:4: uncovered (unsupported statement), summary: opaque (unsupported statement)

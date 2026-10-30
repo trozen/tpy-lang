@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::doubled@33:0: uncovered (async body)
+main::total@37:0: uncovered (async body)
+main::main@44:0: uncovered (async body)
+main::Counter.__anext__@16:4: uncovered (async body)
+main::Counts.__aiter__@29:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Counts.__init__@26:4: covered (storage: no_proof_required), summary: known

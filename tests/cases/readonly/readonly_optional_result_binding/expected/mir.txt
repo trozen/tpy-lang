@@ -1,0 +1,27 @@
+main::__tpy_init: uncovered (module initialization)
+main::fget@71:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::relay_method@75:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::relay_free@79:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@84:0: uncovered (no body to lower)
+main::pick@88:0: uncovered (no body to lower)
+main::pick@92:0: uncovered (overloaded callable)
+main::pick_ro@99:0: uncovered (no body to lower)
+main::pick_ro@103:0: uncovered (no body to lower)
+main::pick_ro@107:0: uncovered (overloaded callable)
+main::show@113:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::in_try@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_with@129:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::param_in_with@137:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@147:0: uncovered (unsupported hoisted value)
+main::co@155:0: uncovered (async body)
+main::main@163:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Guard.__enter__@20:4: covered (storage: no_proof_required), summary: known
+main::Guard.__exit__@23:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::H.get@38:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::H.get_member@43:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::H.get_rec@47:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::H.bump@50:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::H.field_in_try@61:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::R.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Guard.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@32:4: covered (storage: no_proof_required), summary: known

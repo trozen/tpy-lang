@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::feed@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::only_wildcard_covers@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@50:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Dog.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Fox.__init__@23:4: covered (storage: no_proof_required), summary: known

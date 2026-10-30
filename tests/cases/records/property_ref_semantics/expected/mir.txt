@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@43:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Container.name@24:4: covered (storage: no_proof_required), summary: known
+main::Container.name@28:4: covered (storage: no_proof_required), summary: known
+main::Container.items@32:4: covered (storage: no_proof_required), summary: known
+main::Container.items@32:4#2: covered (storage: no_proof_required), summary: known
+main::Container.pt@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Container.pt@36:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Container.big@40:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@17:4: covered (storage: no_proof_required), summary: known

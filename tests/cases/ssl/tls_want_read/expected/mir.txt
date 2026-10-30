@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::tls_ver@14:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::write_fixtures@46:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::drive@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@67:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

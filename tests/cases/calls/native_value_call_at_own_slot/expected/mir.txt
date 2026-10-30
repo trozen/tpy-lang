@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@6:0: covered (storage: no_proof_required), summary: known
+main::f@10:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

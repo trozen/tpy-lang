@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::forced@41:0: uncovered (async body)
+main::gen_forced@45:0: covered (storage: no_facts: storage facts have not been published)
+main::main@51:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Trade.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::NativeHandle.__init__@22:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::ArenaBuffer.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::SharedTable.__init__@37:4: covered (storage: no_proof_required), summary: known

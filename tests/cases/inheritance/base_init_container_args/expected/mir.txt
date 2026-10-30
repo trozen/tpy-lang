@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@42:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Base.__init__@10:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Child.__init__@18:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Label.__init__@26:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Numbered.__init__@31:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Fixed.__init__@37:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

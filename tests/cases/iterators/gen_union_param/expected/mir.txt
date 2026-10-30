@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@26:0: uncovered (match across a suspension)
+main::main@35:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Dog.sound@12:4: covered (storage: no_proof_required), summary: known
+main::Cat.sound@22:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known

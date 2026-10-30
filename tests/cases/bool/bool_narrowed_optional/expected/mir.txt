@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::bool_if@29:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bool_not@37:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bool_while@45:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::bool_and@55:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::len_if@63:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::plain_if@71:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@79:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Flag.__bool__@12:4: covered (storage: no_proof_required), summary: known
+main::Bag.__len__@20:4: covered (storage: no_proof_required), summary: known
+main::Flag.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@25:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::is_small@7:0: covered (storage: no_proof_required), summary: known
+main::double@11:0: covered (storage: no_proof_required), summary: known
+main::filterfalse@16:0: uncovered (unsupported parameter type)
+main::takewhile@23:0: uncovered (unsupported parameter type)
+main::tag@31:0: uncovered (unsupported parameter type)
+main::transform@40:0: uncovered (unsupported parameter type)
+main::main@62:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Capped.keep@52:4: uncovered (unsupported parameter type)
+main::Capped.__init__@48:4: covered (storage: no_proof_required), summary: known

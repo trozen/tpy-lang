@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Base.__eq__: covered (storage: no_proof_required)
+main::Base.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Child.__eq__: covered (storage: no_proof_required)
+main::Child.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tagged.__eq__: covered (storage: no_proof_required)
+main::Tagged.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Base.__init__: covered (storage: no_proof_required), summary: known
+main::Child.__init__: covered (storage: no_proof_required), summary: known
+main::Labeled.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Tagged.__init__: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

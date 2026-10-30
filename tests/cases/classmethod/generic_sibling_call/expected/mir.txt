@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Util.pick@10:4: uncovered (generic body)
+main::Util.larger@16:4: uncovered (unsupported metadata: template_args_cpp)
+main::Util.larger_float@20:4: uncovered (unsupported metadata: template_args_cpp)

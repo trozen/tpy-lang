@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::walk_free@20:0: uncovered (unsupported native container element)
+main::walk_value@28:0: uncovered (unsupported native container element)
+main::walk_async@56:0: uncovered (async body)
+main::walk_items@68:0: uncovered (unsupported native container element)
+main::sum_items@77:0: uncovered (async body)
+main::async_section@85:0: uncovered (async body)
+main::main@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.walk@41:4: uncovered (loop across a suspension)
+main::Holder.peek@49:4: uncovered (loop across a suspension)
+main::A.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@37:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

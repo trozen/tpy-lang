@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Canvas.fill@19:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Canvas.slurp@22:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Canvas.merge@25:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Canvas.__init__@14:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

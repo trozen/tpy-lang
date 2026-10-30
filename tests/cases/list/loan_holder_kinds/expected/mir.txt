@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::comp_in_iterable@24:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::named_like_iterator@39:0: covered (storage: not_covered: THIRPtrLocalDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: opaque (summary output effect)
+main::gen@57:0: covered (storage: no_facts: storage facts have not been published)
+main::generator_alias@66:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::named_like_sink@75:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::iterating_wording@98:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::outer_loop_kept@113:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::distinct_elements@127:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::slice_store_holder@136:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::N.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@92:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::from_local@6:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::from_concat@13:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::from_bytes@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::from_own_param@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@33:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_weaks@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@29:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Cell.__del__@14:4: covered (storage: no_proof_required)
+main::Cell.__init__@11:4: uncovered (custom record special member), summary: opaque (custom record special member)

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_equality@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_ordering@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_empty_strings@64:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::strings_equal@79:0: covered (storage: no_proof_required), summary: known
+main::test_comparison_in_function@83:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_comparison_with_literals@93:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::find_string@106:0: covered (storage: no_proof_required), summary: known
+main::test_comparison_in_loop@115:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@10:0: covered (storage: no_proof_required), summary: known
+main::main@17:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+pool::__tpy_init: uncovered (module initialization)
+pool::make_pool@18:0: uncovered (generic body)
+pool::Pool.__span__@14:4: uncovered (generic body)
+pool::Pool.__init__@11:4: uncovered (generic constructor)

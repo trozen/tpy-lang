@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::addr@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::rewrap@25:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::make_handle@29:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::main@34:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Node.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Handle.__init__@17:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

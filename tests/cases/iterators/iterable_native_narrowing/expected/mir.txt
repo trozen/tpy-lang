@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_fast@11:0: uncovered (unsupported parameter type)
+main::sum_nested@24:0: uncovered (unsupported parameter type)
+main::sum_elif@43:0: uncovered (unsupported parameter type)
+main::main@60:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@8:0: covered (storage: no_proof_required), summary: known
+main::indirect_annot@11:0: covered (storage: no_proof_required), summary: known
+main::indirect_inferred@15:0: covered (storage: no_proof_required), summary: known
+main::reassigned@19:0: covered (storage: no_proof_required), summary: known
+main::from_ctor@24:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::conditional_rebind@28:0: covered (storage: no_proof_required), summary: known
+main::ternary_params@34:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::loop_iter@38:0: covered (storage: no_proof_required), summary: opaque (unsupported return origin type or access)
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

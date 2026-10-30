@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@20:0: certified, summary: known
+main::choose@24:0: certified, summary: known
+main::forward@28:0: certified, summary: known
+main::observe@33:0: certified, summary: known
+main::selected@49:0: certified, summary: opaque (summary output effect)
+main::reseated@61:0: certified, summary: opaque (summary output effect)
+main::repeated@74:0: certified, summary: opaque (summary output effect)
+main::readonly_result@82:0: certified, summary: opaque (summary output effect)
+main::lazy@90:0: certified, summary: opaque (summary output effect)
+main::main@100:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.via_method@13:4: certified, summary: known
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Caller.__init__@40:4: certified, summary: known

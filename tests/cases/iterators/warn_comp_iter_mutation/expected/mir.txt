@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::grow@8:0: covered (storage: no_proof_required), summary: known
+main::grow_rows@13:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::grow_set@18:0: covered (storage: no_proof_required), summary: known
+main::pick@23:0: covered (storage: no_proof_required), summary: known
+main::free_fn@51:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::direct@57:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::element@62:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::set_comp@67:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::dict_comp@72:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::set_source@77:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::dict_view@82:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::call_source@87:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::nested_comp@92:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::gen_body@97:0: uncovered (unsupported expression type)
+main::async_body@102:0: uncovered (async body)
+main::nested_def@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_for_body@114:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::enclosing_element_loan@124:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::enclosing_sibling@133:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::enclosing_unknown_index@141:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::for_nest_element@149:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::for_nest_sibling@160:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mk_box@181:0: covered (storage: no_proof_required), summary: known
+main::temp_receiver@185:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::self_named_source@194:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::other_named_source@205:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::other_container@214:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::after_comp@219:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::range_source@227:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::read_only@232:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@237:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::Cell.bump@33:4: covered (storage: no_proof_required), summary: known
+main::Bag.run@47:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.items_m@177:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@42:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.__init__@174:4: covered (storage: no_proof_required), summary: known

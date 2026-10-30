@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_list_view@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_mutation_fallback@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_reassign_fallback@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_subscript_write_fallback@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

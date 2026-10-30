@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@18:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pick_nested@23:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Flat.get_data@14:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Flat.__init__@11:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

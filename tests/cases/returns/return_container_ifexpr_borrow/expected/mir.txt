@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::longer@8:0: covered (storage: no_proof_required), summary: known
+main::wider@13:0: covered (storage: no_proof_required), summary: known
+main::fuller@18:0: covered (storage: no_proof_required), summary: known
+main::main@23:0: certified, summary: opaque (summary output effect)

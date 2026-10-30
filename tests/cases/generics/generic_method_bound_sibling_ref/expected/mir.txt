@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::IntBox.get@16:4: covered (storage: no_proof_required), summary: known
+main::Runner.pick@21:4: uncovered (generic body)
+main::IntBox.__init__@14:4: covered (storage: no_proof_required), summary: known

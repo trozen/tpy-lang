@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Shared.__init__@13:4: uncovered (generic constructor)
+main::SendCell.__init__@22:4: uncovered (generic constructor)

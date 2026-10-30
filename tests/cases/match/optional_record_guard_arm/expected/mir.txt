@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::flagged@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::value_inner@45:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@70:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.describe@62:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@22:4: uncovered (missing record layout)
+main::Holder.__init__@59:4: covered (storage: no_proof_required), summary: known

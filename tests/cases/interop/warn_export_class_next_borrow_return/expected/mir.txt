@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::Repeat.__iter__@30:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Repeat.__next__@33:4: uncovered (error-return body)
+main::Rows.__next__@49:4: uncovered (error-return body)
+main::Peek.__next__@65:4: uncovered (error-return body)
+main::Swapping.reset@81:4: covered (storage: no_proof_required), summary: known
+main::Swapping.__next__@84:4: uncovered (error-return body)
+main::Fresh.__next__@98:4: uncovered (error-return body)
+main::Node.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Repeat.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Rows.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Peek.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::Swapping.__init__@77:4: covered (storage: no_proof_required), summary: known
+main::Fresh.__init__@95:4: covered (storage: no_proof_required), summary: known

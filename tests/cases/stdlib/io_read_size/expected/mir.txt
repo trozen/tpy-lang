@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::stringio_read_size@7:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::bytesio_read_size@20:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::via_protocol@30:0: uncovered (unsupported parameter type)
+main::via_binary_protocol@38:0: uncovered (unsupported parameter type)
+main::protocol_params@42:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::file_read_size@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@67:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

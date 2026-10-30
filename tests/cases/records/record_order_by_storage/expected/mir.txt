@@ -1,0 +1,78 @@
+main::__tpy_init: uncovered (module initialization)
+main::proto_number@306:0: covered (storage: no_proof_required), summary: known
+main::ded_number@365:0: covered (storage: no_proof_required), summary: known
+main::async_section@427:0: uncovered (async body)
+main::inl_number@529:0: covered (storage: no_proof_required), summary: known
+main::hb_number@566:0: covered (storage: no_proof_required), summary: known
+main::main@570:0: uncovered (optional field payload write), summary: opaque (optional field payload write)
+main::DcHolder.__eq__: uncovered (uncertified binary operation)
+main::DcHolder.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::DcB.__eq__: covered (storage: no_proof_required)
+main::DcB.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::HKey.__hash__@222:4: covered (storage: no_proof_required), summary: known
+main::HKey.__eq__@225:4: covered (storage: no_proof_required)
+main::Node.__hash__@240:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported native container element)
+main::Node.__eq__@243:4: covered (storage: no_proof_required)
+main::HcKey.__hash__@278:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported native container element)
+main::HcKey.__eq__@281:4: covered (storage: no_proof_required)
+main::ProtoDerived.__iter__@297:4: uncovered (generic body)
+main::ParamUser.read@312:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::RetUser.make@323:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::DedFirst.__iter__@337:4: uncovered (unsupported return type)
+main::DedCaller.__iter__@347:4: uncovered (generic body)
+main::OvlHolder.use@372:4: uncovered (no body to lower)
+main::OvlHolder.use@375:4: uncovered (no body to lower)
+main::OvlHolder.use@377:4: uncovered (overloaded callable)
+main::PropHolder.value@391:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::PropHolder.value@396:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::GenmHolder.values@407:4: covered (storage: no_facts: storage facts have not been published)
+main::AsyHolder.value@418:4: uncovered (async body)
+main::NkOuter.Key.__hash__@491:8: covered (storage: no_proof_required), summary: known
+main::NkOuter.Key.__eq__@494:8: covered (storage: no_proof_required)
+main::InlFirst.pick@506:4: uncovered (no body to lower)
+main::InlFirst.pick@509:4: uncovered (no body to lower)
+main::InlCaller.__iter__@519:4: uncovered (generic body)
+main::HbCaller.__iter__@544:4: uncovered (generic body)
+main::HbKey.__hash__@559:4: covered (storage: no_proof_required), summary: known
+main::HbKey.__eq__@562:4: covered (storage: no_proof_required)
+main::PlainHolder.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::PlainB.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::OptHolder.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::OptB.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::DerBase.__init__@48:4: covered (storage: no_proof_required), summary: known
+main::DerHolder.__init__@55:4: covered (storage: no_proof_required), summary: known
+main::DerChild.__init__@60:4: covered (storage: no_proof_required), summary: known
+main::TupHolder.__init__@68:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::TupB.__init__@75:4: covered (storage: no_proof_required), summary: known
+main::UniHolder.__init__@83:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::UniB.__init__@90:4: covered (storage: no_proof_required), summary: known
+main::UniC.__init__@97:4: covered (storage: no_proof_required), summary: known
+main::GenHolder.__init__@105:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::GenBox.__init__@112:4: uncovered (generic constructor)
+main::GenB.__init__@119:4: covered (storage: no_proof_required), summary: known
+main::DcHolder.__init__: covered (storage: no_proof_required), summary: known
+main::DcB.__init__: covered (storage: no_proof_required), summary: known
+main::RoHolder.__init__@138:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
+main::ArrHolder.__init__@150:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::NestOuter.__init__@168:4: covered (storage: no_proof_required), summary: known
+main::NestOuter.In.__init__@163:8: covered (storage: no_proof_required), summary: known
+main::NestB.__init__@175:4: covered (storage: no_proof_required), summary: known
+main::NameHolder.__init__@184:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::SibOuter.First.__init__@199:8: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
+main::KeyHolder.__init__@211:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::HKey.__init__@219:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@235:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::CycA.__init__@251:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::CycB.__init__@258:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::HcHolder.__init__@266:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::HcKey.__init__@274:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ProtoDerived.__init__@294:4: uncovered (generic constructor)
+main::DedCaller.__init__@344:4: uncovered (generic constructor)
+main::DedOuter.__init__@358:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::HeapOuter.__init__@460:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::HeapHolder.__init__@468:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::NkHolder.__init__@480:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::NkOuter.Key.__init__@488:8: covered (storage: no_proof_required), summary: known
+main::InlCaller.__init__@516:4: uncovered (generic constructor)
+main::HbCaller.__init__@540:4: uncovered (generic constructor)
+main::HbKey.__init__@556:4: covered (storage: no_proof_required), summary: known

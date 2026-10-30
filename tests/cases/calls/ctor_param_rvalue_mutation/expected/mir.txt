@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_mut@16:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@23:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Slot.put@19:4: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+main::Point.__init__@9:4: uncovered (missing record layout)
+main::Slot.__init__@16:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

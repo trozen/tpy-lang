@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@51:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Worker.run@38:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::PingState.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Shared.__init__@26:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Worker.__init__@35:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

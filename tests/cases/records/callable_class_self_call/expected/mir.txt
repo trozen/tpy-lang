@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (missing constructor definition), summary: opaque (recursive or recursion-dependent call)
+main::Recursive.__call__@5:4: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::Fibonacci.__call__@11:4: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

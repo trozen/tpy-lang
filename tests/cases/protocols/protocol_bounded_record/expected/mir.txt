@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::create_pair@25:0: uncovered (generic body)
+main::main@28:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::DefaultPairFactory.make_pair@22:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::SortedPair.__init__@9:4: uncovered (generic constructor)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick_elem@16:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::pick_opt_elem@22:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::pick_optional_element@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pick_array@41:0: certified, summary: known
+main::main@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known

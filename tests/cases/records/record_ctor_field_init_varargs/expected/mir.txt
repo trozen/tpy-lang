@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Seg.__init__@11:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Picture.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Triangle.__init__@27:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

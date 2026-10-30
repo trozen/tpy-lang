@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::scalar_position@30:0: covered (storage: no_proof_required), summary: opaque (summary storage operation)
+main::view_position@41:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::gen@60:0: uncovered (unsupported hoisted value)
+main::coro@71:0: uncovered (async body)
+main::closure_position@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_position@97:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@110:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.pick@19:4: covered (storage: no_proof_required), summary: opaque (summary storage operation)
+main::Box.__init__@15:4: covered (storage: no_proof_required), summary: known

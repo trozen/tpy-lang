@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@17:0: uncovered (reference yield)
+main::relay@23:0: uncovered (reference yield)
+main::relay_twice@30:0: uncovered (reference yield)
+main::main@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Hub.relay@38:4: uncovered (reference yield)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known

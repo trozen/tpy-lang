@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_box@9:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
+main::main@12:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Box.__init__@6:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

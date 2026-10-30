@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@6:0: uncovered (try across a suspension)
+main::main@16:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

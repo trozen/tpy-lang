@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_position@41:0: uncovered (unsupported metadata: sep_expr), summary: opaque (unsupported metadata: sep_expr)
+main::gen@53:0: uncovered (unsupported metadata: sep_expr)
+main::coro@62:0: uncovered (async body)
+main::closure_position@69:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_position@78:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_position@87:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@96:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sep.tick@20:4: covered (storage: no_proof_required), summary: known
+main::Row.show@35:4: uncovered (unsupported metadata: sep_expr), summary: opaque (unsupported metadata: sep_expr)
+main::Sep.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Row.__init__@29:4: covered (storage: no_proof_required), summary: known

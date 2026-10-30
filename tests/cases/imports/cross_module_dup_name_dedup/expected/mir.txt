@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_x@9:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+shp::__tpy_init: uncovered (module initialization)
+shp::Point.__init__@4:4: covered (storage: no_proof_required), summary: known

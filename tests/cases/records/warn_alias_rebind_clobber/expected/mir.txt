@@ -1,0 +1,25 @@
+main::__tpy_init: uncovered (module initialization)
+main::loop_carried_section@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::for_carried_section@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::foreign_origin_section@48:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::hoisted_body_bind_section@60:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::two_alias_section@73:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::alias_kind_section@91:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::loop_two_site_section@105:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::loop_two_site_silent_section@118:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::loop_three_site_section@130:0: certified, summary: opaque (summary output effect)
+main::loop_two_site_gen@147:0: uncovered (loop across a suspension)
+main::mk2@160:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::loop_unpack_first_bind_section@168:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::mk@179:0: covered (storage: no_proof_required), summary: known
+main::loop_capture_section@187:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::loop_capture_quiet_section@200:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_unpack_site_gen@211:0: uncovered (loop across a suspension)
+main::loop_two_site_read_before_section@225:0: certified, summary: opaque (summary output effect)
+main::mk_pair@236:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::unpack_kept_first_pass_section@243:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ident_view@260:0: covered (storage: no_proof_required), summary: known
+main::view_through_call_section@267:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@277:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@256:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::slow@13:0: uncovered (async body)
+main::main_coro@18:0: uncovered (async body)
+main::primitives@27:0: uncovered (async body)
+main::hop_getter@48:0: uncovered (async body)
+main::timeout_hop@56:0: uncovered (async body)
+main::main@67:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

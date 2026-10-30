@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::one@22:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::_cookie_line@35:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::live_cookie_resent@43:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@68:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

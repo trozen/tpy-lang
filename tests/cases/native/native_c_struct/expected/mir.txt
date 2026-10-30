@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::point_sum@22:0: uncovered (no body to lower)
+main::rect_area@25:0: uncovered (no body to lower)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.manhattan@9:4: uncovered (no body to lower)
+main::MyRect.area@18:4: uncovered (no body to lower)

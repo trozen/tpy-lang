@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::twice@22:0: uncovered (unsupported parameter type)
+main::twice_r@30:0: uncovered (unsupported pointer capture)
+main::fill@38:0: uncovered (async body)
+main::main@45:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::R.__init__@17:4: covered (storage: no_proof_required), summary: known

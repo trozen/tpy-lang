@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::drain@23:0: uncovered (loop across a suspension)
+main::over_global@31:0: uncovered (loop across a suspension)
+main::value_instantiation_in_head@37:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Labels.gen_it@17:4: uncovered (generic body)
+main::Labels.__init__@14:4: uncovered (generic constructor)

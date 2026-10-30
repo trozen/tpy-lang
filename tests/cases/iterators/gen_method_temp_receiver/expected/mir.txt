@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::clobber@23:0: covered (storage: no_proof_required), summary: known
+main::main@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Box.vals@17:4: covered (storage: no_facts: storage facts have not been published)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

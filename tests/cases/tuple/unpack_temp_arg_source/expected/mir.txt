@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@30:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::send@34:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::sp@40:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gv@44:0: uncovered (generic body)
+main::pick@48:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ef@53:0: uncovered (error-return body)
+main::gen@73:0: uncovered (unsupported hoisted value)
+main::co@81:0: uncovered (async body)
+main::er_body@91:0: uncovered (error-return body)
+main::main@98:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Cm.__enter__@23:4: covered (storage: no_proof_required), summary: known
+main::Cm.__exit__@26:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::K.run@67:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::M.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Cm.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@62:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

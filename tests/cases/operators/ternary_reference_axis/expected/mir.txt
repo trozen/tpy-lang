@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick_list@17:0: certified, summary: known
+main::pick_dict@22:0: certified, summary: known
+main::pick_set@27:0: certified, summary: known
+main::pick_bytearray@32:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pick_array@38:0: certified, summary: known
+main::pick_record@43:0: certified, summary: known
+main::read_through@50:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@56:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Tag.__init__@13:4: covered (storage: no_proof_required), summary: known

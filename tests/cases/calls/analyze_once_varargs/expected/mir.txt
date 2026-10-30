@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@18:0: uncovered (container name type mismatch)
+main::count@25:0: uncovered (generic body)
+main::main@29:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::B.take@14:4: uncovered (missing receiver fact)
+main::B.__init__@11:4: covered (storage: no_proof_required), summary: known

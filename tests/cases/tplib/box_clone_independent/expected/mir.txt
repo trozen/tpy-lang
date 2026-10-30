@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::sec_value@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sec_reference@33:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::bump@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::sec_ptr_field@45:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::PtrHolder.__init__@20:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

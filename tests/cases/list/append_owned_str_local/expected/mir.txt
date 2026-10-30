@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::add_joined@4:0: uncovered (owned-leaf move), summary: opaque (owned-leaf move)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

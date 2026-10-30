@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::global_alias@53:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::gen_field_write@60:0: uncovered (unsupported hoisted value)
+main::async_field_write@68:0: uncovered (async body)
+main::nested_narrowed@76:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.narrowed@34:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Src.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::CtorWriter.__init__@45:4: covered (storage: no_proof_required), summary: opaque (summary output effect)

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+pa::__tpy_init: uncovered (module initialization)
+pa::Box.__init__@2:4: covered (storage: no_proof_required), summary: known
+pa_re::__tpy_init: uncovered (module initialization)
+pb::__tpy_init: uncovered (module initialization)
+pb::Box.__init__@2:4: covered (storage: no_proof_required), summary: known
+pc_def::__tpy_init: uncovered (module initialization)
+pc_def::Box.__init__@2:4: covered (storage: no_proof_required), summary: known

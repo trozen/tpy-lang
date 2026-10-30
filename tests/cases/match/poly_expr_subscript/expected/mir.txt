@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@31:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@41:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Animal.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Snake.__init__@27:4: covered (storage: no_proof_required), summary: known

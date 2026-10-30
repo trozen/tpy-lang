@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Bag.__getattr__@7:4: uncovered (unsupported return type)

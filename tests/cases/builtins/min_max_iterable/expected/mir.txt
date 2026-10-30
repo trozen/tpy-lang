@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::squares@8:0: uncovered (loop across a suspension)
+main::peaks@13:0: uncovered (unsupported native container element)
+main::best_of@30:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@35:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::<genexpr>@45:25: uncovered (generator expression)
+main::<genexpr>@45:49: uncovered (generator expression)
+main::<genexpr>@45:73: uncovered (generator expression)
+main::<genexpr>@46:30: uncovered (generator expression)
+main::<genexpr>@46:70: uncovered (generator expression)
+main::Scores.spread@25:4: covered (storage: no_proof_required), summary: known
+main::Scores.__init__@22:4: covered (storage: no_proof_required), summary: known

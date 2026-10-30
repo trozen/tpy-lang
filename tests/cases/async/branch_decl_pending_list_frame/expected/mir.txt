@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@6:0: uncovered (async body)
+main::drive@15:0: uncovered (async body)

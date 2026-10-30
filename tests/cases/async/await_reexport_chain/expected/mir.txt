@@ -1,0 +1,5 @@
+definer::__tpy_init: uncovered (module initialization)
+definer::deep@4:0: uncovered (async body)
+facade::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::amain@7:0: uncovered (async body)

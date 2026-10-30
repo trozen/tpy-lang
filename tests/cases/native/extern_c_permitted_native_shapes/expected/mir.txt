@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::find_widget@22:0: uncovered (no body to lower)
+main::widget_value@26:0: uncovered (unsupported parameter type)
+main::main@34:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)

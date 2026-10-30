@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::Container.get@9:4: uncovered (generic body)
+main::Container.__init__@6:4: uncovered (generic constructor)
+main::IntContainer.__init__@16:4: uncovered (missing record layout)

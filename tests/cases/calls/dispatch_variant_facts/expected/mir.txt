@@ -1,0 +1,28 @@
+main::__tpy_init: uncovered (module initialization)
+main::mkr@19:0: covered (storage: no_proof_required), summary: known
+main::mk@23:0: covered (storage: no_proof_required), summary: known
+main::grow@67:0: covered (storage: no_proof_required), summary: known
+main::poke@87:0: covered (storage: no_proof_required), summary: known
+main::late@93:0: uncovered (no body to lower)
+main::late@98:0: uncovered (no body to lower)
+main::early@105:0: uncovered (no body to lower)
+main::early@111:0: uncovered (no body to lower)
+main::pick@118:0: uncovered (no body to lower)
+main::pick@123:0: uncovered (no body to lower)
+main::first_of@127:0: uncovered (generic body)
+main::at_of@131:0: uncovered (generic body)
+main::main@135:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::K.take@34:4: uncovered (no body to lower)
+main::K.take@38:4: uncovered (no body to lower)
+main::K.look@43:4: uncovered (no body to lower)
+main::K.look@47:4: uncovered (no body to lower)
+main::K.look_d@51:4: uncovered (no body to lower)
+main::K.look_d@55:4: uncovered (no body to lower)
+main::K.look_s@59:4: uncovered (no body to lower)
+main::K.look_s@63:4: uncovered (no body to lower)
+main::Box.size@79:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Box.size@83:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@75:4: covered (storage: no_proof_required), summary: known

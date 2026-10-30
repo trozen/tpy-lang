@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::fall_through@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_inner_throws@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::body_raises_exit_throws@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@57:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Thrower.__enter__@9:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Thrower.__exit__@12:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Quiet.__enter__@21:4: covered (storage: no_proof_required), summary: known
+main::Quiet.__exit__@24:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Quiet.__init__@18:4: covered (storage: no_proof_required), summary: known

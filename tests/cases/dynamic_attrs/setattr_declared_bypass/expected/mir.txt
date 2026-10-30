@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@26:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Counted.__getattr__@16:4: uncovered (unsupported return type)
+main::Counted.__setattr__@19:4: uncovered (unsupported parameter type)
+main::Counted.__init__@11:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

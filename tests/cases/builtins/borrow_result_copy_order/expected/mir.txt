@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::key_of@17:0: covered (storage: no_proof_required), summary: known
+main::walk@21:0: uncovered (reference yield)
+main::bump_ret@26:0: covered (storage: no_proof_required), summary: known
+main::set_first@31:0: covered (storage: no_proof_required), summary: known
+main::bump_kw@36:0: covered (storage: no_proof_required), summary: known
+main::main@40:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::P.__init__@13:4: covered (storage: no_proof_required), summary: known

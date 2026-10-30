@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::return_from_try@4:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::return_from_except@10:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::return_from_multiple_paths@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::return_optional@29:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

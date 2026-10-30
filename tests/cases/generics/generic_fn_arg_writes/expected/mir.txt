@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::red@18:0: uncovered (generic body)
+main::app@25:0: uncovered (generic body)
+main::each@29:0: uncovered (generic body)
+main::on_values@34:0: uncovered (generic body)
+main::on_iter@39:0: uncovered (generic body)
+main::gen@44:0: uncovered (generic body)
+main::inner@50:0: uncovered (generic body)
+main::outer@54:0: uncovered (generic body)
+main::via_local@58:0: uncovered (generic body)
+main::combine@80:0: covered (storage: no_proof_required), summary: known
+main::bump@85:0: covered (storage: no_proof_required), summary: known
+main::mk@89:0: covered (storage: no_proof_required), summary: known
+main::add@93:0: covered (storage: no_proof_required), summary: known
+main::main@97:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Runner.run@70:4: uncovered (generic body)
+main::Runner.invoke@73:4: uncovered (generic body)
+main::Runner.invoke_at@76:4: uncovered (generic body)
+main::R.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@66:4: uncovered (generic constructor)

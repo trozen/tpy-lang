@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_value@78:0: uncovered (generic body)
+main::sum_xy@83:0: uncovered (generic body)
+main::describe@88:0: uncovered (generic body)
+main::get_item@95:0: uncovered (generic body)
+main::main@99:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Box.is_empty@54:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.get_inner_value@73:4: uncovered (generic body)
+main::Point.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Vec2.__init__@42:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@51:4: covered (storage: no_proof_required), summary: known
+main::IntHolder.__init__@62:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@70:4: uncovered (generic constructor)

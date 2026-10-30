@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::touch@19:0: uncovered (generic body)
+main::relay@24:0: uncovered (generic body)
+main::lesser@28:0: uncovered (generic body)
+main::main@45:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Rank.__lt__@15:4: covered (storage: no_proof_required)
+main::Owner.bump@40:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Rank.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@37:4: covered (storage: no_proof_required), summary: known

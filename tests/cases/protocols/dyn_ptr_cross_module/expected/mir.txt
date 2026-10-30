@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@41:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Tally.bump@18:4: covered (storage: no_proof_required)
+main::Tally.value@21:4: covered (storage: no_proof_required)
+main::Notifier.aim@32:4: uncovered (unsupported parameter type)
+main::Notifier.trigger@35:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Tally.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Notifier.__init__@29:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+pet::__tpy_init: uncovered (module initialization)

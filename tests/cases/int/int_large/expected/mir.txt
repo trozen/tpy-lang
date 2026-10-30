@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::factorial@1:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

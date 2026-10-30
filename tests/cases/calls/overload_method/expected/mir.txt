@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@32:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Vet.treat@20:4: uncovered (no body to lower)
+main::Vet.treat@23:4: uncovered (no body to lower)
+main::Vet.treat@25:4: uncovered (overloaded callable)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Vet.__init__@16:4: covered (storage: no_proof_required), summary: known

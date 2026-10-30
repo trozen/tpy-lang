@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@31:0: uncovered (async body)
+main::take_copy@35:0: uncovered (async body)
+main::amain@39:0: uncovered (async body)
+main::Holder.borrow@27:4: uncovered (async body)
+main::Payload.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: covered (storage: no_proof_required), summary: known

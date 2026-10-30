@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_list_membership@5:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_array_membership@25:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::check_span_contains@39:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_span_membership@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_string_membership@54:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_membership_in_conditions@82:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_membership_with_variables@98:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

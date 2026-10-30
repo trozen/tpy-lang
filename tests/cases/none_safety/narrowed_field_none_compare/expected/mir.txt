@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Pod.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::T.__init__@14:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

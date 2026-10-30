@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

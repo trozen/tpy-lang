@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::generic_on_optional@30:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::dyn_on_optional@35:0: uncovered (unsupported parameter type)
+main::main@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.conv@16:4: uncovered (generic body)
+main::Dog.sound@26:4: covered (storage: no_proof_required)
+main::Bag.__init__@13:4: covered (storage: no_proof_required), summary: known

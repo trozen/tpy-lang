@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::plain@10:0: uncovered (owned-leaf global write), summary: opaque (owned-leaf global write)
+main::via_walrus@18:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

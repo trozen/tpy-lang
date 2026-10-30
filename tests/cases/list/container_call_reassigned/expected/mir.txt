@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@8:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
+main::other@15:0: covered (storage: no_proof_required), summary: known
+main::counts@20:0: covered (storage: no_proof_required), summary: known
+main::push@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

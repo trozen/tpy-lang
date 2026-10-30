@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_all@18:0: covered (storage: no_proof_required), summary: known
+main::doubled@23:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@28:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::mutating_elem@57:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::unannotated_source@70:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::set_all@84:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::source_written@90:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Counter.bump@52:4: covered (storage: no_proof_required), summary: known
+main::Handle.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@49:4: covered (storage: no_proof_required), summary: known

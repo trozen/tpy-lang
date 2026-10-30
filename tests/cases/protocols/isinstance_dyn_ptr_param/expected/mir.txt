@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::reading@38:0: uncovered (unsupported parameter type)
+main::main@44:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Loud.mark@20:4: covered (storage: no_proof_required)
+main::Loud.shout@23:4: covered (storage: no_proof_required)
+main::Quiet.mark@34:4: covered (storage: no_proof_required)
+main::Loud.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Quiet.__init__@31:4: covered (storage: no_proof_required), summary: known

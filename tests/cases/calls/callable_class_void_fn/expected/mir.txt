@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply_and_discard@8:0: uncovered (unsupported parameter type)
+main::main@11:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Doubler.__call__@5:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

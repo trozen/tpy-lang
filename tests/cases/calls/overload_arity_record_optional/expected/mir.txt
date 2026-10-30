@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::fmt@13:0: uncovered (no body to lower)
+main::fmt@16:0: uncovered (no body to lower)
+main::fmt@18:0: uncovered (overloaded callable)
+main::main@24:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Tag.__init__@8:4: covered (storage: no_proof_required), summary: known

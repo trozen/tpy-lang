@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_value@15:0: uncovered (no body to lower)
+main::get_value@18:0: uncovered (no body to lower)
+main::get_value@20:0: uncovered (overloaded callable)
+main::use_dog_result@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::use_cat_result@29:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@32:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@11:4: covered (storage: no_proof_required), summary: known

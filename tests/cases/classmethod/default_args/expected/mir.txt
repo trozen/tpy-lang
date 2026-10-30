@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@22:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Point.make@14:4: covered (storage: no_proof_required)
+main::Point.blank@18:4: covered (storage: no_proof_required)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

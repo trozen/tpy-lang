@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_opt@23:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_record_elements_last_use@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_record_elements_fresh_rvalues@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_record_elements_explicit_copy@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_optional_elements_last_use@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_optional_elements_with_none@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__init__@14:4: covered (storage: no_proof_required), summary: known

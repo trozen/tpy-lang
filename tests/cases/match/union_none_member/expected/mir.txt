@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@16:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Pair.__str__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Wrapper.__str__@21:4: uncovered (generic body)
+main::Wrapper.__repr__@24:4: uncovered (generic body)
+main::Pair.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@18:4: uncovered (generic constructor)

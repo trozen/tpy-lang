@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::clear@27:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::copy_field@31:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::cycle@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick_none@43:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::describe@47:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::main@56:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@23:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

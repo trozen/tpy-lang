@@ -1,0 +1,8 @@
+achan::__tpy_init: uncovered (module initialization)
+achan::make_producer@50:0: uncovered (generic body)
+achan::Producer.capacity@44:4: uncovered (generic body)
+achan::Cell.__init__@22:4: uncovered (generic constructor)
+achan::Chan.__init__@32:4: uncovered (generic constructor)
+achan::Producer.__init__@41:4: uncovered (generic constructor)
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

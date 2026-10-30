@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@6:0: covered (storage: no_proof_required), summary: known
+main::show@10:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::in_function@14:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

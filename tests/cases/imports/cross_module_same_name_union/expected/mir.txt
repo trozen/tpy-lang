@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::uses_pkg_a@19:0: covered (storage: no_proof_required), summary: known
+main::describe@23:0: covered (storage: no_proof_required), summary: known
+main::main@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg_a::__tpy_init: uncovered (module initialization)
+pkg_a::name_of@11:0: covered (storage: no_proof_required), summary: known
+pkg_a::Foo.__init__@7:4: covered (storage: no_proof_required), summary: known
+pkg_b::__tpy_init: uncovered (module initialization)
+pkg_b::name_of_b@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg_b::Foo.__init__@7:4: covered (storage: no_proof_required), summary: known
+pkg_b::Bar.__init__@14:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@22:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@18:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

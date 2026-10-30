@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@35:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Handler.__init__@24:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Pair.__init__@31:4: uncovered (generic constructor)

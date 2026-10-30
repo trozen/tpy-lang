@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::straight_line@9:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::literal_then_element@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::compound_source@25:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::if_arms@34:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::match_arms@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_handler@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bytes_face@83:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::no_mutation@91:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@99:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.method@75:4: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Holder.__init__@71:4: covered (storage: no_proof_required), summary: known

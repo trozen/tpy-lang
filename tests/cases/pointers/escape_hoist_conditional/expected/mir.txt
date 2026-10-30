@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::conditional_hoist@12:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known

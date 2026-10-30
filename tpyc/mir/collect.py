@@ -26,7 +26,7 @@ from .dependencies import (
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
-from .lower import MIRLoweredStorage, lower_callable
+from .lower import MIRLoweredStorage, lower_callable, owner_display_name
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRNotCovered,
     MIRPlace, MIRSlot, MIRSlotId, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
@@ -65,8 +65,10 @@ def _declaration_name(name: str, func: TpyFunction | None) -> str:
 def body_declaration(func: TpyFunction, owner: TpyType | None) -> str:
     """The declaration a function body is keyed by -- `Owner.name@line:col`
     for a method -- in the call workspace and in the verdict walk alike, so
-    the walk reads the lowering the workspace cached."""
-    return _declaration_name(f"{owner.name}.{func.name}" if owner is not None else func.name, func)
+    the walk reads the lowering the workspace cached. A generator
+    expression is `<genexpr>`, as CPython names it."""
+    name = "<genexpr>" if func.is_genexpr else func.name
+    return _declaration_name(f"{owner_display_name(owner)}.{name}" if owner is not None else name, func)
 
 
 def call_definitions(ctx: CodeGenContext, module_name: str
@@ -131,13 +133,6 @@ class MIRRefusal:
     # The blocking node of a lowering refusal; None for a refusal made before lowering.
     node_kind: str | None = None
     loc: SourceLocation | None = None
-
-    @property
-    def display(self) -> str:
-        """The text `--dump-mir` prints between the angle brackets."""
-        if self.kind is MIRRefusalKind.MIR_NOT_COVERED:
-            return f"MIR not covered: {self.reason}"
-        return self.reason
 
 
 @dataclass(frozen=True, eq=False)
@@ -357,7 +352,12 @@ class MIRBodyVerdict:
                 text = f"covered (storage: {self.storage.state.name.lower()}{gap})"
             case _:
                 text = "certified"
-        return text + (f", conflicts: {', '.join(self.conflicts)}" if self.conflicts else "")
+        if self.conflicts:
+            text += f", conflicts: {', '.join(self.conflicts)}"
+        if self.summary is not None:
+            reason = f" ({self.summary.reason})" if self.summary.reason is not None else ""
+            text += f", summary: {self.summary.state.name.lower()}{reason}"
+        return text
 
 
 # --- the enumerator ---------------------------------------------------------------
@@ -731,7 +731,7 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
     lines: list[str] = []
     for verdict in enumerate_bodies(module, analyzer, ctx, module_name, definitions, reasons, workspace):
         if verdict.refusal is not None:
-            lines.append(f"fn {verdict.body.module}::{verdict.body.declaration}: <{verdict.refusal.display}>\n")
+            lines.append(f"fn {verdict.body.module}::{verdict.body.declaration}: <{verdict.describe()}>\n")
             continue
         fn, analyses = verdict.function, verdict.analyses
         assert fn is not None and analyses is not None

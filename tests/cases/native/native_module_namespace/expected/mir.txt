@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_vec@7:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::use_add@10:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::use_thing@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+mypkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+mypkg.types::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+mypkg.types::add_vecs@16:0: uncovered (no body to lower)

@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::ctor_slots@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::method_slots@104:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::stub_slots@114:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::dict_elem@122:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen@129:0: uncovered (unsupported native container element)
+main::main@135:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Thing.__eq__@26:4: covered (storage: no_proof_required)
+main::Bag.take@59:4: covered (storage: no_proof_required), summary: known
+main::Bag.peek@64:4: covered (storage: no_proof_required)
+main::Map.fill@82:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Map.reseat@87:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Thing.__init__@23:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Player.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Bump.__init__@41:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Wrap.__init__@49:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@56:4: covered (storage: no_proof_required), summary: known
+main::Map.__init__@76:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

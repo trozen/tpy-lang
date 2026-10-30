@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@6:0: uncovered (missing or invalid scalar global binding), summary: opaque (missing or invalid scalar global binding)

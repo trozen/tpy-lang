@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::run@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::apply@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::report@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::triple@38:0: covered (storage: no_proof_required), summary: known
+main::scan@42:0: uncovered (unsupported parameter type)
+main::main@51:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Emitter.set_handler@12:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Emitter.emit@15:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Emitter.__str__@19:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::Emitter.__init__@9:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

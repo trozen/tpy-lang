@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::Animal.speak@2:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Animal.make_noise@5:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.speak@9:4: covered (storage: no_proof_required), summary: opaque (summary output effect)

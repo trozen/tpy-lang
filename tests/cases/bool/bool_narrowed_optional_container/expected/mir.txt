@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::narrowed_list@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::narrowed_dict@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::narrowed_set@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@33:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

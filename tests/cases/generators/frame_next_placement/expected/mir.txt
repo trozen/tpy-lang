@@ -1,0 +1,18 @@
+cyc_a::__tpy_init: uncovered (module initialization)
+cyc_a::countdown@8:0: covered (storage: no_facts: storage facts have not been published)
+cyc_b::__tpy_init: uncovered (module initialization)
+cyc_b::scale@5:0: covered (storage: no_proof_required), summary: known
+cyc_b::total_countdown@9:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+deep::__tpy_init: uncovered (module initialization)
+deep::doubles@7:0: uncovered (loop across a suspension)
+gens::__tpy_init: uncovered (module initialization)
+gens::squares@24:0: uncovered (loop across a suspension)
+gens::guarded@32:0: uncovered (try across a suspension)
+gens::echoed@43:0: uncovered (loop across a suspension)
+gens::Bag.evens@17:4: uncovered (reference yield)
+gens::Cell.__init__@6:4: covered (storage: no_proof_required), summary: known
+gens::Bag.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+relay::__tpy_init: uncovered (module initialization)
+relay::stream@8:0: uncovered (loop across a suspension)

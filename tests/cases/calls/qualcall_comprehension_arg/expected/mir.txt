@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@46:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Holder.take_list@19:4: covered (storage: no_proof_required)
+main::Holder.take_dict@24:4: covered (storage: no_proof_required)
+main::Holder.take_set@29:4: covered (storage: no_proof_required)
+main::Holder.take_recs@34:4: covered (storage: no_proof_required)
+main::GHolder.take_list@41:4: uncovered (generic body)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known

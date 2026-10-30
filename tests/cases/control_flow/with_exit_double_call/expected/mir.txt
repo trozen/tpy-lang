@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::fall_through@22:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Suppressor.__enter__@11:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Suppressor.__exit__@14:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

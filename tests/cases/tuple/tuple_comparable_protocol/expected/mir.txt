@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::less@6:0: uncovered (generic body)
+main::eq@9:0: uncovered (generic body)
+main::main@12:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)

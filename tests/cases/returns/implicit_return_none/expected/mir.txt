@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::find@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::choose@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::afind@39:0: uncovered (async body)
+main::main_coro@45:0: uncovered (async body)
+main::main@50:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@28:4: covered (storage: no_proof_required), summary: known

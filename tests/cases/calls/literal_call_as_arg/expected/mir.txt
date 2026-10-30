@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_r@8:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@13:0: uncovered (no body to lower)
+main::pick@15:0: uncovered (no body to lower)
+main::pick@16:0: uncovered (overloaded callable)
+main::main@20:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

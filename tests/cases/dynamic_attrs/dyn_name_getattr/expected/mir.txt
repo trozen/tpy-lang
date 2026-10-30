@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@14:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@18:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Headers.__getattr__@6:4: uncovered (unsupported statement), summary: opaque (unsupported statement)

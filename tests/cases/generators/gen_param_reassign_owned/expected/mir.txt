@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::gs@13:0: uncovered (loop across a suspension)
+main::gb@20:0: uncovered (loop across a suspension)
+main::gi@27:0: uncovered (loop across a suspension)
+main::gstr@34:0: uncovered (loop across a suspension)
+main::main@54:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.walk@47:4: uncovered (loop across a suspension)
+main::Box.__init__@43:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_walrus@15:0: uncovered (reference yield)
+main::yield_record_walrus@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_global@36:0: uncovered (non-local name)
+main::gen_fwd@47:0: uncovered (unsupported parameter type)
+main::branch_block_local@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known

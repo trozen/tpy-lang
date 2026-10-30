@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@5:0: uncovered (unsupported parameter type)
+main::test_lazy_variable_count@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_lazy_for_loop@17:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_direct_iterable_arg@23:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::test_print_lazy_repeat@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

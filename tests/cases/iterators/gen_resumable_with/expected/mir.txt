@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_with_yield@16:0: uncovered (with across a suspension)
+main::gen_with@41:0: uncovered (with across a suspension)
+main::gen_comp_target@48:0: uncovered (with across a suspension)
+main::gen_with_then_yield@53:0: uncovered (unsupported hoisted value)
+main::gen_hoist_ref@71:0: uncovered (unsupported hoisted value)
+main::call@80:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen_comp_lambda@83:0: uncovered (unsupported native container element)
+main::main@96:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Tracer.__enter__@10:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Tracer.__exit__@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Count.__enter__@25:4: covered (storage: no_proof_required), summary: known
+main::Count.__exit__@28:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cb.__enter__@35:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Cb.__exit__@38:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Items.__enter__@65:4: covered (storage: no_proof_required), summary: known
+main::Items.__exit__@68:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Tracer.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Count.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Cb.__init__@32:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Items.__init__@62:4: covered (storage: no_proof_required), summary: known

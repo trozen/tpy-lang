@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::basic_write_read@6:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::initial_value_and_overwrite@15:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::seek_then_read@24:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::readline_iteration@32:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::context_manager_and_close@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

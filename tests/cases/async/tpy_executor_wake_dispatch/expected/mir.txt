@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_external_wake@51:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_stale_generation_wake@67:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::test_timer_drives_to_completion@79:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@98:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::NeverComplete.__poll__@23:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::NeverComplete.cancel@26:4: covered (storage: no_proof_required), summary: known
+main::CountdownThenReady.__poll__@41:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::CountdownThenReady.cancel@47:4: covered (storage: no_proof_required), summary: known
+main::NeverComplete.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::CountdownThenReady.__init__@37:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::owned@8:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::owned_bytes@12:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@18:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)

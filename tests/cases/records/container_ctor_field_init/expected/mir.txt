@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@46:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Empty.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Seeded.__init__@27:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Sized.__init__@34:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Copied.__init__@41:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_all@26:0: uncovered (container name type mismatch)
+main::via_field@33:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::via_subscript@37:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@21:4: covered (storage: no_proof_required), summary: known

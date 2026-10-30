@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@5:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mut@13:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+main::f@16:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

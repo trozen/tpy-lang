@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::find_max@9:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::get_first@17:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::get_x@21:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::get_field_ref@25:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::chained@30:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::both_branches@36:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@44:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

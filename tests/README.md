@@ -89,6 +89,29 @@ from pytest's own output.
   `STALE FINGERPRINTS` banner naming the refresh command(s). The session stays
   green, but the stale fingerprint cannot be missed.
 
+## MIR verdict snapshot
+
+Every case that reaches codegen has `expected/mir.txt`: one line per
+emitted body, `<module>::<declaration>: <verdict>`, for the case's own
+modules and the library modules its `snapshot_lib_modules` names
+(`harness/stdlib_render`: all of `lib/tpy`), modules by name and each
+module's bodies in `--dump-mir` order. The declaration is the body's
+identity in `--dump-mir` and the MIR call workspace
+(`collect.body_declaration`: `Owner.name@line:col`, `#2` for an
+`@auto_readonly` twin, `<genexpr>` for a generator expression, an enum
+method under its enum); the verdict is `MIRBodyVerdict.describe()`, the
+text `--dump-mir` prints for a refused body and the `# tpyc: mir(...)`
+messages quote: status, reason, storage state, conflict kinds and the
+callee summary state. A body whose verdict changes is snapshot churn,
+compared exactly like `diag.txt` and rewritten by `--update-snapshots`.
+
+The snapshotted library modules are analyzed in a MIR workspace of their
+own, so naming one neither changes the case's own verdicts nor adds
+warnings to its `diag.txt`. The text is rendered where the compile runs
+(`conftest._mir_verdicts`, `CompileResult.mir_text`): a forked compile
+returns it over the pipe. A case that does not reach codegen has no
+`mir.txt`; one left beside it fails the case (update mode wipes it).
+
 ## Forked compiles
 
 A program's compile spends most of its front-end time analyzing the stdlib

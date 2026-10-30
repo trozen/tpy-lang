@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Meters.__truediv__@14:4: uncovered (unsupported reference parameter passing)
+main::Meters.__floordiv__@17:4: uncovered (unsupported return type)
+main::Meters.__rfloordiv__@20:4: uncovered (unsupported return type)
+main::Meters.__init__@11:4: uncovered (missing record layout)

@@ -1,0 +1,53 @@
+main::__tpy_init: uncovered (module initialization)
+main::key_of@19:0: covered (storage: no_proof_required), summary: known
+main::bump@23:0: covered (storage: no_proof_required), summary: known
+main::free_fn@44:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::read_only@67:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::pick_low@73:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::peek_low@79:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::ro_operands@84:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::ro_temp@91:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::gen_body@97:0: uncovered (unsupported hoisted value)
+main::async_body@108:0: uncovered (async body)
+main::closure_fn@119:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_fn@132:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::comp_fn@149:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::owned_elements_fn@162:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::fresh_fn@175:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::tick@213:0: covered (storage: no_facts: storage facts have not been published)
+main::unproven_fn@223:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::rows_fn@234:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::consumers_fn@243:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::values_fn@253:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::mk_ps@295:0: covered (storage: no_proof_required), summary: known
+main::head@299:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::temp_written_fn@303:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ctor_arg_fn@326:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::lowest_or_raise@355:0: uncovered (error-return body)
+main::positions_fn@364:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::write_params@386:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::accumulate@405:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::params_fn@413:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::trio_fn@440:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@455:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__str__@15:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Team.low@38:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::W.get@195:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::W.ro@198:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Hp.p@209:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Hp.p@209:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Keeper.write@283:4: covered (storage: no_proof_required), summary: known
+main::Keeper.ret@287:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ctx.__enter__@343:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Ctx.__exit__@346:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Duo.bump_low@399:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Trio.lowest@436:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Team.__init__@32:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::W.__init__@192:4: covered (storage: no_proof_required), summary: known
+main::Hp.__init__@205:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@262:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Outer.__init__@270:4: covered (storage: no_proof_required), summary: known
+main::Keeper.__init__@277:4: covered (storage: no_proof_required), summary: known
+main::Duo.__init__@395:4: covered (storage: no_proof_required), summary: known
+main::Trio.__init__@431:4: covered (storage: no_proof_required), summary: known

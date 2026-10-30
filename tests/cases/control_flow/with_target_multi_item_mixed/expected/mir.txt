@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::steps@48:0: uncovered (unsupported hoisted value)
+main::main@57:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Owner.__enter__@30:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Owner.__exit__@33:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Delegator.__enter__@38:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::Delegator.__exit__@41:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Delegator.__del__@44:4: covered (storage: no_proof_required)
+main::Item.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@27:4: covered (storage: no_proof_required), summary: known

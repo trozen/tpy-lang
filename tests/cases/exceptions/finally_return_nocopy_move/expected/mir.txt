@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::f_alias@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Handle.__init__@10:4: covered (storage: no_proof_required), summary: known

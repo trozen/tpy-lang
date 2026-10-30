@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::alias_param@49:0: uncovered (unsupported hoisted value)
+main::main@75:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.direct@20:4: uncovered (loop across a suspension)
+main::Holder.via_alias@25:4: uncovered (loop across a suspension)
+main::Holder.simple_alias@31:4: uncovered (loop across a suspension)
+main::Holder.live_alias@40:4: uncovered (unsupported hoisted value)
+main::Bumper.bump@69:4: uncovered (loop across a suspension)
+main::Holder.__init__@16:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Counter.__init__@59:4: covered (storage: no_proof_required), summary: known
+main::Bumper.__init__@66:4: covered (storage: no_proof_required), summary: known

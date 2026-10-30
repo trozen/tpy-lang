@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_point@14:0: covered (storage: no_proof_required), summary: known
+main::mutate_point@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::get_ptr@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::get_elem_ptr@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::to_optional@31:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::sum_list@35:0: covered (storage: no_proof_required), summary: known
+main::append_item@42:0: covered (storage: no_proof_required), summary: known
+main::append_wrapper@46:0: covered (storage: no_proof_required), summary: known
+main::main@49:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

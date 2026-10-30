@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::boxes@19:0: uncovered (loop across a suspension)
+main::mk@24:0: covered (storage: no_proof_required), summary: known
+main::mk_row@28:0: covered (storage: no_proof_required), summary: known
+main::fresh_records@34:0: uncovered (loop across a suspension)
+main::fresh_rows@42:0: uncovered (unsupported native container element)
+main::main@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.drain@55:4: uncovered (loop across a suspension)
+main::Node.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@51:4: covered (storage: no_proof_required), summary: known

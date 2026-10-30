@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_list@3:0: covered (storage: no_proof_required), summary: known

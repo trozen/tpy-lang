@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::increment_all@7:0: covered (storage: no_proof_required)
+main::set_values@11:0: uncovered (unsupported range bound)
+main::main@15:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Counter.__init__@4:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::two_then@25:0: covered (storage: no_facts: storage facts have not been published)
+main::head@34:0: uncovered (generic body)
+main::simple@44:0: covered (storage: no_facts: storage facts have not been published)
+main::pairs@51:0: uncovered (reference yield)
+main::make_nodes@59:0: uncovered (reference yield)
+main::main@67:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Counter.around@19:4: covered (storage: no_facts: storage facts have not been published)
+main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@17:4: covered (storage: no_proof_required), summary: known

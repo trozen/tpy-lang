@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)

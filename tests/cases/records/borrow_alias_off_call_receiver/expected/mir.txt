@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_record@40:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::free_container@47:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::free_own_receiver@55:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@77:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.peek@32:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::H.own_peek@35:4: covered (storage: no_proof_required), summary: known
+main::Reader.bump@71:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Jar.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@65:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

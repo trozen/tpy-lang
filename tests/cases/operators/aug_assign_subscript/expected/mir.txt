@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_list_aug_assign@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_arraylist_aug_assign@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_negative_index_aug_assign@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_array_aug_assign@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

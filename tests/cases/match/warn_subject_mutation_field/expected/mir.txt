@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::poke@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@23:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

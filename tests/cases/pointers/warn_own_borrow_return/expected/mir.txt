@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::bad_return@16:0: uncovered (owned record return needs fixed owned local), summary: opaque (owned record return needs fixed owned local)
+main::good_return@20:0: covered (storage: no_proof_required), summary: known
+main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

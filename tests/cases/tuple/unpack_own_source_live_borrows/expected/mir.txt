@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@24:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::nmk@28:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::sink@32:0: covered (storage: no_proof_required), summary: known
+main::nsink@36:0: covered (storage: no_proof_required), summary: known
+main::live_local@41:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::last_use_moves@49:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::nocopy_live@57:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::nocopy_last_use@65:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::two_unpacks@72:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::param_live@83:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::nocopy_param_live@91:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::sink_off_live@100:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::param_consumed@109:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mk_own@114:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::relay@118:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::relayed_call@124:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::unpack_borrow_global@152:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@158:0: uncovered (tuple needs local payload), summary: opaque (tuple needs local payload)
+main::H.live_in_method@135:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::NBox.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@131:4: covered (storage: no_proof_required), summary: known

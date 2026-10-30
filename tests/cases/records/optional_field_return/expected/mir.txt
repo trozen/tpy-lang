@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::Box.get_item@18:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Box.has_item@21:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@15:4: covered (storage: no_proof_required), summary: known

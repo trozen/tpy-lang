@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::takes_pet_ptr@27:0: uncovered (unsupported parameter type)
+main::forward@31:0: uncovered (unsupported parameter type)
+main::main@35:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Cat.name@21:4: covered (storage: no_proof_required)
+main::Cat.label@23:4: covered (storage: no_proof_required)
+main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known

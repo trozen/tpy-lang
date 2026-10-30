@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_mut@16:0: uncovered (container name type mismatch)
+main::via_loop@23:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

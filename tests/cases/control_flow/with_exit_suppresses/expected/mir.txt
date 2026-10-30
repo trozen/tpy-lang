@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::raises_inside@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::normal_inside@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Suppressor.__enter__@9:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Suppressor.__exit__@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Suppressor.__init__@6:4: covered (storage: no_proof_required), summary: known

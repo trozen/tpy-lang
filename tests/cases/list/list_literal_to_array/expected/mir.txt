@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_array@13:0: covered (storage: no_proof_required), summary: known
+main::main@17:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)

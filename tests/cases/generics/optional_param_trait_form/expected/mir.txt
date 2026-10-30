@@ -1,0 +1,26 @@
+main::__tpy_init: uncovered (module initialization)
+main::probe_gen@45:0: uncovered (generic body)
+main::probe_twin@50:0: covered (storage: no_proof_required), summary: known
+main::first_or@54:0: uncovered (generic body)
+main::first_or_twin@62:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
+main::mk@68:0: covered (storage: no_proof_required), summary: known
+main::gen_body@111:0: uncovered (unsupported metadata: template_args_cpp)
+main::er_gen@117:0: uncovered (error-return body)
+main::er_twin@122:0: uncovered (error-return body)
+main::probe_async@126:0: uncovered (async body)
+main::probe_async_twin@131:0: uncovered (async body)
+main::probe_pinned_twin@135:0: uncovered (async body)
+main::amain@139:0: uncovered (async body)
+main::main@162:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Guard.__enter__@38:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@41:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Container.probe@80:4: uncovered (generic body)
+main::Container.held@84:4: uncovered (generic body)
+main::ContainerTwin.probe@94:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::ContainerTwin.held@97:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::CellBox.held@107:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Pinned.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@75:4: uncovered (generic constructor)
+main::ContainerTwin.__init__@91:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::CellBox.__init__@104:4: covered (storage: no_proof_required), summary: known

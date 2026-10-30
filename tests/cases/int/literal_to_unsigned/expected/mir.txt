@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_u8@6:0: covered (storage: no_proof_required), summary: known
+main::take_u16@10:0: covered (storage: no_proof_required), summary: known
+main::take_u32@14:0: covered (storage: no_proof_required), summary: known
+main::take_u64@18:0: covered (storage: no_proof_required), summary: known
+main::take_pair@22:0: covered (storage: no_proof_required), summary: known
+main::main@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.bump@32:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Counter.__init__@29:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@10:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mkb@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::find@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::plain@25:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::narrowed@33:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::bytes_elem@47:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::loop_reseat@55:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::closure_reseat@65:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::closure_subscript@78:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::del_source@92:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::nested_del@108:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::sibling_closure@121:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::closure_reads@137:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::del_method_view@158:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::no_reseat@187:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::subscript_twin@194:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::gen@202:0: uncovered (unsupported hoisted value)
+main::main@209:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Named.nv@153:4: covered (storage: no_proof_required), summary: known
+main::Holder.reseat@179:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Named.__init__@150:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@175:4: covered (storage: no_proof_required), summary: known

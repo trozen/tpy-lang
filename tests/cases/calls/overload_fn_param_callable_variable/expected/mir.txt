@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@10:0: uncovered (no body to lower)
+main::apply@15:0: uncovered (no body to lower)
+main::main@19:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump_guarded@28:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::irrefutable_group@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::scalar_inner@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::opt_record@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@89:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Shelter.feed@81:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Cat.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Shelter.__init__@78:4: covered (storage: no_proof_required), summary: known

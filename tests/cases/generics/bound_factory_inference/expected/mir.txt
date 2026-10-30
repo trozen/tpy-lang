@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@47:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Parrot.name@18:4: covered (storage: no_proof_required)
+main::Dog.name@26:4: covered (storage: no_proof_required)
+main::PetBox.__del__@36:4: uncovered (generic body)
+main::PetBox.get@39:4: uncovered (generic body)
+main::PetBox.make@43:4: uncovered (generic body)
+main::Parrot.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::PetBox.__init__@33:4: uncovered (generic constructor)

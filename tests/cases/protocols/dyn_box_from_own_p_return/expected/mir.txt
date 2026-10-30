@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Parrot.name@20:4: covered (storage: no_proof_required)
+main::Parrot.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Adopter.__init__@27:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

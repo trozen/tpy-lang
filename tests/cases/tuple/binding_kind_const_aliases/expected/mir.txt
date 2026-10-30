@@ -1,0 +1,30 @@
+main::__tpy_init: uncovered (module initialization)
+main::unpack_opt@47:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::head_opt@58:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::unpack_ref@68:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::match_ref@76:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_alias@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_branch@95:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::head_branch@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::alias_head@121:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::reseat@132:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::try_alias@144:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::subject_alias@155:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::hoisted_capture@168:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::alias_chain@177:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::two_slots@205:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::later_slot_repointed@218:0: certified, summary: known
+main::with_targets@234:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::readonly_union_copy@245:0: covered (storage: no_proof_required), summary: known
+main::readonly_union_copy_alt@254:0: covered (storage: no_proof_required), summary: known
+main::readonly_union_reseat@265:0: covered (storage: no_proof_required), summary: known
+main::main@293:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pairs.bump@26:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::RCtx.__enter__@38:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::RCtx.__exit__@42:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::WithMethod.targets@284:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Pairs.__init__@23:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::RCtx.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::WithMethod.__init__@281:4: covered (storage: no_proof_required), summary: known

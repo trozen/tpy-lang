@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::neg@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pos@40:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::inv@45:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@49:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::H.__neg__@24:4: uncovered (unsupported return type)
+main::H.__pos__@27:4: uncovered (unsupported return type)
+main::H.__invert__@30:4: covered (storage: no_proof_required)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@21:4: covered (storage: no_proof_required), summary: known

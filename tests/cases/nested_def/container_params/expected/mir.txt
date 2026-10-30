@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply_fn@7:0: uncovered (unsupported parameter type)
+main::push_to@11:0: covered (storage: no_proof_required), summary: known
+main::sync_ref_capture@20:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@25:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

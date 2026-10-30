@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::unwrap_or@4:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::first_positive@9:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

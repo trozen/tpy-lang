@@ -1,0 +1,33 @@
+defmod::__tpy_init: uncovered (module initialization)
+defmod::scaled@10:0: uncovered (async body)
+main::__tpy_init: uncovered (module initialization)
+main::add@13:0: uncovered (async body)
+main::counted@19:0: uncovered (async body)
+main::with_default@105:0: uncovered (async body)
+main::with_override@110:0: uncovered (async body)
+main::inline_default@116:0: uncovered (async body)
+main::inline_override@121:0: uncovered (async body)
+main::generic_default@126:0: uncovered (async body)
+main::generic_override@132:0: uncovered (async body)
+main::method_inline_default@138:0: uncovered (async body)
+main::method_inline_override@144:0: uncovered (async body)
+main::method_task_default@150:0: uncovered (async body)
+main::method_task_override@157:0: uncovered (async body)
+main::aenter_default@164:0: uncovered (async body)
+main::aexit_default@173:0: uncovered (async body)
+main::anext_default@181:0: uncovered (async body)
+main::cross_module_default@190:0: uncovered (async body)
+main::cross_module_override@195:0: uncovered (async body)
+main::main@199:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Adder.add@33:4: uncovered (async body)
+main::CM.__aenter__@46:4: uncovered (async body)
+main::CM.__aexit__@51:4: uncovered (async body)
+main::CM2.__aenter__@65:4: uncovered (async body)
+main::CM2.__aexit__@72:4: uncovered (async body)
+main::Counter.__anext__@87:4: uncovered (async body)
+main::Counts.__aiter__@101:4: covered (storage: no_proof_required), summary: known
+main::Adder.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::CM.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::CM2.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@82:4: covered (storage: no_proof_required), summary: known
+main::Counts.__init__@98:4: covered (storage: no_proof_required), summary: known

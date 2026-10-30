@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_rc@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::read_box@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.value@14:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::swap_pair@14:0: uncovered (generic body)
+main::create_pair@18:0: uncovered (generic body)
+main::Pair.__init__@9:4: uncovered (generic constructor)

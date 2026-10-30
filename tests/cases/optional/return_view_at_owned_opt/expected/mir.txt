@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::str_position@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::bytes_position@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@36:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Tagger.tag@20:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Tagger.__init__@16:4: covered (storage: no_proof_required), summary: known

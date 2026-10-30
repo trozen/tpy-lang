@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::store_opt@23:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::store_union@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::append_union@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::store_dict@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::store_narrowed@39:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@45:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::A.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@19:4: covered (storage: no_proof_required), summary: known

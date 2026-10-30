@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::identity@14:0: certified, summary: known
+main::double@17:0: covered (storage: no_proof_required), summary: known
+main::main@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.__str__@11:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

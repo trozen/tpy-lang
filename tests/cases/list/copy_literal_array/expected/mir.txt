@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::literal_array@10:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)
+main::annotated_array@17:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::nested_array@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

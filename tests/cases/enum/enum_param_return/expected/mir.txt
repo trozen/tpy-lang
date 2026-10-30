@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::next_color@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::print_color@16:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@19:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

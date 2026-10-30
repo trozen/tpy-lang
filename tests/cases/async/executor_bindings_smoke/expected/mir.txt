@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::check_outside@15:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::check_inside@19:0: uncovered (async body)
+main::check_sleep@31:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::trivial@36:0: uncovered (async body)
+main::check_teardown@40:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

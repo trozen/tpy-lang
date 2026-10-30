@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_own_dunder_fresh@20:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_own_augassign_fallback@29:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_list_concat_fresh@41:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_bytes_concat_fresh@52:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::test_bytearray_fresh@63:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@76:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.__add__@16:4: covered (storage: no_proof_required)
+main::Acc.__init__@13:4: covered (storage: no_proof_required), summary: known

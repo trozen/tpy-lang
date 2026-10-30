@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@42:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Container.first_mutable@21:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Container.first_readonly@25:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Container.first_x@28:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.get_mutable@38:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@35:4: covered (storage: no_proof_required), summary: known

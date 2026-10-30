@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::dicts@7:0: uncovered (unsupported hoisted value)
+main::lists@16:0: uncovered (unsupported hoisted value)
+main::read_dicts@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::read_list_normalized@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::read_ro_dict@32:0: covered (storage: no_proof_required), summary: known
+main::list_oob_raises@37:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::dict_missing_raises@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

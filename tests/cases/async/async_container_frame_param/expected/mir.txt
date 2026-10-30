@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::fill_buf@8:0: uncovered (async body)
+main::bump_arr@14:0: uncovered (async body)
+main::push_list@20:0: uncovered (async body)
+main::drive@26:0: uncovered (async body)

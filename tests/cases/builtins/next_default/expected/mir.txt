@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::letters@6:0: covered (storage: no_facts: storage facts have not been published)
+main::counting@11:0: covered (storage: no_facts: storage facts have not been published)
+main::pairs@17:0: uncovered (unsupported parameter type)
+main::first_or@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

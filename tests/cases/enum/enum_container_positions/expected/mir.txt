@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::weight@13:0: covered (storage: no_proof_required), summary: known
+main::dedup@17:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::tag_value@24:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::main@28:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

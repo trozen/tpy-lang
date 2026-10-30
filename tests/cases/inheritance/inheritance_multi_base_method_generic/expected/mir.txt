@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Box.get@13:4: uncovered (generic body)
+main::IntBox.fetch@21:4: uncovered (call needs resolved ordinary callee)
+main::Box.__init__@10:4: uncovered (generic constructor)
+main::IntBox.__init__@18:4: uncovered (missing record layout)

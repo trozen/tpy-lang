@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::unwrap@31:0: uncovered (generic body)
+main::main@35:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::IntBox.get@17:4: covered (storage: no_proof_required), summary: known
+main::StrBox.get@27:4: covered (storage: no_proof_required), summary: known
+main::IntBox.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::StrBox.__init__@24:4: covered (storage: no_proof_required), summary: known

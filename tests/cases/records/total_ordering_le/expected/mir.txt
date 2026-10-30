@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Bid.__eq__@11:4: covered (storage: no_proof_required)
+main::Bid.__le__@13:4: covered (storage: no_proof_required)
+main::Bid.__lt__: uncovered (uncertified binary operation)
+main::Bid.__gt__: uncovered (uncertified binary operation)
+main::Bid.__ge__: uncovered (uncertified binary operation)
+main::Bid.__init__@9:4: covered (storage: no_proof_required), summary: known

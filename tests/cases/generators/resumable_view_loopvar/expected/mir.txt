@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::words_gen@7:0: uncovered (unsupported native target binding)
+main::blobs_gen@17:0: uncovered (unsupported native target binding)
+main::pairs_gen@28:0: uncovered (unsupported native container element)
+main::main@38:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

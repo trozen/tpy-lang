@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::pair@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mix@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::show@26:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mixp@32:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::spair@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::sshow@42:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen@57:0: uncovered (reference yield)
+main::amain@62:0: uncovered (async body)
+main::main@69:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Holder.get@52:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@48:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@15:0: covered (storage: no_proof_required), summary: known
+main::make_dict@19:0: covered (storage: no_proof_required), summary: known
+main::get_cells@23:0: covered (storage: no_proof_required), summary: known
+main::view@27:0: covered (storage: no_proof_required), summary: known
+main::own_returns@31:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bump@40:0: covered (storage: no_proof_required), summary: known
+main::readonly_sum@45:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known

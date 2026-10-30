@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_first@14:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::get_list@18:0: covered (storage: no_proof_required), summary: known
+main::test_aug_assign_warns@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_iter_aug_assign_warns@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_no_borrow_no_warn@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_borrow_cleared_no_warn@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::narrow@9:0: uncovered (generic body)
+main::widen@14:0: uncovered (generic body)
+main::narrow_signed@21:0: uncovered (generic body)
+main::narrow_unsigned@25:0: uncovered (generic body)
+main::main@40:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Counter.as_int32@36:4: uncovered (generic body)
+main::Counter.__init__@32:4: uncovered (generic constructor)

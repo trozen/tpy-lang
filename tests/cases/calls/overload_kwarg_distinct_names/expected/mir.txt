@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::report@18:0: uncovered (no body to lower)
+main::report@23:0: uncovered (no body to lower)
+main::pick@31:0: uncovered (no body to lower)
+main::pick@36:0: uncovered (no body to lower)
+main::main@40:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

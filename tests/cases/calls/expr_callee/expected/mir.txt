@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_adder@5:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_negator@10:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@15:0: uncovered (unsupported metadata: callee_expr), summary: opaque (unsupported metadata: callee_expr)

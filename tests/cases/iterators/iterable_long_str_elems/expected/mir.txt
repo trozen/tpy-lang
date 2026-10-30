@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::proto_hits@11:0: uncovered (unsupported parameter type)
+main::narrow_list_hits@19:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::narrow_set_hits@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::append_needle@37:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@42:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

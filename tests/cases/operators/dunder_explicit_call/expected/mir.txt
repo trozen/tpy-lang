@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::record_arg@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::probe@43:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@47:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Tag.__eq__@15:4: covered (storage: no_proof_required)
+main::Tag.__ne__@18:4: uncovered (unsupported expression)
+main::V.__eq__@28:4: covered (storage: no_proof_required)
+main::Tag.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::V.__init__@25:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@29:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Src.reader@19:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Src.offset@25:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Src.__init__@16:4: covered (storage: no_proof_required), summary: known

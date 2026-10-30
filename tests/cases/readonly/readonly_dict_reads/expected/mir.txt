@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Bag.add_all@13:4: uncovered (generic body)
+main::Bag.__getitem__@18:4: uncovered (generic body)
+main::Bag.__contains__@21:4: uncovered (generic body)
+main::Bag.total@24:4: uncovered (generic body)
+main::Bag.__init__@10:4: uncovered (generic constructor)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::grow@11:0: covered (storage: no_proof_required), summary: known
+main::take_two@21:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::wipe@26:0: covered (storage: no_proof_required), summary: known
+main::show_last@30:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

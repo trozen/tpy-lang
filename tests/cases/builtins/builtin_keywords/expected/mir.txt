@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@8:0: uncovered (generic body)
+main::ident@12:0: uncovered (generic body)
+main::free_function@16:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::async_body@55:0: uncovered (async body)
+main::Holder.method@45:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Holder.__init__@40:4: covered (storage: no_proof_required), summary: known

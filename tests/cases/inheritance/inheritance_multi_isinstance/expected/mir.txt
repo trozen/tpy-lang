@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@19:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Widget.__init__@14:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

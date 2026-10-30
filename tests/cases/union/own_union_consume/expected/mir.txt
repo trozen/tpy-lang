@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::build_obj@10:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::build_arr@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@20:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

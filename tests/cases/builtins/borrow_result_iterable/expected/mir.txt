@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::key_of@25:0: covered (storage: no_proof_required), summary: known
+main::bump@29:0: covered (storage: no_proof_required), summary: known
+main::walk@33:0: uncovered (unsupported native container element)
+main::fresh@39:0: uncovered (reference yield)
+main::show@64:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_fn@84:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::lowest@102:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pick_max@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ro_source@113:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::span_fn@119:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::iter_fn@125:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::rebind_fn@143:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::bag_fn@161:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::fresh_fn@171:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::rows_fn@178:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::next_fn@188:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::next_param@204:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::show_v@209:0: covered (storage: no_proof_required), summary: known
+main::bump_ret@213:0: covered (storage: no_proof_required), summary: known
+main::copy_arg_fn@221:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::dict_values_fn@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::best_own@242:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::next_positions@258:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::walk_pq@286:0: uncovered (unsupported native container element)
+main::pq_key@291:0: covered (storage: no_proof_required), summary: known
+main::projected_fn@296:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::top_any@309:0: uncovered (generic body)
+main::top_list@316:0: uncovered (generic body)
+main::gen_body@322:0: uncovered (unsupported native container element)
+main::async_body@330:0: uncovered (async body)
+main::empty_fn@338:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::values_fn@347:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@353:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@132:12: uncovered (generator expression)
+main::P.__lt__@18:4: covered (storage: no_proof_required)
+main::P.inc@21:4: covered (storage: no_proof_required), summary: known
+main::Counter.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.__next__@57:4: uncovered (error-return body)
+main::Bag.__iter__@74:4: uncovered (reference yield)
+main::Bag.top@78:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Stepper.bump_first@252:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::P.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@50:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@71:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Stepper.__init__@249:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Pq.__init__@281:4: covered (storage: no_proof_required), summary: known

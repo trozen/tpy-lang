@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::boom@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::MyError.__init__@14:4: uncovered (missing record layout)

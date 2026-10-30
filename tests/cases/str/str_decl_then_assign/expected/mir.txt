@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_str@3:0: covered (storage: no_proof_required), summary: known
+main::main@6:0: uncovered (owned-leaf declaration needs an initializer), summary: opaque (owned-leaf declaration needs an initializer)

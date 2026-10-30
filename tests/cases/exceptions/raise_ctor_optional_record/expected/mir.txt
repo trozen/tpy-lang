@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Node.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::MyErr.__init__@13:4: uncovered (missing record layout)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@9:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@12:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Pair.__init__@5:4: covered (storage: no_proof_required), summary: known

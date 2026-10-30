@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@29:0: uncovered (unsupported parameter type)
+main::make@35:0: uncovered (unsupported return type)
+main::collect@48:0: uncovered (container holds a borrow)
+main::main@52:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.name@23:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@43:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

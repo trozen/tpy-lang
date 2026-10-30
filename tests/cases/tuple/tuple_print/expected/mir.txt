@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Pair.__str__@8:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Pair.__init__@6:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

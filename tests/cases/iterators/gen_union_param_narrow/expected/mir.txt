@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Dog.sound@10:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Cat.sound@15:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Owner.voices@20:4: uncovered (unsupported pointer capture)
+main::Owner.first@27:4: uncovered (unsupported pointer capture)

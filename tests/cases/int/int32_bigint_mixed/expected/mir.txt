@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_int32_plus_bigint@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_bigint_plus_int32@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_mixed_arithmetic@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_large_bigint@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_augmented_assign_mixed@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_nested_literal_binop@62:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

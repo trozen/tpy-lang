@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.gen_reassigned@14:4: uncovered (unsupported hoisted value)
+main::Box.__init__@11:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

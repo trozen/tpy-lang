@@ -1,0 +1,44 @@
+main::__tpy_init: uncovered (module initialization)
+main::getitem@134:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::rebind@142:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::setitem@152:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::membership@160:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::context_manager@167:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::for_loop@175:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::exit_grows@184:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::aug_setitem@193:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::in_by_iteration@201:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::close_it@208:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::put@213:0: covered (storage: no_proof_required), summary: known
+main::caller_with@217:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::caller_setitem@226:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::inherited@235:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::comprehension@250:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::generator@258:0: uncovered (unsupported hoisted value)
+main::main@266:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Grid.__getitem__@24:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Grid.__setitem__@29:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Grid.__contains__@35:4: covered (storage: no_proof_required), summary: known
+main::Grid.__enter__@40:4: covered (storage: no_proof_required), summary: known
+main::Grid.__exit__@44:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Grid.__iter__@47:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Grid.__next__@51:4: uncovered (error-return body)
+main::Closer.at@64:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Closer.at@64:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Closer.__enter__@67:4: covered (storage: no_proof_required), summary: known
+main::Closer.__exit__@72:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cells.at@83:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Cells.at@83:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Cells.__getitem__@86:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Cells.__setitem__@91:4: covered (storage: no_proof_required), summary: known
+main::Bag.at@106:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Bag.at@106:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Bag.__iter__@110:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.__next__@115:4: uncovered (error-return body)
+main::Pt.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Grid.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Closer.__init__@59:4: covered (storage: no_proof_required), summary: known
+main::Cells.__init__@79:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@101:4: covered (storage: no_proof_required), summary: known
+main::SubGrid.__init__@124:4: covered (storage: no_proof_required), summary: known
+main::SubCloser.__init__@130:4: covered (storage: no_proof_required), summary: known

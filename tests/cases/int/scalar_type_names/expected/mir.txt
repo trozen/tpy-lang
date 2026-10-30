@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::widths@20:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::same@31:0: uncovered (generic body)
+main::bytes_of@36:0: uncovered (loop across a suspension)
+main::shadowed@42:0: covered (storage: no_proof_required), summary: known
+main::shadowed_local@47:0: covered (storage: no_proof_required), summary: known
+main::shadowed_unpack@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::shadowed_walrus@59:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::shadowed_for@66:0: covered (storage: no_proof_required), summary: known
+main::shadowed_with@82:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::shadowed_nested@89:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::shadowed_comp@97:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::shadowed_except@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::shadowed_lambda@112:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::shadowed_match@118:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::alias_free@127:0: covered (storage: no_proof_required), summary: known
+main::alias_shadow@133:0: covered (storage: no_proof_required), summary: known
+main::main@138:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Ctx.__enter__@74:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Ctx.__exit__@77:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::amain@42:0: uncovered (async body)
+main::Gate.__aenter__@14:4: uncovered (async body)
+main::Gate.__aexit__@18:4: uncovered (async body)
+main::Ticker.__anext__@29:4: uncovered (async body)
+main::Svc.fetch@37:4: uncovered (async body)
+main::Ticker.__init__@25:4: covered (storage: no_proof_required), summary: known
+svc::__tpy_init: uncovered (module initialization)
+svc::Gate.__aenter__@7:4: uncovered (async body)
+svc::Gate.__aexit__@11:4: uncovered (async body)
+svc::Ticker.__aiter__@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+svc::Ticker.__anext__@24:4: uncovered (async body)
+svc::Svc.fetch@33:4: uncovered (async body)
+svc::Ticker.__init__@18:4: covered (storage: no_proof_required), summary: known

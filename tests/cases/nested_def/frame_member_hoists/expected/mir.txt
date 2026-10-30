@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen_own_slot@66:0: uncovered (nested def)
+main::gen_escape_hoist@82:0: uncovered (nested def)
+main::coro_dyn@115:0: uncovered (async body)
+main::gen_per_resume@129:0: uncovered (nested def)
+main::gen_rebind_alias@145:0: uncovered (nested def)
+main::main@157:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::RCM.__enter__@32:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::RCM.__exit__@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sq.area@50:4: covered (storage: no_proof_required), summary: known
+main::Tri.area@60:4: covered (storage: no_proof_required), summary: known
+main::Holder.gen@103:4: uncovered (nested def)
+main::Rec.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::RCM.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Tri.__init__@57:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@100:4: covered (storage: no_proof_required), summary: known

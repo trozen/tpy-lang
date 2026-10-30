@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::literal_view@3:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literal_promote_augassign@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literal_promote_reassign@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::multiple_views@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

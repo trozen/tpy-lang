@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@20:0: covered (storage: no_proof_required), summary: known
+main::make_pair@31:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::head@35:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret@41:0: certified, summary: known
+main::receiver@49:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::elem@57:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::recv_lent@65:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::repeat@75:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comp_receiver@83:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comp_bare@91:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comp_arg@98:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@102:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Box.finish@13:4: uncovered (missing receiver fact)
+main::Box.items@16:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Pair.__init__@27:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

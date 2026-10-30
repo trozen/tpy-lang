@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::truthy@43:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@62:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Wrapper.node@24:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Wrapper.node@24:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Wrapper.node@28:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.num@38:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Node.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@34:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

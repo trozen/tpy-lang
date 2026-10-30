@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_bump@114:0: uncovered (unsupported parameter type)
+main::free_grow@118:0: uncovered (unsupported parameter type)
+main::free_total@122:0: uncovered (unsupported parameter type)
+main::free_opt@126:0: uncovered (unsupported parameter type)
+main::free_uni@130:0: uncovered (unsupported parameter type)
+main::main@134:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Impl.bump@50:4: covered (storage: no_proof_required), summary: known
+main::Impl.grow@54:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Impl.total@58:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Impl.opt_bump@61:4: covered (storage: no_proof_required), summary: known
+main::Impl.uni_bump@67:4: covered (storage: no_proof_required), summary: known
+main::Impl.label@74:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::DynImpl.bump@92:4: covered (storage: no_proof_required), summary: known
+main::DynImpl.pick@96:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::DynImpl.tag@99:4: covered (storage: no_proof_required), summary: known
+main::Caller.drive@110:4: uncovered (unsupported parameter type)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Impl.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::DynImpl.__init__@89:4: covered (storage: no_proof_required), summary: known
+main::Caller.__init__@106:4: covered (storage: no_proof_required), summary: known

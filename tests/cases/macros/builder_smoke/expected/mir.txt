@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::__tpy_builder_build_config_1@12:10: covered (storage: no_proof_required)
+main::__tpy_builder_config_1.__init__@12:10: covered (storage: no_proof_required), summary: known

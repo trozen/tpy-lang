@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_after@7:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::read_then_assign@13:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::augmented_after@22:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::declared_before@29:0: covered (storage: no_proof_required), summary: known
+main::read_in_later_block@38:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::read_after_while@48:0: covered (storage: no_proof_required), summary: known
+main::sibling_loops_reuse_name@60:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::main@73:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

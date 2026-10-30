@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_or@4:0: uncovered (generic body)
+main::fallback_or@9:0: uncovered (generic body)
+main::pick@14:0: uncovered (generic body)
+main::main@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@9:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::translate@12:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::main@15:0: uncovered (unmodeled record), summary: opaque (unmodeled record)

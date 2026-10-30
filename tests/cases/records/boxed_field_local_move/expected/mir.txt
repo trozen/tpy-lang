@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_move@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::consuming_store@64:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Ticket.stash@52:4: uncovered (missing receiver fact)
+main::P.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@20:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::InCtor.__init__@36:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Ticket.__init__@49:4: covered (storage: no_proof_required), summary: known
+main::TicketStash.__init__@60:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::double@10:0: covered (storage: no_proof_required), summary: known
+main::invoke@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::apply@24:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::find@29:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::count@38:0: covered (storage: no_proof_required), summary: known
+main::as_span@48:0: covered (storage: no_proof_required), summary: known
+main::push@54:0: covered (storage: no_proof_required), summary: known
+main::gen@58:0: uncovered (loop across a suspension)
+main::comp@64:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::recurse@80:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::pick@87:0: uncovered (generic body)
+main::async_double@91:0: uncovered (async body)
+main::run_factory@96:0: uncovered (async body)
+main::async_main@101:0: uncovered (async body)
+main::main@119:0: uncovered (unsupported local type or form), summary: opaque (recursive or recursion-dependent call)
+main::Scaler.scaled@113:4: covered (storage: no_proof_required), summary: known
+main::Scaler.__init__@110:4: covered (storage: no_proof_required), summary: known

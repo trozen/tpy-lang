@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_area@25:0: uncovered (unsupported parameter type)
+main::make_shape@28:0: uncovered (unsupported return type)
+main::main@31:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Circle.area@15:4: covered (storage: no_proof_required)
+main::Square.area@22:4: covered (storage: no_proof_required)
+main::Circle.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@20:4: covered (storage: no_proof_required), summary: known

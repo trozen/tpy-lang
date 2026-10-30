@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Counter.step@17:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Counter.show@30:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Counter.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

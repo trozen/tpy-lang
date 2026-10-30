@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::scaled@10:0: uncovered (async body)
+main::counted@14:0: uncovered (loop across a suspension)
+main::drive@21:0: uncovered (async body)
+main::main@26:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

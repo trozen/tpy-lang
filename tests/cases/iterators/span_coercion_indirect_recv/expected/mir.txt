@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@20:0: covered (storage: no_proof_required), summary: known
+main::opt_total@27:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::plain_total@33:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::main@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Buf.__span__@13:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::Buf.own_total@16:4: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::Buf.__init__@10:4: covered (storage: no_proof_required), summary: known

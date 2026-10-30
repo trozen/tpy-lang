@@ -1,0 +1,4 @@
+helpers::__tpy_init: uncovered (module initialization)
+helpers::mutate@1:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::ok@7:0: covered (storage: no_proof_required), summary: known

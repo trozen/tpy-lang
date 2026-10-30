@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@16:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::use_foreign@25:0: covered (storage: no_proof_required), summary: known
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@12:4: covered (storage: no_proof_required), summary: known
+shapes::__tpy_init: uncovered (module initialization)
+shapes::Point.__init__@2:4: covered (storage: no_proof_required), summary: known

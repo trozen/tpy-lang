@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::positive@24:0: uncovered (error-return body)
+main::modify@30:0: uncovered (error-return body)
+main::main@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.updated@18:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known

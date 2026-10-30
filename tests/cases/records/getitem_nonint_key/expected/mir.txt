@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::lookup@24:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::main@28:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::Scores.__getitem__@15:4: covered (storage: no_proof_required), summary: known
+main::Scores.__init__@11:4: covered (storage: no_proof_required), summary: known

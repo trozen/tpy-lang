@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.describe@22:4: uncovered (match across a suspension)
+main::Dog.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

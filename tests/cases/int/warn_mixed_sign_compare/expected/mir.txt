@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::same_rank@6:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::diff_rank_signed_smaller@10:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::diff_rank_unsigned_smaller@16:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::equality_too@22:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::same_sign_signed@27:0: covered (storage: no_proof_required), summary: known
+main::same_sign_unsigned@31:0: covered (storage: no_proof_required), summary: known
+main::literal_seed@37:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

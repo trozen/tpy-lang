@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@45:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::Maker.pair@29:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Maker.declared_pair@33:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Maker.mixed@36:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Maker.bump_pair@40:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Cell.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Maker.__init__@24:4: covered (storage: no_proof_required), summary: known

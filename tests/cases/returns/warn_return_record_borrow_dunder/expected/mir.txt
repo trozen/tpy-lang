@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bigger@20:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::bigger_copy@24:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.__add__@16:4: covered (storage: no_proof_required)
+main::Acc.__init__@13:4: covered (storage: no_proof_required), summary: known

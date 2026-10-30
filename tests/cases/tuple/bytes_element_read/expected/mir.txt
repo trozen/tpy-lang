@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@28:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mkb@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::show@36:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::from_param@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen@50:0: uncovered (unsupported parameter type)
+main::body@57:0: uncovered (async body)
+main::read_global@71:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@79:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.first@23:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

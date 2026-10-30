@@ -1,0 +1,104 @@
+main::__tpy_init: uncovered (module initialization)
+main::copy_narrowed@18:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::inc@24:0: covered (storage: no_proof_required), summary: known
+main::own_callable@29:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_closure@34:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_nested_def@40:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::take@63:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@67:0: certified, summary: known
+main::opt_call@87:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_method@92:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_property@97:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_walrus@102:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ref_walrus@107:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::param_named_self@113:0: certified, summary: known
+main::through@117:0: uncovered (unsupported parameter type)
+main::none_any@122:0: uncovered (unsupported return type)
+main::wrapper_local@133:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::union_view@141:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::union_opt_view@145:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::opt_str_select@152:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::cross_width@158:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ptr_union_member@195:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ptr_union_elem@200:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ptr_union_select@205:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ptr_union_call@210:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ptr_union_narrowed@215:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::narrowed_member@259:0: certified, summary: known
+main::ro_narrowed_member@267:0: certified, summary: known
+main::own_elem@277:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::own_dict_elem@282:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::own_tuple_name@297:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple_param@307:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple_storage_name@312:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple_borrowed_local@327:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::tuple_elem_read@333:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::tuple_elem_local@338:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple_backedge@346:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::own_tuple_captured@360:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::staged_own_opt@380:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::with_own_opt@399:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::er_own_opt@412:0: uncovered (error-return body)
+main::staged_except@422:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::captured_own_opt@437:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::captured_own_list@448:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::captured_own_list_lambda@460:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::dyn_local@503:0: uncovered (unsupported return type)
+main::dyn_own_param@509:0: uncovered (unsupported return type)
+main::dyn_struct_local@514:0: uncovered (unsupported return type)
+main::dyn_borrowed@521:0: uncovered (unsupported return type)
+main::json_text@563:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen_tuple_name@576:0: uncovered (generic body)
+main::gen_pair@580:0: uncovered (generic body)
+main::gen_tuple_call@587:0: uncovered (generic body)
+main::gen_tuple_pair@593:0: uncovered (generic body)
+main::gen_tuple_loop@600:0: uncovered (generic body)
+main::gen_tuple_select@610:0: uncovered (generic body)
+main::gen_own_pair@615:0: uncovered (generic body)
+main::gen_own_call@621:0: uncovered (generic body)
+main::own_tuple_param_lists@627:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk_borrow@632:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::borrow_tuple_call@638:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::elem_mixed_result@644:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@648:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::B.opt@53:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.opt@53:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::B.first@57:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::K.get@77:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::K.pp@81:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::K.pp@81:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::U.set@171:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::U.get@175:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::OutA.rec@235:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::PH.get@246:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::OE.first@291:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Ctx.__enter__@391:4: covered (storage: no_proof_required), summary: known
+main::Ctx.__exit__@394:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Circle.bump@482:4: covered (storage: no_proof_required)
+main::Circle.get@485:4: covered (storage: no_proof_required)
+main::Sq.bump@495:4: covered (storage: no_proof_required), summary: known
+main::Sq.get@498:4: covered (storage: no_proof_required), summary: known
+main::H.pick@540:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::SR.__span__@555:4: uncovered (unsupported metadata: wrap)
+main::SR.__span__@555:4#2: uncovered (unsupported metadata: wrap)
+main::SR.__iter__@559:4: uncovered (view of container storage)
+main::SR.__iter__@559:4#2: uncovered (view of container storage)
+main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@49:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@74:4: covered (storage: no_proof_required), summary: known
+main::U.__init__@167:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::S.__init__@182:4: covered (storage: no_proof_required), summary: known
+main::HP.__init__@189:4: covered (storage: no_proof_required), summary: known
+main::InA.__init__@224:4: covered (storage: no_proof_required), summary: known
+main::OutA.__init__@231:4: covered (storage: no_proof_required), summary: known
+main::PH.__init__@242:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Inner.__init__@253:4: covered (storage: no_proof_required), summary: known
+main::OE.__init__@287:4: covered (storage: no_proof_required), summary: known
+main::TP.__init__@320:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::NP.__init__@373:4: covered (storage: no_proof_required), summary: known
+main::Ctx.__init__@388:4: covered (storage: no_proof_required), summary: known
+main::Circle.__init__@479:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@492:4: covered (storage: no_proof_required), summary: known
+main::N.__init__@528:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@535:4: covered (storage: no_proof_required), summary: known
+main::SR.__init__@550:4: covered (storage: no_proof_required), summary: known

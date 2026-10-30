@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::print_list@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_pop_at_index@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_index@32:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_count@40:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_reverse@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_copy@57:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_setitem@69:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

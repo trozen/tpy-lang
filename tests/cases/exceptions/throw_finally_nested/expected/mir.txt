@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::nested_return@4:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_raise@14:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

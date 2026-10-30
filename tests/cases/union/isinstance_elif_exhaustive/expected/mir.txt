@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::by_field@15:0: covered (storage: no_proof_required), summary: known
+main::by_method@22:0: covered (storage: no_proof_required), summary: known
+main::main@29:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::Dog.sound@7:4: covered (storage: no_proof_required), summary: known
+main::Cat.sound@12:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@10:4: covered (storage: no_proof_required), summary: known

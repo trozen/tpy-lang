@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::my_enumerate@16:0: uncovered (reference yield)
+main::main@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known

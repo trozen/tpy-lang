@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@19:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@42:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.show_all_iter@30:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.show_all_unpack@35:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::T.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@27:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

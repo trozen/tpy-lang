@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+mod_a::__tpy_init: uncovered (module initialization)
+mod_a::func_a@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+mod_b::__tpy_init: uncovered (module initialization)
+mod_b::func_b@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+mod_c::__tpy_init: uncovered (module initialization)

@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@13:0: covered (storage: no_proof_required), summary: known
+main::take_rec@17:0: covered (storage: no_proof_required), summary: known
+main::take_union@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ret@25:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen@35:0: uncovered (unsupported parameter type)
+main::main@41:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::User.run@30:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Rec.__init__@9:4: covered (storage: no_proof_required), summary: known

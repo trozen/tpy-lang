@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Token.value@20:4: covered (storage: no_proof_required), summary: known
+main::Holder.value@31:4: uncovered (generic body)
+main::Token.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@28:4: uncovered (generic constructor)

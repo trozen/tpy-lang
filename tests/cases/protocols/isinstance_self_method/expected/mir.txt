@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@80:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Pet.name@23:4: covered (storage: no_proof_required)
+main::Pet.describe@27:4: uncovered (unsupported expression)
+main::Pet.kind@38:4: uncovered (unsupported expression)
+main::Pet.assert_dog@46:4: uncovered (unsupported statement)
+main::Pet.mutate_then_describe@52:4: uncovered (unsupported expression)
+main::Dog.bark@67:4: covered (storage: no_proof_required)
+main::Cat.purr@76:4: covered (storage: no_proof_required)
+main::Pet.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@63:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@72:4: covered (storage: no_proof_required), summary: known

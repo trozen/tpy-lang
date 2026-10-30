@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::unwrap_record@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::unwrap_string@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::unwrap_bigint@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::unwrap_string_with_print@33:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@40:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Payload.__init__@10:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::join_or@8:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::bytes_or@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::passthrough_str@18:0: covered (storage: no_proof_required), summary: known
+main::passthrough_bytes@23:0: covered (storage: no_proof_required), summary: known
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

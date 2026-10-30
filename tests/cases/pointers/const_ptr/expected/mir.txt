@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_point@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::modify_via_ptr@17:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::test_ptr_to_const_ptr@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_const_ptr_preserves_value@43:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@5:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::first_param@8:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@11:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)

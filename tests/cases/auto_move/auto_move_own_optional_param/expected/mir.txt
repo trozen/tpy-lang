@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume_own@10:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::forward_optional@14:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@21:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

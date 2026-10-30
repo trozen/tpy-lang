@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::twice_buf@8:0: uncovered (unsupported parameter type)
+main::twice_arr@13:0: uncovered (reference yield)
+main::twice_list@18:0: uncovered (reference yield)
+main::main@23:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

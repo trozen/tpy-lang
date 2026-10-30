@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::head_literal@6:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::tail_literal@10:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::both_comps@14:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::set_ops@18:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@25:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

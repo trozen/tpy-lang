@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_length@7:0: uncovered (generic body)
+main::stringify@15:0: uncovered (generic body)
+main::process_both@38:0: uncovered (generic body)
+main::use_multi@47:0: uncovered (generic body)
+main::inner_len@52:0: uncovered (generic body)
+main::outer_len@55:0: uncovered (generic body)
+main::clone_it@62:0: uncovered (generic body)
+main::is_less@66:0: uncovered (generic body)
+main::main@106:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Printer.get_str@20:4: uncovered (generic body)
+main::MyValue.to_str@31:4: covered (storage: no_proof_required), summary: known
+main::MyValue.__len__@34:4: covered (storage: no_proof_required), summary: known
+main::Point.to_str@78:4: covered (storage: no_proof_required), summary: known
+main::Widget.get_name@90:4: covered (storage: no_proof_required), summary: known
+main::Widget.get_value@93:4: covered (storage: no_proof_required), summary: known
+main::Box.clone@103:4: covered (storage: no_proof_required), summary: known
+main::MyValue.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@74:4: covered (storage: no_proof_required), summary: known
+main::Widget.__init__@86:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@100:4: covered (storage: no_proof_required), summary: known

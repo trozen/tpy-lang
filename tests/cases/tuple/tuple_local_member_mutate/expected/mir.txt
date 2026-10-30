@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::mutate_param_member@14:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::local_member@19:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::main@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

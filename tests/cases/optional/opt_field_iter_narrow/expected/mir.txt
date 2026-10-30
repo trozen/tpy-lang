@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@50:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.scan_dict@20:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Holder.sum_list@28:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Holder.sum_set@35:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Holder.count_str@42:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Holder.__init__@14:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

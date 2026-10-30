@@ -1,0 +1,4 @@
+counters::__tpy_init: uncovered (module initialization)
+counters::bump_from_other_module@9:0: uncovered (assignment needs local or field target), summary: opaque (assignment needs local or field target)
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (assignment needs local or field target), summary: opaque (assignment needs local or field target)

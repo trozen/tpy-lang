@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::loop@7:0: uncovered (unsupported parameter type)
+main::checked@17:0: uncovered (unsupported parameter type)
+main::main@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::inner@15:0: uncovered (async body)
+main::main_coro@21:0: uncovered (async body)
+main::CM.__aenter__@7:4: uncovered (async body)
+main::CM.__aexit__@11:4: uncovered (async body)

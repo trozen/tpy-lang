@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::sink@9:0: uncovered (generic body)
+main::identity@13:0: uncovered (generic body)
+main::wrapper@18:0: uncovered (generic body)
+main::wrap_list@23:0: uncovered (generic body)
+main::multi@28:0: uncovered (generic body)
+main::main@40:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Container.forward_val@36:4: uncovered (generic body)

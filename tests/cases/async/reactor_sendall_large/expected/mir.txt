@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::_make_payload@16:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::sender@28:0: uncovered (async body)
+main::receiver@34:0: uncovered (async body)
+main::main_coro@51:0: uncovered (async body)
+main::main@60:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

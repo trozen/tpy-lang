@@ -1,0 +1,7 @@
+helper::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::main@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Direct.__init__@17:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::FromModule.__init__@24:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::FromImport.__init__@31:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::FromNested.__init__@44:4: uncovered (unsupported expression), summary: opaque (unsupported expression)

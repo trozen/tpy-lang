@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::rebind@27:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::M.run@18:4: uncovered (no body to lower)
+main::M.run@23:4: uncovered (no body to lower)
+main::Rec.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::M.__init__@14:4: covered (storage: no_proof_required), summary: known

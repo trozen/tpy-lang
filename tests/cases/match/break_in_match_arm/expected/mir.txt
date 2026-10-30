@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::break_plain@13:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::break_with_else@23:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::continue_in_arm@35:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::break_in_while@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::break_in_str_switch@56:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::main@74:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

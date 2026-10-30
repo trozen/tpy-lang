@@ -1,0 +1,4 @@
+config::__tpy_init: uncovered (module initialization)
+config::get_bounds@4:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::__tpy_init: uncovered (module initialization)
+main::show@5:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

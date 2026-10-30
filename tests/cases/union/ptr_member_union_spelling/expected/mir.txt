@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::takes@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Dog.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known

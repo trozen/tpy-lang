@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Jar.add@13:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Jar.peek@16:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Jar.peek_get@20:4: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Jar.rename@26:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Cookie.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::Jar.__init__@10:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

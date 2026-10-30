@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Payload.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::WithOptional.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::WithOwn.__init__@29:4: covered (storage: no_proof_required), summary: known

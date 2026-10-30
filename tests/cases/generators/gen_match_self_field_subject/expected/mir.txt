@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Counter.items@13:4: uncovered (match across a suspension)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known

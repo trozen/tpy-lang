@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@16:0: uncovered (async body)
+main::driver@21:0: uncovered (async body)
+main::main@27:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

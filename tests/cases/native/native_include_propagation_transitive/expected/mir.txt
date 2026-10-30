@@ -1,0 +1,7 @@
+a::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+main::__tpy_init: uncovered (module initialization)
+main::f@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@16:0: covered (storage: no_proof_required), summary: known
+s::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+s::S.outer@12:4: uncovered (no body to lower)
+s::S.outer@12:4#2: uncovered (no body to lower)

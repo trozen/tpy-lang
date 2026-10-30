@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::trusted@16:0: certified, summary: known
+main::pick_view@20:0: covered (storage: no_proof_required), summary: known
+main::ternary_record@24:0: certified, summary: known
+main::ternary_strview@29:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::main@34:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known

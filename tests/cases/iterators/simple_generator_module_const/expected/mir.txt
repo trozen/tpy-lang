@@ -1,0 +1,5 @@
+caps::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::upto_while@11:0: uncovered (global across a suspension)
+main::upto_for@20:0: uncovered (loop across a suspension)
+main::main@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

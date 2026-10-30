@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Mut.set_a@18:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Mut.__init__@15:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Const.__init__@24:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

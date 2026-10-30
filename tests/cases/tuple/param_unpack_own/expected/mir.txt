@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::forward@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::relay@26:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known

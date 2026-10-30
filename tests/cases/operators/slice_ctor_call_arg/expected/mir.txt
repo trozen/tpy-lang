@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::cut@6:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pick@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::run@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

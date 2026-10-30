@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@39:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Circle.draw@21:4: covered (storage: no_proof_required), summary: known
+main::Holder.method@32:4: uncovered (unsupported parameter type)
+main::Vec.__init__@9:4: uncovered (missing record layout)
+main::Circle.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@26:4: covered (storage: no_proof_required), summary: known

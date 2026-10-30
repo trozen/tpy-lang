@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_items@6:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::sum_pairs@13:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::discard_snd@20:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

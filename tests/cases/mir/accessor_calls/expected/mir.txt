@@ -1,0 +1,45 @@
+main::__tpy_init: uncovered (module initialization)
+main::scalar_accessors@102:0: covered (storage: no_proof_required), summary: known
+main::leaf_accessors@108:0: covered (storage: no_proof_required), summary: known
+main::readonly_getter@115:0: covered (storage: no_proof_required), summary: known
+main::grow_under_iter@120:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::alias_survives_growth@132:0: certified, summary: known
+main::view_then_rename@141:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::view_then_sibling@149:0: covered (storage: no_proof_required), summary: known
+main::copy_then_rename@157:0: covered (storage: no_proof_required), summary: known
+main::twin_mutable@164:0: certified, summary: known
+main::twin_readonly@171:0: certified, summary: known
+main::twin_via@177:0: covered (storage: no_proof_required), summary: known
+main::twin_items_grow@182:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::twin_items_write@193:0: certified, summary: known
+main::getter_through_field@207:0: covered (storage: no_proof_required), summary: known
+main::write_through_getter@219:0: covered (storage: no_proof_required), summary: known
+main::record_accessors@226:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::call_virtual_getter@256:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@260:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Counter.count@26:4: covered (storage: no_proof_required), summary: known
+main::Counter.count@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.label@36:4: covered (storage: no_proof_required), summary: known
+main::Counter.label@41:4: covered (storage: no_proof_required), summary: known
+main::Counter.elems@47:4: covered (storage: no_proof_required), summary: known
+main::Counter.elems@47:4#2: covered (storage: no_proof_required), summary: known
+main::Counter.tag@52:4: covered (storage: no_proof_required), summary: known
+main::Counter.me@58:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.me@58:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.via@63:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.via@63:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Counter.view_items@68:4: covered (storage: no_proof_required), summary: known
+main::Counter.view_items@68:4#2: covered (storage: no_proof_required), summary: known
+main::Counter.push@72:4: covered (storage: no_proof_required), summary: known
+main::Counter.rename@76:4: covered (storage: no_proof_required), summary: known
+main::Holder.part@91:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.part@91:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.part@96:4: covered (storage: no_proof_required), summary: known
+main::Driver.run@213:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Base.grow@247:4: covered (storage: no_proof_required)
+main::Base.size@251:4: covered (storage: no_proof_required)
+main::Inner.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@84:4: covered (storage: no_proof_required), summary: known
+main::Wrap.__init__@202:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@244:4: covered (storage: no_proof_required), summary: known

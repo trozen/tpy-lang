@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::container_iterable@6:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::record_storage@16:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mymod::__tpy_init: uncovered (module initialization)
+mymod::mk_span@5:0: covered (storage: no_proof_required), summary: known
+mymod::get_xs@16:0: covered (storage: no_proof_required), summary: known
+mymod::Holder.__init__@12:4: covered (storage: no_proof_required), summary: known

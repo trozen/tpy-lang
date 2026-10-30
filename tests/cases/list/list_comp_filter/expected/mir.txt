@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::keep@15:0: covered (storage: no_proof_required), summary: known
+main::main@19:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Probe.__init__@10:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)

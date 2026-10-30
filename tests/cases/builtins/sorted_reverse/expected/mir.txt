@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::evens@7:0: uncovered (loop across a suspension)
+main::main@24:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Board.show_by_length@18:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Board.__init__@15:4: covered (storage: no_proof_required), summary: known

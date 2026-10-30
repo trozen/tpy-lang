@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@33:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Guard.__enter__@14:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Guard.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Resource.__del__@28:4: uncovered (unsupported statement)
+main::Guard.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Resource.__init__@25:4: uncovered (custom record special member), summary: opaque (custom record special member)

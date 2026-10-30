@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::safe_read@31:0: uncovered (unsupported parameter type)
+main::use_both@35:0: uncovered (unsupported parameter type)
+main::Impl.read@23:4: covered (storage: no_proof_required), summary: known
+main::Impl.write@26:4: covered (storage: no_proof_required), summary: known
+main::Impl.__init__@19:4: covered (storage: no_proof_required), summary: known

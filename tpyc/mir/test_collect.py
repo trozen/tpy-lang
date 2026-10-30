@@ -82,8 +82,8 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     for name in ("Cell.read", "Other.read", "Cell.__init__", "choose"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ ->", out), out
     assert re.search(r"fn .*::Cell.static@[^\n]+ -> int32", out), out
-    assert re.search(r"unsupported@[^\n]+<MIR not covered:", out)
-    assert "<MIR not covered: module initialization>" in out
+    assert re.search(r"unsupported@[^\n]+<uncovered \(", out)
+    assert "<uncovered (module initialization)" in out
     assert out == dump(SOURCE)
 
 
@@ -137,9 +137,9 @@ def uncovered(stop: int32) -> int32:
     return 7
 ''')
     body = out[out.index("::covered@"):].split("\nfn ", 1)[0]
-    assert "<MIR not covered:" not in body
+    assert "<uncovered (" not in body
     assert "range-advance" in body
-    assert "<MIR not covered: unsupported metadata: step>" in out
+    assert "<uncovered (unsupported metadata: step)" in out
 
 
 def test_native_dump_reports_captured_source_and_element_dependencies() -> None:
@@ -156,7 +156,7 @@ def walk(xs: list[Cell]) -> int32:
     return result
 ''')
     body = out[out.index("::walk@"):].split("\nfn ", 1)[0]
-    assert "<MIR not covered:" not in body
+    assert "<uncovered (" not in body
     assert "iterator-init" in body and "iterator-read" in body
     assert "[structure]" in body and "[elements]" in body
 
@@ -177,7 +177,7 @@ def alias_pair() -> int32:
 ''')
     body = out[out.index("::alias_pair@"):]
     body = body.split("\nfn ", 1)[0]
-    assert "<MIR not covered:" not in body
+    assert "<uncovered (" not in body
     # The member's temporary and the one backing, never an alias.
     assert body.count("[initialize]") == 2
     assert " = copy " not in body
@@ -222,8 +222,8 @@ def values() -> Iterator[int32]:
 async def ready() -> int32:
     return 1
 """)
-    assert out.count("<MIR not covered: generic body>") == 3, out
-    assert out.count("<MIR not covered: async body>") == 1, out
+    assert out.count("<uncovered (generic body)") == 3, out
+    assert out.count("<uncovered (async body)") == 1, out
     # A generator's body lowers from its frame, completing without a value.
     assert re.search(r"fn .*::values@[^\n]+ -> None", out), out
 
@@ -264,13 +264,13 @@ def rejects() -> None:
 def after() -> int32:
     return 2
 """)
-    assert re.search(r"external@[^\n]+<no body to lower>", out), out
+    assert re.search(r"external@[^\n]+<uncovered \(no body to lower\)>", out), out
     assert re.search(r"before@[^\n]+ -> int32", out), out
-    assert re.search(r"rejects@[^\n]+<THIR rejected:", out), out
+    assert re.search(r"rejects@[^\n]+<uncovered \(THIR rejected:", out), out
     # A function body after the rejecting one is still attempted; only a unit
     # that lowers during emission is cut off by the reject.
     assert re.search(r"after@[^\n]+ -> int32", out), out
-    assert re.search(r"__tpy_init: <THIR not attempted:", out), out
+    assert re.search(r"__tpy_init: <uncovered \(THIR not attempted:", out), out
 
 
 @pytest.mark.parametrize("runner", [False, True])
@@ -340,8 +340,8 @@ def closure(x: int32) -> int32:
         return x
     return inner()
 """)
-    assert "<MIR not covered: overloaded callable>" in out, out
-    assert re.search(r"closure@[^\n]+<MIR not covered:", out), out
+    assert "<uncovered (overloaded callable)" in out, out
+    assert re.search(r"closure@[^\n]+<uncovered \(", out), out
 
 
 KIND_SOURCE = """\

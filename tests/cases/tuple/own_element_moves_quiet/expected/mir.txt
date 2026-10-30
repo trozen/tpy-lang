@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ret_moves@33:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::fresh_into_list@39:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::fresh_into_dict@45:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_into_list@51:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_module_into_list@57:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_into_dict@63:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_into_comp@69:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_into_append@75:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_return@82:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::copy_nested_member@88:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::copy_param@95:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::values_into_list@100:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@106:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.give@23:4: uncovered (call needs finalized known summary)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known

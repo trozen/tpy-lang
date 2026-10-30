@@ -1,0 +1,31 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_points@13:0: covered (storage: no_proof_required), summary: known
+main::first_x@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::add_point@24:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::replace_first@28:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::remove_first@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::read_point@37:0: covered (storage: no_proof_required), summary: known
+main::mutate_point@41:0: covered (storage: no_proof_required), summary: known
+main::test_non_mutating_no_warn@47:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_non_mutating_subscript_read@54:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_mutating_append_warns@63:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_mutating_subscript_write_no_warn@70:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_mutating_del_warns@78:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_second_param_not_mutated@87:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_no_borrow_no_warn@97:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_loop_var_non_mutating_callee@105:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::test_loop_var_mutating_callee@112:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::add_point_wrapper@121:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::read_wrapper@125:0: covered (storage: no_proof_required), summary: known
+main::test_transitive_mutation_warns@129:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_transitive_read_no_warn@136:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_forward_mutation_warns@145:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::forward_mutator@152:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_forward_read_no_warn@156:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::forward_reader@163:0: covered (storage: no_proof_required), summary: known
+main::cycle_a@169:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::cycle_b@175:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+main::test_cycle_mutation_warns@179:0: uncovered (stub declares no contract), summary: opaque (recursive or recursion-dependent call)
+main::deep_wrapper@188:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_multi_hop_mutation_warns@192:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

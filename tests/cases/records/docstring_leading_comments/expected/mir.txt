@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@7:0: covered (storage: no_proof_required), summary: known
+main::skipped@13:0: covered (storage: no_proof_required), summary: known
+main::main@38:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Counter.bump@31:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@26:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::refused@11:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::resolve_failure@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::unset_defaults@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

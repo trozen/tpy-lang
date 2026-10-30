@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::out_of_range@35:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::store@46:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::MyList.__init__@12:4: uncovered (missing record layout)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Bumper.__call__@18:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Bumper.__init__@15:4: covered (storage: no_proof_required), summary: known

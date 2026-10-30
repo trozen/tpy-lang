@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_and_rhs@12:0: covered (storage: no_proof_required), summary: known
+main::test_and_true@17:0: covered (storage: no_proof_required), summary: known
+main::test_or_rhs@22:0: uncovered (missing field identity), summary: opaque (missing field identity)
+main::test_negation@25:0: covered (storage: no_proof_required), summary: known
+main::test_multi_var@31:0: covered (storage: no_proof_required), summary: known
+main::main@36:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::A.__init__@4:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@9:4: covered (storage: no_proof_required), summary: known

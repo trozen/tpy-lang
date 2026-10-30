@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::mixed@31:0: certified, summary: known
+main::singleton@38:0: certified, summary: known
+main::readonly_capture@45:0: certified, summary: known
+main::mixed_access@52:0: certified, summary: known
+main::copies@59:0: covered (storage: no_proof_required), summary: known
+main::scalar_copies@66:0: covered (storage: no_proof_required), summary: known
+main::main@74:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Cell.observe@14:4: certified, summary: known
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Observer.__init__@24:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@40:0: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
+main::main@44:0: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
+main::Resource.__del__@22:4: uncovered (missing receiver fact)
+main::Resource.make@26:4: uncovered (custom record special member)
+main::Resource.__init__@20:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Holder.__init__@35:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)

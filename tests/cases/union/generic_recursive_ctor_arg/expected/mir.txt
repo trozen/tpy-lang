@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::count_leaves@9:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (recursive or recursion-dependent call)
+main::Summary.__init__@23:4: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)

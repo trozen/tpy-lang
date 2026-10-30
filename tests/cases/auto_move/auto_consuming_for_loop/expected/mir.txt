@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_last_use@5:0: covered (storage: no_proof_required), summary: known
+main::sum_not_last_use@13:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

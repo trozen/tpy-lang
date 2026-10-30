@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse@20:0: uncovered (error-return body)
+main::get_name@26:0: uncovered (error-return body)
+main::add@32:0: uncovered (error-return body)
+main::mul3@36:0: uncovered (error-return body)
+main::as_arg@40:0: uncovered (error-return body)
+main::greet@44:0: uncovered (error-return body)
+main::positive@58:0: uncovered (error-return body)
+main::modify@64:0: uncovered (error-return body)
+main::main@69:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::checked_parse@142:0: uncovered (error-return body)
+main::checked_add@150:0: uncovered (error-return body)
+main::test_as_binding@153:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Point.updated@52:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__eq__: covered (storage: no_proof_required)
+main::Point.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::ParseErr.__init__@15:4: uncovered (missing record layout)
+main::Point.__init__: covered (storage: no_proof_required), summary: known

@@ -123,9 +123,10 @@ def test_case(case_dir, main_src, request):
 
     # In update mode, clear stale artifacts so nothing lingers from a previous run
     if UPDATE_EXPECTED:
-        diag = expected_dir / "diag.txt"
-        if diag.exists():
-            diag.unlink()
+        for fname in ("diag.txt", "mir.txt"):
+            f = expected_dir / fname
+            if f.exists():
+                f.unlink()
         for subdir in ["include", "src"]:
             d = expected_dir / subdir
             if d.is_dir():
@@ -154,12 +155,21 @@ def test_case(case_dir, main_src, request):
         all_annotation_errors.extend(validate_annotations(src_file, result.diagnostics))
     fail_annotations(request, all_annotation_errors)
 
+    expected_mir = expected_dir / "mir.txt"
+
     # Handle compile failure
     if not result.success:
         if not UPDATE_EXPECTED and not is_error:
             pytest.fail(
                 f"Non-error test failed to compile: {main_src}\n"
                 f"--- diagnostics ---\n{result.diagnostics}",
+                pytrace=False,
+            )
+        if not UPDATE_EXPECTED and expected_mir.exists():
+            pytest.fail(
+                f"{expected_mir} is left from a compile that reached codegen; "
+                f"this one does not, so nothing compares it. Delete it, or "
+                f"rerun `uv run python tests/update_snapshots.py -k <case>`.",
                 pytrace=False,
             )
         # Error cases stop here: no code to verify, no runtime to run
@@ -174,6 +184,10 @@ def test_case(case_dir, main_src, request):
             f"Error test compiled successfully (expected compilation failure): {main_src}",
             pytrace=False,
         )
+
+    # Written only once the case is known to be one that compiles: an error
+    # case that compiled must not leave a snapshot behind in update mode.
+    check_or_update(result.mir_text, expected_mir, "MIR verdicts")
 
     def _snapshot_pairs(hpp_path, cpp_path) -> list[tuple[str, Path]]:
         pairs: list[tuple[str, Path]] = []

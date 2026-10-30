@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@12:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Container.__bool__@9:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@6:4: covered (storage: no_proof_required), summary: known

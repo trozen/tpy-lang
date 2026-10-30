@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Cat.name@18:4: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
+main::Cat.__del__@20:4: uncovered (unsupported owned-leaf expression)
+main::Cat.__init__@16:4: uncovered (custom record special member), summary: opaque (custom record special member)

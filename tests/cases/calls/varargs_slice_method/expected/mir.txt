@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@22:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Pile.sum_tail@15:4: uncovered (missing or invalid native iteration facts)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

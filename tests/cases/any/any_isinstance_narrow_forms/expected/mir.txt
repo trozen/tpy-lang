@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::dispatch@7:0: uncovered (unsupported parameter type)
+main::tuple_form@16:0: uncovered (unsupported parameter type)
+main::negated@22:0: uncovered (unsupported parameter type)
+main::main@29:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

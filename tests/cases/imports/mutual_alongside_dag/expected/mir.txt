@@ -1,0 +1,10 @@
+a::__tpy_init: uncovered (module initialization)
+a::a_func@5:0: covered (storage: no_proof_required), summary: known
+b::__tpy_init: uncovered (module initialization)
+b::b_func@5:0: covered (storage: no_proof_required), summary: known
+b::b_helper@8:0: covered (storage: no_proof_required), summary: known
+b::b_func_via_a@15:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+util::__tpy_init: uncovered (module initialization)
+util::boost@3:0: covered (storage: no_proof_required), summary: known

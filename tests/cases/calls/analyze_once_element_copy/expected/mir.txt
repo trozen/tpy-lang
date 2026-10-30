@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::keep@18:0: uncovered (no body to lower)
+main::keep@23:0: uncovered (no body to lower)
+main::fa@28:0: uncovered (no body to lower)
+main::fa@33:0: uncovered (no body to lower)
+main::main@37:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::B.__init__@13:4: covered (storage: no_proof_required), summary: known

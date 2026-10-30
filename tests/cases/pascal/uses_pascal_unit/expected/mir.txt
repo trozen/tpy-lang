@@ -1,0 +1,4 @@
+MyMath::__tpy_init: uncovered (module initialization)
+MyMath::square@6:0: covered (storage: no_proof_required), summary: known
+MyMath::cube@10:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)

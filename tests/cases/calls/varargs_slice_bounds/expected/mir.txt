@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_slice@14:0: uncovered (missing or invalid native iteration facts)
+main::main@21:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

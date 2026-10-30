@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::chain_alias_then_reassign@16:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::reassigned_element_borrower_warns@31:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::chain_promotes_alias_to_element@42:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known

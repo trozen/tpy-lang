@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@43:0: covered (storage: no_proof_required), summary: known
+main::gen_take@47:0: uncovered (generic body)
+main::free_fn@53:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::method@61:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::static_method@70:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::constructor@78:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::generic_fn@86:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::generic_method@94:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@102:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sink.absorb@17:4: covered (storage: no_proof_required), summary: known
+main::Sink.collect@21:4: covered (storage: no_proof_required)
+main::GR.absorb@39:4: uncovered (generic body)
+main::Sink.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Filler.__init__@28:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::GR.__init__@36:4: uncovered (generic constructor)

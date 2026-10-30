@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@18:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Hybrid.__getattr__@13:4: covered (storage: no_proof_required), summary: known
+main::Hybrid.__init__@10:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::refuse@9:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::direct_mapped@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::direct_mapped_enoent@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bound_mapped@21:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::posthoc_plain@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

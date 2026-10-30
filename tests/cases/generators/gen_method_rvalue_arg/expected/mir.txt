@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@45:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Lim.first@18:4: uncovered (loop across a suspension)
+main::Lim.ro_pair@26:4: uncovered (loop across a suspension)
+main::Lim.rec_val@31:4: covered (storage: no_facts: storage facts have not been published)
+main::Lim.dvals@35:4: uncovered (loop across a suspension)
+main::Lim.echo@40:4: covered (storage: no_facts: storage facts have not been published)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known

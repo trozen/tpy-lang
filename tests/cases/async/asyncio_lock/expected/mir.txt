@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::worker@16:0: uncovered (async body)
+main::raise_holding@23:0: uncovered (async body)
+main::acquirer@31:0: uncovered (async body)
+main::reap@41:0: uncovered (async body)
+main::cancel_acquire@49:0: uncovered (async body)
+main::main_coro@70:0: uncovered (async body)
+main::main@98:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

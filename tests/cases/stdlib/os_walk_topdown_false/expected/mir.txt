@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::report@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::walk_rows@13:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::order_ok@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::yields@51:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::build@58:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::teardown@69:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@78:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

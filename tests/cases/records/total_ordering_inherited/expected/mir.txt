@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Base.__eq__@11:4: covered (storage: no_proof_required)
+main::Base.__lt__@13:4: covered (storage: no_proof_required)
+main::Child.__le__: uncovered (uncertified binary operation)
+main::Child.__gt__: uncovered (uncertified binary operation)
+main::Child.__ge__: uncovered (uncertified binary operation)
+main::Base.__init__@9:4: covered (storage: no_proof_required), summary: known

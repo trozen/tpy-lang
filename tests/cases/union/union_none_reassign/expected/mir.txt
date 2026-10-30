@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_reassign_to_none@9:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::test_init_none_then_assign@17:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known

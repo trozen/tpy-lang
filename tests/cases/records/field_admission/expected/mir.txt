@@ -1,0 +1,62 @@
+main::__tpy_init: uncovered (module initialization)
+main::holder_writes@179:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::make_buf@230:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_list@234:0: covered (storage: no_proof_required), summary: known
+main::make_res@238:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::show_cb@242:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::pick@246:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::count@316:0: covered (storage: no_proof_required), summary: known
+main::mk@320:0: covered (storage: no_proof_required), summary: known
+main::union_tag@338:0: covered (storage: no_proof_required), summary: known
+main::opt_loop_param@522:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::view_of_borrow@547:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::nested_writes@574:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::call_lambda@602:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::lambda_reads@606:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::ctor_writes@617:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main_coro@651:0: uncovered (async body)
+main::main@655:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.show@43:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Box.method_writes@47:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.gen_writes@88:4: uncovered (unsupported parameter type)
+main::Box.async_writes@115:4: uncovered (async body)
+main::Keep.load@151:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Vals.keep@170:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Src.peek@215:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Res.__del__@226:4: covered (storage: no_proof_required)
+main::Built.show@307:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Placed.fill@370:4: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Placed.show@376:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Pt.__str__@387:4: uncovered (stub declares no contract)
+main::Closed.show@419:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::ViewSlots.set@485:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::SpanHolder.reset@504:4: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Holds.peek@543:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Sink.put@597:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@19:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@33:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Flat.__init__@139:4: covered (storage: no_proof_required), summary: known
+main::Keep.__init__@147:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Vals.__init__@165:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Q.__init__@203:4: covered (storage: no_proof_required), summary: known
+main::Src.__init__@211:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Res.__init__@223:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Built.__init__@272:4: uncovered (record member loan unknown beside a view member), summary: opaque (record member loan unknown beside a view member)
+main::UA.__init__@327:4: covered (storage: no_proof_required), summary: known
+main::UB.__init__@334:4: covered (storage: no_proof_required), summary: known
+main::Placed.__init__@352:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Pt.__init__@384:4: uncovered (missing record layout)
+main::Closed.__init__@401:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Base.__init__@430:4: covered (storage: no_proof_required), summary: known
+main::Derived.__init__@440:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Q0.__init__@455:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::BasedOrder.__init__@465:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
+main::ViewSlots.__init__@479:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::SpanHolder.__init__@494:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::OptHolder.__init__@514:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Tagged.__init__@533:4: covered (storage: no_proof_required), summary: known
+main::Holds.__init__@540:4: covered (storage: no_proof_required), summary: known
+main::Reads.__init__@559:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@570:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@594:4: covered (storage: no_proof_required), summary: known

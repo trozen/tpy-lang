@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Inner.__eq__: covered (storage: no_proof_required)
+main::Inner.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Outer.__eq__: uncovered (uncertified binary operation)
+main::Outer.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Inner.__init__: covered (storage: no_proof_required), summary: known
+main::Outer.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

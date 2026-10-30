@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::count_if_sized@6:0: uncovered (unsupported parameter type)
+main::sum_span@12:0: uncovered (unsupported parameter type)
+main::check_not@21:0: uncovered (unsupported parameter type)
+main::main@27:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)

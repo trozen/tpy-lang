@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_own_iter_explicit@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_own_iter_value_type@19:0: uncovered (unsupported metadata: consuming), summary: opaque (unsupported metadata: consuming)
+main::test_borrowing_default@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_value_type_borrowing@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Node.__init__@8:4: covered (storage: no_proof_required), summary: known

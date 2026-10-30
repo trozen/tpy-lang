@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::split@15:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@19:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Point.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::push@10:0: covered (storage: no_proof_required), summary: known
+main::fill@15:0: covered (storage: no_proof_required), summary: known
+main::add_one@20:0: covered (storage: no_proof_required), summary: known
+main::read_only@25:0: covered (storage: no_proof_required), summary: known

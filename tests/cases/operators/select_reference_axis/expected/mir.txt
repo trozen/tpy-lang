@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick_list@25:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::pick_dict@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pick_set@35:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::pick_bytearray@41:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pick_array@47:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tag.__init__@21:4: covered (storage: no_proof_required), summary: known

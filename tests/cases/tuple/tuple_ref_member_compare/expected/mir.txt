@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (unsupported metadata: template_override), summary: opaque (unsupported metadata: template_override)
+main::Box.__eq__@13:4: covered (storage: no_proof_required)
+main::Box.__lt__@15:4: covered (storage: no_proof_required)
+main::Box.__le__@17:4: covered (storage: no_proof_required)
+main::Box.__gt__@19:4: covered (storage: no_proof_required)
+main::Box.__ge__@21:4: covered (storage: no_proof_required)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

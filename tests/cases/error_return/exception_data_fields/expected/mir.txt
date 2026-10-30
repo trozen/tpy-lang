@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse@16:0: uncovered (error-return body)
+main::main@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ParseError.__init__@9:4: uncovered (missing record layout)

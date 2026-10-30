@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::__tpy_builder_argparse_help_1@26:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@26:11: uncovered (unsupported expression form)
+main::Tag.from_arg@16:4: covered (storage: no_proof_required)
+main::Tag.__repr__@19:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tag.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_1.__init__@26:11: covered (storage: no_proof_required), summary: known

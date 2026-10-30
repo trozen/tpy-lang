@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@25:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Counter.__enter__@14:4: covered (storage: no_proof_required), summary: known
+main::Counter.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known

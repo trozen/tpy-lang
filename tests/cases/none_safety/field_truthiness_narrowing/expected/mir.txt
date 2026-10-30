@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_name@11:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::get_port@16:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::test_negated@21:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@26:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Config.__init__@7:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

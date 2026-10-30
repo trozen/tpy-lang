@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::HeapVal.__del__@16:4: uncovered (stub declares no contract)
+main::HeapVal.take@21:4: uncovered (stub declares no contract)
+main::HeapVal.__init__@11:4: uncovered (custom record special member), summary: opaque (custom record special member)

@@ -1,0 +1,46 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@88:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::free_function@97:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::gen_owned_elem@126:0: uncovered (unsupported hoisted value)
+main::gen@140:0: uncovered (unsupported hoisted value)
+main::co@155:0: uncovered (async body)
+main::closure@163:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@174:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_scalar@184:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_try@194:0: uncovered (try across a suspension)
+main::co_try@204:0: uncovered (async body)
+main::try_except_return@214:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_owned@224:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@234:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::er_body@244:0: uncovered (error-return body)
+main::gen_last_use@268:0: uncovered (unsupported hoisted value)
+main::co_last_use@278:0: uncovered (async body)
+main::try_opt_field@287:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::branch_fresh@301:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::ident@312:0: certified, summary: known
+main::temp_source@316:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::try_fresh_then_borrow@324:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_name_moves@338:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::over_hoisted_owner@352:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::name_moves@364:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::borrow_then_own@372:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::match_arm@383:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::lazy@395:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::returned@407:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@414:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.grow@19:4: covered (storage: no_proof_required), summary: known
+main::Dog.bump@48:4: covered (storage: no_proof_required)
+main::Dog.count@51:4: covered (storage: no_proof_required)
+main::Holder.view@63:4: covered (storage: no_proof_required), summary: known
+main::Holder.meth@67:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Ctx.__enter__@81:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Ctx.__exit__@84:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Res.__del__@257:4: uncovered (missing receiver fact)
+main::Animal.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Hound.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@59:4: covered (storage: no_proof_required), summary: known
+main::Ctx.__init__@78:4: covered (storage: no_proof_required), summary: known
+main::Res.__init__@254:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::OptHolder.__init__@264:4: covered (storage: no_proof_required), summary: known

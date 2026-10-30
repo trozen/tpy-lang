@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_pair@6:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::g@10:0: uncovered (unsupported hoisted value)
+main::main@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

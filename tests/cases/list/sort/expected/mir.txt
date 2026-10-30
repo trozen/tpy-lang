@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_list_sort@21:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_arraylist_sort@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_user_type_sort@36:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::test_stable_sort@42:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::test_span_sort@54:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::key@61:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_sort_receiver_evaluated_once@66:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pair.__lt__@15:4: covered (storage: no_proof_required)
+main::Pair.__repr__@18:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Pair.__init__@11:4: covered (storage: no_proof_required), summary: known

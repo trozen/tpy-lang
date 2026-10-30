@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::step@17:0: uncovered (async body)
+main::total@21:0: uncovered (async body)
+main::main@30:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known

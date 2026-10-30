@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::Animal.speak@11:4: covered (storage: no_proof_required), summary: known
+main::Animal.describe@14:4: covered (storage: no_proof_required), summary: known
+main::Dog.speak@25:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known

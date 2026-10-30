@@ -73,6 +73,13 @@ from .validate import MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedI
 from .prepare import MIRPrepared, validated
 
 
+def owner_display_name(owner: TpyType) -> str:
+    """A method's owner by the name its user wrote: an enum's methods live
+    on a companion record, which is spelled as the enum."""
+    record = record_info_of(owner)
+    return record.display_name if record is not None else owner.name
+
+
 def _declared_const(stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> bool:
     """A declaration's const verdict: its binding's, for a record and a
     container alike (a container's pointer-slot declaration spells none)."""
@@ -1423,8 +1430,9 @@ class _Lowering:
                  else header.receiver.type.name if fn is None and header.receiver is not None else None)
         if owner is None or "." in header.name:
             return header.name
-        record = record_info_of(header.receiver.type) if header.receiver is not None else None
-        return f"{record.display_name if record is not None else owner.rsplit('.', 1)[-1]}.{header.name}"
+        spelled = (owner_display_name(header.receiver.type) if header.receiver is not None
+                   else owner.rsplit('.', 1)[-1])
+        return f"{spelled}.{header.name}"
 
     def constructor_entry(self) -> MIRSlotId:
         """The record a constructor builds: storage of the body begun at

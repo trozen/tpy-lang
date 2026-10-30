@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::Config.get_retries@12:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Config.__init__@8:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

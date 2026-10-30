@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@16:0: uncovered (reference yield)
+main::main@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known

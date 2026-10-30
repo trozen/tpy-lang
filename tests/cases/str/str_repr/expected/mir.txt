@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Point.__str__@10:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__repr__@13:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known

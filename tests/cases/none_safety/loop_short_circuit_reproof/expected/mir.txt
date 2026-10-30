@@ -1,0 +1,2 @@
+main::__tpy_init: uncovered (module initialization)
+main::shrink@4:0: uncovered (optional destination mismatch), summary: opaque (optional destination mismatch)

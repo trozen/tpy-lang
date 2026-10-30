@@ -1,0 +1,15 @@
+consts::__tpy_init: uncovered (module initialization)
+consts::bump@23:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+consts::get_shared@31:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+consts::Counter.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@20:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::comp_total@36:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::gen_sizes@45:0: uncovered (loop across a suspension)
+main::closure_sum@51:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::block_shadow@59:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::shadows@72:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@80:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sizer.scaled@31:4: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+main::Sizer.__init__@28:4: covered (storage: no_proof_required), summary: known
+starmod::__tpy_init: uncovered (module initialization)

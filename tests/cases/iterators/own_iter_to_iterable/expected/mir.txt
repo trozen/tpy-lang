@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::each@18:0: uncovered (generic body)
+main::each_twice@24:0: uncovered (generic body)
+main::total@31:0: uncovered (unsupported parameter type)
+main::main@37:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Item.__lt__@15:4: covered (storage: no_proof_required)
+main::Item.__init__@12:4: covered (storage: no_proof_required), summary: known

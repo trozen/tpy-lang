@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::H.set@23:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

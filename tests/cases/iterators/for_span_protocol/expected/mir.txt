@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_mut@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_ro@38:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_iterate_twice@43:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_readonly_param@52:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_rvalue_span@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::MutBuffer.__span__@13:4: uncovered (unsupported metadata: wrap)
+main::MutBuffer.__span__@13:4#2: uncovered (unsupported metadata: wrap)
+main::MutBuffer.__iter__@17:4: uncovered (view of container storage)
+main::MutBuffer.__iter__@17:4#2: uncovered (view of container storage)
+main::ROBuffer.__span__@26:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::ROBuffer.__iter__@30:4: uncovered (view of container storage), summary: opaque (view of container storage)
+main::MutBuffer.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::ROBuffer.__init__@23:4: covered (storage: no_proof_required), summary: known

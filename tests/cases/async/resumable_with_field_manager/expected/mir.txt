@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::plain@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@40:0: uncovered (with across a suspension)
+main::coro@47:0: uncovered (async body)
+main::main@53:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::G.__enter__@18:4: covered (storage: no_proof_required), summary: known
+main::G.__exit__@22:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::G.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@29:4: covered (storage: no_proof_required), summary: known

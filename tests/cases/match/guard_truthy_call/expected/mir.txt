@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@16:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::classify@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.__init__@9:4: covered (storage: no_proof_required), summary: known

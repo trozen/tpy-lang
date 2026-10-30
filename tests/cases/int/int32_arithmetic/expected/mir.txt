@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_binary_ops@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_unary_neg@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_mixed_literals@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_negative_division@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

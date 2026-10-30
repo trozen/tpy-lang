@@ -1,0 +1,25 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_narrow@105:0: covered (storage: no_proof_required), summary: known
+main::read_mixed@109:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
+main::read_twins@114:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::main@119:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
+main::Mixed.__getitem__@19:4: uncovered (no body to lower)
+main::Mixed.__getitem__@25:4: uncovered (no body to lower)
+main::Narrow.__getitem__@37:4: uncovered (no body to lower)
+main::Narrow.__getitem__@43:4: uncovered (no body to lower)
+main::Narrow.m@48:4: uncovered (no body to lower)
+main::Narrow.m@54:4: uncovered (no body to lower)
+main::NarrowKey.__getitem__@66:4: uncovered (no body to lower)
+main::NarrowKey.__getitem__@72:4: uncovered (no body to lower)
+main::NarrowKey.m@77:4: uncovered (no body to lower)
+main::NarrowKey.m@83:4: uncovered (no body to lower)
+main::Twins.__getitem__@95:4: uncovered (no body to lower)
+main::Twins.__getitem__@100:4: uncovered (no body to lower)
+main::Mixed.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Narrow.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::NarrowKey.__init__@61:4: covered (storage: no_proof_required), summary: known
+main::Twins.__init__@90:4: covered (storage: no_proof_required), summary: known
+policy_lib::__tpy_init: uncovered (module initialization)
+policy_lib::Inferred.m@13:4: uncovered (no body to lower)
+policy_lib::Inferred.m@18:4: uncovered (no body to lower)
+policy_lib::Inferred.__init__@9:4: covered (storage: no_proof_required), summary: known

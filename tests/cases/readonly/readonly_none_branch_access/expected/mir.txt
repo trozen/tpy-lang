@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::observe_field@15:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::observe_method@23:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Box.get_v@11:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known

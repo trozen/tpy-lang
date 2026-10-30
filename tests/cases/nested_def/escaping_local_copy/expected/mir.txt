@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_getter@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_sibling_reader@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_before_sibling@42:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_if_arm_sibling@54:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_lambda_reader@67:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_nonlocal_sibling@80:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_transitive_sibling@95:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_two_arms_same_name@109:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_named_not_called@127:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_lambda_param_shadow@140:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@152:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Config.__init__@16:4: covered (storage: no_proof_required), summary: known

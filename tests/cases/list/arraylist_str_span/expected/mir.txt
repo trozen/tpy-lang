@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_span@6:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

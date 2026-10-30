@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_of@20:0: covered (storage: no_proof_required), summary: known
+main::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.peek@16:4: covered (storage: no_proof_required), summary: known
+main::Sink.fill@30:4: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Sink.__init__@27:4: covered (storage: no_proof_required), summary: known

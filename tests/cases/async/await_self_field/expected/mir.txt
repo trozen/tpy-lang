@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::opener@22:0: uncovered (async body)
+main::main_coro@26:0: uncovered (async body)
+main::main@33:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Gate.open@14:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Gate.passed@17:4: uncovered (async body)
+main::Gate.__init__@11:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)

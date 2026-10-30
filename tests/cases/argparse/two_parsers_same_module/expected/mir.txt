@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::parse_a@8:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::parse_b@16:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::__tpy_builder_argparse_help_1@11:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@11:11: uncovered (unsupported expression form)
+main::__tpy_builder_argparse_help_2@19:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_2@19:11: uncovered (unsupported expression form)
+main::__tpy_builder_argparse_args_1.__init__@11:11: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_args_2.__init__@19:11: covered (storage: no_proof_required), summary: known

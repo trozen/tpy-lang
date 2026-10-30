@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::escaped_alias@13:0: certified, summary: known
+main::mutate_through_alias@28:0: certified, summary: known
+main::in_match_arm@39:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_try_body@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_var_rebind@60:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@71:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

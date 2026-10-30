@@ -1,0 +1,36 @@
+main::__tpy_init: uncovered (module initialization)
+main::each@56:0: uncovered (generic body)
+main::each_ro@63:0: uncovered (generic body)
+main::rep@69:0: uncovered (generic body)
+main::ends@75:0: uncovered (generic body)
+main::first_then_rest@81:0: uncovered (generic body)
+main::in_with@90:0: uncovered (generic body)
+main::in_try@97:0: uncovered (generic body)
+main::in_match@106:0: uncovered (generic body)
+main::via_local@120:0: uncovered (generic body)
+main::app@133:0: uncovered (no body to lower)
+main::app@138:0: uncovered (no body to lower)
+main::trial_then_local@146:0: uncovered (generic body)
+main::with_nested@157:0: uncovered (generic body)
+main::local_after_nested@169:0: uncovered (nested def)
+main::via_shadowing_local@187:0: uncovered (generic body)
+main::mapped@196:0: uncovered (generic body)
+main::mixed@205:0: uncovered (generic body)
+main::fresh@214:0: covered (storage: no_proof_required), summary: known
+main::relay@220:0: uncovered (generic body)
+main::ident@227:0: certified, summary: known
+main::main@267:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Gate.__enter__@30:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Gate.__exit__@33:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Bin.append@47:4: covered (storage: no_proof_required), summary: known
+main::Bin.size@51:4: covered (storage: no_proof_required), summary: known
+main::Holder.walk@239:4: uncovered (generic body)
+main::Cell.val@253:4: uncovered (generic body)
+main::Cell.val@253:4#2: uncovered (generic body)
+main::Cell.twice@257:4: uncovered (generic body)
+main::Cell.prop@263:4: uncovered (generic body)
+main::Point.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Tok.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Bin.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@234:4: uncovered (generic constructor)
+main::Cell.__init__@247:4: uncovered (generic constructor)

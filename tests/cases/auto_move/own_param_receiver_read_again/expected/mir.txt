@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::f@26:0: covered (storage: no_proof_required), summary: known
+main::f2@32:0: covered (storage: no_proof_required), summary: known
+main::fd@39:0: uncovered (no body to lower)
+main::fd@45:0: uncovered (no body to lower)
+main::bump_g@50:0: uncovered (generic body)
+main::same_call@74:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::dispatch_method@81:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::later_alias@89:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::last_use@98:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::alias_same_statement@104:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::main@117:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::B.take@13:4: uncovered (missing receiver fact)
+main::B.bump@16:4: covered (storage: no_proof_required), summary: known
+main::O.g@62:4: uncovered (no body to lower)
+main::O.g@67:4: uncovered (no body to lower)
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::O.__init__@57:4: covered (storage: no_proof_required), summary: known

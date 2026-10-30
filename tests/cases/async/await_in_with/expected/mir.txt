@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::value@17:0: uncovered (async body)
+main::caller@21:0: uncovered (async body)
+main::main@27:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Tracer.__enter__@10:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tracer.__exit__@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Tracer.__init__@7:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::dict_has@3:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::dict_missing@7:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::set_has@11:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::set_missing@15:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@19:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

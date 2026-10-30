@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_fast@45:0: uncovered (unsupported parameter type)
+main::main@58:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::CounterIter.__next__@25:4: uncovered (error-return body)
+main::Counter.__iter__@41:4: covered (storage: no_proof_required), summary: known
+main::CounterIter.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@37:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::big@9:0: covered (storage: no_proof_required), summary: known
+main::same@13:0: covered (storage: no_proof_required), summary: known
+main::hold8@17:0: covered (storage: no_proof_required), summary: known
+main::w64@21:0: covered (storage: no_proof_required), summary: known
+main::show@25:0: covered (storage: no_proof_required), summary: known
+main::neg@29:0: covered (storage: no_proof_required), summary: known
+main::flag@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::take_any@37:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::grow@41:0: uncovered (unsupported native container element)
+main::pair_sum@46:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pick@61:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::has_item@69:0: uncovered (generic body)
+main::total@77:0: uncovered (no body to lower)
+main::total@85:0: uncovered (no body to lower)
+main::param_widens@89:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::param_confirms@110:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::stores@119:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::first_binding@139:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::union_param@160:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::seeded_local@168:0: uncovered (container element type mismatch), summary: opaque (container element type mismatch)
+main::typed_seeded@178:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::generic_call@191:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::typed_slots@207:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::select_operands@229:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::raise_arg@284:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@294:0: uncovered (loop across a suspension)
+main::gen_lists@303:0: uncovered (unsupported hoisted value)
+main::fill@311:0: uncovered (async body)
+main::comprehension@319:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)
+main::closure@327:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@339:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@352:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@371:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::alias_pair@387:0: uncovered (error-return body)
+main::lookups_pos@398:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::truth_pos@411:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::wide_lookups_pos@425:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@436:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@243:41: uncovered (generator expression)
+main::Maker.make@266:4: covered (storage: no_proof_required), summary: known
+main::Maker.fill@273:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Scope.__enter__@364:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Scope.__exit__@367:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Wide.__init__@55:4: uncovered (missing record layout)
+main::Holder.__init__@251:4: covered (storage: no_proof_required), summary: known
+main::Maker.__init__@259:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

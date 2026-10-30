@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_greeting@2:0: covered (storage: no_proof_required), summary: known
+main::echo@6:0: covered (storage: no_proof_required), summary: known

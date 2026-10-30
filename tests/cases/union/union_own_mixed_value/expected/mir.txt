@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@29:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Box.get_span@13:4: uncovered (view return), summary: opaque (view return)
+main::Box.get_list@18:4: uncovered (view return), summary: opaque (view return)
+main::Box.get_via_var@23:4: uncovered (view return), summary: opaque (view return)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known

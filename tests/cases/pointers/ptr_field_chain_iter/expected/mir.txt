@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::head_floor@41:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::via_local@46:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::total@52:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::raise_floors@61:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::via_ptr@68:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@77:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Sector.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Seg.__init__@16:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::SubSector.__init__@23:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Map.__init__@32:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

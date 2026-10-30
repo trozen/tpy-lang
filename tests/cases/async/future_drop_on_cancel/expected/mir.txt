@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::waiter@30:0: uncovered (async body)
+main::main_coro@34:0: uncovered (async body)
+main::main@45:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Tracked.__del__@26:4: uncovered (unsupported metadata: is_arrow)
+main::Tracked.__init__@23:4: uncovered (custom record special member), summary: opaque (custom record special member)

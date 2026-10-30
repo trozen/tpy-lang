@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::name_arms@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::coro@34:0: uncovered (async body)
+main::main@41:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Pair.pick@20:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Pair.__init__@16:4: covered (storage: no_proof_required), summary: known

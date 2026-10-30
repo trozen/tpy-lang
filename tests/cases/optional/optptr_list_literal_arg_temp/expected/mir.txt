@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::fill@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sink.take@13:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sink.take_nested@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sink.__init__@10:4: covered (storage: no_proof_required), summary: known

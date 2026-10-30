@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@18:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::add_tag@24:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::missing@28:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::missing_elem@37:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@46:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Counter.__init__@9:4: uncovered (missing record layout)
+main::Tags.__init__@14:4: uncovered (missing record layout)

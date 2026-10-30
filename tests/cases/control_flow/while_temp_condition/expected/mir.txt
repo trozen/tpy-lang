@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_vu@8:0: covered (storage: no_proof_required), summary: known
+main::eat@14:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::head@21:0: covered (storage: no_proof_required), summary: known
+main::countdown@25:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::fresh_literal@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::literal_reads_loop_var@47:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::else_break_continue@60:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::weigh@85:0: covered (storage: no_proof_required), summary: known
+main::ctor_rvalue_cond@89:0: certified, summary: known
+main::nested_loops@101:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::walrus_cond@112:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::main@124:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pack.__init__@81:4: covered (storage: no_proof_required), summary: known

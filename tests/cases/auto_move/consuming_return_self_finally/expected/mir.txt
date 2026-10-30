@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@48:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Ticket.stamped@19:4: uncovered (unsupported statement)
+main::Ticket.logged@26:4: uncovered (unsupported statement)
+main::Badge.bumped@41:4: uncovered (unsupported statement)
+main::Ticket.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Badge.__init__@37:4: covered (storage: no_proof_required), summary: known

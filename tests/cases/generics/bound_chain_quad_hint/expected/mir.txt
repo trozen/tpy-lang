@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@26:0: uncovered (generic body)
+main::main@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Leaf.kind@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__del__@20:4: uncovered (generic body)
+main::Holder.get@22:4: uncovered (generic body)
+main::Leaf.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@18:4: uncovered (generic constructor)

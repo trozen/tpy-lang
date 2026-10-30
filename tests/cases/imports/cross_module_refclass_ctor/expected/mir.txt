@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@10:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+storage::__tpy_init: uncovered (module initialization)
+storage::Buffer.add@12:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+storage::Buffer.size@15:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+storage::Buffer.dump@18:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+storage::Buffer.__init__@9:4: covered (storage: no_proof_required), summary: known

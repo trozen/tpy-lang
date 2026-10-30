@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_set@4:0: covered (storage: no_proof_required), summary: known
+main::add_to_set@7:0: covered (storage: no_proof_required), summary: known
+main::get_size@10:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

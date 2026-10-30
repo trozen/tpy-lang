@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@6:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@13:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+shapes::__tpy_init: uncovered (module initialization)
+shapes::Circle.__init__@8:4: covered (storage: no_proof_required), summary: known
+shapes::Rect.__init__@15:4: covered (storage: no_proof_required), summary: known

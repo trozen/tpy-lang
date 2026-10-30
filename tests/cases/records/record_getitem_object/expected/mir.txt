@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
+main::PointList.__len__@17:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::PointList.__getitem__@21:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::PointList.__getitem__@21:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::PointList.__init__@14:4: covered (storage: no_proof_required), summary: known

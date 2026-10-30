@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::my_func@5:0: uncovered (no body to lower)
+main::global_export@8:0: uncovered (no body to lower)

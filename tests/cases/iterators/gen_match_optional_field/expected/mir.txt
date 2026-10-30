@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@22:0: uncovered (match across a suspension)
+main::main@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Inner.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@18:4: covered (storage: no_proof_required), summary: known

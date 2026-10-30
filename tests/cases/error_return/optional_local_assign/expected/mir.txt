@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::decode@19:0: uncovered (error-return body)
+main::run@25:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@14:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::box_handle@74:0: uncovered (unsupported parameter type)
+main::rc_handle@81:0: uncovered (unsupported parameter type)
+main::arc_handle@87:0: uncovered (unsupported parameter type)
+main::weak_handle@93:0: uncovered (unsupported parameter type)
+main::weak_subclass@98:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::make_weak_sub@103:0: uncovered (unmodeled record)
+main::arc_payload@109:0: uncovered (unsupported parameter type)
+main::get_payload@117:0: uncovered (unsupported parameter type)
+main::deref_payload@127:0: uncovered (unsupported parameter type)
+main::deref_record@151:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::match_get@157:0: uncovered (unsupported parameter type)
+main::match_deref@165:0: uncovered (unsupported parameter type)
+main::box_get@175:0: uncovered (unsupported parameter type)
+main::shadow_alias@182:0: uncovered (unsupported parameter type)
+main::rebind_handle@193:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::match_local@204:0: uncovered (unsupported parameter type)
+main::match_call_mutates@221:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::optional_box@231:0: uncovered (unsupported parameter type)
+main::upgrade_method@241:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::user_deref@246:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::ptr_object@251:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@256:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Dog.name@24:4: covered (storage: no_proof_required)
+main::Dog.bark@28:4: covered (storage: no_proof_required)
+main::Cat.name@36:4: covered (storage: no_proof_required)
+main::Hound.upgrade@60:4: covered (storage: no_proof_required), summary: known
+main::Handle.__deref__@70:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Handle.__deref__@70:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Kennel.show@142:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Hound.__init__@57:4: covered (storage: no_proof_required), summary: known
+main::Handle.__init__@67:4: covered (storage: no_proof_required), summary: known
+main::Kennel.__init__@138:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Holder.__init__@217:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

@@ -1,0 +1,17 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_rec@84:0: certified, summary: known
+main::main@88:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::B.bump@29:4: covered (storage: no_proof_required), summary: known
+main::K.rec@39:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::K.opt@42:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::K.recs@45:4: covered (storage: no_proof_required), summary: known
+main::K.ints@48:4: covered (storage: no_proof_required), summary: known
+main::K.whole@51:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::K.second@55:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::K.echo@62:4: uncovered (generic body)
+main::K.peek@68:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::G.rec@80:4: uncovered (generic body)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@75:4: uncovered (generic constructor)

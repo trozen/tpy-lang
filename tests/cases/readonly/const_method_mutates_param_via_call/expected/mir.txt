@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::do_mutate@15:0: covered (storage: no_proof_required), summary: known
+main::main@34:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Sink.push@11:4: covered (storage: no_proof_required), summary: known
+main::Renderer.via_call@21:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Renderer.via_method@25:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Renderer.only_second@29:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Sink.__init__@8:4: covered (storage: no_proof_required), summary: known

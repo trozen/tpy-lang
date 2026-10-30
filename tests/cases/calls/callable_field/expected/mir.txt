@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Handler.trigger@11:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Handler.__str__@14:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::Handler.__init__@8:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

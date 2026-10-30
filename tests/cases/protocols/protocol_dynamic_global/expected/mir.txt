@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::Dog.name@11:4: covered (storage: no_proof_required)
+main::Cat.name@15:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Parrot.name@19:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

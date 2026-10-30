@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_rc@24:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Parrot.name@18:4: covered (storage: no_proof_required)
+main::Parrot.__del__@20:4: uncovered (unsupported owned-leaf expression)
+main::Parrot.__init__@15:4: uncovered (custom record special member), summary: opaque (custom record special member)

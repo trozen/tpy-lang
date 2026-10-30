@@ -1,0 +1,32 @@
+main::__tpy_init: uncovered (module initialization)
+main::anyslot@25:0: uncovered (generic body)
+main::anyslot_i32@29:0: covered (storage: no_proof_required), summary: known
+main::pass_through@39:0: uncovered (generic body)
+main::mk_cell@43:0: covered (storage: no_proof_required), summary: known
+main::repeat@47:0: uncovered (generic body)
+main::echo@57:0: uncovered (async body)
+main::free_positions@65:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::view_source@74:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::ref_rvalue@81:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::ref_lvalue@91:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::method_and_ctor@101:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::comprehension@107:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::closure@112:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::cond_operand@118:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::while_condition@124:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::match_arm@133:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@141:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@160:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_body@165:0: uncovered (unsupported metadata: template_args_cpp)
+main::er_body@175:0: uncovered (error-return body)
+main::error_return_body@182:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::generator_body@191:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::generator_factory@198:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::async_main@207:0: uncovered (async body)
+main::main@212:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Boxed.holds@21:4: uncovered (generic body)
+main::Guard.__enter__@153:4: covered (storage: no_proof_required), summary: known
+main::Guard.__exit__@156:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cell.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Boxed.__init__@18:4: uncovered (generic constructor)
+main::Guard.__init__@150:4: covered (storage: no_proof_required), summary: known

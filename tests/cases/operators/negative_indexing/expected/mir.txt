@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_list_negative_indexing@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_array_negative_indexing@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_string_negative_indexing@27:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_negative_index_assignment@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_negative_index_in_expression@54:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_array_negative_assignment@67:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

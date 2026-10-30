@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::work@25:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@37:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Loud.__del__@13:4: uncovered (missing receiver fact)
+main::Guard.__enter__@18:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@21:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Loud.__init__@10:4: uncovered (custom record special member), summary: opaque (custom record special member)

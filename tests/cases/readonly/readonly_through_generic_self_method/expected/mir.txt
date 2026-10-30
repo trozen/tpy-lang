@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Holder.identity@15:4: uncovered (generic body)
+main::Holder.lookup@18:4: uncovered (generic body)
+main::SubHolder.super_lookup@26:4: uncovered (generic body)
+main::Holder.__init__@12:4: uncovered (generic constructor)
+main::SubHolder.__init__@23:4: uncovered (generic constructor)

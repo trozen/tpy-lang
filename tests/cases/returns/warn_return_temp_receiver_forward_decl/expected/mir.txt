@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@34:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Wrapper.build@11:4: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Wrapper.build_copy@15:4: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Wrapper.collect@18:4: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
+main::Point.updated@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Point.__init__@26:4: covered (storage: no_proof_required), summary: known

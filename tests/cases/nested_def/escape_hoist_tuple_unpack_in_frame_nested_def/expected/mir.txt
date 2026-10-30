@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::pair@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@31:0: uncovered (nested def)
+main::main@44:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::B.rec_m@23:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@20:4: covered (storage: no_proof_required), summary: known

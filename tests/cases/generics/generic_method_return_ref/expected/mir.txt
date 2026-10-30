@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::process@21:0: uncovered (generic body)
+main::test@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.mutate@17:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known

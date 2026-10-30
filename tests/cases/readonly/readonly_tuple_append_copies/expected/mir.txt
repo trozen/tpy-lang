@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::keep_scalar@13:0: uncovered (argument form disagrees with its passing), summary: opaque (argument form disagrees with its passing)
+main::keep@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known

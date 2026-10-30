@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_free_function@48:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::in_loop@71:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::in_try_finally@80:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@89:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cell.bump@28:4: covered (storage: no_proof_required), summary: known
+main::Holder.borrow@38:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bumper.bump_it@43:4: uncovered (generic body)
+main::Owner.run@64:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Cell.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Owner.__init__@61:4: covered (storage: no_proof_required), summary: known

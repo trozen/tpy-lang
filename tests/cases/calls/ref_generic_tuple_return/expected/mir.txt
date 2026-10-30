@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::label@15:0: uncovered (generic body)
+main::main@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.__str__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

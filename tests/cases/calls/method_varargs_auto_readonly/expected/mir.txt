@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Pile.total@16:4: uncovered (container name type mismatch)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

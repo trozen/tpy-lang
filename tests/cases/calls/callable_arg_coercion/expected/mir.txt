@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::cb@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::take_list@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::use_fn@18:0: uncovered (unsupported parameter type)
+main::use_callable@23:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::use_list_fn@28:0: uncovered (unsupported parameter type)
+main::use_local@33:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@39:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

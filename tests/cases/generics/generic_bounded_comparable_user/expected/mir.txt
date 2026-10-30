@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::is_less@19:0: uncovered (generic body)
+main::find_min@23:0: uncovered (generic body)
+main::main@29:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::MyInt.__lt__@12:4: covered (storage: no_proof_required)
+main::MyInt.__eq__@15:4: covered (storage: no_proof_required)
+main::MyInt.__init__@9:4: covered (storage: no_proof_required), summary: known

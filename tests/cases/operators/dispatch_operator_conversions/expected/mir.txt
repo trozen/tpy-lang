@@ -1,0 +1,86 @@
+main::__tpy_init: uncovered (module initialization)
+main::tick@345:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::any_mid@350:0: uncovered (unsupported return type)
+main::make_c@356:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::lit34@361:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::lit_slots@367:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::scaled_later@375:0: uncovered (async body)
+main::gen@381:0: uncovered (loop across a suspension)
+main::main@387:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::B.__mul__@14:4: uncovered (no body to lower)
+main::B.__mul__@18:4: uncovered (no body to lower)
+main::B.__rmul__@22:4: uncovered (no body to lower)
+main::B.__rmul__@26:4: uncovered (no body to lower)
+main::BN.mul@35:4: uncovered (no body to lower)
+main::BN.mul@39:4: uncovered (no body to lower)
+main::W.__mul__@48:4: uncovered (no body to lower)
+main::W.__mul__@52:4: uncovered (no body to lower)
+main::VI.__iadd__@63:4: uncovered (no body to lower)
+main::VI.__iadd__@68:4: uncovered (no body to lower)
+main::V.__iadd__@80:4: uncovered (no body to lower)
+main::V.__iadd__@85:4: uncovered (no body to lower)
+main::V.__add__@89:4: covered (storage: no_proof_required)
+main::C.__eq__@100:4: uncovered (no body to lower)
+main::C.__eq__@104:4: uncovered (no body to lower)
+main::C.__lt__@108:4: uncovered (no body to lower)
+main::C.__lt__@112:4: uncovered (no body to lower)
+main::C.__gt__@116:4: uncovered (no body to lower)
+main::C.__gt__@120:4: uncovered (no body to lower)
+main::G.__gt__@128:4: covered (storage: no_proof_required)
+main::CF.__gt__@136:4: covered (storage: no_proof_required)
+main::GA.__gt__@149:4: covered (storage: no_proof_required)
+main::NeR.__ne__@157:4: covered (storage: no_proof_required)
+main::NeL.__eq__@165:4: covered (storage: no_proof_required)
+main::S64.__mul__@173:4: covered (storage: no_proof_required)
+main::S8.__mul__@181:4: uncovered (unsupported metadata: cpp_template)
+main::Ops.__floordiv__@190:4: uncovered (no body to lower)
+main::Ops.__floordiv__@194:4: uncovered (no body to lower)
+main::Ops.__rfloordiv__@198:4: uncovered (no body to lower)
+main::Ops.__rfloordiv__@202:4: uncovered (no body to lower)
+main::Ops.__truediv__@206:4: uncovered (no body to lower)
+main::Ops.__truediv__@210:4: uncovered (no body to lower)
+main::Ops.__rtruediv__@214:4: uncovered (no body to lower)
+main::Ops.__rtruediv__@218:4: uncovered (no body to lower)
+main::Ops.__mod__@222:4: uncovered (no body to lower)
+main::Ops.__mod__@226:4: uncovered (no body to lower)
+main::Ops.__and__@230:4: uncovered (no body to lower)
+main::Ops.__and__@234:4: uncovered (no body to lower)
+main::Ops.__ror__@238:4: uncovered (no body to lower)
+main::Ops.__ror__@242:4: uncovered (no body to lower)
+main::Ops.__xor__@246:4: uncovered (no body to lower)
+main::Ops.__xor__@250:4: uncovered (no body to lower)
+main::Ops.__lshift__@254:4: uncovered (no body to lower)
+main::Ops.__lshift__@258:4: uncovered (no body to lower)
+main::Ops.__rrshift__@262:4: uncovered (no body to lower)
+main::Ops.__rrshift__@266:4: uncovered (no body to lower)
+main::Pick.__or__@284:4: uncovered (no body to lower)
+main::Pick.__or__@288:4: uncovered (no body to lower)
+main::Base.__add__@296:4: covered (storage: no_proof_required)
+main::Base.__contains__@299:4: covered (storage: no_proof_required), summary: known
+main::Base.__iadd__@302:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Base.__neg__@306:4: covered (storage: no_proof_required)
+main::GBase.__add__@319:4: uncovered (generic body)
+main::GBase.__contains__@322:4: uncovered (generic body)
+main::Holder.scaled@337:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::BN.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::VI.__init__@59:4: covered (storage: no_proof_required), summary: known
+main::V.__init__@76:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@96:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@125:4: covered (storage: no_proof_required), summary: known
+main::CF.__init__@133:4: covered (storage: no_proof_required), summary: known
+main::A0.__init__@141:4: covered (storage: no_proof_required), summary: known
+main::GA.__init__@146:4: covered (storage: no_proof_required), summary: known
+main::NeR.__init__@154:4: covered (storage: no_proof_required), summary: known
+main::NeL.__init__@162:4: covered (storage: no_proof_required), summary: known
+main::S64.__init__@170:4: covered (storage: no_proof_required), summary: known
+main::S8.__init__@178:4: covered (storage: no_proof_required), summary: known
+main::Ops.__init__@186:4: covered (storage: no_proof_required), summary: known
+main::Pt.__init__@273:4: covered (storage: no_proof_required), summary: known
+main::Pick.__init__@280:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@293:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@311:4: covered (storage: no_proof_required), summary: known
+main::GBase.__init__@316:4: uncovered (generic constructor)
+main::D.__init__@327:4: uncovered (missing record layout)
+main::Holder.__init__@334:4: covered (storage: no_proof_required), summary: known

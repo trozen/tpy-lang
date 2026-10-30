@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@6:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::reset@11:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.boost@22:4: covered (storage: no_proof_required)
+main::P.__init__@17:4: covered (storage: no_proof_required), summary: opaque (summary global access)

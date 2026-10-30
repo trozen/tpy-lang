@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@84:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Money.size@38:4: uncovered (missing receiver fact)
+main::Child.bump@80:4: covered (storage: no_proof_required), summary: known
+main::Tagged.__init__@12:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::TaggedError.__init__@21:4: uncovered (missing record layout)
+main::Money.__init__@35:4: uncovered (missing record layout)
+main::Point3.__init__@51:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)
+main::Counter.__init__@60:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Named.__init__@72:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

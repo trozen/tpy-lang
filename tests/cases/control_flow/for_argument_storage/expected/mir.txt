@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::read@14:0: covered (storage: no_proof_required), summary: known
+main::ranges@18:0: certified, summary: known
+main::update@34:0: certified, summary: known
+main::nested@40:0: certified, summary: known
+main::main@75:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Runner.method@68:4: certified, summary: known
+main::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@62:4: certified, summary: known

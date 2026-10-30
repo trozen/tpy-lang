@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_array_resolution@4:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_list_promotion@11:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_annotated_list@19:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::test_subscript_stays_array@27:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::takes_span@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_variable_repeat_assigned_to_span@38:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::guard_scope@23:0: uncovered (async body)
+main::raise_scope@29:0: uncovered (async body)
+main::main_coro@38:0: uncovered (async body)
+main::main@47:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Counter.__aenter__@13:4: uncovered (async body)
+main::Counter.__aexit__@17:4: uncovered (async body)
+main::Counter.__init__@10:4: covered (storage: no_proof_required), summary: known

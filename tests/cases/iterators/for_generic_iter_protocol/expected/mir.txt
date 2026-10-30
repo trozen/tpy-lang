@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@46:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::StorageIter.__next__@16:4: uncovered (generic body)
+main::SimpleList.__del__@34:4: uncovered (generic body)
+main::SimpleList.add@38:4: uncovered (generic body)
+main::SimpleList.__iter__@42:4: uncovered (generic body)
+main::StorageIter.__init__@11:4: uncovered (generic constructor)
+main::SimpleList.__init__@30:4: uncovered (generic constructor)

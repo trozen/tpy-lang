@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::run@63:0: uncovered (error-return body)
+main::main@91:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::Kid.__eq__: covered (storage: no_proof_required)
+main::Kid.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Labeled.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@30:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+main::Dog.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::CodeError.__init__@50:4: uncovered (missing record layout)
+main::Failed.__init__@58:4: uncovered (missing record layout)
+main::Both.__init__@73:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+main::Kid.__init__: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@87:4: uncovered (missing record layout)

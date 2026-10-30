@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::sink@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::make@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::fwd@26:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::fwd_local@31:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::main@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@14:4: covered (storage: no_proof_required), summary: known

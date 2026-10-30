@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::ops@8:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::reflected@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::unary@31:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::accumulate@38:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::method@56:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::comprehension@64:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::union_literal@70:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::union_value@81:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::union_param@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@94:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Meter.add@52:4: covered (storage: no_proof_required), summary: known
+main::Meter.__init__@49:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

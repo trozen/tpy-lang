@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::cross_statement@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::within_expression@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::assign_first@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@34:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::A.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@22:0: uncovered (unsupported hoisted value)
+main::coro@29:0: uncovered (async body)
+main::main@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Box.__init__@14:4: covered (storage: no_proof_required), summary: known

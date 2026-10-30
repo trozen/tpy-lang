@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Config.__eq__: uncovered (uncertified binary operation)
+main::Config.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Config.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

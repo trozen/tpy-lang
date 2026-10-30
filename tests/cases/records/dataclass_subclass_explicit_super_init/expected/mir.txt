@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@41:0: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
+main::Resource.__del__@20:4: uncovered (stub declares no contract)
+main::Child.__eq__: covered (storage: no_proof_required)
+main::Child.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Resource.__init__@16:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Base.__init__@28:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
+main::Child.__init__@36:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)

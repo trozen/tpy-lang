@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::inner@23:0: uncovered (async body)
+main::main_coro@28:0: uncovered (async body)
+main::CM.__aenter__@15:4: uncovered (async body)
+main::CM.__aexit__@19:4: uncovered (async body)
+main::CM.__init__@12:4: covered (storage: no_proof_required), summary: known

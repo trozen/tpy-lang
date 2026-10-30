@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::score@11:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

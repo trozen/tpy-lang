@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Box.get@14:4: uncovered (generic body)
+main::Container.get@22:4: uncovered (generic body)
+main::Animal.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@11:4: uncovered (generic constructor)
+main::Container.__init__@20:4: uncovered (generic constructor)
+main::Wrapper.__init__@27:4: uncovered (generic constructor)

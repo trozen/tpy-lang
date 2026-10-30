@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@23:0: covered (storage: no_proof_required), summary: known
+main::make_inner@27:0: covered (storage: no_proof_required), summary: known
+main::make_pair@33:0: covered (storage: no_proof_required), summary: known
+main::make_blob@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_tags@41:0: covered (storage: no_proof_required), summary: known
+main::make_boxes@45:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Source.rows@19:4: covered (storage: no_proof_required), summary: known
+main::Source.__init__@16:4: covered (storage: no_proof_required), summary: known

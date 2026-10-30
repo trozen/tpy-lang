@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@5:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mod_b::__tpy_init: uncovered (module initialization)
+mod_b::b_value@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mod_c::__tpy_init: uncovered (module initialization)
+mod_c::c_value@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mod_d::__tpy_init: uncovered (module initialization)
+mod_d::d_value@6:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

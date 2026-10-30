@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::decl_position@43:0: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::reseat_position@51:0: uncovered (optional destination type mismatch), summary: opaque (optional destination type mismatch)
+main::gen@61:0: uncovered (unsupported hoisted value)
+main::coro@69:0: uncovered (async body)
+main::main@77:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Base.tag@18:4: covered (storage: no_proof_required), summary: known
+main::Holder.read@35:4: uncovered (optional backing storage), summary: opaque (optional backing storage)
+main::Base.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@31:4: covered (storage: no_proof_required), summary: known

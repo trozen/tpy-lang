@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@54:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Dog.name@20:4: covered (storage: no_proof_required), summary: known
+main::Dog.rename@23:4: covered (storage: no_proof_required), summary: known
+main::Cat.name@33:4: covered (storage: no_proof_required), summary: known
+main::Cat.rename@36:4: covered (storage: no_proof_required), summary: known
+main::Clinic.m@45:4: uncovered (no body to lower)
+main::Clinic.m@50:4: uncovered (no body to lower)
+main::Dog.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Clinic.__init__@41:4: covered (storage: no_proof_required), summary: known

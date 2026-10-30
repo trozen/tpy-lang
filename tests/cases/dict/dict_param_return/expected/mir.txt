@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_dict@4:0: covered (storage: no_proof_required), summary: known
+main::sum_values@8:0: covered (storage: no_proof_required), summary: known
+main::main@14:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

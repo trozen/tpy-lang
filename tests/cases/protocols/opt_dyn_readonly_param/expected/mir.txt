@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::greet@26:0: uncovered (unsupported parameter type)
+main::main@32:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.name@22:4: covered (storage: no_proof_required)
+main::Dog.__init__@18:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::first_after_bump@22:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::size_of@32:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::main@39:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Grid.bump@16:4: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::Grid.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

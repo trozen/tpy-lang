@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::ro_param@22:0: uncovered (unsupported pointer capture)
+main::mut_param@29:0: uncovered (unsupported pointer capture)
+main::co_param@37:0: uncovered (async body)
+main::nested@66:0: uncovered (nested def)
+main::frame_local@78:0: uncovered (unsupported hoisted value)
+main::mixed_borrowed@87:0: uncovered (unsupported hoisted value)
+main::owning_no_rebind@97:0: uncovered (unsupported hoisted value)
+main::mixed_owned_no_rebind@106:0: uncovered (unsupported hoisted value)
+main::mixed_borrowed_rebound@116:0: uncovered (unsupported hoisted value)
+main::rebind_before_alias@127:0: uncovered (unsupported hoisted value)
+main::alias_after_last_rebind@138:0: uncovered (unsupported hoisted value)
+main::orelse_alias@149:0: uncovered (loop across a suspension)
+main::copy_alias@163:0: uncovered (unsupported hoisted value)
+main::copy_chained@176:0: uncovered (unsupported hoisted value)
+main::list_of_tuples_after_rebind@188:0: uncovered (unsupported hoisted value)
+main::co_copy@200:0: uncovered (async body)
+main::co_alias_after_rebind@213:0: uncovered (async body)
+main::main@224:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Walker.walk@58:4: uncovered (unsupported pointer capture)
+main::A.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Walker.__init__@54:4: covered (storage: no_proof_required), summary: known

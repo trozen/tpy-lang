@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@9:0: uncovered (async body)
+main::get_multiplier@12:0: uncovered (async body)
+main::caller@15:0: uncovered (async body)
+main::main@26:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

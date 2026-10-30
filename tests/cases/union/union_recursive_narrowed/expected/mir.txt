@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::depth@10:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::count@21:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::leaf_sum@30:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::child_count@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::depth_nested@46:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::eval_expr@64:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+main::main@75:0: uncovered (unsupported local type or form), summary: opaque (recursive or recursion-dependent call)

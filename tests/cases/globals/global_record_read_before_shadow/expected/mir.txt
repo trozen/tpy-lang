@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::read@18:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::read_then_shadow@22:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Gate.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::wrap_dog@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::wrap_cat@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@26:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Dog.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@16:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::Box.__str__@29:4: covered (storage: no_proof_required), summary: known
+main::Box.describe@32:4: covered (storage: no_proof_required), summary: known
+main::Box.size@35:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@25:4: covered (storage: no_proof_required), summary: known

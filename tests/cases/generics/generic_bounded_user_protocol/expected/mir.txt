@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::MyNumber.add@15:4: covered (storage: no_proof_required), summary: known
+main::Holder.get_item@24:4: uncovered (generic body)
+main::MyNumber.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: uncovered (generic constructor)

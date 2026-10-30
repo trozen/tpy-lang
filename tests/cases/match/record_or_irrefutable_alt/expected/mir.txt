@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::plain@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nonfinal@29:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::opt_inner@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::counts@64:0: uncovered (match across a suspension)
+main::counts_ordered@75:0: uncovered (match across a suspension)
+main::main@90:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Shelter.status@56:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Cat.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Shelter.__init__@53:4: covered (storage: no_proof_required), summary: known

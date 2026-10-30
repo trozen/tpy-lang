@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_inner@40:0: covered (storage: no_proof_required), summary: known
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Inner.bump@14:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::HolderConst.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::HolderMut.__init__@28:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Outer.__init__@36:4: covered (storage: no_proof_required), summary: known

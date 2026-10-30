@@ -1,0 +1,93 @@
+consts::__tpy_init: uncovered (module initialization)
+defs::__tpy_init: uncovered (module initialization)
+defs::shadowed@168:0: covered (storage: no_proof_required), summary: known
+defs::f@197:0: covered (storage: no_proof_required), summary: known
+defs::fp@201:0: covered (storage: no_proof_required), summary: known
+defs::fw@205:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+defs::fe@209:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+defs::fx@213:0: covered (storage: no_proof_required), summary: known
+defs::fm@217:0: covered (storage: no_proof_required), summary: known
+defs::ft@221:0: covered (storage: no_proof_required), summary: known
+defs::fcv@228:0: covered (storage: no_proof_required), summary: known
+defs::d@233:0: uncovered (no body to lower)
+defs::d@238:0: uncovered (no body to lower)
+defs::ov@243:0: uncovered (no body to lower)
+defs::ov@245:0: uncovered (no body to lower)
+defs::ov@246:0: uncovered (overloaded callable)
+defs::view@252:0: covered (storage: no_proof_required), summary: known
+defs::gen@256:0: uncovered (by-value capture of a borrowed parameter)
+defs::read@262:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+defs::C.m@32:4: covered (storage: no_proof_required), summary: known
+defs::C.cm@36:4: covered (storage: no_proof_required)
+defs::C.sm@40:4: covered (storage: no_proof_required)
+defs::Late.m@49:4: covered (storage: no_proof_required), summary: known
+defs::LateDotted.m@65:4: covered (storage: no_proof_required), summary: known
+defs::LateDotted.e@69:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+defs::LateRec.__eq__: covered (storage: no_proof_required)
+defs::LateRec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+defs::LateCtor.m@95:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+defs::LateCtor.int64@99:4: uncovered (unsupported metadata: cpp_template)
+defs::Pt.__eq__: covered (storage: no_proof_required)
+defs::Pt.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+defs::Made.__eq__: uncovered (uncertified binary operation)
+defs::Made.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+defs::W.m@125:4: covered (storage: no_proof_required), summary: known
+defs::LateField.m@135:4: covered (storage: no_proof_required), summary: known
+defs::MadeLater.__eq__: uncovered (uncertified binary operation)
+defs::MadeLater.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+defs::Derived.m2@163:4: covered (storage: no_proof_required), summary: known
+defs::Rec.__eq__: covered (storage: no_proof_required)
+defs::Rec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+defs::G.g@181:4: uncovered (generic body)
+defs::Stepper.step@193:4: covered (storage: no_proof_required), summary: known
+defs::C.__init__@29:4: covered (storage: no_proof_required), summary: known
+defs::Late.__init__@45:4: covered (storage: no_proof_required), summary: known
+defs::LateDotted.__init__@60:4: covered (storage: no_proof_required), summary: known
+defs::LateRec.__init__: covered (storage: no_proof_required), summary: known
+defs::LateCtor.__init__@90:4: covered (storage: no_proof_required), summary: known
+defs::Pt.__init__: covered (storage: no_proof_required), summary: known
+defs::Made.__init__: covered (storage: no_proof_required), summary: known
+defs::W.__init__@120:4: covered (storage: no_proof_required), summary: known
+defs::LateField.__init__@130:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+defs::MadeLater.__init__: covered (storage: no_proof_required), summary: known
+defs::Box.__init__@156:4: uncovered (generic constructor)
+defs::Rec.__init__: covered (storage: no_proof_required), summary: known
+defs::G.__init__@178:4: uncovered (generic constructor)
+defs::Stepper.__init__@190:4: covered (storage: no_proof_required), summary: known
+factories::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::lf@54:0: covered (storage: no_proof_required), summary: known
+main::through_protocol@72:0: uncovered (unsupported parameter type)
+main::param@77:0: covered (storage: no_proof_required), summary: known
+main::ctor_param@82:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pt@88:0: covered (storage: no_proof_required), summary: known
+main::factory_shadowed@93:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::reexport_shadowed@102:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::capture@109:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::capture_local@115:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_pos@121:0: uncovered (global across a suspension)
+main::async_pos@126:0: uncovered (async body)
+main::through_view@132:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::static_recv@138:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::static_recv_call@143:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::static_temp@149:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::static_temp_generic@153:0: uncovered (generic body)
+main::relay@157:0: uncovered (unsupported parameter type)
+main::source@163:0: uncovered (reference yield)
+main::main@168:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::SubRec.__eq__: covered (storage: no_proof_required)
+main::SubRec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::CM.__enter__@47:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::CM.__exit__@50:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Runner.run@67:4: covered (storage: no_proof_required), summary: known
+main::SubRec.__init__: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::Runner.__init__@62:4: covered (storage: no_proof_required), summary: known
+matching::__tpy_init: uncovered (module initialization)
+matching::run@8:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+matching::tg@31:0: uncovered (generic body)
+matching::TG.run@27:4: uncovered (generic body)
+matching::TG.__init__@24:4: uncovered (generic constructor)
+reexported::__tpy_init: uncovered (module initialization)
+reexported::MadeReexport.__eq__: uncovered (uncertified binary operation)
+reexported::MadeReexport.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+reexported::MadeReexport.__init__: covered (storage: no_proof_required), summary: known

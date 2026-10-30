@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::tag@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::countdown@21:0: covered (storage: no_facts: storage facts have not been published)
+main::free_function@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::loop_body@91:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gen_body@99:0: uncovered (call needs finalized known summary)
+main::main@105:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::P.__str__@13:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Shelf.show@81:4: uncovered (call needs finalized known summary)
+main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@78:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

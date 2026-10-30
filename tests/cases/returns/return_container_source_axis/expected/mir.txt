@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::fresh_array@14:0: covered (storage: no_proof_required), summary: known
+main::grow_bytes@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::grow_list@27:0: uncovered (reassigned local returned), summary: opaque (reassigned local returned)
+main::grow_boxes@34:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::main@41:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

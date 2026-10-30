@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::Person.__str__@26:4: covered (storage: no_proof_required), summary: known
+main::Person.describe@29:4: covered (storage: no_proof_required), summary: known
+main::Person.__init__@22:4: covered (storage: no_proof_required), summary: known

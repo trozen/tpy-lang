@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@23:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.__add__@16:4: covered (storage: no_proof_required)
+main::Acc.__neg__@19:4: covered (storage: no_proof_required)
+main::Acc.__init__@13:4: covered (storage: no_proof_required), summary: known

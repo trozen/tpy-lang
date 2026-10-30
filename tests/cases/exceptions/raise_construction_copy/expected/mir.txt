@@ -1,0 +1,16 @@
+main::__tpy_init: uncovered (module initialization)
+main::key_of@52:0: covered (storage: no_proof_required), summary: known
+main::walk@56:0: uncovered (reference yield)
+main::own_twin@61:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::own_stmt@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump_twin@73:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::bump_stmt@78:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_stmt@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_written_stmt@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@98:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Carrier.size@29:4: covered (storage: no_proof_required)
+main::GenOwn.size@39:4: uncovered (generic body)
+main::P.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::OwnErr.__init__@13:4: uncovered (missing record layout)
+main::GenOwn.__init__@34:4: uncovered (generic constructor)
+main::Bump.__init__@46:4: uncovered (missing record layout)

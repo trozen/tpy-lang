@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::two_lists@17:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mixed@25:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::dict_and_set@31:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::two_recs@39:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::recs_and_count@45:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Rec.__init__@13:4: covered (storage: no_proof_required), summary: known

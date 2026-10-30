@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::func@72:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::no_target@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nocopy_m@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::closure@93:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@102:0: uncovered (unsupported statement)
+main::coro@109:0: uncovered (async body)
+main::main@115:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Guard.__enter__@17:4: covered (storage: no_proof_required), summary: known
+main::Guard.__exit__@21:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::NcGuard.__enter__@32:4: covered (storage: no_proof_required), summary: known
+main::NcGuard.__exit__@36:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::B.guard_m@48:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::B.nc_m@51:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Host.run@65:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Guard.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::NcGuard.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Host.__init__@59:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

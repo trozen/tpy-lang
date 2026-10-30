@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_position@40:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::gen@60:0: uncovered (unsupported hoisted value)
+main::coro@68:0: uncovered (async body)
+main::main@77:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reader.read@33:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::Pt.__init__@22:4: uncovered (missing record layout)
+main::Reader.__init__@29:4: covered (storage: no_proof_required), summary: known

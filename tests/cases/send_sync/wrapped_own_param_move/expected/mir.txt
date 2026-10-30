@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::read_and_keep@26:0: uncovered (generic body)
+main::dispatch@30:0: uncovered (generic body)
+main::main@35:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::Token.value@22:4: covered (storage: no_proof_required), summary: known
+main::Token.__init__@19:4: covered (storage: no_proof_required), summary: known

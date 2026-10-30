@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known

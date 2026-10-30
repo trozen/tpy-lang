@@ -1,0 +1,43 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@16:0: covered (storage: no_proof_required), summary: known
+main::take_i64@21:0: covered (storage: no_proof_required), summary: known
+main::take_i32@27:0: covered (storage: no_proof_required), summary: known
+main::take_i8@32:0: covered (storage: no_proof_required), summary: known
+main::take_f32@37:0: covered (storage: no_proof_required), summary: known
+main::take_f64@42:0: covered (storage: no_proof_required), summary: known
+main::take_arr@47:0: covered (storage: no_proof_required), summary: known
+main::take_nested@52:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take_dict@57:0: covered (storage: no_proof_required), summary: known
+main::take_set@62:0: covered (storage: no_proof_required), summary: known
+main::take_any@67:0: uncovered (generic body)
+main::gen@71:0: uncovered (loop across a suspension)
+main::free_call@106:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::user_ctor@110:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::generic_ctor@114:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::free_type_param@118:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::free_generator@122:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::method_generator@129:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::protocol_union@136:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::narrow_int@141:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::narrow_float@145:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::fixed_array@149:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::nested_list@155:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::same_width_int@162:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::same_width_float@166:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::empty_literal@173:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::repeat_literal@177:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::dict_literal@181:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::set_literal@185:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::and_rhs@192:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::or_rhs@196:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::ternary_then@200:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::ternary_else@204:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::chained@208:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::relocated_decl@213:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::side_effect@223:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@229:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bx.gen@98:4: uncovered (loop across a suspension)
+main::Tally.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@79:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Boxed.__init__@87:4: uncovered (generic constructor)
+main::Bx.__init__@95:4: covered (storage: no_proof_required), summary: known

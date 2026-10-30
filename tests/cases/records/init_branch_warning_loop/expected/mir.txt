@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@13:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Accum.__init__@6:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

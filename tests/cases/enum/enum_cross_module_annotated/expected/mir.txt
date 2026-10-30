@@ -1,0 +1,5 @@
+colors::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::describe@4:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::default_color@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@12:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

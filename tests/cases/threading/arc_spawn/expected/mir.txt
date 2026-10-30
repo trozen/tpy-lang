@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@41:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Hammer.run@30:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Counter.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Hammer.__init__@26:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

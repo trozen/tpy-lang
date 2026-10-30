@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::A.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Pick.__init__@20:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)

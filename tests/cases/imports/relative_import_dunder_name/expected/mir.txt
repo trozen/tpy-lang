@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.consumer::__tpy_init: uncovered (module initialization)
+pkg.consumer::compute@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pkg.my__helper::__tpy_init: uncovered (module initialization)
+pkg.my__helper::get_value@3:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::maybe_neg_one@18:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Suppressor.__enter__@11:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Suppressor.__exit__@14:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

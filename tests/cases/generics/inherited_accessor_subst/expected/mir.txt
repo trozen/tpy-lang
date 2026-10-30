@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump_all@52:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::bump_gen@58:0: uncovered (unsupported parameter type)
+main::main@64:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Holder.key@29:4: uncovered (generic body)
+main::Holder.key@29:4#2: uncovered (generic body)
+main::Holder.key@33:4: uncovered (generic body)
+main::Holder.val@37:4: uncovered (generic body)
+main::Holder.val@37:4#2: uncovered (generic body)
+main::Holder.find@40:4: uncovered (generic body)
+main::Rec.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@24:4: uncovered (generic constructor)

@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@17:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Temp.__abs__@13:4: uncovered (unsupported return type)
+main::Temp.__init__@10:4: uncovered (missing record layout)

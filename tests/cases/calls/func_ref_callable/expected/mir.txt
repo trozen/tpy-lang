@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::double@5:0: covered (storage: no_proof_required), summary: known
+main::greet@8:0: covered (storage: no_proof_required), summary: known
+main::apply@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::printer@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Handler.run@20:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Handler.__str__@23:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::Handler.__init__@17:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

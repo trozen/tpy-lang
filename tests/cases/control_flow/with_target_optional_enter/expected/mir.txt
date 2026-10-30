@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@29:0: uncovered (unsupported hoisted value)
+main::main@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Holder.__enter__@22:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Holder.__exit__@25:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known

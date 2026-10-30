@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::literal_list@8:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literal_dict@15:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literal_set@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::annotated_list@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

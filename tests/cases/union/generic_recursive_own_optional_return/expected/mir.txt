@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::build@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_some@18:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_none@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@26:0: uncovered (missing alias binding), summary: opaque (missing alias binding)

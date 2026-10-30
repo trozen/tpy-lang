@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Container.get_size_as_bigint@5:4: uncovered (generic body)

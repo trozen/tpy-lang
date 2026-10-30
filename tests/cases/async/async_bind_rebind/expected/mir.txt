@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::value@7:0: uncovered (async body)
+main::main_coro@11:0: uncovered (async body)
+main::main@17:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

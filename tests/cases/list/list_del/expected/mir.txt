@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_basic@4:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_negative_index@11:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_first_element@16:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

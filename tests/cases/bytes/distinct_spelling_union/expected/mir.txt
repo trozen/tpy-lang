@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::bytes_or_bytearray@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::str_or_string_slot@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::list_or_bytes@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::span_or_bytesview@34:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_union_return@42:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@50:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

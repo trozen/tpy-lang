@@ -1,0 +1,51 @@
+main::__tpy_init: uncovered (module initialization)
+main::tick@100:0: covered (storage: no_proof_required), summary: known
+main::free_function@105:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::method@130:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen@135:0: uncovered (unsupported owned-leaf expression)
+main::generator@141:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::coro@149:0: uncovered (async body)
+main::async_def@155:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::comprehension@161:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::closure@168:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@187:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_finally@195:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::checked@206:0: uncovered (error-return body)
+main::error_return_body@213:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@222:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::constructor_body@241:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::base_set@256:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::lazy@261:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::receiver_kind@305:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@315:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.put@23:4: uncovered (no body to lower)
+main::Bag.put@28:4: uncovered (no body to lower)
+main::Bag.__mul__@33:4: uncovered (no body to lower)
+main::Bag.__mul__@37:4: uncovered (no body to lower)
+main::Bag.__rmul__@41:4: uncovered (no body to lower)
+main::Bag.__rmul__@45:4: uncovered (no body to lower)
+main::Bag.__lt__@49:4: uncovered (no body to lower)
+main::Bag.__lt__@53:4: uncovered (no body to lower)
+main::Bag.__gt__@57:4: uncovered (no body to lower)
+main::Bag.__gt__@61:4: uncovered (no body to lower)
+main::Bag.__contains__@65:4: uncovered (no body to lower)
+main::Bag.__contains__@69:4: uncovered (no body to lower)
+main::Bag.__getitem__@73:4: uncovered (no body to lower)
+main::Bag.__getitem__@77:4: uncovered (no body to lower)
+main::Row.__getitem__@88:4: uncovered (no body to lower)
+main::Row.__getitem__@92:4: uncovered (no body to lower)
+main::Holder.run@125:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Ctx.__enter__@180:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Ctx.__exit__@183:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::SubBag.run@251:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Vet.g@295:4: uncovered (no body to lower)
+main::Vet.g@301:4: uncovered (no body to lower)
+main::Tag.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Row.__init__@84:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@122:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@236:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::SubBag.__init__@248:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@279:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@284:4: covered (storage: no_proof_required), summary: known
+main::Vet.__init__@291:4: covered (storage: no_proof_required), summary: known

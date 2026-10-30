@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@28:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Frog.greet@19:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.wrap@24:4: uncovered (generic body)
+main::Frog.__init__@17:4: covered (storage: no_proof_required), summary: known

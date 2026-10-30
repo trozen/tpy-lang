@@ -1,0 +1,4 @@
+errors::__tpy_init: uncovered (module initialization)
+errors::find@8:0: uncovered (error-return body)
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

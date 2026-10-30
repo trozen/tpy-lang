@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@3:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::main@8:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

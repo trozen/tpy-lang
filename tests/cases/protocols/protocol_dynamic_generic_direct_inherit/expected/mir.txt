@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::show@18:0: uncovered (unsupported parameter type)
+main::main@22:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::IntBox.get@14:4: covered (storage: no_proof_required)

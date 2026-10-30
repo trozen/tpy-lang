@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::double@21:0: covered (storage: no_proof_required), summary: known
+main::maybe_sum@25:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::maybe_call@32:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tag@39:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::main@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@17:4: covered (storage: no_proof_required), summary: known

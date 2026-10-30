@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take_all@17:0: uncovered (generic body)
+main::main@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Box.__init__@13:4: uncovered (generic constructor)

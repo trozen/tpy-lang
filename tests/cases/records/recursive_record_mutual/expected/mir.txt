@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::add_b@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::add_a@31:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::A.__init__@13:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::B.__init__@22:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

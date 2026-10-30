@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::greet@14:0: uncovered (unsupported parameter type)
+main::echo@17:0: uncovered (unsupported return type)
+main::main@20:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Dog.speak@6:4: covered (storage: no_proof_required)
+main::Cat.speak@11:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+pet::__tpy_init: uncovered (module initialization)

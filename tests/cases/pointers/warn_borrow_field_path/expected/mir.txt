@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::ptr_to_field@51:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::ptr_to_field_no_conflict@58:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::external_field_path@66:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::reassign_clears_borrow@73:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@81:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Container.iter_then_mutate@16:4: covered (storage: no_proof_required), summary: known
+main::Container.ptr_then_mutate@22:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Container.safe_subscript_assign@28:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Container.aug_assign_field_container@34:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Container.field_reassign_while_borrowed@40:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@48:4: covered (storage: no_proof_required), summary: known

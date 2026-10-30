@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::ternary_record@17:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::walrus_record@24:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::ternary_str@30:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::walrus_str@36:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Counter.bump@12:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::abs_val@4:0: covered (storage: no_proof_required), summary: known
+main::max_val@7:0: covered (storage: no_proof_required), summary: known
+main::clamp@10:0: covered (storage: no_proof_required), summary: known
+main::greet@14:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
+main::describe@17:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

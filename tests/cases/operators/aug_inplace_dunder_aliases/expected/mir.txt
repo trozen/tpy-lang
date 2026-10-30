@@ -1,0 +1,44 @@
+main::__tpy_init: uncovered (module initialization)
+main::record_iadd@25:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::list_iadd@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bytearray_iadd@41:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::int_iadd@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::str_iadd@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::string_iadd@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::valuetype_add@73:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::operand_gen@133:0: uncovered (unsupported hoisted value)
+main::yield_then_iadd@145:0: uncovered (reference yield)
+main::yield_or_move@159:0: uncovered (reference yield)
+main::yield_then_move_records@170:0: uncovered (reference yield)
+main::yield_sections@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::make_list@188:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
+main::iterable_operands@193:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::setitem_own_value@221:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::operand_narrow_int@230:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::operand_record@237:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::operand_list_literal@247:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::operand_own@254:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::operand_rebound@263:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::operand_narrowed@273:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::setitem_copies@299:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@313:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__iadd__@12:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::P.__add__@21:4: uncovered (unmodeled record)
+main::Acc.__iadd__@94:4: uncovered (no body to lower)
+main::Acc.__iadd__@99:4: uncovered (no body to lower)
+main::Acc.__isub__@103:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Acc.__imul__@107:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Small.__iadd__@116:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Holder.add@127:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Slots.__setitem__@217:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+main::ListSlots.__setitem__@295:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@18:4: uncovered (missing record layout)
+main::Bump.__init__@82:4: covered (storage: no_proof_required), summary: known
+main::Acc.__init__@89:4: covered (storage: no_proof_required), summary: known
+main::Small.__init__@113:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@124:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@155:4: covered (storage: no_proof_required), summary: known
+main::Slots.__init__@214:4: covered (storage: no_proof_required), summary: known
+main::Row.__init__@285:4: covered (storage: no_proof_required), summary: known
+main::ListSlots.__init__@292:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

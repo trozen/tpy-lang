@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@16:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Person.__init__@12:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)

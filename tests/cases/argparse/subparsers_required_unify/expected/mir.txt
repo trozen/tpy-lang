@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_a_parse_1@21:11: uncovered (unsupported metadata: sink_expr)
+main::__tpy_builder_argparse_b_parse_1@21:11: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_help_1@21:11: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@21:11: uncovered (unsupported record fields)
+main::__tpy_builder_argparse_a_args_1.__init__@21:11: covered (storage: no_proof_required), summary: known
+main::__tpy_builder_argparse_b_args_1.__init__@21:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_args_1.__init__@21:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

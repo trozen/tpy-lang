@@ -1,0 +1,3 @@
+b::__tpy_init: uncovered (module initialization)
+c::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)

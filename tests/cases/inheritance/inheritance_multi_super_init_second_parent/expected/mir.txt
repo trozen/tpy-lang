@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::HasInit.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@20:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

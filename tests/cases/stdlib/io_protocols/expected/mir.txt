@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::emit_text@12:0: uncovered (unsupported parameter type)
+main::consume_text@18:0: uncovered (unsupported parameter type)
+main::emit_bytes@22:0: uncovered (unsupported parameter type)
+main::consume_bytes@27:0: uncovered (unsupported parameter type)
+main::rewind_and_close@31:0: uncovered (unsupported parameter type)
+main::closer@37:0: uncovered (unsupported parameter type)
+main::main@41:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

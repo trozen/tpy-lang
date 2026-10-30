@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_str_constructor@2:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_augassign@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_reassign_from_owned@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

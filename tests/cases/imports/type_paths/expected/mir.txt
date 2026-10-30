@@ -1,0 +1,91 @@
+m::__tpy_init: uncovered (module initialization)
+m::make_inner@34:0: covered (storage: no_proof_required), summary: known
+m::box_of@39:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+m::blue@44:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+m::Outer.Inner.__init__@16:8: covered (storage: no_proof_required), summary: known
+m::Box.__init__@30:4: uncovered (generic constructor)
+m::A.__init__@49:4: covered (storage: no_proof_required), summary: known
+m::B.__init__@54:4: covered (storage: no_proof_required), summary: known
+m::Err.__init__@59:4: uncovered (missing record layout)
+ma::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::bump@62:0: covered (storage: no_proof_required), summary: known
+main::first_kind@72:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::box_value@77:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::kind_names@82:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::mx_value@105:0: covered (storage: no_proof_required), summary: known
+main::annotations@109:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::constructors@136:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::members@159:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::type_tests@169:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::patterns@181:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::local_pattern@197:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::field_pattern@217:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::generic_pattern@228:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::same_name_generic@247:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::same_name_isinstance@263:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::bare_generic_isinstance@279:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::build@289:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::defaults@296:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::local_defaults@303:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::local_inner@308:0: covered (storage: no_proof_required), summary: known
+main::mk@340:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::shadow@367:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::gen@379:0: uncovered (loop across a suspension)
+main::positions@384:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::total@419:0: uncovered (generic body)
+main::both@423:0: uncovered (generic body)
+main::protocols@427:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::use_pc@433:0: uncovered (unsupported parameter type)
+main::use_q@466:0: uncovered (unsupported parameter type)
+main::same_name_protocols@470:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::exceptions@540:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::checked@590:0: uncovered (error-return body)
+main::error_returns@596:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::async_except@606:0: uncovered (async body)
+main::main@614:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Wrap.call@320:4: uncovered (generic body)
+main::Config.pick@335:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Tree.make@361:4: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::Factory.make@373:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Probe.get_v@412:4: covered (storage: no_proof_required), summary: known
+main::Probe.twice@415:4: covered (storage: no_proof_required), summary: known
+main::D.value@456:4: covered (storage: no_proof_required)
+main::D.bump@459:4: covered (storage: no_proof_required)
+main::D.extra@462:4: covered (storage: no_proof_required)
+main::Cfg.make@497:4: covered (storage: no_proof_required)
+main::Shade.run@520:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Shade.Cfg.make@517:8: covered (storage: no_proof_required)
+main::Payload.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Outer.Inner.__init__@30:8: covered (storage: no_proof_required), summary: known
+main::Outer.Holds.__init__@34:8: covered (storage: no_proof_required), summary: known
+main::KErr.__init__@55:4: uncovered (missing record layout)
+main::Holder.__init__@91:4: covered (storage: no_proof_required), summary: known
+main::Holds2.__init__@210:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holds3.__init__@239:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holds4.__init__@274:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Wrap.__init__@315:4: uncovered (generic constructor)
+main::Leaf.__init__@348:4: covered (storage: no_proof_required), summary: known
+main::Tree.Leaf.__init__@356:8: covered (storage: no_proof_required), summary: known
+main::Probe.__init__@409:4: covered (storage: no_proof_required), summary: known
+main::D.__init__@453:4: covered (storage: no_proof_required), summary: known
+mb::__tpy_init: uncovered (module initialization)
+mb::Outer.Inner.__init__@8:8: covered (storage: no_proof_required), summary: known
+mx::__tpy_init: uncovered (module initialization)
+mx::make_inner@26:0: covered (storage: no_proof_required), summary: known
+mx::Outer.Inner.__init__@19:8: covered (storage: no_proof_required), summary: known
+pa::__tpy_init: uncovered (module initialization)
+pa::C.value@18:4: covered (storage: no_proof_required)
+pa::C.bump@21:4: covered (storage: no_proof_required)
+pa::C.__init__@15:4: covered (storage: no_proof_required), summary: known
+pc::__tpy_init: uncovered (module initialization)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.sub::__tpy_init: uncovered (module initialization)
+pkg.sub.mod::__tpy_init: uncovered (module initialization)
+pkg.sub.mod::make_inner@19:0: covered (storage: no_proof_required), summary: known
+pkg.sub.mod::kind_b@24:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+pkg.sub.mod::Outer.Inner.__init__@11:8: covered (storage: no_proof_required), summary: known
+shadow_builtin::__tpy_init: uncovered (module initialization)
+shadow_builtin::classify@5:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+shadow_builtin::matched@11:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+shadow_builtin::run@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

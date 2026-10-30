@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::describe@33:0: uncovered (unsupported parameter type)
+main::main@43:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.legs@21:4: covered (storage: no_proof_required)
+main::Bird.legs@29:4: covered (storage: no_proof_required)
+main::Dog.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::Bird.__init__@26:4: covered (storage: no_proof_required), summary: known

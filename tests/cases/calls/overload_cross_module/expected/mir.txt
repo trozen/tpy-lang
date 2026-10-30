@@ -1,0 +1,8 @@
+animals::__tpy_init: uncovered (module initialization)
+animals::describe@15:0: uncovered (no body to lower)
+animals::describe@18:0: uncovered (no body to lower)
+animals::describe@20:0: uncovered (overloaded callable)
+animals::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+animals::Cat.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@4:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::add_points@19:0: uncovered (unsupported parameter type)
+main::main@23:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Point.__add__@16:4: covered (storage: no_proof_required)
+main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known

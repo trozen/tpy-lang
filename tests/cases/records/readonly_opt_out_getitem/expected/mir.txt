@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@21:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
+main::CachingContainer.__getitem__@14:4: covered (storage: no_proof_required), summary: known
+main::CachingContainer.__len__@18:4: covered (storage: no_proof_required), summary: known
+main::CachingContainer.__init__@9:4: covered (storage: no_proof_required), summary: known

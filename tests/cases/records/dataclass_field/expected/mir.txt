@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@23:0: uncovered (incomplete constructor arguments), summary: opaque (incomplete constructor arguments)
+main::Point.__eq__: covered (storage: no_proof_required)
+main::Point.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Config.__eq__: uncovered (uncertified binary operation)
+main::Config.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Canvas.__eq__: uncovered (uncertified binary operation)
+main::Canvas.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__: covered (storage: no_proof_required), summary: known
+main::Config.__init__: covered (storage: no_proof_required), summary: known
+main::Canvas.__init__: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::check@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@23:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::PetError.__init__@13:4: uncovered (missing record layout)

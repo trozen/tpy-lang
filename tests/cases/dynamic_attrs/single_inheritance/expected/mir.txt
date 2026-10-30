@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Parent.__getattr__@8:4: covered (storage: no_proof_required), summary: known
+main::Parent.__init__@5:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@12:4: covered (storage: no_proof_required), summary: known

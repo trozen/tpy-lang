@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::apply@8:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.peek@18:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::C.scaled@24:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.__init__@15:4: covered (storage: no_proof_required), summary: known

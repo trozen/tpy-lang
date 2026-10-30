@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::put@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::put_w@14:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@18:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

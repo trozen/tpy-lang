@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Dur.__rmul__@13:4: uncovered (missing receiver fact)
+main::Dur.__radd__@16:4: uncovered (missing receiver fact)
+main::Flags.__ror__@26:4: covered (storage: no_proof_required)
+main::Dur.__init__@10:4: uncovered (missing record layout)
+main::Flags.__init__@23:4: covered (storage: no_proof_required), summary: known

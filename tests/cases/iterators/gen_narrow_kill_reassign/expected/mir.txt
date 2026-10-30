@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::remake@7:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@11:0: uncovered (unsupported parameter type)
+main::main@22:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

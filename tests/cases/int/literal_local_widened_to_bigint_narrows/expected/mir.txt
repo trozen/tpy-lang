@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::widen@8:0: covered (storage: no_proof_required), summary: known
+main::subscript_positions@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::value_positions@23:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

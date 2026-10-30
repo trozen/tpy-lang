@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::helper_add@6:0: uncovered (stub declares no contract)
+main::app_init@12:0: uncovered (call needs resolved ordinary callee)

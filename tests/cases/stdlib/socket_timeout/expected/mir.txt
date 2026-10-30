@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::accept_timeout@29:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::accept_queued@41:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::send_timeout@54:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::blocking_send@68:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Drain.run@19:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Drain.__init__@16:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::to_char@6:0: uncovered (no body to lower)
+main::to_int@9:0: uncovered (no body to lower)
+main::add@12:0: uncovered (no body to lower)
+main::round_trip@18:0: uncovered (no body to lower)
+main::main@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

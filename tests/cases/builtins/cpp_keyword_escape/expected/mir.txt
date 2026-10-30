@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_or_default@6:0: covered (storage: no_proof_required), summary: known
+main::test_local_keywords@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_for_loop_keyword@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::delete@24:0: covered (storage: no_proof_required), summary: known
+main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

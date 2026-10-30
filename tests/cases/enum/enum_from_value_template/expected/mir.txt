@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@24:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::prios@31:0: uncovered (unsupported metadata: left_cast), summary: opaque (unsupported metadata: left_cast)
+main::flip@39:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.__init__@20:4: uncovered (unsupported expression), summary: opaque (unsupported expression)

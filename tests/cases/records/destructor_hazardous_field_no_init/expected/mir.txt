@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@30:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Hazard.__del__@17:4: covered (storage: no_proof_required)
+main::Safe.__del__@26:4: uncovered (missing receiver fact)

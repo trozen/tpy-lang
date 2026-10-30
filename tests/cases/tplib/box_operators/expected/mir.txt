@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_eq@5:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_comparisons@14:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_hash@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,0 +1,82 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@20:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk1@24:0: covered (storage: no_proof_required), summary: known
+main::pairs@28:0: uncovered (reference yield)
+main::steps@32:0: uncovered (reference yield)
+main::make@37:0: uncovered (error-return body)
+main::rows@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::free_function@77:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::while_head@87:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::while_head_alias_across_passes@106:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::nested@166:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_try@182:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_match@205:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_if@222:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_loop@236:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::error_return_bind@251:0: uncovered (error-return body)
+main::pick@268:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::declarations@272:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::inverse@287:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::own_param@304:0: uncovered (reference parameter reseat), summary: opaque (reference parameter reseat)
+main::nonlocal_rebind@310:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pair@328:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mkd@332:0: covered (storage: no_proof_required), summary: known
+main::ltake@345:0: covered (storage: no_proof_required), summary: known
+main::lsteps@349:0: uncovered (loop across a suspension)
+main::with_lent@384:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_escape_hoist@395:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ref_sink_forms@422:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::elif_head@440:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::while_last_pass@451:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::find@462:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::while_borrowed@468:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+main::containers@482:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::for_own_to_lvalue@496:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::print_arg_copy@507:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::take_then_rebind@526:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::take_then_rebind_after@538:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::mkh@564:0: covered (storage: no_proof_required), summary: known
+main::temp_receiver_rebind@568:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::optional_reseat@580:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::optional_reseat_temp_receiver@598:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::owning_property_kinds@638:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::owning_property_kinds_call@666:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::declaration_rows@671:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::mke@705:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mkl@709:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mke1@713:0: covered (storage: no_proof_required), summary: known
+main::mkl1@717:0: covered (storage: no_proof_required), summary: known
+main::esteps@721:0: uncovered (reference yield)
+main::lsteps_cl@725:0: uncovered (reference yield)
+main::compare_operands@755:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Holder.method@146:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::LentCtx.__enter__@360:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::LentCtx.__exit__@363:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::B.v_own@376:4: covered (storage: no_proof_required), summary: known
+main::B.xs_own@380:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Hp.get@557:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Hp.opt@560:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Kinds.d_own@618:4: covered (storage: no_proof_required), summary: known
+main::Kinds.s_own@622:4: covered (storage: no_proof_required), summary: known
+main::Kinds.a_own@626:4: covered (storage: no_proof_required), summary: known
+main::Kinds.ba_own@630:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Kinds.g_own@634:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Ce.__eq__@691:4: covered (storage: no_proof_required)
+main::Cl.__lt__@701:4: covered (storage: no_proof_required)
+main::CeCtx.__enter__@735:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::CeCtx.__exit__@738:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ClCtx.__enter__@748:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::ClCtx.__exit__@751:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@127:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Outer.__init__@264:4: covered (storage: no_proof_required), summary: known
+main::Pm.__init__@324:4: covered (storage: no_proof_required), summary: known
+main::L.__init__@340:4: covered (storage: no_proof_required), summary: known
+main::LentCtx.__init__@357:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@371:4: covered (storage: no_proof_required), summary: known
+main::Hp.__init__@554:4: covered (storage: no_proof_required), summary: known
+main::Kinds.__init__@614:4: covered (storage: no_proof_required), summary: known
+main::Ce.__init__@688:4: covered (storage: no_proof_required), summary: known
+main::Cl.__init__@698:4: covered (storage: no_proof_required), summary: known
+main::CeCtx.__init__@732:4: covered (storage: no_proof_required), summary: known
+main::ClCtx.__init__@745:4: covered (storage: no_proof_required), summary: known

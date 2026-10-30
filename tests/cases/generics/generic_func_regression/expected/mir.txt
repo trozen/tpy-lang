@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::First@5:0: uncovered (generic body)
+main::get_item@16:0: uncovered (generic body)
+main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known

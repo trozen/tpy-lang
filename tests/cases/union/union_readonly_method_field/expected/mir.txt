@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@47:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
+main::Zoo.get_pet_name@25:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Zoo.get_pet_name_auto@33:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Zoo.rename_pet@41:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Dog.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@16:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Zoo.__init__@21:4: uncovered (member definition: unsupported record fields), summary: opaque (member definition: unsupported record fields)

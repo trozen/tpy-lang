@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::producer@9:0: uncovered (async body)
+main::main_coro@14:0: uncovered (async body)
+main::future_waiter@21:0: uncovered (async body)
+main::reap@30:0: uncovered (async body)
+main::cancel_wait@38:0: uncovered (async body)
+main::direct_cancel@54:0: uncovered (async body)
+main::main@68:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

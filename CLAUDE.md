@@ -162,7 +162,7 @@ Harness status lines are prefixed `tpy|` (exec tally, cache-invalidation cause, 
 
 **Changing what an existing test pins** -- its source, `# tpyc:` annotations, `output.txt`, `error_`/`panic_` status -- is a decision ("Decide what the user would decide"), taken before the edit.
 
-**When adding new test cases**, run `update_snapshots.py -k {name}` so all expected files (`diag.txt`, generated `.hpp`/`.cpp`, `output.txt`, `.fingerprints`) are generated together.
+**When adding new test cases**, run `update_snapshots.py -k {name}` so all expected files (`diag.txt`, `mir.txt`, generated `.hpp`/`.cpp`, `output.txt`, `.fingerprints`) are generated together.
 
 ### Test layout
 
@@ -180,6 +180,7 @@ tests/cases/<group>/<case>/
 ├── options.json           # (optional) Per-case compiler options
 └── expected/
     ├── diag.txt           # Compiler diagnostics
+    ├── mir.txt            # MIR verdict of every emitted body (if compiles)
     ├── include/main.hpp   # Generated header (if compiles)
     ├── src/main.cpp       # Generated source (if compiles)
     ├── output.txt         # Runtime output (or panic.txt)
@@ -191,6 +192,11 @@ source order, then the error that stopped it -- so an `error_` case records the
 warnings sema had already emitted, and a `# tpyc: warning(...)` annotation can
 be pinned alongside a later error. (The `tpyc` CLI still drops those warnings on
 its fatal-error paths; see BUGS.md.)
+
+`mir.txt` holds one line per emitted body of the case's modules and of the
+library modules it snapshots, `<module>::<declaration>: <verdict>` -- the
+body names and verdict text `--dump-mir` prints -- so a body whose MIR
+verdict changes is snapshot churn (`tests/README.md` "MIR verdict snapshot").
 
 **The stdlib's own snapshot** is an ordinary case, `tests/cases/harness/stdlib_render`: it imports every non-macro module under `lib/tpy` and its `options.json` sets `snapshot_lib_modules` to `["*"]`, so the whole library's generated C++ lands in that case's `expected/` tree and is byte-compared (and built and run) like any other snapshot. `tests/test_stdlib_render_coverage.py` asserts the import list stays equal to the module set (the glob only covers what the case compiles) and that no two module names collide on one snapshot path. It also holds the arg-table family-reach gate -- every registered family is dispatched to by some stdlib body.
 

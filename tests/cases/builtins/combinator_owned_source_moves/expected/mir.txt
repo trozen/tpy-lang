@@ -1,0 +1,39 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@144:0: covered (storage: no_facts: storage facts have not been published)
+main::ranged@151:0: uncovered (loop across a suspension)
+main::make_list@156:0: covered (storage: no_proof_required), summary: known
+main::make_set@160:0: covered (storage: no_proof_required), summary: known
+main::add@164:0: covered (storage: no_proof_required), summary: known
+main::make_noisy@168:0: covered (storage: no_proof_required), summary: known
+main::make_holder@172:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::acount@177:0: uncovered (async body)
+main::checked@183:0: uncovered (error-return body)
+main::by_match@191:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::dbl@199:0: covered (storage: no_proof_required), summary: known
+main::odd@203:0: covered (storage: no_proof_required), summary: known
+main::pairs@210:0: uncovered (argument held across a suspension)
+main::main@221:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::<genexpr>@251:61: uncovered (generator expression)
+main::<genexpr>@251:33: uncovered (generator expression)
+main::<genexpr>@339:31: uncovered (generator expression)
+main::Cur.__iter__@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Cur.__next__@25:4: uncovered (error-return body)
+main::Deleg.__iter__@47:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Rng.__iter__@60:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Rng.__next__@64:4: uncovered (error-return body)
+main::Noisy.__iter__@77:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Quiet.__iter__@90:4: covered (storage: no_proof_required), summary: known
+main::Loud.__iter__@102:4: covered (storage: no_proof_required), summary: known
+main::Scope.__enter__@111:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Scope.__exit__@114:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.make@129:4: covered (storage: no_proof_required), summary: known
+main::Holder.stat@133:4: covered (storage: no_proof_required)
+main::Holder.total@137:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Cur.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Sub.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::Deleg.__init__@43:4: covered (storage: no_proof_required), summary: known
+main::Rng.__init__@56:4: covered (storage: no_proof_required), summary: known
+main::Noisy.__init__@74:4: covered (storage: no_proof_required), summary: known
+main::Quiet.__init__@87:4: covered (storage: no_proof_required), summary: known
+main::Loud.__init__@98:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Holder.__init__@124:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_mixed@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::loop_retain@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_loop_alias@45:0: uncovered (unsupported hoisted value)
+main::holder_loop@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nested_loop_rebind@71:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_nested_loop_rebind@82:0: uncovered (loop across a suspension)
+main::pause@91:0: uncovered (async body)
+main::co_nested_loop_rebind@96:0: uncovered (async body)
+main::scalar_nested_loop_rebind@108:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::holder_two_hop_loop@131:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fresh_iterable_loop@157:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::range_len_loop@172:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@189:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.__iter__@153:4: uncovered (unsupported return type)
+main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::N.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::NB.__init__@127:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@148:4: covered (storage: no_proof_required), summary: known

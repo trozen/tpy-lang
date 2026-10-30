@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+pkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
+pkg.constants::__tpy_init: uncovered (module initialization)

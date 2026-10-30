@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::run_redirect@12:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::report@37:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@42:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

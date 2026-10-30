@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::scalar@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::param_rebind@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::fresh_stays_scoped@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::body_local_then_head@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::body_local_unprovable@44:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::body_local_over_list@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::gen@91:0: covered (storage: no_facts: storage facts have not been published)
+main::main@104:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Acc.run@78:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Acc.__init__@74:4: covered (storage: no_proof_required), summary: known

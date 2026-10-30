@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::storage_relay@31:0: uncovered (unsupported native container element)
+main::relay_twice@37:0: uncovered (unsupported native container element)
+main::main@43:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.relay@25:4: uncovered (reference yield)
+main::C.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@21:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

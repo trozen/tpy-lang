@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::a64@19:0: covered (storage: no_proof_required), summary: known
+main::val@23:0: covered (storage: no_proof_required), summary: known
+main::kw@29:0: uncovered (no body to lower)
+main::kw@34:0: uncovered (no body to lower)
+main::main@39:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::B.take@15:4: uncovered (missing receiver fact)
+main::B.__init__@12:4: covered (storage: no_proof_required), summary: known

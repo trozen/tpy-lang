@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_row@17:0: covered (storage: no_proof_required), summary: known
+main::build@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@33:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::Maker.create_vector@13:4: covered (storage: no_proof_required), summary: known
+main::Maker.__init__@10:4: covered (storage: no_proof_required), summary: known

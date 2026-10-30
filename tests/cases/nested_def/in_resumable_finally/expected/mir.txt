@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::def_in_finally@8:0: uncovered (async body)
+main::gen_def_in_finally@23:0: uncovered (nested def)
+main::called_from_finally@37:0: uncovered (async body)
+main::main@52:0: uncovered (async body)

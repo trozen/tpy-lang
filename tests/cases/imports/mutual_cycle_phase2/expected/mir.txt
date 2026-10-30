@@ -1,0 +1,67 @@
+ba::__tpy_init: uncovered (module initialization)
+ba::pick_ba@7:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+ba::sink@11:0: covered (storage: no_proof_required), summary: known
+ba::use@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+bb::__tpy_init: uncovered (module initialization)
+bb::pick_bb@6:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+bb::sink@10:0: covered (storage: no_proof_required), summary: known
+bb::use@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ca::__tpy_init: uncovered (module initialization)
+ca::forward@7:0: covered (storage: no_proof_required), summary: known
+ca::one@11:0: covered (storage: no_proof_required), summary: known
+cb::__tpy_init: uncovered (module initialization)
+cb::count@5:0: covered (storage: no_proof_required), summary: known
+cb::back@9:0: covered (storage: no_proof_required), summary: known
+cy::__tpy_init: uncovered (module initialization)
+cy::count@7:0: covered (storage: no_proof_required), summary: known
+cy::back@11:0: covered (storage: no_proof_required), summary: known
+cz::__tpy_init: uncovered (module initialization)
+cz::forward@6:0: covered (storage: no_proof_required), summary: known
+cz::one@10:0: covered (storage: no_proof_required), summary: known
+ga::__tpy_init: uncovered (module initialization)
+ga::total@8:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+ga::one@12:0: covered (storage: no_proof_required), summary: known
+ga::<genexpr>@9:14: uncovered (generator expression)
+gb::__tpy_init: uncovered (module initialization)
+gb::size@5:0: covered (storage: no_proof_required), summary: known
+gb::back@9:0: covered (storage: no_proof_required), summary: known
+gy::__tpy_init: uncovered (module initialization)
+gy::size@7:0: covered (storage: no_proof_required), summary: known
+gy::back@11:0: covered (storage: no_proof_required), summary: known
+gz::__tpy_init: uncovered (module initialization)
+gz::total@5:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+gz::one@9:0: covered (storage: no_proof_required), summary: known
+gz::<genexpr>@6:14: uncovered (generator expression)
+item::__tpy_init: uncovered (module initialization)
+item::Item.__init__@7:4: covered (storage: no_proof_required), summary: known
+item::Bag.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::const_section@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::borrow_section@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::genexpr_section@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::receiver_section@43:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::method_section@54:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::writer_section@64:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@72:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ra::__tpy_init: uncovered (module initialization)
+ra::peek@9:0: covered (storage: no_proof_required), summary: known
+ra::fill@25:0: covered (storage: no_proof_required), summary: known
+ra::one@29:0: covered (storage: no_proof_required), summary: known
+ra::Holder.total@20:4: covered (storage: no_proof_required), summary: known
+ra::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known
+rb::__tpy_init: uncovered (module initialization)
+rb::count@15:0: covered (storage: no_proof_required), summary: known
+rb::push@19:0: covered (storage: no_proof_required), summary: known
+rb::Counter.get@11:4: covered (storage: no_proof_required), summary: known
+rb::Counter.__init__@8:4: covered (storage: no_proof_required), summary: known
+ry::__tpy_init: uncovered (module initialization)
+ry::count@16:0: covered (storage: no_proof_required), summary: known
+ry::push@20:0: covered (storage: no_proof_required), summary: known
+ry::Counter.get@12:4: covered (storage: no_proof_required), summary: known
+ry::Counter.__init__@9:4: covered (storage: no_proof_required), summary: known
+rz::__tpy_init: uncovered (module initialization)
+rz::peek@6:0: covered (storage: no_proof_required), summary: known
+rz::fill@22:0: covered (storage: no_proof_required), summary: known
+rz::one@26:0: covered (storage: no_proof_required), summary: known
+rz::Holder.total@17:4: covered (storage: no_proof_required), summary: known
+rz::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

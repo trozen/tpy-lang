@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_local_sharing@11:0: certified, summary: opaque (summary output effect)
+main::test_copy_independence@19:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_init_from_param@27:0: certified, summary: opaque (summary output effect)
+main::test_init_from_element@33:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::test_foreach_mutation@40:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_rebinding@49:0: certified, summary: opaque (summary output effect)
+main::test_rvalue_append@60:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_build_with_copy@68:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_init_from_global@79:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::test_rebind_to_global@85:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::test_list_sharing@93:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_pointer_chain@101:0: certified, summary: opaque (summary output effect)
+main::test_method_on_pointer_local@116:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_foreach_value_from_pointer_local@123:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Counter.increment@113:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@111:4: covered (storage: no_proof_required), summary: known

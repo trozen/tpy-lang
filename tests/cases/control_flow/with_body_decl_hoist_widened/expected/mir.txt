@@ -1,0 +1,14 @@
+main::__tpy_init: uncovered (module initialization)
+main::in_branch@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_loop@34:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nonvalue_rvalue_reassigned@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nonvalue_in_branch@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::kept_manager_and_reseat@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@90:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::CM.__enter__@17:4: covered (storage: no_proof_required), summary: known
+main::CM.__exit__@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Node.__enter__@69:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Node.__exit__@72:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Node.next@75:4: covered (storage: no_proof_required), summary: known
+main::CM.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@66:4: covered (storage: no_proof_required), summary: known

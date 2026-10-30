@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::probe@35:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::if_position@57:0: certified, summary: known
+main::try_position@66:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_position@76:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
+main::live_alias_position@88:0: certified, summary: known
+main::main@97:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reg.view@28:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Reg.bump@31:4: covered (storage: no_proof_required), summary: known
+main::Reader.read@48:4: certified, summary: known
+main::Point.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Reg.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Reader.__init__@44:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@23:0: uncovered (with across a suspension)
+main::main@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Fresh.__enter__@16:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Fresh.__exit__@19:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Item.__init__@11:4: covered (storage: no_proof_required), summary: known

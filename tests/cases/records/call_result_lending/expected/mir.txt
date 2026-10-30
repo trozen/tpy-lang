@@ -1,0 +1,71 @@
+lib::__tpy_init: uncovered (module initialization)
+lib::opt_cell@33:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+lib::Cell.bump@11:4: covered (storage: no_proof_required), summary: known
+lib::Chooser.pick@22:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+lib::Cell.__init__@8:4: covered (storage: no_proof_required), summary: known
+lib::Chooser.__init__@18:4: covered (storage: no_proof_required), summary: known
+lib::Crate.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::ident@29:0: certified, summary: known
+main::lend_free@95:0: covered (storage: no_proof_required), summary: known
+main::lend_closure@100:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::field_free@137:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::field_closure@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pick_box@169:0: certified, summary: known
+main::select_fn@175:0: certified, summary: known
+main::select_sections@189:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::chain@207:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::items@215:0: uncovered (loop across a suspension)
+main::first@220:0: uncovered (unsupported parameter type)
+main::walrus_rows@227:0: uncovered (unsupported native container element)
+main::view_of@240:0: covered (storage: no_proof_required), summary: known
+main::callable_view@244:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::tag_first@263:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::relay_tag@270:0: certified, summary: known
+main::temp_nested@274:0: uncovered (temporary needs full-expression boundary), summary: opaque (temporary needs full-expression boundary)
+main::opt_inner@281:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::keep_boxes@285:0: covered (storage: no_proof_required), summary: known
+main::overload_move@289:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::first_box@301:0: uncovered (no body to lower)
+main::first_box@303:0: uncovered (no body to lower)
+main::first_box@304:0: uncovered (overloaded callable)
+main::tuple_static@329:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::head_static@336:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::same_ticker@375:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::keep_tickers@379:0: covered (storage: no_proof_required), summary: known
+main::synth_iter@383:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@393:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Inner.bump@19:4: covered (storage: no_proof_required), summary: known
+main::Inner.peek@22:4: covered (storage: no_proof_required), summary: known
+main::Inner.me@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.get@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.pick@44:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Outer.lend_write@55:4: certified, summary: known
+main::Outer.lend_bind@60:4: certified, summary: known
+main::Outer.lend_multi@66:4: certified, summary: known
+main::Outer.lend_gen@73:4: uncovered (unsupported hoisted value)
+main::Outer.lend_async@79:4: uncovered (async body)
+main::H.peek@126:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::H.field_meth@130:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Picker.pick@180:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
+main::Picker.select_meth@184:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::ShelfUser.run@311:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Shelf.get@322:4: uncovered (no body to lower)
+main::Shelf.get@324:4: uncovered (no body to lower)
+main::Shelf.get@325:4: uncovered (overloaded callable)
+main::CrossOuter.write@357:4: certified, summary: known
+main::Ticker.__next__@368:4: uncovered (error-return body)
+main::Inner.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@37:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@51:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@89:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Jar.__init__@109:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@116:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@123:4: covered (storage: no_proof_required), summary: known
+main::FieldCtor.__init__@156:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Box.__init__@165:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@236:4: covered (storage: no_proof_required), summary: known
+main::Tagged.__init__@259:4: covered (storage: no_proof_required), summary: known
+main::CrossMid.__init__@343:4: covered (storage: no_proof_required), summary: known
+main::CrossOuter.__init__@351:4: covered (storage: no_proof_required), summary: known
+main::Ticker.__init__@365:4: covered (storage: no_proof_required), summary: known

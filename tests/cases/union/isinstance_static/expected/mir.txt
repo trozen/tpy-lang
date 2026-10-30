@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::match_int@18:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::mismatch@22:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tuple_contains@26:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tuple_miss@30:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::record_self@34:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::record_other@41:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::negate@47:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::compound@51:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::match_guard@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@63:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@14:4: covered (storage: no_proof_required), summary: known

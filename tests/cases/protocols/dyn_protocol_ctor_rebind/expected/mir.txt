@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@32:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Dog.name@15:4: covered (storage: no_proof_required)
+main::Cat.name@20:4: covered (storage: no_proof_required)
+main::Announcer.__init__@25:4: uncovered (missing alias binding), summary: opaque (missing alias binding)

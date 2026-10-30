@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::sum_span@5:0: covered (storage: no_proof_required), summary: known
+main::sum_span_bigint@11:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::main@17:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)

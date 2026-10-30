@@ -1,0 +1,12 @@
+holder::__tpy_init: uncovered (module initialization)
+holder::M.direct@24:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+holder::M.pick@27:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+holder::M.via_local@30:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+holder::M.mine@35:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
+holder::Holder.get@45:4: uncovered (generic body)
+holder::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+holder::M.__init__@18:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+holder::Holder.__init__@42:4: uncovered (generic constructor)
+main::__tpy_init: uncovered (module initialization)
+main::through_readonly@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@17:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

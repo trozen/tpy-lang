@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@7:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::__tpy_builder_argparse_help_1@9:4: uncovered (unsupported return type)
+main::__tpy_builder_argparse_parse_1@9:4: uncovered (unsupported expression form)
+main::__tpy_builder_argparse_args_1.__init__@9:4: covered (storage: no_proof_required), summary: known

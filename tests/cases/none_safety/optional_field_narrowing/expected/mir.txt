@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::test_field_narrowing@18:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_nested_field@26:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_alias@32:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
+main::test_method_call@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Node.doubled@9:4: covered (storage: no_proof_required), summary: known
+main::Node.__init__@7:4: covered (storage: no_proof_required), summary: known
+main::Wrapper.__init__@15:4: covered (storage: no_proof_required), summary: known

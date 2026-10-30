@@ -1,0 +1,70 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@15:0: covered (storage: no_proof_required), summary: known
+main::holder@74:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::nested@134:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::own_args@160:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::keep_list@167:0: covered (storage: no_proof_required), summary: known
+main::comp_elems@189:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mk_opt@207:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::mk_pq@213:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::bump@219:0: covered (storage: no_proof_required), summary: known
+main::bumpu@224:0: covered (storage: no_proof_required), summary: known
+main::show@231:0: covered (storage: no_proof_required), summary: known
+main::bump_at@235:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::show_at@241:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::bump_key@246:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::show_key@252:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::showu@257:0: covered (storage: no_proof_required), summary: known
+main::bumpu_at@261:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::showu_at@269:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::bumpu_key@274:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::showu_key@282:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::bump_src@313:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::show_src@319:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::bumpu_src@324:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::showu_src@332:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::bump_deep@337:0: covered (storage: no_proof_required), summary: opaque (summary record: member definition: unsupported record fields)
+main::show_deep@341:0: covered (storage: no_proof_required), summary: opaque (summary record: member definition: unsupported record fields)
+main::bumpu_deep@345:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::showu_deep@349:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::store_g@459:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::slot_holder@465:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::slot_writes@479:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::literal_list_elem@507:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::elem_holder_fn@548:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@558:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Src.peek@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Holder.writes@51:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Opt.elem@151:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::Many.reset@182:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::PqSrc.set_r@300:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Slots.show_op@368:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Slots.showu_pq@372:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Slots.bump_g2@376:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Slots.show_g2@381:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Slots.bumpu_g3@385:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Slots.showu_g3@392:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Slots.writes@396:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Slots.gen_writes@438:4: uncovered (unsupported native container element)
+main::Slots.async_writes@449:4: uncovered (async body)
+main::ElemHolder.from_local@523:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::ElemHolder.from_own_param@530:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Src.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Q.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@43:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Built.__init__@90:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Base.__init__@102:4: covered (storage: no_proof_required), summary: known
+main::Item.__init__@109:4: covered (storage: no_proof_required), summary: known
+main::Derived.__init__@117:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Slot.__init__@128:4: covered (storage: no_proof_required), summary: known
+main::Opt.__init__@148:4: covered (storage: no_proof_required), summary: known
+main::Many.__init__@175:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::R.__init__@203:4: covered (storage: no_proof_required), summary: known
+main::OptSrc.__init__@290:4: covered (storage: no_proof_required), summary: known
+main::PqSrc.__init__@297:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Deep.__init__@308:4: uncovered (member definition: unsupported record fields), summary: opaque (member definition: unsupported record fields)
+main::Slots.__init__@359:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Paired.__init__@503:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::ElemHolder.__init__@520:4: covered (storage: no_proof_required), summary: known
+main::ElemInit.__init__@540:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

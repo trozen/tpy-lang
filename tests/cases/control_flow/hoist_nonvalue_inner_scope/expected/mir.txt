@@ -1,0 +1,35 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_list@61:0: covered (storage: no_proof_required), summary: known
+main::for_record@66:0: certified, summary: opaque (summary output effect)
+main::for_list@79:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::for_own_call@90:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::while_one_arm@101:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::nested_if@114:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sibling_decl@127:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::post_loop_redecl@143:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::dyn_protocol@157:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::optional_both_arms@167:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::optional_slot_loop@181:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::optional_rvalue_init@197:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::optional_list_init@206:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::optional_redecl_post_loop@216:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
+main::with_body@257:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_body@268:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_arm@282:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::closure@296:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::error_return_body@312:0: uncovered (error-return body)
+main::with_optional@325:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::try_optional@338:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_const_alias@354:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@364:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sq.area@33:4: covered (storage: no_proof_required), summary: known
+main::Rect.area@42:4: covered (storage: no_proof_required), summary: known
+main::CM.__enter__@50:4: covered (storage: no_proof_required), summary: known
+main::CM.__exit__@53:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Builder.add@245:4: covered (storage: no_proof_required), summary: known
+main::Flat.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Pic.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Rect.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::CM.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Builder.__init__@234:4: covered (storage: no_proof_required), summary: known

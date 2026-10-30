@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@23:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::owned@27:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::owned_method@41:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::issue@58:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@62:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.updated@18:4: uncovered (missing receiver fact)
+main::Factory.make@37:4: covered (storage: no_proof_required), summary: known
+main::Ticket.stamped@53:4: uncovered (missing receiver fact)
+main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Factory.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::Ticket.__init__@49:4: covered (storage: no_proof_required), summary: known

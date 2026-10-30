@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::matches_default_repr@35:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::main@44:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::Both.__str__@10:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Both.__repr__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::StrOnly.__str__@18:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::ReprOnly.__repr__@24:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Both.__init__@8:4: covered (storage: no_proof_required), summary: known
+main::StrOnly.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::ReprOnly.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Neither.__init__@28:4: covered (storage: no_proof_required), summary: known

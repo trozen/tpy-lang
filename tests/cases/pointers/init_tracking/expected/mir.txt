@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::direct_assign@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::param_use@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::value_init@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::assign_before_if@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::then_returns@32:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::both_return@39:0: covered (storage: no_proof_required), summary: known
+main::both_branches_assign@47:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::else_returns@56:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::decl_then_assign@65:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::loop_shadow_outer@71:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Point.__init__@6:4: covered (storage: no_proof_required), summary: known

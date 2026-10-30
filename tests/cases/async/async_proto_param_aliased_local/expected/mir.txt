@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@41:0: uncovered (async body)
+main::main_coro@48:0: uncovered (async body)
+main::main@53:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::CounterIter.__next__@20:4: uncovered (error-return body)
+main::Counter.__iter__@37:4: covered (storage: no_proof_required), summary: known
+main::CounterIter.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@33:4: covered (storage: no_proof_required), summary: known

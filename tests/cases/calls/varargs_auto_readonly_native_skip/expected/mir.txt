@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::user_sum_ints@9:0: uncovered (no body to lower)
+main::main@12:0: uncovered (unsupported metadata: native_name), summary: opaque (unsupported metadata: native_name)

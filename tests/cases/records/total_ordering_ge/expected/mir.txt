@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::Weight.__eq__@12:4: covered (storage: no_proof_required)
+main::Weight.__ge__@14:4: covered (storage: no_proof_required)
+main::Weight.__lt__: uncovered (uncertified binary operation)
+main::Weight.__le__: uncovered (uncertified binary operation)
+main::Weight.__gt__: uncovered (uncertified binary operation)
+main::Weight.__init__@10:4: covered (storage: no_proof_required), summary: known

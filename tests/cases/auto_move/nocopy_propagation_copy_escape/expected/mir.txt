@@ -1,0 +1,6 @@
+main::__tpy_init: uncovered (module initialization)
+main::consume@24:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::main@28:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Container.__copy__@20:4: uncovered (custom record special member)
+main::Handle.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Container.__init__@17:4: uncovered (custom record special member), summary: opaque (custom record special member)
