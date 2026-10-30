@@ -261,9 +261,9 @@ bool line_copy(const Line& ln) {
 //     r = v[0]
 //     a.append(Cell(5))
 //     return r.x
-int32_t pick(bool c, std::vector<Cell>& a, std::vector<Cell>& b) {
-    std::vector<Cell>& v = ((c) ? (a) : (b));
-    Cell& r = ::tpy::__getitem__(v, 0);
+int32_t pick(bool c, std::vector<Cell>& a, const std::vector<Cell>& b) {
+    const std::vector<Cell>& v = ((c) ? (a) : (b));
+    const Cell& r = ::tpy::__getitem__(v, 0);
     a.push_back(Cell(5));
     return r.x;
 }

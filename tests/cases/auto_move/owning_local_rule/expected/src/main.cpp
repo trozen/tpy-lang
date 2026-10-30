@@ -520,9 +520,9 @@ Box for_head(const std::vector<std::tuple<Box, int32_t>>& ps) {
 // def ternary(w: Box, c: bool) -> Own[Box]:
 //     b = w if c else Box(1)
 //     return b  # tpyc: warning(/copies Box into owned storage.*'b' is bound to existing storage/)
-Box ternary(Box& w, bool c) {
+Box ternary(const Box& w, bool c) {
     std::optional<Box> __select_slot_1;
-    Box& b = ((c) ? (w) : (__select_slot_1.emplace(Box(1))));
+    const Box& b = ((c) ? (w) : (__select_slot_1.emplace(Box(1))));
     return b;
 }
 

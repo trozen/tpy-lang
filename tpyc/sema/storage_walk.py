@@ -55,11 +55,13 @@ from ..typesys import (
     unwrap_qualifiers, unwrap_readonly,
 )
 from ..type_def_registry import is_borrowing_view_type
-from ..value_category import ExprTypeOf, lent_operands
+from ..value_category import (
+    ExprTypeOf, call_operands, call_returns_cpp_ref, lent_operands,
+)
 
 if TYPE_CHECKING:
     from .call_lends import LendSource
-    from .context import SemanticContext
+    from .context import SemanticContext, SitedKey
     from ..value_category import ValueCategoryAnalyzer
 
 
@@ -162,8 +164,10 @@ class StorageKey:
 class Place:
     """One named storage an expression references. `elem`: the literal
     element index of the step right off the name (`t[0].f` -> 0), None for
-    the whole value. `via_handle`: the name is a handle whose REFERENT the
-    access reaches, so the name's own binding is not written.
+    the whole value. `via_handle`: the name's own binding is a handle (a
+    local holding an iterator or a view) whose REFERENT the access reaches,
+    so the binding itself is not written -- unlike `through_handle` below,
+    where the name is the storage and a call on the path builds the handle.
 
     How the climb got there, from the call policy's answers: `through_call`,
     through a spelled call (not only a path and getters); `assumed`, through
@@ -172,7 +176,10 @@ class Place:
     genexpr capture: growing it invalidates nothing, though it still dies
     with its root); `grants_write`, a write through the value reaches it
     (False past a source that grants none -- a readonly callee, a `Ptr`
-    operand, a readonly slot)."""
+    operand, a readonly slot); `through_handle`, through a spelled call on
+    the path whose result is an object built over the name's storage (an
+    iterator, a frame, a view) rather than a C++ reference to it, so a
+    callee handed the value may advance it without writing the storage."""
     name: str
     elem: int | None = None
     via_handle: bool = False
@@ -180,6 +187,7 @@ class Place:
     assumed: bool = field(default=False, compare=False)
     held_whole: bool = field(default=False, compare=False)
     grants_write: bool = field(default=True, compare=False)
+    through_handle: bool = field(default=False, compare=False)
     # The name node the climb ended at (None for `self` reached through an
     # unbound `Base.f`).
     node: TpyExpr | None = field(default=None, compare=False)
@@ -397,17 +405,36 @@ class CallPolicy:
 class _Via:
     """How a climb reached the storage it is on: through a spelled call
     (`through_call`), an assumed lend (`assumed`), a whole-object hold
-    (`held_whole`), a source granting no write (`grants_write` False)."""
+    (`held_whole`), a source granting no write (`grants_write` False), a
+    spelled call whose result is a handle over the storage
+    (`through_handle`, `Place.through_handle`)."""
     through_call: bool = False
     assumed: bool = False
     held_whole: bool = False
     grants_write: bool = True
+    through_handle: bool = False
 
-    def then(self, src: 'LendSource', *, call: bool) -> '_Via':
-        return _Via(self.through_call or call,
+    def then(self, src: 'LendSource', *, call: TpyExpr | None) -> '_Via':
+        """The climb past `src`, lent by the spelled call `call` (None for
+        a getter read, a path hop like the field it wraps)."""
+        return _Via(self.through_call or call is not None,
                     self.assumed or src.assumed,
                     self.held_whole or src.held_whole,
-                    self.grants_write and src.grants_write)
+                    self.grants_write and src.grants_write,
+                    self.through_handle or (
+                        call is not None and _returns_handle(call)))
+
+
+def _returns_handle(call: TpyExpr) -> bool:
+    """Whether `call`'s result is an object built over what it lends, not a
+    C++ reference to that storage (`b.get()` returns the storage itself).
+    A `@property` read is a path hop like the field it wraps, never a
+    handle."""
+    if is_property_getter_read(call):
+        return False
+    ops = call_operands(call)
+    # `call_returns_cpp_ref` never reads its analyzer parameter.
+    return not call_returns_cpp_ref(None, ops.fi if ops is not None else None)
 
 
 _DIRECT = _Via()
@@ -456,7 +483,7 @@ class _Roots:
         v = self.via
         self.hits.append(Hit(self.operand, Place(
             name, elem, via_handle, v.through_call, v.assumed, v.held_whole,
-            v.grants_write, node), None))
+            v.grants_write, v.through_handle, node), None))
 
     def _unknown(self, node: TpyExpr) -> None:
         self.hits.append(Hit(self.operand, None, node))
@@ -490,7 +517,7 @@ class _Roots:
             return
         alone = all(s.temp_backed for s in srcs)
         # A `@property` read is a path hop like the field it wraps.
-        spelled = not is_property_getter_read(call)
+        spelled = None if is_property_getter_read(call) else call
         operand, via, lent = self.operand, self.via, self.lent
         for src in srcs:
             self.lent = src
@@ -776,7 +803,7 @@ class _Leaves(_Roots):
             self.lent = src
             self.trail = trail + (step, Step(StepKind.CALL, call, src.how))
             self.operand = src.expr
-            self.via = via.then(src, call=True)
+            self.via = via.then(src, call=call)
             self.climb(trace(src.expr))
         self.trail, self.operand, self.via, self.lent = (trail, operand, via,
                                                          lent)
@@ -883,7 +910,7 @@ def _holder(expr: TpyExpr, policy: CallPolicy) -> Roots:
             v = leaf.via
             hits.append(Hit(leaf.operand, Place(
                 leaf.name, leaf.elem, False, v.through_call, v.assumed,
-                v.held_whole, v.grants_write,
+                v.held_whole, v.grants_write, v.through_handle,
                 leaf.node if isinstance(leaf.node, TpyName) else None),
                 None))
         elif leaf.temp_backed:
@@ -1297,9 +1324,11 @@ class MarkRequest:
 
 
 def mark_roots(ctx: 'SemanticContext',
-               roots: 'Roots | Iterable[StorageKey]', req: MarkRequest) -> None:
+               roots: 'Roots | Iterable[StorageKey | SitedKey]',
+               req: MarkRequest) -> None:
     """The one routine that marks source roots mutated: the roots a climb
-    found, or the storage keys a loan names. A place the climb reached past
+    found, or the storage keys a loan names (a member path as the
+    `SitedKey` its entrance handed out). A place the climb reached past
     a source granting no write (`Place.grants_write`) is not written. An
     operand the climb could not place is not credited here: each consumer
     states what it does with one."""
@@ -1308,10 +1337,15 @@ def mark_roots(ctx: 'SemanticContext',
                else [(key, False) for key in roots])
     bt = ctx.func.borrow_tracker
     for key, via_handle in targets:
-        name = key.as_name()
+        name = (key if isinstance(key, StorageKey) else key.key).as_name()
         if req.effective_storage and name is not None:
-            key = bt.effective_storage(name)
-            name = key.as_name()
+            # An alias of a member path stays the start: the climb from it
+            # crosses the loan, which carries whether the path writes its
+            # root.
+            storage = bt.effective_storage(name)
+            if not storage.members:
+                key = storage
+                name = storage.as_name()
         if (req.loop_vars and name is not None
                 and (req.handle_bindings or not via_handle)):
             ctx.mark_binding_written(key)

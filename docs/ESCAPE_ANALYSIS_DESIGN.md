@@ -877,8 +877,9 @@ With 8a.5:
   before each body gen from the function's `mutated_params`). Const propagates
   transitively: if `v` is `const T&`, an alias `w = v` also gets `const T&`.
 - Any ALIAS/FIELD borrow chain rooted at an ELEMENT borrow is also deferred
-  (`w = v`, `x = w`, ... where `v = items[i]`): `BorrowTracker.is_deferred_borrow`
-  follows the chain recursively so arbitrarily deep read-only alias chains preserve
+  (`w = v`, `x = w`, ... where `v = items[i]`): binding an alias only files a loan,
+  and only a write through it marks, climbing the loans back to `items`
+  (`SemanticContext.storage_climb`), so a read-only alias chain of any depth keeps
   `const T&` for the source container.
 
 #### 8b. Return-Value Borrow Contracts

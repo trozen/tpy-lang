@@ -544,9 +544,9 @@ std::function<int32_t()> escaping_aliases(std::vector<int32_t>& a, std::vector<s
 //     def inner() -> int32:  # tpyc: warning(/copies local 'x', which aliases storage/)
 //         return len(x)
 //     return inner
-std::function<int32_t()> escaping_closure(std::vector<int32_t>& a, bool c) {
+std::function<int32_t()> escaping_closure(const std::vector<int32_t>& a, bool c) {
     std::optional<std::vector<int32_t>> __select_slot_1;
-    std::vector<int32_t>& x = ((c) ? (a) : (__select_slot_1.emplace(std::vector<int32_t>{5, 5})));
+    const std::vector<int32_t>& x = ((c) ? (a) : (__select_slot_1.emplace(std::vector<int32_t>{5, 5})));
     auto inner = [x]() -> int32_t {
         return ::tpy::__len__(x);
     };

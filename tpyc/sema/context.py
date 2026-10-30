@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
-from typing import (Any, Callable, Container, Iterable, Iterator, NamedTuple,
+from typing import (Any, Callable, Iterable, Iterator, NamedTuple,
                     TYPE_CHECKING)
 
 from ..holders import Holder, IterHolder
@@ -71,7 +71,7 @@ from ..prescan import (
 from .arg_binding import ArgBinding, CallSource, bind
 from .call_lends import (
     NO_CALLS, MayLend, escaping_borrow_tuple, frame_operands,
-    escaping_borrow_writes, frame_call,
+    escaping_borrow_writes, frame_call, key_holds_root, path_holds_root,
 )
 from .storage_walk import (
     EscapePosition, KeyShape, LoanKey, MarkRequest, Roots, Unkeyed,
@@ -140,75 +140,6 @@ def expr_yields_non_null_ptr(expr: TpyExpr, non_null_vars: set[str]) -> bool:
     if isinstance(expr, TpyName):
         return expr.name in non_null_vars
     return False
-
-
-def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
-    """True when a local borrow-traces to self or a self.<field> storage key.
-
-    Used to recognize a method call receiver whose root is a local alias of
-    self-owned storage (e.g. ``frame = self.frame; frame.get().cancel()``)
-    so the call's self-mutation flows back through the enclosing method.
-
-    A member key is re-rooted through the binding it hangs off (`g =
-    f.inner` with `f = self.h`: `g -> f.inner -> self.h`), since a field of
-    an alias is the aliased storage's field.
-
-    ANY root answers for a re-seated name: the receiver aliases self-owned
-    storage on at least one reaching path, and the verdict only ever ADDS the
-    self-mutation edge, which demotes readonly -- the safe direction.
-    """
-    seen: set[str] = set()
-    todo = [name]
-    while todo:
-        n = todo.pop()
-        if n in seen:
-            continue
-        seen.add(n)
-        for root in borrow_tracker.storage_roots_or_self(n):
-            if root.root == "self":
-                return True
-            if root.root != n:
-                todo.append(root.root)
-    return False
-
-
-def _deferred_receiver_root(
-    expr_obj: TpyExpr, obj_root: str | None, direct: bool,
-    params: 'Container[str]',
-    loop_sources: 'Callable[[str], list[StorageKey]]',
-    borrow_tracker: 'BorrowTracker', type_of: 'ExprTypeOf',
-) -> str | None:
-    """The name a method call receiver's mutation is deferred to Phase 2
-    under (a call edge's `receiver_idx`), or None to mark it at once.
-
-    `self` or a caller parameter in `params`, the receiver's own field
-    path (`direct`: `p.m()`, `p.f.m()`), so a callee that turns out not
-    to mutate its self leaves the caller's receiver unmarked. For `self`
-    also a loop variable over a self field and a local alias of
-    self-owned storage; a parameter's alias stays eager (a loop binding's
-    own receiver is deferred by `receiver_credits` before this is asked,
-    with the element step on its edge). A handle receiver runs
-    the call on its referent, never on the storage the handle was read out
-    of.
-    """
-    if is_indirection_type(type_of(expr_obj)):
-        return None
-    if direct and (obj_root == "self"
-                   or (obj_root is not None and obj_root in params)):
-        return obj_root
-    if obj_root is not None and obj_root != "self":
-        # loop_var.method() where loop_var iterates over self.field
-        if any(it.root == "self" for it in loop_sources(obj_root)):
-            return "self"
-        # local.method() where `local = self.<field>` registered a FIELD borrow.
-        # Without this, the call is treated as a regular non-self call and the
-        # callee's self-mutation never propagates back to the enclosing method,
-        # so non-const methods reached through a local alias of a self field
-        # leave self_mutated unset and auto-readonly wrongly marks the method
-        # const. Deferring lets Phase 2 propagate precisely.
-        if _local_traces_to_self(borrow_tracker, obj_root):
-            return "self"
-    return None
 
 
 def call_param_args(call: TpyExpr) -> 'list[tuple[ParamInfo, TpyExpr]]':
@@ -452,12 +383,23 @@ class LoanInfo:
     empty once filed (`BorrowTracker.add_borrow`). Not part of the
     loan's identity: it says which binding the key names, not what the
     loan clobbers.
+
+    `holds_root` is whether a write through the borrower writes the storage
+    the loan is filed under: for a member path (`p.cell`), whether it
+    writes the path's root (`member_holds_root`, decided where the loan was
+    taken, from the root's type THERE -- a narrowed `Optional` or `Union`
+    root included; None: not decided at the loan, so the climb asks the
+    declared type); for a name, True unless the loan's receiver is one the
+    call grants no write through (`LendSource.grants_write` False: a getter
+    whose declaration hands out nothing writable of it, `getter_holds_root`,
+    a readonly or `@pure` callee, a generator or coroutine frame).
     """
     kind: BorrowKind
     on_element: bool = False
     elem_index: tuple[str, int | str] | None = None
     through_pointer: bool = False
     source_sites: tuple[object, ...] = field(default=(), compare=False)
+    holds_root: bool | None = None
 
 
 def _loan_mutation_warning(place: str | StorageKey, cause: str, *,
@@ -572,12 +514,38 @@ def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
     # A leg into the storage itself pins it, whichever leg wins.
     through_pointer = a.through_pointer and b.through_pointer
     sites = union_sites(a.source_sites, b.source_sites)
+    # Either leg may be the live one, so the merged loan writes the root
+    # when either does.
+    holds = holds_either(a.holds_root, b.holds_root)
     if (on_element != winner.on_element or elem_index != winner.elem_index
             or through_pointer != winner.through_pointer
-            or len(sites) != len(winner.source_sites)):
+            or len(sites) != len(winner.source_sites)
+            or holds is not winner.holds_root):
         winner = replace(winner, on_element=on_element, elem_index=elem_index,
-                         through_pointer=through_pointer, source_sites=sites)
+                         through_pointer=through_pointer, source_sites=sites,
+                         holds_root=holds)
     return winner
+
+
+def holds_either(a: bool | None, b: bool | None) -> bool | None:
+    """The join of two `LoanInfo.holds_root` answers for paths either of
+    which may be live: True when one holds, False when neither does, else
+    undecided (None)."""
+    if a is True or b is True:
+        return True
+    if a is False and b is False:
+        return False
+    return None
+
+
+def holds_both(a: bool | None, b: bool | None) -> bool | None:
+    """The serial composition of two `holds_root` answers (a loan reached
+    through another): the chain writes its root only when every hop does."""
+    if a is False or b is False:
+        return False
+    if a is True and b is True:
+        return True
+    return None
 
 
 def union_sites(a: tuple[object, ...], b: tuple[object, ...]
@@ -628,10 +596,13 @@ class BorrowTracker:
                    kind: BorrowKind = BorrowKind.ALIAS,
                    *, on_element: bool = False,
                    elem_index: 'tuple[str, int | str] | None' = None,
-                   merge: bool = False, through_pointer: bool = False) -> None:
+                   merge: bool = False, through_pointer: bool = False,
+                   holds_root: bool | None = None) -> None:
         """Record that ``borrower`` borrows from ``storage`` (or, with
         ``on_element``, from the element ``elem_index`` of it; with
-        ``through_pointer``, from what that element points at).
+        ``through_pointer``, from what that element points at; with
+        ``holds_root``, whether a write through it writes a member key's
+        root -- `LoanInfo.holds_root`).
 
         The for-each ITER registration is the only site that sets
         ``on_element`` directly, but it is not the only way a loan acquires
@@ -645,7 +616,9 @@ class BorrowTracker:
         """
         assert isinstance(storage, StorageKey), storage
         loan = LoanInfo(kind, on_element, elem_index, through_pointer,
-                        (self.site_of(storage.root),))
+                        (self.site_of(storage.root),),
+                        holds_root if storage.members or holds_root is not None
+                        else True)
         holders = self.loans.setdefault(storage, {})
         if merge and borrower in holders:
             loan = combine_loan_info(holders[borrower], loan)
@@ -700,13 +673,16 @@ class BorrowTracker:
                 # rebound name, so it is at least as clobberable as either leg.
                 # It names the upstream binding `name`'s own loan named.
                 chained = replace(combine_loan_info(child, up_loan),
-                                  source_sites=up_loan.source_sites)
+                                  source_sites=up_loan.source_sites,
+                                  holds_root=holds_both(child.holds_root,
+                                                        up_loan.holds_root))
                 # An OPAQUE borrow has no element/alias shape to promote:
                 # rank-promoting it into the invalidating set would mint
                 # exactly the mutation warnings the kind exists to avoid.
                 if child.kind is BorrowKind.OPAQUE:
                     chained = LoanInfo(BorrowKind.OPAQUE,
-                                       source_sites=up_loan.source_sites)
+                                       source_sites=up_loan.source_sites,
+                                       holds_root=chained.holds_root)
                 existing = self.loans.get(upstream, {}).get(b)
                 if existing is not None:
                     chained = combine_loan_info(existing, chained)
@@ -849,23 +825,6 @@ class BorrowTracker:
                 return loan.kind
         return None
 
-    def is_deferred_borrow(self, name: str) -> bool:
-        """Return True if name ultimately traces back to a deferred ELEMENT borrow.
-
-        A variable is deferred if it is an ELEMENT borrow, or an ALIAS/FIELD borrow
-        of a deferred variable (transitively). PTR/ITER borrows are not deferred.
-        Termination is guaranteed because borrow chains are acyclic.
-        """
-        kind = self.borrow_kind_of(name)
-        if kind == BorrowKind.ELEMENT:
-            return True
-        if kind in (BorrowKind.ALIAS, BorrowKind.FIELD):
-            source = self.borrow_source(name)
-            src_name = source.as_name() if source is not None else None
-            if src_name is not None:
-                return self.is_deferred_borrow(src_name)
-        return False
-
     def borrow_source(self, name: str) -> StorageKey | None:
         """Return the direct borrow source of name (any borrow kind), or None.
 
@@ -929,14 +888,25 @@ class BorrowTracker:
             cross_handles: bool = True) -> list[SitedKey]:
         """`all_storage_through_borrows`, one entry per binding site a
         root's name resolved to where the loans reaching it were taken
-        (`LoanInfo.source_sites`)."""
+        (`LoanInfo.source_sites`), each carrying what those loans say of it:
+        `holds`, whether a write through `name` writes it -- every loan on a
+        path must (`holds_both`), and any path may be the live one
+        (`holds_either`) -- and `via_handle`, whether every path to it
+        crosses a HANDLE loan (an ITER loan, which only `cross_handles`
+        crosses)."""
         start = StorageKey.of_name(name)
-        visited: set[StorageKey] = {start}
-        roots: list[StorageKey] = []
+        # A node is expanded once per (handle, holds) state: a root reached
+        # across a handle, or through a loan that writes nothing of it, may
+        # still be reached around it. `holds` composes along a path (every
+        # hop must write its source) and joins across paths.
+        State = tuple[StorageKey, bool, 'bool | None']
+        visited: set[State] = {(start, False, True)}
+        roots: dict[StorageKey, bool] = {}
         sites: dict[StorageKey, tuple[object, ...]] = {}
-        stack: list[StorageKey] = [start]
+        holds: dict[StorageKey, bool | None] = {}
+        stack: list[State] = [(start, False, True)]
         while stack:
-            current = stack.pop()
+            current, crossed, path_holds = stack.pop()
             # A member path borrows nothing: it is always a root.
             holder = current.as_name()
             sources = [] if holder is None else [
@@ -946,7 +916,9 @@ class BorrowTracker:
                          and holders[holder].kind is BorrowKind.OPAQUE)]
             if not sources:
                 if current != start:
-                    roots.append(current)
+                    roots[current] = roots.get(current, True) and crossed
+                    holds[current] = (holds_either(holds[current], path_holds)
+                                      if current in holds else path_holds)
                 continue
             if not cross_handles:
                 sources = [src for src in sources
@@ -955,19 +927,15 @@ class BorrowTracker:
                 sites[src] = union_sites(sites.get(src, ()),
                                          self.loans[src][holder].source_sites)
             for src in reversed(sources):
-                if src not in visited:
-                    visited.add(src)
-                    stack.append(src)
-        return [SitedKey(root, site) for root in roots
+                loan = self.loans[src][holder]
+                state = (src, crossed or loan.kind is BorrowKind.ITER,
+                         holds_both(path_holds, loan.holds_root))
+                if state not in visited:
+                    visited.add(state)
+                    stack.append(state)
+        return [SitedKey(root, site, holds[root], handle)
+                for root, handle in roots.items()
                 for site in sites.get(root, ())]
-
-    def sited_roots_or_self(self, name: str, *, cross_handles: bool = True
-                            ) -> list[SitedKey]:
-        """`sited_storage_through_borrows`, falling back to `name` itself,
-        at the binding it names here, when it borrows nothing."""
-        return (self.sited_storage_through_borrows(
-            name, cross_handles=cross_handles)
-            or [SitedKey(StorageKey.of_name(name), self.site_of(name))])
 
     def site_of(self, name: str) -> object:
         """The binding site `name` names here (`binder_of`), or None (a
@@ -1051,9 +1019,8 @@ def ephemeral_borrow_root(ephemeral_vars: 'dict[str, EphemeralKind]',
 def register_binding_borrow(ctx: 'SemanticContext', name: Holder,
                             init_expr: TpyExpr) -> None:
     """Register `name` as a borrower of `init_expr`'s storage root, with the
-    kind and the eager-vs-deferred mutation mark taken from the init shape
-    (see `_register_source_borrow`). Shared by the VarDecl and walrus binding
-    paths."""
+    kind taken from the init shape (see `_register_source_borrow`). Shared
+    by the VarDecl and walrus binding paths."""
     _register_source_borrow(ctx, name, init_expr, kind=None)
 
 
@@ -1082,71 +1049,78 @@ def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
                             kind: BorrowKind | None) -> None:
     """Register `name` as a borrower of `source_expr`'s storage root.
 
-    `kind=None` takes the kind from the init shape (ELEMENT / FIELD / ALIAS)
-    and applies the deferral rule below; a caller that passes a kind forces it
-    and always defers, because it wants the loan recorded without the init
-    shape's invalidation semantics.
+    `kind=None` takes the kind from the init shape (ELEMENT / FIELD /
+    ALIAS); a caller that passes a kind forces it, because it wants the
+    loan recorded without the init shape's invalidation semantics.
 
     A self-assignment (t = t) aliases nothing new; registering it would put
-    a self-edge in the borrow graph. A ternary registers one loan per keyed
-    arm (`select_arm_keys`), the strongest kind per key: either arm can be
-    the live borrow. For the remaining non-simple shapes (deep chains
-    like `outer.inner[i]`) there is no root to record, so every address-taken
-    root is eagerly marked mutated instead (the binding aliases into them, so
-    they must stay `T&`, not `const T&`).
+    a self-edge in the borrow graph. A ternary registers one loan per arm
+    (`select_arm_keys`, the strongest kind per key; an arm too deep to key
+    its longest keyable prefix): either arm can be the live borrow. A path
+    too deep to key (`outer.inner[i]`) borrows its longest keyable prefix.
 
-    8a.5: marking the source mutated is DEFERRED until the borrower is
-    actually written through for ELEMENT borrows (v = items[i]) and for ALIAS
-    borrows (b = y) -- a read-only alias must not force its source mutable. A
-    genuine write through the borrower (b.x = 1, or passing b to a mutating
-    callee) re-marks the source via mark_param_mutated's full borrow-chain
-    follow, so deferral stays sound. FIELD borrows defer only when their root
-    traces back to an ELEMENT borrow (checked transitively); PTR/ITER borrows
-    and field aliases not rooted at an ELEMENT mark their KEY immediately.
-    For a member key (`y = o.inner`) that mark reaches nothing -- the key is
-    no parameter, borrows nothing, and a plain mark does not climb its member
-    hop -- so only a write through the borrower marks `o`
-    (BUGS.md#field-alias-eager-mark-inert).
+    Nothing with a loan is marked mutated here: a read-only alias must not
+    force its source mutable. A source that files no loan (an and/or
+    select) has nothing to carry a deferred credit, so its roots are marked
+    at once. A write through the borrower climbs the loan
+    (`storage_climb`), which says, for a member path, whether that write
+    writes the path's root (`LoanInfo.holds_root`, decided here from the
+    source as spelled -- a narrowed root's type included).
     """
     bt = ctx.func.borrow_tracker
+    registry = ctx.registry
+    type_of = ctx.get_expr_type
+
+    def holds(key: StorageKey, node: TpyExpr) -> bool | None:
+        return (path_holds_root(registry, node, type_of) if key.members
+                else None)
+
+    def add_prefix(node: TpyExpr, loan_kind: BorrowKind) -> None:
+        # A path too deep to key (`o.inner.xs`) still borrows its longest
+        # keyable prefix: a later move or write of the prefix must see it.
+        prefix = prefix_loan_key(node, type_of, MayLend(ctx))
+        if prefix is None:
+            # No loan carries a deferred credit (an and/or select,
+            # BUGS.md#select-or-arm-unkeyed): the roots are marked now. A
+            # path past a handle (`self._p.first`) has no PLACE root here:
+            # what the handle points at is not its holder's.
+            mark_roots(ctx, storage_roots(node, Use.PLACE, type_of,
+                                          MayLend(ctx)), MarkRequest())
+        elif prefix.key.as_name() != name:
+            bt.add_borrow(prefix.key, name, loan_kind, merge=True,
+                          holds_root=path_holds_root(registry, node, type_of))
+
     arm_keys = select_arm_keys(source_expr)
     if arm_keys is not None:
         strongest: dict[StorageKey, BorrowKind] = {}
+        arm_holds: dict[StorageKey, bool | None] = {}
         for arm in arm_keys:
             arm_kind = SHAPE_BORROW_KIND[arm.shape]
             prev = strongest.get(arm.key)
             if prev is None or BORROW_KIND_RANK[arm_kind] > BORROW_KIND_RANK[prev]:
                 strongest[arm.key] = arm_kind
+            here = holds(arm.key, arm.node)
+            arm_holds[arm.key] = (holds_either(arm_holds[arm.key], here)
+                                  if arm.key in arm_holds else here)
         for key, arm_kind in strongest.items():
             if key.as_name() != name:
-                bt.add_borrow(key, name, kind or arm_kind)
-        # The arms stay eagerly marked mutated rather than deferred: a select
-        # has no single root that a later write through the borrower could
-        # re-mark, so the conservative mark is the only one it gets.
-        mark_roots(ctx, storage_roots(source_expr, Use.PLACE,
-                                      ctx.get_expr_type, MayLend(ctx)),
-                   MarkRequest())
+                bt.add_borrow(key, name, kind or arm_kind,
+                              holds_root=arm_holds[key])
+        for arm, _ in trace(source_expr).leaves(ternary_only=True):
+            if loan_key(arm.node_at(0)) is Unkeyed.UNPLACEABLE:
+                add_prefix(arm.node_at(0), kind or BorrowKind.FIELD)
         return
     lk = loan_key(source_expr)
     if lk is Unkeyed.NOT_A_PLACE:
         # A call result's loans are the call's (`_register_call_result_borrow`).
         return
     if lk is Unkeyed.UNPLACEABLE:
-        mark_roots(ctx, storage_roots(source_expr, Use.PLACE,
-                                      ctx.get_expr_type, MayLend(ctx)),
-                   MarkRequest())
-        # A path too deep to key (`o.inner.xs`) still borrows its longest
-        # keyable prefix: a later move or write of the prefix must see it.
-        prefix = prefix_loan_key(source_expr, ctx.get_expr_type,
-                                 MayLend(ctx))
-        if prefix is not None and prefix.key.as_name() != name:
-            bt.add_borrow(prefix.key, name, kind or BorrowKind.FIELD,
-                          merge=True)
+        add_prefix(source_expr, kind or BorrowKind.FIELD)
         return
     if lk.key.as_name() == name:
         return
     if kind is not None:
-        bt.add_borrow(lk.key, name, kind)
+        bt.add_borrow(lk.key, name, kind, holds_root=holds(lk.key, lk.node))
         return
     init_kind = SHAPE_BORROW_KIND[lk.shape]
     # A tuple's elements are distinct objects, owned or borrowed one by one,
@@ -1157,11 +1131,8 @@ def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
                   if obj_t is not None and isinstance(
                       unwrap_readonly(unwrap_ref_type(obj_t)), TupleType)
                   else None)
-    bt.add_borrow(lk.key, name, init_kind, elem_index=elem_index)
-    key_name = lk.key.as_name()
-    if not (init_kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)
-            or key_name is not None and bt.is_deferred_borrow(key_name)):
-        mark_roots(ctx, [lk.key], MarkRequest())
+    bt.add_borrow(lk.key, name, init_kind, elem_index=elem_index,
+                  holds_root=holds(lk.key, lk.node))
 
 
 def holds_generator_object(t: 'TpyType | None') -> bool:
@@ -1499,11 +1470,18 @@ class SitedKey:
     later binding may shadow that name (`[n.bump() for n in n.kids]`, a
     comprehension target named like an alias's source). Equal by the site's
     identity: two bindings of one name are two storages."""
-    __slots__ = ('key', 'site')
+    __slots__ = ('key', 'site', 'holds', 'via_handle')
 
-    def __init__(self, key: StorageKey, site: object = None) -> None:
+    def __init__(self, key: StorageKey, site: object = None,
+                 holds: bool | None = None, via_handle: bool = False) -> None:
         self.key = key
         self.site = site
+        # What the entrance that handed the key out says of it, not part of
+        # its identity: whether a write through a member key writes its
+        # root (`LoanInfo.holds_root`; None: undecided there), and whether
+        # it was reached only across a handle.
+        self.holds = holds
+        self.via_handle = via_handle
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, SitedKey) and self.key == other.key
@@ -1562,7 +1540,8 @@ class NestedMutationMark(NamedTuple):
     for a mark on `self`, taken where the mark was made. With a `callee`
     the write happens only if that callee writes through its slot `slot`
     (-1: its receiver): it replays as a call edge on the enclosing
-    function, element-stepped with `via_element`."""
+    function, element-stepped with `via_element`, and `lent` when the
+    argument is a handle over the name (`MutationCallEdge.lent`)."""
     key: StorageKey
     through_field: bool
     structural: bool
@@ -1570,6 +1549,7 @@ class NestedMutationMark(NamedTuple):
     receiver: bool
     callee: 'FunctionInfo | None' = None
     slot: int = -1
+    lent: bool = False
 
 
 class LoopSources(NamedTuple):
@@ -1604,34 +1584,50 @@ def _slot_sources(site: object, name: str, srcs: LoopSources,
     return srcs.reach if fallback else srcs.loans
 
 
+class WriteReach(NamedTuple):
+    """What a callee's write through one operand reaches
+    (`SemanticContext.write_reach`): the loop bindings, the caller params
+    (-1: the receiver) each as `(index, element step, lent)`, in a nested
+    def the enclosing function's names as `(name, element step, lent)`, and
+    whether the bindings are reached only across a handle."""
+    bindings: tuple[object, ...] = ()
+    params: tuple[tuple[int, bool, bool], ...] = ()
+    captured: tuple[tuple[str, bool, bool], ...] = ()
+    bindings_lent: bool = False
+
+
 class ReceiverCredit(NamedTuple):
     """What a mutating call on a receiver operand writes
-    (`SemanticContext.receiver_credits`): the name, the caller params (-1:
-    the receiver) its mutation is deferred to Phase 2 under, the loop
-    bindings the receiver climbs through, which of `idxs` it reaches
-    through an element step, and in a nested def the enclosing function's
-    names it reaches through a loop binding (`write_reach`). Deferred when
-    `idxs` or `bindings` is non-empty; marked at once otherwise."""
+    (`SemanticContext.receiver_credits`): the name, and what its mutation
+    is deferred to Phase 2 under -- the caller params it reaches
+    (`WriteReach.params`), the loop bindings it climbs through, and in a
+    nested def the enclosing function's names (`write_reach`). Deferred when
+    any is non-empty; marked at once otherwise."""
     name: str
-    idxs: tuple[int, ...] = ()
+    targets: tuple[tuple[int, bool, bool], ...] = ()
     bindings: tuple[object, ...] = ()
-    elem: frozenset[int] = frozenset()
-    captured: tuple[str, ...] = ()
+    captured: tuple[tuple[str, bool, bool], ...] = ()
 
     @property
     def deferred(self) -> bool:
-        return bool(self.idxs or self.bindings)
+        return bool(self.targets or self.bindings or self.captured)
 
 
 class ClimbNode(NamedTuple):
     """One storage a write climbs through (`storage_climb`). `site` is the
     binding site the root name resolves to (None: a parameter, a local or
     the receiver); `via_element` says the climb reached it through an
-    element or a borrow, not as the name written."""
+    element or a borrow, not as the name written; `loop_elem` that it
+    crossed a loop or comprehension binding to what that iterates (an
+    element step); `handle` that it crossed a handle loan (`SitedKey.
+    via_handle`), so only what a callee writes through the handle's
+    referent reaches it."""
     key: StorageKey
     site: object
     through_field: bool
     via_element: bool
+    loop_elem: bool = False
+    handle: bool = False
 
 
 class OwnSlot(NamedTuple):
@@ -4325,9 +4321,10 @@ class SemanticContext:
                             loans: 'Iterable[StorageKey]',
                             elems: 'list[list[StorageKey]] | None') -> None:
         """Record what loop binding `site` iterates (`LoopSources`), each
-        root resolved HERE, before the binding shadows it."""
+        root resolved HERE, before the binding shadows it, and each member
+        path's fact decided here, from its root's type at the loop."""
         def sources(keys: 'Iterable[StorageKey]') -> tuple[SitedKey, ...]:
-            return tuple(SitedKey(k, self.binding_site(k.root)) for k in keys)
+            return tuple(self.sited_here(k) for k in keys)
         loan_srcs = sources(loans)
         # An iterable no proven loan names (a borrowing accessor hop, a
         # property getter with no `return_borrows_from`, a callee whose
@@ -4358,47 +4355,64 @@ class SemanticContext:
                       proven_only: bool = False,
                       members: bool | None = None,
                       self_is_root: bool = False,
-                      fallback: bool = True) -> list[ClimbNode]:
+                      fallback: bool = True,
+                      handles: bool = False,
+                      writes: bool = True) -> list[ClimbNode]:
         """THE climb from storage `key` a write (or a returned reference)
         reaches to every storage it lands in: through a loop or
         comprehension binding to what it iterates (its `LoopSources`, with
         the binding site each root resolved to where the source was read),
         and -- with `borrows` -- through binding provenance and the borrow
         tracker (`proven_only` leaves assumed loans out). A member path
-        climbs to its root when `members` says so (None: only for a
-        `through_field` write) and no member is an indirection. A loop
+        climbs to its root when the MARK crosses members at all (`members`;
+        None: only a `through_field` write) and the entrance that handed the
+        path out says a write through it writes the root
+        (`member_holds_root`, carried as `SitedKey.holds`). A loop
         binding that is itself a handle is written only through its
         referent, which is not the iterable's storage. The climb stops at
         the receiver (`self_is_root`: at any `self`). A loop binding with
         no proven loan climbs to its iterable's holder roots (`fallback`,
-        `LoopSources.reach`), else to nothing. A `SitedKey` carries the
-        binding its root names, where the caller took it off a loan
-        (`LoanInfo.source_sites`); a bare key's root is resolved here.
+        `LoopSources.reach`), else to nothing. A handle loan is crossed
+        once the climb is past the name written, or from the start with
+        `handles` (a callee's write through an argument), each node past
+        one marked `handle`. A write (`writes`) does not reach a name
+        through a loan that writes nothing of it (`LoanInfo.holds_root`); a
+        returned reference still lends it.
+
+        `key` is a name, or a member path as a `SitedKey` carrying its
+        fact; a bare name's binding is resolved here.
 
         Every node passed is returned, the start included: a mark reads the
         parameters, the receiver and the loop bindings off the one walk."""
         out: list[ClimbNode] = []
         # Two holders can borrow from each other (`q = p` then `p = (b,
         # q[1])`), so the climb can come back to a name it left.
-        seen: set[tuple[StorageKey, bool, bool, int]] = set()
+        seen: set[tuple[StorageKey, bool, bool, int, bool, bool]] = set()
         fn = self.func
+        crosses = through_field if members is None else members
 
-        def visit(key: StorageKey, site: object,
-                  through_field: bool, via_element: bool) -> None:
+        def visit(key: StorageKey, site: object, through_field: bool,
+                  via_element: bool, holds: bool | None, loop_elem: bool,
+                  handle: bool) -> None:
             # `site` is the binding the key's ROOT name names: a member
             # path hands it on to its root.
             name = key.as_name()
-            mark = (key, through_field, via_element, id(site))
+            mark = (key, through_field, via_element, id(site), loop_elem,
+                    handle)
             if mark in seen:
                 return
             seen.add(mark)
             if name is None:
-                out.append(ClimbNode(key, None, through_field, via_element))
-                climbs = through_field if members is None else members
-                if climbs and not self._key_member_is_indirection(key):
-                    visit(key.root_key, site, through_field, True)
+                out.append(ClimbNode(key, None, through_field, via_element,
+                                     loop_elem, handle))
+                if crosses and self._member_holds(key, holds, writes):
+                    visit(key.root_key, site, through_field, True, True,
+                          loop_elem, handle)
                 return
-            out.append(ClimbNode(key, site, through_field, via_element))
+            if writes and holds is False:
+                return
+            out.append(ClimbNode(key, site, through_field, via_element,
+                                 loop_elem, handle))
             if name == "self" and (self_is_root or self.self_names_receiver()):
                 return
             srcs = (self.loop_var_iterable.get(site)
@@ -4408,29 +4422,76 @@ class SemanticContext:
             if srcs is not None and not is_indirection_type(loop_type):
                 for src in _slot_sources(site, name, srcs, fallback):
                     # A field-path source ("c.items") climbs to its owning
-                    # name; one iterating a handle field iterates its
-                    # referent.
-                    if self._key_member_is_indirection(src.key):
-                        continue
-                    visit(src.key.root_key, src.site, through_field, True)
+                    # name, unless the field only points at what it
+                    # iterates.
+                    if self._member_holds(src.key, src.holds, writes):
+                        visit(src.key.root_key, src.site, through_field, True,
+                              True, True, handle)
             if not borrows:
                 return
             # A source is the binding its name named where the borrow was
             # taken, never what the name resolves to here.
             for src in fn.bp_borrow_source_roots(name):
-                visit(src.key, src.site, through_field, True)
+                visit(src.key, src.site, through_field, True, src.holds,
+                      loop_elem, handle)
             # Every reachable root, not just the first: a re-seated binding
             # holds one loan per source and the write reaches whichever is
             # live.
+            # Past an element (a loop binding over the handle), what the
+            # handle points at is what the element is, so crossing it there
+            # lends nothing.
             for src in fn.borrow_tracker.sited_storage_through_borrows(
                     name, proven_only=proven_only,
-                    cross_handles=proven_only or via_element):
-                visit(src.key, src.site, through_field, True)
+                    cross_handles=proven_only or via_element or handles):
+                visit(src.key, src.site, through_field, True, src.holds,
+                      loop_elem,
+                      handle or (src.via_handle and not via_element))
 
-        start = (key if isinstance(key, SitedKey)
-                 else SitedKey(key, self.binding_site(key.root)))
-        visit(start.key, start.site, through_field, via_element)
+        if isinstance(key, SitedKey):
+            start = key
+        else:
+            assert not key.members, (
+                f"a member path climbs from a SitedKey carrying its fact: {key}")
+            start = SitedKey(key, self.binding_site(key.root))
+        visit(start.key, start.site, through_field, via_element, start.holds,
+              False, False)
         return out
+
+    def _member_holds(self, key: StorageKey, holds: bool | None,
+                      writes: bool) -> bool:
+        """Whether the climb goes on from member path `key` to its root.
+        A write does when a write through the path writes the root: the
+        entrance's answer (`holds`), or for one it left undecided the
+        declared type of the root's binding here (`key_holds_root`). A
+        borrow or a returned reference reaches the root through any member
+        but a handle field, whatever a write through it would do (a
+        readonly getter still hands out the root's storage)."""
+        if not key.members:
+            return True
+        if writes and holds is not None:
+            return holds
+        return key_holds_root(self.registry, self.declared_type(key.root),
+                              key.members, writes=writes)
+
+    def declared_type(self, name: str) -> 'TpyType | None':
+        """The type the current scope's binding of `name` declares."""
+        scope = self.func.current_scope
+        return scope.lookup(name) if scope is not None else None
+
+    def sited_here(self, key: StorageKey) -> SitedKey:
+        """`key` with the binding its root names here and, for a member
+        path, whether a write through it writes the root, asked of the
+        root's type here (a narrowed one included)."""
+        holds = (key_holds_root(self.registry, self.root_type_here(key.root),
+                                key.members)
+                 if key.members else None)
+        return SitedKey(key, self.binding_site(key.root), holds)
+
+    def root_type_here(self, name: str) -> 'TpyType | None':
+        """The type `name` has at this point: its narrowed type, else its
+        binding's."""
+        narrowed = self.func.narrowed_types.get(name)
+        return narrowed if narrowed is not None else self.declared_type(name)
 
     def is_param_node(self, node: ClimbNode) -> bool:
         """Whether a climb node is one of this body's (not rebound)
@@ -4440,7 +4501,7 @@ class SemanticContext:
                 and name in self.func.current_param_names
                 and name not in self.func.current_rebound_params)
 
-    def mark_binding_written(self, key: StorageKey) -> None:
+    def mark_binding_written(self, key: StorageKey | SitedKey) -> None:
         """Every loop or comprehension binding a write of `key` reaches is
         written, so it cannot bind const (`resolve_loop_bindings`)."""
         # A member path a binding lends (`sh = d.shelf`) is written through
@@ -4449,69 +4510,88 @@ class SemanticContext:
             if is_loop_site(node.site):
                 self.binding_writes.append(node.site)
 
-    def write_reach(self, start: str | SitedKey, *, stepped: bool = False
-                    ) -> tuple[list[object], list[int], list[str]]:
+    def write_reach(self, start: str | SitedKey, *, stepped: bool = False,
+                    handles: bool = False) -> 'WriteReach':
         """What a callee writing through argument (or receiver) `start`
-        reaches past the borrow tracker's own roots: the loop bindings the
-        climb passes, and the parameters it reaches through one of them --
-        an element step, so the callee's write is a write of the
-        parameter's elements. The receiver counts as a parameter, at
-        `self_receiver_index`. In a nested def, the enclosing function's
-        names reached that way instead (its captures, and `self` for its
-        receiver), which `defer_nested_writes` replays onto it.
+        reaches -- the one climb (`storage_climb`) every call edge and
+        receiver credit takes: the loop bindings it passes, and every
+        parameter it reaches (the receiver at `self_receiver_index`), `start`
+        itself included. A parameter reached through a member path or a
+        borrow is written as it is; one reached through a loop binding is
+        written through an ELEMENT step, so the callee's write is a write of
+        its elements; one reached both ways is reached twice. In a nested
+        def, the enclosing function's names reached instead (its captures,
+        and `self` for its receiver), which `defer_nested_writes` replays
+        onto it.
 
         `stepped`: `start` is already an element step away from the write
         (a nested def's capture reached through its own loop binding), so
-        `start` itself and every root past it are reached. A `SitedKey`
-        `start` names its binding too, taken off the loan that reached it
-        (`storage_climb`); a bare name is resolved here."""
+        everything reached is. `handles`: the write is the callee's, which
+        may run through a handle `start` holds (`it = iter(xs); f(it)`), so
+        the climb crosses handle loans, and what it reaches only across one
+        is `lent` (`MutationCallEdge.lent`). A `SitedKey` `start` names its
+        binding too; a bare name is resolved here."""
         bindings: list[object] = []
-        params: list[int] = []
-        captured: list[str] = []
+        bindings_lent = True
+        # (caller param or enclosing name, element step) -> reached only
+        # across a handle.
+        params: dict[tuple[int, bool], bool] = {}
+        captured: dict[tuple[str, bool], bool] = {}
         fn = self.func
         idx = fn.current_param_name_to_idx
         for node in self.storage_climb(
                 start if isinstance(start, SitedKey)
-                else StorageKey.of_name(start), via_element=stepped):
+                else StorageKey.of_name(start), via_element=stepped,
+                members=True, handles=handles):
             if is_loop_site(node.site):
                 if not any(b is node.site for b in bindings):
                     bindings.append(node.site)
-                continue
-            if not (node.via_element and (bindings or stepped)):
+                bindings_lent = bindings_lent and node.handle
                 continue
             root = node.key.as_name()
+            if root is None:
+                continue
+            elem = stepped or node.loop_elem
             if root == "self" and self.self_names_receiver():
                 if fn.in_nested_def:
-                    if root not in captured:
-                        captured.append(root)
+                    captured[(root, elem)] = (captured.get((root, elem), True)
+                                              and node.handle)
                     continue
                 i = self.self_receiver_index()
             elif self.is_param_node(node):
                 i = idx.get(root)
             else:
                 if (fn.in_nested_def and node.site is None
-                        and root is not None and root != "self"
+                        and root != "self"
                         and root in fn.outer_scope_locals
-                        and root not in fn.current_param_names
-                        and root not in captured):
-                    captured.append(root)
+                        and root not in fn.current_param_names):
+                    captured[(root, elem)] = (captured.get((root, elem), True)
+                                              and node.handle)
                 continue
-            if i is not None and i not in params:
-                params.append(i)
-        return bindings, params, captured
+            if i is not None:
+                params[(i, elem)] = params.get((i, elem), True) and node.handle
+        return WriteReach(
+            tuple(bindings),
+            tuple((i, elem, lent) for (i, elem), lent in params.items()),
+            tuple((name, elem, lent)
+                  for (name, elem), lent in captured.items()),
+            bool(bindings) and bindings_lent)
 
     def defer_nested_writes(self, callee: FunctionInfo, slot: int,
-                            names: 'Iterable[str]') -> None:
+                            names: 'Iterable[tuple[str, bool, bool]]', *,
+                            lent: bool = False) -> None:
         """Inside a nested def: the enclosing function's storage `names`
-        (`write_reach`'s captures) is written through an element step if
-        `callee` writes through its slot `slot` -- replayed onto the
-        enclosing function as a call edge (`_analyze_nested_def`)."""
-        for name in names:
+        (`write_reach`'s captures, each with whether it was reached through
+        an element step and only across a handle; `lent`: the argument is a
+        handle over all of them) is written if `callee` writes through its
+        slot `slot` -- replayed onto the enclosing function as a call edge
+        (`_analyze_nested_def`)."""
+        for name, elem, crossed in names:
             self.func.nested_mutation_marks.append(NestedMutationMark(
                 StorageKey.of_name(name), through_field=False,
-                structural=False, via_element=True,
+                structural=False, via_element=elem,
                 receiver=name == "self" and self.self_names_receiver(),
-                callee=callee.root, slot=slot))
+                callee=callee.root, slot=slot, lent=lent or crossed))
 
     def name_read(self, name: str) -> 'NameRead':
         """What a read of `name` here resolves to, in the order
@@ -4831,49 +4911,28 @@ class SemanticContext:
         name is marked at once. One answer for the call-edge recorder and
         the receiver credit, so a deferred receiver always has its edge.
 
-        A receiver field path (`p.m()`, `q.f.m()`) that climbs through a
-        loop binding is deferred like an argument: the edge names the
-        bindings it climbs through and the params it reaches through them,
-        element-stepped (`write_reach`); in a nested def the enclosing
-        function's names it reaches go with it (`captured`)."""
+        What a name reaches is `write_reach`'s answer -- the parameters
+        and the receiver past its member paths, borrows and loop bindings
+        (element-stepped through a loop binding), and in a nested def the
+        enclosing function's names. A handle receiver runs the call on its
+        referent, never on the storage the handle was read out of, so it is
+        marked at once; so is a receiver reaching only a nested def's own
+        parameters, whose edges the enclosing function never sees."""
         fn = self.func
         roots = storage_roots(recv, Use.POINTEE, self.get_expr_type,
                               MayLend(self))
-        # A nested def's marks are replayed onto its enclosing function
-        # (`nested_mutation_marks`), which an edge on the nested body would
-        # bypass.
-        params = (() if fn.in_nested_def
-                  else [p for p in fn.current_param_name_to_idx
-                        if p != "self" and p not in fn.current_rebound_params])
-        out: list[ReceiverCredit] = []
-        # The receiver's own field path (fields, walruses, coercions off a
-        # name): a subscript, a getter or a call leaves the mark eager.
-        t = trace(recv)
-        path_root = (t.end.name if isinstance(t.end, TpyName) and all(
-            s.kind in (StepKind.FIELD, StepKind.WALRUS, StepKind.COERCE)
-            for s in t.steps) else None)
         handle = is_indirection_type(self.get_expr_type(recv))
+        out: list[ReceiverCredit] = []
         for name in roots.writes().names:
-            if name == path_root and not handle:
-                bindings, elem_idxs, captured = self.write_reach(name)
-                if bindings:
-                    out.append(ReceiverCredit(
-                        name, tuple(elem_idxs), tuple(bindings),
-                        frozenset(elem_idxs), tuple(captured)))
-                    continue
-            deferred = _deferred_receiver_root(
-                recv, name, name == path_root, params, self.loop_var_sources,
-                fn.borrow_tracker, self.get_expr_type)
-            if deferred is None:
+            reach = WriteReach() if handle else self.write_reach(name)
+            if fn.in_nested_def and reach.params:
                 out.append(ReceiverCredit(name))
                 continue
-            idx = (self.self_receiver_index() if deferred == "self"
-                   else fn.current_param_name_to_idx[deferred])
-            out.append(ReceiverCredit(name, (idx,) if idx is not None
-                                      else ()))
+            out.append(ReceiverCredit(name, reach.params, reach.bindings,
+                                      reach.captured))
         return out
 
-    def mark_param_mutated(self, key: StorageKey, *,
+    def mark_param_mutated(self, key: StorageKey | SitedKey, *,
                            through_field: bool = False,
                            via_element: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
@@ -4886,12 +4945,12 @@ class SemanticContext:
         and through element/field/ptr borrows to their source storage (when
         v = items[i] and v.field is written, the write reaches items).
 
-        ``through_field``: the mutation is a genuine through-reference write
-        (field/subscript/slice assignment, del) rather than the speculative
-        non-readonly-method-call mark. Only then do we climb a field-path
-        borrow root (`o.items` -> `o`) to the owning param: a method call whose
-        callee turns out readonly must NOT demote the receiver, so the
-        method-call mark stops at the field-path key as it always has.
+        ``through_field``: the mark is of a kind that crosses member paths
+        at all -- a write (field/subscript/slice assignment, del), a mutating
+        call or method -- so a field-path borrow root (`o.items` -> `o`)
+        climbs to the owning param when the loan says a write through it
+        writes the root (`LoanInfo.holds_root`). A rebind mark does not:
+        re-pointing an alias writes nothing.
 
         ``via_element``: the mark reached this name by climbing from something
         it LENDS (a loop variable over it, a borrow off it), so the mutation
@@ -4919,7 +4978,8 @@ class SemanticContext:
                 if node.via_element:
                     fn.current_elem_mutated_param_names.add(name)
 
-    def mark_param_structurally_mutated(self, key: StorageKey) -> None:
+    def mark_param_structurally_mutated(self, key: StorageKey | SitedKey
+                                        ) -> None:
         """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).
 
         Structural mutations invalidate element references -- this is separate from
@@ -4944,7 +5004,7 @@ class SemanticContext:
             elif self.is_param_node(node):
                 fn.current_struct_mutated_param_names.add(name)
 
-    def mark_param_returned(self, key: StorageKey, *,
+    def mark_param_returned(self, key: StorageKey | SitedKey, *,
                             storage: bool = False) -> None:
         """Mark a parameter as contributing to the return value (8b).
 
@@ -4964,41 +5024,13 @@ class SemanticContext:
         marked = (self.func.current_storage_returned_param_names if storage
                   else self.func.current_returned_param_names)
         for node in self.storage_climb(key, proven_only=True, members=True,
-                                       self_is_root=True, fallback=False):
+                                       self_is_root=True, fallback=False,
+                                       writes=False):
             name = node.key.as_name()
             if name == "self":
                 marked.add("self")
             elif self.is_param_node(node):
                 marked.add(name)
-
-    def _key_member_is_indirection(self, key: StorageKey) -> bool:
-        """Some member along the storage key `root.a.b` points AT storage (a
-        `Ptr`, a borrowing view) rather than holding it, so whatever is
-        reached past it is the referent's, not `root`'s: a borrow of it
-        outlives `root`, and a write through it leaves `root` unchanged.
-
-        Asked of the CURRENT scope's binding of `root`: the key names a
-        binding by its name only, so the fact cannot travel with it.
-        Assumes the pointer aims OUTSIDE its own record; one aimed at a
-        sibling field (`self.p = take_ptr(self.m)`) does lend `root`, and
-        nothing here can tell."""
-        if not key.members:
-            return False
-        cur = (self.func.current_scope.lookup(key.root)
-               if self.func.current_scope else None)
-        for member in key.members:
-            if cur is None:
-                return False
-            bare = unwrap_ref_type(unwrap_qualifiers(cur))
-            record = (self.registry.get_record_for_type(bare)
-                      if isinstance(bare, NominalType) else None)
-            if record is None:
-                return False
-            cur = next((info.type for info in self.registry.get_all_fields(record)
-                        if info.name == member), None)
-            if is_indirection_type(cur):
-                return True
-        return False
 
     def escape_marks(self, value: TpyExpr, slot: TpyType, *,
                      position: 'EscapePosition') -> None:

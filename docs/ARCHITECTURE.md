@@ -544,6 +544,17 @@ depend on whether the writer was analyzed before the loop. A nested def's
 write deferred to a callee replays onto the enclosing function as an edge
 (`NestedMutationMark.callee`).
 
+A write through an alias of a member path (`q = p.cell; bump(q)`) reaches
+the owner only when a write through that member writes the owner's own
+storage: not past a handle field (`Ptr`, a view), a fresh or readonly
+getter. That fact (`call_lends.member_holds_root`, from declarations
+alone, so analysis order cannot change it) is decided where the loan is
+taken, from the root's narrowed type there, and carried per loan and per
+loop source as `LoanInfo.holds_root` (joined by OR across loans that may
+be live, composed by AND along a chain). Its one reader is
+`storage_climb`'s member arm on a write climb; a borrow or returned
+reference climb ignores it and crosses every member but a handle field.
+
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its
 inherently-const-view exception. Const-method parameter emission reads the

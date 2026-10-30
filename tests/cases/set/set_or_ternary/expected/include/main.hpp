@@ -20,7 +20,7 @@ void test_or(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
 // def test_and(a: set[int32], b: set[int32]) -> None:
 void test_and(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
 // def test_ternary(a: set[int32], b: set[int32], cond: bool) -> None:
-void test_ternary(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b, bool cond);
+void test_ternary(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b, bool cond);
 // def test_literal_or() -> None:
 void test_literal_or();
 // def test_literal_ternary(cond: bool) -> None:

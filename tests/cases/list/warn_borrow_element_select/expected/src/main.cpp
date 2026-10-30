@@ -53,8 +53,8 @@ void optional_arm(std::vector<Rec>& rs, bool c) {
 //     picked = xs if c else ys
 //     xs.append(Rec(3))              # tpyc: ok
 //     print(len(picked))
-void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
-    std::vector<Rec>& picked = ((c) ? (xs) : (ys));
+void alias_arms(std::vector<Rec>& xs, const std::vector<Rec>& ys, bool c) {
+    const std::vector<Rec>& picked = ((c) ? (xs) : (ys));
     xs.push_back(Rec(3));
     std::cout << ::tpy::__len__(picked) << "\n" << ::tpy::check_signals;
 }

@@ -18,9 +18,9 @@ struct Counter;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def read_rc(c: Rc[Counter]) -> int32:
-int32_t read_rc(::tpystd::tplib::rc::Rc<Counter>& c);
+int32_t read_rc(const ::tpystd::tplib::rc::Rc<Counter>& c);
 // def read_box(c: Box[Counter]) -> int32:
-int32_t read_box(::tpystd::tplib::box::Box<Counter>& c);
+int32_t read_box(const ::tpystd::tplib::box::Box<Counter>& c);
 // def main() -> None:
 void main();
 

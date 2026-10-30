@@ -1,0 +1,97 @@
+main::__tpy_init: uncovered (module initialization)
+main::bump@212:0: covered (storage: no_proof_required), summary: known
+main::take@216:0: covered (storage: no_proof_required), summary: known
+main::accept@221:0: uncovered (generic body)
+main::fn_writer@226:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::fn_method@232:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::fn_list@238:0: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
+main::fn_optional@244:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::fn_narrowed_optional@252:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::fn_narrowed_union@259:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::fn_two_hop@266:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::fn_open_generic@274:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::fn_open_generic_loop@280:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::fn_loop@286:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::fn_member_loop@293:0: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
+main::fn_member_loop_narrowed@299:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::inv_ptr_member_loop@308:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::fn_comprehension@315:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::fn_walrus@320:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::fn_rc@325:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::fn_select@331:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::fn_select_arm@339:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::fn_match_deep@345:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_tuple@352:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::fn_box@358:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::fn_closure@366:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_closure_loop_alias@376:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_closure_nonlocal@387:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_closure_zip@397:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_closure_field_loop@407:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@418:0: uncovered (unsupported hoisted value)
+main::work@425:0: uncovered (async body)
+main::fn_with@443:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_try@450:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_match_arm@459:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::fn_error_return@470:0: uncovered (error-return body)
+main::fn_borrowing_getter@478:0: certified, summary: known
+main::grow@492:0: covered (storage: no_proof_required), summary: known
+main::ext@496:0: covered (storage: no_proof_required), summary: known
+main::fn_iter_warn@501:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::inv_fresh_getter@508:0: covered (storage: no_proof_required), summary: known
+main::inv_ptr_member@516:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::inv_ptr_narrowed@522:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::inv_ptr_union@529:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::ro_alias@537:0: certified, summary: known
+main::ro_loop@543:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::ro_two_line@550:0: certified, summary: known
+main::via_ptr@558:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::ro_warnings@564:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::fn_readonly_method@581:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::fn_gen_method@589:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::consume@597:0: uncovered (unsupported parameter type)
+main::fn_gen_handed@607:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::inv_ptr_getter@614:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::inv_read_only@620:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::inv_rebound@626:0: certified, summary: opaque (summary record: record member holds a borrow)
+main::inv_rebound_getter@636:0: certified, summary: known
+main::main@644:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Cell.inc@22:4: covered (storage: no_proof_required), summary: known
+main::Cell.ro@25:4: covered (storage: no_proof_required), summary: known
+main::Mid.pick@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Mid.ticks@39:4: covered (storage: no_facts: storage facts have not been published)
+main::P.self_writer@67:4: certified, summary: opaque (summary record: record member holds a borrow)
+main::P.self_two_hop@72:4: certified, summary: opaque (summary record: record member holds a borrow)
+main::P.self_box@78:4: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
+main::P.self_list@83:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
+main::P.self_narrowed@88:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::P.self_index_ro@95:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::P.self_index_mut@100:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::G.view_above@129:4: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::G.c@134:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::G.c@134:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::G.snap@138:4: covered (storage: no_proof_required), summary: known
+main::G.view@142:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::G.view_below@146:4: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::H.pp@158:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::H.self_ptr@162:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::W.add@180:4: covered (storage: no_proof_required), summary: known
+main::Inner.c@193:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Inner.c@193:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Inner.cl@197:4: covered (storage: no_proof_required), summary: known
+main::Inner.cl@197:4#2: covered (storage: no_proof_required), summary: known
+main::Guard.__enter__@436:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Guard.__exit__@439:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Cell.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Mid.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@55:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Ctor.__init__@109:4: certified, summary: known
+main::Q.__init__@118:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@125:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@154:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::HP.__init__@170:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::W.__init__@177:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@188:4: covered (storage: no_proof_required), summary: known
+main::Outer.__init__@204:4: covered (storage: no_proof_required), summary: known
+main::Guard.__init__@433:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@488:4: covered (storage: no_proof_required), summary: known

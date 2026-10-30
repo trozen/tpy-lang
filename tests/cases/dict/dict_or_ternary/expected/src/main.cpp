@@ -29,8 +29,8 @@ void test_and(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<st
 // def test_ternary(a: dict[str, int32], b: dict[str, int32], cond: bool) -> None:
 //     x = a if cond else b  # tpyc: type(dict[str, int32])
 //     print(x)
-void test_ternary(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond) {
-    ::tpy::ordered_map<std::string, int32_t>& x = ((cond) ? (a) : (b));
+void test_ternary(const ::tpy::ordered_map<std::string, int32_t>& a, const ::tpy::ordered_map<std::string, int32_t>& b, bool cond) {
+    const ::tpy::ordered_map<std::string, int32_t>& x = ((cond) ? (a) : (b));
     std::cout << ::tpy::DictPrinter(x) << "\n" << ::tpy::check_signals;
 }
 

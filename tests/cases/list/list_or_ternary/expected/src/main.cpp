@@ -23,8 +23,8 @@ void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 // def test_ternary(a: list[int32], b: list[int32], cond: bool) -> None:
 //     x = a if cond else b  # tpyc: type(list[int32])
 //     print(x)
-void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
-    std::vector<int32_t>& x = ((cond) ? (a) : (b));
+void test_ternary(const std::vector<int32_t>& a, const std::vector<int32_t>& b, bool cond) {
+    const std::vector<int32_t>& x = ((cond) ? (a) : (b));
     std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 

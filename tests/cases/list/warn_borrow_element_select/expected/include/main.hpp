@@ -19,7 +19,7 @@ void two_containers(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c);
 // def optional_arm(rs: list[Rec], c: bool) -> None:
 void optional_arm(std::vector<Rec>& rs, bool c);
 // def alias_arms(xs: list[Rec], ys: list[Rec], c: bool) -> None:
-void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c);
+void alias_arms(std::vector<Rec>& xs, const std::vector<Rec>& ys, bool c);
 // def value_elements(ns: list[int32], c: bool) -> None:
 void value_elements(std::vector<int32_t>& ns, bool c);
 // def first(rs: list[Rec]) -> Rec:

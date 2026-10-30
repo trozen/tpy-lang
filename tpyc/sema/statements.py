@@ -90,6 +90,7 @@ from .calls import class_callee
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
+    path_holds_root,
 )
 from .context import (
     CallOperands, OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
@@ -161,6 +162,7 @@ from .context import (
     CLASS_CONSTANT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
     element_loan_mutation_warning, storage_loan_mutation_warning,
     register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf,
+    SitedKey,
 )
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
@@ -442,9 +444,18 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
                     fi, src.idx, src.expr, src.slot, ctx):
                 warn_once(loan, _temp_arg_warning(fi, src.idx))
             continue
+        # Whether a write through the result writes the loan's storage:
+        # not through a receiver the call grants no write through (the
+        # policy's `grants_write`: a readonly getter, a readonly method),
+        # else from the lent operand as spelled for a member key.
+        holds = (False if src.idx == -1 and not src.grants_write
+                 else path_holds_root(ctx.registry, loan.operand,
+                                      ctx.get_expr_type)
+                 if key is not None and key.members else None)
         if loan.assumed:
             if key is not None and key.as_name() != borrower:
-                bt.add_borrow(key, borrower, BorrowKind.OPAQUE)
+                bt.add_borrow(key, borrower, BorrowKind.OPAQUE,
+                              holds_root=holds)
             continue
         if key is None:
             if fi is None or not (loan.fresh and is_dangling_temporary_arg(
@@ -474,7 +485,7 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
         # it points at, which is what the ITER kind tells the mutation climb.
         bt.add_borrow(key, borrower, BorrowKind.FIELD if loan.declared_only
                       else BorrowKind.ITER if iterator_source_callee(fi)
-                      else BorrowKind.ELEMENT)
+                      else BorrowKind.ELEMENT, holds_root=holds)
     for leaf in receiver_leaves(expr):
         for key, info in frame_capture_loans(peel_value_wrappers(leaf)):
             bt.add_borrow(key, borrower, info.kind, on_element=info.on_element,
@@ -1375,8 +1386,9 @@ class StatementAnalyzer:
             # borrows, whatever slot the return fills.
             ret_call = peel_coerce(stmt.value)
             for src in frame_operand_keys(ret_call):
-                self.ctx.mark_param_returned(src)
-                self.ctx.mark_param_returned(src, storage=True)
+                sited = self.ctx.sited_here(src)
+                self.ctx.mark_param_returned(sited)
+                self.ctx.mark_param_returned(sited, storage=True)
             # Check for a borrowed source returned as Own[T] without an
             # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
             # is the same owning slot with a const view on top, so the
@@ -4760,19 +4772,24 @@ class StatementAnalyzer:
         through its slot, as a call edge on this function: on its receiver,
         or on whatever the captured name reaches here -- the loop bindings
         it climbs through and the params past them (`write_reach`, the climb
-        this body's own calls take), element-stepped where the nested def
-        reached the capture through a loop binding."""
+        this body's own calls take: a member path or a borrow as it is, a
+        loop binding element-stepped), everything element-stepped where the
+        nested def reached the capture through a loop binding."""
         assert mark.callee is not None
         callee = mark.callee.root
         if mark.receiver:
             idx = self.ctx.self_receiver_index()
-            sites: list[object] = []
-            idxs = [idx] if idx is not None else []
+            sites: tuple[object, ...] = ()
+            targets = ([(idx, mark.via_element, False)] if idx is not None
+                       else [])
         else:
-            sites, idxs, _ = self.ctx.write_reach(
-                mark.key.as_name(), stepped=mark.via_element)
-        elem = frozenset(idxs) if mark.via_element else frozenset()
-        record_receiver_edges(self.ctx, callee, idxs, tuple(sites), elem,
+            reach = self.ctx.write_reach(
+                mark.key.as_name(), stepped=mark.via_element,
+                handles=mark.slot >= 0)
+            sites = reach.bindings
+            targets = [(i, elem, lent or mark.lent)
+                       for i, elem, lent in reach.params]
+        record_receiver_edges(self.ctx, callee, targets, sites,
                               slot=mark.slot)
 
     def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
@@ -7492,9 +7509,11 @@ class StatementAnalyzer:
                 # directly, so a write through it climbs to `xs` alone.
                 src_loop = self.ctx.loop_sources_of(src_root)
                 elem_srcs = src_loop.elems if src_loop is not None else None
-                lenders = ([s.key for s in elem_srcs[i]]
-                           if elem_srcs is not None and i < len(elem_srcs)
-                           else [StorageKey.of_name(src_root)])
+                lender_sites = (list(elem_srcs[i])
+                                if elem_srcs is not None and i < len(elem_srcs)
+                                else [SitedKey(StorageKey.of_name(src_root),
+                                               self.ctx.binding_site(src_root))])
+                lenders = [s.key for s in lender_sites]
                 through_pointer = (literal_src is None and elem_srcs is None
                                    and isinstance(stmt.value, TpyName)
                                    and self._owned_element_is_pointer(
@@ -7512,7 +7531,7 @@ class StatementAnalyzer:
                 # stay mutable -- the reassigned scalar alias's rule. The
                 # reassign drops the loan, so a write after it cannot climb.
                 if stmt.is_rebound[i]:
-                    mark_roots(self.ctx, lenders,
+                    mark_roots(self.ctx, lender_sites,
                                MarkRequest(loop_vars=True))
 
         # Mirror the scalar Own[T] consume model -- at the last use mark the

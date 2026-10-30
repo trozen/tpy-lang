@@ -33,7 +33,6 @@ from ..typesys import (
     receiver_lends_handle,
 )
 from .context import (
-    _local_traces_to_self,
     call_param_args, element_index_key, element_loan_mutation_warning,
     storage_loan_mutation_warning,
 )
@@ -270,29 +269,31 @@ def check_receiver_call_loans(ctx: SemanticContext, recv: TpyExpr,
 
 
 def record_receiver_edges(ctx: SemanticContext, callee: FunctionInfo,
-                          idxs: list[int], bindings: 'tuple[object, ...]',
-                          elem: 'frozenset[int]',
-                          captured: 'tuple[str, ...]' = (), *,
+                          targets: 'list[tuple[int, bool, bool]]',
+                          bindings: 'tuple[object, ...]',
+                          captured: 'tuple[tuple[str, bool, bool], ...]' = (), *,
                           param_edge: MutationCallEdge | None = None,
                           slot: int = -1) -> None:
     """File the Phase-2 edges of a deferred write through `callee`'s slot
-    `slot` (-1: its receiver): one per caller param in `idxs`
-    (element-stepped when in `elem`), the loop bindings the argument climbs
-    through on the first -- or on `param_edge`, the call's argument edge,
-    which then also carries the first param. In a nested def, the
-    enclosing function's `captured` names get theirs at the replay
-    (`defer_nested_writes`)."""
+    `slot` (-1: its receiver): one per caller param in `targets`
+    (`WriteReach.params`: element-stepped or lent as each says), the loop
+    bindings the argument climbs through on the first -- or on
+    `param_edge`, the call's argument edge, which then also carries the
+    first param. In a nested def, the enclosing function's `captured` names
+    get theirs at the replay (`defer_nested_writes`)."""
     fn = ctx.func
     ctx.defer_nested_writes(callee, slot, captured)
     edges: list[MutationCallEdge] = []
-    for i, idx in enumerate(idxs):
+    for i, (idx, elem, lent) in enumerate(targets):
         edge = (param_edge if i == 0 and param_edge is not None
                 else MutationCallEdge(callee_fi=callee.root, param_map={}))
         if slot == -1:
             edge.receiver_idx = idx
         else:
             edge.param_map = {**edge.param_map, slot: idx}
-        if idx in elem:
+            if lent:
+                edge.lent = edge.lent | {slot}
+        if elem:
             edge.elem_step = edge.elem_step | {slot}
         edges.append(edge)
     if bindings:
@@ -351,25 +352,20 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
         name = credit.name
         deferred = defers and credit.deferred
         if deferred:
-            for idx in credit.idxs:
+            for idx, _elem, _lent in credit.targets:
                 pname = names_by_idx.get(idx)
                 if pname is not None and pname != "self":
                     fn.current_receiver_deferred_param_names.add(pname)
             if not edges_recorded:
                 assert callee is not None
-                record_receiver_edges(ctx, callee, list(credit.idxs),
-                                      credit.bindings, credit.elem,
-                                      credit.captured)
-        # A loop binding's receiver edge decides the binding too.
+                record_receiver_edges(ctx, callee, list(credit.targets),
+                                      credit.bindings, credit.captured)
+        # A loop binding's receiver edge decides the binding too. A mutating
+        # method crosses the member paths its receiver borrows.
         mark_roots(ctx, [StorageKey.of_name(name)], MarkRequest(
             params=not deferred,
             loop_vars=not (deferred and credit.bindings),
-            structural=structural))
-        if (not deferred and name != "self"
-                and _local_traces_to_self(fn.borrow_tracker, name)):
-            # A local alias of self-owned storage: its own mark stops at the
-            # member key it borrows, which names no parameter.
-            mark_roots(ctx, [StorageKey.of_name("self")], MarkRequest())
+            through_field=True, structural=structural))
         ctx.mark_all_view_borrowers_mutated(
             fn.borrow_tracker.effective_storage(name))
 

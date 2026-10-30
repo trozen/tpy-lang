@@ -350,9 +350,9 @@ int32_t deferred(std::string_view name, bool flag) {
 // def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(certified)
 //     saved = owner if flag else Tok(a, 2)
 //     return saved.n
-int32_t selected(Tok& owner, std::string_view a, bool flag) {
+int32_t selected(const Tok& owner, std::string_view a, bool flag) {
     std::optional<Tok> __select_slot_1;
-    Tok& saved = ((flag) ? (owner) : (__select_slot_1.emplace(Tok(a, 2))));
+    const Tok& saved = ((flag) ? (owner) : (__select_slot_1.emplace(Tok(a, 2))));
     return saved.n;
 }
 

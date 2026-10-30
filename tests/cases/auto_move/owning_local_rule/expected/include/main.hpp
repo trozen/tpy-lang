@@ -87,7 +87,7 @@ Box unpacked(const std::tuple<Box*, int32_t>& p, bool c);
 // def for_head(ps: list[tuple[Box, int32]]) -> Own[Box]:
 Box for_head(const std::vector<std::tuple<Box, int32_t>>& ps);
 // def ternary(w: Box, c: bool) -> Own[Box]:
-Box ternary(Box& w, bool c);
+Box ternary(const Box& w, bool c);
 // def opt_own(o: Own[Cell] | None) -> int32:
 int32_t opt_own(std::optional<Cell> o);
 // def tup_own(p: tuple[Own[Cell], int32]) -> int32:

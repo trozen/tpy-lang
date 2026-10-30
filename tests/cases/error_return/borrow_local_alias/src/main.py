@@ -41,7 +41,8 @@ def main() -> None:
         print("error")
 
     try:
-        print(propagate(h))
+        # BUGS.md#field-growth-resizes-owner: `v` above borrows `h.items` whole.
+        print(propagate(h))  # tpyc: warning(/Passing borrowed container 'h'/)
     except E:
         print("error")
 

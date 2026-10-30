@@ -13,7 +13,7 @@ __gen_voices voices(::tpy::Union<const Cat*, const Dog*> a) {
 
 
 // def capture(a: Dog | Cat) -> Iterator[str]:
-__gen_capture capture(::tpy::Union<Cat*, Dog*> a) {
+__gen_capture capture(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_capture(a);
 }
 
@@ -200,7 +200,7 @@ void main() {
     }
     {
         Dog __tmp_3 = Dog();
-        auto __src_4 = ::tpyapp::main::capture(::tpy::Union<Cat*, Dog*>{&__tmp_3});
+        auto __src_4 = ::tpyapp::main::capture(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

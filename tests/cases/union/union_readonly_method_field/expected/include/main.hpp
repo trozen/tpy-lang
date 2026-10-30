@@ -79,7 +79,7 @@ struct Zoo {
     std::string get_pet_name() const;
 
     // def get_pet_name_auto(self) -> str:
-    std::string get_pet_name_auto();
+    std::string get_pet_name_auto() const;
 
     // def rename_pet(self, new_name: str) -> None:
     void rename_pet(std::string_view new_name);
@@ -137,14 +137,14 @@ inline std::string Zoo::get_pet_name() const {
 //     elif isinstance(p, Cat):
 //         return p.name
 //     return ""
-inline std::string Zoo::get_pet_name_auto() {
-    ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
-    if (std::holds_alternative<Dog*>(p)) {
-        auto& __p = *std::get<Dog*>(p);
+inline std::string Zoo::get_pet_name_auto() const {
+    ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(this->inner.pet);
+    if (std::holds_alternative<const Dog*>(p)) {
+        auto& __p = *std::get<const Dog*>(p);
         return __p.name;
     } else {
         if (true) {
-            auto& __p = *std::get<Cat*>(p);
+            auto& __p = *std::get<const Cat*>(p);
             return __p.name;
         }
     }

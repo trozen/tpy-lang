@@ -71,7 +71,7 @@ int32_t paired(Tok& t);
 // def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
 int32_t deferred(std::string_view name, bool flag);
 // def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(certified)
-int32_t selected(Tok& owner, std::string_view a, bool flag);
+int32_t selected(const Tok& owner, std::string_view a, bool flag);
 // def branch(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 void branch(int32_t k, bool flag);
 // def refill_two(k: int32, flag: bool) -> int32:  # tpyc: mir(covered)

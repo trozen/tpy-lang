@@ -29,8 +29,8 @@ void test_and(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
 // def test_ternary(a: set[int32], b: set[int32], cond: bool) -> None:
 //     x = a if cond else b  # tpyc: type(set[int32])
 //     print(x)
-void test_ternary(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b, bool cond) {
-    ::tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
+void test_ternary(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b, bool cond) {
+    const ::tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
     std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 

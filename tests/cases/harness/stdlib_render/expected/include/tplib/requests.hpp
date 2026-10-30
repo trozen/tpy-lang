@@ -111,7 +111,7 @@ std::string _rebuild_method(std::string_view method, int32_t status);
 //                 auth: tuple[str, str] | None,
 //                 send_cookies: CookieJar,
 //                 stream: bool = False, follow: bool = False) -> Own[Response]:
-Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, CookieJar& send_cookies, bool stream = false, bool follow = false);
+Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, const CookieJar& send_cookies, bool stream = false, bool follow = false);
 // def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
 ::tpystd::ssl::SSLContext _ssl_context_for(const ::tpy::Union<bool, std::string>& verify);
 // def _connect(url: str, timeout: float | None = None,
@@ -388,14 +388,14 @@ struct CookieJar {
     __gen_CookieJar___iter__ __iter__() const;
 
     // def update(self, other: CookieJar) -> None:
-    void update(CookieJar& other);
+    void update(const CookieJar& other);
 
     // def clear(self) -> None:
     void clear();
 
     // def header_for(self, host: str, path: str, is_https: bool,
     //                now: float) -> str:
-    std::string header_for(std::string_view host, std::string_view path, bool is_https, double now);
+    std::string header_for(std::string_view host, std::string_view path, bool is_https, double now) const;
 
     // def _ingest(self, raw: str, req_host: str, req_path: str,
     //             now: float) -> None:
@@ -529,7 +529,7 @@ struct Session {
     //                   verify: bool | str = True,
     //                   stream: bool = False,
     //                   follow: bool = False) -> Own[Response]:
-    Response _send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify = true, bool stream = false, bool follow = false);
+    Response _send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, const CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify = true, bool stream = false, bool follow = false);
 
     // def _hop(self, method: str, url: str, params: dict[str, str] | None,
     //          data: bytes | dict[str, str] | None,
@@ -1176,7 +1176,7 @@ inline std::vector<std::tuple<std::string, std::string>> CookieJar::items() cons
 //                 del self._store[name]
 //         else:
 //             self._store[name] = other._store[name].copy()
-inline void CookieJar::update(CookieJar& other) {
+inline void CookieJar::update(const CookieJar& other) {
     auto& __obj_0 = other._store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -1209,7 +1209,7 @@ inline void CookieJar::clear() {
 //         if self._store[name].matches(host, path, is_https, now):
 //             parts.append(self._store[name].pair())
 //     return "; ".join(parts)
-inline std::string CookieJar::header_for(std::string_view host, std::string_view path, bool is_https, double now) {
+inline std::string CookieJar::header_for(std::string_view host, std::string_view path, bool is_https, double now) const {
     std::vector<std::string> parts = std::vector<std::string>{};
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();

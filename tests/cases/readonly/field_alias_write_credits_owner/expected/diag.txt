@@ -1,0 +1,5 @@
+main.py:504: warning: this call may move the elements of 'k.kid', but the iteration over 'k.kid' still walks them and continues on line 502; iterate over a copy ('copy(k.kid)'), or make the changes after the loop
+main.py:565: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:566: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:567: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:575: warning: Mutation of 'o' while borrowed (field assignment may invalidate references)

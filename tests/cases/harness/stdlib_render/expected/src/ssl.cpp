@@ -293,7 +293,7 @@ bool SSLSocket::do_handshake() {
 //         if rc < int32(0):
 //             _raise_io_error(rc)
 //         sent = sent + uint64(rc)
-void SSLSocket::sendall(::tpy::BytesView data) {
+void SSLSocket::sendall(::tpy::BytesView data) const {
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
     uint64_t sent = 0;
     const uint8_t* data_ptr = data.data();

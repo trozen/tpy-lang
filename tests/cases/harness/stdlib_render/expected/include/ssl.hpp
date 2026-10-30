@@ -175,22 +175,22 @@ struct SSLSocket {
     void do_handshake_blocking();
 
     // def recv(self, bufsize: int32) -> bytes:
-    ::tpy::Bytes recv(int32_t bufsize);
+    ::tpy::Bytes recv(int32_t bufsize) const;
 
     // def send(self, data: bytes) -> int32:
-    int32_t send(::tpy::BytesView data);
+    int32_t send(::tpy::BytesView data) const;
 
     // def sendall(self, data: bytes) -> None:
-    void sendall(::tpy::BytesView data);
+    void sendall(::tpy::BytesView data) const;
 
     // def makefile(self) -> Own[BufferedReader]:
     ::tpystd::io::BufferedReader makefile();
 
     // def version(self) -> str:
-    std::string version();
+    std::string version() const;
 
     // def fileno(self) -> int32:
-    int32_t fileno();
+    int32_t fileno() const;
 
     // def setblocking(self, flag: bool) -> None:
     void setblocking(bool flag);
@@ -220,7 +220,7 @@ struct SSLRawIO {
     SSLRawIO& operator=(SSLRawIO&&) = default;
 
     // def read(self, size: int32 = -1) -> bytes:
-    ::tpy::Bytes read(int32_t size = -1);
+    ::tpy::Bytes read(int32_t size = -1) const;
 
     // def close(self) -> None:
     void close() const;
@@ -443,7 +443,7 @@ inline void SSLSocket::do_handshake_blocking() {
 //     """Receive up to `bufsize` decrypted bytes; b"" means the peer sent
 //     a clean close_notify."""
 //     return self._session.get().read_into(bufsize)
-inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
+inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) const {
     return this->_session.get().read_into(bufsize);
 }
 
@@ -454,7 +454,7 @@ inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
 //     if rc < int32(0):
 //         _raise_io_error(rc)
 //     return rc
-inline int32_t SSLSocket::send(::tpy::BytesView data) {
+inline int32_t SSLSocket::send(::tpy::BytesView data) const {
     int32_t rc = ::tpy_tls_write(this->_session.get().raw(), data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));
     if ((rc < 0)) {
         ::tpystd::ssl::_raise_io_error(rc);
@@ -475,13 +475,13 @@ inline ::tpystd::io::BufferedReader SSLSocket::makefile() {
 //     """The negotiated protocol, e.g. "TLSv1.3"."""
 //     return unsafe_str_from_cstr(unsafe_cast(
 //         mbedtls.tls_version(self._session.get().raw())))
-inline std::string SSLSocket::version() {
+inline std::string SSLSocket::version() const {
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(::tpy_tls_version(this->_session.get().raw()))));
 }
 
 // def fileno(self) -> int32:
 //     return self._session.get().fileno()
-inline int32_t SSLSocket::fileno() {
+inline int32_t SSLSocket::fileno() const {
     return this->_session.get().fileno();
 }
 
@@ -515,7 +515,7 @@ inline SSLRawIO::SSLRawIO(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _ses
 // def read(self, size: int32 = -1) -> bytes:
 //     n = size if size > int32(0) else 8192
 //     return self._session.get().read_into(n)
-inline ::tpy::Bytes SSLRawIO::read(int32_t size) {
+inline ::tpy::Bytes SSLRawIO::read(int32_t size) const {
     int32_t n = (((size > 0)) ? (size) : (8192));
     return this->_session.get().read_into(n);
 }

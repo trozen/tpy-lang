@@ -14,7 +14,7 @@ void test_or(std::vector<int32_t>& a, std::vector<int32_t>& b);
 // def test_and(a: list[int32], b: list[int32]) -> None:
 void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b);
 // def test_ternary(a: list[int32], b: list[int32], cond: bool) -> None:
-void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond);
+void test_ternary(const std::vector<int32_t>& a, const std::vector<int32_t>& b, bool cond);
 // def test_literal_or() -> None:
 void test_literal_or();
 // def test_literal_ternary(cond: bool) -> None:

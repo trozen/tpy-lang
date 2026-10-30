@@ -65,7 +65,7 @@ from .call_lends import (
     proven_lend_roots,
 )
 from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
-                      PENDING_CONTAINER_TYPES, ProbeSlot, SitedKey)
+                      PENDING_CONTAINER_TYPES, ProbeSlot)
 from ..parse.nodes import DefaultReferent, name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
@@ -4253,31 +4253,23 @@ class CallAnalyzer:
         # the mutation site instead.
         if fi.is_auto_readonly_mutable_clone and not call_mutates_receiver(fi):
             return
-        name_to_idx = self.ctx.func.current_param_name_to_idx
-        rebound = self.ctx.func.current_rebound_params
-
         # Receivers whose mutation Phase 2 decides (`receiver_credits`):
-        # rooted at self (self.method(), self.field.method(), loop_var.method()
-        # over self.field, super().method() -- the synthetic super() proxy
-        # resolves to self) or at a caller parameter through fields.
-        # A loop binding receiver (`p.m()`) is deferred like an argument,
-        # with the bindings it climbs through.
-        receiver_idxs: list[int] = []
+        # whatever the receiver reaches past its member paths, borrows and
+        # loop bindings (`write_reach`) -- super().method() is the
+        # receiver's own call.
+        receiver_targets: list[tuple[int, bool, bool]] = []
         receiver_bindings: list[object] = []
-        receiver_elem: set[int] = set()
-        receiver_captured: list[str] = []
+        receiver_captured: list[tuple[str, bool, bool]] = []
         if isinstance(expr, TpyMethodCall):
             if expr.super_parent_type is not None:
                 idx = self.ctx.self_receiver_index()
                 if idx is not None:
-                    receiver_idxs.append(idx)
+                    receiver_targets.append((idx, False, False))
             # A select receiver is each operand it may pick.
             for leaf in receiver_leaves(expr.obj):
                 for credit in self.ctx.receiver_credits(leaf):
-                    for idx in credit.idxs:
-                        if idx not in receiver_idxs:
-                            receiver_idxs.append(idx)
-                    receiver_elem |= credit.elem
+                    receiver_targets += [t for t in credit.targets
+                                         if t not in receiver_targets]
                     receiver_captured += [c for c in credit.captured
                                           if c not in receiver_captured]
                     receiver_bindings += [
@@ -4287,54 +4279,65 @@ class CallAnalyzer:
         param_map: dict[int, int] = {}
         # param_map is single-valued per callee idx, but one callee slot can
         # reach several caller params: a vararg slot receives multiple args,
-        # and a RE-SEATED argument name borrows more than one root. Every
-        # caller param beyond the first spawns a standalone edge (collected
-        # here, emitted alongside the main edge), element-stepped or not.
-        extra_param_edges: list[tuple[int, int, bool]] = []
-        # Callee slots whose argument LENDS the caller's storage through a
-        # call, so only the callee's writes through the slot reach it.
-        lent: set[int] = set()
+        # a RE-SEATED argument name borrows more than one root, and one param
+        # can be reached both as itself and through a loop binding's element
+        # step. Every (caller param, element step) beyond the first spawns a
+        # standalone edge (collected here, emitted alongside the main edge),
+        # with whether every place reaching it is lent.
+        extra_param_edges: dict[tuple[int, int, bool], bool] = {}
+        # Per callee slot, whether its argument LENDS the caller's storage
+        # through a call or a handle, so only the callee's writes through the
+        # slot's elements reach it. The main edge carries the slot's first
+        # caller param and its loop bindings together, so it is lent only
+        # when every place reaching either is -- an AND over the roots, so
+        # the order they are seen in does not matter.
+        main_lent: dict[int, bool] = {}
         # Callee slots whose caller param is reached through a loop binding
         # (`fold_edge`'s element step), and the bindings each slot's
-        # argument climbs through (`write_reach`).
+        # argument climbs through.
         elem_step: set[int] = set()
         bindings: dict[int, list[object]] = {}
 
-        def param_of(root: SitedKey) -> int | None:
-            # A binding site of the name shadows the parameter: the one the
-            # loan reaching it recorded.
-            rname = root.key.as_name()
-            if (rname is None or rname not in name_to_idx
-                    or rname in rebound or root.site is not None):
-                return None
-            return name_to_idx[rname]
-
-        def add_reach(i: int, root: SitedKey) -> None:
-            sites, idxs, captured = self.ctx.write_reach(root)
-            if not sites:
-                return
-            self.ctx.defer_nested_writes(fi, i, captured)
-            slot = bindings.setdefault(i, [])
-            slot += [b for b in sites if not any(b is s for s in slot)]
-            for caller_idx in idxs:
-                if param_map.get(i) == caller_idx or any(
-                        e[0] == i and e[1] == caller_idx
-                        for e in extra_param_edges):
-                    continue
-                if i not in param_map:
+        def credit_arg(i: int, root: str, through_handle: bool) -> None:
+            """What a callee writing through slot `i` reaches from argument
+            root `root` (`write_reach`, across handles); `through_handle`:
+            the argument is a handle a call in argument position builds
+            over the root."""
+            reach = self.ctx.write_reach(root, handles=True)
+            self.ctx.defer_nested_writes(fi, i, reach.captured,
+                                         lent=through_handle)
+            if reach.bindings:
+                slot = bindings.setdefault(i, [])
+                slot += [b for b in reach.bindings
+                         if not any(b is s for s in slot)]
+                # Reached across a handle (`g = items(row); first(g)`): only
+                # what the callee writes through the slot's elements reaches
+                # the loop binding, as for a param.
+                main_lent[i] = main_lent.get(i, True) and (
+                    through_handle or reach.bindings_lent)
+            for caller_idx, elem, crossed in reach.params:
+                is_lent = through_handle or crossed
+                main = ((param_map[i], i in elem_step) if i in param_map
+                        else None)
+                if main is None:
                     param_map[i] = caller_idx
-                    elem_step.add(i)
+                    if elem:
+                        elem_step.add(i)
+                if main is None or main == (caller_idx, elem):
+                    main_lent[i] = main_lent.get(i, True) and is_lent
                 else:
-                    extra_param_edges.append((i, caller_idx, True))
+                    key = (i, caller_idx, elem)
+                    extra_param_edges[key] = (
+                        extra_param_edges.get(key, True) and is_lent)
+
         for i, callee_param in enumerate(fi.params):
             if i >= len(ops.args):
                 break
             if (ops.args[i] is None
                     or isinstance(callee_param.type, ReadonlyType)):
                 continue
-            # Vararg slot: walk the TpyVarargPack and record one (va_idx ->
-            # caller_idx) entry per distinct arg root. A readonly vararg slot
-            # is skipped (slot can't mutate elements through *items).
+            # Vararg slot: one credit per element root. A readonly vararg
+            # slot is skipped (slot can't mutate elements through *items).
             if callee_param.is_variadic:
                 bare_va = unwrap_ref_type(callee_param.type)
                 if not is_varargs(bare_va):
@@ -4344,24 +4347,12 @@ class CallAnalyzer:
                 pack = ops.args[i]
                 if not isinstance(pack, TpyVarargPack):
                     continue
-                seen_callers: set[int] = set()
                 for sub in pack.args:
                     sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
                     sub_root = pointee_root(sub_expr, self.ctx.get_expr_type,
                                             MayLend(self.ctx))
-                    if sub_root is None:
-                        continue
-                    for root in self._arg_storage_roots(sub_root):
-                        if root.key.as_name() is not None:
-                            add_reach(i, root)
-                        caller_idx = param_of(root)
-                        if caller_idx is None or caller_idx in seen_callers:
-                            continue
-                        seen_callers.add(caller_idx)
-                        if i not in param_map:
-                            param_map[i] = caller_idx
-                        else:
-                            extra_param_edges.append((i, caller_idx, False))
+                    if sub_root is not None:
+                        credit_arg(i, sub_root, False)
                 continue
             # Skip params with no mutable borrow surface. This catches plain
             # value types and also opts out of Own[T], TypeParamRef, and
@@ -4373,102 +4364,69 @@ class CallAnalyzer:
                 expr_type=self.ctx.get_expr_type)
             # An open-`T` slot (the param, or a tuple param's element) renders
             # a MUTABLE borrow at every reference instantiation, so whatever
-            # binds there must stay a mutable lvalue. The callee's own
-            # mutated_params cannot answer this -- the generic body need not
-            # touch the param for its C++ slot to be a mutable borrow -- so it
-            # is a direct fact at the call site, not an edge.
+            # binds there must stay a mutable lvalue -- a loop binding too.
+            # The callee's own mutated_params cannot answer this -- the
+            # generic body need not touch the param for its C++ slot to be a
+            # mutable borrow -- so it is a direct fact at the call site, not
+            # an edge.
             for src in sources:
                 if src.binds_open_param:
                     mark_roots(self.ctx, storage_roots(
                         src.expr, Use.POINTEE, self.ctx.get_expr_type,
                         MayLend(self.ctx)),
-                        MarkRequest())
+                        MarkRequest(loop_vars=True, through_field=True))
             sources = [s for s in sources
                        if s.grants_write and not s.binds_open_param]
             if not sources or not param_has_mutable_borrow_surface(
                     callee_param.type):
                 continue
             # An argument read off a call lends what that call's result points
-            # into (a lazy combinator, a generator factory, a conditional of
-            # two lvalues), so a mutation through the callee's param reaches
-            # each root the climb finds -- through a frame too, whose body
-            # the callee may advance (`lent`). An assumed root (a callee
-            # whose facts are pending) is kept: the edge only widens the
-            # mutated set, which is the safe direction. A root held only
-            # whole is not written through, and a handle read out of a
-            # holder places nothing: what the callee writes is its referent.
-            arg_roots: list[str] = []
-            through_handle = False
+            # into (a lazy combinator, a generator factory, a view, a
+            # borrowing accessor), so a mutation through the callee's param
+            # reaches each root the climb finds. An object the call builds
+            # over them (an iterator, a frame, a view) is a HANDLE the callee
+            # may advance without writing them (`lent`), as a handle loan is;
+            # a C++ reference it returns is the storage itself. An assumed
+            # root (a callee whose facts are pending) is kept: the edge only
+            # widens the mutated set, which is the safe direction. A root
+            # held only whole is not written through, and a handle read out
+            # of a holder places nothing: what the callee writes is its
+            # referent.
+            arg_roots: list[tuple[str, bool]] = []
             for src in sources:
                 placed = [p for p in storage_roots(
                     src.expr, Use.POINTEE, self.ctx.get_expr_type,
                     MayLend(self.ctx)).places if not p.held_whole]
-                arg_roots += list(dict.fromkeys(p.name for p in placed))
-                through_handle = through_handle or any(
-                    p.through_call for p in placed)
-            # Resolve alias and element borrow chains to find the original param.
-            # 8a.5: the walk also follows element/field/ptr borrows so that
-            # mutating a call arg that element-borrows from a param correctly
-            # traces back to the source param. A root reached only across a
-            # HANDLE loan (`it = zip(xs, ys); f(it)`) is lent the same way a
-            # combinator call in argument position is.
-            for arg_root in arg_roots:
-                direct = {r.key for r in self._arg_storage_roots(
-                    arg_root, cross_handles=False)}
-                for root in self._arg_storage_roots(arg_root):
-                    if root.key.as_name() is None:
-                        continue
-                    crossed = through_handle or root.key not in direct
-                    caller_idx = param_of(root)
-                    if caller_idx is not None:
-                        if crossed:
-                            lent.add(i)
-                        if i not in param_map:
-                            param_map[i] = caller_idx
-                        elif param_map[i] != caller_idx:
-                            extra_param_edges.append((i, caller_idx, False))
-                    elif crossed and i not in param_map:
-                        # Reached across a handle (`g = items(row);
-                        # first(g)`): only what the callee writes through
-                        # the slot's elements reaches the loop binding, as
-                        # for a param.
-                        lent.add(i)
-                    add_reach(i, root)
+                arg_roots += [(p.name, p.through_handle) for p in placed]
+            for arg_root, through_handle in dict.fromkeys(arg_roots):
+                credit_arg(i, arg_root, through_handle)
         # Edge stores the canonical so Phase 2 reads facts as they evolve.
         callee = fi.root
         assert callee.canonical_fi is None, (
             f"non-collapsed canonical_fi chain on {callee.name}")
         edge = MutationCallEdge(
-            callee_fi=callee, param_map=param_map, lent=frozenset(lent),
+            callee_fi=callee, param_map=param_map,
+            lent=frozenset(i for i, is_lent in main_lent.items() if is_lent),
             elem_step=frozenset(elem_step),
             bindings={i: tuple(b) for i, b in bindings.items()})
         # One edge carries one receiver: every other operand a select
         # receiver may pick gets an edge of its own.
-        record_receiver_edges(self.ctx, callee, receiver_idxs,
+        record_receiver_edges(self.ctx, callee, receiver_targets,
                               tuple(receiver_bindings),
-                              frozenset(receiver_elem),
                               tuple(receiver_captured), param_edge=edge)
         if edge.param_map or edge.receiver_idx is not None:
             self.ctx.func.current_call_edges.append(edge)
         if edge.bindings:
             self.ctx.binding_edges.append(edge)
-        for callee_idx, caller_idx, stepped in extra_param_edges:
+        for (callee_idx, caller_idx, stepped), is_lent in (
+                extra_param_edges.items()):
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee,
                                  param_map={callee_idx: caller_idx},
-                                 lent=frozenset(lent & {callee_idx}),
+                                 lent=(frozenset((callee_idx,)) if is_lent
+                                       else frozenset()),
                                  elem_step=(frozenset((callee_idx,))
                                             if stepped else frozenset())))
-
-    def _arg_storage_roots(self, arg_root: str, *,
-                           cross_handles: bool = True
-                           ) -> list[SitedKey]:
-        """The caller storages an argument name can reach, for mutation
-        attribution, each with the binding its root names (the loans'
-        `source_sites`). A re-seated name has several and a mutating callee
-        reaches whichever loan is live, so all of them owe an edge."""
-        return self.ctx.func.borrow_tracker.sited_roots_or_self(
-            arg_root, cross_handles=cross_handles)
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).

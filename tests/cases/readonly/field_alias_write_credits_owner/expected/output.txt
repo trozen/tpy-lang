@@ -1,0 +1,42 @@
+fn_writer 2
+fn_method 3
+fn_list 2
+fn_optional 2
+fn_narrowed_optional 4
+fn_narrowed_union 5
+fn_two_hop 2
+fn_open_generic 5 1
+fn_loop 2 2
+fn_member_loop 2
+fn_select 5 2
+fn_select_arm 6
+fn_match_deep 3
+fn_tuple 2
+fn_box 4
+fn_closure 7
+gen 8 8
+async 9 9
+fn_with 10
+fn_try 11
+fn_match_arm 12
+fn_error_return 13
+method 14 4 5 3
+ctor 2
+fn_iter_warn 3
+fn_borrowing_getter 2
+inv_fresh_getter 4 2
+inv_ptr 3
+inv_read_only 14
+inv_rebound 2
+inv_rebound_getter 13 2
+getter_order 3
+self_list 3 2
+self_ptr 4
+member_loop 5 6
+fn_walrus 4 fn_rc 2
+closures 3 11 8
+inv_ptr_narrowed 6
+ro_warnings 1 14
+fn_readonly_method 2 4
+fn_gen_method 5 5
+fn_gen_handed 6 6

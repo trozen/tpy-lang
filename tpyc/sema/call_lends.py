@@ -70,7 +70,7 @@ from ..typesys import (
     substitute_type_params_structural,
     bound_as_spelled, unwrap_own, unwrap_qualifiers, unwrap_readonly,
     unwrap_ref_type,
-    unwrap_send_sync, view_is_inherently_const,
+    unwrap_send_sync, view_is_inherently_const, is_indirection_type,
 )
 from ..value_category import (
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
@@ -86,11 +86,12 @@ from .storage_walk import (
     qualifier_kind,
     Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at, operand_keys, storage_roots,
 )
-from ..storage_trace import Step, StepKind
+from ..storage_trace import Step, StepKind, trace
 from .type_ops import param_type_can_lend, signature_may_return_borrow
 
 if TYPE_CHECKING:
     from .context import SemanticContext
+    from ..typesys import RecordInfo, TypeRegistry
 
 
 def escaping_borrow_tuple(slot: TpyType) -> 'tuple[TupleType, bool] | None':
@@ -120,6 +121,120 @@ def escaping_borrow_writes(slot: TpyType) -> bool:
     if borrow_tuple is not None:
         return not borrow_tuple[1]
     return not slot.is_value_type()
+
+
+def member_holds_root(registry: 'TypeRegistry', owner_type: 'TpyType | None',
+                      member: str) -> bool:
+    """Whether a write through `member` of a value of `owner_type` writes
+    that value's own storage -- the one fact a write climbs a member path
+    by. Read off declarations alone, so the answer never depends on which
+    body sema analyzed first: a declared field holds unless its type is a
+    handle (`Ptr`, a borrowing view: the write lands in the referent); a
+    property holds when one of its getters hands out a writable borrow
+    (`getter_holds_root`). A member this cannot find holds -- the safe
+    answer is a mutable root, never a const one a write needs."""
+    return _member_hop(registry, owner_type, member)[0]
+
+
+def _member_hop(registry: 'TypeRegistry', owner_type: 'TpyType | None',
+                member: str) -> 'tuple[bool, bool, TpyType | None]':
+    """One hop of a member path off a value of `owner_type`: whether a
+    write through it writes that value (`member_holds_root`), whether it is
+    a field of handle type -- what a borrow through it reaches is the
+    referent's, not the value's -- and the type the hop yields (None when
+    unknown)."""
+    record = _member_owner_record(registry, owner_type)
+    decl = (_member_decl(registry, record, member)
+            if record is not None else None)
+    if decl is None:
+        return True, False, None
+    if isinstance(decl, list):
+        return (any(getter_holds_root(fi) for fi in decl), False,
+                decl[0].return_type if decl else None)
+    handle = is_indirection_type(decl)
+    return not handle, handle, decl
+
+
+def getter_holds_root(fi: FunctionInfo) -> bool:
+    """Whether a write through what getter `fi` returns writes its
+    receiver: not for a `@readonly` / `@pure` getter, nor for a declared
+    return that is fresh (`Own[...]`, a value with nothing borrowed in it),
+    a handle or readonly; every other return -- a reference, a borrow-form
+    tuple into the receiver -- lends the receiver writable."""
+    if fi.is_pure or fi.is_readonly:
+        return False
+    rt = fi.return_type
+    if rt is None:
+        return True
+    bare = unwrap_ref_type(rt)
+    if isinstance(bare, OwnType) or is_indirection_type(bare):
+        return False
+    return escaping_borrow_writes(rt)
+
+
+def key_holds_root(registry: 'TypeRegistry', root_type: 'TpyType | None',
+                   members: tuple[str, ...], *, writes: bool = True) -> bool:
+    """`member_holds_root` along a member path off a root of `root_type`:
+    the path writes its root only when every hop does. Without `writes`,
+    whether the path reaches its root at all -- a borrow or a returned
+    reference through it -- which only a handle field stops."""
+    cur = root_type
+    for member in members:
+        holds, handle, cur = _member_hop(registry, cur, member)
+        if handle or (writes and not holds):
+            return False
+    return True
+
+
+def path_holds_root(registry: 'TypeRegistry', expr: TpyExpr,
+                    type_of: 'ExprTypeOf') -> bool:
+    """`member_holds_root` along the place `expr` spells, each hop asked of
+    the type its owner has THERE (a narrowed root included): every field
+    and getter hop holds, and no element is read out of a handle."""
+    for step in trace(expr).steps:
+        if step.kind is StepKind.FIELD:
+            owner = (step.node.unbound_self_parent_type
+                     or type_of(step.node.obj))
+            if not member_holds_root(registry, owner, step.node.field):
+                return False
+        elif step.kind is StepKind.GETTER:
+            if not member_holds_root(registry, type_of(step.node.obj),
+                                     step.node.method):
+                return False
+        elif (step.kind is StepKind.INDEX
+              and is_indirection_type(type_of(step.node.obj))):
+            return False
+    return True
+
+
+def _member_owner_record(registry: 'TypeRegistry',
+                         owner_type: 'TpyType | None') -> 'RecordInfo | None':
+    """The record whose members a value of `owner_type` has, past its
+    qualifiers, an `Own` and a (narrowed) `Optional`."""
+    if owner_type is None:
+        return None
+    bare = unwrap_ref_type(unwrap_qualifiers(owner_type))
+    if isinstance(bare, OwnType):
+        bare = unwrap_ref_type(unwrap_qualifiers(bare.wrapped))
+    if isinstance(bare, OptionalType):
+        bare = unwrap_ref_type(unwrap_qualifiers(bare.inner))
+    if not isinstance(bare, NominalType):
+        return None
+    return registry.get_record_for_type(bare)
+
+
+def _member_decl(registry: 'TypeRegistry', record: 'RecordInfo', member: str
+                 ) -> 'TpyType | list[FunctionInfo] | None':
+    """A field's declared type, or a property's getters, by name through
+    the MRO; None when `record` declares neither."""
+    for info in registry.get_all_fields(record):
+        if info.name == member:
+            return info.type
+    for owner in (record, *registry.iter_ancestor_records(record)):
+        prop = owner.properties.get(member)
+        if prop is not None:
+            return [fi for fi in prop.accessors if fi.is_property_getter]
+    return None
 
 
 class Lent(Enum):
@@ -770,10 +885,16 @@ class MayLend(CallPolicy):
         # writing through the frame -- advancing it -- is the body's own
         # writes, which the call edges settle. And an operand holding no
         # pointer (a `str`, a number) is immutable or copied: a result
-        # viewing it (`p.split("/")`) writes nothing of it.
+        # viewing it (`p.split("/")`) writes nothing of it. A getter's
+        # declaration alone says whether a write through its result writes
+        # its receiver (`getter_holds_root`), whichever body sema analyzed
+        # first.
         frame = _builds_frame(call)
+        ro_getter = (is_property_getter_read(call)
+                     and not getter_holds_root(call.resolved_function_info))
         return [s._replace(grants_write=False)
-                if frame or _immutable_at(self.ctx, s.expr) else s
+                if frame or _immutable_at(self.ctx, s.expr)
+                or (ro_getter and s.idx == -1) else s
                 for s in srcs]
 
     def _sources(self, call: TpyExpr, path: tuple,
@@ -853,8 +974,9 @@ class MayLend(CallPolicy):
         # (`declares_no_writes`: `return iter(self.items)` keeps a method
         # const); a bodied callee's `is_readonly` speaks for its receiver.
         no_writes = declares_no_writes(fi)
+        receiver_writes = declared or not fi.is_readonly
         return [s._replace(declared_only=only_declared,
-                           grants_write=declared or not fi.is_readonly,
+                           grants_write=receiver_writes,
                            how=(Lent.CONVENTION if only_declared
                                 else Lent.RECORDED))
                 if s.idx == -1

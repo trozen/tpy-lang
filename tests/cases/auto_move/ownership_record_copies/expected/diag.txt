@@ -1,4 +1,4 @@
-main.py:473: warning: copies A into owned storage; use copy() to make this explicit ('ma' is bound to existing storage at line 472)
+main.py:474: warning: copies A into owned storage; use copy() to make this explicit ('ma' is bound to existing storage at line 473)
 main.py:40: warning: copies A into field (tuple element 1); use copy() to make this explicit
 main.py:312: warning: copies A into field; use copy() to make this explicit
 main.py:316: warning: copies A into field; use copy() to make this explicit
@@ -30,3 +30,4 @@ main.py:278: warning: copies list[int32] into owned storage; use copy() to make 
 main.py:321: warning: copies A into field; use copy() to make this explicit
 main.py:330: warning: copies A into field; use copy() to make this explicit
 main.py:337: warning: copies A into field; use copy() to make this explicit
+main.py:362: warning: Passing borrowed container 'h' to non-readonly parameter 'h' (function may invalidate references)

@@ -1,0 +1,2 @@
+main.py:45: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:51: error: Cannot return local or temporary as reference. Reference type 'readonly[Cell]' is returned by reference. Use Own[readonly[Cell]] to return by value.

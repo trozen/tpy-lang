@@ -90,7 +90,7 @@ std::vector<int32_t>& first_list(std::vector<std::vector<int32_t>>& xs);
 //                      xs: list[list[int32]]) -> Callable[[], int32]:
 std::function<int32_t()> escaping_aliases(std::vector<int32_t>& a, std::vector<std::vector<int32_t>>& xs);
 // def escaping_closure(a: list[int32], c: bool) -> Callable[[], int32]:
-std::function<int32_t()> escaping_closure(std::vector<int32_t>& a, bool c);
+std::function<int32_t()> escaping_closure(const std::vector<int32_t>& a, bool c);
 // def loop_body() -> None:
 void loop_body();
 // def comprehension() -> None:

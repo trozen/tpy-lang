@@ -20,7 +20,7 @@ struct __gen_kill;
 // def voices(a: Dog | Cat) -> Iterator[str]:
 __gen_voices voices(::tpy::Union<const Cat*, const Dog*> a);
 // def capture(a: Dog | Cat) -> Iterator[str]:
-__gen_capture capture(::tpy::Union<Cat*, Dog*> a);
+__gen_capture capture(::tpy::Union<const Cat*, const Dog*> a);
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
 __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow);
 // def remake() -> int | str:
@@ -87,7 +87,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
 // def capture(a: Dog | Cat) -> Iterator[str]:
 struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     ::tpy::frame_slot<Dog> d;
 
     enum : int32_t {
@@ -99,7 +99,7 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
         S_DONE = 5,
     };
 
-    __gen_capture(::tpy::Union<Cat*, Dog*> a_)
+    __gen_capture(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 

@@ -88,7 +88,7 @@ __gen_gen_caller gen_caller(std::vector<::tpy::BigInt>& xs);
 // def line_copy(ln: Line) -> bool:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
 bool line_copy(const Line& ln);
 // def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
-int32_t pick(bool c, std::vector<Cell>& a, std::vector<Cell>& b);
+int32_t pick(bool c, std::vector<Cell>& a, const std::vector<Cell>& b);
 // def caller(xs: list[Cell]) -> int32:  # tpyc: mir(conflict /argument_alias/)
 int32_t caller(std::vector<Cell>& xs);
 // def put(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)

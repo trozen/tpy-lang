@@ -441,7 +441,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
     "held = (saved,)\n    owner.value = 9\n    return held[0].value",
     "held = (7, saved)\n    owner.value = 9\n    return held[1].value",
     "held: Cell | None = saved\n    if held is not None:\n        return held.value\n    return 0",
-    "held: Cell | Other = saved\n    if isinstance(held, Cell):\n        return held.value\n    return 0",
+    "held: Cell | Other = saved\n    owner.value = 9\n    if isinstance(held, Cell):\n        return held.value\n    return 0",
 ])
 def test_source_wrapper_sinks_keep_the_unplanned_select_obligation(body: str) -> None:
     # The frontend rejects reference tuple locals for @nocopy elements before MIR.

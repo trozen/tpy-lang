@@ -562,7 +562,7 @@ std::string _rebuild_method(std::string_view method, int32_t status) {
 //     if will_close:
 //         conn.close()
 //     return Response(status, reason, url, out_headers, content, resp_cookies)
-Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, CookieJar& send_cookies, bool stream, bool follow) {
+Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, const CookieJar& send_cookies, bool stream, bool follow) {
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
     std::string target = ::tpystd::tplib::requests::_merge_query(parts.path, parts.query, params);
     std::optional<std::string> host = parts.hostname();
@@ -1420,7 +1420,7 @@ Session::Session()
 //     if resp._raw is None:
 //         self._pool[key] = fresh
 //     return resp
-Response Session::_send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream, bool follow) {
+Response Session::_send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, const CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream, bool follow) {
     if (((hop == 0) && (this->_connection.has_value()))) {
         {
             bool __fin_ran_1 = false;

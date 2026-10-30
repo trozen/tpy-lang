@@ -38,7 +38,7 @@ struct Snap {
     std::vector<int32_t> snapshot() const;
 
     // def widen(self) -> int32:
-    int32_t widen();
+    int32_t widen() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Snap";
 };
 
@@ -123,7 +123,7 @@ inline std::vector<int32_t> Snap::snapshot() const {
 //     mine = self.snapshot  # tpyc: ok
 //     mine.append(9)
 //     return len(mine)
-inline int32_t Snap::widen() {
+inline int32_t Snap::widen() const {
     std::vector<int32_t> mine = this->snapshot();
     mine.push_back(9);
     return ::tpy::__len__(mine);

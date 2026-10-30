@@ -527,7 +527,8 @@ __gen_mk mk() {
 //     if_borrowed_arm(h, out, True)
 //     out[0].items.append(8)
 //     print("if_borrowed_arm", len(out[0].items), len(h.q.items))
-//     r = borrowed_arm_finally(h, 200)
+//     # BUGS.md#field-growth-resizes-owner: `t0, t1` borrow `h.t`, not `h.q.items`.
+//     r = borrowed_arm_finally(h, 200)  # tpyc: warning(/Passing borrowed container 'h'/)
 //     print("borrowed_arm_finally", len(r.items), len(h.q.items))
 //     fr = finally_rebind(1)
 //     print("finally_rebind", fr.items[0])
