@@ -1039,6 +1039,7 @@ def _classify_overload(
             overload, [t for _, t in evidence],
             protocol_checker or _always_false_checker,
             joined=joined, slots=[slot for slot, _ in evidence],
+            literal=ranking.literal_type,
         )
         # A joined fixed-int binding converts an argument, so it is no
         # strict match; the conversion stage ranks it at its instantiation.
@@ -1354,6 +1355,24 @@ class CallRanking(NamedTuple):
     # Where a numeric literal argument is at home (`LiteralHomes`); unset,
     # the default int (`default_int_type`) and `float`.
     homes: LiteralHomes = LiteralHomes()
+    # The type an int literal with no home there takes (the default int,
+    # else `int` beyond it: `SemanticContext.default_int_for_literal`);
+    # unset, `default_int_type`.
+    literal_default: 'Callable[[TpyType], TpyType] | None' = None
+
+    def literal_type(self, lit: TpyType) -> TpyType:
+        """The type an int literal of this call binds a type parameter
+        at: its home when the home holds its value (the coercion row's
+        range, as an operator literal's home is taken,
+        `operators.literal_home`), else `literal_default`."""
+        home = self.homes.int_home
+        if (home is not None and isinstance(lit, IntLiteralType)
+                and not coercion_refuses_value(lit, home, CoercionContext.ARG)):
+            return home
+        if self.literal_default is not None:
+            return self.literal_default(lit)
+        assert self.default_int_type is not None
+        return self.default_int_type
 
     def resolve(self, overloads: list[FunctionInfo],
                 args: 'CallSource | Sequence[TpyType]',
@@ -1386,7 +1405,7 @@ class CallRanking(NamedTuple):
     def at_home(self, built: TpyType) -> 'CallRanking':
         """This ranking at a constructor call of numeric type `built`: a
         literal of its own kind is at home there (`float32(1.5)` takes its
-        `x: float32` variant, `int8(100)` its `x: int8` one), as an
+        `x: float32` variant, `int8(100)` binds `T = int8`), as an
         operator literal's home is the other operand
         (`operators.literal_home`); a literal of the other kind keeps its
         own (`float(5)` ranks the int literal at the default int)."""
@@ -1510,4 +1529,5 @@ def call_ranking(ctx: 'SemanticContext', protocols: 'ProtocolCheckerObj',
         subclass_checker=ctx.registry.subclass_distance,
         type_ops=type_ops,
         receives=receives,
+        literal_default=ctx.default_int_for_literal,
     )

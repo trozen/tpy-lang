@@ -84,6 +84,12 @@ __genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_pl
 //     # int64
 //     big: list[int64] = [1000000000, 2000000000, 3000000000]
 //     print(sum(big))
+//     # The start literal takes the elements' int64.
+//     s64 = sum(big, 5)  # tpyc: type(int64)
+//     print(s64)
+//     # A wider start widens the int32 elements to its int64.
+//     acc = sum(vals, int64(2147483647))  # tpyc: type(int64)
+//     print(acc)
 //
 //     # float
 //     floats = [1.5, 2.5, 3.0]
@@ -94,6 +100,16 @@ __genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_pl
 //     empty: list[int32] = []
 //     print(sum(empty))
 //     print(sum(empty, 42))
+//     # No element type: the start literal and the default int decide.
+//     s0 = sum([], 5)  # tpyc: type(int32)
+//     print(s0)
+//
+//     # dict values: a typed and an inferred dict
+//     d64: dict[str, int64] = {"a": 1, "b": 2}
+//     sd64 = sum(d64.values())  # tpyc: type(int64)
+//     di = {"a": 1}
+//     sdi = sum(di.values())  # tpyc: type(int32)
+//     print(sd64, sdi)
 //
 //     # generator expression
 //     print(sum(x * x for x in [1, 2, 3, 4]))
@@ -103,12 +119,23 @@ void main() {
     std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> big = {1000000000, 2000000000, static_cast<int64_t>(3000000000)};
     std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n" << ::tpy::check_signals;
+    int64_t s64 = ::tpy::builtin_sum_start<int64_t>(big, 5);
+    std::cout << s64 << "\n" << ::tpy::check_signals;
+    int64_t acc = ::tpy::builtin_sum_start<int64_t>(vals, 2147483647);
+    std::cout << acc << "\n" << ::tpy::check_signals;
     std::array<double, 3> floats = {1.5, 2.5, 3.0};
     std::cout << ::tpy::print_float(::tpy::builtin_sum_float(floats)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpy::builtin_sum_start_float(floats, 10.0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
     std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::builtin_sum_start<int32_t>(empty, 42) << "\n" << ::tpy::check_signals;
+    int32_t s0 = ::tpy::builtin_sum_start<int32_t>(std::vector<int32_t>{}, 5);
+    std::cout << s0 << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, int64_t> d64 = ::tpy::ordered_map<std::string, int64_t>({{"a", 1}, {"b", 2}});
+    int64_t sd64 = ::tpy::builtin_sum<int64_t>(::tpy::dict_values(d64));
+    ::tpy::ordered_map<std::string, int32_t> di = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
+    int32_t sdi = ::tpy::builtin_sum<int32_t>(::tpy::dict_values(di));
+    std::cout << sd64 << " " << sdi << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n" << ::tpy::check_signals;
 }
 

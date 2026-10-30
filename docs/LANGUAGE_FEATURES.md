@@ -772,7 +772,7 @@ z = x + y       # Result is int (BigInt), not int32
 
 Negation (`-x`) of `uint8` / `uint16` computes in the default int (`-uint8(200)` is `-200`); `uint32` / `uint64` have no negation (compile error).
 
-**Explicit cross-type casts**: Any fixed-width integer type can be explicitly converted to any other using the constructor. Out-of-range values raise `OverflowError` at runtime:
+**Explicit cross-type casts**: Any fixed-width integer type can be explicitly converted to any other using the constructor. Out-of-range values raise `OverflowError` at runtime. One generic conversion, `T.__init__[S: AnyFixedInt](x: S)`, takes every fixed-width argument: an int literal binds it at the type it builds when that type holds it (`uint32(0xbb67ae85)` is `static_cast<uint32_t>(3144134277)`, under `--default-int=BigInt` too), and a conversion at its own type is the value (`int32(v)` with `v: int32` is `v`, `int32(5)` is `5`); any other renders the checked `::tpy::int_cast_check<T>(x)` unless the value range proves it fits:
 
 ```python
 from tpy import int8, int32, uint8

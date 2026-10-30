@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Point.__hash__@27:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Point.__hash__@27:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::Point.__eq__@30:4: covered (storage: no_proof_required)
 main::Holder.__init__@17:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Point.__init__@24:4: covered (storage: no_proof_required), summary: known

@@ -8901,13 +8901,11 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     # A module-qualified record ctor (`m.Rec(...)`) resolves to __init__ --
     # the record-ctor frontier, not this arm. EXCEPT the builtin-module
     # @cpp_template TYPE ctor (`tpy.int32(10)`): its arm is the same
-    # template/native expansion the static template takes
-    # (non-generic overloads only, mirroring that arm's `not fi.type_params`
-    # guard; the specials/native rejects below still apply).
+    # template/native expansion the static template takes (the
+    # specials/native rejects below still apply).
     if fi.is_method and fi.name == "__init__":
         if not (e.builtin_module_call is not None
                 and fi.cpp_template is not None
-                and not fi.type_params
                 and not fi.native_function and not fi.native_name):
             return None
     # Bespoke sema/emit arms keyed on the resolved function: the four

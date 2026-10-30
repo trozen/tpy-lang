@@ -79,7 +79,7 @@ from .iter_loans import IterElementSource, iter_element_source, temp_arg_spellin
 from .overloads import (
     type_matches_numeric,
     OverloadAmbiguityError,
-    OverloadCandidate, rank_overload_candidates,
+    OverloadCandidate, OverloadPick, rank_overload_candidates,
     call_resolves_param, call_resolves_params,
     CallRanking, CallShape, call_ranking, pins_const_receiver,
     declared_readonly, shape_of, structural_matches, bound_evidence,
@@ -87,7 +87,7 @@ from .overloads import (
 )
 from .list_elem import without_mutable_twins
 from .context import CallOperands
-from .int_narrowing import proven_cast, site_value_range
+from .int_narrowing import proven_cast, same_type_conversion, site_value_range
 from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            path_key, pointee_root, receiver_leaves,
                            storage_roots)
@@ -673,8 +673,11 @@ def validate_generic_defaults(
                 f"type '{resolved_type}' (resolved from generic '{func.name}')")
 
 
-def resolve_inferred_type_arg(t: "TpyType | int", default_int_type: TpyType) -> "TpyType | int":
-    """Resolve literal/pending types in an inferred type arg for codegen.
+def resolve_inferred_type_arg(
+    t: "TpyType | int", literal: Callable[[TpyType], TpyType],
+) -> "TpyType | int":
+    """Resolve literal/pending types in an inferred type arg for codegen,
+    an int literal to the type `literal` gives it.
 
     Inferred values can be ints (integer-kind type params, e.g. N in
     Array[T, N]) -- those pass through unchanged.
@@ -682,8 +685,8 @@ def resolve_inferred_type_arg(t: "TpyType | int", default_int_type: TpyType) -> 
     if isinstance(t, int):
         return t
     if isinstance(t, PendingListType):
-        return make_list(resolve_int_literals(t.element_type, default_int_type))
-    return resolve_int_literals(t, default_int_type)
+        return make_list(resolve_int_literals(t.element_type, literal))
+    return resolve_int_literals(t, literal)
 
 
 def validate_type_param_bounds(
@@ -1272,7 +1275,7 @@ class CallAnalyzer:
         return td_call
 
     def _resolve_inferred_type_arg(self, t: "TpyType | int") -> "TpyType | int":
-        return resolve_inferred_type_arg(t, self.ctx.default_int_type)
+        return resolve_inferred_type_arg(t, self.ctx.default_int_for_literal)
 
     def _raise_empty_container_from_arg(self, outer_call: TpyCall, args, arg_types) -> 'NoReturn':
         """Raise a user-facing "cannot infer empty container types" error.
@@ -4463,14 +4466,11 @@ class CallAnalyzer:
         self, node: TpyExpr, callee: str, ctor: FunctionInfo,
         arg_types: list[TpyType],
     ) -> None:
-        """A type-ctor overload carrying its OWN type params (`int32.__init__
-        [T: AnyFixedInt]`, whose @cpp_template is the fixed-int cast) is
-        resolved ONCE for the enclosing template, so the argument's own bound
-        is what says the pick holds at every instantiation: at an `int` or
-        `str` instantiation the monomorphic spelling would have picked
-        `to_fixed_check` / `from_str_check` instead. The type args are inferred
-        from the slots here, so only the pairing is local -- the conformance
-        check itself is the same one explicit type arguments take."""
+        """A generic type-ctor winner committed without a substitution (its
+        argument is itself a type parameter) is picked once for the whole
+        generic body, so the argument's own bound must say the pick holds at
+        every instantiation (at `int` or `str` the monomorphic call would
+        pick `to_fixed_check` / `from_str_check`)."""
         bounds = ctor.type_param_bounds
         if not bounds:
             return
@@ -4491,18 +4491,34 @@ class CallAnalyzer:
     def pick_template_ctor(self, init_overloads: list[FunctionInfo],
                            args: 'CallSource | list[TpyType]',
                            built: TpyType | None = None,
-                           ) -> FunctionInfo | None:
-        """The `__init__` overload a call of a template-constructed type
-        (`int8(x)`) takes for the argument types `args`: ranked as every
-        overloaded call is (`CallRanking`); a numeric literal is at home in
-        the numeric type the call builds (`built`), so `int8(100)` takes
-        `x: int8`. Raises OverloadAmbiguityError."""
+                           ) -> OverloadPick:
+        """The ranking's pick among the `__init__` overloads of a
+        template-constructed type (`int8(x)`) for the argument types
+        `args`: ranked as every overloaded call is (`CallRanking`); a
+        numeric literal is at home in the numeric type the call builds
+        (`built`), so `int8(100)` binds `T = int8`. Raises
+        OverloadAmbiguityError."""
         ranking = self.ranking()
         if built is not None and (is_fixed_int_type(built)
                                   or is_any_float_type(built)
                                   or is_big_int_type(built)):
             ranking = ranking.at_home(built)
-        return ranking.resolve(init_overloads, args)
+        return ranking.rank(init_overloads, args)
+
+    def commit_template_ctor(self, node: TpyExpr, callee: str,
+                             overloads: list[FunctionInfo], pick: OverloadPick,
+                             arg_types: list[TpyType],
+                             target: TpyType | None) -> FunctionInfo:
+        """The winner of `pick` at the substitution the ranking bound, as a
+        named call's winner is committed, so a literal's slot is the type it
+        was bound at."""
+        assert pick.winner is not None
+        winner = overloads[pick.winner]
+        if not pick.subst or not winner.type_params:
+            self._check_ctor_type_param_bounds(node, callee, winner, arg_types)
+            return winner
+        fi = self.type_ops.substitute_method_type_params(winner, pick.subst)
+        return same_type_conversion(fi, target)
 
     def narrowing_ctor(self, arg: TpyExpr, source: TpyType, target: TpyType,
                        value_range: 'ValueRange | None') -> FunctionInfo | None:
@@ -4515,14 +4531,15 @@ class CallAnalyzer:
         record = self.ctx.registry.get_record_for_type(target)
         if record is None:
             return None
+        overloads = record.get_method_overloads("__init__")
         try:
-            ctor = self.pick_template_ctor(
-                record.get_method_overloads("__init__"), [source], target)
+            pick = self.pick_template_ctor(overloads, [source], target)
         except OverloadAmbiguityError:
             return None
-        if ctor is None or not ctor.cpp_template:
+        if pick.winner is None or not overloads[pick.winner].cpp_template:
             return None
-        self._check_ctor_type_param_bounds(arg, str(target), ctor, [source])
+        ctor = self.commit_template_ctor(arg, str(target), overloads, pick,
+                                         [source], target)
         cast = proven_cast(self.ctx, arg, ctor, source, target, value_range)
         if cast is not None:
             return cast
@@ -4570,15 +4587,16 @@ class CallAnalyzer:
                 )
 
         try:
-            ctor = self.pick_template_ctor(init_overloads, typed, record_type)
+            pick = self.pick_template_ctor(init_overloads, typed, record_type)
         except OverloadAmbiguityError as e:
             raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
-        if ctor is not None:
-            evidence = bound_evidence(ctor, typed)
+        if pick.winner is not None:
+            evidence = bound_evidence(init_overloads[pick.winner], typed)
             assert not isinstance(evidence, BindReject)
             arg_types = [t for _, t in evidence]
-            self._check_ctor_type_param_bounds(
-                expr, expr.func_name, ctor, arg_types)
+            ctor = self.commit_template_ctor(
+                expr, expr.func_name, init_overloads, pick, arg_types,
+                record_type)
             self.fill_positional_call(expr, ctor, {}, written)
             ret = record_type or ctor.return_type
             expr.resolved_function_info = resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
@@ -4809,11 +4827,12 @@ class CallAnalyzer:
         self.type_ops._bind_none_arms(none_arms, partial_inferred)
         # Resolve literal markers (a nested one too: the hint spells the
         # lambda's parameter type) to concrete types for the Fn hint
+        literal = self.ctx.default_int_for_literal
         for k, v in partial_inferred.items():
             if isinstance(v, PendingViewType):
                 partial_inferred[k] = v.family.owned_type
             elif isinstance(v, TpyType):
-                partial_inferred[k] = resolve_int_literals(v, self.ctx.default_int_type or INT32)
+                partial_inferred[k] = resolve_int_literals(v, literal)
 
         # A non-generic callee's callable parameter is its hint as it is.
         if partial_inferred or not func.type_params:
@@ -5360,11 +5379,12 @@ class CallAnalyzer:
                                                         partial_inferred)
             # Resolve literal markers -> concrete, PendingView -> owned (mirrors
             # _infer_arg_types' resolution step).
+            literal = self.ctx.default_int_for_literal
             for k, v in list(partial_inferred.items()):
                 if isinstance(v, PendingViewType):
                     partial_inferred[k] = v.family.owned_type
                 elif isinstance(v, TpyType):
-                    partial_inferred[k] = resolve_int_literals(v, self.ctx.default_int_type or INT32)
+                    partial_inferred[k] = resolve_int_literals(v, literal)
 
         # Per-Fn-slot trial.
         for slot in fn_slots:

@@ -179,7 +179,11 @@ and two constrained templates over unrelated protocols are unordered).
   no ranking runs at a construction beyond a binding set: `@native` /
   `@cpp_template` `__init__` stubs bind C++ constructor overloads (the
   builtin types, the exception family), which sema ranks as any set and
-  C++ then chooses among.
+  C++ then chooses among. A generic winner among them is committed at the
+  substitution the ranking bound (`OverloadPick.subst`), as a named
+  call's is (see "A literal's home"); one the ranking bound nothing for
+  -- an argument that is itself an unbounded type parameter -- is checked
+  against its own bounds.
 - A literal argument is pinned to the parameter sema picked: a call to a
   TPy overload set (not generic, not `@native` / `@cpp_template`) renders a
   str or numeric literal as a value of that parameter's own type, so the
@@ -794,8 +798,23 @@ a float literal at `float` (`CallRanking.homes`). At a constructor of a
 numeric type `T` (`int8(...)`, `float32(...)`), `T` is the home of
 literals of its own kind only, as an operator literal's home is the other
 operand: `float32(1.5)` takes its `x: float32` variant and `int8(100)`
-its `x: int8` one, while the int literal of `float(5)` keeps the int home
-and renders its conversion. An integer constant generic (`N` of
+binds its generic conversion at `T = int8`, while the int literal of `float(5)` keeps the int home
+and renders its conversion. A literal binds a type parameter at its home
+too, when the home holds its value (the coercion row's range, as at an
+operator), else at the default int, and at `int` beyond it
+(`CallRanking.literal_type`, the one resolver every inference site of a
+call passes `resolve_int_literals`; a literal nested in a binding, a
+tuple element, keeps its marker while the ranking classifies the
+arguments against the binding and is resolved by the same resolver at
+the commit, `resolve_inferred_type_arg`): `uint32(0xbb67ae85)` binds the generic conversion
+`__init__[T: AnyFixedInt]` at `T = uint32`, and a free generic call
+`plain((3144134277, 1))` binds `T = tuple[int, int32]`. A template
+constructor commits the winner at the substitution the ranking bound
+(`OverloadPick.subst`), as a named call does, so the literal's slot is
+the type it was bound at; a conversion instantiated at its own type
+(`int32(v)` with `v: int32`, `int32(5)`) renders the value. A generic
+record's constructor has no numeric home (`Box(5)` binds `T` at the
+default int). An integer constant generic (`N` of
 `class Box[N: int]`) has no ranking rule of its own: a value read of `N`
 is an ordinary value of the default int (sema types it so and converts the
 constant once where it is read), so it ranks, infers and converts as any

@@ -26,7 +26,7 @@ defs::LateDotted.e@69:4: uncovered (unsupported expression), summary: opaque (un
 defs::LateRec.__eq__: covered (storage: no_proof_required)
 defs::LateRec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 defs::LateCtor.m@95:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-defs::LateCtor.int64@99:4: uncovered (unsupported metadata: cpp_template)
+defs::LateCtor.int64@99:4: uncovered (stub declares no contract)
 defs::Pt.__eq__: covered (storage: no_proof_required)
 defs::Pt.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 defs::Made.__eq__: uncovered (uncertified binary operation)

@@ -1,6 +1,5 @@
 main.py:7: error: No matching overload for 'int32' with argument types (x=int)
   'int32()' got unexpected keyword argument 'x'
-  'int32(x: int32, /)' parameter 'x' is positional-only and cannot be passed by keyword
   'int32(x: T, /)' parameter 'x' is positional-only and cannot be passed by keyword
   'int32(x: int, /)' parameter 'x' is positional-only and cannot be passed by keyword
   'int32(x: float, /)' parameter 'x' is positional-only and cannot be passed by keyword

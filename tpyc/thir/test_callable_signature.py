@@ -15,7 +15,7 @@ from .validate import THIRValidationError, _iter_children, validate_function
 
 SOURCE = """\
 import math
-from tpy import int32, int64, pure, StrView
+from tpy import AnyFixedInt, int32, int64, pure, StrView
 from tpy.extern import native
 
 class Cell:
@@ -42,6 +42,9 @@ def probe_plain(c: Cell) -> int32: ...
 
 @native("probe_view")
 def probe_view(n: int32) -> StrView: ...
+
+def conv[T: AnyFixedInt](x: T) -> int32:
+    return int32(x)
 
 def run(c: Cell, f: float, a: int64) -> None:
     u = bump(c, "x", 1)
@@ -158,9 +161,20 @@ def test_view_result_reports_view_representation(lowered) -> None:
 
 def test_open_type_parameter_is_unpublished(lowered) -> None:
     functions, _, _ = lowered
-    # `int32(a)` resolves the generic `__init__[T]` overload.
-    node = calls(functions["run"])["int32"]
+    # `int32(x)` in a generic body binds the generic `__init__[T]` at the
+    # body's own open `T`.
+    node = calls(functions["conv"])["int32"]
     assert node.constructs and node.stub_callee is None and node.resolved_callee is None
+
+
+def test_instantiated_conversion_is_published_at_its_instantiation(lowered) -> None:
+    functions, _, _ = lowered
+    # `int32(a)` commits the generic `__init__[T]` at the `T = int64` the
+    # ranking bound.
+    node = calls(functions["run"])["int32"]
+    assert node.constructs and node.stub_callee is not None
+    assert node.stub_callee.identity.qualified_name == "tpy.int32.__init__"
+    assert [str(t) for t in node.stub_callee.identity.param_types] == ["int64"]
 
 
 def test_validator_rejects_conflicting_and_malformed_callee_facts(lowered) -> None:

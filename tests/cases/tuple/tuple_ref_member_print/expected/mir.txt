@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@18:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::Box.__repr__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::Box.__hash__@14:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Box.__hash__@14:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known

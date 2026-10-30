@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..parse import TpyExpr, TpyName
 from ..type_def_registry import int_traits_of
-from ..typesys import FunctionInfo, TpyType
+from ..typesys import FunctionInfo, TpyType, unwrap_readonly, unwrap_ref_type
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -55,3 +55,14 @@ def proven_cast(ctx: 'SemanticContext', node: TpyExpr, ctor: FunctionInfo,
     return dc_replace(ctor,
                       cpp_template=f"static_cast<{target.to_cpp()}>({{0}})",
                       canonical_fi=ctor.root)
+
+
+def same_type_conversion(ctor: FunctionInfo,
+                         target: TpyType | None) -> FunctionInfo:
+    """`ctor`, a conversion instantiated at its parameter type, as the value
+    itself when that type is `target` (`int32(v)`, `v: int32`). Type
+    equality is no value-range fact, so no `cast_safe` fact is recorded."""
+    if (target is None or not ctor.cpp_template or len(ctor.params) != 1
+            or unwrap_readonly(unwrap_ref_type(ctor.params[0].type)) != target):
+        return ctor
+    return dc_replace(ctor, cpp_template="{0}", canonical_fi=ctor.root)

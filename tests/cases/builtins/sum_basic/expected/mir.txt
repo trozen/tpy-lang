@@ -1,3 +1,3 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@4:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::<genexpr>@25:13: uncovered (generator expression)
+main::main@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::<genexpr>@41:13: uncovered (generator expression)

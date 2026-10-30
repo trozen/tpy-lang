@@ -2133,7 +2133,8 @@ class MethodAnalyzer:
 
         # Store inferred type args (new params only) for codegen
         expr.inferred_type_args = tuple(
-            resolve_inferred_type_arg(method_subst[p], self.ctx.default_int_type)
+            resolve_inferred_type_arg(method_subst[p],
+                                      self.ctx.default_int_for_literal)
             for p in new_params
         )
         expr.representational_subst_params = (

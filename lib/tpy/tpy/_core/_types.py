@@ -506,9 +506,6 @@ class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @cpp_template("0")
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: int8, /) -> None: ...
-    @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
@@ -634,9 +631,6 @@ class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
     def __init__(self) -> None: ...
-    @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: int16, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
@@ -764,9 +758,6 @@ class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @cpp_template("0")
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: int32, /) -> None: ...
-    @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
@@ -892,9 +883,6 @@ class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
     def __init__(self) -> None: ...
-    @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: int64, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
@@ -1022,9 +1010,6 @@ class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @cpp_template("0")
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: uint8, /) -> None: ...
-    @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
@@ -1150,9 +1135,6 @@ class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
     def __init__(self) -> None: ...
-    @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: uint16, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
@@ -1280,9 +1262,6 @@ class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @cpp_template("0")
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: uint32, /) -> None: ...
-    @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
@@ -1406,9 +1385,6 @@ class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
     def __init__(self) -> None: ...
-    @dispatch
-    @cpp_template("{0}")
-    def __init__(self, x: uint64, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::widths@20:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::widths@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::same@31:0: uncovered (generic body)
 main::bytes_of@36:0: uncovered (loop across a suspension)
 main::shadowed@42:0: covered (storage: no_proof_required), summary: known

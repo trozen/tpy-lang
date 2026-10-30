@@ -1588,6 +1588,7 @@ class TypeOperations:
         expected_return_type: SlotHint | TpyType | None = None,
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
         joined: set[str] | None = None,
+        literal: 'Callable[[TpyType], TpyType] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
@@ -1602,6 +1603,9 @@ class TypeOperations:
         A type param bound directly by scalar fixed ints of different widths
         binds to their join (`_bind_direct_fixed_ints`); its name is added to
         `joined`, when given, since the call then converts an argument.
+        An int literal a type parameter binds takes the type `literal`
+        gives (the call ranking's `CallRanking.literal_type`), by default
+        `default_int_for_literal`.
         """
         return_hint = SlotHint.of(expected_return_type)
         # A fill-only hint prefers no protocol form for the result.
@@ -1709,9 +1713,13 @@ class TypeOperations:
                         bound, conformer, inferred)
 
         # Resolve pending types for codegen.
+        # A literal nested in a binding (a tuple element) stays a literal
+        # marker here: the arguments are classified against the binding, and
+        # the commit resolves it (`resolve_inferred_type_arg`).
+        literal = literal or self.ctx.default_int_for_literal
         for k, v in list(inferred.items()):
             if isinstance(v, (IntLiteralType, FloatLiteralType)):
-                inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
+                inferred[k] = resolve_int_literals(v, literal)
             elif isinstance(v, VoidType):
                 # A `-> None` conformer method binds VoidType; the explicit
                 # `None` type arg spells NoneType -- canonicalize so both
@@ -1721,7 +1729,7 @@ class TypeOperations:
                 # Resolve PendingListType to list
                 elem_type = v.element_type
                 if isinstance(elem_type, (IntLiteralType, FloatLiteralType)):
-                    elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
+                    elem_type = resolve_int_literals(elem_type, literal)
                 inferred[k] = make_list(elem_type)
 
         # An empty container literal pins T to UnknownElementType but

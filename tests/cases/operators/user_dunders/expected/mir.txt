@@ -19,7 +19,7 @@ main::Vec2.__mul__@20:4: covered (storage: no_proof_required)
 main::Vec2.__neg__@23:4: covered (storage: no_proof_required)
 main::Vec2.__pos__@26:4: covered (storage: no_proof_required)
 main::Vec2.__eq__@29:4: covered (storage: no_proof_required)
-main::Vec2.__hash__@32:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Vec2.__hash__@32:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::Vec2.__len__@35:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::Vec2.__contains__@38:4: covered (storage: no_proof_required), summary: known
 main::Vec2.__iadd__@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

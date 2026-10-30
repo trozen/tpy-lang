@@ -6,5 +6,5 @@ main::global_count@29:0: covered (storage: no_proof_required), summary: opaque (
 main::global_mixed_sign@34:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::global_bigint@39:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::global_annotated@44:0: covered (storage: no_proof_required), summary: opaque (summary global access)
-main::global_explicit@49:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::global_explicit@49:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::nonlocal_stores@54:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
