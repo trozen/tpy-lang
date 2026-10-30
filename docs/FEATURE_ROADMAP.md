@@ -2048,7 +2048,7 @@ ownership logic) is pending. `docs/MIR_ANALYSIS_PLAN.md` records the active
 analysis-first sequence and coverage gates.
 
 **Dependencies**: None within tpyc (it's a self-contained refactor). Blocks:
-LSP target (per CLAUDE.md), incremental front-end caching, and any future
+a possible LSP, incremental front-end caching, and any future
 non-C++ backend (F6) that wants a stable IR to consume.
 
 **Effort**: XL (multi-quarter refactor; sequenced in rollout phases per

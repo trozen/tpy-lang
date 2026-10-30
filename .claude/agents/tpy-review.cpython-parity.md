@@ -93,7 +93,7 @@ When the prompt says `DESIGN MODE` (the prompt carries the protocol), ask these 
 
 ## Pitfalls you own
 
-`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (author probes with `printf '...' > /tmp/agents/<name>/p.py`; no Write tool, no heredocs):
+`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (author probes under `/tmp/agents/<name>/`):
 
 - `silent-copy-vs-alias` -- the headline above; the check is the mutate-after-the-boundary probe under both interpreters.
 - `conditional-operand-evaluates-in-place` -- for a changed `or` / `and` / ternary / comprehension-filter / chained-comparison shape, put a side effect in the guard that the operand can observe and run under both interpreters; a temp, copy, call or duplicated operand above the guard in the emit is the finding.

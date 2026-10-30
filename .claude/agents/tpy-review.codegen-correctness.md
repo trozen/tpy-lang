@@ -73,7 +73,7 @@ When the prompt says `DESIGN MODE` (the prompt carries the protocol), ask these 
 
 ## Pitfalls you own
 
-`docs/PITFALLS.md` holds the language and generated-code rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (not the whole doc per change), and never accept a runtime-behavior finding without the probe. Author probes with `printf '...' > /tmp/agents/<name>/p.py` -- no Write tool, no heredocs:
+`docs/PITFALLS.md` holds the language and generated-code rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (not the whole doc per change), and never accept a runtime-behavior finding without the probe. Author probes under `/tmp/agents/<name>/`:
 
 - `hidden-allocation` -- every `std::string(`, `::tpy::Bytes(`, `::tpy::ByteArray(`, container construction, `BigInt(` temporary, `from_str`, `make_`, `new ` and `__tmp` local in changed emit must be one the type mapping requires at that position; a design option that heap-allocates behind the user's back to make a rare shape work is a finding (the rare shape gets a documented reject with an explicit spelling).
 - `view-not-copy` -- `str`/`bytes` at borrowed positions stay views; `Own[` on a value type is a finding.

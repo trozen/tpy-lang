@@ -16,11 +16,11 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 ## Working in this repo
 
-**Always** use `uv run` to invoke Python/tpy (never bare `python` or `tpy`). Where the harness has dedicated read/search tools, prefer them over `cat`/`head`/`tail`/`grep`/`rg`/`find` in the shell.
+**Always** use `uv run` to invoke Python/tpy (never bare `python` or `tpy`).
 
 Example programs live in the separate `tpy-examples` repo (https://github.com/trozen/tpy-examples), not in this tree.
 
-**Snippets**: write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) -- they trigger permission prompts for multi-line commands.
+**Snippets**: write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there.
 
 **Committing -- branch-aware.** A *temporary working branch* is any branch that is **not** `master`/`main` **and** has **no** remote-tracking (upstream) branch -- a throwaway branch for developing a feature before it's squash-merged into `master`. Detect it mechanically: branch from `git branch --show-current`; upstream from `git rev-parse --abbrev-ref --symbolic-full-name @{u}` (this command fails when there is no upstream). Make this determination yourself -- do **not** ask the user whether the branch qualifies.
 
@@ -106,7 +106,7 @@ Each folder under `tests/cases/` becomes one parametrized item of `test_case` wi
 
 The cpy phase (CPython run) still auto-skips via **committed** fingerprints -- CPython output is toolchain-independent, so a committed key is portable:
 
-- **Session-level** (`tests/.session_fingerprints.json`, single file): `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run. (The legacy `runtime` / `libtpy` keys still recorded here no longer gate any phase -- exec uses the local cache now.)
+- **Session-level** (`tests/.session_fingerprints.json`, single file): `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run.
 - **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional): hash of the case's `main.py` (`main`). Cases without a CPython phase end up with no file.
 
 Parallel execution (`-n auto --dist worksteal`) is configured in `pyproject.toml` via `addopts`; worksteal lets idle workers take a slow worker's backlog (the async cases would otherwise leave a long tail). Worker count auto-caps to the cgroup v2 CPU quota. C++ compiles run from the checkout root with `CCACHE_BASEDIR` set to it, so worktrees at different paths share ccache entries. Case binaries link with `lld` (else `mold`) when one passes a trial link with the configured compiler -- on a warm ccache the link is most of a case's build; without either, the toolchain's default linker is used. The exec phase also reuses a persistent content-addressed cache of compiled stdlib object files (see `tpyc/` code for the cache-key derivation). On Linux a case's compile is forked from a per-worker compile server that has the stdlib analyzed (`--no-fork-compile` compiles in-process; `tests/README.md` "Forked compiles").
@@ -292,7 +292,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 **THIR and the codegen boundary.** `tpyc/thir/` (Typed High-level IR) is the single sema->codegen boundary for every BODY: `thir/lower/` builds THIR from the analyzed AST and `thir/emit.py` renders the C++. `codegen_cpp/` is the printer/skeleton layer around it -- module driver, headers, signatures, record/protocol/enum drivers, the ctor member-init driver, the printer of the resumable frame THIR publishes (`THIRResumableFrame`), and type rendering. There is no second body emitter and nothing to fall back to: a body THIR cannot lower is a **compile error** (`ThirRejectError`, naming the blocking construct and its line). The fix for one is a row in the one conversion (TODO.md "One conversion boundary for every value sink") or a filed shape, never a new per-sink arm and never a special case in the printer, and every new arm gets a snapshot case (exec + cpy) that pins its render and an `error_*` case for the everyday adjacent shape that must keep rejecting. An arm is never pinned by a unit test; the `tpyc/thir/test_*.py` files pin registries, the validator's invariants over hand-built THIR, the reject diagnostic and the `--dump-thir` renderer. Known unlowered shapes are queued in `scripts/thir_migration/review/` (`bins_*.json` bins each reject site, with a reproducer under `probes/`; `program_verdicts.json` holds the per-program verdicts). The RULE for the lowering and the emitter: nothing about builtin methods, runtime symbols or container kinds is hardcoded -- admission keys on the value form (`ValueForm`) and per-TypeDef facts, renders read the stub's `@native` annotation and the resolved dunder -- with exactly two exceptions that require compiler support: literal construction and pending-literal element-type resolution. Existing violations are tracked debt (TODO.md, the `[thir] RULE` entry), not accepted residue. A fix that adds a lowering row keyed on a method name or a callee kind is rejected at analysis; a runtime signature that refuses the form the language model prescribes (a `str` argument is a view) is fixed in the runtime. `--dump-thir` prints a module's lowered IR. Design: `docs/IR_DESIGN.md`.
 
-**Freeze (2026-10-07).** Value-flow features are frozen in `tpyc/thir/lower/` and in sema's copy / move / borrow verdicts (`own_copy.py`, `compatibility.py`, `value_category.py`, `iter_loans.py`) until the lowering consolidation (TODO.md "One conversion boundary for every value sink") lifts it milestone by milestone. Miscompile and crash fixes, the consolidation itself and work outside those files continue; the tuple session's tuple-only steps and the in-flight nested-comprehensions slice may land. A reject found meanwhile is filed with its shape (BUGS.md), not fixed with a new row. One session owns `tpyc/thir/lower/` during the freeze.
+**Freeze (2026-10-07).** `tpyc/thir/lower/` and sema's copy / move / borrow verdicts (`own_copy.py`, `compatibility.py`, `value_category.py`, `iter_loans.py`) belong to one session, the THIR owner, until the lowering consolidation (TODO.md "One conversion boundary for every value sink") lifts the freeze milestone by milestone. The owner changes them as its work needs. Another session changes them only in coordination with the owner, and only where that does not get in the way of the owner's work; a reject it finds meanwhile is filed with its shape (BUGS.md), not fixed with a new row. Work outside those files is unaffected.
 
 **C++ build** (`compiler.py` / `cli.py`): After codegen, the CLI generates a CMake sources file or invokes the C++ compiler directly. Object files are compiled in parallel (`-j`), then linked. Optional ccache integration.
 
@@ -376,15 +376,6 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 ## Supported Language Features
 
 See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language features (working, planned, and open for design) and the full type mapping table.
-
-## LSP Target (Future, blocked on IR migration)
-
-An LSP for TPy is a possible future direction, **not a project goal**. Blocked on the IR migration (`docs/IR_DESIGN.md`) -- THIR has landed, MIR has not. Treat the invariants below as **tie-breakers**, not overrides of compiler-centric reasoning:
-
-- Diagnostics carry structured source locations (file + span + severity), not only formatted strings.
-- Parser output (`TpyModule` / TPy AST nodes) is the downstream boundary; downstream phases should not depend on CPython `ast` specifics.
-- Avoid hard-coded "single entry point" assumptions where a workspace (multi-entry) model works just as well.
-- Keep type representations introspectable and printable (hover, completions, signature help need to render types back to the user).
 
 ## Compiler Front-end Performance
 

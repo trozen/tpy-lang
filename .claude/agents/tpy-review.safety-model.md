@@ -81,7 +81,7 @@ Out of scope:
 
 ## Pitfalls you own
 
-`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches. A finding about a copy, a move or an alias must be backed by a probe you wrote under `/tmp/agents/<name>/` (`printf '...' > file`; no Write tool, no heredocs) and ran (`uv run tpy --dump-code`, then `uv run tpy` and `PYTHONPATH=lib/cpy uv run python` for the alias observation); quote the emitted line or the two outputs. Reading is how you form the suspicion, not how you confirm it. You may NOT run any test suite or `tests/update_snapshots.py`.
+`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches. A finding about a copy, a move or an alias must be backed by a probe you wrote under `/tmp/agents/<name>/` and ran (`uv run tpy --dump-code`, then `uv run tpy` and `PYTHONPATH=lib/cpy uv run python` for the alias observation); quote the emitted line or the two outputs. Reading is how you form the suspicion, not how you confirm it. You may NOT run any test suite or `tests/update_snapshots.py`.
 
 - `silent-copy-vs-alias` -- at every boundary the change touches (return, yield, param, field store, container insert, global), mutate after the boundary and observe; then find the copy constructor or by-value slot in the emit.
 - `copy-warning-at-wrong-site` -- for every line under a "copies X" warning, the emit at that line contains the copy; a const-ref bind or a `std::move` under the warning, or a `copy()` whose removal would only change the warning, is the defect.
