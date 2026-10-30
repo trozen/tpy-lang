@@ -68,6 +68,12 @@ a case under `tests/cases/records/`:
 | global slot | `global_slot_write.lends_from_temporary` | `_global` |
 | frame slot | a record or container stops at the twin's `res.alias_bind`; a view field (`v = mk().ch.s`) is refused at the read as `unspecified.lends_from_temporary`; no shape reaches `frame_slot_write.lends_from_temporary` | `_frame` |
 
+A free-call argument at a parameter the callee does not retain is no such
+sink: the parameter holds the getter's reference for the call only, so it binds
+it in place (`grow(mk().items)` passes `mk().items()`, and the callee's write
+reaches what the getter lent) -- `calls/argument_sink`, section
+`property_temp_receiver`. A callee that keeps it takes the kept-argument row's tag.
+
 One label to know about: an ANNOTATED module global (`SLOT: list[int32] =
 mk().items`) takes the global-slot row, while an INFERRED one (`v = mk().name`)
 reports `local_decl.lends_from_temporary` -- a module-level binding without an
@@ -88,9 +94,11 @@ the Known Limitations row above.
 THE METHOD TWIN: the fact is the accessor spelling's only, so wherever the twin
 compiles it keeps its conceded warn-and-emit tier
 (`BUGS.md#readonly-borrow-of-temporary-receiver`). Where the callee keeps
-nothing, the free-call argument (`_arg`) and the stub-method argument
-(`_method_arg`) stop where the bound twin `h.items` does, at the
-argument-SHAPE gate (`BUGS.md#getter-result-slot-shape-rejects`). The whole
+nothing, the free-call argument (`mutate(mk().items)`) and the stub-method
+argument (`acc.append(mk().items)`, its copy warned) compile as the bound twin
+`h.items` does (`calls/argument_sink`, sections `property_temp_receiver` and
+`property_temp_receiver_insert`); the shapes the twin still refuses are
+`BUGS.md#getter-result-slot-shape-rejects`. The whole
 matrix of
 accessor-vs-twin verdicts is the committed table beside
 `scripts/thir_migration/review/property_position_sweep.py`.

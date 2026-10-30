@@ -70,7 +70,7 @@ inline void Bag::push(const ::tpy::BigInt& v) {
 //     b.push(99)
 //     self.total = len(b.items)
 inline BErr::BErr(Bag& b) : ::tpy::Exception("b") {
-    b.push(99);
+    b.push(::tpy::BigInt(99));
     this->total = ::tpy::BigInt(::tpy::__len__(b.items));
 }
 void __tpy_init();

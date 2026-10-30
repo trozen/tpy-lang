@@ -292,6 +292,35 @@ class Coercion:
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
 
+# Optional[StrView] <-> Optional[str]: plain `Optional[str]` params at ARG
+# lower to `std::optional<std::string_view>`, so the transfer is identity;
+# `Own[Optional[str]]` params and non-ARG contexts target
+# `std::optional<std::string>` and need per-element materialization, through
+# a statement expression that evaluates the source once.
+OPTIONAL_STRVIEW_TO_STR = Coercion(
+    name="optional_strview_to_str",
+    from_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
+    to_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
+    codegen=lambda e, _a, b, c: (
+        e if c == CoercionContext.ARG and not isinstance(b, OwnType)
+        else (f"({{ auto __ov = ({e}); "
+              f"__ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }})")
+    ),
+)
+
+
+OPTIONAL_STR_TO_STRVIEW = Coercion(
+    name="optional_str_to_strview",
+    from_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
+    to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
+    codegen=lambda e, _a, b, c: (
+        e if c == CoercionContext.ARG and not isinstance(b, OwnType)
+        else (f"({{ auto __ov = ({e}); "
+              f"__ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }})")
+    ),
+)
+
+
 # NOTE: Order matters; higher priority first for overlapping rules.
 COERCIONS: list[Coercion] = [
     # INT type parameter coercions (compile-time constants)
@@ -573,33 +602,8 @@ COERCIONS: list[Coercion] = [
         ),
         protocol_safe=True,
     ),
-    # Optional[StrView] <-> Optional[str]: plain `Optional[str]` params at ARG
-    # lower to `std::optional<std::string_view>`, so the transfer is identity;
-    # but `Own[Optional[str]]` params (e.g. list[Optional[str]].append) and
-    # non-ARG contexts (INIT/ASSIGN/RETURN) target `std::optional<std::string>`
-    # and need per-element materialization. Statement-expression pattern hoists
-    # the source into a local so the conditional evaluates the expression
-    # exactly once.
-    Coercion(
-        name="optional_strview_to_str",
-        from_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
-        to_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
-        codegen=lambda e, _a, b, c: (
-            e if c == CoercionContext.ARG and not isinstance(b, OwnType)
-            else (f"({{ auto __ov = ({e}); "
-                  f"__ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }})")
-        ),
-    ),
-    Coercion(
-        name="optional_str_to_strview",
-        from_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
-        to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
-        codegen=lambda e, _a, b, c: (
-            e if c == CoercionContext.ARG and not isinstance(b, OwnType)
-            else (f"({{ auto __ov = ({e}); "
-                  f"__ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }})")
-        ),
-    ),
+    OPTIONAL_STRVIEW_TO_STR,
+    OPTIONAL_STR_TO_STRVIEW,
 
     # bytearray -> bytes at a BORROWING `bytes` parameter only: that slot is a
     # span view, which a ByteArray satisfies with no copy. At an owning sink
@@ -1080,7 +1084,16 @@ INTO_DYN_FACTORY = Coercion(
     to_type=_is(OwnType),
     builds_fresh_value=True,
 )
-DYN_ERASURES = (INTO_DYN_INHERIT, INTO_DYN_ADAPTER, INTO_DYN_FACTORY)
+# ... and a bound coroutine handle (its optional slot) moved into the
+# Adapter, which takes the frame the handle holds.
+INTO_DYN_HANDLE = Coercion(
+    name="into_dyn_handle",
+    from_type=_match_any_side,
+    to_type=_is(OwnType),
+    builds_fresh_value=True,
+)
+DYN_ERASURES = (INTO_DYN_INHERIT, INTO_DYN_ADAPTER, INTO_DYN_FACTORY,
+                INTO_DYN_HANDLE)
 
 
 # Any -> T auto-coerce: runtime checked extraction. Target T must be a

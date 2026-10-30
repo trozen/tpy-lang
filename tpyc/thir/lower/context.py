@@ -17,8 +17,8 @@ from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             iter_capture_bindings)
 from ...identity_map import IdentityMap
 from ...prescan import scan_reassigned_vars
-from ...typesys import pointer_repr_optional
-from ...type_def_registry import has_view_param_form
+from ...typesys import contains_type_param, pointer_repr_optional
+from ...type_def_registry import ParamPassing, has_view_param_form
 from ...typesys import (
     AnyType,
     ConcreteFrameType,
@@ -55,6 +55,7 @@ from ..nodes import (THIRAssign, THIRCallableSignature, THIRErrorReturnBind, THI
                      THIRSelf, THIRStmt, THIRStmtSeq, THIRTupleElemTarget,
                      THIRTupleUnpack, THIRUnionExtraction, THIRUnionLayout,
                      THIRWalrus)
+from ..param_contract import Materializer, ParamContract, PointerKind
 from ..validate import _iter_children
 from .captures import CaptureSites
 from .predicates import (
@@ -579,6 +580,10 @@ class SlotLifetime(Enum):
     # The slot hands its view out of the body (a result): the buffer it
     # points into must outlive the body's frame.
     OUTLIVES_FRAME = auto()
+    # A call's parameter: bound for the call, so whatever it is handed
+    # lives at least until the end of the full expression -- a prvalue a
+    # `const T&` binds, a temporary a `T&` or a pointer is lent through.
+    FULL_EXPRESSION = auto()
 
 
 class SlotConstruct(Enum):
@@ -718,6 +723,13 @@ class Slot:
     # an object of the body moves there implicitly. Not a result staged
     # into a temporary first (a finally / `with` body).
     implicit_move: bool = False
+    # An owned parameter whose copy of an existing object is the caller's
+    # to materialize (`Materializer.CALLER`): a `T&&` binds no lvalue,
+    # and a copy held before the call runs before sibling arguments.
+    caller_materializes: bool = False
+    # An owned parameter whose runtime overload takes `const T&` and copies
+    # an lvalue itself (`Materializer.CALLEE`, a native type's insert).
+    callee_materializes: bool = False
 
 
 def lends_elements(slot: Slot) -> bool:
@@ -938,8 +950,13 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
         return SlotHolds.BORROWS
     bare = unwrap_readonly(unwrap_send_sync(declared))
     if rep is Representation.TRAIT:
-        return (SlotHolds.OWNS if isinstance(bare, OwnType)
-                else SlotHolds.TRAIT)
+        if not isinstance(bare, OwnType):
+            return SlotHolds.TRAIT
+        # An owned open `T` instantiated at a value type is that value
+        # (`own_param_t<T>`), built by its own copy-initialization.
+        return (SlotHolds.VALUE
+                if st.is_value_type() and not contains_type_param(st)
+                else SlotHolds.OWNS)
     if rep is Representation.REFERENCE:
         u = unwrap_ref_type(bare)
         return (SlotHolds.POINTER
@@ -959,6 +976,12 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
             # parameter's tuple or Optional whose parts each have a class,
             # any local's -- takes the source as it renders.
             return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
+        if (construct is SlotConstruct.PASS and not element
+                and st.is_value_type()
+                and not isinstance(storage_type(st), TupleType)):
+            # A parameter of any other value type (a view, a value
+            # record) is copy-initialized from its argument as it renders.
+            return SlotHolds.VALUE
         if element and stored and isinstance(unwrap_readonly(st),
                                              TypeParamRef):
             # A tuple holds an open `T` element inline, as its own storage.
@@ -1135,6 +1158,96 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
     assert construct is not None, "a stored slot names its construction"
     return _built_slot(t, storage_type(t), Representation.STORAGE, position,
                        construct, analyzer, placement=placement)
+
+
+_PASSING_REPRESENTATION = {
+    ParamPassing.VALUE: Representation.STORAGE,
+    ParamPassing.OWN: Representation.STORAGE,
+    ParamPassing.VIEW: Representation.VIEW,
+    ParamPassing.CONST_REF: Representation.REFERENCE,
+    ParamPassing.MUT_REF: Representation.REFERENCE,
+    ParamPassing.TRAIT: Representation.TRAIT,
+}
+
+
+class ParamSlotClass(Enum):
+    """How a parameter binds the caller's argument, from the passing its
+    contract publishes: its own value (a scalar, a by-value record, an
+    owned value type, a `Ptr` passed by value), a `str` / `bytes` view, an
+    open `T` through its trait, a reference to the caller's object (`T&`,
+    `const T&`, `T&&`), or a borrow pointer at it (an Optional's or a
+    union's borrow form).
+
+    Not the slot's `Representation` (`_PASSING_REPRESENTATION`), which
+    says how the conversion holds the value it builds: an `Own[T]`
+    parameter binds the caller's object by reference (`T&&`, the class
+    REFERENCE) while its value is the parameter's own storage (STORAGE), and
+    a borrow pointer points at the caller's object (POINTER) whose value
+    the slot reads as a reference (REFERENCE)."""
+    VALUE = auto()
+    VIEW = auto()
+    TRAIT = auto()
+    REFERENCE = auto()
+    POINTER = auto()
+
+
+_PASSING_CLASS = {
+    ParamPassing.VALUE: ParamSlotClass.VALUE,
+    ParamPassing.VIEW: ParamSlotClass.VIEW,
+    ParamPassing.TRAIT: ParamSlotClass.TRAIT,
+    ParamPassing.CONST_REF: ParamSlotClass.REFERENCE,
+    ParamPassing.MUT_REF: ParamSlotClass.REFERENCE,
+    ParamPassing.OWN: ParamSlotClass.REFERENCE,
+}
+
+
+def param_slot_class(t: TpyType, contract: 'ParamContract'
+                     ) -> ParamSlotClass:
+    """The class of the parameter of declared type `t` its contract
+    describes."""
+    passing = contract.passing or t.param_passing(contract.const)
+    if passing is ParamPassing.POINTER:
+        return (ParamSlotClass.VALUE
+                if contract.pointer is PointerKind.BY_VALUE
+                else ParamSlotClass.POINTER)
+    return _PASSING_CLASS[passing]
+
+
+def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
+               placement: SlotPlacement = SlotPlacement.STATEMENT,
+               instantiated: 'TpyType | None' = None) -> Slot:
+    """The slot of a call's parameter of declared type `t`, held as the
+    callee's published contract passes it -- a `str` view as the view, an
+    open `T` through its trait, a reference const where the callee's
+    verdict says so -- and bound for the call (`FULL_EXPRESSION`). A
+    generic callee's parameter holds the type its call `instantiated` it
+    at."""
+    passing = contract.passing or t.param_passing(contract.const)
+    if passing is ParamPassing.POINTER:
+        rep = (Representation.STORAGE
+               if contract.pointer is PointerKind.BY_VALUE
+               else Representation.REFERENCE)
+        const = contract.const_pointee
+    else:
+        rep = _PASSING_REPRESENTATION[passing]
+        # A reference is the const one the signature spells; the const
+        # verdict alone does not make a `T&` bind an rvalue.
+        const = (passing is ParamPassing.CONST_REF
+                 if rep is Representation.REFERENCE else contract.const)
+    st = storage_type(instantiated or t)
+    # A still-open `T | None` parameter is `opt_param_t<T>`: a value
+    # Optional or a pointer, as the instantiation decides.
+    open_opt = (passing is ParamPassing.TRAIT and isinstance(st, OptionalType)
+                and isinstance(unwrap_readonly(st.inner), TypeParamRef))
+    slot = _built_slot(t, st, rep,
+                       SlotPosition.PARAM, SlotConstruct.PASS, analyzer,
+                       placement=placement, const=const,
+                       trait=TraitAbi.OPT_PARAM if open_opt else None)
+    return replace(slot, lifetime=SlotLifetime.FULL_EXPRESSION,
+                   caller_materializes=(
+                       contract.materializes is Materializer.CALLER),
+                   callee_materializes=(
+                       contract.materializes is Materializer.CALLEE))
 
 
 def _result_layout(result: 'ResultRepresentation', t: TpyType

@@ -101,6 +101,7 @@ from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
 from .protocols import dynamic_dispatch_type_conforms, handle_payload_may_be
+from .dyn_erasure import erased_source
 from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
@@ -234,7 +235,7 @@ def construct_type_param_defaults(args: list[TpyExpr], filled: list[int],
     (`int32()`), dispatched on that class's binding as a filled constructor
     default is (`DefaultReferent.ctor`). A callee TPy declares takes the `T()` form
     itself (`T{}` at its instantiation); a `T` bound to anything but a plain
-    class keeps it too (BUGS.md#native-arg-filled-none-own-str-default)."""
+    class keeps it too (BUGS.md#native-default-union-container-fill-rejects)."""
     if callee.emits_cpp_defaults:
         return
     for i in filled:
@@ -2421,7 +2422,8 @@ class CallAnalyzer:
         """
         if len(expr.args) != 1:
             return  # arity error already reported by normal resolution
-        arg_type = self.ctx.get_expr_type(expr.args[0])
+        # The coroutine the argument's erasure takes, not the erased owner.
+        arg_type = self.ctx.get_expr_type(erased_source(expr.args[0]))
         if arg_type is None:
             return
         inner = unwrap_readonly(unwrap_own(unwrap_ref_type(unwrap_send_sync(arg_type))))

@@ -85,7 +85,7 @@ __gen_gen_wide gen_wide() {
 //     print("builtin", bin(2**62 + 1))
 void sinks() {
     Counter c = Counter();
-    std::cout << "meth" << " " << c.bump(1073741824) << "\n" << ::tpy::check_signals;
+    std::cout << "meth" << " " << c.bump(::tpy::BigInt(1073741824)) << "\n" << ::tpy::check_signals;
     std::cout << "free" << " " << ::tpyapp::main::take_int(::tpy::BigInt(static_cast<int64_t>(1099511627776LL))) << " " << ::tpyapp::main::take_i64(static_cast<int64_t>(1099511627776)) << "\n" << ::tpy::check_signals;
     std::cout << "ctor" << " " << Holder(::tpy::BigInt(static_cast<int64_t>(1099511627776LL))).k << " " << Holder(::tpy::BigInt(1)).w << "\n" << ::tpy::check_signals;
     ::tpy::BigInt a = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));

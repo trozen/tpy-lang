@@ -17,6 +17,9 @@ final-other 1007 2007
 str 103
 enum 12
 bytes 102
+none 10 10
+own-str 103 103
+own-call-rvalue 3
 generic 3
 generic-kw 4
 generic-qualified 2

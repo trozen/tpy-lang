@@ -137,7 +137,7 @@ __gen_gen_body gen_body(const std::vector<::tpy::BigInt>& xs) {
 //     print("gen.yield", lengths)
 void main() {
     ::tpyapp::main::free_function();
-    std::array<const ::tpy::BigInt, 2> __tmp_1{7, 8};
+    std::array<const ::tpy::BigInt, 2> __tmp_1{::tpy::BigInt(7), ::tpy::BigInt(8)};
     Shelf().show(::tpy::varargs<const ::tpy::BigInt>(__tmp_1));
     ::tpyapp::main::loop_body();
     std::vector<::tpy::BigInt> __tmp_2 = {5, 6};

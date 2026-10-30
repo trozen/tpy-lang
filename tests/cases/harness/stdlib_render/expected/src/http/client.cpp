@@ -192,7 +192,7 @@ int32_t _hex_val(int32_t c) {
         lines.push_back("Accept-Encoding: identity");
     }
     if (((!(has_cl)) && (!(has_te)))) {
-        ::tpy::BigInt cl = ::tpystd::http::client::_content_length(method, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt);
+        ::tpy::BigInt cl = ::tpystd::http::client::_content_length(method, body);
         if ((cl >= 0)) {
             lines.push_back((::tpy::str_concat("Content-Length: ", (cl).to_string())));
         }

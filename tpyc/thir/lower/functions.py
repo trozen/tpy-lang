@@ -15,14 +15,10 @@ from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
     TpyAssign,
-    TpyBinOp,
-    TpyBoolLiteral,
     TpyCall,
     TpyExpr,
     TpyExprStmt,
     TpyFieldAccess,
-    TpyFloatLiteral,
-    TpyFString,
     TpyFunction,
     TpyIntLiteral,
     TpyMatch,
@@ -30,22 +26,19 @@ from ...parse.nodes import (
     TpyModule,
     TpyName,
     TpyNestedDef,
-    TpyNoneLiteral,
     TpyStmt,
-    TpyStrLiteral,
     collect_name_refs,
     collect_top_level_local_names,
     expr_reads_self_field,
     is_base_init_call,
     is_init_trivia,
 )
-from ...coercions import peel_identity_coercions
 from ... import qnames
 from ...namespace import BindingKind
 from ...prescan import scan_reassigned_vars, scope_bound_names
 from ...sema.registration import receiver_self_type, skipped_base_inits
+from ..param_contract import arg_retention
 from ...typesys import (
-    IntLiteralType,
     RecordInfo,
     body_method_info,
     is_dyn_protocol,
@@ -62,7 +55,6 @@ from ...typesys import (
     VoidType,
     error_return_to_cpp,
     none_default_cpp_spelling,
-    unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -98,7 +90,6 @@ from ..nodes import (
     THIRExpr,
     THIRFunction,
     THIRFunctionLayout,
-    THIRLiteral,
     THIRMilInit,
     THIRParam,
     THIRAssign,
@@ -113,20 +104,15 @@ from ..nodes import (
 )
 from .predicates import (
     _value_record_slot,
-    _peel_coerce,
     _eligible_char,
     _eligible_ptr_value,
     _eligible_scalar,
-    _f1_container_ref,
     _f1_record,
     _is_string_owned,
-    _is_type_param_slot,
-    _optional_ptr_borrow_name,
     _readonly_global_type,
     _pointer_slot_global_type,
     _resolved_str_value,
     _value_opt_scalar,
-    _value_opt_view,
 )
 from . import bindings
 from .context import (
@@ -136,17 +122,16 @@ from .context import (
 )
 from .checks import (
     _builtin_container_type,
-    arg_retention,
-    _ctor_shape_ok,
     _stub_template_param,
     _nondef_ctor_field,
 )
 from .expressions import (
     _lower_call_arg,
-    _lower_expr,
+    call_callees,
+    converted_arg,
     _union_source_layout,
 )
-from .callables import stub_callee
+from .callables import call_signature
 from .field_write import lower_member_init_value
 from .statements import (
     _lower_stmts,
@@ -408,9 +393,9 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if self_type is None or not _f1_record(self_type, analyzer):
             raise ThirUnsupported("sig.receiver_record")
         # Inplace dunders (__iadd__ ...) admit: the forced-const param
-        # verdict (CONST_PARAMS_METHODS) is applied by `_param_is_const_at`'s
-        # forced arm -- including the slices decide_param_const drops the
-        # force for (`_forced_const_dropped`) -- and the mandatory `return
+        # verdict is applied by `_param_is_const_at` (`forced_param_const`),
+        # including the slices decide_param_const drops the force for --
+        # and the mandatory `return
         # self` renders `return *this;` through the record-self return arm
         # (the T& return type is SKELETON -- the signature emitter's
         # is_inplace_dunder branch).
@@ -1455,186 +1440,45 @@ def _lower_message_init(init_method: TpyFunction, ri: RecordInfo,
                         lc: _LowerCtx) -> 'THIRMilInit | None':
     """The `message` member init a return exception's parent-initializer
     call renders as, or None when no such call passes a message (the field
-    keeps its default). The argument takes the base-init arg rows, like a
-    thrown exception's `super().__init__(msg)`."""
+    keeps its default). The argument converts at the parameter of the
+    `__init__` the call resolved to, like a thrown exception's
+    `super().__init__(msg)`."""
     for stmt in init_method.body:
         if not is_base_init_call(stmt):
             continue
         assert isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyMethodCall)
         expr = stmt.expr
         with bindings.at(lc, stmt):
-            arg = lc.analyzer.registry.base_init_message_arg(ri, expr)
-            if arg is None:
+            if lc.analyzer.registry.base_init_message_arg(ri, expr) is None:
                 continue
-            if (expr.kwargs or expr.double_star_unpack is not None
-                    or len(expr.args) != 1
-                    or not _base_init_arg_ok(arg, declared, lc)):
+            value = (_base_init_arg(expr, 0, lc, declared)
+                     if len(expr.args) == 1 and not expr.kwargs
+                     and expr.double_star_unpack is None else None)
+            if value is None:
                 raise ThirUnsupported("ctor.base_init", loc=stmt.loc)
             return THIRMilInit(
                 field_cpp=escape_cpp_name(qnames.EXCEPTION_MESSAGE_FIELD),
-                value=_lower_base_init_arg(arg, lc, declared))
-    return None
-
-def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
-    """One base-init arg the tail emitter can render. Every arg renders
-    TARGET-LESS -- no retype, no deref, no auto-move --
-    so the admitted rows are exactly the shapes whose bare render is right:
-
-      * an eligible-scalar value expression (the M3d-1 row);
-      * a str literal (`"lit"`) / a `None` literal, the latter only where the
-        slot renders it `nullptr` -- a value-form optional/union slot spells it
-        `std::nullopt` / `{}`, which a target-less render cannot reproduce, so
-        the caller rejects that pairing;
-      * an int literal still typed `IntLiteralType` (a BigInt base slot:
-        the target-less render is the bare digits), pinned to the +-2^31-1
-        literal range like the sibling literal checks;
-      * a declared PARAM name of a str-family / F1-record / pointer-repr
-        Optional[F1-record] type, incl. `Own[...]` params -- all render as
-        the bare name;
-      * a record constructor over scalar-literal / scalar-name args, rendered
-        as the bare prvalue.
-
-    Two admitted pairings are NOT right and fail the C++ build
-    (BUGS.md#base-init-args-separate-lowering): a named record / list / str
-    arg at an `Own[T]` base param renders with no `std::move` (and a `str`
-    param passes its view), and the ctor prvalue cannot bind a pointer-form
-    (union / Optional) or mutated `T&` base param.
-
-    Anything that could register a codegen temp is out -- a base-init cell
-    has no flush point (same contract as the MIL)."""
-    analyzer = lc.analyzer
-    # An identity str-family coerce renders its inner bare in EVERY position
-    # (`super().__init__(message)` on a `String` param into a `str` base
-    # slot: both sides spell std::string), so the shape rows key the inner.
-    a = peel_identity_coercions(a)
-    at = analyzer.get_expr_type(a)
-    if _eligible_scalar(at):
-        return True
-    if isinstance(a, (TpyStrLiteral, TpyNoneLiteral)):
-        return True
-    if (isinstance(a, TpyCall) and not a.kwargs
-            and a.double_star_unpack is None
-            and _f1_record(at, analyzer)
-            and _ctor_shape_ok(a, analyzer)
-            and all(
-                isinstance(_peel_coerce(sub),
-                           (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
-                            TpyStrLiteral))
-                or (isinstance(sub, TpyName)
-                    and _eligible_scalar(analyzer.get_expr_type(sub)))
-                for sub in a.args)):
-        # A materialized-default CTOR rvalue (`: Base(a, Fixed(5), 2)`):
-        # the target-less render is the bare prvalue; scalar-literal/name
-        # ctor args cannot register a temp, keeping the no-flush contract.
-        return True
-    if isinstance(a, TpyIntLiteral):
-        return (isinstance(at, IntLiteralType)
-                and -(2**31 - 1) <= a.value <= 2**31 - 1)
-    # A walrus inside the argument would need a flush point for its
-    # binding, and the cell has none: the part order the format call
-    # evaluates in is unspecified, so the write and a later read race.
-    if (isinstance(a, (TpyBinOp, TpyFString))
-            and contains_named_expr(a)):
-        return False
-    if (isinstance(a, TpyBinOp) and a.op == "+"
-            and _resolved_str_value(at, analyzer) is not None):
-        # A str CONCAT (`super().__init__("tag" + str(n))` ->
-        # `::tpy::Exception((::tpy::str_concat("tag", ...)))`): str_concat is
-        # a pure expression, so the target-less bare render holds -- provided
-        # each operand is itself a temp-free row, which keeps the cell's
-        # no-flush contract.
-        return (_base_init_str_operand_ok(a.left, declared, lc)
-                and _base_init_str_operand_ok(a.right, declared, lc))
-    if ((_conv := _base_init_str_conversion(a)) is not None
-            and _resolved_str_value(at, analyzer) is not None):
-        # A bare conversion (`super().__init__(str(n))`): the same pure
-        # render the concat admits as an operand, standing alone.
-        return _base_init_arg_ok(_conv, declared, lc)
-    if isinstance(a, TpyFString):
-        # An f-string (`super().__init__(f"tag{n}")` ->
-        # `::tpy::Exception(std::format("tag{}", n))`): std::format is a pure
-        # expression like str_concat, so the same operand rule applies to
-        # each interpolated value. A conversion or format spec is excluded
-        # -- those spell their own render, which this row has not read.
-        for part in a.parts:
-            if isinstance(part, str):
-                continue
-            if part.conversion != -1 or part.format_spec is not None:
-                return False
-            if not _base_init_str_operand_ok(part.expr, declared, lc):
-                return False
-        return True
-    if not (isinstance(a, TpyName) and a.name in declared
-            and a.name != "self"):
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[a.name])))
-    if _resolved_str_value(vt, analyzer) is not None:
-        return True
-    # The remaining bare-name param families. Each binds a `const T&` (never a
-    # pointer-local), so the target-less render is
-    # the bare name and nothing here can register a temp:
-    #   * a builtin CONTAINER (`: Parent(store)`),
-    #   * an open type param inside a generic record (`: Base<T>(val)`),
-    #   * an owned `String` (`: ::tpy::OSError(message)`) -- excluded from
-    #     `_resolved_str_value`, which is the view-family predicate.
-    if (_f1_container_ref(vt)
-            or _is_type_param_slot(vt) or _is_string_owned(vt)):
-        return True
-    # A value-repr Optional param (`note: str | None` ->
-    # `std::optional<std::string_view>`, or an Optional scalar): the whole
-    # optional passes bare into the matching base slot (`: Tagged(tag,
-    # note)`); the lowering reads it allow_whole_optional.
-    if (_value_opt_scalar(vt, analyzer) is not None
-            or _value_opt_view(vt, analyzer) is not None):
-        return True
-    if _optional_ptr_borrow_name(a, declared, analyzer) is not None:
-        return True
-    own = unwrap_optional_own(vt)
-    if own is not None:
-        vt = own.wrapped
-        if isinstance(vt, OptionalType):
-            vt = vt.inner
-    return _f1_record(vt, analyzer)
-
-def _base_init_str_conversion(a: TpyExpr) -> 'TpyExpr | None':
-    """The subject of a `str(x)` / `repr(x)` conversion call, or None. The
-    render is a pure expression (`::tpy::fixed_to_str<int32_t>(n)`,
-    `(n).to_string()`, `::tpy::repr_of(n)`), so it registers no temp and the
-    cell's no-flush contract survives it."""
-    if (isinstance(a, TpyCall) and isinstance(a.func, TpyName)
-            and a.func.name in ("str", "repr") and len(a.args) == 1
-            and not a.kwargs and a.double_star_unpack is None):
-        return a.args[0]
+                value=value)
     return None
 
 
-def _base_init_str_operand_ok(a: TpyExpr, declared: dict[str, TpyType],
-                              lc: _LowerCtx) -> bool:
-    """One operand of an admitted base-init str concat or f-string: any row
-    `_base_init_arg_ok` admits, plus a `str(x)` / `repr(x)` conversion over
-    one."""
-    subject = _base_init_str_conversion(a)
-    if subject is not None:
-        return _base_init_arg_ok(subject, declared, lc)
-    return _base_init_arg_ok(a, declared, lc)
-
-
-def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
-                         declared: dict[str, TpyType],
-                         none_cpp: 'str | None' = None) -> THIRExpr:
-    """Lower one admitted base-init arg. A bare `None` has no generic
-    `_lower_expr` arm (its render is always slot-derived elsewhere), so it
-    lowers here to the None literal carrying the SLOT's spelling
-    (`none_default_cpp_spelling` -- `{}` for a variant slot, `std::nullopt`
-    for a value optional, the bare `nullptr` default otherwise -- the
-    slot-aware default render); everything else takes `_lower_expr`'s
-    name/literal arms."""
-    if isinstance(a, TpyNoneLiteral):
-        return THIRLiteral(result_type=lc.analyzer.get_expr_type(a),
-                           value=None, loc=getattr(a, "loc", None),
-                           none_cpp=none_cpp)
-    # A value-opt param passes WHOLE into the base slot (bare name).
-    return _lower_expr(a, lc, declared, allow_whole_optional=True)
+def _base_init_arg(call: TpyMethodCall, index: int, lc: _LowerCtx,
+                   declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """Argument `index` of a parent-initializer call, converted at the
+    parameter of the `__init__` it resolved to; None when it has no
+    conversion there. The initializer list runs before the body, so no
+    statement holds a temporary it needs."""
+    fi = call.resolved_function_info
+    if fi is None or index >= len(fi.params):
+        return None
+    try:
+        return converted_arg(call.args[index], fi.params[index].type, lc,
+                             declared, callee_fi=fi, arg_index=index,
+                             call=call, temps=False)
+    except ThirUnsupported as ex:
+        if ex.no_flush:
+            return None
+        raise
 
 def _stub_template_base_init(stmt: TpyStmt) -> bool:
     """A base-init call that resolved to a stub's `@cpp_template` `__init__`
@@ -1667,13 +1511,19 @@ def _lower_stub_base_init(expr: TpyMethodCall, ri: RecordInfo, base_type: TpyTyp
         # construction, whichever class on the way inherits it.
         _witness("baseinit.stub_default")
         return THIRBaseInit(base_cpp=base_cpp, args=(), base=record_owner(base_info))
+    # The callee is resolved once; the arguments read the signature it
+    # publishes.
+    _, stub = call_callees(fi, analyzer, arity=len(expr.args),
+                           result_type=base_type, binds_body=False)
     args = tuple(_lower_call_arg(a, p.type, lc, declared, callee_fi=fi,
+                                 arg_index=i,
+                                 signature=call_signature(stub=stub),
                                  retention=arg_retention(fi, i, expr, analyzer, a))
                  for i, (a, p) in enumerate(zip(expr.args, fi.params)))
     _witness("baseinit.stub_template")
     init = THIRCall(result_type=base_type, callee="__init__", args=args,
                     cpp_template=fi.cpp_template,
-                    stub_callee=stub_callee(fi, base_type, analyzer, arity=len(args)),
+                    stub_callee=stub,
                     constructs=True, loc=expr.loc)
     return THIRBaseInit(base_cpp=base_cpp, args=(init,), base=record_owner(base_info))
 
@@ -1687,8 +1537,8 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
     strips `self` from the latter's args), where `base_type` is the direct base sema
     decided the call constructs -- past an `__init__`-less direct base, that base,
     which inherits the named class's constructor. The base must be F1 (so `to_cpp()`
-    spells the struct) and every arg in `_base_init_arg_ok`'s target-less bare-render
-    rows; kwargs / star args are out."""
+    spells the struct) and every arg converts at its parameter (`_base_init_arg`);
+    kwargs / star args are out."""
     analyzer = lc.analyzer
     expr = stmt.expr
     # The only narrowing of `stmt.expr` to a TpyMethodCall (is_base_init_call holds at
@@ -1712,22 +1562,11 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
     if expr.kwargs or expr.double_star_unpack is not None:
         return None
     args: list[THIRExpr] = []
-    resolved = expr.resolved_function_info
-    base_params = resolved.params if resolved is not None else []
-    for i, a in enumerate(expr.args):
-        if not _base_init_arg_ok(a, declared, lc):
+    for i in range(len(expr.args)):
+        arg = _base_init_arg(expr, i, lc, declared)
+        if arg is None:
             return None
-        # A `None` arg needs its SLOT's spelling (`{}` for a variant slot,
-        # `std::nullopt` for a value optional, bare `nullptr` otherwise) --
-        # rendered by `default_to_cpp` off the resolved overload's param type.
-        none_cpp = None
-        if isinstance(a, TpyNoneLiteral) and i < len(base_params):
-            none_cpp = default_to_cpp_from_analyzer(analyzer, a,
-                                                    base_params[i].type)
-            _witness("baseinit.none_slot_spelling")
-        if not _eligible_scalar(analyzer.get_expr_type(a)):
-            _witness("baseinit.nonscalar_arg")
-        args.append(_lower_base_init_arg(a, lc, declared, none_cpp=none_cpp))
+        args.append(arg)
     base_info = analyzer.registry.get_record_for_type(base_type)
     if base_info is None:
         return None

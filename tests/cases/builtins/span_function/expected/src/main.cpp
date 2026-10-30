@@ -4,6 +4,12 @@
 namespace tpyapp::main {
 
 
+// def total(sp: Span[readonly[int32]]) -> int32:
+//     return len(sp)
+int32_t total(std::span<const int32_t> sp) {
+    return ::tpy::__len__(sp);
+}
+
 // def main() -> None:
 //     # span() on user type through protocol param
 //     buf = Buffer()
@@ -16,6 +22,9 @@ namespace tpyapp::main {
 //
 //     arr: Array[int32, 3] = [5, 6, 7]
 //     print(len(span(arr)))
+//
+//     # span_arg: a span() rvalue straight into a Span parameter
+//     print("span_arg", total(span(items)))  # tpyc: ok
 void main() {
     Buffer buf = Buffer();
     std::cout << ::tpyapp::main::span_len(buf) << "\n" << ::tpy::check_signals;
@@ -24,6 +33,7 @@ void main() {
     std::cout << ::tpy::__len__(::tpy::as_span(items)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {5, 6, 7};
     std::cout << ::tpy::__len__(::tpy::as_span(arr)) << "\n" << ::tpy::check_signals;
+    std::cout << "span_arg" << " " << ::tpyapp::main::total(::tpy::as_span(items)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

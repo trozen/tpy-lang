@@ -27,12 +27,11 @@ void main() {
     std::cout << "call:" << " " << k.m<B>(std::move(*c).take()).v << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_2;
     c = &*(__slot_2 = B(2));
-    int32_t __tmp_1 = std::move(*c).take().v;
-    std::cout << "field:" << " " << k.m<int32_t>(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "field:" << " " << k.m<int32_t>(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
-    std::vector<int32_t> __tmp_2 = {std::move(*c).take().v};
-    std::cout << "list:" << " " << k.first<int32_t>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = {std::move(*c).take().v};
+    std::cout << "list:" << " " << k.first<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
     std::cout << "calls:" << " " << k.n << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     c = &*(__slot_4 = B(4));

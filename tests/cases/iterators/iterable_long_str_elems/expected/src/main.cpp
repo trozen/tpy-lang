@@ -58,8 +58,7 @@ std::string NEEDLE;
 //         xs.append(NEEDLE)
 void append_needle(std::vector<std::string>* xs) {
     if ((xs != nullptr)) {
-        std::string __tmp_1{NEEDLE};
-        xs->push_back(std::move(__tmp_1));
+        xs->push_back(NEEDLE);
     }
 }
 

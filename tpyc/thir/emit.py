@@ -34,7 +34,7 @@ from ..type_def_registry import (
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
-from ..typesys import (NoneType, substitute_cpp_ret, OptionalType, TpyType, TupleType,
+from ..typesys import (NoneType, pointer_trait_cpp, substitute_cpp_ret, OptionalType, TpyType, TupleType,
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .source import TraitAbi
@@ -1261,6 +1261,17 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
     inner = _emit_expr(e.value, state)
     t = unwrap_qualifiers(e.result_type)
     if e.form is Form.BORROW:
+        # An open `T` into an open `T | None` parameter or a tuple element's
+        # `val_or_ptr_t<T>`: the instantiation decides the value or the
+        # address-of.
+        spelled = (pointer_trait_cpp(e.trait.value, e.is_const)
+                   if e.trait is not None else None)
+        arg_t = (unwrap_qualifiers(t.inner)
+                 if e.trait is TraitAbi.OPT_PARAM and isinstance(t, OptionalType)
+                 else t if e.trait is TraitAbi.VAL_OR_PTR and isinstance(t, TypeParamRef)
+                 else None)
+        if spelled is not None and arg_t is not None:
+            return f"::tpy::to_val_or_ptr<{spelled}<{arg_t.to_cpp()}>>({inner})"
         # F1 Optional[ref] read: `std::optional<T>` lvalue -> `T*`.
         if isinstance(t, OptionalType):
             return f"::tpy::optional_to_ptr({inner})"
@@ -1270,11 +1281,6 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if isinstance(t, UnionType):
             helper = "to_const_ptr_variant" if e.is_const else "to_ptr_variant"
             return f"::tpy::{helper}({inner})"
-        # An open `T` into its tuple element's `val_or_ptr_t<T>` slot: the
-        # instantiation decides the address-of or the value.
-        if isinstance(t, TypeParamRef) and e.trait is TraitAbi.VAL_OR_PTR:
-            trait = "val_or_cptr_t" if e.is_const else "val_or_ptr_t"
-            return f"::tpy::to_val_or_ptr<::tpy::{trait}<{t.to_cpp()}>>({inner})"
         # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
         if is_plain_nonvalue(t):
             return f"&({inner})"

@@ -120,8 +120,7 @@ int32_t StringIO::write(std::string_view s) {
     }
     std::string owned = std::string(s);
     if ((this->_pos == this->_total)) {
-        std::string __tmp_1{owned};
-        this->_chunks.push_back(std::move(__tmp_1));
+        this->_chunks.push_back(std::move(owned));
         this->_total = (::tpy::add_check<int32_t>(this->_total, n));
         this->_pos = this->_total;
         return n;
@@ -326,7 +325,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     }
     ::tpy::Bytes owned = ::tpy::Bytes(data);
     if ((this->_pos == this->_total)) {
-        this->_chunks.push_back(owned);
+        this->_chunks.push_back(std::move(owned));
         this->_total = (::tpy::add_check<int32_t>(this->_total, n));
         this->_pos = this->_total;
         return n;
@@ -627,7 +626,7 @@ void BufferedReader::_fill(int32_t want, bool to_newline) {
                 }
                 have = ::tpy::add_check<int32_t>(have, ::tpy::__len__(chunk));
                 bool found = (to_newline && (::tpy::bytes_find(chunk, ::tpy::bytes_literal("\n", 1)) >= 0));
-                parts.push_back(chunk);
+                parts.push_back(std::move(chunk));
                 if (found) {
                     break;
                 }

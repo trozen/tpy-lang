@@ -1,0 +1,1 @@
+Each warned copy prints its source after the call, which CPython shares with the callee, so the outputs differ by design; the inline @cpp_template has no Python body to run.

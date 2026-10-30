@@ -70,8 +70,7 @@ inline void Holder::method() {
     std::string v = ::tpy::__getitem__(this->xs, 0);
     v = ::tpy::__getitem__(this->ys, 0);
     this->ys.clear();
-    std::string __tmp_1{PAD};
-    this->ys.push_back(std::move(__tmp_1));
+    this->ys.push_back(PAD);
     std::cout << "method" << " " << v << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

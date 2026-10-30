@@ -112,7 +112,7 @@
  "array_i__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "array_i__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -367,7 +367,7 @@
  "array_i__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -397,7 +397,7 @@
  "array_i__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -797,7 +797,7 @@
  "array_i__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -827,7 +827,7 @@
  "array_i__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1232,7 +1232,7 @@
  "array_i__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1497,7 +1497,7 @@
  "array_i__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1527,7 +1527,7 @@
  "array_i__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1932,7 +1932,7 @@
  "array_i__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1962,7 +1962,7 @@
  "array_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2367,7 +2367,7 @@
  "bytearray__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "bytearray__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -2717,7 +2717,7 @@
  "bytearray__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -2777,7 +2777,7 @@
  "bytearray__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3277,7 +3277,7 @@
  "bytearray__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3337,7 +3337,7 @@
  "bytearray__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3777,7 +3777,7 @@
  "bytearray__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4147,7 +4147,7 @@
  "bytearray__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4207,7 +4207,7 @@
  "bytearray__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4717,7 +4717,7 @@
  "bytearray__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4777,7 +4777,7 @@
  "bytearray__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5217,7 +5217,7 @@
  "deref_list__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
  ],
  "deref_list__async__local_last__match_capture": [
   "reject:stmt.match",
@@ -5567,7 +5567,7 @@
  "deref_list__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__local_last__match_capture": [
   "ok",
@@ -5627,7 +5627,7 @@
  "deref_list__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__narrowed_opt__match_capture": [
   "ok",
@@ -6127,7 +6127,7 @@
  "deref_list__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__local_last__match_capture": [
   "ok",
@@ -6187,7 +6187,7 @@
  "deref_list__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__narrowed_opt__match_capture": [
   "ok",
@@ -6627,7 +6627,7 @@
  "deref_list__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_list__gen__local_last__match_capture": [
   "reject:stmt.match",
@@ -6997,7 +6997,7 @@
  "deref_list__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__local_last__match_capture": [
   "ok",
@@ -7057,7 +7057,7 @@
  "deref_list__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__narrowed_opt__match_capture": [
   "ok",
@@ -7567,7 +7567,7 @@
  "deref_list__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -7627,7 +7627,7 @@
  "deref_list__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -8067,7 +8067,7 @@
  "deref_rec__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(*%h.f [storage].x [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(*%h.f [storage].x [raw])"
  ],
  "deref_rec__async__local_last__match_capture": [
   "reject:stmt.match",
@@ -8417,7 +8417,7 @@
  "deref_rec__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__local_last__match_capture": [
   "ok",
@@ -8477,7 +8477,7 @@
  "deref_rec__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt__match_capture": [
   "ok",
@@ -8977,7 +8977,7 @@
  "deref_rec__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__local_last__match_capture": [
   "ok",
@@ -9037,7 +9037,7 @@
  "deref_rec__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__narrowed_opt__match_capture": [
   "ok",
@@ -9477,7 +9477,7 @@
  "deref_rec__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_rec__gen__local_last__match_capture": [
   "reject:stmt.match",
@@ -9847,7 +9847,7 @@
  "deref_rec__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__local_last__match_capture": [
   "ok",
@@ -9907,7 +9907,7 @@
  "deref_rec__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__narrowed_opt__match_capture": [
   "ok",
@@ -10417,7 +10417,7 @@
  "deref_rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10477,7 +10477,7 @@
  "deref_rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10917,7 +10917,7 @@
  "dict_si__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "dict_si__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11207,7 +11207,7 @@
  "dict_si__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11267,7 +11267,7 @@
  "dict_si__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11697,7 +11697,7 @@
  "dict_si__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11757,7 +11757,7 @@
  "dict_si__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12197,7 +12197,7 @@
  "dict_si__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12497,7 +12497,7 @@
  "dict_si__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12557,7 +12557,7 @@
  "dict_si__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12997,7 +12997,7 @@
  "dict_si__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13057,7 +13057,7 @@
  "dict_si__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13497,7 +13497,7 @@
  "gen_rec__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(method_call(*%h.f [storage], get, []).x [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(method_call(*%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__async__local_last__match_capture": [
   "reject:stmt.match",
@@ -14342,7 +14342,7 @@
  "gen_rec__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(method_call(%h.f [storage], get, []).x [raw])"
+  "%h.f [storage] = move(%s0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__local_last__match_capture": [
   "ok",
@@ -14402,7 +14402,7 @@
  "gen_rec__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
+  "%h.f [storage] = move(*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt__match_capture": [
   "ok",
@@ -14842,7 +14842,7 @@
  "gen_rec__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(method_call(*%h.f [storage], get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(method_call(*%h.f [storage], get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__local_last__match_capture": [
   "reject:stmt.match",
@@ -15177,7 +15177,7 @@
  "gen_rec__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(method_call(%h.f [storage], get, []).x [raw])"
+  "%h.f [storage] = move(%s0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__local_last__match_capture": [
   "ok",
@@ -15237,7 +15237,7 @@
  "gen_rec__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
+  "%h.f [storage] = move(*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt__match_capture": [
   "ok",
@@ -15712,7 +15712,7 @@
  "gen_rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -15772,7 +15772,7 @@
  "gen_rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -16592,7 +16592,7 @@
  "list_i__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17117,7 +17117,7 @@
  "list_i__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17952,7 +17952,7 @@
  "list_i__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18487,7 +18487,7 @@
  "list_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19242,7 +19242,7 @@
  "list_r__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19707,7 +19707,7 @@
  "list_r__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20442,7 +20442,7 @@
  "list_r__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20912,7 +20912,7 @@
  "list_r__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21317,7 +21317,7 @@
  "rec__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(*%h.f [storage].x [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(*%h.f [storage].x [raw])"
  ],
  "rec__async__local_last__match_capture": [
   "reject:stmt.match",
@@ -21667,7 +21667,7 @@
  "rec__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__local_last__match_capture": [
   "ok",
@@ -21727,7 +21727,7 @@
  "rec__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__narrowed_opt__match_capture": [
   "ok",
@@ -22257,7 +22257,7 @@
  "rec__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "rec__fn__local_last__match_capture": [
   "ok",
@@ -22317,7 +22317,7 @@
  "rec__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__fn__narrowed_opt__match_capture": [
   "ok",
@@ -22787,7 +22787,7 @@
  "rec__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__local_last__match_capture": [
   "reject:stmt.match",
@@ -23157,7 +23157,7 @@
  "rec__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw])"
  ],
  "rec__meth__local_last__match_capture": [
   "ok",
@@ -23217,7 +23217,7 @@
  "rec__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__meth__narrowed_opt__match_capture": [
   "ok",
@@ -23757,7 +23757,7 @@
  "rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -23817,7 +23817,7 @@
  "rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -24522,7 +24522,7 @@
  "set_i__async__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "set_i__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24842,7 +24842,7 @@
  "set_i__ctor__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24902,7 +24902,7 @@
  "set_i__ctor__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25367,7 +25367,7 @@
  "set_i__fn__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25427,7 +25427,7 @@
  "set_i__fn__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25867,7 +25867,7 @@
  "set_i__gen__local_last__field_write": [
   "ok",
   "",
-  "[3] *%h.f [storage] = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = move(*%s0) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26202,7 +26202,7 @@
  "set_i__meth__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26262,7 +26262,7 @@
  "set_i__meth__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26737,7 +26737,7 @@
  "set_i__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26797,7 +26797,7 @@
  "set_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = move(*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",

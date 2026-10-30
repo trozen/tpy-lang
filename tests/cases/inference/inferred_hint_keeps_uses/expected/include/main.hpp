@@ -330,7 +330,7 @@ inline PackUser::PackUser() : xs(std::vector<::tpy::BigInt>{1, 2}) {}
 //     print("pack_arg", kn)
 inline void PackUser::run() const {
     int32_t kn = ::tpy::__len__(this->xs);
-    std::array<const ::tpy::BigInt, 3> __tmp_1{1, 2, 3};
+    std::array<const ::tpy::BigInt, 3> __tmp_1{::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
     kn = ::tpy::__len__(::tpyapp::main::pack(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)));
     std::cout << "pack_arg" << " " << kn << "\n" << ::tpy::check_signals;
 }

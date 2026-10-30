@@ -103,7 +103,7 @@ void main() {
 // def show_optional(s: str | None) -> None:
 //     print(repr(s))
 void show_optional(std::optional<std::string_view> s) {
-    std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(s) << "\n" << ::tpy::check_signals;
 }
 
 // # repr() of strings produces Python-faithful escape form: outer quotes

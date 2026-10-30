@@ -334,7 +334,7 @@ void main() {
     std::cout << "compound" << " " << compound << "\n" << ::tpy::check_signals;
     Number number = Number(::tpy::BigInt(-17), ::tpy::BigInt(3));
     std::cout << "constructor" << " " << number.value << "\n" << ::tpy::check_signals;
-    std::cout << "method" << " " << ::tpy::print_bool(number.check(-5)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::print_bool(number.check(::tpy::BigInt(-5))) << "\n" << ::tpy::check_signals;
     std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = high;
     ::tpyapp::main::wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
@@ -407,9 +407,9 @@ void main() {
     }
     ::tpyapp::main::exceptions(::tpy::BigInt(-17), ::tpy::BigInt(0), ::tpy::BigInt(-1));
     Counter counter = Counter();
-    bool chain = ({ auto&& _cmp0 = counter.get(-17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(17)); });
-    bool stopped = ({ auto&& _cmp0 = counter.get(17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(-17)); });
-    bool lazy = (::tpyapp::main::compare(high, low) && ::tpyapp::main::compare(counter.get(1), high));
+    bool chain = ({ auto&& _cmp0 = counter.get(::tpy::BigInt(-17)); auto&& _cmp1 = counter.get(::tpy::BigInt(3)); (_cmp0 < _cmp1) && (_cmp1 < counter.get(::tpy::BigInt(17))); });
+    bool stopped = ({ auto&& _cmp0 = counter.get(::tpy::BigInt(17)); auto&& _cmp1 = counter.get(::tpy::BigInt(3)); (_cmp0 < _cmp1) && (_cmp1 < counter.get(::tpy::BigInt(-17))); });
+    bool lazy = (::tpyapp::main::compare(high, low) && ::tpyapp::main::compare(counter.get(::tpy::BigInt(1)), high));
     std::cout << "evaluation" << " " << ::tpy::print_bool(chain) << " " << ::tpy::print_bool(stopped) << " " << ::tpy::print_bool(lazy) << " " << counter.calls << "\n" << ::tpy::check_signals;
     ::tpy::BigInt rounded = ((((one) << (::tpy::BigInt(60)))) + (((one) << (::tpy::BigInt(7)))));
     ::tpy::BigInt divisor = ::tpy::BigInt(3);

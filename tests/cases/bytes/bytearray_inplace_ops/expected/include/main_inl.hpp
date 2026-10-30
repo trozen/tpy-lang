@@ -88,7 +88,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_record_rebou
         if (again) {
             r = &*(__ptr_slot_f1 = Counter(::tpy::BigInt(10)));
         }
-        (*r).__iadd__(2);
+        (*r).__iadd__(::tpy::BigInt(2));
         __state = S_RESUME_0;
         return rl->n;
     }

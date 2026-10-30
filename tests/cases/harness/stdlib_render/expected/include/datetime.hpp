@@ -2055,7 +2055,7 @@ inline bool datetime::__eq__(::tpystd::datetime::datetime other) const {
 //     return hash(self._utc_us())
 inline ::tpy::BigInt datetime::__hash__() const {
     if ((this->_tz_kind() == 2)) {
-        return ::tpy::BigInt(::tpy::__hash__(((this->_epoch_us()) - (this->_utcoffset_us(0)))));
+        return ::tpy::BigInt(::tpy::__hash__(((this->_epoch_us()) - (this->_utcoffset_us(::tpy::BigInt(0))))));
     }
     return ::tpy::BigInt(::tpy::__hash__(this->_utc_us()));
 }

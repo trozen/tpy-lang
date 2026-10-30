@@ -29,7 +29,9 @@ from ...sema.dyn_erasure import dyn_forward_ok
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
+    contains_type_param,
     FloatLiteralType,
+    param_takes_ownership,
     INT32,
     holds_borrowing_view,
     IntLiteralType,
@@ -61,6 +63,7 @@ from ..nodes import (
     THIRMove,
     THIROptionalPtrArg,
     THIROptViewArg,
+    THIRUnionArgLift,
     THIRSubscript,
     THIRTempRead,
     BOUND_SOURCE_READ,
@@ -132,9 +135,12 @@ def spelled(plan: Plan, render) -> THIRExpr:
 class Refuse:
     """No conversion of this source into this slot. `key` is the reason
     without the sink's family prefix (`lift.borrow`); `message` the
-    limitation in the user's terms, for a refusal BUGS.md tracks."""
+    limitation in the user's terms, for a refusal BUGS.md tracks.
+    `by_slot`: the slot's own shape takes no such source, so a sink names
+    the refusal by its slot's family."""
     key: str
     message: 'str | None' = None
+    by_slot: bool = False
 
 
 # What a reference slot may bind once the source is known not to die with
@@ -217,6 +223,19 @@ def _same_type(x: 'TpyType | None', y: 'TpyType | None', types) -> bool:
     return resolve(x) == resolve(y)
 
 
+def _slot_members(slot_t: TpyType) -> tuple[TpyType, ...]:
+    """The parts a value of an Optional or union slot may be: its inner, or
+    its members (a recursive alias's alternatives); none for any other
+    slot."""
+    if isinstance(slot_t, OptionalType):
+        return (unwrap_readonly(slot_t.inner),)
+    if isinstance(slot_t, UnionType):
+        return tuple(unwrap_readonly(m) for m in slot_t.members)
+    if isinstance(slot_t, RecursiveAliasInstanceType):
+        return tuple(unwrap_readonly(m) for m in slot_t.alternatives())
+    return ()
+
+
 def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
                     types) -> TpyType:
     """The part of the slot a source of type `src_t` lands in: the slot
@@ -226,13 +245,8 @@ def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
     its owned twin (the view->owned copy is the member's)."""
     if src_t is None or src_t == slot_t:
         return slot_t
-    if isinstance(slot_t, OptionalType):
-        members: tuple = (unwrap_readonly(slot_t.inner),)
-    elif isinstance(slot_t, UnionType):
-        members = tuple(unwrap_readonly(m) for m in slot_t.members)
-    elif isinstance(slot_t, RecursiveAliasInstanceType):
-        members = tuple(unwrap_readonly(m) for m in slot_t.alternatives())
-    else:
+    members = _slot_members(slot_t)
+    if not members:
         return slot_t
     for m in members:
         if _same_type(src_t, m, types):
@@ -274,6 +288,24 @@ def _absorbs(member_t: TpyType, rt: 'TpyType | None', types) -> bool:
     return False
 
 
+def _builds_one_member(union_t: TpyType, rt: 'TpyType | None', s: Source,
+                       types) -> bool:
+    """Whether a value union is copy-initialized from a str / bytes source
+    of type `rt` through one member's implicit construction: never from a
+    view (a view parameter's read) into an owned buffer member, whose view
+    constructor is explicit and whose copy would allocate unseen, nor from
+    a literal two members of its family both take."""
+    if rt is None:
+        return True
+    family = [m for m in _slot_members(union_t)
+              if _same_viewfam(rt, m, types)]
+    if not family:
+        return True
+    if s.held is Held.BORROWED:
+        return not any(has_view_param_form(m) for m in family)
+    return not (s.held is Held.VALUE and len(family) > 1)
+
+
 def _ptr_opt(t: TpyType) -> bool:
     return pointer_repr_optional(t) is not None
 
@@ -292,7 +324,7 @@ def _binds(slot_t: TpyType, rt: 'TpyType | None', types) -> bool:
 
 def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
                 rt: 'TpyType | None', types, *,
-                const: bool = False) -> Plan | Refuse:
+                const: bool = False, call: bool = False) -> Plan | Refuse:
     """A pointer slot (`T*`): a pointer-repr Optional's, or a plain
     record's. A pointer-repr Optional read in storage form (the
     `std::optional<T>` a field holds) lifts to the borrow form; already in
@@ -300,7 +332,8 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     `T` lvalue is borrowed by address, unless its read already is the raw
     pointer; an explicit `Ptr[T]` is the pointer itself."""
     if isinstance(st, UnionType):
-        return _to_pointer_variant(expr, s, st, rt, types, const=const)
+        return _to_pointer_variant(expr, s, st, rt, types, const=const,
+                                   call=call)
     if isinstance(st, OptionalType):
         pointee = unwrap_readonly(st.inner)
     else:
@@ -310,14 +343,24 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     if isinstance(rt, OptionalType) and _binds(pointee,
                                                unwrap_readonly(rt.inner),
                                                types):
-        if s.held is Held.STORAGE and not s.pointer_held:
+        if s.held is Held.STORAGE and (not s.pointer_held
+                                       or s.owned_result_storage):
             if not _lendable(s):
                 # The pointer into an optional that dies with the
                 # statement would dangle.
                 return Refuse("borrow_source")
+            if call:
+                # A parameter's lift of the optional it points into.
+                return Plan(THIROptionalPtrArg(result_type=st, value=expr,
+                                               lift=True, form=Form.BORROW,
+                                               loc=expr.loc), Effect.LIFT)
             return Plan(THIRFormConvert(result_type=st, value=expr,
                                         form=Form.BORROW, loc=expr.loc),
                         Effect.LIFT)
+        if s.held is Held.FRESH and call:
+            # An optional built for the call: held for it, then lent.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(rt))
         return Plan(expr, Effect.PASS)
     if isinstance(rt, PtrType) and _binds(pointee,
                                           unwrap_readonly(rt.pointee), types):
@@ -325,6 +368,11 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     if s.pointer_held:
         return Plan(expr, Effect.PASS)
     if not _lendable(s):
+        if call and _binds(pointee, rt, types):
+            # A parameter points into storage held for the call, of the
+            # source's own type (a subclass object binds the base pointer).
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(rt))
         # The address of a value that dies with the statement -- or whose
         # lifetime nothing states -- would dangle.
         return Refuse("borrow_source")
@@ -335,28 +383,74 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
 
 def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
                         rt: 'TpyType | None', types, *,
-                        const: bool = False) -> Plan | Refuse:
+                        const: bool = False,
+                        call: bool = False) -> Plan | Refuse:
     """A pointer-variant union slot (`Union<A*, B*>`). The union's own
     value read in storage form (a `Union<A, B>` field) lifts to the
-    pointer variant; already in pointer form it passes. A member's object
-    is borrowed by address, as the pointer-repr Optional's pointee is."""
+    pointer variant; already in pointer form it passes, through its const
+    form at a const slot (no pointer variant converts to another
+    implicitly). A member's object is borrowed by address, as the
+    pointer-repr Optional's pointee is; a parameter spells the variant it
+    builds, since an overloaded or template callee deduces from it."""
     if rt == st:
-        if s.held is Held.STORAGE and not s.pointer_held:
+        if s.held is Held.FRESH and call:
+            # A union built for the call (an owning result): held for it,
+            # then lent, as an Optional's is.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(rt))
+        # A pointer variant's binding is the variant, whatever its
+        # assignment-narrowed read holds.
+        if (s.held is Held.STORAGE and not s.pointer_held
+                and not (call and s.variant)):
             # A const slot holds the const pointer variant.
             return Plan(THIRFormConvert(result_type=st, value=expr,
                                         form=Form.BORROW,
                                         is_const=s.const or const,
                                         loc=expr.loc), Effect.LIFT)
+        if call and const and s.variant is False:
+            # A name's binding says which form it holds: only the pointer
+            # variant's is one (a loop element, a frame slot hold the
+            # union's storage).
+            return Plan(THIRUnionArgLift(
+                result_type=st, variant_cpp=st.to_cpp_const_ptr_variant(),
+                value=expr, const_wrap="storage", form=Form.BORROW,
+                loc=expr.loc), Effect.LIFT)
+        if const and not _pointees_const(s):
+            return Plan(THIRUnionArgLift(
+                result_type=st, variant_cpp=st.to_cpp_const_ptr_variant(),
+                value=expr, const_wrap="as_const", form=Form.BORROW,
+                loc=expr.loc), Effect.LIFT)
         return Plan(expr, Effect.PASS)
-    if absorbed_member(st, rt, types) == st:
+    member = absorbed_member(st, rt, types)
+    if member == st or not _binds(member, rt, types):
+        # No member is the object the source is (a `str` view at an owned
+        # `str` member): its address is no member's pointer.
         return Refuse("borrow_source")
     if s.pointer_held:
         return Plan(expr, Effect.PASS)
-    if not _lendable(s):
+    # A named value (a scalar member's local) is storage of its own.
+    named = s.id_read and s.temporary is False and not s.captured
+    if not (_lendable(s) or named):
+        if call and rt is not None:
+            # A parameter points into storage held for the call.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(rt))
         return Refuse("borrow_source")
+    if call:
+        return Plan(THIRUnionArgLift(
+            result_type=st,
+            variant_cpp=(st.to_cpp_const_ptr_variant() if const
+                         else st.to_cpp_ptr_variant()),
+            value=expr, form=Form.BORROW, loc=expr.loc), Effect.LIFT)
     return Plan(THIROptionalPtrArg(result_type=st, form=Form.BORROW,
                                    value=expr, addr_of=True, loc=expr.loc),
                 Effect.LIFT)
+
+
+def _pointees_const(s: Source) -> bool:
+    """A pointer-variant read whose pointees are const already: a const
+    binding, a deep-const parameter, a `readonly` declaration."""
+    return s.const or s.deep_const
 
 
 def _elems_by_pointer(s: Source, src_t: TupleType) -> list[bool]:
@@ -850,12 +944,14 @@ def _lift_renders(member_t: TpyType, rt: 'TpyType | None',
 def _view_copied_owner(t: TpyType, construct: SlotConstruct,
                        types) -> 'TpyType | None':
     """The owned type a VALUE slot holds when its construction takes no
-    implicit conversion from its own view: a copy-initialized result takes
-    none from any owned buffer passed as a view (the view constructor is
-    explicit), an assignment none where `TypeDef.owned_from_view_explicit`."""
+    implicit conversion from its own view: a copy-initialized result or
+    parameter takes none from any owned buffer passed as a view (the view
+    constructor is explicit), an assignment none where
+    `TypeDef.owned_from_view_explicit`."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     t = _resolve_pending_view(t, types) or t
-    if construct is SlotConstruct.RETURN:
+    if construct in (SlotConstruct.RETURN, SlotConstruct.PASS):
+        # Copy-initialized, as a parameter is.
         return t if has_view_param_form(t) else None
     return t if owned_from_view_explicit(t) else None
 
@@ -864,7 +960,9 @@ def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
     """A view source at a value slot holding an owned buffer whose
     construction takes no implicit conversion from its view
     (`_view_copied_owner`): the spelled copy (`std::string(v)`)."""
-    if slot.holds is not SlotHolds.VALUE:
+    if (slot.holds is not SlotHolds.VALUE
+            or slot.representation is Representation.VIEW):
+        # A view slot holds the view itself: nothing is owned.
         return None
     owner_t = _view_copied_owner(slot.type, slot.construct, types)
     if owner_t is None or expr.source.held is not Held.BORROWED:
@@ -874,6 +972,16 @@ def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
                 Effect.COPY)
 
 
+def _open_param_read(s: Source) -> bool:
+    """The bare read of an open-`T` PARAM, spelled `param_val_or_ref_t<T>`:
+    a view, not `T`, at a view-family instantiation (`str`, `bytes`)."""
+    if not s.id_read:
+        return False
+    pt = s.param_type
+    return pt is not None and is_open_type_param_return(
+        unwrap_ref_type(unwrap_send_sync(pt)))
+
+
 def open_param_result(expr: THIRExpr, slot: Slot) -> 'Plan | None':
     """An open-`T` result (`val_or_ref_t<T>`) handed the bare read of an
     open-`T` PARAM (`param_val_or_ref_t<T>`): the two differ at a
@@ -881,12 +989,10 @@ def open_param_result(expr: THIRExpr, slot: Slot) -> 'Plan | None':
     value-typed `T` and passes a reference-typed one through. Only a bare
     open-`T` param (not `Own[T]`) is that read."""
     s = expr.source
-    if (slot.holds is not SlotHolds.TRAIT or not s.id_read
-            or slot.trait is TraitAbi.YIELD_SLOT):
-        return None
-    pt = s.param_type
-    if pt is None or not is_open_type_param_return(
-            unwrap_ref_type(unwrap_send_sync(pt))):
+    if (slot.holds is not SlotHolds.TRAIT
+            or slot.trait is TraitAbi.YIELD_SLOT
+            or slot.construct is SlotConstruct.PASS
+            or not _open_param_read(s)):
         return None
     return Plan(THIRFormConvert(result_type=slot.type, value=expr,
                                 form=Form.STORAGE, generic_return=True,
@@ -1071,9 +1177,25 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     s = expr.source
     under = expr.uncoerced.source
     _check_records(expr, slot, s, under)
-    if _copy_permitted(plan, slot, s, under) is None:
-        return plan
-    return Refuse("copy_undeclared")
+    if _copy_permitted(plan, slot, s, under) is not None:
+        return Refuse("copy_undeclared")
+    if (slot.caller_materializes and plan.effect is Effect.PASS
+            and (any(is_reference_leaf(t) for _, t in plan.copied)
+                 or (s.temporary is False and under.temporary is False
+                     and not under.prvalue
+                     and (slot.representation is Representation.TRAIT
+                          or under.id_read
+                          or under.named_type is not None)))):
+        # The copy an owned parameter's construction would make of a
+        # reference leaf, of a named object, or of any lvalue at an open
+        # `own_param_t<T>` (a `T&&` binds no lvalue; a prvalue binds it
+        # as it is) is the caller's, into storage held for the call and
+        # moved in -- held, not spelled inline, so it reads the value
+        # before sibling arguments the compiler evaluates first can change
+        # it; a trivially destructible value included.
+        return replace(plan, effect=Effect.MATERIALIZE,
+                       storage_request=StorageRequest(slot.type))
+    return plan
 
 
 def owned_reference_paths(slot: Slot, prefix: ElemPath = ()
@@ -1218,6 +1340,13 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         owned = view_to_owned(expr, slot, types)
         if owned is not None:
             return owned
+        st_u = unwrap_readonly(st)
+        if (isinstance(st_u, PtrType)
+                and isinstance(storage_type(expr.result_type), OptionalType)):
+            # A pointer parameter points at what an Optional holds: its
+            # borrow form.
+            return _to_pointer(expr, s, OptionalType(st_u.pointee),
+                               storage_type(expr.result_type), types)
         if (not explicit_copy and under.movable
                 and not holds_borrowing_view(st)
                 and (direct or (slot.construct is SlotConstruct.RETURN
@@ -1226,7 +1355,10 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                          and not under.id_read)
                      or (slot.construct is SlotConstruct.PASS
                          and slot.representation
-                         is Representation.STORAGE))):
+                         is Representation.STORAGE
+                         and (slot.lifetime
+                              is not SlotLifetime.FULL_EXPRESSION
+                              or param_takes_ownership(slot.declared))))):
             # The frame's own value at its last use moves. A return moves
             # an id-expression implicitly, so only a read it does not move
             # (a consuming method's `(*this)`, a staged result) is moved
@@ -1261,21 +1393,76 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     # whatever its narrowed read would be.
     rt_whole = st if land.whole_binding else rt_lowered
 
+    param_t = s.param_type
+    if (holds in (SlotHolds.OWNS, SlotHolds.TRAIT) and param_t is not None
+            and _opt_view_arg_shim(param_t, st, types)):
+        # A borrowed `optional<view>` PARAM into an owned `optional<str>`
+        # slot -- a storage slot, or a `T | None` trait instantiated at the
+        # owner (`opt_param_t<str>`): the view->owned shim.
+        return Plan(THIROptViewArg(result_type=st, name=b.name,
+                                   form=Form.VALUE, loc=expr.loc),
+                    Effect.COPY, row="optview_shim")
+
     if holds is SlotHolds.TRAIT:
         lifted = open_param_result(expr, slot)
         if lifted is not None:
             return lifted
-        if slot.trait is TraitAbi.VAL_OR_PTR and s.trait is None:
-            # A tuple element's `val_or_ptr_t<T>` over an open `T` the
-            # source holds inline: a pointer into it at a reference-typed
-            # instantiation, so it must outlive the slot.
+        declared_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            slot.declared)))
+        if (isinstance(declared_t, OptionalType)
+                and isinstance(st, OptionalType)
+                and s.held is Held.BORROWED
+                and has_view_param_form(unwrap_readonly(st.inner))):
+            # A view at a `T | None` parameter instantiated at its owner:
+            # `opt_param_t<str>` is `std::optional<std::string>`, which a
+            # view does not convert to without an allocation.
+            return Refuse("generic_arg_shape", by_slot=True)
+        # A `T | None` parameter still open at this call (its
+        # `opt_param_t<T>` trait), or instantiated at a reference type
+        # (whose Optional is a pointer).
+        open_opt = (slot.lifetime is SlotLifetime.FULL_EXPRESSION
+                    and isinstance(declared_t, OptionalType)
+                    and (slot.trait is TraitAbi.OPT_PARAM or _ptr_opt(st))
+                    and not isinstance(s.analyzed_type, NoneType))
+        # The instantiation decides whether the slot points into the source
+        # or holds its value: a tuple element's `val_or_ptr_t<T>` over an
+        # open `T` the source holds inline, and a still-open `T | None`
+        # parameter's `opt_param_t<T>` given an open `T`. The source must
+        # outlive the slot.
+        lift_trait = (
+            TraitAbi.VAL_OR_PTR
+            if slot.trait is TraitAbi.VAL_OR_PTR and s.trait is None else
+            TraitAbi.OPT_PARAM
+            if (slot.trait is TraitAbi.OPT_PARAM
+                and not isinstance(s.analyzed_type, NoneType)
+                and not isinstance(rt_whole, OptionalType)) else None)
+        if lift_trait is not None:
             if not _lendable(s):
                 return Refuse("borrow_source")
+            if lift_trait is TraitAbi.OPT_PARAM and _open_param_read(s):
+                # `opt_param_t<T>` is `std::optional<T>` at a value `T`,
+                # which a view-family instantiation's parameter (a view)
+                # does not convert to; no template-level form serves both.
+                return Refuse("generic_arg_slot", by_slot=True)
             return Plan(THIRFormConvert(result_type=st, value=expr,
                                         form=Form.BORROW,
                                         is_const=slot.const or s.const,
-                                        trait=TraitAbi.VAL_OR_PTR,
+                                        trait=lift_trait,
                                         loc=expr.loc), Effect.LIFT)
+        if open_opt:
+            # An open Optional's trait at a reference-typed (or still open)
+            # `T` is its borrow form: a pointer at the caller's object.
+            return _to_pointer(expr, s, st, rt_whole, types,
+                               const=slot.const, call=True)
+        if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
+                and not slot.const
+                and not _lendable(s) and not st.is_value_type()
+                and not contains_type_param(st)):
+            # A parameter's trait binds a reference-typed instantiation
+            # by mutable reference, which binds no temporary: it is lent
+            # storage held for the call.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(st))
         if (not explicit_copy and under.movable and not implicit
                 and slot.construct is SlotConstruct.RETURN):
             # The frame's own value at its last use, read through a deref:
@@ -1295,6 +1482,28 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             # does not spell: the C++ build refuses them
             # (BUGS.md#property-getter-pointer-optional-return).
             return _to_pointer(expr, s, st, rt_whole, types, const=slot.const)
+        if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
+                and isinstance(unwrap_readonly(st), UnionType)
+                and not _same_type(rt_whole, st, types)
+                # A narrowed name binds bare: the member alias it reads
+                # converts into the union.
+                and not s.narrowed):
+            # A union parameter given one member's value binds the union
+            # built from it, held for the call: a bare member would leave
+            # the callee's overload set to C++'s own ranking.
+            if not _builds_one_member(st, rt_whole, s, types):
+                return Refuse("union_member", by_slot=True)
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(st))
+        if slot.lifetime is SlotLifetime.FULL_EXPRESSION and not _lendable(s):
+            # A parameter holds its argument for the call only, and a
+            # temporary lives that long: a `const T&` binds it as it is, a
+            # mutable `T&` binds no rvalue and lends storage held for the
+            # call.
+            if slot.const:
+                return Plan(expr, Effect.PASS)
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(st))
         if not _lendable(s):
             # Only storage known to outlive the statement binds: a value
             # that dies with it -- or whose lifetime nothing states --
@@ -1306,7 +1515,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         return Plan(expr, Effect.PASS)
 
     if holds is SlotHolds.POINTER:
-        return _to_pointer(expr, s, st, rt_whole, types, const=slot.const)
+        return _to_pointer(expr, s, st, rt_whole, types, const=slot.const,
+                           call=slot.lifetime is SlotLifetime.FULL_EXPRESSION)
 
     if holds is SlotHolds.RELOCATE:
         # No conversion is known for this slot: only an owned value moves
@@ -1320,7 +1530,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     # OWNS: a storage slot.
     member = land.member
     if (member == st and not land.whole_binding
-            and not (b is not None and b.pointer)):
+            and not (b is not None and b.reads_as_pointer)):
         # A source whose analyzed type is still pending (a literal-seeded
         # local) lands in the member its LOWERED type names.
         member = absorbed_member(st, rt_lowered, types)
@@ -1369,13 +1579,6 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                             Effect.COPY, copy_type=s.copy_type,
                             copied=tuple(leaves_at(member, ())))
 
-    param_t = s.param_type
-    if param_t is not None and _opt_view_arg_shim(param_t, st, types):
-        # A borrowed `optional<view>` PARAM into an owned `optional<str>`
-        # slot: the view->owned shim.
-        return Plan(THIROptViewArg(result_type=st, name=b.name,
-                                   form=Form.VALUE, loc=expr.loc),
-                    Effect.COPY, row="optview_shim")
     if (isinstance(unwrap_readonly(st), UnionType)
             and lands_in_view_member(st, expr.uncoerced.result_type)):
         # The view member of a union: a member-init or a result
@@ -1386,6 +1589,23 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return passes(member)
         if not initializes and under.binding is not None:
             return _refuse_lift(s.held)
+    if (slot.callee_materializes and not s.pointer_held
+            and (_same_type(rt, member, types)
+                 or (record_like(member, types)
+                     and _record_slice_upcast_ok(rt, member, types)))
+            and not (s.held is Held.BORROWED
+                     and _same_viewfam(rt, member, types))
+            and not (isinstance(member, TypeParamRef)
+                     and s.param_type is not None)):
+        # The callee's own overload copies an lvalue of the slot's type;
+        # one at its last use moves in. (An open `T` parameter is read in
+        # its parameter form, a view where `T` is `str`: its storage form
+        # is spelled below.)
+        if mv and not implicit:
+            return Plan(THIRMove(value=expr, result_type=member,
+                                 form=Form.STORAGE, loc=expr.loc),
+                        Effect.MOVE)
+        return Plan(expr, Effect.PASS)
     tuple_member = (isinstance(member, TupleType) and slot.elems is not None
                     and len(slot.elems) == len(member.element_types))
 
@@ -1418,8 +1638,12 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         # A nested or union element held in its borrow form: no whole
         # assignment takes it, whatever the outer types say.
         return stored_tuple()
+    # A record or container read as the object is the storage a slot of
+    # its own type takes.
     stored = (s.held in (Held.STORAGE, Held.FRESH)
-              or isinstance(rt, NoneType))
+              or isinstance(rt, NoneType)
+              or (s.held in (Held.VALUE, Held.BORROWED) and member == st
+                  and record_like(member, types) and not s.pointer_held))
     if _same_type(rt, member, types) and stored:
         if mv and not implicit:
             return Plan(THIRMove(value=expr, result_type=member,

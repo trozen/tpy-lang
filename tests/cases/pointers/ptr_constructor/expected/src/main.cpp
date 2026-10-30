@@ -86,12 +86,31 @@ void test_ptr_write() {
     std::cout << pt.x << "\n" << ::tpy::check_signals;
 }
 
+// def use_ptr(q: Ptr[Point]) -> int32:
+//     if q is None:
+//         return 0
+//     return q.x
+int32_t use_ptr(Point* q) {
+    if ((q == nullptr)) {
+        return 0;
+    }
+    return q->x;
+}
+
+// def test_null_at_arg() -> int32:
+//     # null_arg: a null Ptr[T]() straight into a Ptr parameter
+//     return use_ptr(Ptr[Point]())  # tpyc: ok
+int32_t test_null_at_arg() {
+    return ::tpyapp::main::use_ptr(static_cast<Point*>(nullptr));
+}
+
 // test_null_constructors()
 // test_ptr_explicit()
 // test_ptr_inferred()
 // test_constptr_explicit()
 // test_constptr_inferred()
 // test_ptr_write()
+// print("null_arg", test_null_at_arg())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -103,6 +122,7 @@ void __tpy_init() {
     ::tpyapp::main::test_constptr_explicit();
     ::tpyapp::main::test_constptr_inferred();
     ::tpyapp::main::test_ptr_write();
+    std::cout << "null_arg" << " " << ::tpyapp::main::test_null_at_arg() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

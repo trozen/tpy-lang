@@ -3,7 +3,7 @@
 # capture would hold begin/end into storage the setup statement kills while what
 # was lent (a GLOBAL here) outlives it. It compiled and SEGFAULTED before the
 # position asked; the sibling tags are listed in
-# records/error_property_off_temporary_receiver_arg.
+# docs/PROPERTY_DESIGN.md, the temporary-receiver sink table.
 # The dict-comp / set-comp / genexp legs below take the SAME tag, verified by
 # compiling each on its own: one `SinkPos.ITER_SOURCE` row answers for every
 # comprehension route as it does for the for-each, so there is nothing per-route

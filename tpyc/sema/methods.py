@@ -986,6 +986,7 @@ class MethodAnalyzer:
                         and not expr.is_callable_field):
                     return result
                 expr.deref_depth = deref_depth
+                expr.deref_receiver_type = current_type if deref_depth else None
                 if deref_depth > 0 and isinstance(original_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:

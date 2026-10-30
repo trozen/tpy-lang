@@ -47,8 +47,7 @@ void main() {
     std::cout << "call:" << " " << ::tpyapp::main::g<B>(std::move(*c).take()).v << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_2;
     c = &*(__slot_2 = B(2));
-    int32_t __tmp_1 = std::move(*c).take().v;
-    std::cout << "field:" << " " << ::tpyapp::main::g<int32_t>(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "field:" << " " << ::tpyapp::main::g<int32_t>(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
     std::cout << "binop:" << " " << ::tpyapp::main::g<int32_t>((::tpy::add_check<int32_t>(std::move(*c).take().v, 1))) << "\n" << ::tpy::check_signals;
@@ -60,8 +59,8 @@ void main() {
     std::cout << "fstring:" << " " << ::tpyapp::main::g<std::string>(std::format("{}", std::move(*c).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_6;
     c = &*(__slot_6 = B(7));
-    std::vector<int32_t> __tmp_2 = {std::move(*c).take().v};
-    std::cout << "list:" << " " << ::tpyapp::main::first<int32_t>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = {std::move(*c).take().v};
+    std::cout << "list:" << " " << ::tpyapp::main::first<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_7;
     c = &*(__slot_7 = B(9));
     std::cout << "tuple:" << " " << std::get<0>(::tpyapp::main::g<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{std::move(*c).take().v, "s"})) << "\n" << ::tpy::check_signals;

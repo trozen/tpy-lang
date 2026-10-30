@@ -247,12 +247,12 @@ void rebound_more(bool again) {
     Counter __slot_3 = Counter(::tpy::BigInt(1));
     Counter* r = &__slot_3;
     Counter& rl = (*r);
-    (*r).__iadd__(5);
+    (*r).__iadd__(::tpy::BigInt(5));
     std::optional<Counter> __slot_4;
     if (again) {
         r = &*(__slot_4 = Counter(::tpy::BigInt(9)));
     }
-    (*r).__iadd__(1);
+    (*r).__iadd__(::tpy::BigInt(1));
     std::cout << "rebound_more" << " " << ::tpy::SetPrinter(sl) << " " << ::tpy::SetPrinter((*s)) << " " << rl.n << " " << r->n << "\n" << ::tpy::check_signals;
 }
 

@@ -16,7 +16,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         w.emplace(Counter(::tpy::BigInt(40)));
-        c.emplace((*w).bump(5));
+        c.emplace((*w).bump(::tpy::BigInt(5)));
         d.emplace(std::move(*c));
         c.reset();
         __state = S_RESUME_0;

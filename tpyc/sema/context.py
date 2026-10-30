@@ -3035,6 +3035,10 @@ class SemanticContext:
     # Every name read's binding identity (`binding_ownership.ReadBinding`),
     # recorded where the read is analyzed.
     read_bindings: IdentityMap = field(default_factory=IdentityMap)
+    # The reads a statement reads again after the owning slot takes them
+    # (an augmented subscript's key, which its getter reads too): no owning
+    # slot moves them (`compatibility.records_slot`).
+    reread_reads: IdentitySet = field(default_factory=IdentitySet)
     # The closure-capture warnings emitted, by source position and text
     # (`capture_copies.warn_once`).
     capture_warnings: set[tuple[int, int, str]] = field(default_factory=set)

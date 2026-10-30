@@ -703,8 +703,7 @@ def main() -> None:
     # the four spellings of a written empty container, at a function
     print("written empty:", fill_list([]), fill_list(list()), fill_dict({}),
           fill_set(set()))
-    # ... and at a method group (`list()` / `set()` at its mutated slot
-    # do not lower: BUGS.md#record-rvalue-at-mutated-method-slot-unhoisted)
+    # ... and at a method group
     acc = Acc()
     print("written empty method:", acc.fill([]), acc.fill_map({}))
     # a literal written at a method group

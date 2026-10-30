@@ -30,8 +30,7 @@ void sec_insert() {
     accb.push_back(i.tag);
     accb.push_back(o.inner.tag);
     ::tpy::list_insert(accb, 0, ::tpy::__getitem__(rows, 0).tag);
-    std::string __tmp_1{i.name};
-    accs.push_back(std::move(__tmp_1));
+    accs.push_back(i.name);
     ::tpy::list_insert(accs, 0, std::string(o.inner.sv));
     i.tag = ::tpy::bytes_literal_owned("ZZ", 2);
     i.name = "ZZ";

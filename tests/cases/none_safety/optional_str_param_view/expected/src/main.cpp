@@ -39,7 +39,7 @@ std::string unwrap(std::optional<std::string_view> s) {
 // def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
 //     items.append(s)
 void append_to_list(std::vector<std::optional<std::string>>& items, std::optional<std::string_view> s) {
-    items.push_back(std::move(s ? std::make_optional(std::string(*s)) : std::nullopt));
+    items.push_back(s ? std::make_optional(std::string(*s)) : std::nullopt);
 }
 
 // def normalize(s: Optional[str]) -> Optional[str]:

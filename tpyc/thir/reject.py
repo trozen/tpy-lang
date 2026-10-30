@@ -163,6 +163,21 @@ def note_detail(reason: str, loc: 'SourceLocation | None' = None) -> bool:
     return False
 
 
+def current_detail() -> 'str | None':
+    """The blocking sub-construct recorded for the statement, if any."""
+    compiler = get_current_compiler()
+    return compiler._thir_reject_detail if compiler is not None else None
+
+
+def replace_detail(reason: str) -> None:
+    """Record `reason` as the blocking sub-construct, over any an inner
+    reject recorded: the outer construct is what refused."""
+    compiler = get_current_compiler()
+    if compiler is not None:
+        compiler._thir_reject_detail = reason
+        compiler._thir_reject_detail_loc = None
+
+
 def begin_stmt() -> None:
     """Clear the detail slot ahead of one statement's eligibility check, so
     a detail left by an earlier (accepted) statement cannot leak into a

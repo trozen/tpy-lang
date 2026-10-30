@@ -628,8 +628,7 @@ inline std::vector<std::string> StringIO::readlines() {
         if ((!((!line.empty())))) {
             break;
         }
-        std::string __tmp_1{line};
-        out.push_back(std::move(__tmp_1));
+        out.push_back(std::move(line));
     }
     return out;
 }
@@ -783,7 +782,7 @@ inline std::vector<::tpy::Bytes> BytesIO::readlines() {
         if ((::tpy::__len__(line) == 0)) {
             break;
         }
-        out.push_back(line);
+        out.push_back(std::move(line));
     }
     return out;
 }
@@ -991,7 +990,7 @@ inline ::tpy::Bytes FileIO::_readall() const {
         if ((::tpy::__len__(chunk) == 0)) {
             break;
         }
-        chunks.push_back(chunk);
+        chunks.push_back(std::move(chunk));
     }
     return ::tpy::bytes_join(::tpy::Bytes{}, chunks);
 }
@@ -1144,7 +1143,7 @@ inline std::vector<::tpy::Bytes> BufferedReader::readlines() {
         if ((::tpy::__len__(line) == 0)) {
             break;
         }
-        out.push_back(line);
+        out.push_back(std::move(line));
     }
     return out;
 }

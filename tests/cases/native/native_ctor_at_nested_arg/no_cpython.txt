@@ -1,0 +1,1 @@
+The record and the function are C++ bindings (`mylog::NR`, `mylog::use_nr`) with no CPython implementation.

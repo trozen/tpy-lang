@@ -654,7 +654,7 @@ void dict_items() {
 void walrus() {
     Coord c{};
     if (((c = ::tpyapp::main::make(3)).row > 1)) {
-        std::cout << "walrus" << " " << ::tpyapp::main::use(c) << "\n" << ::tpy::check_signals;
+        std::cout << "walrus" << " " << ::tpyapp::main::use(std::move(c)) << "\n" << ::tpy::check_signals;
     }
 }
 

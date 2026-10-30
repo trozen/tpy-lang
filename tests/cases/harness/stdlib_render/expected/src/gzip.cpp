@@ -159,7 +159,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
         if ((::tpystd::gzip::_u32le(tail, 4) != static_cast<uint32_t>((static_cast<int64_t>(::tpy::int_cast_check<int64_t>(::tpy::__len__(decompressed)) & static_cast<int64_t>(4294967295)))))) {
             throw BadGzipFile(std::string_view("Incorrect length of data produced"));
         }
-        members.push_back(decompressed);
+        members.push_back(std::move(decompressed));
         int32_t start = 8;
         while (((start < ::tpy::__len__(tail)) && (tail[static_cast<std::size_t>(start)] == 0))) {
             start = ::tpy::add_check<int32_t>(start, 1);

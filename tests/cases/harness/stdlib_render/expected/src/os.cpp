@@ -222,18 +222,16 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
                 }
             }
             if (bis_dir) {
-                std::string __tmp_2{be.name};
-                (*bdirnames).push_back(std::move(__tmp_2));
+                (*bdirnames).push_back(be.name);
             } else {
-                std::string __tmp_3{be.name};
-                (*bfilenames).push_back(std::move(__tmp_3));
+                (*bfilenames).push_back(be.name);
             }
         }
         (*bstack).push_back(_WalkEmit(bcur, ::tpy::construct<std::vector<std::string>>((*bdirnames)), std::move((*bfilenames))));
         bi = (::tpy::sub_check<int32_t>(::tpy::__len__((*bdirnames)), 1));
         while ((bi >= 0)) {
-            std::array<const std::string, 1> __tmp_4{::tpy::__getitem__((*bdirnames), bi)};
-            bchild = ::tpystd::os::path::join(bcur, ::tpy::varargs<const std::string>(__tmp_4));
+            std::array<const std::string, 1> __tmp_2{::tpy::__getitem__((*bdirnames), bi)};
+            bchild = ::tpystd::os::path::join(bcur, ::tpy::varargs<const std::string>(__tmp_2));
             if ((followlinks || (!(::tpy::stdlib::os::path_islink(bchild))))) {
                 (*bstack).push_back(_WalkExpand(bchild));
             }
@@ -272,11 +270,9 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
                 }
             }
             if (is_dir) {
-                std::string __tmp_5{e.name};
-                (*dirnames).push_back(std::move(__tmp_5));
+                (*dirnames).push_back(e.name);
             } else {
-                std::string __tmp_6{e.name};
-                (*filenames).push_back(std::move(__tmp_6));
+                (*filenames).push_back(e.name);
             }
         }
         __state = S_RESUME_1;

@@ -462,7 +462,7 @@ inline void HTTPConnection::connect() {
 inline void HTTPConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
     this->connect();
     this->_method = method;
-    ::tpy::Bytes data = ::tpystd::http::client::_build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTP_PORT);
+    ::tpy::Bytes data = ::tpystd::http::client::_build_request(method, url, body, headers, this->host, this->port, HTTP_PORT);
     if ((!this->sock.has_value())) {
         throw HTTPException("Connection not established");
     }
@@ -540,7 +540,7 @@ inline void HTTPSConnection::connect() {
 inline void HTTPSConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
     this->connect();
     this->_method = method;
-    ::tpy::Bytes data = ::tpystd::http::client::_build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTPS_PORT);
+    ::tpy::Bytes data = ::tpystd::http::client::_build_request(method, url, body, headers, this->host, this->port, HTTPS_PORT);
     if ((!this->_tls.has_value())) {
         throw HTTPException("Connection not established");
     }

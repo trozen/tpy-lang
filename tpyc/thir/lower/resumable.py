@@ -42,6 +42,7 @@ from ...identity_map import IdentityMap, IdentitySet
 
 from ..reject import ThirUnsupported, begin_stmt, note, note_detail
 from ..faces import witness as _witness
+from ..param_contract import param_const
 from ..validate import validate_resumable_leaves, validate_stmts
 from ..nodes import (
     THIRAssign,
@@ -2496,9 +2497,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                                                            declared)
                     _witness("res.suspend_expr")
                 lowered_args = []
-                # The const verdict lives on the RAW fi only (substitution
-                # never copies it), so the emplace arg reads it there.
-                dcbp = fi.root.const_borrow_params
                 for i, a in enumerate(operand.args):
                     # An awaited callee is a coro factory -- always
                     # frame-capturing for its ref args. The emplace is a
@@ -2507,8 +2505,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     lowered_args.append(_lower_call_arg(
                         a, fi.params[i].type, lc, declared,
                         frame_capturing=True, temp_args=True,
-                        readonly_target=(dcbp is not None and i in dcbp),
-                        callee_fi=fi, retention=Retention.MEASURED))
+                        readonly_target=param_const(fi, i),
+                        callee_fi=fi, arg_index=i,
+                        retention=Retention.MEASURED))
                 leaves[payload.args] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")

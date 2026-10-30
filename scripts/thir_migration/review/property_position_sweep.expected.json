@@ -208,19 +208,19 @@
   ""
  ],
  "call_arg__items__meth__named": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "call_arg__items__meth__temp": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "call_arg__items__prop__named": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "call_arg__items__prop__temp": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "call_arg__n__meth__named": [
@@ -496,19 +496,19 @@
   ""
  ],
  "ctor_arg__items__meth__named": [
-  "expr.call:call.ctor_arg.container",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__items__meth__temp": [
-  "expr.call:call.ctor_arg.container",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__items__prop__named": [
-  "expr.call:call.ctor_arg.container",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__items__prop__temp": [
-  "expr.call:call.ctor_arg.container",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__n__meth__named": [
@@ -1264,11 +1264,11 @@
   ""
  ],
  "loop_call_arg__items__meth__local": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "loop_call_arg__items__prop__local": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "loop_call_arg__n__meth__local": [
@@ -1600,19 +1600,19 @@
   ""
  ],
  "meth_arg__items__meth__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__items__meth__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__items__prop__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__items__prop__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__n__meth__named": [
@@ -1648,19 +1648,19 @@
   ""
  ],
  "meth_arg__own__meth__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__own__meth__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__own__prop__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__own__prop__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "meth_arg__rec__meth__named": [
@@ -2080,11 +2080,11 @@
   ""
  ],
  "self_call_arg__items__meth__self": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "self_call_arg__items__prop__self": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "ok",
   ""
  ],
  "self_call_arg__n__meth__self": [

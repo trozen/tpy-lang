@@ -216,8 +216,7 @@ inline ::tpy::val_or_cref_t<T> GBox<T>::get() const {
 //     return GBox(self.get())  # tpyc: warning(/may copy readonly\[T\] into owned storage/)
 template<typename T>
 inline GBox<T> GBox<T>::dup() const {
-    T __tmp_1 = this->get();
-    return GBox<T>(std::move(__tmp_1));
+    return GBox<T>(::tpy::param_to_storage<T>(this->get()));
 }
 
 // # generic free function: the payload is still an open T at this slot.

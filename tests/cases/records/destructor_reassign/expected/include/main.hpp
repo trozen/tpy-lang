@@ -66,8 +66,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     DROPS.append(self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    std::string __tmp_1{this->name};
-    DROPS->push_back(std::move(__tmp_1));
+    DROPS->push_back(this->name);
 }
 void __tpy_init();
 } // namespace tpyapp::main

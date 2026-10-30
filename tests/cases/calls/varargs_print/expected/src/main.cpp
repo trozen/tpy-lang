@@ -18,9 +18,9 @@ void show(::tpy::varargs<const ::tpy::BigInt> xs) {
 //     show(7)
 //     show()
 void main() {
-    std::array<const ::tpy::BigInt, 3> __tmp_1{1, 2, 3};
+    std::array<const ::tpy::BigInt, 3> __tmp_1{::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
     ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>(__tmp_1));
-    std::array<const ::tpy::BigInt, 1> __tmp_2{7};
+    std::array<const ::tpy::BigInt, 1> __tmp_2{::tpy::BigInt(7)};
     ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>(__tmp_2));
     ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>());
 }

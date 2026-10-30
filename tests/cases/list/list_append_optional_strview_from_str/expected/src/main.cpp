@@ -24,9 +24,9 @@ void main() {
     std::optional<std::string> src2 = std::nullopt;
     std::optional<std::string> src3 = ::tpyapp::main::maybe();
     std::vector<std::optional<std::string_view>> items = std::vector<std::optional<std::string_view>>{};
-    items.push_back(src1);
-    items.push_back(({ auto __ov = (src2); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
-    items.push_back(({ auto __ov = (src3); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
+    items.push_back((*src1));
+    items.push_back(src2);
+    items.push_back(src3);
     std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 

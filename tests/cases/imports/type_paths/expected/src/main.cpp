@@ -697,7 +697,7 @@ __gen_gen gen(::tpy::BigInt n) {
 //     for s in xs:
 //         print("loop:", s, m.Color.RED == m.Color(1))  # tpyc: ok
 void positions() {
-    std::cout << "method:" << " " << Factory().make(3) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Factory().make(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpy::array_from_index<::tpy::BigInt, 2>([&](std::size_t __i_0) -> ::tpy::BigInt {
         int32_t i = int32_t(__i_0);
         return ::tpyapp::pkg::sub::mod::Outer::Inner(::tpy::BigInt(i)).v;

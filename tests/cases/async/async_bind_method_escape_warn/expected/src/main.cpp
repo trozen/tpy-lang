@@ -16,7 +16,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         w.emplace(Counter(::tpy::BigInt(40)));
-        c.emplace((*w).bump(5));
+        c.emplace((*w).bump(::tpy::BigInt(5)));
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;

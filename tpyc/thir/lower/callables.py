@@ -1,6 +1,6 @@
 """Semantic callable facts retained at the selected lowering operation."""
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Callable
 
 from ...compilation_context import get_current_compiler
@@ -16,8 +16,9 @@ from ...typesys import (
 )
 from ..nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRExpr, THIRFunctionIdentity, THIRMethodCall, THIRResolvedCallee,
-    THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
+    THIRStubCallee, THIRStubContract, THIRStubIdentity, declared_param_type, receiver_param,
 )
+from ..param_contract import method_stub_param_consts, published_passing, signature_passings, stub_param_consts
 from ..scalar_leaves import native_container_subject, record_owner
 from .predicates import param_passing
 from .storage import borrowed_record
@@ -45,22 +46,6 @@ def resolved_definition(func: TpyFunction, analyzer: 'SemanticAnalyzer') -> THIR
     if fi.root.declaration is not func:
         return None
     return resolved_callee(fi, analyzer)
-
-
-def signature_passings(types: tuple[TpyType, ...], consts: tuple[bool, ...]) -> tuple[ParamPassing, ...]:
-    """How each parameter is passed at its const verdict -- the fact a
-    definition's `THIRParam.passing` publishes, asked of the same types."""
-    return tuple(t.param_passing(const) for t, const in zip(types, consts, strict=True))
-
-
-def _stub_param_consts(fi: FunctionInfo) -> tuple[bool, ...]:
-    """The const verdict a body-less stub declares per parameter: a
-    `readonly[...]` parameter, or a whole-callable promise -- `@pure`, or
-    `@readonly` on a free function, which sema reads as "mutates no
-    argument" for a callee it cannot analyze (on a method it is a receiver
-    fact only)."""
-    whole = fi.is_pure or (fi.is_readonly and not fi.is_method)
-    return tuple(whole or isinstance(unwrap_ref_type(p.type), ReadonlyType) for p in fi.params)
 
 
 def _open_stub_type(typ: TpyType) -> bool:
@@ -165,6 +150,31 @@ def definition_signature(types: tuple[TpyType, ...], return_type: TpyType,
 def body_passings(declaration: TpyFunction, owning: FunctionInfo | None) -> tuple[ParamPassing, ...]:
     # The body's own THIRParam passings, so the definition and every call agree.
     return tuple(param_passing(n, t, declaration, owning) for n, t in declaration.params)
+
+
+@dataclass(frozen=True)
+class CallSignature:
+    """The signature the callee a call binds publishes, resolved once where
+    the call's node is built and read by its arguments' contracts; for a
+    method (`receiver`) parameter 0 is the receiver."""
+    signature: THIRCallableSignature
+    receiver: bool = False
+
+    def passing(self, index: int) -> ParamPassing | None:
+        return published_passing(self.signature,
+                                 index + 1 if self.receiver else index)
+
+
+def call_signature(resolved: THIRResolvedCallee | None = None,
+                   stub: THIRStubCallee | None = None, *,
+                   receiver: bool = False) -> CallSignature | None:
+    """The signature the call's callee facts publish: its stub's, else the
+    resolved function's or method's; None for a callee neither describes."""
+    if stub is not None:
+        return CallSignature(stub.signature, stub.receiver)
+    if resolved is not None:
+        return CallSignature(resolved.signature, receiver)
+    return None
 
 
 def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
@@ -355,7 +365,7 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, analyzer: 'Semant
     types = tuple(p.type for p in fi.params)
     if not name or any(_open_stub_type(t) for t in (*types, ret)):
         return None
-    consts = _stub_param_consts(fi)
+    consts = stub_param_consts(fi)
     return THIRStubCallee(THIRStubIdentity(name, types),
                           callable_signature(types, ret, None, signature_passings(types, consts), analyzer),
                           _stub_contract(fi), consts)
@@ -399,9 +409,7 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyz
     types = (bare, *(p.type for p in fi.params))
     if any(_open_stub_type(t) for t in (*types, fi.return_type, *bound)):
         return None
-    # A parameter passed as a view (a `str` key) cannot be written through.
-    consts = (fi.is_readonly, *(const or t.param_passing(False) is ParamPassing.VIEW
-                                for const, t in zip(_stub_param_consts(fi), types[1:], strict=True)))
+    consts = method_stub_param_consts(fi, types)
     return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
                           callable_signature(types, fi.return_type, None, signature_passings(types, consts),
                                              analyzer),
@@ -409,42 +417,63 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyz
                           receiver=True, bound_arguments=tuple(bound))
 
 
-def with_method_stub(node: THIRMethodCall, fi: FunctionInfo | None,
-                     analyzer: 'SemanticAnalyzer') -> THIRMethodCall:
-    """`node` carrying its callee's method stub facts, read against the
-    receiver it lowered (`method_stub_callee`)."""
-    stub = method_stub_callee(fi, node.receiver.result_type, analyzer, arity=len(node.args))
-    return node if stub is None else replace(node, stub_callee=stub)
+@dataclass(frozen=True)
+class MethodCallees:
+    """The callee facts of one method call, resolved once on its receiver
+    as lowered: the method stub it binds, else the user method it
+    statically runs (only for a plain member call)."""
+    stub_callee: THIRStubCallee | None
+    resolved_callee: THIRResolvedCallee | None
 
 
-def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
-                       receiver_readonly: Callable[[], bool]) -> THIRMethodCall:
-    """`node` carrying the user method it statically runs
-    (`method_callee`) and the access its receiver is emitted at
-    (`receiver_readonly`, asked only for a resolved call), unless it binds
-    a stub or renders through a form of its own (a template, a native
-    symbol, a deref, a move or unwrap)."""
-    if node.stub_callee is not None or not node.renders_plain_member_call:
-        return node
-    callee = method_callee(fi, node.receiver.result_type, analyzer, arity=len(node.args))
-    if callee is None:
+def method_signature(node: THIRMethodCall | MethodCallees) -> CallSignature | None:
+    """What a method call's arguments read: the signature its callee facts
+    publish, parameter 0 the receiver."""
+    return call_signature(node.resolved_callee, node.stub_callee, receiver=True)
+
+
+def method_callees(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: 'SemanticAnalyzer', *,
+                   arity: int, plain: bool) -> MethodCallees:
+    """The callee facts of a call to `fi` on `receiver` with `arity`
+    arguments: its method stub (`method_stub_callee`), else -- when the call
+    renders a plain member call (`plain`) -- the user method it runs
+    (`method_callee`)."""
+    stub = method_stub_callee(fi, receiver, analyzer, arity=arity)
+    resolved = (method_callee(fi, receiver, analyzer, arity=arity)
+                if stub is None and plain else None)
+    return MethodCallees(stub, resolved)
+
+
+def with_method_callees(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
+                        receiver_readonly: Callable[[], bool], *, arity: int) -> THIRMethodCall:
+    """`node` carrying its callee facts (`method_callees`), resolved on the
+    receiver it lowered, and the access that receiver is emitted at
+    (`receiver_readonly`, asked only for a resolved call). `arity` is the
+    call's argument count: its arguments are lowered after, reading the
+    signature the facts publish."""
+    callees = method_callees(fi, node.receiver.result_type, analyzer, arity=arity,
+                             plain=node.renders_plain_member_call)
+    if callees.stub_callee is not None:
+        return replace(node, stub_callee=callees.stub_callee)
+    if callees.resolved_callee is None:
         return node
     # The access is the actual receiver's; parameter 0 may be an ancestor it binds at.
     receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
-    return replace(node, resolved_callee=callee, receiver_access=THIRBorrowedRecord(receiver, receiver_readonly()))
+    return replace(node, resolved_callee=callees.resolved_callee,
+                   receiver_access=THIRBorrowedRecord(receiver, receiver_readonly()))
 
 
-def setitem_stub_callee(sub: TpyExpr, target: THIRExpr,
+def setitem_stub_callee(sub: TpyExpr, receiver: THIRExpr,
                         analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:
-    """The `__setitem__` stub a subscript write `c[k] = v` dispatches to on
-    a native type (a container, an element-typed `@native` wrapper): the
-    variant sema resolved for the store (`TpySubscript.dunder`), substituted
-    at the receiver type's arguments. None when the receiver is no native
-    type."""
-    if not isinstance(target, THIRSubscript) or not isinstance(sub, TpySubscript):
+    """The `__setitem__` stub a subscript write `c[k] = v` on `receiver`
+    dispatches to on a native type (a container, an element-typed `@native`
+    wrapper): the variant sema resolved for the store
+    (`TpySubscript.dunder`), substituted at the receiver type's arguments.
+    None when the receiver is no native type."""
+    if not isinstance(sub, TpySubscript):
         return None
     setter = sub.dunder(SubscriptDunder.SET)
-    bare = unwrap_send_sync(native_container_subject(target.receiver.result_type))
+    bare = unwrap_send_sync(native_container_subject(receiver.result_type))
     record = analyzer.registry.get_record_for_type(bare) if isinstance(bare, NominalType) else None
     if (setter is None or record is None or not record.is_native
             or len(bare.type_args) != len(record.type_params)):

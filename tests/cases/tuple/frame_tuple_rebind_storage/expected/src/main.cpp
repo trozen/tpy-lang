@@ -425,7 +425,7 @@ __gen_gen_unpack_after gen_unpack_after(Box& v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        auto __tup_1 = std::tuple<Box, Box*>{(*__await_lift_0), &(v)};
+        auto __tup_1 = std::tuple<Box, Box*>{std::move((*__await_lift_0)), &(v)};
         std::get<0>(p) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
         std::get<1>(p) = std::get<1>(__tup_1);
         __sub_1.emplace(2);
@@ -437,7 +437,7 @@ __gen_gen_unpack_after gen_unpack_after(Box& v) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_1.emplace(std::move(__r1).value());
         __sub_1.reset();
-        auto __tup_2 = std::tuple<Box, Box*>{(*__await_lift_1), &(v)};
+        auto __tup_2 = std::tuple<Box, Box*>{std::move((*__await_lift_1)), &(v)};
         std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
         q = p;

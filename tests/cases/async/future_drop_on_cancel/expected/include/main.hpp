@@ -124,8 +124,7 @@ inline Tracked& Tracked::operator=(Tracked&& other) noexcept {
 //     dropped.append(self.label)
 inline Tracked::~Tracked() {
     if (!this->__tpy_owned_) return;
-    std::string __tmp_1{this->label};
-    dropped->push_back(std::move(__tmp_1));
+    dropped->push_back(this->label);
 }
 void __tpy_init();
 } // namespace tpyapp::main

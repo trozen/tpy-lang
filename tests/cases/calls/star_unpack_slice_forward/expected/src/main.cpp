@@ -32,7 +32,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(f(10, 1, 2, 3))
 void main() {
-    std::array<const ::tpy::BigInt, 4> __tmp_1{10, 1, 2, 3};
+    std::array<const ::tpy::BigInt, 4> __tmp_1{::tpy::BigInt(10), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
     std::cout << ::tpyapp::main::f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n" << ::tpy::check_signals;
 }
 

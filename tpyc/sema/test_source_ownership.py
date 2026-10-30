@@ -38,6 +38,7 @@ from ..compilation_context import activate_compiler
 from ..thir.lower import checks as _lower_checks
 from ..thir.lower import expressions as _lower_expressions
 from ..thir.lower import bindings as _bindings
+from ..thir.lower import convert as _lower_convert
 from ..thir.lower import iter_module_callables
 from ..thir.validate import THIRValidationError
 from ..thir.nodes import (THIRCoerce, THIRConsumingIter, THIRFieldAccess,
@@ -429,6 +430,11 @@ def _at(e: object) -> 'tuple[int, int] | None':
 # and the entry tracking the reject. Any other frame left unlowered fails
 # the gate.
 _UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
+    # A `@dynamic` local at an `Own[P]` parameter has no well-formed
+    # render: the argument's conversion refuses it.
+    ("def dyn(k: int32) -> int32:", "dyn", "expr.call:arg.lift.borrow"):
+        ("test_blocker_rows_are_recorded",
+         "BUGS.md#dyn-local-own-arg-ill-formed"),
     (", xs: list[tuple[T, int32]]) -> None:", "app",
      "expr.call:call.ret_type.tuple"):
         ("test_stamped_generic_lending_call_hedges_each_leaf",
@@ -4938,6 +4944,12 @@ def test_the_render_gate_fails_on_a_move_the_lowering_copies(
     monkeypatch.setattr(_lower_checks, "record_disposition", copying)
     monkeypatch.setattr(_bindings, "with_movable",
                         lambda rec, own: replace(rec, movable=False))
+    # An insert's argument converts at its parameter: the conversion is
+    # where the lowering would copy.
+    monkeypatch.setattr(_lower_expressions, "_moves_here",
+                        lambda name, lc: False)
+    monkeypatch.setattr(_lower_convert, "tuple_moves",
+                        lambda s, movable=None: False)
     with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
         _assert_move_leaves_render_moves(compiler, _entry(modules), source)
 

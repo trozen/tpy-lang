@@ -1,0 +1,4 @@
+own_field 107 7
+own_borrow_call 43 42
+walrus_own 101 1
+template_pointer_param False

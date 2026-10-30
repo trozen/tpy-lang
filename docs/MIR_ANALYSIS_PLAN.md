@@ -2203,7 +2203,7 @@ as the corpus grows).
   `predicates.param_passing`, over the FunctionInfo that holds the body's
   const verdicts: the definition's `THIRParam.passing` and the signature
   every call publishes for it (a stub's from its declaration,
-  `_stub_param_consts`); the validator (`call_contract.summary_problem`,
+  `param_contract.stub_param_consts`); the validator (`call_contract.summary_problem`,
   and the caller's check at lowering) enforces that the two agree. A
   callable whose FunctionInfo carries no const verdict passes not-const on
   both sides, and an accessor or twin named like an in-place dunder takes
@@ -3163,10 +3163,11 @@ facts) and `tpyc/mir/test_inherited_records.py` (MIR).
   a base's own ("base constructor not called" / "base constructor called
   twice" otherwise; a skipped base admitted only when its layout has no
   fields and its definition verifies), and the base's definition must
-  verify ("base definition: <reason>"). Base-initializer arguments render
-  bare (`BUGS.md#base-init-args-separate-lowering`), so each argument is a
-  PASSING-AWARE leg against the base constructor's parameter, admitting
-  exactly:
+  verify ("base definition: <reason>"). Base-initializer arguments convert
+  at the base constructor's parameter, with no statement temporaries
+  (`BUGS.md#base-init-args-separate-lowering` holds what stays refused),
+  and each argument is a PASSING-AWARE leg against that parameter,
+  admitting exactly:
   - a scalar child parameter of the base parameter's type;
   - a lend: an owned-leaf child parameter whose passing equals the base
     parameter's borrowing passing (VIEW -> VIEW, CONST_REF -> CONST_REF;

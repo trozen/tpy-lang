@@ -4,7 +4,7 @@ __tpy__ = {"includes": ["native_types.hpp"]}
 import asyncio
 from enum import Enum, auto
 from typing import Callable, Final, Iterator, Protocol, overload
-from tpy import int32, int64, dispatch, readonly
+from tpy import Own, int32, int64, dispatch, readonly
 from tpy.extern import native, cpp_template, export
 import nbind
 from nbind import limited, add2, lim
@@ -150,6 +150,18 @@ def moded(x: int32, e: E = E.B) -> int32: ...
 def sized(x: int32, d: bytes = b"xy") -> int32: ...
 
 
+@native("nb::opt")
+def opt(x: int32, y: int32 | None = None) -> int32: ...
+
+
+@native("nb::own_s")
+def own_s(x: int32, t: Own[str] = "lit") -> int32: ...
+
+
+@native("nb::sink")
+def sink(b: Own[bytes]) -> int32: ...
+
+
 @native("nb::generic")
 def add_default[T](x: T, y: T = T()) -> T: ...
 
@@ -281,6 +293,13 @@ def main() -> None:
     print("str", tagged(1))  # tpyc: ok
     print("enum", moded(1))  # tpyc: ok
     print("bytes", sized(1))  # tpyc: ok
+    # A filled `None` at an Optional parameter and a filled `str` at an
+    # `Own[str]` one, as the spelled arguments.
+    print("none", opt(1), opt(1, None))  # tpyc: ok
+    print("own-str", own_s(1), own_s(1, "lit"))  # tpyc: ok
+    # Not a default: a call rvalue at an owning native parameter.
+    bv = b"abc"
+    print("own-call-rvalue", sink(bytes(bv)))  # tpyc: ok
     # A generic binding's `T()` default constructs the bound type.
     print("generic", add_default[int32](3))  # tpyc: ok
     # Same, the type argument inferred from a keyword argument.

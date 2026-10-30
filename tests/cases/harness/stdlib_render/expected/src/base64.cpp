@@ -289,7 +289,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
 //     return b64decode(data.encode(), altchars, validate)
 ::tpy::Bytes b64decode__str__bytes_None__bool(std::string_view data, std::optional<::tpy::BytesView> altchars, bool validate) {
-    return ::tpystd::base64::b64decode__bytes__bytes_None__bool(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::Bytes(*altchars)) : std::nullopt, validate);
+    return ::tpystd::base64::b64decode__bytes__bytes_None__bool(::tpy::bytes_from_str(data), altchars, validate);
 }
 
 // def standard_b64encode(data: bytes) -> bytes:
@@ -619,7 +619,7 @@ int32_t _b32_char_to_value(int32_t c) {
 //     return _b32decode_impl(data)
 ::tpy::Bytes b32decode__bytes__bool__bytes_None(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01) {
     if ((casefold || (map01.has_value()))) {
-        return ::tpystd::base64::_b32decode_impl(::tpystd::base64::_b32_preprocess(data, casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt));
+        return ::tpystd::base64::_b32decode_impl(::tpystd::base64::_b32_preprocess(data, casefold, map01));
     }
     return ::tpystd::base64::_b32decode_impl(data);
 }
@@ -628,7 +628,7 @@ int32_t _b32_char_to_value(int32_t c) {
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
 //     return b32decode(data.encode(), casefold, map01)
 ::tpy::Bytes b32decode__str__bool__bytes_None(std::string_view data, bool casefold, std::optional<::tpy::BytesView> map01) {
-    return ::tpystd::base64::b32decode__bytes__bool__bytes_None(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt);
+    return ::tpystd::base64::b32decode__bytes__bool__bytes_None(::tpy::bytes_from_str(data), casefold, map01);
 }
 
 // def _b32decode_impl(data: bytes) -> bytes:

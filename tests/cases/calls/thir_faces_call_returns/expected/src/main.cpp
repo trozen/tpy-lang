@@ -61,7 +61,7 @@ void protocol_own_dyn() {
 void ptr_opt_lift() {
     Store s = Store();
     H h = H();
-    h.o = ::tpy::ptr_to_optional(s.find(1));
+    h.o = ::tpy::ptr_to_optional(s.find(::tpy::BigInt(1)));
     P* o = ::tpy::optional_to_ptr(h.o);
     std::cout << "ptr_opt_lift:" << " " << (((o != nullptr)) ? (o->v) : (::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
 }

@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     print(j.peek("a"))       # 99 -- the readonly reader aliases the shared object, not a copy
 void main() {
     Jar j = Jar();
-    j.add("a", 3);
+    j.add("a", ::tpy::BigInt(3));
     std::cout << j.peek("a") << "\n" << ::tpy::check_signals;
     std::cout << j.peek_get("a") << "\n" << ::tpy::check_signals;
     std::cout << j.peek_get("z") << "\n" << ::tpy::check_signals;

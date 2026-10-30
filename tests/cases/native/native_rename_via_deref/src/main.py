@@ -5,11 +5,19 @@ __tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32, copy, auto_readonly
 from tpy.extern import native
 
+class A:
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+type Tree = int32 | A | list[Tree]
+
 @native("x::Widget")
 class Widget:
     id_: int32
     @native("getId")
     def GetId(self) -> int32: ...
+    @native("echo")
+    def Echo(self, t: Tree) -> int32: ...
 
 class WRef:
     _target: Widget
@@ -24,5 +32,9 @@ def main() -> None:
     r = WRef(w)
     # Must emit `r.__deref__().getId()`, not `r.__deref__().GetId()`.
     print(r.GetId())
+    # A recursive-union member at the target's method parameter, through
+    # the Deref chain: built into the wrapper as at the direct call.
+    a = A(1)
+    print(r.Echo(a), r.Echo(A(2)))  # tpyc: ok
 
 main()

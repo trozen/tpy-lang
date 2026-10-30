@@ -1,0 +1,4 @@
+main.py:27: warning: Own[A] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:44: warning: copies A into owned storage; use copy() to make this explicit
+main.py:47: warning: copies A into owned storage; use copy() to make this explicit
+main.py:50: warning: copies A into owned storage; use copy() to make this explicit

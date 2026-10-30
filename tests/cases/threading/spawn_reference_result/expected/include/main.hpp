@@ -220,8 +220,7 @@ inline Driver::Driver(std::string_view label) : label(label) {}
 inline void Driver::collect(int32_t n) const {
     ::tpystd::tpy::thread::JoinHandle<std::vector<std::string>> h = ::tpystd::tpy::thread::spawn<std::vector<std::string>, Rows>(Rows(n));
     std::vector<std::string> got = h.join();
-    std::string __tmp_1{this->label};
-    got.push_back(std::move(__tmp_1));
+    got.push_back(this->label);
     std::cout << "method:" << " " << ::tpy::str_join(" ", got) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

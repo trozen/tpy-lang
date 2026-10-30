@@ -18,7 +18,7 @@ std::optional<::tpy::BigInt> _opt_int_g;
 void main() {
     Holder h = Holder(::tpy::BigInt(7));
     Registry r = Registry();
-    r.install(&h, 42);
+    r.install(&h, ::tpy::BigInt(42));
     std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n" << ::tpy::check_signals;
     r.clear();

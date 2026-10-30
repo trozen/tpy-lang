@@ -30,7 +30,7 @@ void main() {
 void consumed_receiver() {
     ::tpystd::tplib::box::Box<Echo> __slot_1 = ::tpystd::tplib::box::Box<Echo>(Echo());
     ::tpystd::tplib::box::Box<Echo>* e = &__slot_1;
-    std::move(*e).take().__setattr__("a", 6);
+    std::move(*e).take().__setattr__("a", ::tpy::BigInt(6));
     std::optional<::tpystd::tplib::box::Box<Echo>> __slot_2;
     e = &*(__slot_2 = ::tpystd::tplib::box::Box<Echo>(Echo()));
     std::move(*e).take().__delattr__("b");

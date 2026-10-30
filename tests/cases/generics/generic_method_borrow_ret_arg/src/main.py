@@ -1,12 +1,9 @@
 # A BORROW-returning getter at a generic RECORD METHOD's `T` slot binds BARE --
 # no temp, no copy -- so a mutation the method makes through that parameter is
-# visible to the caller's original, like CPython. The FREE-function twin of the
-# same argument is refused: BUGS.md#generic-free-call-borrow-return-arg-rejects,
-# pinned by `generics/error_generic_free_call_borrow_arg`.
+# visible to the caller's original, like CPython. The FREE-function twin is
+# pinned by the `generic_borrow` section of `calls/argument_sink`.
 # `T` is BOUND here only so the body can call a member and mutate: the alias is
-# observed through that mutation, and an unbounded `T` could not touch one. The
-# reject the twin pins is bound-independent, which is why it spells a plain
-# `f[T]`.
+# observed through that mutation, and an unbounded `T` could not touch one.
 # The method stays `-> None` because the return-through form belongs to two
 # other entries: returning the parameter warns about a temporary that is really
 # a borrow, BUGS.md#generic-return-through-param-spurious-temporary-warning,

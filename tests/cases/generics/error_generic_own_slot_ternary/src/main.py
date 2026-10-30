@@ -22,7 +22,7 @@ class Outer[T]:
 
     def go(self, f: bool) -> Own[Wrap[T]]:
         # The argument is a ternary of two container-pop rvalues.
-        return wrap(self.items.pop() if f else self.items.pop(0))  # tpyc: error(/expr\.call:call\.generic_arg_slot/)
+        return wrap(self.items.pop() if f else self.items.pop(0))  # tpyc: error(/expr\.ifexpr/)
 
 
 def main() -> None:

@@ -1,5 +1,5 @@
 # Test tpy.span(): get Span[readonly[T]] from Spannable types.
-from tpy import int32, Span, Spannable, Array, span, auto_readonly
+from tpy import int32, Span, Spannable, Array, span, auto_readonly, readonly
 
 class Buffer:
     _data: list[int32]
@@ -18,6 +18,9 @@ def span_sum(x: Spannable[int32]) -> int32:
         total += v
     return total
 
+def total(sp: Span[readonly[int32]]) -> int32:
+    return len(sp)
+
 def main() -> None:
     # span() on user type through protocol param
     buf = Buffer()
@@ -30,5 +33,8 @@ def main() -> None:
 
     arr: Array[int32, 3] = [5, 6, 7]
     print(len(span(arr)))
+
+    # span_arg: a span() rvalue straight into a Span parameter
+    print("span_arg", total(span(items)))  # tpyc: ok
 
 main()

@@ -1,0 +1,21 @@
+main.py:113: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:116: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:125: warning: Own[T] param 'value' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:191: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:742: warning: copies bytearray into field; use copy() to make this explicit
+main.py:33: warning: Own[A] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:262: warning: Own[A] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:351: warning: Own[list[str]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:400: warning: Own[bytearray] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:419: warning: copies A into owned storage; use copy() to make this explicit
+main.py:435: warning: copies A into owned storage; use copy() to make this explicit
+main.py:454: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:458: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:461: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:465: warning: copies A into owned storage; use copy() to make this explicit
+main.py:469: warning: copies list[str] into owned storage; use copy() to make this explicit
+main.py:485: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:768: warning: Own[A] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:812: warning: copies A into owned storage; use copy() to make this explicit
+main.py:1110: warning: copies A into owned storage; use copy() to make this explicit
+main.py:1200: warning: copies A into owned storage; use copy() to make this explicit

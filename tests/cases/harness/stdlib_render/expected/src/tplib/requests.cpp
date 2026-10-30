@@ -458,7 +458,7 @@ std::string _rebuild_method(std::string_view method, int32_t status) {
 ::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url) {
     {
         try {
-            conn.__deref__().request(method, target, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, &(hdrs));
+            conn.__deref__().request(method, target, body, &(hdrs));
             return conn.__deref__().getresponse();
         } catch (const ::tpystd::ssl::SSLError& e) {
             conn.__deref__().close();

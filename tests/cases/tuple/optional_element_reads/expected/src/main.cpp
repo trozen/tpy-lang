@@ -334,7 +334,7 @@ void returned_stored() {
 //     # record element at an Optional parameter: the pointer the tuple holds
 //     print("rec arg", touch(t[0]))  # tpyc: ok
 void rec_arg(const std::tuple<Box*, int32_t>& t) {
-    std::cout << "rec arg" << " " << ::tpyapp::main::touch(std::get<0>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << "rec arg" << " " << ::tpyapp::main::touch(&((*std::get<0>(t)))) << "\n" << ::tpy::check_signals;
 }
 
 // def rec_print(b: Box) -> None:

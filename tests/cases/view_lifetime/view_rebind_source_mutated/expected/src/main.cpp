@@ -15,8 +15,7 @@ void straight_line(const std::vector<std::string>& xs, std::vector<std::string>&
     std::string v = ::tpy::__getitem__(xs, 0);
     v = ::tpy::__getitem__(ys, 0);
     ys.clear();
-    std::string __tmp_1{PAD};
-    ys.push_back(std::move(__tmp_1));
+    ys.push_back(PAD);
     std::cout << "straight_line" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -30,8 +29,7 @@ void literal_then_element(std::vector<std::string>& ys) {
     std::string v = "lit";
     v = ::tpy::__getitem__(ys, 0);
     ys.clear();
-    std::string __tmp_1{PAD};
-    ys.push_back(std::move(__tmp_1));
+    ys.push_back(PAD);
     std::cout << "literal_then_element" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -46,8 +44,7 @@ void compound_source(bool c, const std::vector<std::string>& xs, const std::vect
     std::string v = ::tpy::__getitem__(xs, 0);
     v = ((c) ? (::tpy::__getitem__(ys, 0)) : (::tpy::__getitem__(zs, 0)));
     zs.clear();
-    std::string __tmp_1{PAD};
-    zs.push_back(std::move(__tmp_1));
+    zs.push_back(PAD);
     std::cout << "compound_source" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -67,8 +64,7 @@ void if_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::str
         v = ::tpy::__getitem__(ys, 0);
     }
     ys.clear();
-    std::string __tmp_1{PAD};
-    ys.push_back(std::move(__tmp_1));
+    ys.push_back(PAD);
     std::cout << "if_arms" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -95,8 +91,7 @@ void match_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::
     }
     }
     ys.clear();
-    std::string __tmp_1{PAD};
-    ys.push_back(std::move(__tmp_1));
+    ys.push_back(PAD);
     std::cout << "match_arms" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -123,8 +118,7 @@ void try_handler(int32_t k, std::vector<std::string>& xs) {
         }
     }
     xs.clear();
-    std::string __tmp_1{PAD};
-    xs.push_back(std::move(__tmp_1));
+    xs.push_back(PAD);
     std::cout << "try_handler" << " " << v << "\n" << ::tpy::check_signals;
 }
 

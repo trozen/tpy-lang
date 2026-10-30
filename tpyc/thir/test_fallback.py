@@ -199,9 +199,9 @@ def test_constructor_lowering_reject_falls_back():
 
 
 def test_base_init_arg_lowering_reject_falls_back():
-    # A base-init arg is admitted by TYPE (`_base_init_arg_ok`), so a
-    # structurally-unhandled scalar shape reaches `_lower_expr` and only rejects
-    # there -- it must land on the ctor's fallback boundary, not escape as a crash.
+    # A base-init arg whose conversion needs a statement temporary (the list
+    # a mutating callee is lent) rejects inside its lowering -- it must land
+    # on the ctor's fallback boundary, not escape as a crash.
     compiler, modules = _compile(
         "from tpy import int32\n"
         "def eat(xs: list[int32]) -> int32:\n"

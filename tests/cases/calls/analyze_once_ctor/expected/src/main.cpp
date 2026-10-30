@@ -113,8 +113,7 @@ void main() {
     std::cout << "generic-ctor:" << " " << Holder<B>(std::move(*c).take()).item.v << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_2;
     c = &*(__slot_2 = B(2));
-    int32_t __tmp_1 = std::move(*c).take().v;
-    std::cout << "generic-ctor-field:" << " " << Holder<int32_t>(std::move(__tmp_1)).item << "\n" << ::tpy::check_signals;
+    std::cout << "generic-ctor-field:" << " " << Holder<int32_t>(std::move(*c).take().v).item << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
     std::cout << "group:" << " " << ::tpy::OSError(std::move(*c).take().v, std::string_view("three")).error_number << "\n" << ::tpy::check_signals;
@@ -142,23 +141,23 @@ void main() {
             std::cout << "raise-group:" << " " << e.error_number << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<Bag<int64_t>> __tmp_2 = {Bag<int64_t>()};
-    std::cout << "ctor-list-slot:" << " " << ::tpyapp::main::plain_bags(__tmp_2) << "\n" << ::tpy::check_signals;
-    Holder<Bag<int64_t>> __tmp_3 = Holder<Bag<int64_t>>(Bag<int64_t>());
-    std::cout << "ctor-nested-slot:" << " " << ::tpyapp::main::plain_holder(__tmp_3) << "\n" << ::tpy::check_signals;
-    std::vector<Bag<int64_t>> __tmp_4 = {Bag<int64_t>()};
-    std::cout << "ctor-dispatch-list:" << " " << ::tpyapp::main::bags__list_Bag_int64(__tmp_4) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, Bag<int64_t>> __tmp_5 = ::tpy::ordered_map<std::string, Bag<int64_t>>({{"k", Bag<int64_t>()}});
-    std::cout << "ctor-dispatch-dict:" << " " << ::tpyapp::main::bag_map__dict_str_Bag_int64(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::vector<Bag<int64_t>> __tmp_1 = {Bag<int64_t>()};
+    std::cout << "ctor-list-slot:" << " " << ::tpyapp::main::plain_bags(__tmp_1) << "\n" << ::tpy::check_signals;
+    Holder<Bag<int64_t>> __tmp_2 = Holder<Bag<int64_t>>(Bag<int64_t>());
+    std::cout << "ctor-nested-slot:" << " " << ::tpyapp::main::plain_holder(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::vector<Bag<int64_t>> __tmp_3 = {Bag<int64_t>()};
+    std::cout << "ctor-dispatch-list:" << " " << ::tpyapp::main::bags__list_Bag_int64(__tmp_3) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, Bag<int64_t>> __tmp_4 = ::tpy::ordered_map<std::string, Bag<int64_t>>({{"k", Bag<int64_t>()}});
+    std::cout << "ctor-dispatch-dict:" << " " << ::tpyapp::main::bag_map__dict_str_Bag_int64(__tmp_4) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_8;
     c = &*(__slot_8 = B(8));
-    std::vector<Tagged<B, int64_t>> __tmp_6 = {Tagged<B, int64_t>(std::move(*c).take())};
-    std::cout << "ctor-dispatch-consume:" << " " << ::tpyapp::main::tagged__list_Tagged_B_int64(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::vector<Tagged<B, int64_t>> __tmp_5 = {Tagged<B, int64_t>(std::move(*c).take())};
+    std::cout << "ctor-dispatch-consume:" << " " << ::tpyapp::main::tagged__list_Tagged_B_int64(__tmp_5) << "\n" << ::tpy::check_signals;
     Shelf s = Shelf();
+    std::vector<Bag<int64_t>> __tmp_6 = {Bag<int64_t>()};
+    std::cout << "ctor-method-list:" << " " << s.put__list_Bag_int64(__tmp_6) << "\n" << ::tpy::check_signals;
     std::vector<Bag<int64_t>> __tmp_7 = {Bag<int64_t>()};
-    std::cout << "ctor-method-list:" << " " << s.put__list_Bag_int64(__tmp_7) << "\n" << ::tpy::check_signals;
-    std::vector<Bag<int64_t>> __tmp_8 = {Bag<int64_t>()};
-    std::cout << "ctor-method-keyword:" << " " << s.put__list_Bag_int64(__tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-method-keyword:" << " " << s.put__list_Bag_int64(__tmp_7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -629,6 +629,9 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     const_receiver: bool = False
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
+    # Set by sema past a deref chain (`deref_depth` > 0): the type the method
+    # resolved on, which its receiver reaches through the chain.
+    deref_receiver_type: Optional[TpyType] = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
     # Set by sema: the expression this call IS, lowered in its place -- a

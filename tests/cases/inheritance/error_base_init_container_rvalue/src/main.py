@@ -1,30 +1,32 @@
-# The shape adjacent to a container base-init arg: the same container as a
-# CALL rvalue rather than a bare param name. The target-less base-init render
-# is the bare name and can register no temp, so an rvalue keeps its own rung.
-# CPython runs it: BUGS.md#base-init-args-separate-lowering.
+# A fresh container at a base parameter the base MUTATES: the list it is
+# lent must live in a named temporary, and a base initializer has no
+# statement to hold one, so it is rejected
+# (BUGS.md#base-init-args-separate-lowering). Read-only, the same argument
+# binds for the initializer (calls/argument_sink, base_init_fresh_const_ref).
+# The sibling spellings do not compile either: an owning call's list,
+# `super().__init__(mk(n))`, is refused the same way, and a named local,
+# `xs = [n]` then `super().__init__(xs)`, is a sema error (the base
+# initializer must be the first statement).
 from tpy import int32
 
 
 class Base:
-    buf: bytearray
+    n: int32
 
-    def __init__(self, b: bytearray) -> None:
-        self.buf = b
+    def __init__(self, xs: list[int32]) -> None:
+        xs.append(1)
+        self.n = len(xs)
 
 
 class Child(Base):
-    n: int32
-
     # The ctor reject reports the enclosing `def` line, not the offending
     # call, so the annotation sits here.
-    def __init__(self) -> None:  # tpyc: error(/not yet supported.*ctor.base_init/)
-        super().__init__(bytearray(b"xy"))
-        self.n = 1
+    def __init__(self, n: int32) -> None:  # tpyc: error(/not yet supported.*call\.arg_shape\.container/)
+        super().__init__([n])
 
 
 def main() -> None:
-    c = Child()
-    print(len(c.buf), c.n)
+    print(Child(3).n)
 
 
 main()

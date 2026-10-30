@@ -2,8 +2,8 @@
 # container's `Own[T]` insert slot. The enum leg takes the const-ref overload
 # of `push_back` (no temp, no move); the bytes leg materializes the owned
 # copy first (`bytes_copy`) and hands that prvalue to the rvalue overload.
-# The same cells reject at a user record's `Own[T]` slot
-# (calls/error_method_own_slot_element_read).
+# At a user record's `Own[T]` slot the same element read is a warned copy
+# held for the call (the `own_elem` section of calls/argument_sink).
 from enum import Enum
 
 

@@ -1,5 +1,5 @@
-# A subclass omitting a pointer-repr union base-init arg: the AST renders the
-# omitted None as `{}`, so THIR must not reproduce it as a bare `nullptr`.
+# A `None` base-init argument at a pointer-repr union parameter: it is built
+# at that parameter as the union's empty alternative, never a bare `nullptr`.
 
 from tpy import int64
 
@@ -27,9 +27,8 @@ class Base:
 
 class Sub(Base):
     def __init__(self, tag: int64) -> None:
-        # The subject: THIR's base-init arg render is target-less, so it can only
-        # reproduce a bare `nullptr` -- this pairing must reject and fall back.
-        super().__init__(tag, None)
+        # The subject: `None` converts at the base's union parameter.
+        super().__init__(tag, None)  # tpyc: ok
 
 
 def main() -> None:

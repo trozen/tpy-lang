@@ -49,6 +49,7 @@ from ... import modules as builtin_modules
 from ...modules import get_error_return_next_element_type
 from ...compilation_context import get_current_compiler
 from ...symbol_binding import SymbolKind, lookup_imported
+from ...sema.source_records import publish_source_record, read_record
 from ...sema.storage_policy import first_binding_storage
 from ...type_def_registry import (
     is_str_type, is_str_category, is_big_int_type, is_bytes_type,
@@ -1082,7 +1083,13 @@ class FrameBuilder:
             # TpyName referring to the lifted local. Use the analyzer's
             # set_expr_type so codegen's get_expr_type sees it.
             replacement = TpyName(name=name, loc=await_node.loc)
-            self.analyzer.ctx.set_expr_type(replacement, await_t)
+            sema = self.analyzer.ctx
+            sema.set_expr_type(replacement, await_t)
+            # The read stands for the await an owning sink checked: its
+            # record (copied, warned) is the name's.
+            record = read_record(sema, await_node)
+            if record is not None:
+                publish_source_record(sema, replacement, record)
             self._replace_expr_in_stmt(stmt, await_node, replacement)
         new_stmts.append(stmt)
         return new_stmts

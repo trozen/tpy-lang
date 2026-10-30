@@ -4653,6 +4653,20 @@ def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> Tp
     return t
 
 
+# The const-pointee twin of each trait an open `T` lifts through where its
+# instantiation decides between the value and a pointer.
+_POINTER_TRAITS = {"opt_param_t": "opt_cparam_t", "val_or_ptr_t": "val_or_cptr_t"}
+
+
+def pointer_trait_cpp(trait: str, const: bool) -> Optional[str]:
+    """`::tpy::<trait>`, or its const-pointee twin, for a trait an open `T`
+    lifts through (`opt_param_t`, `val_or_ptr_t`); None for any other."""
+    twin = _POINTER_TRAITS.get(trait)
+    if twin is None:
+        return None
+    return f"::tpy::{twin if const else trait}"
+
+
 @dataclass(frozen=True)
 class OptionalType(TpyType):
     """Nullable wrapper: T | None.
@@ -4846,7 +4860,7 @@ class OptionalType(TpyType):
 
     def to_cpp_param_type(self) -> str:
         if self.uses_generic_param_trait():
-            return f"::tpy::opt_param_t<{self.inner.to_cpp()}>"
+            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp()}>"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
         fam = view_family_for_type(self.inner)
@@ -4868,7 +4882,7 @@ class OptionalType(TpyType):
 
     def to_cpp_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"::tpy::opt_param_t<{self.inner.to_cpp()}> {name}"
+            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp()}> {name}"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -4878,7 +4892,7 @@ class OptionalType(TpyType):
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"::tpy::opt_cparam_t<{self.inner.to_cpp()}> {name}"
+            return f"{pointer_trait_cpp('opt_param_t', True)}<{self.inner.to_cpp()}> {name}"
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -5725,8 +5739,7 @@ class TupleType(TpyType):
         if self._element_is_val_or_ptr(t):
             peeled = unwrap_ref_type(t)
             is_const = const or isinstance(peeled, ReadonlyType)
-            trait = "::tpy::val_or_cptr_t" if is_const else "::tpy::val_or_ptr_t"
-            return f"{trait}<{core.name}>"
+            return f"{pointer_trait_cpp('val_or_ptr_t', is_const)}<{core.name}>"
         # A pointer-variant union element always borrows as the const pointer
         # variant: std::variant has no mutable->const converting ctor, so the
         # call-site slot (which uses to_const_ptr_variant) and this param/return

@@ -9,10 +9,16 @@ namespace tpyapp::main {
 //     r = WRef(w)
 //     # Must emit `r.__deref__().getId()`, not `r.__deref__().GetId()`.
 //     print(r.GetId())
+//     # A recursive-union member at the target's method parameter, through
+//     # the Deref chain: built into the wrapper as at the direct call.
+//     a = A(1)
+//     print(r.Echo(a), r.Echo(A(2)))  # tpyc: ok
 void main() {
     ::x::Widget w = ::x::Widget(42);
     WRef r = WRef(w);
     std::cout << r.__deref__().getId() << "\n" << ::tpy::check_signals;
+    A a = A(1);
+    std::cout << r.__deref__().echo(a) << " " << r.__deref__().echo(A(2)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

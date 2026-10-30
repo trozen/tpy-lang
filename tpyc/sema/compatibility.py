@@ -12,6 +12,7 @@ from enum import Enum, auto
 from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
+from ..type_def_registry import has_view_param_form
 from ..typesys import pointer_repr_optional, readonly_access, resolve_int_literals, BIGINT
 from ..typesys import (
     is_value_type_bound,
@@ -2806,15 +2807,16 @@ class TypeCompatibility:
         )
         if not commits:
             return source
-        if coercion is None and coercion_ctx is CoercionContext.RETURN:
-            # A result erases a @dynamic source into its owner here; the
-            # call-argument and binding sinks erase at their own rows.
+        if coercion is None and coercion_ctx in (CoercionContext.RETURN,
+                                                 CoercionContext.ARG):
+            # A result or an argument erases a @dynamic source into its
+            # owner here; the binding sinks erase at their own rows.
             scope = self.ctx.func.current_scope
             coercion = dyn_erasure_coercion(
                 expr, expected,
                 scope.lookup(expr.name)
                 if isinstance(expr, TpyName) and scope is not None else None,
-                self.ctx)
+                self.ctx, handle=coercion_ctx is CoercionContext.ARG)
         if coercion is None:
             return expr
         # Value-to-mutable-Ptr coercions (`record_to_ptr`, `upcast_to_ptr`)
@@ -3539,7 +3541,7 @@ class TypeCompatibility:
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             self.ctx.get_expr_type(expr))))
         if (registers and bare_tuple(unwrap_own(bare)) is None
-                and self.holds_reference_leaf(slot)):
+                and self.records_slot(slot, expr)):
             # A value payload copies nothing CPython would share. The read
             # has a record whatever check took it (a binding's move-through
             # is no sink of its own): its copy stands iff the record copies.
@@ -6385,8 +6387,8 @@ class TypeCompatibility:
         source, before or after it; otherwise the first registration -- the
         outermost slot, before the element slots it recurses into --
         stands."""
-        if source is None or slot is None or not self.holds_reference_leaf(
-                slot):
+        if (source is None or slot is None
+                or not self.records_slot(slot, source)):
             return
         if (not per_leaf and sink is not TupleSink.ANY
                 and (bare_tuple(slot) is not None
@@ -6489,6 +6491,26 @@ class TypeCompatibility:
         return (fs.in_nested_def and name in fs.outer_scope_locals
                 and name not in fs.current_param_names)
 
+    def records_slot(self, slot: TpyType, source: TpyExpr) -> bool:
+        """Whether an owning slot's source gets a record: one holding a
+        reference leaf (`holds_reference_leaf`), or an owned buffer passed
+        as a view elsewhere (`Own[str]`, `Own[bytes]`:
+        `has_view_param_form`) a local moves into at its last use rather
+        than copying the buffer.
+        A parameter handed on keeps its copy: MIR does not take its move
+        yet (`tpyc/mir/test_nested_records.py`, `own_leg`)."""
+        if self.holds_reference_leaf(slot):
+            return True
+        u = unwrap_readonly(unwrap_ref_type(slot))
+        if not (isinstance(u, OwnType)
+                and has_view_param_form(unwrap_readonly(u.wrapped))):
+            return False
+        read = peel_value_wrappers(source)
+        if read in self.ctx.reread_reads:
+            return False
+        binding = self.ctx.read_bindings.get(read)
+        return binding is not None and binding.kind is ReadKind.LOCAL
+
     def holds_reference_leaf(self, slot: TpyType) -> bool:
         """Whether an owning slot of type `slot` holds a reference leaf, so
         a source it takes gets a record: a tuple with a reference path, or
@@ -6508,6 +6530,10 @@ class TypeCompatibility:
         if self.ctx.copy_is_unobservable(bare):
             return LeafPermission.VALUE
         payload = unwrap_readonly(bare)
+        if has_view_param_form(payload):
+            # An owned immutable buffer (str, bytes): its copy is not
+            # observable.
+            return LeafPermission.VALUE
         return (LeafPermission.HEDGED
                 if own_copy.copy_is_hedged(payload, payload)
                 else LeafPermission.WARNED)

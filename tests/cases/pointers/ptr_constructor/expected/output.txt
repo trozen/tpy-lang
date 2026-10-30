@@ -8,3 +8,4 @@ null ok
 70
 80
 99
+null_arg 0

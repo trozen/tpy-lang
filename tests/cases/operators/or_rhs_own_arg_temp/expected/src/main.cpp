@@ -117,8 +117,7 @@ bool record_payload(const std::vector<int32_t>& xs) {
 //     return (xs.pop() > 0) or seen_str("ownstr", s)
 bool own_str_name(std::vector<int32_t>& xs, std::string_view tail) {
     ::tpy::String s = (::tpy::str_concat(tail, "!"));
-    std::optional<std::string> __tmp_1;
-    return ((::tpy::pop_back(xs) > 0) || (__tmp_1.emplace(std::string{s}), ::tpyapp::main::seen_str("ownstr", std::move((*__tmp_1)))));
+    return ((::tpy::pop_back(xs) > 0) || ::tpyapp::main::seen_str("ownstr", std::move(s)));
 }
 
 // def ref_param_rvalue(flag: bool) -> bool:

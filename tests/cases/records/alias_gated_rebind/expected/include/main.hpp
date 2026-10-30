@@ -441,8 +441,7 @@ inline Counted& Counted::operator=(Counted&& other) noexcept {
 //     DROPS.append(self.name)
 inline Counted::~Counted() {
     if (!this->__tpy_owned_) return;
-    std::string __tmp_1{this->name};
-    DROPS->push_back(std::move(__tmp_1));
+    DROPS->push_back(this->name);
 }
 
 // def __init__(self, p: Ptr[Point]) -> None:

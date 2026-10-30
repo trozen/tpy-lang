@@ -100,9 +100,8 @@ inline Base::Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Do
       has_pet((!std::holds_alternative<std::monostate>(pet))) {}
 
 // def __init__(self, tag: int64) -> None:
-//     # The subject: THIR's base-init arg render is target-less, so it can only
-//     # reproduce a bare `nullptr` -- this pairing must reject and fall back.
-//     super().__init__(tag, None)
-inline Sub::Sub(int64_t tag) : Base(tag, {}) {}
+//     # The subject: `None` converts at the base's union parameter.
+//     super().__init__(tag, None)  # tpyc: ok
+inline Sub::Sub(int64_t tag) : Base(tag, ::tpy::Union<std::monostate, const Cat*, const Dog*>{std::monostate{}}) {}
 void __tpy_init();
 } // namespace tpyapp::main

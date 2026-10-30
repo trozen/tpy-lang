@@ -9,12 +9,30 @@
 
 namespace tpyapp::main {
 
+struct Tree;
+struct A;
 struct WRef;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
 void main();
+
+// class A:
+struct A {
+    // self.n = n
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    A() = default;
+    explicit A(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const A& obj) {
+    ::tpy::print_object_default(os, "A", obj);
+    return os;
+}
 
 // class WRef:
 struct WRef {
@@ -45,6 +63,10 @@ inline std::ostream& operator<<(std::ostream& os, const WRef& obj) {
 }
 
 
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline A::A(int32_t n) : n(n) {}
+
 // def __init__(self, target: Widget) -> None:
 //     self._target = copy(target)
 inline WRef::WRef(const ::x::Widget& target) : _target(target) {}
@@ -70,5 +92,22 @@ inline auto WRef::operator*() -> decltype(__deref__()) {
 inline auto WRef::operator*() const -> decltype(__deref__()) {
     return __deref__();
 }
+struct Tree {
+    using variant_type = ::tpy::Union<A, int32_t, std::vector<Tree>>;
+    variant_type value;
+
+    Tree() = default;
+    template<typename T>
+        requires std::constructible_from<variant_type, T&&>
+    Tree(T&& v) : value(std::forward<T>(v)) {}
+
+    bool operator==(const Tree&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
+        ::tpy::detail::print_element(os, v.value);
+        return os;
+    }
+};
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -27,6 +28,9 @@ inline int32_t limited_cast(int32_t x, int32_t y = 100) { return x * 1000 + y; }
 inline int32_t tagged(int32_t x, std::string_view t = "cpp default") { return x * 100 + (int32_t)t.size(); }
 inline int32_t moded(int32_t x, E e = E::A) { return x * 10 + (int32_t)e; }
 template<class B> int32_t sized(int32_t x, const B& d) { return x * 100 + (int32_t)d.size(); }
+inline int32_t opt(int32_t x, std::optional<int32_t> y = 9) { return x * 10 + y.value_or(0); }
+inline int32_t own_s(int32_t x, std::string t = "cpp default") { return x * 100 + (int32_t)t.size(); }
+template<class B> int32_t sink(B&& b) { return (int32_t)b.size(); }
 template<class T> T generic(T x, T y = T{9}) { return x + y; }
 inline int32_t add2(int32_t a, int32_t b) { return a * 1000 + b; }
 struct RD {

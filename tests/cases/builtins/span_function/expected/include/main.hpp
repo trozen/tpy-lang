@@ -17,6 +17,8 @@ int32_t span_len(const T_x& x);
 // def span_sum(x: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_x>
 int32_t span_sum(const T_x& x);
+// def total(sp: Span[readonly[int32]]) -> int32:
+int32_t total(std::span<const int32_t> sp);
 // def main() -> None:
 void main();
 

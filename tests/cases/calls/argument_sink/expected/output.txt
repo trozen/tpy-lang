@@ -1,0 +1,96 @@
+ref_field 10
+two 11
+two 21
+order 21
+os_ abab
+own_str_stmt 2 2
+method_copy 6
+method_move 6
+ctor ab ab
+own_enum False True
+generic_borrow 11
+own_tparam_fwd 9
+view_set_add 1
+own_opt_call 4
+own_scalar_narrowed 100
+own_scalar_field 7
+own_elem 1 1
+const_generic generic
+own_bytes 2 2
+own_bytes_total 4
+value_opt_field 3
+own_field 107
+own_temp_member 107
+mutated_rvalue 7.0 2.0
+mutated_comprehension 4
+mutated_owning_call 3
+field_subclass 5
+own_borrow_call 43
+own_borrow_call_ctor 42
+own_borrow_call_method 42
+own_element 5
+module_var_own True
+borrow_container_ret 2 [1, 7]
+narrowed_opt_field [0, 7]
+property_temp_receiver 3
+property_temp_receiver_insert 1
+generic_dict_literal 2
+select_arg 1.5
+own_bytearray 97
+narrowed_union_own 2
+readonly_ctor_literal 3
+field_chain 2
+narrowed_field_native 1
+pointee_field_generic_opt True
+pointee_field_generic_opt_after 10
+or_select_arg 1.5
+list_repeat_insert 2 3
+receiver_order 103 2
+opt_field 8 8
+opt_field_after 108
+uni_field 110 110
+opt_method 111 113 113
+ptr_ctor 230 116
+value_union_native 1
+value_union_call False True
+opt_subclass_call 4
+opt_own_call True False
+base_init_fresh_view built
+base_init_format_spec tag0005
+base_init_fresh_const_ref 3 122
+walrus_deref 12 12
+walrus_name 12 12
+walrus_fresh 12
+walrus_method 113 113
+walrus_list 4 8 7
+walrus_own 6 True
+scalar_order 1 11
+scalar_order_after 11
+own_union_result 8 9
+open_optional True True True True False
+opt_view True False True False True False
+inline_narrowed -1 2
+gen_scalar_order 1 11
+gen [17, 3, 11] 17
+async 43 27
+protocol_slot 9 3
+dyn_slot 16 4
+callable_local 11 21 21
+setter_value 6
+static_own_optional 99 -1
+once_and True 1
+once_while 2 4
+once_elif 5
+once_comp_filter 3 8
+once_aug_subscript 6 9
+once_aug_record_key 1 10 10
+borrow_field_copy 103
+nocopy_box_move 4
+array_local_annotated 2 2
+literal_at_value_union 1
+record_key_readonly 20 110
+aug_key_own_str {'ab': 1}
+method_callable_object 3
+method_ru_member_name 7
+method_ru_member_rvalue 8
+method_ru_literal 1

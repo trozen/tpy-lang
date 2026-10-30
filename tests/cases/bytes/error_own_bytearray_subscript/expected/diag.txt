@@ -1,2 +1,0 @@
-main.py:7: warning: Own[bytearray] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:12: error: in function 'main': this construct is not yet supported by C++ code generation (expr.call:call.callee_kind)

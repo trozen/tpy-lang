@@ -60,8 +60,7 @@ inline Sink::Sink() : kept(std::vector<std::string>{}) {}
 //     self.kept.append(v)  # Own[str] param at an Own[str] element slot
 //     return len(self.kept) < 2
 inline bool Sink::check(std::string v) {
-    std::string __tmp_1{v};
-    this->kept.push_back(std::move(__tmp_1));
+    this->kept.push_back(v);
     return (::tpy::__len__(this->kept) < 2);
 }
 

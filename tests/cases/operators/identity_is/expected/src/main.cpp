@@ -337,7 +337,7 @@ void objects_fn() {
 //     print("closure narrowed", inner(), inner_same(), inner_value())
 void closure_narrow_fn() {
     Holder h = Holder();
-    h.set_kid(5);
+    h.set_kid(::tpy::BigInt(5));
     A a = A(::tpy::BigInt(1));
     auto inner = [&a, &h]() -> bool {
         if ((h.kid.has_value())) {
@@ -515,7 +515,7 @@ void optional_fn() {
     Holder h2 = Holder();
     std::cout << "unnarrowed ptr none" << " " << ::tpy::print_bool((::tpyapp::main::kid_or_none(&h2) == nullptr)) << " " << ::tpy::print_bool((::tpyapp::main::kid_or_none_ro(&h2) == nullptr)) << "\n" << ::tpy::check_signals;
     Outer o_ = Outer();
-    o_.h.set_kid(3);
+    o_.h.set_kid(::tpy::BigInt(3));
     Holder& hh = o_.h;
     if ((hh.kid.has_value())) {
         std::cout << "narrowed chain" << " " << ::tpy::print_bool(::tpyapp::main::via_chain(o_, (*hh.kid))) << " " << ::tpy::print_bool(::tpyapp::main::via_chain(o_, a)) << "\n" << ::tpy::check_signals;

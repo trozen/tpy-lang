@@ -71,8 +71,7 @@ void set_methods(std::string_view s, ::tpy::BytesView b) {
     ::tpy::ordered_set<::tpy::Bytes> sb = ::tpy::ordered_set<::tpy::Bytes>();
     ss.insert("a");
     sb.insert(::tpy::bytes_literal_owned("a", 1));
-    std::string __tmp_1{t.name};
-    ss.insert(std::move(__tmp_1));
+    ss.insert(t.name);
     sb.insert(t.tag);
     ss.insert(std::string(s));
     sb.insert(::tpy::Bytes(b));

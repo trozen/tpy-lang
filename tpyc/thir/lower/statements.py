@@ -6,7 +6,8 @@ from __future__ import annotations
 import copy
 from collections.abc import Callable, Iterator, Set as AbstractSet
 from .storage import alias_binding, borrowed_record, full_expression_record, native_container, native_container_field, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
-from .callables import definition_signature, setitem_stub_callee, with_method_callee, with_method_stub
+from .callables import (CallSignature, call_signature, definition_signature, setitem_stub_callee,
+                        method_signature, with_method_callees)
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
@@ -144,6 +145,7 @@ from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import read_record, verdict
 from ...sema.call_lends import Retention, expr_lends_storage
+from ..param_contract import arg_retention
 from ...sema.context import UnnamedHolder
 from ...sema.aug_hold import holds_by_value
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
@@ -160,7 +162,8 @@ from ...codegen_cpp.protocols import (
     dynamic_base_name,
     protocol_param_template_name,
 )
-from ...sema.dyn_erasure import record_inherits_dynamic
+from ...coercions import CoercionContext
+from ...sema.dyn_erasure import dyn_erasure_coercion, record_inherits_dynamic
 from ...codegen_cpp.context import (escape_cpp_name,
                                     ternary_iterable_lends_storage)
 from ...prescan import (
@@ -200,7 +203,7 @@ from ..scalar_leaves import (
     binds_cursor, binds_element, container_view, native_container_subject, native_container_type, record_owner,
     storage_leaf,
 )
-from ..nodes import (HoistDecl, THIRStoragePlacement, THIRHoistedBinding,
+from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     THIROptionalRead, THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
     THIRBytesLiteral, THIRCall, THIRCoerce, THIRNoneCheck,
@@ -223,7 +226,7 @@ from ..nodes import (HoistDecl, THIRStoragePlacement, THIRHoistedBinding,
     THIRTupleElemTarget, THIRTupleUnpack, TupleElemBind, TupleSourceBind,
     THIRUnaryNot, THIRVarDecl, THIRWhile, THIRWith, THIRWithItem, THIRTempRead,
     WithTargetArm)
-from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
+from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_genrec_return,
     _tuple_opt_elem_subscript, place_hops,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
     _value_tuple_return, _viewfam_return_slots,
@@ -319,7 +322,7 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
-    arg_retention, BindingSource,
+    BindingSource,
     _declared_call_at_owning_elem, declared_call_elem_copy_ok,
     own_element_copy_member, own_element_payload,
     _chained_subscript_recv_type, _container_comp_arg,
@@ -356,6 +359,7 @@ from .convert import (
     layout_tuple, open_param_result, spelled, store_slot, to_local,
     view_to_owned)
 from .expressions import (
+    _lower_into_dyn,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
     _select_result, _operand_use_of,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
@@ -371,14 +375,14 @@ from .expressions import (
     _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
     lower_copy_construct, _lower_container_elem,
     _lower_expr, _to_opt_ptr, lower_print_sink, _lower_field_source,
-    _lower_lambda, _strip_slot_leaf_deref, _strview_coerce_name,
+    _lower_lambda, _strip_slot_leaf_deref,
     _lower_truthy, _cond_mixed_walrus_temps, _lower_borrow_tuple_literal,
     _lower_generic_tuple_literal, _lower_ru_literal, _lower_tuple_literal,
     _rb_operand_view_slots, _rb_operand_slots, _operator_literal_pins,
     _lower_slice_bound, _slot_literal_retype, _value_opt_scalar_binding,
     _value_opt_binding_kind, _value_opt_view_binding,
     _record_key, _lower_call_receiver,
-    _record_receiver, _operator_receiver_pinned,
+    _record_receiver, _operator_receiver_pinned, _const_receiver,
 )
 from . import bindings as _bindings
 from . import comprehensions as _comprehensions
@@ -8111,7 +8115,22 @@ def _lower_erased_handle_write(stmt: TpyVarDecl, init: TpyExpr,
                                        lc.analyzer) is None
             and _dyn_own_forward_call_arg(init, slot_t, lc.analyzer) is None):
         raise ThirUnsupported("res.erased_handle_source")
-    value = _lower_call_arg(init, slot_t, lc, declared, retention=Retention.MEASURED)
+    # The erasure the argument sinks' sema publishes, decided here for the
+    # binding (`dyn_erasure_coercion`); a forwarded owner needs none.
+    erasure = dyn_erasure_coercion(
+        init, slot_t,
+        declared.get(init.name) if isinstance(init, TpyName) else None,
+        lc.analyzer, handle=True)
+    if erasure is not None:
+        value = _lower_into_dyn(
+            TpyCoerce(expr=init, actual_type=lc.analyzer.get_expr_type(init),
+                      expected_type=slot_t, coercion=erasure,
+                      context_kind=CoercionContext.INIT, context_msg="",
+                      loc=getattr(init, "loc", None)),
+            lc, declared, lc.may_hoist)
+    else:
+        value = _lower_call_arg(init, slot_t, lc, declared,
+                                retention=Retention.MEASURED)
     _witness("res.erased_handle_write")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=slot_t, loc=stmt.loc),
@@ -8789,11 +8808,13 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
 
 
 def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
-                        receiver: THIRExpr, args: tuple[THIRExpr, ...],
-                        lc: '_LowerCtx', loc) -> THIRMethodCall:
+                        receiver: THIRExpr, lc: '_LowerCtx',
+                        loc) -> THIRMethodCall:
     """A subscript store or `del` as the explicit `t.__setitem__(k, v)` /
     `t.__delitem__(k)` call it is: a method call on `receiver` to the
-    variant sema resolved, rendered by that variant's own binding."""
+    variant sema resolved, rendered by that variant's own binding, its
+    callee resolved; the caller fills in the arguments, which read the
+    signature it publishes (`method_signature`)."""
     fi = sub.dunder(kind)
     assert fi is not None
     binding = _bound_call_of(fi, fi.name)
@@ -8802,15 +8823,41 @@ def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
                                                           kind),
         method_cpp=binding.method_cpp,
         native_function_name=binding.native_function_name,
-        cpp_template=binding.cpp_template, args=args, loc=loc)
-    return with_method_callee(with_method_stub(call, fi, lc.analyzer), fi,
-                              lc.analyzer,
-                              lambda: receiver_is_const(sub.obj, lc))
+        cpp_template=binding.cpp_template, args=(), loc=loc)
+    return with_method_callees(call, fi, lc.analyzer,
+                               lambda: receiver_is_const(sub.obj, lc),
+                               arity=2 if kind is SubscriptDunder.SET else 1)
+
+
+@dataclass(frozen=True)
+class _StoreCall:
+    """The callee of a store `t[k] = v`, resolved once before its value
+    lowers: the setter call (`call`, its arguments not lowered yet), or the
+    element store's stub (`stub`)."""
+    call: THIRMethodCall | None
+    stub: THIRStubCallee | None
+
+    @property
+    def signature(self) -> CallSignature | None:
+        if self.call is not None:
+            return method_signature(self.call)
+        return call_signature(stub=self.stub)
+
+
+def _store_call(sub: TpySubscript, receiver: THIRExpr, lc: '_LowerCtx',
+                loc) -> _StoreCall:
+    """The callee the store `sub = v` on `receiver` binds (`_store_item`)."""
+    if _subscript_call(sub, SubscriptDunder.SET) is None:
+        return _StoreCall(None, setitem_stub_callee(sub, receiver,
+                                                    lc.analyzer))
+    return _StoreCall(_record_dunder_call(sub, SubscriptDunder.SET, receiver,
+                                          lc, loc), None)
 
 
 def _set_item(stmt: TpyStmt, sub: TpySubscript, target: THIRSubscript,
               value: THIRExpr, lc: '_LowerCtx', loc,
-              held: tuple[THIRArgTemp, ...] = ()) -> THIRSetItem:
+              held: tuple[THIRArgTemp, ...] = (), *,
+              stub: THIRStubCallee | None) -> THIRSetItem:
     """The element store `sub = value` of `stmt`, rendered by the
     `__setitem__` variant sema stamped (`_dunder_render`)."""
     render = _dunder_render(sub, SubscriptDunder.SET)
@@ -8820,8 +8867,7 @@ def _set_item(stmt: TpyStmt, sub: TpySubscript, target: THIRSubscript,
     return THIRSetItem(
         target=target, value=value, setter=render.binding,
         unchecked_setter=render.unchecked,
-        stub_callee=setitem_stub_callee(sub, target, lc.analyzer),
-        held=held, loc=loc)
+        stub_callee=stub, held=held, loc=loc)
 
 
 @dataclass(frozen=True)
@@ -8836,6 +8882,7 @@ class _AugSubscript:
     read: THIRSubscript
     receiver: THIRExpr
     store_index: THIRExpr
+    store: _StoreCall
 
 
 def _held_temp(init: THIRExpr, cpp_type: str | None, lc: '_LowerCtx',
@@ -8924,7 +8971,7 @@ def _setter_consumes_held_key(stmt: TpyAugAssign,
 
 
 def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
-                            declared: dict[str, TpyType], *,
+                            declared: dict[str, TpyType], loc, *,
                             key_keep: 'Retention | None') -> _AugSubscript:
     sub = stmt.target
     assert isinstance(sub, TpySubscript)
@@ -8936,14 +8983,21 @@ def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
     read = _lower_expr(sub, lc, declared, key_verdict=(key_keep,))
     assert isinstance(read, THIRSubscript)
     getter = sub.dunder(SubscriptDunder.GET)
+    # The store's receiver is the read's without the getter's const pin.
+    receiver = read.receiver
+    if (isinstance(receiver, THIRCoerce)
+            and receiver.coercion_name == "const_receiver"):
+        receiver = receiver.expr
+    store = _store_call(sub, receiver, lc, loc)
     set_key = None
     if setter is not None and sub.setitem_index is not None:
-        if _subscript_call(sub, SubscriptDunder.SET) is not None:
+        if store.call is not None:
             set_key = _record_key(sub, sub.setitem_index, setter, lc,
                                   declared,
                                   keep=arg_retention(
                                       setter, 0, None, lc.analyzer,
-                                      sub.setitem_index, recv=sub.obj))
+                                      sub.setitem_index, recv=sub.obj),
+                                  signature=store.signature)
         elif not (getter is not None and without_readonly(
                 getter.params[0].type) == without_readonly(
                     setter.params[0].type)):
@@ -8956,13 +9010,9 @@ def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
                                                forms=_LEND_OK),
                                   field_owned_str_ok=isinstance(
                                       sub.setitem_index, TpyFieldAccess))
-    # The store's receiver is the read's without the getter's const pin.
-    receiver = read.receiver
-    if (isinstance(receiver, THIRCoerce)
-            and receiver.coercion_name == "const_receiver"):
-        receiver = receiver.expr
     return _AugSubscript(read, receiver,
-                         set_key if set_key is not None else read.index)
+                         set_key if set_key is not None else read.index,
+                         store)
 
 
 def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
@@ -8985,19 +9035,24 @@ def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
 
 def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
                 lc: '_LowerCtx', loc,
-                held: tuple[THIRArgTemp, ...] = ()) -> THIRStmt:
+                held: tuple[THIRArgTemp, ...] = (), *,
+                store: '_StoreCall | None' = None) -> THIRStmt:
     """The store `t[k] = v` of `stmt` -- plain, or an augmented store's
     write-back -- over the store target's receiver and key and the value,
     answered by the setter's contract for every receiver: the call
     `_record_dunder_call` to it, or the element store (`_set_item`) when it
-    declares the element-access contract."""
+    declares the element-access contract. `store` is its callee where an
+    argument already read it (`_store_call`)."""
     sub = stmt.target
     assert isinstance(sub, TpySubscript) and isinstance(target, THIRSubscript)
-    if _subscript_call(sub, SubscriptDunder.SET) is None:
-        return _set_item(stmt, sub, target, value, lc, loc, held=held)
-    return THIRExprStmt(expr=_record_dunder_call(
-        sub, SubscriptDunder.SET, target.receiver, (target.index, value),
-        lc, loc), held=held, loc=loc)
+    if store is None:
+        store = _store_call(sub, target.receiver, lc, loc)
+    if store.call is None:
+        return _set_item(stmt, sub, target, value, lc, loc, held=held,
+                         stub=store.stub)
+    return THIRExprStmt(expr=replace(store.call,
+                                     args=(target.index, value)),
+                        held=held, loc=loc)
 
 
 def _ptr_union_value(init: TpyExpr, ptr_u: 'UnionType', is_const: bool,
@@ -11873,9 +11928,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # its receiver/index feed the checked write emit; the value renders
             # against the elem slot bare (a value scalar / char / enum, or a
             # record whose source moves or copies whole).
+            store: _StoreCall | None = None
+
+            def store_signature(receiver: THIRExpr) -> CallSignature | None:
+                # The setter is resolved once, on the receiver the target
+                # lowers, before its key: key and value read one signature.
+                nonlocal store
+                store = _store_call(stmt.target, receiver, lc, loc)
+                return store.signature
             target = _lower_expr(
                 stmt.target, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.SETITEM_TARGET))
+                use=_ExprUse(result=_ExprResultUse.SETITEM_TARGET),
+                store_signature=store_signature)
+            assert store is not None
             elem_t = analyzer.get_expr_type(stmt.target)
             v = stmt.value
             if (_svn := _strview_coerce_name(v)) is not None:
@@ -11888,7 +11953,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     value=_lower_expr(_svn, lc, declared),
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.user_record")
-                return _store_item(stmt, target, value, lc, loc)
+                return _store_item(stmt, target, value, lc, loc, store=store)
             if (_nested_container_elem_type(elem_t)
                     and not isinstance(v, TpyName)):
                 _witness("setitem.user_record")
@@ -11898,7 +11963,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         stmt, unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(elem_t))),
                         target, lc, declared, loc),
-                    lc, loc)
+                    lc, loc, store=store)
             if record_like(elem_t, analyzer) and isinstance(v, TpyName):
                 if not _is_move_source(v, lc):
                     # A copy-shaped name takes the argument body below: an
@@ -11915,7 +11980,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                           allow_unrouted_name=True),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.record_move")
-                    return _store_item(stmt, target, value, lc, loc)
+                    return _store_item(stmt, target, value, lc, loc,
+                                       store=store)
             setitem = _call_arm_variant(stmt.target, SubscriptDunder.SET,
                                         analyzer)
             assert setitem is not None
@@ -11926,9 +11992,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 stmt.target.obj, [stmt.target.index, stmt.value],
                 _set_i, setitem, lc, declared, temp_args=True,
                 keep=arg_retention(setitem, _set_i, None, analyzer,
-                                   stmt.value, recv=stmt.target.obj))
+                                   stmt.value, recv=stmt.target.obj),
+                signature=store.signature)
             _witness("setitem.user_record")
-            return _store_item(stmt, target, value, lc, loc)
+            return _store_item(stmt, target, value, lc, loc, store=store)
         if isinstance(stmt.target, TpySubscript):
             # Container subscript write: the target lowers to the same
             # subscript node a read produces (bounds_safe + the BigInt index
@@ -12422,7 +12489,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                           scope.admission_pointers(), narrowed, analyzer)
                       or _container_aug_setitem_ok(
                           stmt, declared, scope.admission_pointers(),
-                          narrowed, analyzer, key_keep=aug_key_keep))
+                          narrowed, analyzer))
             if aug_ok:
                 # Unreachable today (a wrapper union's elements are never
                 # the scalar family the aug gate requires), but the guard
@@ -12459,27 +12526,32 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 recv = _deref_loop_source(_lower_expr(
                     stmt.target, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER)), lc)
+                _inp_rb = stmt.resolved_inplace
+                # An in-place dunder is never reflected, so the receiver
+                # is pinned before its callee resolves on it.
+                assert not _inp_rb.is_reverse
+                if _inp_rb.const_receiver:
+                    recv = _const_receiver(recv, _inp_rb.receiver_type, lc)
+                _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
+                call = with_method_callees(THIRMethodCall(
+                    result_type=VoidType(),
+                    receiver=recv,
+                    method_cpp=_inp_bc.method_cpp,
+                    native_function_name=_inp_bc.native_function_name,
+                    cpp_template=_inp_bc.cpp_template,
+                    args=(),
+                    loc=loc), _inp_fi, analyzer,
+                    lambda: receiver_is_const(stmt.target, lc), arity=1)
                 # The operand is the explicit `c.__iadd__(v)` call's
                 # argument, converted to what the dunder's parameter takes.
                 val = _dunder_arg(stmt.target, [stmt.value], 0, _inp_fi, lc,
                                   declared, temp_args=True,
                                   keep=arg_retention(_inp_fi, 0, None,
                                                      lc.analyzer, stmt.value,
-                                                     recv=stmt.target))
-                _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
-                recv, _ = _operator_receiver_pinned(stmt.resolved_inplace,
-                                                    recv, val, lc)
-                return THIRExprStmt(
-                    expr=with_method_callee(with_method_stub(THIRMethodCall(
-                        result_type=VoidType(),
-                        receiver=recv,
-                        method_cpp=_inp_bc.method_cpp,
-                        native_function_name=_inp_bc.native_function_name,
-                        cpp_template=_inp_bc.cpp_template,
-                        args=(val,),
-                        loc=loc), _inp_fi, analyzer), _inp_fi, analyzer,
-                        lambda: receiver_is_const(stmt.target, lc)),
-                    loc=loc)
+                                                     recv=stmt.target),
+                                  signature=method_signature(call))
+                return THIRExprStmt(expr=replace(call, args=(val,)),
+                                    loc=loc)
         if not aug_ok:
             raise ThirUnsupported("stmt.aug_assign")
         # str `t += v`: the in-place append (the string branch of the
@@ -12537,7 +12609,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("aug.class_const")
             elif (isinstance(stmt.target, TpySubscript)
                     and stmt.target.typed_dict_field is None):
-                aug_sub = _aug_subscript_operands(stmt, lc, declared,
+                aug_sub = _aug_subscript_operands(stmt, lc, declared, loc,
                                                   key_keep=aug_key_keep)
                 left = target = aug_sub.read
             else:
@@ -12626,10 +12698,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     target = replace(target, receiver=aug_sub.receiver,
                                      index=store_key)
                     return _store_item(stmt, target, received, lc, loc,
-                                       held=held)
+                                       held=held, store=aug_sub.store)
                 target = replace(target, receiver=aug_sub.receiver,
                                  index=aug_sub.store_index)
-                return _store_item(stmt, target, stored, lc, loc, held=held)
+                return _store_item(stmt, target, stored, lc, loc, held=held,
+                                   store=aug_sub.store)
             return THIRAssign(target=target, value=stored,
                               recv_eval=recv_eval, recv_wrap=recv_wrap,
                               held=held, loc=loc)
@@ -13252,18 +13325,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 receiver = _lower_call_receiver(
                     sub.obj, lc, declared, allow_temps=False,
                     forms=_recv_forms(False, True))
+                call = _record_dunder_call(sub, SubscriptDunder.DEL,
+                                           receiver, lc, loc)
                 # The key is the explicit call's argument, by the one
                 # argument sink (an `Own[str]` slot takes its owned copy).
                 key = _lower_call_arg(
                     sub.index, deleter.params[0].type, lc, declared,
                     temp_args=True, method_arg=True, callee_fi=deleter,
+                    arg_index=0, signature=method_signature(call),
                     retention=arg_retention(
                         deleter, 0, None, analyzer, sub.index,
                         recv=sub.obj))
                 calls.append(_flush_witness(
-                    "flush.expr_stmt",
-                    _record_dunder_call(sub, SubscriptDunder.DEL, receiver,
-                                        (key,), lc, loc)))
+                    "flush.expr_stmt", replace(call, args=(key,))))
                 continue
             recv_t = _subscript_container_recv_type(recv, declared, analyzer)
             if (recv_t is None and isinstance(recv, TpySubscript)
@@ -13298,8 +13372,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      else _ExprUse()),
                 field_prechecked=isinstance(sub.obj, TpyFieldAccess))
             key = _lower_expr(sub.index, lc, declared)
-            calls.append(_record_dunder_call(
-                sub, SubscriptDunder.DEL, receiver, (key,), lc, loc))
+            calls.append(replace(_record_dunder_call(
+                sub, SubscriptDunder.DEL, receiver, lc, loc), args=(key,)))
         if len(calls) == 1:
             return THIRExprStmt(expr=calls[0], loc=loc)
         _witness("stmt.del_item_multi")

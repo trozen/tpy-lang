@@ -43,10 +43,10 @@ from .lower.checks import (_GENERIC_PLAIN_ARG_SINK, _NATIVE_ARG_SINK,
 # copy-construct, an owned rvalue or convert). A test-side grouping, so the
 # families' Own capability is pinned as row membership.
 _OWN_SLOT_ROWS = frozenset({
-    "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
-    "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
-    "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-    "own_container_literal", "own_container_comp",
+    "own_record_rvalue",
+    "own_move", "own_lvalue", "own_union_ctor",
+    "dyn_own_coro_factory", "dyn_own_handle",
+    "own_container_comp",
     "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move",
 })
 
@@ -79,68 +79,31 @@ class TestProtocolSinkShape:
         assert [r.row for r in _PROTOCOL_ARG_SINK.rows] == [
             "shared_pass_through",
             "ru_wrapper_name",
-            "optional_ptr_no_temp",
-            "value_record_rvalue",
             "tuple_literal",
             "wide_opt_deref_name",
             "func_ref",
             "lambda",
             "callable_value_pass",
-            "str_owned_slot",
-            "str_pass_through",
-            "own_lvalue",
-            "container_field_pass",
             "container_module_var",
             "record_field_marker",
             "record_elem_subscript",
-            "container_literal_method",
             "none_unit",
-            "none_value_opt",
             "value_opt_member",
-            "union_pass_through",
-            "union_member_lift",
-            "union_coerced_literal",
-            "union_ctor_temp",
-            "value_union_temp",
-            "optional_ptr_container_temp",
             "protocol_slot",
         ]
 
     def test_note_tail_is_verbatim(self):
         assert _PROTOCOL_ARG_SINK.note == "method.protocol.arg_shape"
 
-    def test_optional_ptr_is_the_only_witnessing_cell(self):
-        # The face fires from the cell, after the predicate -- the pre-fold
-        # ladder's `<pred> and _witness(...)` position.
-        assert [(r.row, r.face) for r in _PROTOCOL_ARG_SINK.rows
-                if r.face is not None] == [
-            ("optional_ptr_no_temp", "method.protocol_optional_ptr")]
-
-    def test_the_temp_rows_are_gated_on_temps_ok(self):
-        # The method arg loop threads the position's flush to this family as
-        # to the record one, so every hoisting cell carries the record
-        # ladder's guard -- `own_lvalue` the same `_x_own_lvalue_flush`,
-        # whose stub leg reads the explicit `stub_slot` this entry never
-        # sets, so a protocol `Own[T]` slot needs the flush.
-        assert [(r.row, r.extra.__name__) for r in _PROTOCOL_ARG_SINK.rows
-                if r.extra is not None] == [
-            ("own_lvalue", "_x_own_lvalue_flush"),
-            ("union_ctor_temp", "_x_temps_ok"),
-            ("value_union_temp", "_x_temps_ok"),
-            ("optional_ptr_container_temp", "_x_temps_ok"),
-        ]
-        cell = next(r for r in _PROTOCOL_ARG_SINK.rows
-                    if r.row == "own_lvalue")
-
-        def _req(temps_ok):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, retains=None, index=0,
-                           overload=None)
-
-        assert cell.extra(_req(True)) is True
-        assert cell.extra(_req(False)) is False
-        assert ({r.row for r in _PROTOCOL_ARG_SINK.rows} & _OWN_SLOT_ROWS
-                == {"str_owned_slot", "own_lvalue"})
+    def test_no_cell_witnesses_or_hoists(self):
+        # An Optional or union pointer, a value union's temp and an `Own[T]`
+        # record or container slot convert at their parameter
+        # (`converted_arg`): no cell here witnesses, hoists or takes an Own
+        # slot.
+        assert [r.row for r in _PROTOCOL_ARG_SINK.rows
+                if r.face is not None or r.extra is not None] == []
+        assert not ({r.row for r in _PROTOCOL_ARG_SINK.rows}
+                    & _OWN_SLOT_ROWS)
         assert _PROTOCOL_ARG_SINK.mutated_slots is False
 
 
@@ -151,10 +114,7 @@ class TestNativeSinkShape:
             "func_ref",
             "lambda",
             "callable_value_pass",
-            "own_move",
-            "native_own_scalar_lvalue",
             "native_iterable_container",
-            "container_field_pass",
             "inst_slice",
             "container_ternary",
             "native_iterable_call",
@@ -166,7 +126,6 @@ class TestNativeSinkShape:
             "native_container_call",
             "native_record_call",
             "native_record_borrow_call",
-            "record_elem_subscript",
             "protocol_slot",
             "native_protocol_value",
             "native_protocol_open_call",
@@ -178,9 +137,6 @@ class TestNativeSinkShape:
             "borrow_tuple_storage_name",
             "borrow_tuple_field",
             "open_value_tuple_name",
-            "own_move_source_slice",
-            "copy_own",
-            "own_element_pass",
             "own_tuple_move",
             "own_tuple_decay_copy",
             "walrus_frame_field",
@@ -202,12 +158,12 @@ class TestNativeSinkShape:
             ("open_value_tuple_name", "arg.open_value_tuple_name")]
 
     def test_family_carries_own_rows_and_no_mutated_policy(self):
-        # Absence-preserving: the pre-fold ladder carried Own rows
-        # (`own_move` / `native_own_scalar_lvalue`) and never consulted
-        # `mutated_params`, so the Own cells are present and the mutated-slot
-        # policy is off.
+        # An owned scalar converts at its parameter (`converted_arg`); the
+        # owned tuple cells stay, and the family never consults
+        # `mutated_params`.
         rows = {r.row for r in _NATIVE_ARG_SINK.rows}
-        assert "own_move" in rows and "native_own_scalar_lvalue" in rows
+        assert "own_move" not in rows
+        assert {"own_tuple_move", "own_tuple_decay_copy"} <= rows
         assert _NATIVE_ARG_SINK.mutated_slots is False
 
     def test_storage_tuple_locals_reaches_the_borrow_tuple_row(self):
@@ -242,165 +198,70 @@ class TestMethodArgSinkShape:
     """
 
     # Where the record-only rows start. Named once, so the split-point pins
-    # below read as facts about the merge rather than magic offsets. One row
-    # a stub can never reach sits in the leading half anyway: the hoisting
-    # `container_literal` cell has to follow its inline sibling immediately,
-    # or a row between the two would claim the literal first.
-    STUB_ROWS = 52
+    # below read as facts about the merge rather than magic offsets.
+    STUB_ROWS = 20
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
         # reordering changes the recorded face census even when admission is
         # identical. This pin is the tripwire for that. The STUB half leads
         # because that order is what measured render-identical over the whole
-        # corpus -- record-first rejected 438 of 3850 compiling cases.
+        # corpus.
         assert [r.row for r in _METHOD_ARG_SINK.rows] == [
-            # -- the builtin-stub rows --
-            "scalar_at_template_slot",
             "protocol_bare_name",
             "copy_iter_own_elem",
-            "str_pass_through",
-            "str_owned_slot",
-            "bytes_owned_literal",
-            "bytes_view_literal",
-            "bytes_owned_slot",
-            "bytes_owned_lvalue",
-            "bytes_owned_call_rvalue",
-            "bytes_pass_through",
-            "char_pass_through",
             "enum_pass_through",
-            "own_enum_elem",
-            "ptr_pass_through",
-            "container_pass_through",
-            "container_slot_call_rvalue",
             "own_record_rvalue",
-            "copy_own",
-            "own_element_pass",
-            "own_move",
-            "own_lvalue",
             "native_iterable_literal",
-            "native_iterable_container",
             "native_iterable_field",
             "native_iterable_call",
             "native_iterable_range",
             "native_iterable_iterator_call",
             "native_iterable_comp",
             "own_iter_special",
-            "own_container_literal",
             "own_container_comp",
-            "any_pass_through",
-            "container_literal_method",
-            "container_literal",
-            "container_comp",
             "none_value_opt",
-            "opt_view_own_elem",
-            "opt_view_param_own_elem",
-            "opt_strview_to_str_own_elem",
-            "value_opt_scalar_elem",
-            "own_ptr_value",
-            "none_unit",
             "callable_slot",
-            "tparam_slot",
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
             "own_tuple_storage",
             "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
             "own_tuple_call_rvalue",
-            "ptr_addr_of_elem",
-            # -- the rows only a user record's signature reaches --
             "lambda",
-            "func_ref",
-            "callable_value_pass",
             "callable_object",
-            "plain_scalar_slot",
-            "tparam_scalar",
-            "tparam_open_pass",
-            "float_literal_pass_through",
-            "int_literal_bigint",
             "value_tuple_pass_through",
             "nullable_proto_addr",
-            "span_coerce",
-            "slice_ctor_pass_through",
-            "own_scalar_rvalue",
-            "value_opt_pass_through",
-            "value_opt_callable_pass",
             "value_opt_tuple_pass",
-            "value_opt_view_whole",
-            "value_record_rvalue",
-            "value_opt_record_rvalue",
             "value_record_name",
-            "value_array_call",
-            "own_tparam_call_rvalue",
-            "opt_own_record_name",
             "own_optional_record_rvalue",
             "own_opt_slot",
             "own_opt_ptr_name_move",
-            "opt_own_ptr_opt_name_move",
-            "union_member_lift_none",
-            "optional_ptr_no_temp",
-            "container_field_pass",
-            "record_pass_through",
-            "record_field_marker",
-            "record_elem_subscript",
-            "method_ctor_rvalue",
-            "record_rvalue_temp_factory",
-            "dyn_own_conformer",
-            "tparam_slot_temp",
             "struct_proto_union",
             "tuple_literal",
-            "method_value_union",
-            "union_ctor_temp",
-            "union_bytes_literal_temp",
-            "union_pass_deep_const",
-            "value_union_temp",
-            "value_union_narrowed_pass",
-            "value_opt_scalar_value",
-            "str_literal_value_opt",
-            "bytes_literal_value_opt",
-            "optional_ptr_container_temp",
             "protocol_slot",
             "ru_wrapper_name",
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
             "ru_wrapper_member_rvalue",
-            "borrow_ret_record_marker",
-            "wide_opt_deref_name",
         ]
 
-    def test_the_two_halves_share_fifteen_cells(self):
-        # The union is the stub listing plus the record rows it did not
-        # already name: 15 shapes were written twice, and the leading cell is
-        # now the only one deciding them.
+    def test_the_record_half_opens_at_lambda(self):
+        # A slot a parameter contract classifies converts at it
+        # (`converted_arg`), so only protocol, tuple, Optional-owned,
+        # callable, recursive-union and cycle-placeholder slots reach these
+        # rows; the record half opens at `lambda`.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 109
-        assert len(rows[:self.STUB_ROWS]) == 52
+        assert len(rows) == 36
         assert rows[self.STUB_ROWS] == "lambda"
 
-    def test_str_owned_slot_precedes_own_lvalue(self):
-        # Load-bearing beyond the face census: `str_owned_slot` absorbs the
-        # VIEW-form str sources into the inline convert, which is what leaves
-        # `Own[str]` as the only position-sensitive payload reaching the
-        # `own_lvalue` cell at a STUB slot.
-        rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert rows.index("str_owned_slot") < rows.index("own_lvalue")
-        # ... and the temp-free MOVE half is decided before it too.
-        assert rows.index("own_move") < rows.index("own_lvalue")
-
     def test_the_view_rows_keep_their_relative_order(self):
-        # The stub half is the CONTAINER ladder's order with the one
-        # view-only row spliced in at its view-relative position, which works
-        # only because the view ladder's order was already a subsequence of
-        # the container one. Interleaving the other way round (view rows
-        # first) measured identical on every corpus, but it would put
-        # `bytes_pass_through` ahead of the owned-bytes cells, inverting a
-        # precedence the container ladder states -- so the subsequence is the
-        # property, not the coincidence.
+        # The stub half is the CONTAINER ladder's order with the view rows
+        # at their view-relative positions: the subsequence is the property.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        view = ["scalar_at_template_slot", "protocol_bare_name",
-                "str_pass_through", "bytes_pass_through", "char_pass_through",
-                "enum_pass_through", "ptr_pass_through",
-                "native_iterable_literal", "native_iterable_container",
+        view = ["protocol_bare_name",
+                "enum_pass_through",
+                "native_iterable_literal",
                 "native_iterable_field", "native_iterable_call",
                 "native_iterable_comp"]
         assert [r for r in rows if r in view] == view
@@ -414,33 +275,36 @@ class TestMethodArgSinkShape:
     def test_witnessing_cells_are_pinned(self):
         assert [(r.row, r.face) for r in _METHOD_ARG_SINK.rows
                 if r.face is not None] == [
-            ("bytes_owned_literal", "arg.bytes_owned_literal"),
-            ("bytes_view_literal", "arg.bytes_view_literal"),
-            ("own_enum_elem", "arg.own_enum_elem"),
-            ("container_slot_call_rvalue", "arg.container_call_rvalue"),
-            ("own_ptr_value", "arg.own_ptr_value"),
             ("own_value_tuple_literal", "arg.own_value_tuple_literal"),
             ("own_open_t_tuple_literal",
              "arg.own_open_t_tuple_literal"),
             ("own_tuple_storage", "arg.own_tuple_storage"),
             ("own_open_t_tuple_storage_source",
              "arg.own_open_t_tuple_storage_source"),
-            ("tparam_scalar", "method.tparam_scalar_arg"),
-            ("tparam_open_pass", "method.tparam_open_pass_arg"),
             ("nullable_proto_addr", "arg.nullable_proto_addr"),
-            ("union_pass_deep_const", "method.union_pass_arg"),
-            ("bytes_literal_value_opt", "method.bytes_literal_value_opt"),
         ]
 
-    def test_the_comprehension_cell_is_one_cell_now(self):
-        # The record half carried a SECOND comprehension cell
-        # (`comp_container_method`, face `arg.comprehension_method`) whose
-        # only difference from `container_comp` was the const-slot verdict.
-        # That verdict is the shared cell's guard now, so the twin is gone
-        # rather than sitting unreachable behind it.
+    def test_no_comprehension_cell_is_left(self):
+        # A comprehension at a container parameter converts at that
+        # parameter (`converted_arg`): no comprehension cell decides one.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
         assert "comp_container_method" not in rows
-        assert rows.count("container_comp") == 1
+        assert "container_comp" not in rows
+
+    def test_no_slot_the_conversion_owns_keeps_a_row(self):
+        # A value, view, reference or pointer parameter converts at its
+        # parameter contract (`converted_arg`) at every method receiver, the
+        # Deref-chain stub call included: no cell decides one.
+        rows = {r.row for r in _METHOD_ARG_SINK.rows}
+        assert not rows & {
+            "str_pass_through", "scalar_at_template_slot",
+            "own_element_pass", "native_iterable_container",
+            "float_literal_pass_through", "int_literal_bigint",
+            "slice_ctor_pass_through", "value_array_call",
+            "value_opt_view_whole", "value_opt_callable_pass",
+            "record_pass_through", "callable_value_pass",
+            "union_pass_deep_const", "dyn_own_conformer",
+            "opt_own_ptr_opt_name_move"}
 
     def test_family_carries_own_rows_and_no_mutated_policy(self):
         assert ({r.row for r in _METHOD_ARG_SINK.rows} & _OWN_SLOT_ROWS)
@@ -449,148 +313,19 @@ class TestMethodArgSinkShape:
         # moves which bodies route, so it is its own change.
         assert _METHOD_ARG_SINK.mutated_slots is False
 
-    def test_own_lvalue_gates_on_the_flush_or_the_stub_slot(self):
-        # The one cell whose guard the two halves spelt DIFFERENTLY, because
-        # their `Own[T]` slots are different C++: a record method's is a
-        # by-value `T&&` param that needs the copy temp (and so a flush
-        # position), a stub's is a container insert whose const-ref overload
-        # takes the lvalue with no temp at all. Dropping either half of this
-        # disjunction is a miscompile or a lost admission, both probed:
-        # `s.take(b)` inside a call arg emitted an lvalue into a `Point&&`
-        # slot; `xs.append(b)` stopped compiling.
-        cell = next(r for r in _METHOD_ARG_SINK.rows
-                    if r.row == "own_lvalue")
-
-        def _req(temps_ok, overload, stub=False):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, retains=None, index=0,
-                           overload=overload,
-                           stub_slot=stub)
-
-        assert cell.extra(_req(False, None, stub=True)) is True  # stub slot
-        assert cell.extra(_req(True, "FI")) is True      # record + flush
-        assert cell.extra(_req(False, "FI")) is False    # record, no flush
-        # A missing overload is not the stub premise: the protocol entry
-        # can thread one with no flush position.
-        assert cell.extra(_req(False, None)) is False
-
-    def test_container_comp_gates_on_the_const_slot(self):
-        # The comprehension's stmt-expr is a PRVALUE, so the slot must be a
-        # const borrow. A stub carries no signature-const facts and every
-        # container slot it spells is a `const T&`; a record overload states
-        # the verdict per position, which is what keeps
-        # `calls/error_method_comprehension_mutated` rejecting.
-        cell = next(r for r in _METHOD_ARG_SINK.rows
-                    if r.row == "container_comp")
-
-        def _req(overload, index=0, stub=False):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, retains=None, index=index,
-                           overload=overload,
-                           stub_slot=stub)
-
-        fi = types.SimpleNamespace(const_borrow_params=frozenset({0}))
-        assert cell.extra(_req(None, stub=True)) is True
-        assert cell.extra(_req(None)) is False
-        assert cell.extra(_req(fi)) is True
-        assert cell.extra(_req(fi, index=1)) is False
-        assert cell.extra(
-            _req(types.SimpleNamespace(const_borrow_params=None))) is False
-
-    def test_the_inline_literal_cell_declines_a_lending_callee(self):
-        # The second half of that cell's guard: a literal bound IN PLACE dies
-        # at the end of the full expression, so a callee that keeps THIS
-        # argument may not have it. The cell reads the verdict its entry
-        # took once with the render (`retains`); an entry naming no callee
-        # leaves the render's own verdict to refuse.
-        cell = next(r for r in _METHOD_ARG_SINK.rows
-                    if r.row == "container_literal_method")
-
-        const_slot = types.SimpleNamespace(const_borrow_params=frozenset({0}))
-
-        def _req(retains, stub=False):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=0,
-                           overload=None if stub else const_slot,
-                           stub_slot=stub, retains=retains)
-
-        assert cell.extra(_req(None, stub=True)) is True          # no callee
-        assert cell.extra(_req(None)) is True                     # keeps none
-        assert cell.extra(_req(Retention.MEASURED)) is False      # keeps it
-        assert cell.extra(_req(Retention.RESULT, stub=True)) is False
-        assert cell.extra(_req(Retention.COPIES, stub=True)) is False
-        # A declared borrow binds the result as a value where the argument
-        # lends nothing, as an in-place literal does (`d.get(k, [2])`).
-        assert cell.extra(_req(Retention.DECLARED_RESULT, stub=True)) is True
-        assert cell.extra(_req(Retention.DECLARED_RESULT | Retention.COPIES,
-                               stub=True)) is False
-
     def test_guarded_cells_are_pinned(self):
-        # Eleven of these carry `_x_insert_own_slot`: their `Own[T]` slot
-        # premise is the builtin INSERT's C++, which a user signature's
-        # by-value `Own[T]` param does not have.
+        # Two carry `_x_insert_own_slot`: their `Own[T]` slot premise is
+        # the builtin INSERT's C++, which a user signature's by-value
+        # `Own[T]` param does not have. The recursive-union member rows
+        # hoist a temp, so only a position that flushes admits them.
         assert [(r.row, r.extra.__name__) for r in _METHOD_ARG_SINK.rows
                 if r.extra is not None] == [
-            ("bytes_owned_lvalue", "_x_insert_own_slot"),
-            ("own_enum_elem", "_x_insert_own_slot"),
-            ("container_slot_call_rvalue", "_x_comp_slot_const"),
-            ("own_lvalue", "_x_own_lvalue_flush"),
-            ("container_literal_method", "_x_inline_container_literal"),
-            ("container_literal", "_x_temps_ok"),
-            ("container_comp", "_x_comp_slot_const"),
-            ("opt_view_own_elem", "_x_insert_own_slot"),
-            ("opt_view_param_own_elem", "_x_insert_own_slot"),
-            ("opt_strview_to_str_own_elem", "_x_insert_own_slot"),
-            ("value_opt_scalar_elem", "_x_insert_own_slot"),
-            ("own_ptr_value", "_x_insert_own_slot"),
-            ("tparam_slot", "_x_insert_own_slot"),
             ("own_tuple_storage", "_x_insert_own_slot"),
             ("own_open_t_tuple_storage_source", "_x_insert_own_slot"),
-            ("record_rvalue_temp_factory", "_x_temps_and_frame"),
-            ("tparam_slot_temp", "_x_temps_ok"),
-            ("union_ctor_temp", "_x_temps_ok"),
-            ("union_bytes_literal_temp", "_x_temps_ok"),
-            ("value_union_temp", "_x_temps_ok"),
-            ("optional_ptr_container_temp", "_x_temps_ok"),
             ("ru_wrapper_member_name", "_x_temps_ok"),
             ("ru_wrapper_scalar_literal", "_x_temps_ok"),
             ("ru_wrapper_member_rvalue", "_x_temps_ok"),
         ]
-
-    def test_the_insert_slot_guard_is_the_stub_half(self):
-        # The fact it states: a stub's `Own[T]` slot is a container insert
-        # whose const-ref overload binds an lvalue and copies; a record
-        # method's is `own_param_t<T>` (`T&&`), which no lvalue binds. Probed
-        # both ways -- an element read at an open `Own[T]` method slot
-        # emitted `push(::tpy::__getitem__(src, i))` without it.
-        cell = next(r for r in _METHOD_ARG_SINK.rows
-                    if r.row == "tparam_slot")
-
-        def _req(overload, stub=False):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, retains=None, index=0,
-                           overload=overload,
-                           stub_slot=stub)
-
-        assert cell.extra(_req(None, stub=True)) is True
-        assert cell.extra(_req(None)) is False
-        assert cell.extra(_req("FI")) is False
-
-    def test_the_factory_cell_gates_on_both_facts(self):
-        # `temps_ok and frame_capturing and` -- the one cell in the fold
-        # whose pre-guard is a conjunction, and the only reader of
-        # `frame_capturing`. Both halves must be required.
-        cell = next(r for r in _METHOD_ARG_SINK.rows
-                    if r.row == "record_rvalue_temp_factory")
-
-        def _req(temps_ok, frame):
-            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, retains=None, index=0,
-                           frame_capturing=frame)
-
-        assert cell.extra(_req(True, True)) is True
-        assert cell.extra(_req(True, False)) is False
-        assert cell.extra(_req(False, True)) is False
 
     def test_the_shared_rows_reach_the_other_families_cells(self):
         # `register_sink` has already proved each shared name reaches the
@@ -602,122 +337,54 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 58
+        assert len([r for r in rows if r in others]) == 22
         assert [r for r in rows if r not in others] == [
-            "scalar_at_template_slot",
             "protocol_bare_name",
             "copy_iter_own_elem",
-            "bytes_owned_literal",
-            "bytes_view_literal",
-            "bytes_owned_lvalue",
-            "bytes_pass_through",
-            "char_pass_through",
             "enum_pass_through",
-            "own_enum_elem",
-            "ptr_pass_through",
-            "container_pass_through",
-            "container_slot_call_rvalue",
             "native_iterable_field",
             "own_iter_special",
-            "any_pass_through",
-            "opt_view_own_elem",
-            "opt_view_param_own_elem",
-            "opt_strview_to_str_own_elem",
-            "value_opt_scalar_elem",
-            "own_ptr_value",
+            "own_container_comp",
             "callable_slot",
-            "tparam_slot",
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
             "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
-            "ptr_addr_of_elem",
-            "plain_scalar_slot",
-            "tparam_scalar",
-            "tparam_open_pass",
-            "float_literal_pass_through",
-            "int_literal_bigint",
             "value_tuple_pass_through",
-            "span_coerce",
-            "slice_ctor_pass_through",
-            "own_scalar_rvalue",
-            "value_opt_view_whole",
-            "value_opt_record_rvalue",
             "value_record_name",
-            "union_member_lift_none",
-            "record_pass_through",
-            "method_ctor_rvalue",
-            "record_rvalue_temp_factory",
-            "tparam_slot_temp",
             "struct_proto_union",
-            "method_value_union",
-            "union_pass_deep_const",
-            "value_opt_scalar_value",
-            "str_literal_value_opt",
-            "bytes_literal_value_opt",
         ]
-
-    def test_the_lookalike_cells_are_not_the_shared_ones(self):
-        # Five names deliberately shadow a shared row because the predicate
-        # is DIFFERENT, and `register_sink` would have rejected reusing the
-        # shared name. Pinned so a later step cannot quietly collapse them:
-        # collapsing any pair is a behaviour change, not a rename.
-        rows = {r.row: r.fn for r in _METHOD_ARG_SINK.rows}
-        shared = {r.row: r.fn for r in _PLAIN_ARG_SINK.rows}
-        for mine, theirs in (
-                # bare vs coerce-peeling.
-                ("str_literal_value_opt", "str_literal_value_opt_coerced"),
-                # temps_ok=False hardcoded vs threaded.
-                ("optional_ptr_no_temp", "optional_ptr"),
-                # TpyNoneLiteral-only vs the full member set.
-                ("union_member_lift_none", "union_member_lift"),
-                # frame_capturing=True vs upcast_ok=True.
-                ("record_rvalue_temp_factory", "record_rvalue_temp"),
-                # ... and the deep-const-borrow restriction.
-                ("union_pass_deep_const", "union_pass_through")):
-            assert rows[mine] is not shared[theirs], (mine, theirs)
 
     def test_the_plain_cells_absent_here_are_named(self):
         # This family is NOT a subset of plain, and the cells of plain's it
-        # still lacks are COUNTED and named, so filling one is a visible
-        # edit here rather than a silent widening.
+        # lacks are COUNTED and named, so filling one is a visible edit here
+        # rather than a silent widening.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 56
+        assert len(plain - mine) == 33
         assert {"borrow_tuple_field", "borrow_tuple_subscript",
-                "callable_field", "container_module_var",
-                "covariant_temp", "deref_coerce", "dyn_own_coro_factory",
-                "dyn_own_forward_call", "dyn_own_handle", "list_repeat_proto",
-                "opt_own_record_rvalue", "opt_string_literal",
-                "opt_view_identity_coerce", "optional_ptr", "own_coerce_cast",
+                "dyn_own_coro_factory",
+                "dyn_own_handle", "list_repeat_proto",
+                "optional_ptr",
                 "own_union_call_pass",
-                "own_union_ctor", "readonly_container_rvalue",
-                "readonly_record_ctor", "record_borrow_call",
-                "record_field_ref",
-                "record_rvalue_temp", "recursive_union_borrow_call",
-                "ref_param_dictset_literal", "required_protocol_union",
+                "own_union_ctor",
+                "recursive_union_borrow_call",
+                "required_protocol_union",
                 "ru_container_literal", "ru_wrapper_borrow_call",
                 "ru_wrapper_field", "ru_wrapper_own_call",
                 "ru_wrapper_value_call", "shared_pass_through",
-                "str_literal_value_opt_coerced", "tuple_literal_value_opt",
-                "union_coerced_literal", "union_member_lift",
-                "union_pass_through",
+                "tuple_literal_value_opt",
+                "union_coerced_literal",
                 "wrapper_ref_tuple_elem"} <= (plain - mine)
 
     def test_it_does_not_open_with_the_shared_pass_through_fold(self):
-        # Neither half spelt that fold: both list its members out one by one,
-        # in their own order and without four of them -- so the cells are
-        # separate here and `shared_pass_through` is genuinely absent, not
-        # renamed.
+        # Neither half spelt that fold: the cells it would hold that a
+        # method slot still reaches are listed one by one.
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
         assert "shared_pass_through" not in mine
-        assert {"str_pass_through", "bytes_pass_through", "char_pass_through",
-                "enum_pass_through", "ptr_pass_through",
-                "value_tuple_pass_through", "span_coerce",
-                "slice_ctor_pass_through", "own_scalar_rvalue",
-                "own_record_rvalue", "container_pass_through",
-                "record_pass_through", "float_literal_pass_through",
-                "int_literal_bigint"} <= mine
+        assert {"enum_pass_through",
+                "value_tuple_pass_through",
+                "own_record_rvalue"} <= mine
 
 
 class TestPlainSinkShape:
@@ -733,28 +400,8 @@ class TestPlainSinkShape:
             "callable_field",
             "callable_object",
             "shared_pass_through",
-            "container_field_pass",
-            "container_module_var",
-            "value_union_temp",
-            "value_union_narrowed_pass",
-            "record_rvalue_temp",
-            "value_record_rvalue",
-            "str_owned_slot",
-            "bytes_owned_slot",
-            "own_move",
-            "own_coerce_cast",
-            "own_lvalue",
-            "container_literal",
-            "ref_param_dictset_literal",
-            "own_container_literal",
-            "own_container_comp",
-            "covariant_temp",
             "optional_ptr",
-            "opt_own_record_name",
-            "readonly_record_ctor",
-            "union_pass_through",
             "required_protocol_union",
-            "union_member_lift",
             "union_coerced_literal",
             "ru_wrapper_name",
             "ru_wrapper_borrow_call",
@@ -770,13 +417,7 @@ class TestPlainSinkShape:
             "dyn_own_coro_factory",
             "dyn_own_handle",
             "dyn_own_conformer",
-            "dyn_own_forward_call",
-            "wide_opt_deref_name",
-            "none_unit",
             "none_value_opt",
-            "value_opt_pass_through",
-            "opt_view_identity_coerce",
-            "value_opt_callable_pass",
             "value_opt_tuple_pass",
             "protocol_slot",
             "list_repeat_proto",
@@ -785,46 +426,20 @@ class TestPlainSinkShape:
             "tuple_literal_value_opt",
             "own_tuple_storage",
             "wrapper_ref_tuple_elem",
-            "record_borrow_call",
             "own_optional_record_rvalue",
-            "opt_own_record_rvalue",
-            "str_literal_value_opt_coerced",
-            "opt_string_literal",
             "own_opt_slot",
             "own_opt_ptr_name_move",
             "opt_own_ptr_opt_name_move",
-            "value_array_call",
             "recursive_union_borrow_call",
             "record_elem_subscript",
-            "container_comp",
             "borrow_tuple_field",
             "borrow_tuple_subscript",
-            "record_field_ref",
-            "deref_coerce",
-            "readonly_container_rvalue",
             "btuple_name",
             "borrow_tuple_storage_name",
             "union_elem_tuple_name",
-            "list_repeat_ref_slot",
-            "readonly_container_literal",
-            "value_opt_member",
-            "value_opt_call_ret",
-            "own_union_storage_name",
-            "union_ctor_temp",
-            "union_bytes_literal_temp",
-            "union_dict_literal_temp",
-            "generic_open_slot_name",
-            "generic_open_slot_elem",
             "btuple_pass",
-            "value_opt_field_pass",
             "value_tuple_field_pass",
-            "borrow_ret_record_marker",
             "own_record_rvalue",
-            "own_tparam_call_rvalue",
-            "native_record_call",
-            "own_move_source_slice",
-            "copy_own",
-            "own_element_pass",
             "own_tuple_move",
             "own_tuple_decay_copy",
             "walrus_frame_field",
@@ -840,40 +455,25 @@ class TestPlainSinkShape:
         assert [(r.row, r.face) for r in _PLAIN_ARG_SINK.rows
                 if r.face is not None] == [
             ("callable_field", "call.callable_field_arg"),
-            ("opt_view_identity_coerce", "arg.optview_identity_coerce"),
             ("list_repeat_proto", "argtemp.list_repeat_proto"),
             ("nullable_proto_addr", "arg.nullable_proto_addr"),
             ("tuple_literal_value_opt", "arg.tuple_literal_value_opt"),
             ("own_tuple_storage", "arg.own_tuple_storage"),
-            ("opt_own_record_rvalue", "arg.opt_own_record_rvalue"),
-            ("opt_string_literal", "arg.opt_string_literal"),
-            ("value_opt_member", "call.optval_member"),
-            ("value_opt_call_ret", "call.optval_ret_pass"),
-            ("generic_open_slot_name", "call.generic_open_slot_name"),
-            ("generic_open_slot_elem", "call.generic_open_slot_elem"),
         ]
 
     def test_flush_gated_cells_are_pinned(self):
-        # The `temps_ok and` prefixes the ladder spelled, as PRE-guards --
-        # plus the cell guarded on the callee's verdict instead: the bare
-        # record rvalue binds only a slot the callee reads as a const borrow
-        # (or by value) and never lends back. No container literal binds in
-        # place here: it hoists, keeping CPython's argument order.
+        # The `temps_ok and` prefixes the ladder spelled, as PRE-guards. A
+        # record or container argument at a reference parameter converts at
+        # that parameter (`converted_arg`), so no literal, comprehension or
+        # record-rvalue cell is left to hoist here.
         assert "container_literal_method" not in [
             r.row for r in _PLAIN_ARG_SINK.rows]
         assert [(r.row, r.extra.__name__) for r in _PLAIN_ARG_SINK.rows
                 if r.extra is not None
-                and r.row == "native_record_call"] == [
-            ("native_record_call", "_x_bare_record_rvalue")]
+                and r.extra.__name__ != "_x_temps_ok"] == []
         assert [r.row for r in _PLAIN_ARG_SINK.rows
                 if r.extra is not None
                 and r.extra.__name__ == "_x_temps_ok"] == [
-            "value_union_temp",
-            "record_rvalue_temp",
-            "own_lvalue",
-            "container_literal",
-            "ref_param_dictset_literal",
-            "covariant_temp",
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
             "ru_wrapper_member_rvalue",
@@ -881,47 +481,34 @@ class TestPlainSinkShape:
             "ru_container_literal",
             # ... the one cell carrying a flush pre-guard AND a face.
             "list_repeat_proto",
-            "container_comp",
-            "list_repeat_ref_slot",
-            "readonly_container_literal",
-            "union_ctor_temp",
-            "union_bytes_literal_temp",
-            "union_dict_literal_temp",
         ]
 
     def test_family_carries_own_rows_and_no_mutated_policy(self):
-        # Absence-preserving: the pre-fold ladder carried the Own cells and
-        # never consulted `mutated_params` (only the ctor ladder does, and
-        # extending that is its own post-fold commit). It carries every Own
-        # cell: the free call is the argument path of every callee spelling,
-        # the receiver-less ones included.
+        # Absence-preserving: the pre-fold ladder never consulted
+        # `mutated_params` (only the ctor ladder does, and extending that is
+        # its own post-fold commit). An `Own[T]` record or container
+        # argument converts at its parameter (`converted_arg`), so the Own
+        # cells left are the union, `@dynamic` and Optional ones.
         rows = {r.row for r in _PLAIN_ARG_SINK.rows}
-        assert _OWN_SLOT_ROWS <= rows
-        assert "record_rvalue_temp" in rows
+        assert _OWN_SLOT_ROWS & rows == {
+            "own_record_rvalue", "own_union_ctor", "dyn_own_coro_factory",
+            "dyn_own_handle", "own_opt_ptr_name_move",
+            "opt_own_ptr_opt_name_move"}
+        assert "record_rvalue_temp" not in rows
         assert _PLAIN_ARG_SINK.mutated_slots is False
 
     def test_the_shared_rows_reach_the_other_families_cells(self):
-        # The fold's payoff, stated as a number: these row names are already
-        # carried by an earlier-migrated family, and `register_sink` has
-        # already proved each reaches the IDENTICAL predicate (it fails the
-        # import otherwise). A drop here means a cell stopped being shared.
+        # These row names are carried by another family too, and
+        # `register_sink` proves each reaches the IDENTICAL predicate (it
+        # fails the import otherwise). A drop here means a cell stopped being
+        # shared.
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
                      _METHOD_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 58
-        assert "lambda" in shared and "own_lvalue" in shared
-
-    def test_the_coerce_peel_keeps_its_own_row_name(self):
-        # This ladder peels the coerce where the method/ctor ladders pass the
-        # argument bare. Transcribed, not reconciled -- so the cell gets a
-        # distinct row name and cannot be mistaken for the bare shape once
-        # the other families land theirs.
-        assert ("str_literal_value_opt_coerced"
-                in {r.row for r in _PLAIN_ARG_SINK.rows})
-        assert ("str_literal_value_opt"
-                not in {r.row for r in _PLAIN_ARG_SINK.rows})
+        assert len(shared) == 25
+        assert "lambda" in shared and "own_record_rvalue" in shared
 
     def test_self_capturable_reaches_the_lambda_row(self):
         # The one per-call input this family adds. It defaults False, which
@@ -952,7 +539,7 @@ class TestGenericPlainSinkShape:
     hands `arg_ok`; the unsubstituted one rides along as `open_ptype` for the
     prologue and the borrow-tuple cell. The design predicted "plain minus a
     few cells, plus a few" -- it is not: the order differs from the first row
-    on, and 47 of plain's 68 cells are absent. Pinned as transcribed.
+    on, and 41 of plain's 57 cells are absent. Pinned as transcribed.
     """
 
     def test_row_order_is_pinned(self):
@@ -965,17 +552,11 @@ class TestGenericPlainSinkShape:
             "callable_value_pass",
             "callable_object",
             "own_move",
-            "optional_ptr",
             "own_proto_container_slot",
-            "own_lvalue",
-            "opt_own_record_name",
             "dyn_own_coro_factory",
             "dyn_own_conformer",
             "dyn_own_forward_call",
-            "none_unit",
-            "none_value_opt",
             "tuple_literal",
-            "own_str_literal",
             "bytes_owned_call_rvalue",
             "protocol_slot",
             "ru_wrapper_name",
@@ -984,17 +565,8 @@ class TestGenericPlainSinkShape:
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
             "ru_wrapper_member_rvalue",
-            "generic_list_literal",
-            "generic_own_list_literal",
             "own_tuple_call_rvalue",
-            "wide_opt_deref_name",
-            "container_field_pass",
             "container_module_var",
-            "record_field_ref",
-            "record_elem_subscript",
-            "container_comp",
-            "record_rvalue_temp",
-            "str_owned_slot",
             "bytes_owned_slot",
         ]
 
@@ -1008,19 +580,14 @@ class TestGenericPlainSinkShape:
         assert [(r.row, r.face) for r in _GENERIC_PLAIN_ARG_SINK.rows
                 if r.face is not None] == [
             ("generic_btuple_name", "call.generic_btuple_name"),
-            ("generic_own_list_literal", "call.generic_own_list_literal"),
         ]
 
     def test_flush_gated_cells_are_pinned(self):
         assert [r.row for r in _GENERIC_PLAIN_ARG_SINK.rows
                 if r.extra is not None] == [
-            "own_lvalue",
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
             "ru_wrapper_member_rvalue",
-            "generic_list_literal",
-            "container_comp",
-            "record_rvalue_temp",
         ]
 
     def test_it_is_not_plain_reordered(self):
@@ -1037,20 +604,17 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 70
-        assert {"callable_field", "value_union_temp", "own_coerce_cast",
-                "container_literal", "covariant_temp", "union_pass_through",
-                "value_opt_pass_through",
-                "deref_coerce"} <= (set(plain) - set(generic))
+        assert len(set(plain) - set(generic)) == 34
+        assert {"optional_ptr", "required_protocol_union",
+                "union_coerced_literal"} <= (set(plain) - set(generic))
 
     def test_the_shared_rows_reach_the_other_families_cells(self):
         # `register_sink` has already proved each of these reaches the
-        # IDENTICAL predicate (it fails the import otherwise). The six that
-        # are NOT shared are the generic-only spellings: the substituted
-        # borrow-tuple pair, the Own[protocol] container-conformer cell, the
-        # literal-only Own[str] cell (plain's `str_owned_slot` also takes
-        # view-form names), and the peeled list literals (plain's
-        # `container_literal` does not peel).
+        # IDENTICAL predicate (it fails the import otherwise). Not shared
+        # with these families: the substituted borrow-tuple pair, the owned
+        # move (the constructor families' cell too), the Own[protocol]
+        # container-conformer cell, the `@dynamic` forwarding call and the
+        # two owned-bytes cells.
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
                      _METHOD_ARG_SINK,
@@ -1060,12 +624,13 @@ class TestGenericPlainSinkShape:
         assert [r for r in rows if r not in others] == [
             "generic_btuple_name",
             "generic_own_btuple_literal",
+            "own_move",
             "own_proto_container_slot",
-            "own_str_literal",
-            "generic_list_literal",
-            "generic_own_list_literal",
+            "dyn_own_forward_call",
+            "bytes_owned_call_rvalue",
+            "bytes_owned_slot",
         ]
-        assert len([r for r in rows if r in others]) == 33
+        assert len([r for r in rows if r in others]) == 17
 
     def test_family_carries_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder never consulted
@@ -1314,12 +879,12 @@ class TestWalk:
         sink = _ArgSink(family="t_walk", note="x.y",
                         rows=(_ArgRow("t_w1", _no),
                               _ArgRow("t_w2", _yes,
-                                      face="method.protocol_optional_ptr"),
+                                      face="ctor.lambda_arg"),
                               _ArgRow("t_w3", _yes)))
         with activate_compiler(compiler):
             assert _call(sink) is True
         assert compiler._thir_face_witnesses == {
-            "method.protocol_optional_ptr": 1}
+            "ctor.lambda_arg": 1}
 
     def test_extra_is_a_pre_guard(self):
         # `extra` replaces the `own_ok and <pred>` prefixes, so it must
@@ -1363,7 +928,7 @@ class TestWalkProperties:
 
     # One real registered face per position, so an admit can be attributed
     # to the exact cell that fired it.
-    FACES = ("method.protocol_optional_ptr", "arg.opt_own_record_rvalue",
+    FACES = ("ctor.lambda_arg", "arg.own_tuple_storage",
              "arg.open_value_tuple_name")
 
     # `_ArgSink.pre` is not a two-state field: a prologue that RUNS and
@@ -1511,95 +1076,47 @@ class TestWalkProperties:
 class TestRecordCtorSinkShape:
     def test_direct_row_order_is_pinned(self):
         assert [r.row for r in _CTOR_ARG_SINK.rows] == [
-            "mutated_container_literal",
-            "str_pass_through",
             "own_opt_container_ptr",
-            "own_str_literal_bare",
-            "own_bytes_literal",
             "shared_pass_through",
-            "bytearray_rvalue_ctor",
-            "value_opt_scalar_value",
-            "value_opt_name_pass",
-            "str_literal_value_opt",
-            "bytes_literal_value_opt",
             "tuple_literal_value_opt",
-            "value_opt_member",
             "none_value_opt",
-            "none_unit",
-            "tparam_name_pass",
             "str_owned_slot",
             "own_move",
             "own_lvalue",
-            "own_move_source_slice",
             "own_record_rvalue",
-            "own_tparam_call_rvalue",
             "own_opt_ptr_name_move",
-            "opt_own_ptr_opt_name_move",
-            "opt_own_record_name",
-            "copy_own",
-            "own_element_pass",
             "copy_open_elem",
-            "generic_open_slot_elem",
             "func_ref",
             "async_factory_wrap",
             "callable_value_pass",
-            "field_read_ref_ctor",
             "value_record_field",
-            "record_elem_subscript",
-            "record_borrow_call",
-            "container_comp",
-            "container_literal",
-            "own_container_literal",
-            "own_container_comp",
-            "own_container_instantiation",
-            "own_container_construct",
             "ru_wrapper_name_no_alias",
             "ru_wrapper_own_literal",
             "own_genrec_literal",
-            "union_member_lift",
-            "union_ctor_temp",
-            "union_pass_through",
-            "union_coerced_literal",
             "own_union_ctor",
             "protocol_union",
             "protocol_union_literal_temp",
             "protocol_union_iter_temp",
             "own_optional_record_rvalue",
-            "value_record_rvalue",
-            "value_union_temp",
-            "value_union_narrowed_pass",
             "tuple_literal",
             "own_tuple_storage",
             "lambda",
-            "optional_ptr",
             "protocol_slot_ctor",
             "dyn_own_conformer",
-            "record_rvalue_temp_ctor",
-            "wide_opt_deref_name",
         ]
 
     def test_nested_row_order_is_pinned(self):
         assert [r.row for r in _CTOR_NESTED_ARG_SINK.rows] == [
             "own_str_literal_bare",
-            "none_value_opt",
-            "str_literal_value_opt",
-            "value_opt_member",
-            "own_record_rvalue",
             "own_move",
             "own_move_source_slice",
             "dyn_own_conformer",
-            "value_record_rvalue",
             "ptr_pass_through",
             "record_elem_subscript",
             "record_borrow_call",
             "wide_opt_deref_name",
             "shared_pass_through",
-            "container_field_pass",
-            "record_field_marker",
-            "container_literal_method",
-            "optional_ptr",
             "protocol_slot",
-            "const_rvalue",
             "str_pass_through_unmutated",
         ]
 
@@ -1626,22 +1143,10 @@ class TestRecordCtorSinkShape:
     def test_witnessing_cells_are_pinned(self):
         assert [(r.row, r.face) for r in _CTOR_ARG_SINK.rows
                 if r.face is not None] == [
-            ("str_pass_through", "ctor.str_arg"),
-            ("own_str_literal_bare", "ctor.own_str_literal"),
-            ("own_bytes_literal", "ctor.own_bytes_literal"),
-            ("bytearray_rvalue_ctor", "ctor.bytearray_rvalue"),
-            ("value_opt_name_pass", "ctor.value_opt_pass_arg"),
-            ("bytes_literal_value_opt", "ctor.bytes_literal_value_opt"),
             ("tuple_literal_value_opt", "ctor.tuple_literal_value_opt"),
             ("own_move", "ctor.own_arg"),
             ("own_lvalue", "ctor.own_arg"),
-            ("own_move_source_slice", "ctor.own_arg"),
-            ("generic_open_slot_elem", "ctor.generic_open_slot_elem"),
-            ("field_read_ref_ctor", "ctor.field_read_ref_arg"),
-            ("container_literal", "ctor.container_literal_arg"),
-            ("own_container_literal", "ctor.container_literal_arg"),
             ("ru_wrapper_own_literal", "ctor.ru_wrapper_own_literal"),
-            ("union_pass_through", "ctor.union_pass_arg"),
             ("protocol_union", "ctor.protocol_union_arg"),
             ("own_tuple_storage", "arg.own_tuple_storage"),
             ("lambda", "ctor.lambda_arg"),
@@ -1649,38 +1154,27 @@ class TestRecordCtorSinkShape:
         assert [(r.row, r.face) for r in _CTOR_NESTED_ARG_SINK.rows
                 if r.face is not None] == [
             ("own_str_literal_bare", "ctor.own_str_literal"),
-            ("none_value_opt", "ctor.nested_none_value_opt"),
-            ("str_literal_value_opt", "ctor.nested_none_value_opt"),
             ("own_move", "ctor.own_arg"),
             ("own_move_source_slice", "ctor.own_arg"),
-            ("const_rvalue", "ctor.const_rvalue_arg"),
             ("str_pass_through_unmutated", "ctor.str_arg"),
         ]
 
     def test_guarded_cells_are_pinned(self):
         assert [(r.row, r.extra.__name__) for r in _CTOR_ARG_SINK.rows
                 if r.extra is not None] == [
-            ("mutated_container_literal", "_x_temps_and_mutated"),
             ("own_lvalue", "_x_temps_ok"),
-            ("own_move_source_slice", "_x_not_temps_ok"),
-            ("container_comp", "_x_temps_ok"),
-            ("container_literal", "_x_not_mutated"),
-            ("union_ctor_temp", "_x_temps_ok"),
             ("protocol_union_literal_temp", "_x_temps_ok"),
             ("protocol_union_iter_temp", "_x_temps_ok"),
-            ("value_union_temp", "_x_temps_ok"),
         ]
         assert [(r.row, r.extra.__name__) for r in _CTOR_NESTED_ARG_SINK.rows
                 if r.extra is not None] == [
-            ("container_literal_method", "_x_not_mutated"),
-            ("const_rvalue", "_x_ctor_const_rvalue_slot"),
             ("str_pass_through_unmutated", "_x_ctor_str_source_allowed"),
         ]
 
-    def test_one_decisive_cell_in_the_whole_table(self):
-        # The nested tail's un-mutated record-rvalue slot block, the only
-        # cell in the fold that REJECTS at a POSITION rather than falling
-        # through. Every other family expresses its rejects in a prologue.
+    def test_no_decisive_cell_is_left(self):
+        # A record rvalue at an un-mutated slot converts at its parameter
+        # (`converted_arg`), so no cell rejects at a position: every family
+        # expresses its rejects in a prologue or its note.
         decisive = [(s.family, r.row)
                     for s in (_CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK,
                               _PROTOCOL_ARG_SINK,
@@ -1688,7 +1182,7 @@ class TestRecordCtorSinkShape:
                               _PLAIN_ARG_SINK,
                               _GENERIC_PLAIN_ARG_SINK)
                     for r in s.rows if r.decisive]
-        assert decisive == [("record_ctor_nested", "const_rvalue")]
+        assert decisive == []
 
     def test_only_the_nested_family_has_a_prologue(self):
         # The direct family's ladder opened straight into its chain; the
@@ -1703,23 +1197,19 @@ class TestRecordCtorNestedIsNotADirectPrefix:
     def test_the_nested_family_is_not_a_subset_of_the_direct_one(self):
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        # Nested-only cells, all of which the direct family answers
-        # elsewhere: `const_rvalue` is the decisive slot block (direct
-        # spells the same slot as the flush-gated `record_rvalue_temp_ctor`
-        # at the very end of its tuple), `str_pass_through_unmutated`
-        # hardcodes `mutated=False` where direct threads the fact,
-        # `ptr_pass_through` is one leg of the direct family's
-        # `shared_pass_through` bundle (taken alone before that bundle
-        # joined it), and the four member/literal/protocol reads are the
-        # sibling families' cells for shapes the direct ctor spells with
-        # its own predicates (`field_read_ref_ctor`, `container_literal`,
-        # `protocol_slot_ctor`).
-        assert nested - direct == {"const_rvalue",
+        # Nested-only cells: `str_pass_through_unmutated` hardcodes
+        # `mutated=False` where direct threads the fact, `ptr_pass_through`
+        # is one leg of the direct family's `shared_pass_through` bundle
+        # (taken alone before that bundle joined it), and the rest are cells
+        # the direct ctor answers with its own predicates or through
+        # `converted_arg`.
+        assert nested - direct == {"own_str_literal_bare",
                                    "str_pass_through_unmutated",
                                    "ptr_pass_through",
-                                   "container_field_pass",
-                                   "record_field_marker",
-                                   "container_literal_method",
+                                   "own_move_source_slice",
+                                   "record_elem_subscript",
+                                   "record_borrow_call",
+                                   "wide_opt_deref_name",
                                    "protocol_slot"}
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
@@ -1729,16 +1219,13 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 51
-        assert {"mutated_container_literal", "str_pass_through",
-                "own_lvalue", "own_bytes_literal",
-                "container_literal", "own_container_literal",
-                "union_ctor_temp", "union_member_lift", "value_union_temp",
+        assert len(direct - nested) == 24
+        assert {"own_lvalue",
                 "protocol_slot_ctor", "tuple_literal",
-                "lambda", "func_ref", "record_rvalue_temp_ctor",
+                "lambda", "func_ref",
                 "protocol_union", "protocol_union_literal_temp",
                 "protocol_union_iter_temp",
-                "own_opt_container_ptr", "opt_own_record_name",
+                "own_opt_container_ptr",
                 } <= (direct - nested)
 
     def test_the_shared_cells_sit_in_a_different_relative_order(self):
@@ -1765,19 +1252,12 @@ class TestRecordCtorSharedAndNewRows:
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _CTOR_ARG_SINK.rows]
         assert [r for r in rows if r not in others] == [
-            "mutated_container_literal",
             "own_opt_container_ptr",
-            "own_str_literal_bare",
-            "own_bytes_literal",
-            "bytearray_rvalue_ctor",
-            "value_opt_name_pass",
-            "tparam_name_pass",
+            "str_owned_slot",
+            "own_lvalue",
             "copy_open_elem",
             "async_factory_wrap",
-            "field_read_ref_ctor",
             "value_record_field",
-            "own_container_instantiation",
-            "own_container_construct",
             "ru_wrapper_name_no_alias",
             "ru_wrapper_own_literal",
             "own_genrec_literal",
@@ -1785,9 +1265,8 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_union_literal_temp",
             "protocol_union_iter_temp",
             "protocol_slot_ctor",
-            "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 44
+        assert len([r for r in rows if r in others]) == 14
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its
@@ -1803,16 +1282,8 @@ class TestRecordCtorSharedAndNewRows:
                                         _METHOD_ARG_SINK)
                   for r in s.rows}
         for ctor_row, shared_row in (
-                # peels the coerce and unwraps the slot; this one does not
-                ("own_str_literal_bare", "own_str_literal"),
                 # passes `analyzer`, so the alias placeholder resolves
                 ("ru_wrapper_name_no_alias", "ru_wrapper_name"),
-                # falls back to the analyzer for an unbound name
-                ("value_opt_name_pass", "value_opt_pass_through"),
-                # `upcast_ok=True` -- a CHILD-typed temp
-                ("record_rvalue_temp_ctor", "record_rvalue_temp"),
-                # threads the mutation fact instead of refusing outright
-                ("str_pass_through_unmutated", "str_pass_through"),
                 # admits a structural RVALUE, which is ctor-inline here
                 ("protocol_slot_ctor", "protocol_slot")):
             assert cells[ctor_row] is not shared[shared_row], ctor_row

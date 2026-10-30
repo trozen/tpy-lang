@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from .. import qnames
 from ..parse.nodes import TpyCall, TpyCoerce, TpyMethodCall, TpyName
 from ..coercions import (DYN_ERASURES, INTO_DYN_ADAPTER, INTO_DYN_FACTORY,
-                         INTO_DYN_INHERIT, Coercion)
+                         INTO_DYN_HANDLE, INTO_DYN_INHERIT, Coercion)
 from ..type_def_registry import protocol_info_of, is_subtype
 from ..value_category import is_rvalue_source
 from ..typesys import (
@@ -231,7 +231,8 @@ def conformer_source(a: 'TpyExpr', analyzer) -> 'NominalType | None':
 
 def dyn_erasure_coercion(arg: 'TpyExpr', expected: TpyType,
                          declared: 'TpyType | None',
-                         analyzer) -> 'Coercion | None':
+                         analyzer, *, handle: bool = False
+                         ) -> 'Coercion | None':
     """The erasing conversion a source takes into an `Own[@dynamic P]`
     slot (`expected`), or None: the slot is no such slot, the source is
     already the erased pointer (forwarded bare), or no wrap takes its shape
@@ -247,6 +248,11 @@ def dyn_erasure_coercion(arg: 'TpyExpr', expected: TpyType,
     verdict = classify_dyn_own_arg(arg, proto, declared, analyzer)
     if verdict == "async_factory":
         return INTO_DYN_FACTORY
+    if verdict == "coro_handle":
+        # `handle`: a sink that moves a bound coroutine handle (an
+        # argument) rather than refusing it.
+        return (INTO_DYN_HANDLE if handle and isinstance(arg, TpyName)
+                else None)
     if conformer_source(arg, analyzer) is None:
         return None
     if verdict == "inherit":

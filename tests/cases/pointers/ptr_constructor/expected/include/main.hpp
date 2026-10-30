@@ -27,6 +27,10 @@ void test_constptr_explicit();
 void test_constptr_inferred();
 // def test_ptr_write() -> None:
 void test_ptr_write();
+// def use_ptr(q: Ptr[Point]) -> int32:
+int32_t use_ptr(Point* q);
+// def test_null_at_arg() -> int32:
+int32_t test_null_at_arg();
 
 // class Point:
 struct Point {

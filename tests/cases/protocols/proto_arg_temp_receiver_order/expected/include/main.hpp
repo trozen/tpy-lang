@@ -98,8 +98,7 @@ inline Bag::Bag() : items(std::vector<std::string>{}) {}
 // def put(self, v: Own[str]) -> None:
 //     self.items.append(v)
 inline void Bag::put(std::string v) {
-    std::string __tmp_1{v};
-    this->items.push_back(std::move(__tmp_1));
+    this->items.push_back(v);
 }
 
 // def __init__(self) -> None:

@@ -116,7 +116,7 @@ __coro_runner runner() {
         }
     }
     case S_JOIN_2: {
-        (*src).push(9);
+        (*src).push(::tpy::BigInt(9));
         std::cout << "post_loop:" << " " << ::tpy::ListPrinter((*src).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

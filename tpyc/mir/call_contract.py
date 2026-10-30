@@ -9,6 +9,7 @@ from ..thir.nodes import (
     THIRParam, THIRResolvedCallee, THIRStubCallee, THIRStubContract, THIRStubIdentity,
     effective_params,
 )
+from ..thir.param_contract import bound_passing
 from ..thir.scalar_leaves import (
     MIRClass, binds_cursor, container_element, container_view, holds_loan, modeled_members, native_container_subject,
     native_container_type, optional_record_field, owned_leaf, owned_value_type, plain_record_element,
@@ -269,10 +270,11 @@ def parameter_binding(p: THIRParam, context: BindingContext = FUNCTION) -> MIRPa
     derivation (`derived_binding`) from its declared type, its passing and
     the wrapper THIR's one layout fact lays out (`layout_fact`,
     `laid_value`), checked by the contract (`parameter_contract_problem`).
+    The passing is the parameter contract's (`param_contract.bound_passing`).
     Else the reason; what a stub takes is its caller's to check
     (`_stub_binding`)."""
-    passing = p.passing
-    if not isinstance(passing, ParamPassing):
+    passing = bound_passing(p)
+    if passing is None:
         return "unpublished parameter passing"
     declared = param_type(p)
     fact = layout_fact(p)

@@ -4,7 +4,7 @@
 # it borrows -- asking the category alone is how this compiled to
 # `this->v = mk().view();` and kept a dangling `string_view` in the record.
 # The sibling positions and their tags are listed in
-# records/error_property_off_temporary_receiver_arg.
+# docs/PROPERTY_DESIGN.md, the temporary-receiver sink table.
 # WORKAROUND: bind the receiver first, or have the getter return `str`.
 from tpy import Own, StrView, int32
 

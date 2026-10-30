@@ -48,9 +48,19 @@ def test_ptr_write() -> None:
     pp.x = int32(99)
     print(pt.x)
 
+def use_ptr(q: Ptr[Point]) -> int32:
+    if q is None:
+        return 0
+    return q.x
+
+def test_null_at_arg() -> int32:
+    # null_arg: a null Ptr[T]() straight into a Ptr parameter
+    return use_ptr(Ptr[Point]())  # tpyc: ok
+
 test_null_constructors()
 test_ptr_explicit()
 test_ptr_inferred()
 test_constptr_explicit()
 test_constptr_inferred()
 test_ptr_write()
+print("null_arg", test_null_at_arg())

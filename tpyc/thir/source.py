@@ -19,7 +19,8 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from ..sema.alias_rebind import bare_tuple
-from ..typesys import (OwnType, TpyType, TupleType, UnionType, unwrap_readonly,
+from ..typesys import (OwnType, ReadonlyType, TpyType, TupleType, UnionType,
+                       pointer_variant_union, unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync)
 
 if TYPE_CHECKING:
@@ -39,6 +40,9 @@ class TraitAbi(Enum):
     VAL_OR_REF = "val_or_ref_t"
     PARAM_VAL_OR_REF = "param_val_or_ref_t"
     VAL_OR_PTR = "val_or_ptr_t"
+    # An open `T | None` parameter's `opt_param_t`: a value Optional at a
+    # value-typed instantiation, a pointer at a reference one.
+    OPT_PARAM = "opt_param_t"
     # A generator's yield slot (`yield_slot_t`): the frame member it reads
     # is already the instantiation's `val_or_ref_t`, so it takes it bare.
     YIELD_SLOT = "yield_slot_t"
@@ -620,11 +624,36 @@ class Source:
     # element of one, a builtin container's element by a name or literal
     # index. A conversion reads such a source once per element.
     place: bool = False
+    # A NAME read under a flow narrowing of its binding (an `isinstance` /
+    # `is None` test in scope): it reads the narrowed member's alias.
+    narrowed: bool = False
 
     @property
     def name(self) -> str | None:
         """The name of the binding a NAME read reads."""
         return self.binding.name if self.binding is not None else None
+
+    @property
+    def variant(self) -> bool | None:
+        """A NAME read of a binding typed as a pointer-variant union: True
+        when the binding is the pointer variant itself (`Union<A*, B*>`),
+        False when it holds the union's storage (a loop element, a frame
+        slot, an owned parameter) -- whatever its assignment-narrowed read
+        type says. None for every other expression."""
+        b = self.binding
+        if b is None or not (b.ptr_variant
+                             or pointer_variant_union(b.type) is not None):
+            return None
+        return b.ptr_variant
+
+    @property
+    def deep_const(self) -> bool:
+        """The read's pointees are const beyond `const`: a deep-const borrow
+        parameter, a `readonly` declaration."""
+        b = self.binding
+        return b is not None and (b.deep_const or (
+            b.type is not None and isinstance(
+                unwrap_ref_type(unwrap_send_sync(b.type)), ReadonlyType)))
 
     @property
     def move_exception(self) -> 'MoveRow | None':

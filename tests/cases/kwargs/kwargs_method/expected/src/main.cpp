@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Formatter fmt = Formatter();
     std::cout << fmt.format("hello") << "\n" << ::tpy::check_signals;
-    std::cout << fmt.format("hello", 0, "*") << "\n" << ::tpy::check_signals;
-    std::cout << fmt.format("world", 10) << "\n" << ::tpy::check_signals;
+    std::cout << fmt.format("hello", ::tpy::BigInt(0), "*") << "\n" << ::tpy::check_signals;
+    std::cout << fmt.format("world", ::tpy::BigInt(10)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

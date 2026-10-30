@@ -1,7 +1,7 @@
 # An `Own[str]` argument in a WHILE CONDITION hoists its typed copy temp into the
-# restructured loop head; the callee's own `Own[str]` param takes the same
-# copy-plus-move temp at the element slot (the copy before the move is
-# BUGS.md#own-str-slot-temp-copies-owned-source).
+# restructured loop head; the callee's own `Own[str]` param is copied into the
+# element slot where the record twin moves
+# (BUGS.md#own-str-slot-temp-copies-owned-source).
 from tpy import Own
 
 

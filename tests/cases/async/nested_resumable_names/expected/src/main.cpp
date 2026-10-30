@@ -140,7 +140,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         inner.emplace(Outer::Inner(::tpy::BigInt(1)));
-        pending.emplace((*inner).compute(1));
+        pending.emplace((*inner).compute(::tpy::BigInt(1)));
         (*inner).value = ::tpy::BigInt(40);
         __state = S_RESUME_0;
         continue;
@@ -184,7 +184,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         boxed.reset();
         std::cout << "generic class:" << " " << __await_lift_3 << " " << (*box).value << "\n" << ::tpy::check_signals;
         remote.emplace(::nested_case::helpers::Library::Worker(::tpy::BigInt(10)));
-        imported.emplace((*remote).compute(1));
+        imported.emplace((*remote).compute(::tpy::BigInt(1)));
         (*remote).value = ::tpy::BigInt(20);
         __state = S_RESUME_4;
         continue;

@@ -73,7 +73,7 @@ void main() {
     std::cout << c["x"] << " " << c.total() << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __tmp_2 = {1, 1, 2};
     ::tpystd::collections::Counter<int32_t> nums = ::tpystd::collections::Counter<int32_t>(&(__tmp_2));
-    nums.__setitem__(3, 5);
+    nums.__setitem__(3, ::tpy::BigInt(5));
     std::cout << nums[1] << " " << nums[2] << " " << nums[3] << "\n" << ::tpy::check_signals;
     ::tpystd::collections::Counter<std::string> empty = ::tpystd::collections::Counter<std::string>();
     std::cout << ::tpy::__len__(empty) << " " << empty["nope"] << "\n" << ::tpy::check_signals;

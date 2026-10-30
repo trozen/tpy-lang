@@ -315,8 +315,7 @@ std::string commonpath(const std::vector<std::string>& paths) {
         if ((!(ok))) {
             break;
         }
-        std::string __tmp_1{comp};
-        common.push_back(std::move(__tmp_1));
+        common.push_back(comp);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::string_view prefix = ((has_abs) ? ("/") : (""));

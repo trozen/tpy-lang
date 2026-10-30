@@ -4,17 +4,15 @@
 namespace tpyapp::main {
 
 
-// # An OWNED-str storage source (a concat result) appended into a `list[str]`: the
-// # argument takes the copy-plus-move-temp cascade, told from a view by the
-// # declared/param split. The callee mutates the caller's list, so the alias is
-// # observable. The copy before the move is BUGS.md#own-str-slot-temp-copies-owned-source.
+// # An OWNED-str storage source (a concat result) appended into a `list[str]`
+// # moves in at its last use. The callee mutates the caller's list, so the alias
+// # is observable.
 // def add_joined(xs: list[str], a: str, b: str) -> None:
 //     t = a + b
 //     xs.append(t)  # the owned-str local at an Own[str] element slot
 void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_view b) {
     ::tpy::String t = (::tpy::str_concat(a, b));
-    std::string __tmp_1{t};
-    xs.push_back(std::move(__tmp_1));
+    xs.push_back(std::move(t));
 }
 
 // def main() -> None:

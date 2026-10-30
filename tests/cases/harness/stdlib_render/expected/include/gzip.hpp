@@ -323,7 +323,7 @@ inline ::tpy::Bytes _GzipReader::_readall() {
         if ((::tpy::__len__(data) == 0)) {
             break;
         }
-        chunks.push_back(data);
+        chunks.push_back(std::move(data));
     }
     return ::tpy::bytes_join(::tpy::Bytes{}, chunks);
 }

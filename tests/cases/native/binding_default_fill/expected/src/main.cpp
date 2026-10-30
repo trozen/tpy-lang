@@ -53,6 +53,9 @@ namespace tpyapp::main {
 
 
 
+
+
+
 // @export(binding="C")
 // def ec(a: int32, b: int32 = 5) -> int32:
 //     return a * 1000 + b
@@ -157,6 +160,13 @@ __coro_coro coro(::nb::Q& q) {
 //     print("str", tagged(1))  # tpyc: ok
 //     print("enum", moded(1))  # tpyc: ok
 //     print("bytes", sized(1))  # tpyc: ok
+//     # A filled `None` at an Optional parameter and a filled `str` at an
+//     # `Own[str]` one, as the spelled arguments.
+//     print("none", opt(1), opt(1, None))  # tpyc: ok
+//     print("own-str", own_s(1), own_s(1, "lit"))  # tpyc: ok
+//     # Not a default: a call rvalue at an owning native parameter.
+//     bv = b"abc"
+//     print("own-call-rvalue", sink(bytes(bv)))  # tpyc: ok
 //     # A generic binding's `T()` default constructs the bound type.
 //     print("generic", add_default[int32](3))  # tpyc: ok
 //     # Same, the type argument inferred from a keyword argument.
@@ -254,6 +264,10 @@ void main() {
     std::cout << "str" << " " << ::nb::tagged(1, "tpy") << "\n" << ::tpy::check_signals;
     std::cout << "enum" << " " << ::nb::moded(1, ::nb::E::B) << "\n" << ::tpy::check_signals;
     std::cout << "bytes" << " " << ::nb::sized(1, ::tpy::bytes_literal("xy", 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "none" << " " << ::nb::opt(1, std::nullopt) << " " << ::nb::opt(1, std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "own-str" << " " << ::nb::own_s(1, "lit") << " " << ::nb::own_s(1, "lit") << "\n" << ::tpy::check_signals;
+    ::tpy::BytesView bv = ::tpy::bytes_literal("abc", 3);
+    std::cout << "own-call-rvalue" << " " << ::nb::sink(::tpy::Bytes(bv)) << "\n" << ::tpy::check_signals;
     std::cout << "generic" << " " << ::nb::generic(3, 0) << "\n" << ::tpy::check_signals;
     std::cout << "generic-kw" << " " << ::nb::generic(4, 0) << "\n" << ::tpy::check_signals;
     std::cout << "generic-qualified" << " " << ::nb::generic(2, 0) << "\n" << ::tpy::check_signals;

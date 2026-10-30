@@ -331,8 +331,7 @@ void alias_target(std::vector<std::string>& xs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string p = *__beg_0;
-        std::string __tmp_1{p};
-        merged.push_back(std::move(__tmp_1));
+        merged.push_back(p);
         std::cout << "alias_target:" << " " << p << "\n" << ::tpy::check_signals;
         break;
     }
@@ -644,7 +643,7 @@ void via_setter(Bag& b) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BigInt y = *__beg_0;
-        b.set_first(50);
+        b.set_first(::tpy::BigInt(50));
         std::cout << "via_setter:" << " " << y << "\n" << ::tpy::check_signals;
     }
 }

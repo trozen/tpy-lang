@@ -21,7 +21,7 @@ void main() {
     std::array<::tpy::BigInt, 4> xs = {::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30), ::tpy::BigInt(40)};
     std::cout << "index" << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     std::cout << "sees_binop" << " " << 1 << "\n" << ::tpy::check_signals;
-    std::cout << "generated" << " " << ::tpyapp::main::take_int(::tpy::BigInt(1073741824)) << " " << 1073741824 << "\n" << ::tpy::check_signals;
+    std::cout << "generated" << " " << ::tpyapp::main::take_int(1073741824) << " " << 1073741824 << "\n" << ::tpy::check_signals;
 }
 
 // # A call macro expanding to an int constant is that constant's literal: an

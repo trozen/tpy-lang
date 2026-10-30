@@ -782,7 +782,7 @@ inline int32_t R::get() const {
 //     return f(xs[0])
 template<typename T, typename U>
 ::tpy::val_or_ref_t<U> apply__Callable_T_None_U__list_T(const std::function<U(::tpy::opt_param_t<T>)>& f, std::vector<T>& xs) {
-    return f(&(::tpy::__getitem__(xs, 0)));
+    return f(::tpy::to_val_or_ptr<::tpy::opt_param_t<T>>(::tpy::__getitem__(xs, 0)));
 }
 // @dispatch
 // def apply[T, U](f: Callable[[T], U], xs: list[T]) -> U:

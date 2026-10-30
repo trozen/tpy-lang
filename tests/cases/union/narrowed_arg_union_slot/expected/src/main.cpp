@@ -632,7 +632,6 @@ int32_t forward_union(::tpy::Union<const A*, const B*> u) {
 // # `std::variant<...> __tmp_N`. A value union cannot show aliasing (its members
 // # are copies by definition), so the twin renders on the same line instead: the
 // # member-typed local at the same slot, which takes the variant-temp row.
-// # Inline narrowing is lost: BUGS.md#inline-narrowed-value-union-arg-rejects.
 // # str aliases are views, unlike owned members: BUGS.md#value-union-str-view-insert.
 // def value_union(v: int32 | float64) -> int32:
 //     if isinstance(v, int32):

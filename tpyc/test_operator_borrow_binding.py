@@ -8,18 +8,14 @@ Two families, both here because the CASE harness cannot see the diagnostic:
   tests/cases/operators/ (op_borrow_return_alias etc.); a case cannot pin the
   WARNING because the warned binding genuinely dangles, so the exec phase's
   -Werror=dangling-reference rejects the generated C++.
-- INTERIM: the Own-slot copy warning at the slots that REJECT right after it
-  (an `Own[T]` parameter of a free function / method / constructor, a
-  list-literal element -- the last has no case twin at all, since a record
-  list literal with a borrowed element rejects at expr.container_literal).
-  The `yield` at `Iterator[Own[T]]` compiles to the warned copy and is
-  pinned by tests/cases/generators/payload_slot_declared_copies.
-  `compile_with_diagnostics` replaces every accumulated warning with the
-  error text when a CompileError follows, so `# tpyc: warning(...)` on
-  those lines can never be satisfied (TODO.md, "a warning alongside a
-  compile error never reaches diag.txt"). When that harness fix lands, move
-  these to annotations on tests/cases/calls/error_own_param_borrow_call_copy
-  and delete the class below.
+- The Own-slot copy warning at an `Own[T]` parameter of a free function /
+  method / constructor, at a `yield` into `Iterator[Own[T]]` and at a
+  list-literal element. The parameters and the `yield` compile to the
+  warned copy (the parameters' render is pinned by
+  tests/cases/calls/argument_sink, the yield's by
+  tests/cases/generators/payload_slot_declared_copies); a record list
+  literal with a borrowed element still rejects at expr.container_literal,
+  so no case pins that one's warning.
 """
 
 from . import get_lib_dir
@@ -121,9 +117,8 @@ _COPIES = "copies Payload into owned storage"
 
 
 class TestOwnSlotBorrowCallCopyWarning:
-    """INTERIM -- see the module docstring: these five slots warn and then
-    reject, and the harness drops the warning, so the cases pin the reject
-    and the warning is pinned here."""
+    """The owning slots a borrowed call result copies into warn, whether
+    the slot then compiles or rejects (see the module docstring)."""
 
     def test_own_param_of_free_function_warns(self):
         warnings = _warnings(

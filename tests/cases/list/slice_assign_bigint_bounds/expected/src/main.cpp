@@ -48,7 +48,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpyapp::main::basic(::tpy::BigInt(3), ::tpy::BigInt(6))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpyapp::main::upper_only(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    h.blank(1, 5);
+    h.blank(::tpy::BigInt(1), ::tpy::BigInt(5));
     std::cout << ::tpy::ListPrinter(h.xs) << "\n" << ::tpy::check_signals;
 }
 

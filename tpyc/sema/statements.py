@@ -8796,6 +8796,10 @@ class StatementAnalyzer:
         subscript `t[k] op= v` is `t.__setitem__(k, t.__getitem__(k) op v)`:
         the target read resolved its getter, the store resolves its setter
         once the operation is (`_resolve_aug_store`)."""
+        if isinstance(stmt.target, TpySubscript):
+            # The getter and the setter both read the key: neither read is
+            # the one an owning slot may move (BUGS.md#subscript-key-arg-temp).
+            self.ctx.reread_reads.add(peel_value_wrappers(stmt.target.index))
         self._analyze_aug_assign_body(stmt)
         if isinstance(stmt.target, TpySubscript):
             self._resolve_aug_store(stmt)
@@ -8833,6 +8837,7 @@ class StatementAnalyzer:
             receiver = self.pend.receiver_form(receiver, lc)
         getter_key = target.index
         target.index = key
+        self.ctx.reread_reads.add(peel_value_wrappers(key))
         try:
             self.expr.resolve_subscript_dunder(
                 target, self.expr.subscript_views(

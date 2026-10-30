@@ -18,7 +18,7 @@ namespace tpyapp::main {
         __state = S_DONE;  // until a yield sets where to resume
         lst.emplace(std::vector<Counter>{});
         w.emplace(Counter(::tpy::BigInt(40)));
-        c.emplace((*w).bump(5));
+        c.emplace((*w).bump(::tpy::BigInt(5)));
         (*lst).push_back((*w));
         __state = S_RESUME_0;
         continue;

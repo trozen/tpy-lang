@@ -61,7 +61,7 @@ inline int32_t Conn::narrowed() const {
     if ((!this->timeout.has_value())) {
         return 0;
     }
-    return ::tpyapp::dialer::dial(this->host, (*this->timeout));
+    return ::tpyapp::dialer::dial(this->host, this->timeout);
 }
 void __tpy_init();
 } // namespace tpyapp::main

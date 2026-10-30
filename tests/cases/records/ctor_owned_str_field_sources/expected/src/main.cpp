@@ -44,7 +44,7 @@ void main() {
     std::cout << "ctor:" << " " << t.full << " " << t.conv << " " << t.fmt << " " << t.pick << " " << t.opt << " " << t.tail << " " << t.twice << " " << t.upper << " " << t.from_field << " " << t.echo << "\n" << ::tpy::check_signals;
     Tags t2 = Tags("r", ::tpy::BigInt(0), o, "m");
     std::cout << "ctor2:" << " " << t2.pick << " " << t2.opt << " " << t2.from_field << "\n" << ::tpy::check_signals;
-    t.reset("w", -1, o);
+    t.reset("w", ::tpy::BigInt(-1), o);
     o.name = "again";
     std::cout << "method:" << " " << t.fmt << " " << t.pick << " " << t.from_field << "\n" << ::tpy::check_signals;
     Blob b = Blob(::tpy::bytes_literal("ab", 2), o);

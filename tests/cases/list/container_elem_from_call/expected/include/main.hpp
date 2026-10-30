@@ -102,8 +102,7 @@ inline Maker::Maker(std::string_view tag, int32_t n)
 //     return out
 inline std::vector<std::string> Maker::row(int32_t n) const {
     std::vector<std::string> out = std::vector<std::string>{};
-    std::string __tmp_1{this->tag};
-    out.push_back(std::move(__tmp_1));
+    out.push_back(this->tag);
     return out;
 }
 

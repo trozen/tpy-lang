@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Pair<std::string, int32_t> p = Pair<std::string, int32_t>("hi", 100);
     {
-        auto __src_0 = p.stream(3);
+        auto __src_0 = p.stream(::tpy::BigInt(3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

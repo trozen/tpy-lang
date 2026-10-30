@@ -18,8 +18,8 @@ namespace tpyapp::main {
 //     print(c.count)
 void main() {
     Counter c = Counter();
-    c.bump(3);
-    c.bump(4);
+    c.bump(::tpy::BigInt(3));
+    c.bump(::tpy::BigInt(4));
     std::cout << c.count << "\n" << ::tpy::check_signals;
 }
 

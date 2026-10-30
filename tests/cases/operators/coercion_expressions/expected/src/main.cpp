@@ -60,7 +60,7 @@ void test_bigint_expr_to_int32() {
     Counter c = Counter(::tpy::BigInt(100));
     int32_t val = (c.get()).to_fixed_check<int32_t>();
     std::cout << val << "\n" << ::tpy::check_signals;
-    val = (c.add(50)).to_fixed_check<int32_t>();
+    val = (c.add(::tpy::BigInt(50))).to_fixed_check<int32_t>();
     std::cout << val << "\n" << ::tpy::check_signals;
 }
 

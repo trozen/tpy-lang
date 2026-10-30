@@ -47,8 +47,6 @@ class Popen:
     stderr: BufferedReader | None
 
     # The streams are keyword-only: CPython's second positional is bufsize.
-    # `args` is not readonly[...] only because a list literal at a readonly
-    # constructor parameter is refused (BUGS.md#readonly-container-literal-ctor-arg).
     def __init__(self, args: list[str], *, stdin: int64 | None = None,
                  stdout: int64 | None = None,
                  stderr: int64 | None = None) -> None:

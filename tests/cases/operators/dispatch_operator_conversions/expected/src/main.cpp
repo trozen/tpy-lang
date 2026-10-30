@@ -303,7 +303,7 @@ void main() {
     p.x = ::tpy::add_check<int32_t>(p.x, 10);
     std::cout << "reference:" << " " << got.x << " " << p.x << "\n" << ::tpy::check_signals;
     Child ch = Child();
-    std::cout << "inherited:" << " " << ((ch) + (::tpy::BigInt(n32))) << " " << ::tpy::print_bool(ch.__contains__(::tpy::BigInt(n32))) << " " << ::tpy::print_bool(ch.__contains__(0)) << "\n" << ::tpy::check_signals;
+    std::cout << "inherited:" << " " << ((ch) + (::tpy::BigInt(n32))) << " " << ::tpy::print_bool(ch.__contains__(::tpy::BigInt(n32))) << " " << ::tpy::print_bool(ch.__contains__(::tpy::BigInt(0))) << "\n" << ::tpy::check_signals;
     ch.__iadd__(::tpy::BigInt(n32));
     std::cout << "inherited_unary:" << " " << -(ch) << "\n" << ::tpy::check_signals;
     D dd = D();

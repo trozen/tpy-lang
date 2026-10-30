@@ -30,7 +30,7 @@ void main() {
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
     std::string_view subject = "hello world";
     std::optional<std::string_view> local = ::tpyapp::main::maybe_prefix(subject, true);
-    items.push_back(({ auto __ov = (local); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
+    items.push_back(std::move(({ auto __ov = (local); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; })));
     items.push_back(({ auto __ov = (::tpyapp::main::maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     items.push_back(({ auto __ov = (::tpyapp::main::maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     ::tpy::list_insert(items, 1, ({ auto __ov = (::tpyapp::main::maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));

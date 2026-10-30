@@ -49,7 +49,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
         c.reset();
         std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         w.emplace(Counter(::tpy::BigInt(10)));
-        m.emplace((*w).bump(5));
+        m.emplace((*w).bump(::tpy::BigInt(5)));
         __state = S_RESUME_1;
         continue;
     }

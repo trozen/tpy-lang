@@ -106,10 +106,10 @@ inline Animal::Animal(const ::tpy::BigInt& legs) : legs(legs) {}
 
 // def __init__(self) -> None:
 //     super().__init__(4)
-inline Dog::Dog() : Animal(4) {}
+inline Dog::Dog() : Animal(::tpy::BigInt(4)) {}
 
 // def __init__(self) -> None:
 //     super().__init__(0)
-inline Snake::Snake() : Animal(0) {}
+inline Snake::Snake() : Animal(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main
