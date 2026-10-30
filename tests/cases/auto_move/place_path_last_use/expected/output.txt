@@ -1,0 +1,80 @@
+eat_a 101
+method 2
+ctor 3
+field_store 4
+self_store 5
+append 6
+return_own 7
+tuple_member 8
+eat_b 90
+element_field 1
+element_field 10
+tuple_element_store 12
+eat_s s13
+eat_l 2
+own_param_root 15
+generator 1
+generator 16
+error_return 18
+match_arm 19
+consuming 20
+consuming_nested 21
+value_store s22 2
+value_member s23
+list_member 24 24
+list_element 25
+HD.__del__ t26
+temp_del 260
+HD.__del__ t27
+LD.__del__ temp_del_reads_list
+LD.__del__ temp_del_reads_grow
+temp_del_reads 4
+LD.__del__ temp_del_reads_local
+temp_del_reads 3
+read_later 300
+read_later s30
+aliased 310
+aliased s31
+live_sub_borrow 320
+live_sub_borrow 320
+two 330 s33
+two_a 340 350
+loop 350
+loop 350
+closure 360
+closure s36
+finally 370
+finally s37
+except 380
+comprehension [390]
+owner_del 410
+HD.__del__ t41
+nomove_leaf 42
+through_ptr 430
+getter 440
+narrowed 470
+borrowed_param 460
+global_root 470
+inherited_del 520
+HD.__del__ t52
+mid_path_del 530
+HD.__del__ t53
+nested_del finalizer 3
+nested_del 3
+narrowed_root 540
+eat_l2 1 1
+unpack_store 600 2
+unpack_append 600 2 1
+two_h 1 s50
+named_generator 1
+named_generator finally 1
+named_generator_whole 1
+named_generator_whole finally 1
+named_with 580
+named_with exit t58
+async 17
+pending_coroutine 400
+pending_coroutine 400
+coroutine_loan 3 3
+task_path 1
+task_name 3

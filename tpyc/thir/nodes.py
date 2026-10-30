@@ -2091,6 +2091,9 @@ class THIRFieldAccess(THIRExpr):
     is_arrow: bool = False
     narrowed_deref: bool = False
     deref_chain: int = 0
+    # A member of a temporary read as an lvalue (`::tpy::as_lvalue`), so the
+    # copy sema declared of it copies rather than moving out of the xvalue.
+    as_lvalue: bool = False
 
     def __post_init__(self) -> None:
         checked = isinstance(self.receiver, THIRNoneCheck)

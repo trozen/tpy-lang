@@ -630,7 +630,10 @@ def _assert_move_leaves_render_moves(compiler: object, entry: object,
                  isinstance(e, TpyName)
                  or (isinstance(e, TpySubscript)
                      and isinstance(e.obj, TpyName))
-                 or (isinstance(e, TpyFieldAccess) and e.consuming_move))]
+                 # A member of a temporary moves as an xvalue.
+                 or (isinstance(e, TpyFieldAccess)
+                     and isinstance(getattr(ctx.place_reads.get(e),
+                                            "root", None), TpyName)))]
     for e in names:
         text = (lines[e.loc.line - 1].strip()
                 if 0 < e.loc.line <= len(lines) else "")
@@ -3583,26 +3586,26 @@ def _matrix_source() -> tuple[str, dict[tuple[str, str], int]]:
 _X, _M, _E = P.EXPLICIT, P.MOVE, P.WARNED
 # The expected leaf per section: a borrowed source copies, told by its
 # sink's warning; a fresh one, an owning local at its last use and an
-# element a return or an `Own` argument moves out of its tuple move;
+# element read at its tuple's last use (a place path whose root dies) move;
 # `copy()` copies explicitly. None: the sink checks no such source.
 _MATRIX: dict[str, dict[str, LeafPermission | None]] = {
     "return": dict(param=_E, last_use=_M, field=_E, element=_E,
                    element_move=_M, call=_E, select=_E, copy=_X, fresh=_M,
                    captured=_E),
     "field": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
-                  element_move=_E, call=_E, select=_E, walrus=_E, copy=_X,
+                  element_move=_M, call=_E, select=_E, walrus=_E, copy=_X,
                   fresh=_M, captured=_E),
     "member_init": dict(param=_E, last_use=_M, live=_E, field=_E,
-                        element=_E, element_move=_E, call=_E, select=_E,
+                        element=_E, element_move=_M, call=_E, select=_E,
                         walrus=_E, copy=_X, fresh=_M),
     "container": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
-                      element_move=_E, call=_E, select=_E, walrus=_E,
+                      element_move=_M, call=_E, select=_E, walrus=_E,
                       copy=_X, fresh=_M, captured=_E),
     "own_arg": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
                     element_move=_M, call=_E, select=_E, walrus=_E, copy=_X,
                     fresh=_M, captured=_E),
     "any": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
-                element_move=_E, call=_E, select=_E, walrus=_E, copy=_X,
+                element_move=_M, call=_E, select=_E, walrus=_E, copy=_X,
                 fresh=_M, captured=_E),
     "receiver": dict(param=_E, last_use=_M),
 }

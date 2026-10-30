@@ -26,7 +26,7 @@ from .typesys import (
     indirection_referent_readonly, declared_result_readonly, result_follows_receiver_root,
     declares_whole_result_following,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
-    unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
+    unwrap_optional_own, unwrap_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
     param_takes_ownership, answers_as_call, dyn_protocol_borrow_result,
     ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
@@ -835,6 +835,39 @@ def _dying_node(analyzer: 'ValueCategoryAnalyzer', node: TpyExpr) -> bool:
         return False
     return (is_rvalue_source(analyzer, node.obj)
             or lends_from_dying_source(analyzer, node.obj))
+
+
+def owner_finalized(analyzer: ValueCategoryAnalyzer, owner: TpyExpr) -> bool:
+    """Whether the object `owner` (a field's receiver) defines `__del__`
+    in its class chain: its finalizer reads its fields after a read."""
+    t = analyzer.get_expr_type(owner)
+    rec = (analyzer.registry.get_record_for_type(
+        unwrap_own(unwrap_readonly(unwrap_ref_type(t))))
+        if t is not None else None)
+    return rec is not None and analyzer.registry.has_finalizer(rec)
+
+
+def finalized_on_path(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Whether any owner on place path `expr` -- the object of each of its
+    field and element steps -- defines `__del__` (`owner_finalized`): that
+    finalizer reads the path after the read."""
+    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        expr = peel_coerce(expr.obj)
+        if owner_finalized(analyzer, expr):
+            return True
+    return False
+
+
+def place_dies(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Whether `expr`'s storage dies with its statement: an rvalue, or a
+    member or element read off one (a container's `operator[]` hands back
+    an lvalue whose owner still dies with the statement)."""
+    while True:
+        if is_rvalue_source(analyzer, expr):
+            return True
+        if not isinstance(expr, (TpySubscript, TpyFieldAccess)):
+            return False
+        expr = expr.obj
 
 
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:

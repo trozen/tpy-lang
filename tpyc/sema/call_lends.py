@@ -68,7 +68,8 @@ from ..typesys import (
     is_dyn_protocol, is_open_type_param_return, is_protocol_type,
     recorded_return_borrow_sources, return_borrow_fact_pending,
     substitute_type_params_structural,
-    bound_as_spelled, unwrap_own, unwrap_qualifiers, unwrap_readonly,
+    bound_as_spelled, unwrap_optional_own, unwrap_own, unwrap_qualifiers,
+    unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync, view_is_inherently_const, is_indirection_type,
 )
@@ -79,7 +80,8 @@ from ..value_category import (
     getitem_call_of,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
-    holds_no_pointer, may_hold_pointer, reference_may_hold_pointer,
+    holds_no_pointer, may_hold_pointer, peel_coerce,
+    reference_may_hold_pointer,
 )
 from . import own_copy
 from .storage_walk import (
@@ -884,6 +886,12 @@ class MayLend(CallPolicy):
     def at_call(self, call: TpyExpr, path: tuple,
                 ask: Ask) -> list[LendSource] | None:
         srcs = self._sources(call, path, ask)
+        if ask is Ask.LOAN:
+            # A frame handed to an owning parameter passes its loans on: the
+            # result (a Task the frame runs in) may keep it.
+            handed = _handed_frames(call)
+            if handed:
+                srcs = (srcs or []) + handed
         if not srcs:
             return srcs
         # A generator or coroutine frame keeps what it borrows as its callee
@@ -990,6 +998,27 @@ class MayLend(CallPolicy):
                                 how=Lent.CONVENTION if stub
                                 else Lent.RECORDED)
                 for s in srcs]
+
+
+def _handed_frames(call: TpyExpr) -> list[LendSource]:
+    """The generator or coroutine frames `call` takes ownership of: an
+    argument that builds a frame (`frame_call`) at an `Own` parameter. The
+    frame's own loans are its operands', so a result that may keep the
+    frame keeps them."""
+    ops = call_operands(call)
+    if ops is None:
+        return []
+    params = ops.fi.params
+    out: list[LendSource] = []
+    for idx, arg in ops.indexed():
+        if not 0 <= idx < len(params):
+            continue
+        slot = params[idx].type
+        if (unwrap_optional_own(unwrap_readonly(slot)) is not None
+                and frame_call(peel_coerce(arg)) is not None):
+            out.append(LendSource(idx, arg, slot, held_whole=True,
+                                  grants_write=False))
+    return out
 
 
 def frame_call(call: TpyExpr) -> 'TpyCall | TpyMethodCall | None':

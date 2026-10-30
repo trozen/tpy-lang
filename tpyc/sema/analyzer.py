@@ -3454,12 +3454,9 @@ class SemanticAnalyzer:
         rec = self.ctx.registry.get_record_for_type(inner)
         if rec is None:
             return False
-        if rec.is_nocopy or rec.has_del:
-            return True
-        for anc_rec in self.ctx.registry.iter_ancestor_records(rec):
-            if anc_rec.has_del or anc_rec.is_nocopy:
-                return True
-        return False
+        return (self.ctx.registry.has_finalizer(rec) or rec.is_nocopy
+                or any(anc.is_nocopy for anc in
+                       self.ctx.registry.iter_ancestor_records(rec)))
 
     def _analyze_top_level(self, carrier: TpyFunction,
                            function_globals: set[str], *,

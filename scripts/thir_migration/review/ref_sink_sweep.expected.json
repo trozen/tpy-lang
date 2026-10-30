@@ -141,8 +141,8 @@
  ],
  "array_i__async__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "array_i__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -456,8 +456,8 @@
  ],
  "array_i__ctor__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -886,8 +886,8 @@
  ],
  "array_i__fn__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1261,8 +1261,8 @@
  ],
  "array_i__gen__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1586,8 +1586,8 @@
  ],
  "array_i__meth__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2021,8 +2021,8 @@
  ],
  "array_i__nested__obj_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2396,8 +2396,8 @@
  ],
  "bytearray__async__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "bytearray__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -2836,8 +2836,8 @@
  ],
  "bytearray__ctor__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3396,8 +3396,8 @@
  ],
  "bytearray__fn__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3806,8 +3806,8 @@
  ],
  "bytearray__gen__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4266,8 +4266,8 @@
  ],
  "bytearray__meth__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4836,8 +4836,8 @@
  ],
  "bytearray__nested__obj_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5246,8 +5246,8 @@
  ],
  "deref_list__async__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
  ],
  "deref_list__async__obj_field__match_capture": [
   "reject:stmt.match",
@@ -5686,8 +5686,8 @@
  ],
  "deref_list__ctor__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__obj_field__match_capture": [
   "ok",
@@ -6246,8 +6246,8 @@
  ],
  "deref_list__fn__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__obj_field__match_capture": [
   "ok",
@@ -6656,8 +6656,8 @@
  ],
  "deref_list__gen__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_list__gen__obj_field__match_capture": [
   "reject:stmt.match",
@@ -7116,8 +7116,8 @@
  ],
  "deref_list__meth__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__obj_field__match_capture": [
   "ok",
@@ -7686,8 +7686,8 @@
  ],
  "deref_list__nested__obj_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__obj_field__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -8096,8 +8096,8 @@
  ],
  "deref_rec__async__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(*%h.f [storage].x [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(*%h.f [storage].x [raw])"
  ],
  "deref_rec__async__obj_field__match_capture": [
   "reject:stmt.match",
@@ -8536,8 +8536,8 @@
  ],
  "deref_rec__ctor__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__obj_field__match_capture": [
   "ok",
@@ -9096,8 +9096,8 @@
  ],
  "deref_rec__fn__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__obj_field__match_capture": [
   "ok",
@@ -9506,8 +9506,8 @@
  ],
  "deref_rec__gen__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_rec__gen__obj_field__match_capture": [
   "reject:stmt.match",
@@ -9966,8 +9966,8 @@
  ],
  "deref_rec__meth__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__obj_field__match_capture": [
   "ok",
@@ -10536,8 +10536,8 @@
  ],
  "deref_rec__nested__obj_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__obj_field__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10946,8 +10946,8 @@
  ],
  "dict_si__async__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "dict_si__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11326,8 +11326,8 @@
  ],
  "dict_si__ctor__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11816,8 +11816,8 @@
  ],
  "dict_si__fn__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12226,8 +12226,8 @@
  ],
  "dict_si__gen__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12616,8 +12616,8 @@
  ],
  "dict_si__meth__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13116,8 +13116,8 @@
  ],
  "dict_si__nested__obj_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13525,9 +13525,9 @@
   "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__async__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(method_call(*%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__async__obj_field__match_capture": [
   "reject:stmt.match",
@@ -13935,9 +13935,9 @@
   "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__ctor__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = move(%b._v [storage]) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__ctor__obj_field__match_capture": [
   "ok",
@@ -14460,9 +14460,9 @@
   "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__fn__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = move(%b._v [storage]) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__obj_field__match_capture": [
   "ok",
@@ -14870,9 +14870,9 @@
   "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__gen__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(method_call(*%h.f [storage], get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__obj_field__match_capture": [
   "reject:stmt.match",
@@ -15295,9 +15295,9 @@
   "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__meth__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = move(%b._v [storage]) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__obj_field__match_capture": [
   "ok",
@@ -15830,9 +15830,9 @@
   "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__nested__obj_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = move(%b._v [storage]) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__obj_field__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -16241,8 +16241,8 @@
  ],
  "list_i__async__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "list_i__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -16651,8 +16651,8 @@
  ],
  "list_i__ctor__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17176,8 +17176,8 @@
  ],
  "list_i__fn__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17586,8 +17586,8 @@
  ],
  "list_i__gen__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "list_i__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18011,8 +18011,8 @@
  ],
  "list_i__meth__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18546,8 +18546,8 @@
  ],
  "list_i__nested__obj_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18956,8 +18956,8 @@
  ],
  "list_r__async__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "list_r__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19301,8 +19301,8 @@
  ],
  "list_r__ctor__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19766,8 +19766,8 @@
  ],
  "list_r__fn__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20141,8 +20141,8 @@
  ],
  "list_r__gen__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "list_r__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20501,8 +20501,8 @@
  ],
  "list_r__meth__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20971,8 +20971,8 @@
  ],
  "list_r__nested__obj_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21346,8 +21346,8 @@
  ],
  "rec__async__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(*%h.f [storage].x [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(*%h.f [storage].x [raw])"
  ],
  "rec__async__obj_field__match_capture": [
   "reject:stmt.match",
@@ -21786,8 +21786,8 @@
  ],
  "rec__ctor__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__obj_field__match_capture": [
   "ok",
@@ -22376,8 +22376,8 @@
  ],
  "rec__fn__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "rec__fn__obj_field__match_capture": [
   "ok",
@@ -22816,8 +22816,8 @@
  ],
  "rec__gen__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__obj_field__match_capture": [
   "reject:stmt.match",
@@ -23276,8 +23276,8 @@
  ],
  "rec__meth__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw])"
  ],
  "rec__meth__obj_field__match_capture": [
   "ok",
@@ -23876,8 +23876,8 @@
  ],
  "rec__nested__obj_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__obj_field__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -24551,8 +24551,8 @@
  ],
  "set_i__async__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "set_i__async__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24961,8 +24961,8 @@
  ],
  "set_i__ctor__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25486,8 +25486,8 @@
  ],
  "set_i__fn__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25896,8 +25896,8 @@
  ],
  "set_i__gen__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%b._v [storage] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "",
+  "[3] *%h.f [storage] = move(*%b._v [storage]) [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26321,8 +26321,8 @@
  ],
  "set_i__meth__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26856,8 +26856,8 @@
  ],
  "set_i__nested__obj_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %b._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "",
+  "%h.f [storage] = move(%b._v [storage]) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__obj_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",

@@ -267,11 +267,12 @@ int32_t use_union(::tpy::Union<const A*, const UB*> u) {
 }
 
 // def reference_args(c: bool) -> None:
-//     # own_field: a field at an `Own[A]` parameter is the warned copy (only
-//     # the owned side is printed here; calls/argument_sink_warned_copy prints
-//     # the source too)
+//     # own_field: a field of an owner read again later at an `Own[A]`
+//     # parameter is the warned copy (only the owned side is printed here;
+//     # calls/argument_sink_warned_copy prints the source too)
 //     h = mkh()
 //     print("own_field", eat_a(h.a))  # tpyc: warning(/copies A into owned storage/)
+//     ref(h.a)
 //     # own_temp_member: the member of a temporary moves in, no copy
 //     print("own_temp_member", eat_a(mkh().a))  # tpyc: ok
 //     # mutated_rvalue: a call's result at a mutated method parameter is held
@@ -339,6 +340,7 @@ void reference_args(bool c) {
     H h = ::tpyapp::main::mkh();
     A __tmp_1 = h.a;
     std::cout << "own_field" << " " << ::tpyapp::main::eat_a(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::ref(h.a);
     std::cout << "own_temp_member" << " " << ::tpyapp::main::eat_a(::tpyapp::main::mkh().a) << "\n" << ::tpy::check_signals;
     V3 a = V3(1.0);
     V3 b = V3(2.0);

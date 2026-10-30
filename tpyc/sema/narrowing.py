@@ -31,7 +31,7 @@ from .literal_utils import (
 )
 from .value_range import ValueRange
 from ..prescan import (
-    match_is_none, _expr_to_narrowing_key, object_leaves, storage_spelling,
+    match_is_none, expr_to_narrowing_key, object_leaves, storage_spelling,
 )
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
@@ -202,7 +202,7 @@ class NarrowingTracker:
                     return None
                 type_subst = self.type_ops.build_type_substitution(actual_type)
                 # FIELDS only: a `@property` path is not narrowable storage
-                # (see `_expr_to_narrowing_key`), so resolving one here would
+                # (see `expr_to_narrowing_key`), so resolving one here would
                 # file a fact no read can safely use.
                 field_info = self.protocols.lookup_record_field(record, expr.field)
                 if field_info is None:
@@ -368,7 +368,7 @@ class NarrowingTracker:
 
         # Truthiness on Optional: `if x:` / `if obj.field:` / `if (x := get()):` narrows
         if isinstance(expr, (TpyName, TpyFieldAccess, TpyNamedExpr)):
-            key = _expr_to_narrowing_key(expr)
+            key = expr_to_narrowing_key(expr)
             if key is not None:
                 effective = self._effective_type_for_key(key)
                 if self._is_optional_type(effective):
@@ -391,7 +391,7 @@ class NarrowingTracker:
         lit_val: LiteralValue | None = None
         # Try both directions: `x == "rb"` and `"rb" == x`
         for var_side, lit_side in [(expr.left, expr.right), (expr.right, expr.left)]:
-            k = _expr_to_narrowing_key(var_side)
+            k = expr_to_narrowing_key(var_side)
             if k is None:
                 continue
             lv = literal_value_from_expr(lit_side)
@@ -852,7 +852,7 @@ class NarrowingTracker:
         the warning is about is what the declaration admits. Nothing else has
         a declaration to ask, so its analysed expression type is the answer.
         """
-        key = _expr_to_narrowing_key(operand)
+        key = expr_to_narrowing_key(operand)
         if key is not None:
             return (self._resolve_field_path_type(key) if "." in key
                     else self.declared_type_for_name(key))
@@ -1138,7 +1138,7 @@ class NarrowingTracker:
         facts except, when the stored value cannot be None, those saying
         only that. A store never creates a fact the slot did not have; a
         stronger one at the written key weakens to non-None."""
-        full_key = _expr_to_narrowing_key(target)
+        full_key = expr_to_narrowing_key(target)
         if full_key is None or "." not in full_key:
             return
         held = self.ctx.func.narrowed_types.get(full_key)

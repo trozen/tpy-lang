@@ -184,7 +184,7 @@ from ...coercions import (wrap_into_any, CoercionContext, coercion_rule,
                           context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
-    CONTAINER_LITERAL_NODES,
+    CONTAINER_LITERAL_NODES, place_dies,
     lends_from_dying_source,
     property_access_returns_cpp_ref,
     call_hands_back_value, call_result_is_reference,
@@ -212,7 +212,7 @@ from ...sema.alias_rebind import alias_sources, bare_tuple, reference_paths
 from ...sema.binding_ownership import read_ownership
 from ...sema.storage_walk import Unkeyed, loan_key, path_key
 from ...sema.source_records import (Disposition, LeafPermission, NO_RECORD,
-                                    read_record, verdict)
+                                    moves_place, read_record, verdict)
 from ...identity_map import IdentityMap
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import (render_int_literal_value,
@@ -5747,6 +5747,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # literal into `Any`): what its value IS still rides the node.
         lowered = replace(lowered, expr=stamped(lowered.expr, lc))
     lowered = replace(lowered, source=stamp_source(e, lowered, lc, declared))
+    if (isinstance(lowered, THIRFieldAccess)
+            and verdict(lc.analyzer.ctx, e).copies_in_place):
+        # Sema's copy of a temporary's member a finalizer still reads: read
+        # as an lvalue, the slot copies instead of moving out of the xvalue.
+        lowered = replace(lowered, as_lvalue=True)
     if cond_eager:
         _check_cond_eager_temps(lowered)
     capture = lc.lowered_capture
@@ -6218,18 +6223,6 @@ def _read_owned_elements(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
     return None
 
 
-def _dies(e: TpyExpr, analyzer) -> bool:
-    """`Source.temporary`: an rvalue, or a member or element read off one
-    (a container's `operator[]` hands back an lvalue whose owner still dies
-    with the statement)."""
-    while True:
-        if is_rvalue_source(analyzer, e):
-            return True
-        if not isinstance(e, (TpySubscript, TpyFieldAccess)):
-            return False
-        e = e.obj
-
-
 def _temporary(e: 'TpyExpr | None', node: THIRExpr,
                lc: '_LowerCtx') -> 'bool | None':
     """`Source.temporary`. A select's is its lowering's decision; with a
@@ -6245,7 +6238,7 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
         # The pointee outlives the pointer value that names it.
         return False
     if e is not None:
-        return _dies(e, lc.analyzer)
+        return place_dies(lc.analyzer, e)
     if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
         # A temp read with no source of its creator's is a loop's step, an
         # element of the source the loop holds.
@@ -6371,12 +6364,10 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                    else (_moves_here(e, lc)
                          and (not named or _borrow_tuple_read_moves(e, lc))))
     elif (e is not None
-          and isinstance(lowered, (THIRSubscript, THIRFieldAccess)) and (
-            (isinstance(e, TpySubscript) and rec_e.moves_whole)
-            or (isinstance(e, TpyFieldAccess) and e.consuming_move))):
-        # Sema moves this member / element out of storage the body owns
-        # (an owned tuple element at the tuple's last use, a consuming
-        # method's field).
+          and isinstance(lowered, (THIRSubscript, THIRFieldAccess))
+          and moves_place(lc.analyzer.ctx, e)):
+        # Sema moves this place out of storage its root owns (a place path
+        # at its root's last use, a consuming method's field).
         movable = True
     else:
         movable = prior is not None and prior.movable
@@ -6406,13 +6397,15 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     # `pointer_held` is the node's own (`THIRExpr.reads_raw_pointer`): the
     # node writes it when the stamp is attached and again whenever an arm
     # rebuilds the node.
+    place_copied = (e is not None
+                    and isinstance(lowered, (THIRSubscript, THIRFieldAccess))
+                    and () in rec_e.copied)
     must_copy = ((prior is not None and prior.must_copy)
                  or (named and _copies_owned_leaf(e, lc))
                  # An element sema declared a WHOLE copy of (it arrives
                  # borrowed); an index set declares only those tuple
                  # elements, which the slot's element rows copy.
-                 or (e is not None and isinstance(lowered, THIRSubscript)
-                     and () in rec_e.copied))
+                 or place_copied)
     # A copied live name is typed by its binding: a literal-built local's
     # expression type may still be the pending literal's.
     copy_type = copied_type(
@@ -6442,7 +6435,11 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                     record=(own_record if record_of is None
                             else read_record(lc.analyzer.ctx, record_of)),
 
-                    temporary=_temporary(e, lowered, lc),
+                    # A place sema declared a copy of names storage that
+                    # outlives the read: a temporary owner's finalizer
+                    # still reads it.
+                    temporary=(False if place_copied
+                               else _temporary(e, lowered, lc)),
                     elems=elems, binding=binding,
                     captured=captured,
                     named_type=named_type,
@@ -7028,6 +7025,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or (use.admits(SinkForm.RECORD_COPY)
                         and _storage_copy_value(rtype, analyzer)
                         and _witness("field.storage_copy"))
+                    # A place an owning sink's record moves out of the
+                    # storage its root owns: the sink moves the bare read.
+                    or (moves_place(analyzer.ctx, e)
+                        and bare_tuple(rtype) is None
+                        and _witness("field.record_move"))
                     # ... and an Optional member, its whole storage
                     # optional (a narrowed one reads through its unwrap).
                     or (use.admits(SinkForm.RECORD_COPY)
@@ -13263,6 +13265,10 @@ def _container_elem_move_source(el: THIRExpr, lc: '_LowerCtx', *,
     inner = el
     while isinstance(inner, THIRCoerce):
         inner = inner.expr
+    if isinstance(inner, (THIRFieldAccess, THIRSubscript)):
+        # A place sema moves out of its root (`moved_places`): a value
+        # buffer moves too.
+        return True
     if isinstance(inner, THIRName) and (
             _value_opt_scalar_binding(inner.name, lc)
             or _value_opt_view_param(inner.name, lc)):
@@ -13418,7 +13424,8 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     return read
             return _lower_copy_special(member, "copy", payload, lc, declared,
                                        getattr(member, "loc", None))
-        if (isinstance(member, TpyFieldAccess) and member.consuming_move
+        if (isinstance(member, TpyFieldAccess)
+                and moves_place(lc.analyzer.ctx, member)
                 and record_like(payload, lc.analyzer)):
             # A consuming method's own field, which sema let move out of
             # `self` (the scalar `Own[T]` argument's rule).

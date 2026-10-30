@@ -78,7 +78,7 @@ from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import (
-    _expr_to_narrowing_key, bound_names_of, fold_int_constant,
+    expr_to_narrowing_key, bound_names_of, fold_int_constant,
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
@@ -4137,7 +4137,7 @@ class ExpressionAnalyzer:
             result = self._try_find_field(current_type, expr)
             if result is not None:
                 if deref_depth > 0 and isinstance(actual_type, PtrType):
-                    obj_key = _expr_to_narrowing_key(expr.obj)
+                    obj_key = expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:
                         if obj_key in self.ctx.func.non_null_ptr_vars:
                             expr.ptr_non_null = True
@@ -4167,18 +4167,8 @@ class ExpressionAnalyzer:
                 # at keeps the access its type argument gives it.
                 if is_readonly_obj:
                     result = make_readonly(result)
-                # A consuming method (self: Own[Self]) moves a field out only
-                # where its return value may (see consuming_return_fields);
-                # anywhere else the read is an ordinary borrow.
-                expr.consuming_move = (
-                    self.ctx.in_consuming_method
-                    and isinstance(expr.obj, TpyName) and expr.obj.name == "self"
-                    and expr.field in self.ctx.func.consuming_return_fields)
-                if (expr.consuming_move and not is_readonly_obj
-                        and not result.is_value_type()):
-                    result = OwnType(result)
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)
-                field_key = _expr_to_narrowing_key(expr)
+                field_key = expr_to_narrowing_key(expr)
                 if field_key is not None:
                     narrowed = self.ctx.func.narrowed_types.get(field_key)
                     if narrowed is not None:

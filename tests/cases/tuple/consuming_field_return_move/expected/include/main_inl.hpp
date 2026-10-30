@@ -5,4 +5,46 @@
 
 namespace tpyapp::main {
 
+// def gen_of(p: P) -> Iterator[int32]:
+//     try:
+//         yield 1                                          # -> S_RESUME_0
+//     finally:
+//         print("loop_free_generator finally", len(p.xs))
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_of::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: yield 1
+        bool __fin_ran_9 = false;
+        try {
+            __fin_ran_9 = true;
+            this->__finally_0();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            if (!__fin_ran_9) {
+                this->__finally_0();
+            }
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        __state = S_RESUME_0;
+        return 1;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
 } // namespace tpyapp::main

@@ -68,12 +68,13 @@ NOCOPY_NO_AUTO_MOVE_HINT = (
     "intended)"
 )
 
-# A consuming method's field read outside a `return` is a borrow, so the
-# generic remedies above (auto-move at last use) do not apply to it.
+# A consuming method's field read that does not move is a borrow: it moves
+# only at the receiver's own last use, not at a last use of the field.
 CONSUMING_FIELD_MOVE_NOTE = (
-    "a field of a consuming method's `self` moves only in a `return`"
+    "a field of a consuming method's `self` moves only at the last use of "
+    "`self`, where nothing can still read it"
 )
-CONSUMING_FIELD_COPY_CLAUSE = ", or move it in a `return`"
+CONSUMING_FIELD_COPY_CLAUSE = ", or move it at the last use of `self`"
 
 # The remedy of an element copy out of a named container.
 ITERABLE_LVALUE_COPY_HINT = ("use copy_iter() to make this explicit "

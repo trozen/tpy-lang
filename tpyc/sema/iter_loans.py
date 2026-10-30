@@ -43,7 +43,7 @@ from ..value_category import (
 )
 from .call_lends import (
     CalleeFact, MayLend, borrowing_ctor_arg, call_callee, call_lend_sources,
-    callee_lend_fact,
+    callee_lend_fact, frame_operand_keys,
 )
 from ..holders import Holder, IterHolder
 from .context import BorrowKind, LoanInfo, element_index_key
@@ -695,6 +695,13 @@ def register_iteration_loans(
             continue
         bt.add_borrow(key, holder, loan.kind, on_element=loan.on_element,
                       elem_index=loan.elem_index, merge=True)
+    for key in frame_operand_keys(iterable):
+        # A frame keeps what it holds until it is destroyed, its receiver
+        # included, which MAY does not name
+        # (BUGS.md#generator-method-receiver-borrow-unrepresented): no move
+        # out of it while the loop runs.
+        if key.root not in excluded:
+            bt.add_borrow(key, holder, BorrowKind.OPAQUE, merge=True)
     if storage.callee is None:
         if isinstance(iterable, TpyName) and not storage.unplaceable:
             # A protocol- or TypeParamRef-typed iterable is advanced

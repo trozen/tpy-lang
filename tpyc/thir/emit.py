@@ -1815,6 +1815,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         get = f"std::get<{e.member_cpp}>({e.variant_cpp})"
         return f"(*{get})" if e.is_ptr_variant else get
     if isinstance(e, THIRFieldAccess):
+        if e.as_lvalue:
+            return f"::tpy::as_lvalue({_emit_field_access(e, state)})"
         return _emit_field_access(e, state)
     if isinstance(e, THIRSubscript):
         return _emit_subscript(e, state)

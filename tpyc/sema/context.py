@@ -1231,6 +1231,9 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
 
 
 ElemPath = tuple[int, ...]
+# A place read's steps from its root out: a field name or a constant tuple
+# index (`ElemPath` addresses a tuple's leaves only).
+ReadPath = tuple['int | str', ...]
 
 
 @dataclass(frozen=True)
@@ -1908,10 +1911,6 @@ class FunctionTrackingState:
     in_except_has_binding: bool = False
     # True when analyzing a finally body
     in_finally: bool = False
-    # The `self` fields a consuming method's return value under analysis may
-    # move out of (`StatementAnalyzer._consuming_return_move_fields`); empty
-    # everywhere else, where a field read is a borrow.
-    consuming_return_fields: frozenset[str] = frozenset()
     # True while a `return` statement's value is analysed: a consuming
     # method's field read there is already in a return, so "move it in a
     # `return`" is no remedy for it.
@@ -2041,6 +2040,9 @@ class FunctionTrackingState:
     # complete (`TypeCompatibility.settle_owning_reads`), and the loop
     # variables' copy warnings, settled when their loop's mode is decided.
     owning_reads: list[OwningRead] = field(default_factory=list)
+    # The place reads the body's owning sinks noted (`note_place_read`), in
+    # walk order: settlement stamps which of them move (`moved_places`).
+    noted_places: list[TpyExpr] = field(default_factory=list)
     # Where the body's diagnostics start, while its walk registers its
     # owning-sink copy diagnostics for settlement
     # (`SemanticContext.register_copy`): a function's body and the module's
@@ -2049,6 +2051,9 @@ class FunctionTrackingState:
     # The body's ownership verdicts are settled: a sink checked after that
     # (a repointed tuple's declared-slot check) reads them as it registers.
     settled: bool = False
+    # A consuming method's teardown proof over the settled body
+    # (`TypeCompatibility._teardown_proof`); None until first asked.
+    teardown_proof: bool | None = None
     # Every owning sink's registration of its source and slot
     # (`source_records.SinkRead`), one per canonical source node: their
     # per-leaf records are built from the settled verdicts once
@@ -3113,12 +3118,18 @@ class SemanticContext:
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: IdentitySet = field(default_factory=IdentitySet)
     # Last-use reads whose active alias is read in the same statement (any
-    # order): a by-VALUE owning slot moves the name while binding, which C++
-    # may sequence before the alias read, so such a slot copies instead.
-    same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
+    # order), with those aliases: a by-VALUE owning slot moves the name while
+    # binding, which C++ may sequence before the alias read, so such a slot
+    # copies instead; a reference slot copies where an alias still refers
+    # into the object (`move_before_alias_reads`).
+    same_stmt_alias_reads: IdentityMap = field(default_factory=IdentityMap)
     # Name reads that run more than once per evaluation of their statement
     # (a comprehension's per-item part, a lambda body): never a last use.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
+    # Name reads a statement reads more than once, each as the object of a
+    # field read, not live after it
+    # (`liveness._Walk.distinct_field_reads`), with those fields.
+    distinct_field_reads: IdentityMap = field(default_factory=IdentityMap)
     # The per-leaf ownership record of every source an owning sink checked
     # (`source_records.SourceRecord`), keyed by the peeled source node and
     # read through `source_records.read_record` / `verdict`.
@@ -3127,6 +3138,15 @@ class SemanticContext:
     # the record's key and the member's path in it
     # (`source_records.read_record`).
     member_sources: IdentityMap = field(default_factory=IdentityMap)
+    # The place reads (`place_reads`) whose owning sink moves them out of
+    # storage a named root owns (`TypeCompatibility.path_moves`), stamped
+    # once when the body settles; the lowering reads this, never the
+    # verdict's inputs.
+    moved_places: IdentitySet = field(default_factory=IdentitySet)
+    # Each place path read an owning sink took (`PlaceRead`, by its peeled
+    # node): its root and the per-step facts taken where it is read, which
+    # its record's move verdict reads (`TypeCompatibility.path_moves`).
+    place_reads: IdentityMap = field(default_factory=IdentityMap)
     # What each binding of the module's bodies owns
     # (`binding_ownership.BindingOwnership`), written once per body when its
     # owning reads settle: per function node its LOCAL entries

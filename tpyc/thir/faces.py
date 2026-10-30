@@ -1359,6 +1359,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.callable_value",
     "field.storage_copy",           # union / tuple FIELD read at the owning
                                     # copy sink: the bare member read
+    "field.record_move",            # a FIELD read its owning sink's record
+                                    # moves out (its root dies at the read):
+                                    # the bare member read the sink moves
     "subscript.storage_elem_copy",  # Optional / union / tuple ELEMENT read at
                                     # the owning copy sink: the checked
                                     # element lvalue, copied whole

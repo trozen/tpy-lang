@@ -33,9 +33,11 @@ Point& identity(Point& p) {
 //     s = identity(pts[0])
 //     pts[1] = s  # tpyc: warning(/copies Point into container/)
 //
-//     # Warning: field-to-field copy (field access is a reference)
+//     # Warning: field-to-field copy (field access is a reference; `h2` is
+//     # read again below, so its field cannot move)
 //     h2 = Holder(pt)
 //     h.p = h2.p  # tpyc: warning(/copies Point into field/)
+//     _ = h2.p.x
 //
 //     # Warning: subscript-to-field copy (subscript is a reference)
 //     h.p = pts[0]  # tpyc: warning(/copies Point into field/)
@@ -56,6 +58,7 @@ void main() {
     ::tpy::__setitem__(pts, 1, s);
     Holder h2 = Holder(pt);
     h.p = h2.p;
+    int32_t _ = h2.p.x;
     h.p = ::tpy::__getitem__(pts, 0);
     std::cout << h.p.x << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;

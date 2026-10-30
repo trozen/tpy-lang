@@ -1,4 +1,4 @@
-# A consuming method's field read outside a `return` is a borrow
+# A consuming method's field read before a later read of `self` is a borrow
 # (docs/LANGUAGE_FEATURES.md, "Consuming Methods"), so a @nocopy field at an
 # Own tuple member cannot be copied into it and errors. CPython runs this (it
 # hands the same object over); a @nocopy value can only be moved, and the

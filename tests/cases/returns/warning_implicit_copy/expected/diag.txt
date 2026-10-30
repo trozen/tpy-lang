@@ -3,5 +3,5 @@ main.py:30: warning: copies Point into field; use copy() to make this explicit
 main.py:33: warning: copies Point into container; use copy() to make this explicit
 main.py:37: warning: copies Point into field; use copy() to make this explicit ('r' is bound to existing storage at line 36)
 main.py:41: warning: copies Point into container; use copy() to make this explicit ('s' is bound to existing storage at line 40)
-main.py:45: warning: copies Point into field; use copy() to make this explicit
-main.py:48: warning: copies Point into field; use copy() to make this explicit
+main.py:46: warning: copies Point into field; use copy() to make this explicit
+main.py:50: warning: copies Point into field; use copy() to make this explicit

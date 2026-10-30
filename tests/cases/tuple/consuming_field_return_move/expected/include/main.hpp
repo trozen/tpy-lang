@@ -35,27 +35,41 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 struct P;
 struct O;
 struct Cm;
+struct Held;
 struct Guard;
 struct H;
+struct HT;
 struct HPtr;
 struct Base;
 struct Sub;
+struct FD;
+struct SubBox;
 
 extern P* GP;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_of;
 struct __coro_run_async;
 struct __gen_H_gen;
+struct __gen_H_labeled_gen;
 struct __coro_H_async_return;
 
 // def take_ro(t: Own[tuple[P, P]]) -> int32:
 int32_t take_ro(std::tuple<P, P> t);
 // def take_mut(t: Own[tuple[P, P]]) -> int32:
 int32_t take_mut(std::tuple<P, P> t);
+// def keep_t(t: Own[tuple[P, P]]) -> int32:
+int32_t keep_t(std::tuple<P, P> t);
+// def first_len(t: tuple[P, P]) -> int32:
+int32_t first_len(const std::tuple<const P*, const P*>& t);
 // def take_both(t: Own[tuple[P, P]]) -> int32:
 int32_t take_both(std::tuple<P, P> t);
 // def take_peek(t: Own[tuple[P, P]], q: Ptr[P]) -> int32:
 int32_t take_peek(std::tuple<P, P> t, P* q);
+// def keep_p(p: Own[P]) -> int32:
+int32_t keep_p(P&& p);
+// def gen_of(p: P) -> Iterator[int32]:
+__gen_gen_of gen_of(const P& p);
 // def run_twice(f: Callable[[], int32]) -> int32:
 int32_t run_twice(const std::function<int32_t()>& f);
 // def step(g: Iterator[int32]) -> None:
@@ -63,6 +77,8 @@ template<::tpystd::typing::Iterator<int32_t> T_g>
 void step(T_g& g);
 // def take_self(t: Own[tuple[H, int32]]) -> int32:
 int32_t take_self(std::tuple<H, int32_t> t);
+// def keep_sub(s: Own[Sub]) -> int32:
+int32_t keep_sub(Sub&& s);
 // async def run_async() -> None:
 __coro_run_async run_async();
 // def main() -> None:
@@ -119,14 +135,38 @@ inline std::ostream& operator<<(std::ostream& os, const Cm& obj) {
     return os;
 }
 
+// class Held:
+struct Held {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Held() = default;
+    explicit Held(int32_t v);
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, et, ev, tb) -> None:
+    void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Held";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Held& obj) {
+    ::tpy::print_object_default(os, "Held", obj);
+    return os;
+}
+
 // class Guard:
 struct Guard {
     // p: Ptr[P]
     P* p;
+    // label: str
+    std::string label;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, p: Ptr[P]) -> None:
-    explicit Guard(P* p);
+    // def __init__(self, p: Ptr[P], label: str) -> None:
+    explicit Guard(P* p, std::string_view label);
     Guard(const Guard&) = delete;
     Guard& operator=(const Guard&) = delete;
     Guard(Guard&& other) noexcept;
@@ -150,6 +190,8 @@ struct H {
     P b;
     // n: int
     ::tpy::BigInt n;
+    // c: char
+    char c;
 
     // def __init__(self) -> None:
     H();
@@ -162,6 +204,14 @@ struct H {
     int32_t first_len() const;
 
     __gen_H_gen gen() const;
+
+    __gen_H_labeled_gen labeled_gen(std::string_view label) const;
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, et, ev, tb) -> None:
+    void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
 
     // def after(self: Own[Self]) -> int32:
     int32_t after() &&;
@@ -259,12 +309,93 @@ struct H {
     // def self_in_nested_def(self: Own[Self]) -> int32:
     int32_t self_in_nested_def() &&;
 
+    // def loop_generator(self: Own[Self]) -> int32:
+    int32_t loop_generator() &&;
+
+    // def loop_generator_single(self: Own[Self]) -> int32:
+    int32_t loop_generator_single() &&;
+
+    // def loop_free_generator(self: Own[Self]) -> int32:
+    int32_t loop_free_generator() &&;
+
+    // def with_self_exit(self: Own[Self]) -> int32:
+    int32_t with_self_exit() &&;
+
+    // def with_self_exit_single(self: Own[Self]) -> int32:
+    int32_t with_self_exit_single() &&;
+
     __coro_H_async_return async_return();
+
+    // def single_last_use(self: Own[Self]) -> int32:
+    int32_t single_last_use() &&;
+
+    // def bound_then_returned(self: Own[Self]) -> int32:
+    int32_t bound_then_returned() &&;
+
+    // def char_return(self: Own[Self]) -> char:
+    char char_return() &&;
+
+    // def enumerate_generator(self: Own[Self]) -> int32:
+    int32_t enumerate_generator() &&;
+
+    // def zip_generator(self: Own[Self]) -> int32:
+    int32_t zip_generator() &&;
+
+    // def guard_local_single(self: Own[Self]) -> int32:
+    int32_t guard_local_single() &&;
+
+    // def local_generator_single(self: Own[Self]) -> int32:
+    int32_t local_generator_single() &&;
+
+    // def match_subject(self: Own[Self]) -> int32:
+    int32_t match_subject() &&;
+
+    // def clause_later_read(self: Own[Self]) -> int32:
+    int32_t clause_later_read() &&;
+
+    // def comp_no_clause(self: Own[Self]) -> int32:
+    int32_t comp_no_clause() &&;
+
+    // def match_plain_subject(self: Own[Self]) -> int32:
+    int32_t match_plain_subject() &&;
+
+    // def clause_teardown_fails(self: Own[Self]) -> int32:
+    int32_t clause_teardown_fails() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     ::tpy::print_object_default(os, "H", obj);
+    return os;
+}
+
+// class HT:
+struct HT {
+    // pair: tuple[P, P]
+    std::tuple<P, P> pair;
+
+    // def __init__(self) -> None:
+    HT();
+
+    // def tuple_after(self: Own[Self]) -> int32:
+    int32_t tuple_after() &&;
+
+    // def tuple_before(self: Own[Self]) -> int32:
+    int32_t tuple_before() &&;
+
+    // def tuple_return(self: Own[Self]) -> Own[tuple[P, P]]:
+    std::tuple<P, P> tuple_return() &&;
+
+    // def tuple_moves(self: Own[Self]) -> int32:
+    int32_t tuple_moves() &&;
+
+    // def tuple_clause(self: Own[Self]) -> int32:
+    int32_t tuple_clause() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HT";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const HT& obj) {
+    ::tpy::print_object_default(os, "HT", obj);
     return os;
 }
 
@@ -310,6 +441,32 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
+// class FD:
+struct FD {
+    // a: P
+    P a;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self) -> None:
+    FD();
+    FD(const FD&) = delete;
+    FD& operator=(const FD&) = delete;
+    FD(FD&& other) noexcept;
+    FD& operator=(FD&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~FD();
+
+    // def fd_no_clause(self: Own[Self]) -> int32:
+    int32_t fd_no_clause() &&;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.FD";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const FD& obj) {
+    ::tpy::print_object_default(os, "FD", obj);
+    return os;
+}
+
 // class Sub(Base):
 struct Sub : Base {
 
@@ -318,11 +475,45 @@ struct Sub : Base {
 
     // def super_in_return(self: Own[Self]) -> int32:
     int32_t super_in_return() &&;
+
+    // def super_single(self: Own[Self]) -> int32:
+    int32_t super_single() &&;
+
+    // def super_later(self: Own[Self]) -> int32:
+    int32_t super_later() &&;
+
+    // def super_finally(self: Own[Self]) -> int32:
+    int32_t super_finally() &&;
+
+    // def super_while(self: Own[Self]) -> int32:
+    int32_t super_while() &&;
+
+    // def super_with(self: Own[Self]) -> int32:
+    int32_t super_with() &&;
+
+    // def whole_super_later(self: Own[Self]) -> int32:
+    int32_t whole_super_later() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
     ::tpy::print_object_default(os, "Sub", obj);
+    return os;
+}
+
+// class SubBox:
+struct SubBox {
+    // s: Sub
+    Sub s;
+
+    // def __init__(self, s: Own[Sub]) -> None:
+    SubBox() = default;
+    explicit SubBox(Sub&& s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SubBox";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SubBox& obj) {
+    ::tpy::print_object_default(os, "SubBox", obj);
     return os;
 }
 
@@ -380,6 +571,47 @@ struct __coro_run_async {
     }
 };
 
+// def gen_of(p: P) -> Iterator[int32]:
+struct __gen_gen_of : public ::tpy::next_iter_mixin<__gen_gen_of, int32_t> {
+    ::tpy::frame_state __state;
+    const P& p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_of(const P& p)
+        : __state(S_INITIAL),
+          p(p) {}
+
+    __gen_gen_of(__gen_gen_of&&) = default;
+    ~__gen_gen_of() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_of& __iter__() { return *this; }
+    void __finally_0();
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_of&) {
+        return os << "<generator gen_of>";
+    }
+};
+
 // def gen(self) -> Iterator[int32]:
 struct __gen_H_gen : public ::tpy::next_iter_mixin<__gen_H_gen, int32_t> {
     ::tpy::frame_state __state;
@@ -427,6 +659,55 @@ inline __gen_H_gen H::gen() const {
     return __gen_H_gen(*this);
 }
 
+// def labeled_gen(self, label: str) -> Iterator[int32]:
+struct __gen_H_labeled_gen : public ::tpy::next_iter_mixin<__gen_H_labeled_gen, int32_t> {
+    ::tpy::frame_state __state;
+    const H& __self;
+    std::string label;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_H_labeled_gen(const H& __self, std::string_view label_)
+        : __state(S_INITIAL),
+          __self(__self),
+          label(std::string(label_)) {}
+
+    __gen_H_labeled_gen(__gen_H_labeled_gen&&) = default;
+    ~__gen_H_labeled_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_H_labeled_gen& __iter__() { return *this; }
+    void __finally_0();
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_H_labeled_gen&) {
+        return os << "<generator H.labeled_gen>";
+    }
+};
+
+inline __gen_H_labeled_gen H::labeled_gen(std::string_view label) const {
+    return __gen_H_labeled_gen(*this, label);
+}
+
 
 // def __init__(self, x: int32) -> None:
 //     self.xs = [x]
@@ -453,11 +734,31 @@ inline int32_t Cm::__enter__() const {
 inline void Cm::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
 }
 
-// def __init__(self, p: Ptr[P]) -> None:
-//     self.p = p
-inline Guard::Guard(P* p) : p(p) {}
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Held::Held(int32_t v) : v(v) {}
 
-inline Guard::Guard(Guard&& other) noexcept : p(std::move(other.p)) {
+// def __enter__(self) -> int32:
+//     return self.v
+inline int32_t Held::__enter__() const {
+    return this->v;
+}
+
+// def __exit__(self, et, ev, tb) -> None:
+//     pass
+inline void Held::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
+}
+
+// def __init__(self, p: Ptr[P], label: str) -> None:
+//     self.p = p
+//     self.label = label
+inline Guard::Guard(P* p, std::string_view label)
+    : p(p),
+      label(label) {}
+
+inline Guard::Guard(Guard&& other) noexcept
+    : p(std::move(other.p)),
+      label(std::move(other.label)) {
     other.__tpy_owned_ = false;
 }
 inline Guard& Guard::operator=(Guard&& other) noexcept {
@@ -469,21 +770,23 @@ inline Guard& Guard::operator=(Guard&& other) noexcept {
 }
 
 // def __del__(self) -> None:
-//     print("sibling_loop_guard del", self.p.n())
+//     print(self.label, "del", self.p.n())
 inline Guard::~Guard() {
     if (!this->__tpy_owned_) return;
     ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "sibling_loop_guard del" << " " << ::tpy::none_attr(this->p, "n").n() << "\n" << ::tpy::check_signals;
+    std::cout << this->label << " " << "del" << " " << ::tpy::none_attr(this->p, "n").n() << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
 //     self.a = P(1)
 //     self.b = P(2)
 //     self.n = 10 ** 20
+//     self.c = char("z")
 inline H::H()
     : a(P(1)),
       b(P(2)),
-      n(::tpy::BigInt::from_str("100000000000000000000")) {}
+      n(::tpy::BigInt::from_str("100000000000000000000")),
+      c(::tpy::char_from_str("z")) {}
 
 // def count(self) -> int32:
 //     return len(self.a.xs)
@@ -496,6 +799,18 @@ inline int32_t H::count() const {
 //     return len(self.a.xs)
 inline int32_t H::first_len() const {
     return ::tpy::__len__(this->a.xs);
+}
+
+// def __enter__(self) -> int32:
+//     return 0
+inline int32_t H::__enter__() const {
+    return 0;
+}
+
+// def __exit__(self, et, ev, tb) -> None:
+//     print("with_self exit", len(self.a.xs))
+inline void H::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
+    std::cout << "with_self exit" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
 }
 
 // # after: a field read before a later statement reads it again borrows
@@ -521,8 +836,9 @@ inline ::tpy::BigInt H::bare_return() && {
     return std::move(this->n);
 }
 
-// # loop_return: the `for` iterator's teardown (a generator's `finally`)
-// # runs after the return and could read the field
+// # loop_return: any enclosing `for` keeps the copy, though `range(2)`
+// # cannot read the field -- the conservative guard (narrowing it: TODO.md
+// # "Consuming-method field moves: the teardown stopgap")
 // def loop_return(self: Own[Self]) -> int32:
 //     for i in range(2):
 //         if i == 1:
@@ -583,7 +899,8 @@ inline ::tpy::BigInt H::try_return_scalar() && {
     }
 }
 
-// # with_return: `__exit__` runs after the return
+// # with_return: any enclosing `with` keeps the copy, though `Cm()`
+// # cannot read `self` -- the same guard and TODO entry
 // def with_return(self: Own[Self]) -> int32:
 //     with Cm():
 //         return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
@@ -732,8 +1049,9 @@ inline int32_t H::try_handler_return() && {
     }
 }
 
-// # try_else_return: a return in a try's `else` is inside the `try`, so it
-// # borrows (a `finally` reading the field after it is
+// # try_else_return: a return in a try's `else` is inside the `try`, and
+// # any enclosing `try` keeps the copy -- the same guard and TODO entry (a
+// # `finally` reading the field after it is
 // # BUGS.md#try-else-body-decl-crossed-by-goto; the trailing return works
 // # around the return-path analysis not crediting the `else`)
 // def try_else_return(self: Own[Self]) -> int32:
@@ -773,12 +1091,14 @@ inline int32_t H::comprehension_in_return() && {
     }))));
 }
 
-// # walrus_in_return: a walrus binds a name inside the returned expression
+// # walrus_in_return: the teardown proof is the whole body's, so the
+// # scalar a walrus binds after the read cannot read a field and the
+// # fields move
 // def walrus_in_return(self: Own[Self]) -> int32:
-//     return take_ro((self.a, self.b)) + (k := 4)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return take_ro((self.a, self.b)) + (k := 4)  # tpyc: ok
 inline int32_t H::walrus_in_return() && {
     int32_t k;
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), (k = 4)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), (k = 4)));
 }
 
 // # property_in_return: a property reads `self` as a whole
@@ -788,18 +1108,20 @@ inline int32_t H::property_in_return() && {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), 10)), this->first_len()));
 }
 
-// # nonscalar_param_in_return: a reference-type parameter could alias the field
+// # nonscalar_param_in_return: a borrowed parameter cannot alias the
+// # receiver the caller handed over, so the fields move
 // def nonscalar_param_in_return(self: Own[Self], o: O) -> int32:
-//     return take_ro((self.a, self.b)) + len(o.p.xs)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return take_ro((self.a, self.b)) + len(o.p.xs)  # tpyc: ok
 inline int32_t H::nonscalar_param_in_return(const O& o) && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(o.p.xs)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), ::tpy::__len__(o.p.xs)));
 }
 
-// # module_var_in_return: a module variable could hold the receiver
+// # module_var_in_return: a module variable cannot hold the receiver the
+// # caller handed over, so the fields move
 // def module_var_in_return(self: Own[Self]) -> int32:
-//     return take_ro((self.a, self.b)) + len(GP.xs)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return take_ro((self.a, self.b)) + len(GP.xs)  # tpyc: ok
 inline int32_t H::module_var_in_return() && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(GP->xs)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), ::tpy::__len__(GP->xs)));
 }
 
 // # scalar_kinds_ok: bool, char and enum locals and a module-level enum
@@ -867,19 +1189,19 @@ inline int32_t H::scalar_locals_only() && {
 // # every binding anywhere in the method counts, so the members copy
 // def sibling_loop_guard(self: Own[Self]) -> int32:
 //     for i in range(1):
-//         gd = Guard(self.a)
+//         gd = Guard(self.a, "sibling_loop_guard")
 //     for j in range(1):
-//         gd = Guard(self.a)
+//         gd = Guard(self.a, "sibling_loop_guard")
 //     return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::sibling_loop_guard() && {
     std::optional<Guard> __slot_1;
     Guard* gd;
     for (int32_t i = 0; i < 1; ++i) {
-        gd = &*(__slot_1 = Guard(&this->a));
+        gd = &*(__slot_1 = Guard(&this->a, "sibling_loop_guard"));
     }
     std::optional<Guard> __slot_2;
     for (int32_t j = 0; j < 1; ++j) {
-        gd = &*(__slot_2 = Guard(&this->a));
+        gd = &*(__slot_2 = Guard(&this->a, "sibling_loop_guard"));
     }
     return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
 }
@@ -915,6 +1237,337 @@ inline int32_t H::self_in_nested_def() && {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(inner(), 10)), inner()));
 }
 
+// # loop_generator: the running generator's `finally` reads the field
+// # after the return, so the members copy (a moved `a` would print 0)
+// def loop_generator(self: Own[Self]) -> int32:
+//     for i in self.labeled_gen("loop_generator"):
+//         return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return 0
+inline int32_t H::loop_generator() && {
+    {
+        auto __src_0 = this->labeled_gen("loop_generator");
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t i = ::tpy::unwrap_ref(*__r_1);
+            return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
+        }
+    }
+    return 0;
+}
+
+// # loop_generator_single: the same with one field read
+// def loop_generator_single(self: Own[Self]) -> int32:
+//     for i in self.labeled_gen("loop_generator_single"):
+//         return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+//     return 0
+inline int32_t H::loop_generator_single() && {
+    {
+        auto __src_0 = this->labeled_gen("loop_generator_single");
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t i = ::tpy::unwrap_ref(*__r_1);
+            P __tmp_1 = this->a;
+            return ::tpyapp::main::keep_p(std::move(__tmp_1));
+        }
+    }
+    return 0;
+}
+
+// # loop_free_generator: a generator over the field reads it in its
+// # `finally` after the return, so the members copy
+// def loop_free_generator(self: Own[Self]) -> int32:
+//     for i in gen_of(self.a):
+//         return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return 0
+inline int32_t H::loop_free_generator() && {
+    {
+        auto __src_0 = ::tpyapp::main::gen_of(this->a);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t i = ::tpy::unwrap_ref(*__r_1);
+            return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
+        }
+    }
+    return 0;
+}
+
+// # with_self_exit: `__exit__` reads the field after the return, so the
+// # members copy (a moved `a` would print 0)
+// def with_self_exit(self: Own[Self]) -> int32:
+//     with self:
+//         return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+inline int32_t H::with_self_exit() && {
+    auto& __ctx_2 = (*this);
+    __ctx_2.__enter__();
+    bool __fin_ran_5 = false;
+    try {
+        int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
+        __fin_ran_5 = true;
+        __ctx_2.__exit__({}, nullptr, {});
+        return __tpy_ret_0;
+    } catch (::tpy::BaseException& __exc_2) {
+        if (__fin_ran_5) throw;
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_5) throw;
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// # with_self_exit_single: the same with one field read
+// def with_self_exit_single(self: Own[Self]) -> int32:
+//     with self:
+//         return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+inline int32_t H::with_self_exit_single() && {
+    auto& __ctx_3 = (*this);
+    __ctx_3.__enter__();
+    bool __fin_ran_6 = false;
+    try {
+        P __tmp_1 = this->a;
+        int32_t __tpy_ret_0 = ::tpyapp::main::keep_p(std::move(__tmp_1));
+        __fin_ran_6 = true;
+        __ctx_3.__exit__({}, nullptr, {});
+        return __tpy_ret_0;
+    } catch (::tpy::BaseException& __exc_3) {
+        if (__fin_ran_6) throw;
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_6) throw;
+        __ctx_3.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// # single_last_use: one field at the receiver's last use moves
+// def single_last_use(self: Own[Self]) -> int32:
+//     return keep_p(self.a)  # tpyc: ok
+inline int32_t H::single_last_use() && {
+    return ::tpyapp::main::keep_p(std::move(this->a));
+}
+
+// # bound_then_returned: the receiver's last use need not be in the return
+// def bound_then_returned(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: ok
+//     return n
+inline int32_t H::bound_then_returned() && {
+    int32_t n = ::tpyapp::main::keep_p(std::move(this->a));
+    return n;
+}
+
+// # char_return: a returned `char` field
+// def char_return(self: Own[Self]) -> char:
+//     return self.c  # tpyc: ok
+inline char H::char_return() && {
+    return this->c;
+}
+
+// # enumerate_generator: the generator inside `enumerate` still runs its
+// # `finally`, which reads the field, after the return
+// def enumerate_generator(self: Own[Self]) -> int32:
+//     for i, x in enumerate(self.labeled_gen("enumerate_generator")):
+//         return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+//     return 0
+inline int32_t H::enumerate_generator() && {
+    {
+        auto __src_0 = ::tpy::builtin_enumerate(this->labeled_gen("enumerate_generator"));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t x = std::get<1>(__for_tup_0);
+            P __tmp_1 = this->a;
+            return ::tpyapp::main::keep_p(std::move(__tmp_1));
+        }
+    }
+    return 0;
+}
+
+// # zip_generator: the same inside `zip`
+// def zip_generator(self: Own[Self]) -> int32:
+//     for x, y in zip(self.labeled_gen("zip_generator"), range(3)):
+//         return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+//     return 0
+inline int32_t H::zip_generator() && {
+    {
+        auto __src_0 = ::tpy::builtin_zip(this->labeled_gen("zip_generator"), ::tpy::Range<int32_t>(3));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+            int32_t x = std::get<0>(__for_tup_1);
+            int32_t y = std::get<1>(__for_tup_1);
+            P __tmp_1 = this->a;
+            return ::tpyapp::main::keep_p(std::move(__tmp_1));
+        }
+    }
+    return 0;
+}
+
+// # guard_local_single: `g`'s `__del__` reads the field after the return
+// def guard_local_single(self: Own[Self]) -> int32:
+//     g = Guard(self.a, "guard_local_single")
+//     return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+inline int32_t H::guard_local_single() && {
+    Guard g = Guard(&this->a, "guard_local_single");
+    P __tmp_1 = this->a;
+    return ::tpyapp::main::keep_p(std::move(__tmp_1));
+}
+
+// # local_generator_single: `g`'s `finally` reads the field after the
+// # return
+// def local_generator_single(self: Own[Self]) -> int32:
+//     g = self.labeled_gen("local_generator_single")
+//     next(g, 0)
+//     return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+inline int32_t H::local_generator_single() && {
+    __gen_H_labeled_gen g = this->labeled_gen("local_generator_single");
+    ::tpy::next_or(g, 0);
+    P __tmp_1 = this->a;
+    return ::tpyapp::main::keep_p(std::move(__tmp_1));
+}
+
+// # match_subject: the subject's teardown (a `Guard` whose `__del__` reads
+// # the field) runs after an arm's return
+// def match_subject(self: Own[Self]) -> int32:
+//     match Guard(self.a, "match_subject"):
+//         case _:
+//             return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+inline int32_t H::match_subject() && {
+    auto __match_subject_1 = Guard(&this->a, "match_subject");
+    {
+        P __tmp_1 = this->a;
+        return ::tpyapp::main::keep_p(std::move(__tmp_1));
+    }
+    ::std::unreachable();
+}
+
+// # clause_later_read: a read `self` outlives is offered the move at the
+// # last use of `self`
+// def clause_later_read(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit, or move it at the last use of `self`/)
+//     return n * 10 + len(self.a.xs)
+inline int32_t H::clause_later_read() && {
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), ::tpy::__len__(this->a.xs)));
+}
+
+// # comp_no_clause: a read in a comprehension never moves, so it is not
+// # offered the move
+// def comp_no_clause(self: Own[Self]) -> int32:
+//     t = sum([keep_p(self.a) for i in range(2)])  # tpyc: warning(/use copy\(\) to make this explicit$/)
+//     return t
+inline int32_t H::comp_no_clause() && {
+    int32_t t = ::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
+            P __tmp_1 = this->a;
+            __result.push_back(::tpyapp::main::keep_p(std::move(__tmp_1)));
+        }
+        std::move(__result);
+    }));
+    return t;
+}
+
+// # match_plain_subject: an `int` subject runs nothing at its teardown, so
+// # the field moves, as on master (a temporary subject that is no value
+// # keeps the copy: match_subject)
+// def match_plain_subject(self: Own[Self]) -> int32:
+//     match self.n:
+//         case _:
+//             return keep_p(self.a)  # tpyc: ok
+inline int32_t H::match_plain_subject() && {
+    auto& __match_subject_1 = this->n;
+    {
+        return ::tpyapp::main::keep_p(std::move(this->a));
+    }
+    ::std::unreachable();
+}
+
+// # clause_teardown_fails: `g`, bound after the read, holds a `Ptr` into
+// # the field that its `__del__` reads, so no read of `self` may move and
+// # none is offered the move
+// def clause_teardown_fails(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit$/)
+//     g = Guard(self.a, "clause_teardown_fails")
+//     return n
+inline int32_t H::clause_teardown_fails() && {
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    Guard g = Guard(&this->a, "clause_teardown_fails");
+    return n;
+}
+
+// def __init__(self) -> None:
+//     self.pair = (P(1), P(2))
+inline HT::HT() : pair(std::tuple<P, P>{P(1), P(2)}) {}
+
+// # tuple_after: a list local bound after the read fails the teardown
+// # proof, so the tuple field is copied and warned per element, as its
+// # scalar twin is
+// def tuple_after(self: Own[Self]) -> int32:
+//     n = take_mut(self.pair)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     ys = [P(3)]
+//     return n * 10 + len(ys)
+inline int32_t HT::tuple_after() && {
+    int32_t n = ::tpyapp::main::take_mut(this->pair);
+    std::array<P, 1> ys = {P(3)};
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), ::tpy::__len__(ys)));
+}
+
+// # tuple_before: the same with the list local bound before the read
+// def tuple_before(self: Own[Self]) -> int32:
+//     ys = [P(3)]
+//     n = take_mut(self.pair)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
+//     return n * 10 + len(ys)
+inline int32_t HT::tuple_before() && {
+    std::array<P, 1> ys = {P(3)};
+    int32_t n = ::tpyapp::main::take_mut(this->pair);
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), ::tpy::__len__(ys)));
+}
+
+// # tuple_return: the whole tuple field returned past a list local
+// def tuple_return(self: Own[Self]) -> Own[tuple[P, P]]:
+//     ys = [P(3)]
+//     print("tuple_return ys", len(ys))
+//     return self.pair  # tpyc: warning(/tuple element 0\) ?;? ?use copy\(\) to make this explicit$/) warning(/tuple element 1\) ?;? ?use copy\(\) to make this explicit$/)
+inline std::tuple<P, P> HT::tuple_return() && {
+    std::array<P, 1> ys = {P(3)};
+    std::cout << "tuple_return ys" << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
+    return this->pair;
+}
+
+// # tuple_moves: with no local the teardown could read, the whole tuple
+// # field moves at the receiver's last use, as its scalar twin does
+// def tuple_moves(self: Own[Self]) -> int32:
+//     return take_mut(self.pair)  # tpyc: ok
+inline int32_t HT::tuple_moves() && {
+    return ::tpyapp::main::take_mut(std::move(this->pair));
+}
+
+// # tuple_clause: a tuple field read that `self` outlives is offered the
+// # move at the last use of `self`, as a scalar read is
+// def tuple_clause(self: Own[Self]) -> int32:
+//     n = keep_t(self.pair)  # tpyc: warning(/tuple element 0\).*or move it at the last use of `self`$/)
+//     return n * 10 + first_len(self.pair)
+inline int32_t HT::tuple_clause() && {
+    int32_t n = ::tpyapp::main::keep_t(this->pair);
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), ::tpyapp::main::first_len(std::tuple<const P*, const P*>{&(std::get<0>(this->pair)), &(std::get<1>(this->pair))})));
+}
+
 // def __init__(self) -> None:
 //     self.a = P(1)
 //     self.b = P(2)
@@ -947,6 +1600,41 @@ inline int32_t Base::count() const {
 }
 
 // def __init__(self) -> None:
+//     self.a = P(1)
+inline FD::FD() : a(P(1)) {}
+
+inline FD::FD(FD&& other) noexcept : a(std::move(other.a)) {
+    other.__tpy_owned_ = false;
+}
+inline FD& FD::operator=(FD&& other) noexcept {
+    if (this != &other) {
+        this->~FD();
+        new (this) FD(std::move(other));
+    }
+    return *this;
+}
+
+// # silent: a consuming method suppresses its receiver's finalizer
+// # (BUGS.md#consuming-method-skips-receiver-del)
+// def __del__(self) -> None:
+//     pass
+inline FD::~FD() {
+    if (!this->__tpy_owned_) return;
+}
+
+// # fd_no_clause: an owner on the path (the receiver) defines `__del__`,
+// # so no read of the field ever moves and none is offered the move
+// def fd_no_clause(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit$/)
+//     return n
+inline int32_t FD::fd_no_clause() && {
+    this->__tpy_owned_ = false;
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    return n;
+}
+
+// def __init__(self) -> None:
 //     super().__init__()
 inline Sub::Sub() : Base() {}
 
@@ -956,6 +1644,106 @@ inline Sub::Sub() : Base() {}
 inline int32_t Sub::super_in_return() && {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), 10)), this->Base::count()));
 }
+
+// # super_single: `super()` reads `self` beside a single field read
+// def super_single(self: Own[Self]) -> int32:
+//     return keep_p(self.a) * 10 + super().count()  # tpyc: warning(/copies P into owned storage/)
+inline int32_t Sub::super_single() && {
+    P __tmp_1 = this->a;
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::keep_p(std::move(__tmp_1)), 10)), this->Base::count()));
+}
+
+// # super_later: a `super()` read in a later statement keeps `self` live
+// def super_later(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit, or move it at the last use of `self`$/)
+//     return n * 10 + super().count()
+inline int32_t Sub::super_later() && {
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), this->Base::count()));
+}
+
+// # super_finally: so does one in a `finally`
+// def super_finally(self: Own[Self]) -> int32:
+//     try:
+//         return keep_p(self.a)  # tpyc: warning(/copies P into owned storage/)
+//     finally:
+//         print("super_finally finally", super().count())
+inline int32_t Sub::super_finally() && {
+    {
+        bool __fin_ran_7 = false;
+        try {
+            P __tmp_1 = this->a;
+            int32_t __tpy_ret_0 = ::tpyapp::main::keep_p(std::move(__tmp_1));
+            __fin_ran_7 = true;
+            std::cout << "super_finally finally" << " " << this->Base::count() << "\n" << ::tpy::check_signals;
+            return __tpy_ret_0;
+        } catch (...) {
+            if (!__fin_ran_7) {
+                std::cout << "super_finally finally" << " " << this->Base::count() << "\n" << ::tpy::check_signals;
+            }
+            throw;
+        }
+    }
+}
+
+// # super_while: so does one in a later `while` condition
+// def super_while(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit, or move it at the last use of `self`$/)
+//     k = 0
+//     while super().count() > k:
+//         k += 1
+//     return n * 10 + k
+inline int32_t Sub::super_while() && {
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    int32_t k = 0;
+    while ((this->Base::count() > k)) {
+        k = ::tpy::add_check<int32_t>(k, 1);
+    }
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), k));
+}
+
+// # super_with: and one in a later `with` manager
+// def super_with(self: Own[Self]) -> int32:
+//     n = keep_p(self.a)  # tpyc: warning(/use copy\(\) to make this explicit, or move it at the last use of `self`$/)
+//     with Held(super().count()) as c:
+//         return n * 10 + c
+inline int32_t Sub::super_with() && {
+    P __tmp_1 = this->a;
+    int32_t n = ::tpyapp::main::keep_p(std::move(__tmp_1));
+    auto __ctx_4 = Held(this->Base::count());
+    auto c = __ctx_4.__enter__();
+    bool __fin_ran_8 = false;
+    try {
+        int32_t __tpy_ret_0 = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), c));
+        __fin_ran_8 = true;
+        __ctx_4.__exit__({}, nullptr, {});
+        return __tpy_ret_0;
+    } catch (::tpy::BaseException& __exc_4) {
+        if (__fin_ran_8) throw;
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_8) throw;
+        __ctx_4.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// # whole_super_later: `self` passed whole before a later `super()` read
+// def whole_super_later(self: Own[Self]) -> int32:
+//     n = keep_sub(self)  # tpyc: warning(/copies Sub into owned storage/)
+//     return n * 10 + super().count()
+inline int32_t Sub::whole_super_later() && {
+    Sub __tmp_1 = (*this);
+    int32_t n = ::tpyapp::main::keep_sub(std::move(__tmp_1));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), this->Base::count()));
+}
+
+// def __init__(self, s: Own[Sub]) -> None:
+//     self.s = s
+inline SubBox::SubBox(Sub&& s) : s(std::move(s)) {}
 // def step(g: Iterator[int32]) -> None:
 //     try:
 //         next(g)

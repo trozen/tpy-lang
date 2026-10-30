@@ -133,6 +133,7 @@ def _populated() -> FunctionTrackingState:
         owning_reads=[OwnIterMove("b", N.TpyName("b"), N.TpyName("c")),
                       _pending_copy(N.TpyName("e"))],
         tuple_sinks=[SinkRead(N.TpyName("t"), INT32)],
+        noted_places=[N.TpyFieldAccess(N.TpyName("np"), "f")],
         nonowning_sites={'a': NonOwningNotes([(N.TpyName("b"), None)])},
         comp_targets=[CompTarget("b", N.TpyName("comp"), 0, 1)],
         current_call_edges=[MutationCallEdge(
@@ -180,7 +181,8 @@ _FIXTURE_FIELDS = {
     'pending_num_deferred', 'pending_num_splices', 'int_tparam_reads',
     'awaiting_container',
     'after_list_resolution',
-    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'nonowning_sites',
+    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'noted_places',
+    'nonowning_sites',
     'comp_targets',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',

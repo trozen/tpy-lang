@@ -267,7 +267,7 @@ class IncomingLends(Protocol):
 
     def member_lends(self, m: TpyExpr) -> bool: ...
 
-    def element_moves_out(self, expr: TpyExpr) -> bool: ...
+    def path_moves(self, expr: TpyExpr) -> bool | None: ...
 
     def call_lent_paths(self, call: 'TpyCall | TpyMethodCall',
                         slot: TupleType,
@@ -300,9 +300,9 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
     (`call(...)[0]`) too, projected to its subtree; an `await` and a
     by-value `__getitem__` lend as their declared result does, a walrus as
     the name it binds; a select lends what
-    either arm does (C++ copies the chosen one); an element the read moves
-    out (`element_moves_out`, asked of an incoming source) and a consuming
-    method's field move lend nothing;
+    either arm does (C++ copies the chosen one); a place the read moves out
+    (`path_moves`, asked of an incoming source: an element at its
+    tuple's last use, a consuming method's field) lends nothing;
     a name, a field, a subscript and anything else lend every reference
     path.
 
@@ -384,8 +384,7 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
         # A `__getitem__` returning by value lends what its declared return
         # does, as the call it is.
         return _declared_borrowed(getitem.return_type, bare, prefix)
-    if ((incoming is not None and incoming.element_moves_out(init))
-            or (isinstance(init, TpyFieldAccess) and init.consuming_move)):
+    if incoming is not None and incoming.path_moves(init):
         return frozenset()
     if incoming is not None:
         projected = _projected_call_paths(ctx, trace(init), bare, (), False,

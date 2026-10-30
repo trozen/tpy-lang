@@ -427,7 +427,7 @@ def liveness_alias_sources(result: ScanResult) -> dict[str, str]:
     return {**result.chain_alias_sources, **result.alias_sources}
 
 
-def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
+def expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     """Convert an expression to a narrowing key string.
 
     Returns a simple name for TpyName, or a dotted path for multi-level
@@ -447,7 +447,7 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     if isinstance(expr, TpyNamedExpr):
         return expr.target
     if isinstance(expr, TpyFieldAccess):
-        obj_key = _expr_to_narrowing_key(expr.obj)
+        obj_key = expr_to_narrowing_key(expr.obj)
         if obj_key is not None:
             return f"{obj_key}.{expr.field}"
     return None
@@ -469,11 +469,11 @@ def storage_spelling(expr: TpyExpr) -> str | None:
     """How a diagnostic names a storage operand back to the user -- a name,
     a field path, or an accessor read spelled `h.i` and not as its getter
     call; None for anything else, whose source text the tree does not keep."""
-    key = _expr_to_narrowing_key(expr)
+    key = expr_to_narrowing_key(expr)
     if key is not None:
         return key
     if is_property_getter_read(expr):
-        obj_key = _expr_to_narrowing_key(expr.obj)
+        obj_key = expr_to_narrowing_key(expr.obj)
         if obj_key is not None:
             return f"{obj_key}.{expr.method}"
     return None
@@ -504,9 +504,9 @@ def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
         return None
     key: str | None = None
     if isinstance(expr.right, TpyNoneLiteral):
-        key = _expr_to_narrowing_key(expr.left)
+        key = expr_to_narrowing_key(expr.left)
     elif isinstance(expr.left, TpyNoneLiteral):
-        key = _expr_to_narrowing_key(expr.right)
+        key = expr_to_narrowing_key(expr.right)
     if key is None:
         return None
     return key, expr.op == "is not"
@@ -719,7 +719,7 @@ def object_leaves(e: TpyExpr | None) -> list[tuple[str, TpyExpr]]:
         if isinstance(node, TpyName):
             out.append((node.name, node))
         elif isinstance(node, TpyFieldAccess):
-            key = _expr_to_narrowing_key(node)
+            key = expr_to_narrowing_key(node)
             if key is not None:
                 out.append((key, node))
         elif isinstance(node, TpyCoerce):
@@ -1463,7 +1463,7 @@ def _kills_assign_target(target: TpyExpr, kills: FactKills,
     if isinstance(target, TpyName):
         kills.names.add(target.name)
     elif isinstance(target, TpyFieldAccess):
-        key = _expr_to_narrowing_key(target)
+        key = expr_to_narrowing_key(target)
         if key is not None:
             kills.paths.setdefault(key, []).append(store)
         else:
@@ -1552,7 +1552,7 @@ def _fact_kills_walk(block: BlockSummary, kills: FactKills) -> None:
                 stmt if isinstance(stmt, TpyAssign) else None)
         elif isinstance(stmt, TpyDelAttr):
             for t in stmt.targets:
-                key = _expr_to_narrowing_key(t)
+                key = expr_to_narrowing_key(t)
                 if key is not None:
                     kills.paths.setdefault(key, []).append(None)
         elif isinstance(stmt, TpyDelItem):

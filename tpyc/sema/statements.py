@@ -39,7 +39,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
-    is_bufferless_scalar, unwrap_send_sync, unwrap_optional_own, owned_payload,
+    unwrap_optional_own, owned_payload,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
@@ -61,8 +61,7 @@ from ..parse import (
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr,
-    TpyLambda, TpyNamedExpr, TpyGeneratorExpression, TpyDictComprehension,
-    TpySetComprehension,
+    TpyLambda, TpyNamedExpr,
     is_stable_address_lvalue,
 )
 from ..coercions import (Coercion, CoercionContext, int_payload,
@@ -90,7 +89,8 @@ from .arg_binding import source_view
 from .calls import class_callee
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
-    MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
+    MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_call,
+    frame_operand_keys,
     path_holds_root,
 )
 from .context import (
@@ -167,11 +167,11 @@ from .context import (
     SitedKey,
 )
 from ..value_category import (
+    frame_factory_callee,
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of,
-    holds_no_pointer, value_may_point,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory,
@@ -476,7 +476,8 @@ def note_binding_provenance(an: 'StatementAnalyzer | ExpressionAnalyzer',
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
-                                 expr: TpyExpr) -> None:
+                                 expr: TpyExpr, *,
+                                 frame_only: bool = False) -> None:
     """File the loans a binding of a call's result takes (`call_loans`
     under MAY): through each call the value is, or is a field / element /
     select arm of, on each operand its result may point into. A guess about
@@ -485,7 +486,10 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
     loan (its shape is unknown: a write through the result climbs it,
     nothing invalidates it); a result kept whole is an ALIAS hold. A
     temporary the result may point into is warned: it dies with the
-    statement."""
+    statement. `frame_only`: an owned result keeps only what a frame it
+    is keeps -- the reference arguments a generator or coroutine frame
+    stores (`return_borrows_from`), a temporary among them
+    seated by the frame hoist."""
     bt = ctx.func.borrow_tracker
     warned: list[tuple[TpyExpr, int]] = []
 
@@ -498,6 +502,12 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
         fi = call_callee(loan.call)
         src = loan.source
         key = loan.key if isinstance(loan.key, StorageKey) else None
+        if frame_only and (
+                key is None or fi is None
+                or not (frame_factory_callee(fi) or fi.is_async)
+                or src.idx not in (fi.root.return_borrows_from
+                                   or frozenset())):
+            continue
         if loan.temp_backed:
             # An owned tuple element copied into the argument temporary: the
             # result points into storage that dies as a scalar temporary
@@ -522,6 +532,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
         if key is None:
             if fi is None or not (loan.fresh and is_dangling_temporary_arg(
                     loan.operand)):
+                continue
+            if src.idx >= 0 and frame_call(peel_coerce(src.expr)) is not None:
+                # A frame handed on keeps its temporaries by its own rule.
                 continue
             if src.idx >= 0:
                 if not temp_arg_kept_alive(fi, src.idx, src.expr, src.slot,
@@ -631,6 +644,11 @@ def register_binding_loans(ctx: SemanticContext, holder: Holder,
         return
     if not bound_type.is_value_type() or is_borrowing_view_type(bare):
         _register_call_result_borrow(ctx, holder, peel_coerce(source.value))
+    elif not unwrap_own(bound_type).is_value_type():
+        # An owned result is a value, but a coroutine handle's frame still
+        # keeps its reference arguments.
+        _register_call_result_borrow(ctx, holder, peel_coerce(source.value),
+                                     frame_only=True)
 
 
 def _format_aug_target(target: TpyExpr) -> str:
@@ -712,25 +730,6 @@ def _deferred_tuple_spelling(lit: TpyTupleLiteral) -> str:
             parts.append("...")
     inner = ", ".join(parts)
     return f"({inner},)" if len(parts) == 1 else f"({inner})"
-
-
-def _param_is_borrowed(t: TpyType) -> bool:
-    """A parameter of this declared type is a borrow its caller keeps alive,
-    so the method never destroys it: a reference type, `str` / `bytes` (a
-    view), a scalar, or an Optional / union of those -- never an `Own` one.
-    A by-value parameter of any other value type (a tuple, a callable, a user
-    value type, a type parameter, a protocol) counts as owned."""
-    bare = unwrap_readonly(unwrap_send_sync(t))
-    if unwrap_optional_own(bare) is not None:
-        return False
-    bare = unwrap_qualifiers(bare)
-    members = (bare.inner_types() if isinstance(bare, (OptionalType, UnionType))
-               else (bare,))
-    return all(
-        holds_no_pointer(m)
-        or not (m.is_value_type() or isinstance(m, TypeParamRef)
-                or is_protocol_type(m) or is_dyn_protocol(m))
-        for m in members)
 
 
 def _stored_tuple_target(target_type: TpyType) -> TupleType | None:
@@ -1463,9 +1462,9 @@ class StatementAnalyzer:
         if self.ctx.defer_own_copy_verdict(shown, t, "owned storage", value,
                                            source=value):
             return
-        remedy = self.compat.copy_remedy(value, note="")
+        remedy = self.compat.copy_remedy(value)
         self.ctx.copy_warning(
-            lambda n: f"copies {shown} into owned storage; {remedy}{n}",
+            lambda n: f"copies {shown} into owned storage; {remedy()}{n}",
             value, value, note=self.compat.binding_note(value))
 
     def _analyze_return_value(self, stmt: TpyReturn) -> None:
@@ -1591,141 +1590,6 @@ class StatementAnalyzer:
             if expected is not None:
                 self.ctx.escape_marks(stmt.value, expected,
                                       position=EscapePosition.RETURN)
-
-    def _consuming_return_move_fields(self, stmt: TpyReturn) -> frozenset[str]:
-        """The `self` fields this return of a consuming method moves out of.
-
-        Deliberately coarse -- sema cannot ask whether anything still depends
-        on the field's storage, so a field moves only where nothing can read
-        it after the move. The rule belongs to the consuming method's own
-        body: a nested def may run any number of times, so its returns never
-        move. The return must not sit in a `for` (the iterator's teardown, a
-        generator's `finally`, could read the field), a `try` (a handler, an
-        `else` or a `finally`) or a `with` (an `__exit__`); the method must
-        not be a generator or async (the frame outlives the statement); no
-        local or owned parameter of the method may be able to read the field
-        when destroyed (`_method_teardown_cannot_read_field`); and
-        within the value the field is read once -- operand order inside one
-        expression is not fixed -- with no read of `self` as a whole (a
-        method, a property, `super()`) and no name that could reach the
-        field (`_return_name_cannot_reach_field`). When the value reads more
-        than one field, every one of them must be unable to point at another
-        by its declared type (`value_may_point`,
-        `holds_no_pointer`). Every other read of a field is a
-        borrow, which the owning slots copy and warn about."""
-        fn = self.ctx.func.current_function
-        rec = self.ctx.record_ctx.record
-        if (stmt.value is None or not isinstance(fn, TpyFunction)
-                or not fn.is_consuming or rec is None
-                or fn.is_generator or fn.is_async
-                or any(isinstance(s, (TpyForEach, TpyTry, TpyWith))
-                       for s in self.ctx.func.compound_stack)):
-            return frozenset()
-        info = self.ctx.registry.get_record(rec.name)
-        if info is None or not self._method_teardown_cannot_read_field():
-            return frozenset()
-        field_types = {f.name: f.type
-                       for f in self.ctx.registry.get_all_fields(info)}
-        reads: list[str] = []
-        stack: list[TpyExpr] = [stmt.value]
-        while stack:
-            e = stack.pop()
-            if isinstance(e, (TpyLambda, TpyNamedExpr, TpyGeneratorExpression,
-                              TpyListComprehension, TpySetComprehension,
-                              TpyDictComprehension)):
-                return frozenset()
-            if (isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName)
-                    and e.obj.name == "self"):
-                if e.field not in field_types:
-                    return frozenset()
-                reads.append(e.field)
-                continue
-            if isinstance(e, TpyName):
-                if not self._return_name_cannot_reach_field(e.name):
-                    return frozenset()
-                continue
-            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
-            stack.extend(e.children())
-        moves = frozenset(f for f in reads if reads.count(f) == 1)
-        # With a second field in the value, one field's storage may be
-        # reachable through the other (`self.pa` aimed at `self.a`), so each
-        # must be proven unable to point anywhere by its type alone.
-        if len(set(reads)) > 1:
-            for f in set(reads):
-                if (value_may_point(field_types[f]) if f in moves
-                        else not holds_no_pointer(field_types[f])):
-                    return frozenset()
-        return moves
-
-    def _method_teardown_cannot_read_field(self) -> bool:
-        """True only when nothing the method may destroy after its return
-        value is built can read a `self` field: every name the body binds
-        ANYWHERE, and every parameter it owns or rebinds, holds a bufferless
-        scalar or an owned `str` / `bytes`. Decided over the whole body, not
-        the scope at the return: codegen hoists a loop or branch local to a
-        function-level slot, and a loop reaches a binding that sits after the
-        return in source order -- so a name whose type is not known at the
-        return is not proven either. A generator whose `finally` reads the
-        field, a `__del__` holding a `Ptr` into `self`, or just a list keeps
-        the field borrowed. A borrowed parameter the body never rebinds is
-        not destroyed by the method."""
-        func = self.ctx.func
-        rebound = func.body_bound_names | func.nested_nonlocal_rebinds
-        for name in rebound | func.current_param_names:
-            if name == "self":
-                continue
-            types: list[TpyType] = []
-            scope = func.current_scope
-            while scope is not None and scope is not self.ctx.global_scope:
-                if name in scope.bindings:
-                    types.append(scope.bindings[name])
-                    break
-                scope = scope.parent
-            pending = func.pending_loop_vars.get(name)
-            if pending is not None:
-                types.append(pending.var_type)
-            decl_type = self.ctx.local_decl_type(name)
-            if decl_type is not None:
-                types.append(decl_type)
-            if not types:
-                return False
-            if all(holds_no_pointer(t) for t in types):
-                continue
-            if (name in func.current_param_names and name not in rebound
-                    and all(_param_is_borrowed(t) for t in types)):
-                continue
-            return False
-        return True
-
-    def _return_name_cannot_reach_field(self, name: str) -> bool:
-        """True only when `name` is PROVEN unable to reach a `self` field: a
-        local or parameter of a bufferless scalar type, or a module-level
-        function or class. Anything else -- a nested def or lambda local
-        (it may capture `self`), a module variable, `self`, an unresolved
-        name -- could read the field after the move."""
-        if name in ("self", "super"):
-            return False
-        if self.compat.is_local_shadow(name):
-            return is_bufferless_scalar(
-                self.ctx.func.current_scope.lookup(name))
-        ns = self.ctx.func.current_ns
-        while ns is not None and ns is not self.ctx.global_ns:
-            if ns.has_local(name):
-                return False
-            ns = ns.parent
-        if self.ctx.global_scope.lookup(name) is not None:
-            return False
-        binding = (self.ctx.global_ns.lookup(name)
-                   if self.ctx.global_ns is not None else None)
-        if binding is not None and binding.kind in (
-                BindingKind.FUNCTION, BindingKind.RECORD, BindingKind.ENUM):
-            return True
-        if binding is not None and binding.kind != BindingKind.IMPORTED_NAME:
-            return False
-        registry = self.ctx.registry
-        return (registry.get_function(name) is not None
-                or registry.get_record(name) is not None
-                or registry.get_enum(name) is not None)
 
     def _mark_finally_deferred_return(self, stmt: TpyReturn, value: TpyExpr,
                                       ret_type: TpyType,
@@ -2824,15 +2688,16 @@ class StatementAnalyzer:
             with self.pend.sink(call), self.pend.list_sink(call):
                 self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
-            prev_moves = self.ctx.func.consuming_return_fields
             prev_in_return = self.ctx.func.in_return_value
-            self.ctx.func.consuming_return_fields = (
-                self._consuming_return_move_fields(stmt))
             self.ctx.func.in_return_value = True
             try:
                 self._analyze_return_value(stmt)
+                # A consuming method's return may move its receiver's
+                # fields out at any slot, at its root's last use
+                # (`path_moves`).
+                if self.ctx.in_consuming_method:
+                    self.compat.note_place_read(stmt.value)
             finally:
-                self.ctx.func.consuming_return_fields = prev_moves
                 self.ctx.func.in_return_value = prev_in_return
             self.init.mark_terminated()
         elif isinstance(stmt, TpyYield):
@@ -4701,7 +4566,8 @@ class StatementAnalyzer:
             captured=(nested_def_free_names(func) if func.is_nested_def
                       else frozenset()),
             same_stmt_alias_reads=self.ctx.same_stmt_alias_reads,
-            repeated_reads=self.ctx.repeated_reads)
+            repeated_reads=self.ctx.repeated_reads,
+            distinct_field_reads=self.ctx.distinct_field_reads)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()

@@ -1,4 +1,3 @@
 main.py:18: warning: copies A | B into field; use copy() to make this explicit
 main.py:21: warning: Own[A | B] param 'u' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:27: warning: copies A | B into owned storage; use copy() to make this explicit
 main.py:27: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.expr_stmt:call.arg_shape.own_union)

@@ -30,7 +30,7 @@ from ..parse import (
 from ..parse.nodes import NoneUse, NoneUseKind, name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
-from ..prescan import _expr_to_narrowing_key
+from ..prescan import expr_to_narrowing_key
 from .compatibility import InferredSlot, inferred_receiver
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
@@ -775,7 +775,7 @@ class MethodAnalyzer:
             return None
         # Warn if calling Optional[Callable] field without narrowing
         if is_optional_field:
-            narrowing_key = _expr_to_narrowing_key(expr.obj)
+            narrowing_key = expr_to_narrowing_key(expr.obj)
             if narrowing_key is not None:
                 narrowing_key = f"{narrowing_key}.{expr.method}"
             if narrowing_key is None or narrowing_key not in self.ctx.func.narrowed_types:
@@ -988,7 +988,7 @@ class MethodAnalyzer:
                 expr.deref_depth = deref_depth
                 expr.deref_receiver_type = current_type if deref_depth else None
                 if deref_depth > 0 and isinstance(original_type, PtrType):
-                    obj_key = _expr_to_narrowing_key(expr.obj)
+                    obj_key = expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:
                         if obj_key in self.ctx.func.non_null_ptr_vars:
                             expr.ptr_non_null = True

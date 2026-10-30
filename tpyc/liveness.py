@@ -67,9 +67,14 @@ class _Walk:
     source_aliases: _Aliases
     detached_aliases: set[str]
     # Name reads whose active alias is read in the SAME statement, in any
-    # order: a consumer that moves the name while binding (a by-value slot)
-    # may run before the alias read, whatever the source order says.
-    same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
+    # order, with those aliases: a consumer that moves the name may run
+    # before the alias read, whatever the source order says.
+    same_stmt_alias_reads: IdentityMap = field(default_factory=IdentityMap)
+    # Name reads not live after their statement that the statement reads
+    # more than once, every time as the object of a field read, with the
+    # fields it reads (a field once per read): no read of the name but the
+    # field reads themselves follows any of them.
+    distinct_field_reads: IdentityMap = field(default_factory=IdentityMap)
     # Name reads that may run more than once per evaluation of their
     # statement (`_collect_reads_expr`'s `repeat_reads`): never a last use.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
@@ -100,8 +105,9 @@ def analyze_last_uses(
     alias_sources: dict[str, str] | None = None,
     pinned: frozenset[str] | None = None,
     captured: frozenset[str] = frozenset(),
-    same_stmt_alias_reads: IdentitySet | None = None,
+    same_stmt_alias_reads: IdentityMap | None = None,
     repeated_reads: IdentitySet | None = None,
+    distinct_field_reads: IdentityMap | None = None,
 ) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
 
@@ -151,9 +157,11 @@ def analyze_last_uses(
               captured=captured)
     _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
     if same_stmt_alias_reads is not None:
-        same_stmt_alias_reads |= w.same_stmt_alias_reads
+        same_stmt_alias_reads.update(w.same_stmt_alias_reads)
     if repeated_reads is not None:
         repeated_reads |= w.repeated_reads
+    if distinct_field_reads is not None:
+        distinct_field_reads.update(w.distinct_field_reads)
     return w.last_uses
 
 
@@ -708,7 +716,7 @@ def _loop_header_seed(stmt: TpyWhile | TpyForEach,
     iteration pulls from."""
     exit_live = _loop_zero_trip_live(stmt, exit_live)
     if isinstance(stmt, TpyWhile):
-        return exit_live | {n.name for n in _collect_reads_expr(stmt.condition)}
+        return exit_live | _read_names(_collect_reads_expr(stmt.condition))
     return exit_live | {loop_iterator(stmt)}
 
 
@@ -1022,8 +1030,7 @@ def _analyze_with(stmt: TpyWith, live: set[Holder], w: _Walk) -> None:
                 item.target_read_after = item.target in after
     mgr_roots: set[str] = set()
     for item in stmt.items:
-        for node in _collect_reads_expr(item.context_expr):
-            mgr_roots.add(node.name)
+        mgr_roots |= _read_names(_collect_reads_expr(item.context_expr))
     live |= mgr_roots
     saved = w.ex
     # The manager may swallow an exception from the body and fall through to
@@ -1213,7 +1220,7 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
     """
     if not w.mark:
         for expr in exprs:
-            live.update(n.name for n in _collect_reads_expr(expr))
+            live.update(_read_names(_collect_reads_expr(expr)))
         return
     walrus_defs: set[str] = set()
     reads: list[TpyName] = []
@@ -1230,6 +1237,9 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
     name_counts: dict[str, int] = {}
     for node in reads:
         name_counts[node.name] = name_counts.get(node.name, 0) + 1
+    if "super" in name_counts and "self" in name_counts:
+        # `super()` reads `self`.
+        name_counts["self"] += name_counts["super"]
 
     # Mark single-occurrence reads that are not live (not used later)
     # and have no live T& aliases (prevents dangling references). A pinned
@@ -1243,16 +1253,65 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
                 and not _has_live_alias(node.name, live, w.source_aliases,
                                         w.detached_aliases)):
             w.last_uses.add(node)
-            if _has_live_alias(node.name, set(name_counts), w.source_aliases,
-                               w.detached_aliases):
-                w.same_stmt_alias_reads.add(node)
+            _note_same_stmt_aliases(node, name_counts, w)
+    _mark_distinct_field_reads(exprs, reads, name_counts, repeated, live, w)
 
-    # Add all read names to live set
-    for node in reads:
-        live.add(node.name)
+    live.update(_read_names(reads))
 
     # Walrus targets are definitions -- kill them from live set
     live -= walrus_defs
+
+
+def _read_names(reads: list[TpyName]) -> set[str]:
+    """The names `reads` keep live: each read's, and `self` for a `super`
+    read (`super()` reads `self`)."""
+    names = {n.name for n in reads}
+    if "super" in names:
+        names.add("self")
+    return names
+
+
+def _mark_distinct_field_reads(exprs: list[TpyExpr], reads: list[TpyName],
+                               name_counts: dict[str, int],
+                               repeated: IdentitySet, live: set[Holder],
+                               w: _Walk) -> None:
+    """`_Walk.distinct_field_reads` for one statement's reads: a name
+    read several times, each time as `name.f`, under the conditions a last
+    use takes otherwise. `super()` reads `self` whole."""
+    fields = IdentityMap()
+    stack = list(exprs)
+    while stack:
+        e = stack.pop()
+        if isinstance(e, TpyLambda):
+            continue
+        if isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName):
+            fields[e.obj] = e.field
+        stack.extend(e.children())
+    by_name: dict[str, list[TpyName]] = {}
+    for node in reads:
+        if name_counts[node.name] > 1:
+            by_name.setdefault(node.name, []).append(node)
+    for name, nodes in by_name.items():
+        got = [fields.get(n) for n in nodes]
+        if (None in got or (name == "self" and "super" in name_counts)
+                or any(n in repeated for n in nodes)
+                or name in w.captured or name in live or name in w.pinned
+                or _has_live_alias(name, live, w.source_aliases,
+                                   w.detached_aliases)):
+            continue
+        for n in nodes:
+            w.distinct_field_reads[n] = tuple(got)
+            _note_same_stmt_aliases(n, name_counts, w)
+
+
+def _note_same_stmt_aliases(node: TpyName, name_counts: dict[str, int],
+                            w: _Walk) -> None:
+    """`_Walk.same_stmt_alias_reads` for a read marked dead here: the
+    aliases of its object the same statement also reads."""
+    read_aliases = (w.source_aliases.get(node.name, set())
+                    - w.detached_aliases) & set(name_counts)
+    if read_aliases:
+        w.same_stmt_alias_reads[node] = frozenset(read_aliases)
 
 
 def _collect_reads_expr(expr: TpyExpr,

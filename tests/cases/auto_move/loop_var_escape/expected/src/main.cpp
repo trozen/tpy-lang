@@ -432,8 +432,7 @@ void moved_while_borrowed() {
 //     for p in ps:
 //         keep = p.get()
 //         # the plain-local twin (`x = P(..); keep = x.get(); out.append(x)`)
-//         # warns the same pair, "borrowed container" included
-//         # (BUGS.md#borrowed-container-warning-names-record)
+//         # warns the same copy
 //         out.append(p)  # tpyc: warning(/copies P into owned storage/)
 //         keep.v += 10
 //         print("moved_while_call_borrowed:", keep.v, len(out))

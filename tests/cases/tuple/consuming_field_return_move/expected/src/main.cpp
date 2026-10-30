@@ -66,6 +66,24 @@ int32_t take_mut(std::tuple<P, P> t) {
     return ::tpy::__len__(a.xs);
 }
 
+// def keep_t(t: Own[tuple[P, P]]) -> int32:
+//     a, b = t
+//     return len(a.xs) + len(b.xs)
+int32_t keep_t(std::tuple<P, P> t) {
+    P& a = std::get<0>(t);
+    P& b = std::get<1>(t);
+    return (::tpy::add_check<int32_t>(::tpy::__len__(a.xs), ::tpy::__len__(b.xs)));
+}
+
+// def first_len(t: tuple[P, P]) -> int32:
+//     a, b = t
+//     return len(a.xs)
+int32_t first_len(const std::tuple<const P*, const P*>& t) {
+    const P& a = (*std::get<0>(t));
+    const P& b = (*std::get<1>(t));
+    return ::tpy::__len__(a.xs);
+}
+
 // def take_both(t: Own[tuple[P, P]]) -> int32:
 //     a, b = t
 //     return len(a.xs) * 10 + len(b.xs)
@@ -84,6 +102,23 @@ int32_t take_peek(std::tuple<P, P> t, P* q) {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::none_attr(q, "n").n()));
 }
 
+// def keep_p(p: Own[P]) -> int32:
+//     kept = [p]
+//     return len(kept[0].xs)
+int32_t keep_p(P&& p) {
+    std::array<P, 1> kept = {std::move(p)};
+    return ::tpy::__len__(::tpy::__getitem__(kept, 0).xs);
+}
+
+void __gen_gen_of::__finally_0() {
+    std::cout << "loop_free_generator finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
+}
+
+// def gen_of(p: P) -> Iterator[int32]:
+__gen_gen_of gen_of(const P& p) {
+    return __gen_gen_of(p);
+}
+
 // def run_twice(f: Callable[[], int32]) -> int32:
 //     return f() * 10 + f()
 int32_t run_twice(const std::function<int32_t()>& f) {
@@ -97,6 +132,14 @@ int32_t take_self(std::tuple<H, int32_t> t) {
     H& h = std::get<0>(t);
     int32_t k = std::get<1>(t);
     return (::tpy::add_check<int32_t>(::tpy::__len__(h.a.xs), k));
+}
+
+// def keep_sub(s: Own[Sub]) -> int32:
+//     b = SubBox(s)
+//     return len(b.s.a.xs)
+int32_t keep_sub(Sub&& s) {
+    SubBox b = SubBox(std::move(s));
+    return ::tpy::__len__(b.s.a.xs);
 }
 
 // async def run_async() -> None:
@@ -173,6 +216,50 @@ __coro_run_async run_async() {
 //     print("loop_body_list", H().loop_body_list())
 //     print("self_in_nested_def", H().self_in_nested_def())
 //     print("super_in_return", Sub().super_in_return())
+//     print("super_single", Sub().super_single())
+//     lgn = H().loop_generator()
+//     print("loop_generator", lgn)
+//     lgs = H().loop_generator_single()
+//     print("loop_generator_single", lgs)
+//     lfg = H().loop_free_generator()
+//     print("loop_free_generator", lfg)
+//     wse = H().with_self_exit()
+//     print("with_self_exit", wse)
+//     wss = H().with_self_exit_single()
+//     print("with_self_exit_single", wss)
+//     print("single_last_use", H().single_last_use())
+//     print("bound_then_returned", H().bound_then_returned())
+//     print("char_return", H().char_return())
+//     eg = H().enumerate_generator()
+//     print("enumerate_generator", eg)
+//     zg = H().zip_generator()
+//     print("zip_generator", zg)
+//     gl = H().guard_local_single()
+//     print("guard_local_single", gl)
+//     lgs1 = H().local_generator_single()
+//     print("local_generator_single", lgs1)
+//     print("super_later", Sub().super_later())
+//     sf = Sub().super_finally()
+//     print("super_finally", sf)
+//     print("whole_super_later", Sub().whole_super_later())
+//     print("super_while", Sub().super_while())
+//     print("super_with", Sub().super_with())
+//     ms = H().match_subject()
+//     print("match_subject", ms)
+//     print("clause_later_read", H().clause_later_read())
+//     print("comp_no_clause", H().comp_no_clause())
+//     mps = H().match_plain_subject()
+//     print("match_plain_subject", mps)
+//     ctf = H().clause_teardown_fails()
+//     print("clause_teardown_fails", ctf)
+//     print("tuple_after", HT().tuple_after())
+//     print("tuple_before", HT().tuple_before())
+//     a, b = HT().tuple_return()
+//     print("tuple_return", len(a.xs), len(b.xs))
+//     print("tuple_moves", HT().tuple_moves())
+//     print("tuple_clause", HT().tuple_clause())
+//     fd = FD().fd_no_clause()
+//     print("fd_no_clause", fd)
 //     asyncio.run(run_async())
 void main() {
     std::cout << "after" << " " << H().after() << "\n" << ::tpy::check_signals;
@@ -216,6 +303,52 @@ void main() {
     std::cout << "loop_body_list" << " " << H().loop_body_list() << "\n" << ::tpy::check_signals;
     std::cout << "self_in_nested_def" << " " << H().self_in_nested_def() << "\n" << ::tpy::check_signals;
     std::cout << "super_in_return" << " " << Sub().super_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "super_single" << " " << Sub().super_single() << "\n" << ::tpy::check_signals;
+    int32_t lgn = H().loop_generator();
+    std::cout << "loop_generator" << " " << lgn << "\n" << ::tpy::check_signals;
+    int32_t lgs = H().loop_generator_single();
+    std::cout << "loop_generator_single" << " " << lgs << "\n" << ::tpy::check_signals;
+    int32_t lfg = H().loop_free_generator();
+    std::cout << "loop_free_generator" << " " << lfg << "\n" << ::tpy::check_signals;
+    int32_t wse = H().with_self_exit();
+    std::cout << "with_self_exit" << " " << wse << "\n" << ::tpy::check_signals;
+    int32_t wss = H().with_self_exit_single();
+    std::cout << "with_self_exit_single" << " " << wss << "\n" << ::tpy::check_signals;
+    std::cout << "single_last_use" << " " << H().single_last_use() << "\n" << ::tpy::check_signals;
+    std::cout << "bound_then_returned" << " " << H().bound_then_returned() << "\n" << ::tpy::check_signals;
+    std::cout << "char_return" << " " << H().char_return() << "\n" << ::tpy::check_signals;
+    int32_t eg = H().enumerate_generator();
+    std::cout << "enumerate_generator" << " " << eg << "\n" << ::tpy::check_signals;
+    int32_t zg = H().zip_generator();
+    std::cout << "zip_generator" << " " << zg << "\n" << ::tpy::check_signals;
+    int32_t gl = H().guard_local_single();
+    std::cout << "guard_local_single" << " " << gl << "\n" << ::tpy::check_signals;
+    int32_t lgs1 = H().local_generator_single();
+    std::cout << "local_generator_single" << " " << lgs1 << "\n" << ::tpy::check_signals;
+    std::cout << "super_later" << " " << Sub().super_later() << "\n" << ::tpy::check_signals;
+    int32_t sf = Sub().super_finally();
+    std::cout << "super_finally" << " " << sf << "\n" << ::tpy::check_signals;
+    std::cout << "whole_super_later" << " " << Sub().whole_super_later() << "\n" << ::tpy::check_signals;
+    std::cout << "super_while" << " " << Sub().super_while() << "\n" << ::tpy::check_signals;
+    std::cout << "super_with" << " " << Sub().super_with() << "\n" << ::tpy::check_signals;
+    int32_t ms = H().match_subject();
+    std::cout << "match_subject" << " " << ms << "\n" << ::tpy::check_signals;
+    std::cout << "clause_later_read" << " " << H().clause_later_read() << "\n" << ::tpy::check_signals;
+    std::cout << "comp_no_clause" << " " << H().comp_no_clause() << "\n" << ::tpy::check_signals;
+    int32_t mps = H().match_plain_subject();
+    std::cout << "match_plain_subject" << " " << mps << "\n" << ::tpy::check_signals;
+    int32_t ctf = H().clause_teardown_fails();
+    std::cout << "clause_teardown_fails" << " " << ctf << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_after" << " " << HT().tuple_after() << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_before" << " " << HT().tuple_before() << "\n" << ::tpy::check_signals;
+    auto __tup_1 = HT().tuple_return();
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
+    std::cout << "tuple_return" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_moves" << " " << HT().tuple_moves() << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_clause" << " " << HT().tuple_clause() << "\n" << ::tpy::check_signals;
+    int32_t fd = FD().fd_no_clause();
+    std::cout << "fd_no_clause" << " " << fd << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::run_async()));
 }
 
@@ -238,14 +371,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_H_gen::__next__() {
         }
     }
     case S_RESUME_1: {  // after: yield 2
-        bool __fin_ran_6 = false;
+        bool __fin_ran_11 = false;
         try {
-            __fin_ran_6 = true;
+            __fin_ran_11 = true;
             this->__finally_0();
             __state = S_JOIN_0;
             continue;
         } catch (...) {
-            if (!__fin_ran_6) {
+            if (!__fin_ran_11) {
                 this->__finally_0();
             }
             throw;
@@ -275,6 +408,62 @@ void __gen_H_gen::__finally_0() {
     std::cout << "local_generator finally" << " " << ::tpy::__len__(__self.a.xs) << "\n" << ::tpy::check_signals;
 }
 
+// def labeled_gen(self, label: str) -> Iterator[int32]:
+//     try:
+//         yield 1                                        # -> S_RESUME_0
+//         yield 2                                        # -> S_RESUME_1
+//     finally:
+//         print(label, "finally", len(self.a.xs))
+std::expected<int32_t, ::tpy::StopIteration> __gen_H_labeled_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: yield 1
+        try {
+            __state = S_RESUME_1;
+            return 2;
+        } catch (...) {
+            this->__finally_0();
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 2
+        bool __fin_ran_13 = false;
+        try {
+            __fin_ran_13 = true;
+            this->__finally_0();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            if (!__fin_ran_13) {
+                this->__finally_0();
+            }
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        __state = S_RESUME_0;
+        return 1;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+void __gen_H_labeled_gen::__finally_0() {
+    std::cout << label << " " << "finally" << " " << ::tpy::__len__(__self.a.xs) << "\n" << ::tpy::check_signals;
+}
+
 // # async_return: an async frame outlives the return statement
 // async def async_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
@@ -293,12 +482,11 @@ void __gen_H_gen::__finally_0() {
 }
 
 
-// # A consuming method moves `self.<field>` out only inside its own `return` that
-// # nothing of the method runs after (no enclosing `for`/`try`/`with`, and no
-// # local anywhere in the method whose destruction could read the field), read
-// # once there, beside names proven unable to reach the field; any other field
-// # read is a borrow, which an owning slot copies and warns about, as in an
-// # ordinary method.
+// # A consuming method moves `self.<field>` out at the receiver's last use
+// # (several distinct fields that point nowhere in one `return`), outside a
+// # `for`, `try`, `with` or `match` and with no local whose destruction may
+// # read a field; any other field read borrows, which an owning slot copies and
+// # warns about.
 // import asyncio
 // from enum import Enum
 //

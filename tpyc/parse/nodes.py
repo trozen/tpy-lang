@@ -706,11 +706,6 @@ class TpyFieldAccess(TpyExpr, NoneChecked):
     # stands for this synthesized `lambda *a: C(*a)`; read it through
     # `lambda_of`.
     factory_expansion: 'TpyLambda | None' = None
-    # Set by sema: a consuming method's `self.<field>` read that MAY move the
-    # field out (it sits in a return nothing of the method runs after); a
-    # position whose lowering has no move row still rejects. Every other
-    # such read borrows.
-    consuming_move: bool = False
     # Set by sema on a parameter default filled at a call whose own scope
     # cannot name the default's referent: the read is spelled entirely by
     # its stamp (`module_var_access` / `class_constant_owner` /

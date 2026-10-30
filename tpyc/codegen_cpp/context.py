@@ -2273,11 +2273,8 @@ class CodeGenContext:
     def record_or_ancestor_has_del(self, record_name: str) -> bool:
         """Check if the named record or any ancestor has __del__."""
         record_info = self.analyzer.registry.get_record(record_name)
-        if record_info is None:
-            return False
-        if record_info.has_del:
-            return True
-        return self.any_ancestor_has_del(record_name)
+        return (record_info is not None
+                and self.analyzer.registry.has_finalizer(record_info))
 
     def _write_source_lines(self, out: TextIO, first_line_no: int,
                             lines: list[str], indent: str = "",

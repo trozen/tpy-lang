@@ -143,7 +143,7 @@ from ...codegen_cpp.frame_names import sub_struct_qualname
 from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
                      frame_ptr_slot_name)
 from ...sema.alias_rebind import bare_tuple
-from ...sema.source_records import read_record, verdict
+from ...sema.source_records import moves_place, read_record, verdict
 from ...sema.call_lends import Retention, expr_lends_storage
 from ..param_contract import arg_retention
 from ...sema.context import UnnamedHolder
@@ -6477,6 +6477,58 @@ def lower_result(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
                        detail=detail).expr
 
 
+def _consuming_field_return_plain(value: TpyFieldAccess,
+                                  lc: '_LowerCtx') -> bool:
+    """Whether a consuming method's returned `self` field the record moves
+    returns as the bare move (`return std::move(this->x);`): TWO axes must
+    both be plain for that to be the whole render, and they are NOT the same
+    axis. The FIELD type decides whether the bare read is the whole render;
+    the RETURN SLOT decides whether the ladder even REACHES the move (a
+    pointer-repr / value Optional slot, a ptr-variant union, and a property
+    getter all exit early and never see it). Gating on the field alone would
+    ADD a move where none belongs: `def take(self: Own[Self]) -> int32 |
+    None: return self.x` is exactly that pair."""
+    analyzer = lc.analyzer
+    fld_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(value))))
+    ret_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        _fn_return_type(lc))))
+
+    def _plain_value(t) -> bool:
+        # An open-T slot joins the plain families: a TypeParamRef is
+        # none of the shapes the ladder exits early on, so it
+        # reaches the move like any scalar.
+        return bool(_eligible_scalar(t)
+                    or _eligible_enum(t, analyzer) is not None
+                    or _is_type_param_slot(t))
+
+    # The RETURN axis additionally admits `Own[T]` (`own_return_t<T>`)
+    # -- an auto_own consuming clone's slot, whose whole point is that
+    # the field moves out (`return std::move(this->first_val);`). The
+    # FIELD axis does not, but only defensively: sema rejects an
+    # `Own[T]` FIELD outright ("a field owns its value inline"), so
+    # that shape cannot reach here at all. Keeping the axes separate
+    # documents which one the `Own` belongs to rather than guarding a
+    # reachable case.
+    # A BUILTIN-record field moving into its own Own[same-type]
+    # return (`_slot: Own[Poll[int32]]` -> `-> Own[Poll[int32]]`):
+    # the identity pair guarantees the bare
+    # `return std::move(this->_slot);` -- container/str families
+    # excluded (their consuming renders differ).
+    _csf_pair = (
+        isinstance(fld_t, NominalType)
+        and not fld_t.is_protocol and not fld_t.is_user_record
+        and not (is_list(fld_t) or is_dict(fld_t) or is_set(fld_t)
+                 or is_array(fld_t))
+        and _resolved_str_value(fld_t, analyzer) is None
+        and _resolved_bytes_value(fld_t, analyzer) is None
+        and fld_t == _unwrap_own(ret_t))
+    return bool((_plain_value(fld_t)
+                 and (_plain_value(ret_t)
+                      or _own_type_param_slot(ret_t)))
+                or _csf_pair)
+
+
 def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                           lc: '_LowerCtx', declared: dict[str, TpyType],
                           scope: '_LowerScope', loc) -> 'THIRExpr | None':
@@ -6590,8 +6642,11 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                         ok = False
                         break
                     continue
+                # A source its record moves whole (a place path at its
+                # root's last use) moves in as a movable name does.
                 if (not mbare.is_value_type()
                         and not is_rvalue_source(analyzer, sub)
+                        and not moves_place(analyzer.ctx, sub)
                         and not (isinstance(sub, TpyName)
                                  and _is_move_source(sub, lc))):
                     ok = False
@@ -12733,64 +12788,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             return THIRReturn(staged=staged, value=None, loc=loc)
         ret_slot = return_slot(lc, implicit_move=not staged)
         if (isinstance(stmt.value, TpyFieldAccess)
-                and stmt.value.consuming_move):
+                and moves_place(analyzer.ctx, stmt.value)
+                and _consuming_field_return_plain(stmt.value, lc)):
             # A consuming method's `self` is an rvalue ref (`&&`), so returning
             # one of its fields MOVES (`return std::move(this->_value);`) --
-            # where sema let the field move (`consuming_move`); anywhere else
-            # the return reads it like any method's field.
+            # where sema let the field move (`moved_places`); anywhere else
+            # the return reads it like any method's field, and a field the
+            # ladder below converts takes its move from the record.
             # Intercepted BEFORE the return ladder on purpose: the move
             # belongs to the FINAL return expression, so a specialized arm
             # (record / optional / tuple / container) would have to re-apply
             # it and a missed one drops the move silently.
-            #
-            # TWO axes must both be plain for the interception to be a no-op,
-            # and they are NOT the same axis. The FIELD type decides whether the
-            # bare read is the whole render; the RETURN SLOT decides whether
-            # the ladder even REACHES the move (a pointer-repr / value
-            # Optional slot, a ptr-variant union, and a property getter all
-            # exit early and never see it). Gating on the field alone would
-            # ADD a move where none belongs: `def take(self: Own[Self]) ->
-            # int32 | None: return self.x` is exactly that pair, and no
-            # corpus case has it.
-            fld_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                analyzer.get_expr_type(stmt.value))))
-            ret_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                _fn_return_type(lc))))
-
-            def _plain_value(t) -> bool:
-                # An open-T slot joins the plain families: a TypeParamRef is
-                # none of the shapes the ladder exits early on, so it
-                # reaches the move like any scalar.
-                return bool(_eligible_scalar(t) or _eligible_char(t)
-                            or _eligible_enum(t, analyzer) is not None
-                            or _is_type_param_slot(t))
-
-            # The RETURN axis additionally admits `Own[T]` (`own_return_t<T>`)
-            # -- an auto_own consuming clone's slot, whose whole point is that
-            # the field moves out (`return std::move(this->first_val);`). The
-            # FIELD axis does not, but only defensively: sema rejects an
-            # `Own[T]` FIELD outright ("a field owns its value inline"), so
-            # that shape cannot reach here at all. Keeping the axes separate
-            # documents which one the `Own` belongs to rather than guarding a
-            # reachable case.
-            # A BUILTIN-record field moving into its own Own[same-type]
-            # return (`_slot: Own[Poll[int32]]` -> `-> Own[Poll[int32]]`):
-            # the identity pair guarantees the bare
-            # `return std::move(this->_slot);` -- container/str families
-            # excluded (their consuming renders differ).
-            _csf_pair = (
-                isinstance(fld_t, NominalType)
-                and not fld_t.is_protocol and not fld_t.is_user_record
-                and not (is_list(fld_t) or is_dict(fld_t) or is_set(fld_t)
-                         or is_array(fld_t))
-                and _resolved_str_value(fld_t, analyzer) is None
-                and _resolved_bytes_value(fld_t, analyzer) is None
-                and fld_t == _unwrap_own(ret_t))
-            if not ((_plain_value(fld_t)
-                     and (_plain_value(ret_t) or _own_type_param_slot(ret_t)))
-                    or _csf_pair):
-                note_detail("return.consuming_self_field")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
             src = _lower_field_source(stmt.value, lc, declared)
             _witness("ret.consuming_self_field")
             return THIRReturn(

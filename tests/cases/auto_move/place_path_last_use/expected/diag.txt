@@ -1,0 +1,35 @@
+main.py:468: warning: copies A into owned storage; use copy() to make this explicit
+main.py:490: warning: copies A into owned storage; use copy() to make this explicit
+main.py:498: warning: copies A into owned storage; use copy() to make this explicit
+main.py:506: warning: copies A into owned storage; use copy() to make this explicit
+main.py:513: warning: copies A into owned storage; use copy() to make this explicit
+main.py:519: warning: copies A into owned storage; use copy() to make this explicit
+main.py:519: warning: copies A into owned storage; use copy() to make this explicit
+main.py:526: warning: copies A into owned storage; use copy() to make this explicit
+main.py:531: warning: lambda at line 531 copies the object 'h' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:533: warning: copies A into owned storage; use copy() to make this explicit
+main.py:541: warning: copies A into owned storage; use copy() to make this explicit
+main.py:550: warning: copies A into owned storage; use copy() to make this explicit
+main.py:558: warning: copies A into owned storage; use copy() to make this explicit
+main.py:565: warning: copies A into owned storage; use copy() to make this explicit
+main.py:572: warning: copies A into owned storage; use copy() to make this explicit
+main.py:578: warning: copies M into field; use copy() to make this explicit
+main.py:586: warning: copies A into owned storage; use copy() to make this explicit
+main.py:592: warning: copies A into owned storage; use copy() to make this explicit
+main.py:599: warning: copies A into owned storage; use copy() to make this explicit
+main.py:604: warning: copies A into owned storage; use copy() to make this explicit
+main.py:612: warning: copies A into owned storage; use copy() to make this explicit
+main.py:618: warning: copies A into owned storage; use copy() to make this explicit
+main.py:624: warning: copies A into owned storage; use copy() to make this explicit
+main.py:629: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:639: warning: copies A into owned storage; use copy() to make this explicit
+main.py:646: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:653: warning: copies A into field; use copy() to make this explicit
+main.py:662: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:670: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:678: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:686: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:694: warning: copies HC into owned storage; use copy() to make this explicit
+main.py:702: warning: copies A into owned storage; use copy() to make this explicit
+main.py:709: warning: copies HC into owned storage; use copy() to make this explicit
+main.py:717: warning: copies list[int32] into owned storage; use copy() to make this explicit

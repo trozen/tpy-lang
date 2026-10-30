@@ -98,6 +98,10 @@ class Leaf:
     borrowed: bool
     slot_owns: bool
     permission: LeafPermission
+    # The copy reads a member of a temporary as an lvalue: an owner on its
+    # path has a finalizer that reads the member after the read, so the
+    # copy must not move out of the xvalue (`finalized_on_path`).
+    in_place: bool = False
 
 
 class Disposition(Enum):
@@ -219,6 +223,14 @@ class SourceRecord:
             leaves[()] = root
         return SourceRecord(leaves, part_of_copy=self.copies_whole)
 
+    @property
+    def copies_in_place(self) -> bool:
+        """The sink copies the source whole, reading it as an lvalue
+        (`Leaf.in_place`)."""
+        leaf = self.leaves.get(())
+        return (leaf is not None and leaf.permission.copies
+                and leaf.in_place)
+
     def copies_at(self, path: ElemPath) -> bool | None:
         """Whether the sink copies a leaf at or under `path`; None where
         the record holds no leaf there."""
@@ -253,6 +265,12 @@ def read_record(ctx: 'SemanticContext',
     n = len(prefix)
     return SourceRecord({p[n:]: leaf for p, leaf in whole.leaves.items()
                          if p[:n] == prefix})
+
+
+def moves_place(ctx: 'SemanticContext', expr: TpyExpr | None) -> bool:
+    """Whether an owning sink moves place read `expr` out of the storage
+    its named root owns (`SemanticContext.moved_places`)."""
+    return expr is not None and peel_value_wrappers(expr) in ctx.moved_places
 
 
 def verdict(ctx: 'SemanticContext', expr: TpyExpr | None) -> SourceRecord:

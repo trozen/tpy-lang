@@ -582,7 +582,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
     if ((!(hdrs.contains("Cookie")))) {
         std::string cookie_header = send_cookies.header_for((*host), req_path, is_https, now);
         if ((cookie_header != "")) {
-            ::tpy::__setitem__(hdrs, "Cookie", cookie_header);
+            ::tpy::__setitem__(hdrs, "Cookie", std::move(cookie_header));
         }
     }
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::tplib::requests::_send_recv(conn, method, target, body, hdrs, url);

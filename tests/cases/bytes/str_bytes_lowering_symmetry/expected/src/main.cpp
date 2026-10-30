@@ -72,7 +72,7 @@ void set_methods(std::string_view s, ::tpy::BytesView b) {
     ss.insert("a");
     sb.insert(::tpy::bytes_literal_owned("a", 1));
     ss.insert(t.name);
-    sb.insert(t.tag);
+    sb.insert(std::move(t.tag));
     ss.insert(std::string(s));
     sb.insert(::tpy::Bytes(b));
     ss.insert((::tpy::str_concat(s, "!")));
@@ -127,8 +127,8 @@ void owned_slot_arg() {
     std::vector<::tpy::Bytes> xb = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
     std::vector<std::string> outs = std::vector<std::string>{};
     std::vector<::tpy::Bytes> outb = std::vector<::tpy::Bytes>{};
-    outs.push_back(std::get<0>(ts));
-    outb.push_back(std::get<0>(tb));
+    outs.push_back(std::move(std::get<0>(ts)));
+    outb.push_back(std::move(std::get<0>(tb)));
     outs.push_back(::tpy::__getitem__(xs, 1));
     outb.push_back(::tpy::__getitem__(xb, 1));
     outs.push_back((::tpy::str_concat(::tpy::__getitem__(xs, 0), "!")));

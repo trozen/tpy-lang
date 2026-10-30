@@ -1,1 +1,1 @@
-main.py:32: error: @nocopy type 'Tok' cannot be passed as argument 't' tuple element 0 Own[Tok]: a field of a consuming method's `self` moves only in a `return`.
+main.py:32: error: @nocopy type 'Tok' cannot be passed as argument 't' tuple element 0 Own[Tok]: a field of a consuming method's `self` moves only at the last use of `self`, where nothing can still read it.

@@ -39,4 +39,46 @@ sibling_loop_guard 1
 loop_body_list 5
 self_in_nested_def 22
 super_in_return 11
+super_single 11
+loop_generator finally 1
+loop_generator 1
+loop_generator_single finally 1
+loop_generator_single 1
+loop_free_generator finally 1
+loop_free_generator 1
+with_self exit 1
+with_self_exit 1
+with_self exit 1
+with_self_exit_single 1
+single_last_use 1
+bound_then_returned 1
+char_return z
+enumerate_generator finally 1
+enumerate_generator 1
+zip_generator finally 1
+zip_generator 1
+guard_local_single del 1
+guard_local_single 1
+local_generator_single finally 1
+local_generator_single 1
+super_later 11
+super_finally finally 1
+super_finally 1
+whole_super_later 11
+super_while 11
+super_with 11
+match_subject del 1
+match_subject 1
+clause_later_read 11
+comp_no_clause 2
+match_plain_subject 1
+clause_teardown_fails del 1
+clause_teardown_fails 1
+tuple_after 21
+tuple_before 21
+tuple_return ys 1
+tuple_return 1 1
+tuple_moves 2
+tuple_clause 21
+fd_no_clause 1
 async_return 1

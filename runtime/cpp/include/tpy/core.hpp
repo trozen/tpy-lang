@@ -1029,6 +1029,16 @@ void heap_release(T* p) {
 }
 
 /**
+ * A member of a temporary read as an lvalue, so an initialization from it
+ * copies instead of moving out of the xvalue: the temporary's finalizer
+ * still reads the member. Valid until the end of the full-expression.
+ */
+template <typename T>
+constexpr const std::remove_reference_t<T>& as_lvalue(T&& x) noexcept {
+    return x;
+}
+
+/**
  * Replace the heap-stored T at `p` with `value`, returning the live slot.
  *
  * Concrete T: same allocation, destroy + placement-new. Abstract @dynamic

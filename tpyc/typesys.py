@@ -9961,6 +9961,11 @@ class TypeRegistry:
         for _, rec in self.iter_mro_entries(record, reverse=reverse):
             yield rec
 
+    def has_finalizer(self, record: RecordInfo) -> bool:
+        """Whether `record` or an ancestor of it defines `__del__`."""
+        return record.has_del or any(
+            anc.has_del for anc in self.iter_ancestor_records(record))
+
     def iter_dynamic_protocols(
         self, record: RecordInfo,
     ) -> Iterator[tuple['NominalType', 'ProtocolInfo']]:

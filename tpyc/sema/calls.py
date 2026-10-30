@@ -4144,7 +4144,12 @@ class CallAnalyzer:
                     and i not in fi.direct_mutated_params and not reached):
                 continue
             self._demote_views_at_mutable_arg(param, arg)
-            if not isinstance(arg, TpyName):
+            if (not isinstance(arg, TpyName)
+                    or unwrap_optional_own(unwrap_readonly(param.type))
+                    is not None):
+                # An `Own` parameter takes a copy of a borrowed container
+                # (a move never happens while it is borrowed): the callee
+                # cannot reach the caller's container.
                 continue
             bt = self.ctx.func.borrow_tracker
             storage = bt.effective_storage(arg.name)

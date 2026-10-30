@@ -109,7 +109,7 @@ from ...modules.type_resolution import is_native_iterable
 from ...sema.call_lends import Retention
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
-from ...sema.source_records import Disposition, verdict
+from ...sema.source_records import Disposition, moves_place, verdict
 from ..param_contract import arg_retention, const_ref_slot, param_const, protocol_slot
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
@@ -818,6 +818,10 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         return (note_detail("container_lit.elem.opt_btuple_source")
                 if note else False)
     fam = _container_lit_slot_family(slot, analyzer)
+    if moves_place(analyzer.ctx, e) and bare_tuple(slot) is None:
+        # A place its owning sink moves out of its root (`moved_places`):
+        # the element lowering moves it in, whatever its family.
+        return True
     if fam is None:  # value scalar / owned str (the original S5 slice)
         if (not threaded and _owned_str_slot(slot, analyzer)
                 and not isinstance(e, TpyStrLiteral)):
