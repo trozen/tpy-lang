@@ -199,7 +199,9 @@ def make_from(q: P) -> tuple[Own[P], int32]:
 
 
 # a @nocopy sibling element: the second unpack sees the first one's write
-def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:
+def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:  # tpyc: warning(/element 0 of tuple param 't' is never consumed \(unpacked into 'c'/)
+    # true: the second unpack is `t`'s last use, so `c` takes element 0 over
+    # and drops it
     a, b = t
     if True:
         a.bump()

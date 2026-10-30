@@ -399,6 +399,24 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
     return result
 
 
+def _note_binding_alias(result: ScanResult, name: str, value: TpyExpr, *,
+                        element: bool) -> None:
+    """Record the first binding of `name` to `value` (`element`: to an
+    element of it) in the alias maps: a plain name bound whole is a name
+    alias; a path off a name -- an element of a value one more subscript
+    step -- roots a chain alias."""
+    if not element and isinstance(value, TpyName):
+        if value.name != name:
+            result.alias_sources[name] = value.name
+        return
+    # A call result is the borrow tracker's, not this alias map's; a
+    # `@property` hop names storage its receiver owns, whether that hop
+    # outlives it being each reader's question.
+    root = path_root(value, MEMBER_PATH)
+    if root is not None and root != name:
+        result.chain_alias_sources[name] = root
+
+
 def liveness_alias_sources(result: ScanResult) -> dict[str, str]:
     """Alias map for last-use liveness: name-to-name aliases plus
     field/subscript-chain root aliases (both reference the source's storage,
@@ -610,18 +628,9 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     result.lvalue_reassigned.add(stmt.name)
             else:
                 _declare(stmt.name, stmt.loc, declared, result)
-                if (stmt.init is not None
-                        and isinstance(stmt.init, TpyName)
-                        and stmt.init.name != stmt.name):
-                    result.alias_sources[stmt.name] = stmt.init.name
-                elif stmt.init is not None:
-                    # A call result is the borrow tracker's, not this alias
-                    # map's; a `@property` hop names storage its receiver
-                    # owns, whether that hop outlives it being each
-                    # reader's question.
-                    root = path_root(stmt.init, MEMBER_PATH)
-                    if root is not None and root != stmt.name:
-                        result.chain_alias_sources[stmt.name] = root
+                if stmt.init is not None:
+                    _note_binding_alias(result, stmt.name, stmt.init,
+                                        element=False)
         elif isinstance(stmt, TpyAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.reassigned.add(stmt.target.name)
@@ -639,6 +648,11 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     result.rvalue_reassigned.add(name)
                 else:
                     _declare(name, stmt.loc, declared, result)
+                    if not stmt.is_loop_head:
+                        # A target refers to its element of the value, as
+                        # `a = t[0]` does.
+                        _note_binding_alias(result, name, stmt.value,
+                                            element=True)
         elif isinstance(stmt, TpyAugAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.aug_assigned.add(stmt.target.name)

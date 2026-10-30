@@ -445,14 +445,35 @@ def _operands(t: Trace, i: int) -> list[tuple[Trace, int]]:
     return ([(arm, 0) for arm in t.arms] if t.is_pack else t.leaves(i))
 
 
-def _past_transparent(t: Trace, i: int, policy: CallPolicy) -> int:
+def _past_transparent(t: Trace, i: int, policy: CallPolicy | None) -> int:
     """The first position at or past `i` that is no coercion and no walrus
-    or await step `policy` climbs: what the value at `i` IS."""
+    or await step `policy` climbs (every one, without a policy): what the
+    value at `i` IS."""
     while i < len(t.steps) and (
             t.steps[i].kind is StepKind.COERCE
             or (t.steps[i].kind in (StepKind.WALRUS, StepKind.AWAIT)
-                and policy.at_step(t.steps[i]))):
+                and (policy is None or policy.at_step(t.steps[i])))):
         i += 1
+    return i
+
+
+def handle_position(t: Trace, i: int, type_of: ExprTypeOf,
+                    policy: CallPolicy | None = None) -> int:
+    """What the handle at position `i` of `t` IS: past its coercions, the
+    walrus / await steps `policy` climbs, the tuple-element reads it is an
+    element of, and the element reads that took it out of another handle's
+    referent (what it points at is reached through that handle; a handle
+    FIELD of a referent is that referent's own storage, whose writes do not
+    mutate what holds it). `len(t.steps)` when
+    it is the trace's root -- its own handle (`s` for `s[0]`, a `*args`
+    pack's element `xs[0]` for `xs[0][0]`), whose referent was handed in
+    with the root's name."""
+    i = _past_transparent(t, i, policy)
+    while i < len(t.steps) and (
+            tuple_subscript_index(t.steps[i].node, type_of) is not None
+            or (t.steps[i].kind is StepKind.INDEX
+                and is_indirection_type(type_of(t.node_at(i + 1))))):
+        i = _past_transparent(t, i + 1, policy)
     return i
 
 
@@ -549,10 +570,7 @@ class _Roots:
         that call lends (a view over a dict's values points into the
         dict's elements), the policy's answer."""
         assert self.type_of is not None
-        i = _past_transparent(t, i, self.policy)
-        while i < len(t.steps) and tuple_subscript_index(
-                t.steps[i].node, self.type_of) is not None:
-            i = _past_transparent(t, i + 1, self.policy)
+        i = handle_position(t, i, self.type_of, self.policy)
         if i == len(t.steps):
             if isinstance(t.end, TpyName):
                 self._add(t.end.name, via_handle=True, node=t.end)

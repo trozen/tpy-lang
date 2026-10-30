@@ -84,7 +84,8 @@ from ..value_category import (
 from . import own_copy
 from .storage_walk import (
     qualifier_kind,
-    Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at, operand_keys, storage_roots,
+    Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at,
+    handle_position, operand_keys, storage_roots,
 )
 from ..storage_trace import Step, StepKind, trace
 from .type_ops import param_type_can_lend, signature_may_return_borrow
@@ -190,8 +191,12 @@ def path_holds_root(registry: 'TypeRegistry', expr: TpyExpr,
                     type_of: 'ExprTypeOf') -> bool:
     """`member_holds_root` along the place `expr` spells, each hop asked of
     the type its owner has THERE (a narrowed root included): every field
-    and getter hop holds, and no element is read out of a handle."""
-    for step in trace(expr).steps:
+    and getter hop holds, and no element is read out of a handle a member
+    holds. An element of the root handle itself (`s[0]`, a `*args` pack's
+    `xs[0][0]`) is what was handed in, so the effect travels with the root's
+    name (`handle_position`, as the write climb asks it)."""
+    t = trace(expr)
+    for i, step in enumerate(t.steps):
         if step.kind is StepKind.FIELD:
             owner = (step.node.unbound_self_parent_type
                      or type_of(step.node.obj))
@@ -202,7 +207,8 @@ def path_holds_root(registry: 'TypeRegistry', expr: TpyExpr,
                                      step.node.method):
                 return False
         elif (step.kind is StepKind.INDEX
-              and is_indirection_type(type_of(step.node.obj))):
+              and is_indirection_type(type_of(step.node.obj))
+              and handle_position(t, i + 1, type_of) != len(t.steps)):
             return False
     return True
 

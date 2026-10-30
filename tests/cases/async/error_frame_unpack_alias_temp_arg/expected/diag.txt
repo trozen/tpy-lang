@@ -1,1 +1,2 @@
+main.py:18: warning: Result borrows from temporary argument 'm'; the temporary is destroyed at end-of-statement
 main.py:18: error: in function 'co': this construct is not yet supported by C++ code generation (res.unpack)

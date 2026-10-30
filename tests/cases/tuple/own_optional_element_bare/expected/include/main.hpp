@@ -53,7 +53,7 @@ std::tuple<P, int32_t> make_named(int32_t x);
 std::tuple<P, int32_t> make_finally(int32_t x);
 // def make_from(q: P) -> tuple[Own[P], int32]:
 std::tuple<P, int32_t> make_from(const P& q);
-// def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:
+// def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:  # tpyc: warning(/element 0 of tuple param 't' is never consumed \(unpacked into 'c'/)
 void with_nocopy(std::tuple<P, Q>&& t);
 // def nonescaping(t: tuple[Own[P], int32]) -> int32:  # tpyc: warning(/owned tuple param 't' is never consumed/)
 int32_t nonescaping(std::tuple<P, int32_t>&& t);

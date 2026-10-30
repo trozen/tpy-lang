@@ -44,7 +44,9 @@ from ..value_category import is_rvalue_source, peel_coerce
 from .call_lends import borrow_declared_sources
 from .alias_rebind import stamp_capture_rebind
 from .scope_tracker import register_binder, unregister_binder
-from .context import record_stmt_borrow_binding, register_capture_alias_borrow
+from .context import (binding_source,
+                      record_stmt_borrow_binding,
+                      register_capture_alias_borrow)
 from ..symbol_binding import SymbolKind
 from .receiver_calls import is_invalidating_method
 
@@ -474,7 +476,8 @@ class MatchAnalyzer:
                     if not node.bind_by_value:
                         record_stmt_borrow_binding(
                             self.ctx, node.name,
-                            pattern_bindings.get(node.name), stmt.subject)
+                            pattern_bindings.get(node.name),
+                            binding_source(self.stmts, stmt.subject))
                         self.ctx.func.nonstmt_borrow_bindings.add(node.name)
                         register_capture_alias_borrow(
                             self.ctx, node.name, stmt.subject)

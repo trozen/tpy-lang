@@ -1,0 +1,28 @@
+move_after 2 2
+dead_unpack 2 2
+dead_unpack eat 2
+move_after_param 2 4
+move_after_rebound 2 2
+move_after_branch 2 4
+method 3 1
+ctor 3 3
+generator [2, 2]
+async 3 3
+closure 3 3
+match 3
+error_return 3
+ret_param 3
+ret_param_data 4
+swap 3 2 2
+reverse 4 4
+value ab 7 cd 10 xy 11
+value_loop pqq q
+optional 3
+own 3
+readonly 2 8
+box_rc 3 3
+span 7
+span_param 17
+varargs 102
+varargs_span 1002 1001
+ptr_pack 2

@@ -305,10 +305,10 @@ void with_nocopy(std::tuple<std::optional<P>, Q>&& t) {
     if ((a != nullptr)) {
         a->bump();
     }
-    P* c = ::tpy::optional_to_ptr(std::get<0>(t));
-    Q& d = std::get<1>(t);
-    if ((c != nullptr)) {
-        std::cout << "with_nocopy" << " " << c->x << " " << d.x << "\n" << ::tpy::check_signals;
+    std::optional<P> c = std::move(std::get<0>(t));
+    Q d = std::move(std::get<1>(t));
+    if ((c.has_value())) {
+        std::cout << "with_nocopy" << " " << (*c).x << " " << d.x << "\n" << ::tpy::check_signals;
     }
 }
 

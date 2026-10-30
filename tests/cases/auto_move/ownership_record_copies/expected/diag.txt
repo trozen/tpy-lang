@@ -30,4 +30,3 @@ main.py:278: warning: copies list[int32] into owned storage; use copy() to make 
 main.py:321: warning: copies A into field; use copy() to make this explicit
 main.py:330: warning: copies A into field; use copy() to make this explicit
 main.py:337: warning: copies A into field; use copy() to make this explicit
-main.py:362: warning: Passing borrowed container 'h' to non-readonly parameter 'h' (function may invalidate references)

@@ -156,8 +156,9 @@ def main() -> None:
     s, n = sp(M())  # tpyc: ok
     print("str_elem", s, n)
 
-    # sync alias: both targets alias the one temp, which lives to block end
-    r1, r2, rn = pick(M())  # tpyc: ok
+    # sync alias: both targets alias the one temp, which lives to block end;
+    # warned as `t = pick(M())` is (BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling)
+    r1, r2, rn = pick(M())  # tpyc: warning(/Result borrows from temporary argument 'm'/)
     r1.v = 9
     print("alias", r2.v, rn)
 

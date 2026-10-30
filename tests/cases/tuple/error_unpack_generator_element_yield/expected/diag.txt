@@ -1,0 +1,1 @@
+main.py:24: error: Cannot yield 'a': it borrows an element of a generator / iterator, valid only for the current iteration step (the producer reuses its frame slot on the next step). Copy it out first (`a.clone()` for a @nocopy type, otherwise a plain copy).

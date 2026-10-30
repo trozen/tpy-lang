@@ -16,7 +16,7 @@ and no longer constrains moves of the new h (detach-on-reassign).
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import NamedTuple
+from typing import Iterable, NamedTuple
 
 from .holders import Holder, IterHolder
 from .identity_map import IdentityMap, IdentitySet
@@ -479,6 +479,24 @@ def _analyze_stmts_backward(
         live |= leave
 
 
+def _hide_new_aliases(names: Iterable[str | None], value: TpyExpr,
+                      live: set[Holder], w: _Walk) -> set[Holder]:
+    """Take out of `live` the names a binding statement binds as aliases of
+    the name its value reads (the alias maps' fact: `x = y` whole, `a, k = t`
+    an element each) and return them for the caller to put back once the
+    value is read. An alias does not exist until the statement that creates
+    it runs, so it cannot keep this read from being the source's last use.
+    A loop head's targets are no aliases (none recorded)."""
+    if not (w.mark and isinstance(value, TpyName)):
+        return set()
+    aliases = w.source_aliases.get(value.name, set())
+    hidden: set[Holder] = {n for n in names
+                           if n is not None and n != value.name
+                           and n in live and n in aliases}
+    live -= hidden
+    return hidden
+
+
 def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
     """Analyze a single statement for last uses."""
 
@@ -499,18 +517,9 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
             stmt.live_names_after = frozenset(live)
         # Reads from the init expression
         if stmt.init:
-            # For alias creation (alias = source), temporarily hide the alias
-            # from the live set so it doesn't suppress the source's last-use.
-            # The alias doesn't exist yet at this point in execution -- it's
-            # being created by this statement -- so it can't constrain moves.
-            hide_alias = (w.mark and isinstance(stmt.init, TpyName)
-                          and stmt.name != stmt.init.name
-                          and stmt.name in live)
-            if hide_alias:
-                live.discard(stmt.name)
+            hidden = _hide_new_aliases([stmt.name], stmt.init, live, w)
             _process_reads(stmt.init, live, w)
-            if hide_alias:
-                live.add(stmt.name)
+            live |= hidden
         # Kill: variable is (re)defined here -- unless this statement's own
         # init reads it (`g = g.next()`), where the transfer is
         # (live_after - {g}) | {g} and g stays live entering the statement.
@@ -519,7 +528,9 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
     elif isinstance(stmt, TpyTupleUnpack):
         if w.mark:
             stmt.live_names_after = frozenset(live)
+        hidden = _hide_new_aliases(stmt.targets, stmt.value, live, w)
         _process_reads(stmt.value, live, w)
+        live |= hidden
         for name in stmt.targets:
             if name is not None:
                 _kill_unless_read(name, [stmt.value], live)

@@ -30,6 +30,8 @@ if TYPE_CHECKING:
                               WithExitCheck)
     from .scope_tracker import DeferredEscape
     from .slot_hint import SlotHint
+    from .statements import StatementAnalyzer
+    from .expressions import ExpressionAnalyzer
 
 from ..typesys import (
     is_value_type_bound,
@@ -54,7 +56,7 @@ from ..type_def_registry import (TypeDef, enum_info_of, get_type_def,
                                  int_traits_of, is_borrowing_view_type)
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
-    TpyCall, TpyCoerce, TpyName, TpyFieldAccess,
+    TpyCall, TpyCoerce, TpyName, TpyFieldAccess, TpyTupleLiteral,
     TpyNestedDef,
     TpyGeneratorExpression, TpyForEach, TpyWhile,
     TpyComprehensionGenerator,
@@ -62,7 +64,8 @@ from ..parse import (
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
-    CallOperands, ExprTypeOf, is_rvalue_source, peel_coerce,
+    CallOperands, ExprTypeOf, binds_owned_value, is_rvalue_source,
+    peel_coerce,
 )
 from ..prescan import (
     FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
@@ -1017,11 +1020,12 @@ def ephemeral_borrow_root(ephemeral_vars: 'dict[str, EphemeralKind]',
 
 
 def register_binding_borrow(ctx: 'SemanticContext', name: Holder,
-                            init_expr: TpyExpr) -> None:
-    """Register `name` as a borrower of `init_expr`'s storage root, with the
-    kind taken from the init shape (see `_register_source_borrow`). Shared
-    by the VarDecl and walrus binding paths."""
-    _register_source_borrow(ctx, name, init_expr, kind=None)
+                            source: 'BindingSource') -> None:
+    """Register `name` as a borrower of the storage its binding `source`
+    reads, with the kind taken from the source's shape (see
+    `_register_source_borrow`). Shared by every binding of a name."""
+    _register_source_borrow(ctx, name, source.value, kind=None,
+                            binding=source)
 
 
 def register_capture_alias_borrow(ctx: 'SemanticContext', name: str,
@@ -1046,8 +1050,12 @@ def register_capture_alias_borrow(ctx: 'SemanticContext', name: str,
 
 def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
                             source_expr: TpyExpr,
-                            kind: BorrowKind | None) -> None:
-    """Register `name` as a borrower of `source_expr`'s storage root.
+                            kind: BorrowKind | None, *,
+                            binding: 'BindingSource | None' = None) -> None:
+    """Register `name` as a borrower of `source_expr`'s storage root. A
+    `binding` of an element of `source_expr` (its `path`) borrows as that
+    element's read `t[i]` does: an ELEMENT loan, naming the element off a
+    tuple place.
 
     `kind=None` takes the kind from the init shape (ELEMENT / FIELD /
     ALIAS); a caller that passes a kind forces it, because it wants the
@@ -1070,6 +1078,10 @@ def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
     bt = ctx.func.borrow_tracker
     registry = ctx.registry
     type_of = ctx.get_expr_type
+    path = binding.path if binding is not None else ()
+    forced = kind is not None
+    if path:
+        kind = kind or BorrowKind.ELEMENT
 
     def holds(key: StorageKey, node: TpyExpr) -> bool | None:
         return (path_holds_root(registry, node, type_of) if key.members
@@ -1119,18 +1131,25 @@ def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
         return
     if lk.key.as_name() == name:
         return
-    if kind is not None:
+    if forced:
+        assert kind is not None
         bt.add_borrow(lk.key, name, kind, holds_root=holds(lk.key, lk.node))
         return
-    init_kind = SHAPE_BORROW_KIND[lk.shape]
+    init_kind = kind or SHAPE_BORROW_KIND[lk.shape]
     # A tuple's elements are distinct objects, owned or borrowed one by one,
-    # so the loan names the element the binding points into.
-    obj_t = (ctx.get_expr_type(lk.index.obj) if lk.index is not None
-             else None)
-    elem_index = (element_index_key(lk.index.index)
-                  if obj_t is not None and isinstance(
-                      unwrap_readonly(unwrap_ref_type(obj_t)), TupleType)
-                  else None)
+    # so the loan names the element the binding points into: element
+    # `path[0]` of a tuple place; an element of a container's element names
+    # none of the key's.
+    if path:
+        elem_index = (("lit", path[0]) if lk.shape is not KeyShape.ELEMENT
+                      else None)
+    else:
+        obj_t = (ctx.get_expr_type(lk.index.obj) if lk.index is not None
+                 else None)
+        elem_index = (element_index_key(lk.index.index)
+                      if obj_t is not None and isinstance(
+                          unwrap_readonly(unwrap_ref_type(obj_t)), TupleType)
+                      else None)
     bt.add_borrow(lk.key, name, init_kind, elem_index=elem_index,
                   holds_root=holds(lk.key, lk.node))
 
@@ -1177,32 +1196,28 @@ def binds_value_copy(var_type: 'TpyType | None') -> bool:
 
 def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
                                var_type: 'TpyType | None',
-                               init_expr: TpyExpr) -> None:
-    """Record a statement-level (var-decl / assign / walrus) borrow binding
-    of a non-value local, with its const verdict. Codegen's branch pre-decl
-    reads the accumulated fact to pick the pointer (alias) form for
-    borrow-only names -- materialized here so the form discriminator is
-    defined by sema, not re-derived by a codegen body walk."""
+                               source: 'BindingSource') -> None:
+    """Record a statement-level (var-decl / assign / walrus / unpack target /
+    match capture) borrow binding of a non-value local, with its const
+    verdict (`source.readonly`). Codegen's branch pre-decl reads the
+    accumulated fact to pick the pointer (alias) form for borrow-only names
+    -- materialized here so the form discriminator is defined by sema, not
+    re-derived by a codegen body walk."""
     if var_type is None or binds_value_copy(var_type):
         return
-    inner = init_expr
-    while isinstance(inner, TpyCoerce):
-        inner = inner.expr
     # Binding a second name to a record hands out a second write path to its
     # fields. Whether the alias is ever written through is a whole-body
     # question this bind cannot answer, so a str/bytes view borrowed out of
     # anything under the aliased storage falls back to an owned copy.
-    alias_key = path_key(inner)
-    if alias_key is not None:
-        ctx.mark_all_view_borrowers_mutated(alias_key)
-    # A call's result is readonly exactly when its declared return says so,
-    # which is the type sema gave the expression.
-    const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
-    record_borrow_binding(ctx, name, const=const, at=init_expr)
+    if source.alias_key is not None:
+        ctx.mark_all_view_borrowers_mutated(source.alias_key)
+    record_borrow_binding(ctx, name, const=source.readonly, at=source.value,
+                          source_path=source.path)
 
 
 def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
-                          const: bool, at: 'TpyExpr | TpyStmt | None') -> None:
+                          const: bool, at: 'TpyExpr | TpyStmt | None',
+                          source_path: 'ElemPath' = ()) -> None:
     """Record a borrow binding of a non-value local whose const verdict the
     caller already knows.
 
@@ -1212,10 +1227,105 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
     """
     prev = ctx.func.stmt_borrow_decls.get(name, False)
     ctx.func.stmt_borrow_decls[name] = prev or const
-    note_nonowning_bind(ctx, name, at)
+    note_nonowning_bind(ctx, name, at, source_path=source_path)
 
 
 ElemPath = tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class BindingSource:
+    """What a binding of a name reads -- element `path` of `value` (`()`:
+    the value whole) -- with the verdicts that depend on the source alone,
+    decided once where the source is built (`binding_source`,
+    `BindingSource.element`), so the binder reads fields instead of telling
+    sources apart. An element binding records what its element read
+    `x = t[i]` would, except that a `handover` element -- one the value
+    hands over (`unpack_target_records`) -- is the binding's own.
+
+    `lvalue`: the source names existing storage. `owned`: the source
+    creates the object the binding then owns (`binds_owned_value`; a
+    handed-over element). `readonly`: what the binding reads is readonly
+    (a call's result exactly when its declared return says so; an element
+    of a readonly value, or a readonly element). `record_ctor`: a record
+    constructor call. `name`: the value is a whole name. `non_null`: a
+    `Ptr` value proven non-null. `temp_init`: the value names the temp of
+    a parser-desugared literal unpack (`a, k = (x, y)` binds
+    `a = __unpack_N_0`), initialized from this element. The defaults are a
+    place's, which is all a loans-only reader (a tuple leaf's loans) looks
+    at."""
+    value: TpyExpr
+    path: ElemPath = ()
+    handover: bool = False
+    lvalue: bool = True
+    owned: bool = False
+    readonly: bool = False
+    record_ctor: bool = False
+    name: 'TpyName | None' = None
+    non_null: bool = False
+    temp_init: 'TpyExpr | None' = None
+
+    @property
+    def reads(self) -> TpyExpr:
+        """What the binding reads: the element a desugared unpack's temp
+        holds, whatever coercion wraps the temp's name, else the value."""
+        return self.temp_init if self.temp_init is not None else self.value
+
+    @classmethod
+    def element(cls, value: TpyExpr, path: ElemPath, *, handover: bool,
+                lvalue: bool, readonly: bool) -> 'BindingSource':
+        """The source of a binding of element `path` of `value`: a place
+        unless the value hands it over or is no place itself (an element
+        of a call's result that lends none of it)."""
+        return cls(value, path, handover, lvalue=lvalue and not handover,
+                   owned=handover, readonly=readonly)
+
+    @property
+    def alias_key(self) -> 'StorageKey | None':
+        """The keyed place the binding becomes a second name of; an element
+        of a value is a subscript hop, which keys no path."""
+        return None if self.path else path_key(peel_coerce(self.value))
+
+
+def binding_source(an: 'StatementAnalyzer | ExpressionAnalyzer',
+                   value: TpyExpr, *,
+                   unpack_target: bool = False) -> BindingSource:
+    """The source of a binding of `value` whole, its verdicts decided here
+    once (`BindingSource`); `unpack_target`: the binding is a desugared
+    literal unpack's bind of its temp (`TpyVarDecl.unpack_target`)."""
+    ctx = an.ctx
+    lvalue = an.compat.is_lvalue(value)
+    temp = peel_coerce(value)
+    temp_decl = (ctx.func.var_decl_by_name.get(temp.name)
+                 if unpack_target and isinstance(temp, TpyName) else None)
+    return BindingSource(
+        value,
+        lvalue=lvalue,
+        owned=not lvalue and binds_owned_value(ctx, value),
+        readonly=reads_readonly(ctx, value),
+        record_ctor=(isinstance(value, TpyCall)
+                     and isinstance(value.func, TpyName)
+                     and ctx.registry.get_record(value.func.name) is not None),
+        name=value if isinstance(value, TpyName) else None,
+        non_null=expr_yields_non_null_ptr(value, ctx.func.non_null_ptr_vars),
+        temp_init=temp_decl.init if temp_decl is not None else None)
+
+
+def literal_element_source(source: BindingSource) -> BindingSource:
+    """`source` with the tuple-literal hops of its element path taken
+    (through the coercions around each literal): an element of a literal
+    is that element's own value, as written (a place's source, as a
+    loans-only reader reads it)."""
+    value, path = source.value, source.path
+    while (path and isinstance(lit := peel_coerce(value), TpyTupleLiteral)
+           and path[0] < len(lit.elements)):
+        value, path = lit.elements[path[0]], path[1:]
+    return source if path == source.path else BindingSource(value, path)
+
+
+def reads_readonly(ctx: 'SemanticContext', value: TpyExpr) -> bool:
+    """Whether `value` reads as readonly: the type sema gave it says so."""
+    return isinstance(ctx.get_expr_type(peel_coerce(value)), ReadonlyType)
 
 
 def paths_overlap(path: ElemPath, paths: Iterable[ElemPath]) -> bool:

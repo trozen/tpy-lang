@@ -1,0 +1,2 @@
+main.py:21: warning: 'a' will not keep the object it was given -- 't' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:20: error: in function 'escape_local_unpack': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.branch_slot_type)

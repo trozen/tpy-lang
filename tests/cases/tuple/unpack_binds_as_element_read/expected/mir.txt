@@ -1,0 +1,48 @@
+main::__tpy_init: uncovered (module initialization)
+main::size@22:0: covered (storage: no_proof_required), summary: known
+main::opt_size@26:0: covered (storage: no_proof_required), summary: known
+main::eat@32:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mk@36:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::keep@40:0: covered (storage: no_proof_required), summary: known
+main::pick@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::move_after_unpack@56:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::move_after_dead_unpack@65:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::move_after_unpack_param@72:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::move_after_rebound_unpack@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::move_after_branch_unpack@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen_move_unpack@125:0: uncovered (unsupported hoisted value)
+main::async_write@133:0: uncovered (async body)
+main::closure_reads@141:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_match@152:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::in_error_return@164:0: uncovered (error-return body)
+main::ret_param_unpack@174:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::ret_param_data_unpack@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::swap_records@185:0: certified, summary: opaque (summary output effect)
+main::reverse_liveness@194:0: uncovered (tuple borrow needs parameter capture), summary: opaque (tuple borrow needs parameter capture)
+main::value_targets@209:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::optional_elem@228:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_elem@236:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::readonly_elem@243:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::box_rc_elem@249:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::span_slice_unpack@273:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::span_param_unpack@281:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::varargs_unpack@287:0: uncovered (unsupported native container element)
+main::varargs_span_unpack@295:0: uncovered (container holds a borrow)
+main::varargs_span_decl@300:0: uncovered (container holds a borrow)
+main::varargs_span_caller@307:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::varargs_span_decl_caller@312:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ptr_pack_direct@336:0: uncovered (container holds a borrow)
+main::ptr_pack_unpack@340:0: uncovered (container holds a borrow)
+main::grow_while_borrowed@346:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::temp_arg@355:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@360:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.write_through@107:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Gauge.bump@325:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::M.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@103:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::C.__init__@118:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Cell.__init__@262:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@269:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Gauge.__init__@322:4: covered (storage: no_proof_required), summary: known
+main::Dial.__init__@332:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

@@ -2017,6 +2017,12 @@ t = (p, True)     # std::tuple<Point*, bool>, p.x mutation visible through t
 pt, found = find(p)  # pt aliases p, found is bool
 pt = other           # rebinds the NAME, as `pt = p; pt = other` does: a
                      # rebound target is a pointer local, so p is unchanged
+# Each statement unpack target binds exactly as its element read does
+# (`a, k = t` is `a = t[0]; k = t[1]`): the same loan, provenance and
+# liveness. A later `eat(t)` into `Own[...]` copies with the warning while
+# `a` is still read (not a silent move out from under `a`); `a` off a
+# parameter tuple returns by reference; growing the container it came from
+# warns "Mutation of ... while borrowed".
 
 # A tuple-LITERAL source aliases reference lvalue elements too (CPython
 # parity): `a, b = (items[0], items[1])` lowers to per-element single-assigns

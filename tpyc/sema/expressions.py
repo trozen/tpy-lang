@@ -82,7 +82,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
@@ -4989,31 +4989,15 @@ class ExpressionAnalyzer:
                                               expr.value)
         # The declaration's binding record (`p = v`), the one every binding
         # of a name takes. Local import: statements imports this module.
-        from .statements import (record_name_binding,
-                                 update_ephemeral_alias_fact)
-        self.ctx.func.borrow_tracker.rebind_borrower(name, expr.value)
-        record_name_binding(self, name, resolved, expr.value,
-                            fresh=not rebinds, init_type=value_type)
-        self.ctx.func.definitely_assigned.add(name)
+        from .statements import record_name_binding
+        # Declared first: the binder's escape check reads the target's depth.
         if name not in self.ctx.func.var_scope_depth:
             self.ctx.declare_local(name, target_scope.depth)
-
-        # Mirror the VarDecl tuple facts: a walrus-bound pointer-repr tuple
-        # carries the same owns-fresh hazard as `t = (1, Box(5))`.
-        # Peel Own for the tuple bookkeeping: a walrus bound from an
-        # owning-tuple call carries the same facts as the VarDecl binding,
-        # whose inferred local type is already Own-stripped.
-        facts_type = unwrap_own(unwrap_readonly(resolved))
-        self.compat.update_tuple_member_local_facts(name, facts_type,
-                                                    expr.value)
-        update_ephemeral_alias_fact(self.ctx, name, resolved, expr.value)
-        if self.compat.settles_body_local(name, module=True):
-            # The binding is an owning sink of what it owns
-            # (`SinkRead.binds`).
-            self.compat.register_sink(expr.value, unwrap_ref_type(resolved),
-                                      TupleSink.LOCAL, per_leaf=True,
-                                      binds=expr)
-
+        record_name_binding(self, name, resolved,
+                            binding_source(self, expr.value),
+                            fresh=not rebinds, init_type=value_type,
+                            node=expr, statement=False)
+        self.ctx.func.definitely_assigned.add(name)
         return result_type
 
     def _analyze_global_walrus(

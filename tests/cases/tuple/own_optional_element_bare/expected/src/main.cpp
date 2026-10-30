@@ -327,7 +327,9 @@ std::tuple<P, int32_t> make_from(const P& q) {
 }
 
 // # a @nocopy sibling element: the second unpack sees the first one's write
-// def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:
+// def with_nocopy(t: tuple[Own[P], Own[Q]]) -> None:  # tpyc: warning(/element 0 of tuple param 't' is never consumed \(unpacked into 'c'/)
+//     # true: the second unpack is `t`'s last use, so `c` takes element 0 over
+//     # and drops it
 //     a, b = t
 //     if True:
 //         a.bump()
@@ -340,8 +342,8 @@ void with_nocopy(std::tuple<P, Q>&& t) {
     if (true) {
         a.bump();
     }
-    P& c = std::get<0>(t);
-    Q& d = std::get<1>(t);
+    P c = std::move(std::get<0>(t));
+    Q d = std::move(std::get<1>(t));
     if (true) {
         std::cout << "with_nocopy" << " " << c.x << " " << d.x << "\n" << ::tpy::check_signals;
     }

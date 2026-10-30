@@ -7,6 +7,7 @@ Statement analysis including variable declarations, assignments, and control flo
 from __future__ import annotations
 import enum
 from contextlib import contextmanager
+import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
@@ -93,7 +94,8 @@ from .call_lends import (
     path_holds_root,
 )
 from .context import (
-    CallOperands, OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
+    BindingSource, CallOperands, OwnSlot, binding_source, literal_element_source, reads_readonly, PendingLocal,
+    LoopClauseEdges,
     record_borrow_binding, record_stmt_borrow_binding,
     holds_generator_object, holds_frame_object, note_owned_local,
     note_nonowning_bind, ConsumingLoop, FinallyCapture, SinkCopy, UnpackClaim,
@@ -149,7 +151,7 @@ from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, is_reference_local,
                            stamp_bind_kind, stamp_unpack_rebinds,
-                           unpack_target_records)
+                           UnpackTarget, unpack_target_records)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
@@ -270,7 +272,8 @@ class BindingOwns(enum.Enum):
 
 
 def note_binding_loans(ctx: SemanticContext, name: str,
-                       var_type: TpyType | None, init: TpyExpr) -> None:
+                       var_type: TpyType | None,
+                       source: BindingSource) -> None:
     """What a binding of `name` to `init` borrows, and the copy a value
     call's binding states, alike for a declaration and a walrus.
 
@@ -285,7 +288,8 @@ def note_binding_loans(ctx: SemanticContext, name: str,
     borrow_storage = (None if isinstance(unwrap_readonly(var_type),
                                          PendingViewType)
                       else var_type)
-    bare_init = init.expr if isinstance(init, TpyCoerce) else init
+    # An element read off a call holds a copy as much as the whole result.
+    bare_init = peel_coerce(source.value)
     if (borrow_storage is not None and borrow_storage.is_value_type()
             and type_has_type_param(borrow_storage)):
         # An open `T` local of a generic body: whether binding a fresh
@@ -293,7 +297,7 @@ def note_binding_loans(ctx: SemanticContext, name: str,
         # the binding states the hedged copy contract.
         warn_value_call_binding(ctx, bare_init, f"local '{name}'")
     if var_type is not None:
-        register_binding_loans(ctx, name, init, var_type)
+        register_binding_loans(ctx, name, source, var_type)
     if (borrow_storage is not None
             and (not borrow_storage.is_value_type()
                  or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
@@ -301,30 +305,84 @@ def note_binding_loans(ctx: SemanticContext, name: str,
 
 
 def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
-                        name: str, var_type: TpyType | None, init: TpyExpr,
-                        *, fresh: bool,
-                        init_type: TpyType | None) -> BindingOwns:
-    """The binding record of `name = init` (`fresh`: `name` binds for the
-    first time), alike for every binding of a name -- a declaration, an
-    assignment, a walrus: hoist eligibility (`rvalue_vars`), the
-    move-through of a name source at its last use, the ownership record
-    (`record_binding_ownership`), the fresh-ctor fact, the loans and the
-    provenance."""
-    owns = _classify_name_binding(an, name, var_type, init, fresh=fresh,
+                        name: str, var_type: TpyType | None,
+                        source: BindingSource, *, fresh: bool,
+                        init_type: TpyType | None,
+                        node: TpyExpr | TpyStmt,
+                        statement: bool = True) -> BindingOwns:
+    """THE binder: the record of binding `name` to `source` (`fresh`: the
+    first binding of `name`), alike for a declaration, an assignment, a
+    walrus and a statement unpack target (an element `source.path`); `node`
+    is the binding's syntax. `statement` False (a walrus) binds storage of
+    its own, never the name's reassigned slot."""
+    ctx = an.ctx
+    value = source.value
+    # A `StrView` / `BytesView` local bound to a temporary dangles: the
+    # backing storage dies at end-of-statement. Rejected (an owned str/bytes
+    # copies; an inferred local would promote) before the loans are filed,
+    # by the field rule, asked of the element a desugared unpack target
+    # binds. Locals only: a module global outlives the function, and a
+    # Final[str] constant is constexpr/static view storage. Other borrowing
+    # views: TODO.md "Re-key the pre-existing view lifetime rules".
+    if (var_type is not None
+            and (is_str_view_type(var_type) or is_bytes_view_type(var_type))
+            and not ctx.is_top_level
+            and not (isinstance(node, TpyVarDecl) and node.is_final)
+            and view_slot_source_is_temporary(
+                ctx, unwrap_qualifiers(var_type), source.reads)):
+        raise ctx.error(
+            temporary_view_bind_message(var_type, f"'{name}'", name), node)
+    # The tuple-member hazards are the bound value's (an element of a value
+    # clears them, as any other binding does), set before the sink reads
+    # them.
+    an.compat.update_tuple_member_local_facts(
+        name, unwrap_own(var_type) if var_type is not None else None,
+        None if source.path else value)
+    # A binding that owns what it binds is an owning sink of it
+    # (`SinkRead.binds`); an element binding's is its statement's claim on
+    # the whole value (`TupleSink.UNPACK`), as a sink names one bound name.
+    if (var_type is not None and not source.path
+            and an.compat.settles_body_local(name, module=True)):
+        an.compat.register_sink(value, unwrap_ref_type(var_type),
+                                TupleSink.LOCAL, per_leaf=True, binds=node)
+    # Reassignment revives a consumed variable.
+    ctx.func.consumed_vars.discard(name)
+    update_ephemeral_alias_fact(ctx, name, var_type,
+                                None if source.handover else value)
+    if var_type is not None and not source.handover:
+        _mark_bound_loop_var_sources(ctx, name, var_type, value)
+    # Reassignment breaks aliases in both directions: the views pinned to
+    # the old value dangle, and the old binding's loans go (its borrowers
+    # re-pointed upstream, `rebind_borrower`).
+    _handle_pinned_view_rebind(ctx, name, node)
+    ctx.func.borrow_tracker.rebind_borrower(
+        name, value if not source.path else None)
+    # A walrus never rebinds a reference local (refused), and a later loop
+    # head of its name declares a C++ variable of its own: no shared slot.
+    if var_type is not None and statement and (
+            not fresh or name in ctx.func.current_reassigned_vars):
+        _mark_rebound_roots(an, var_type, source, rebind=not fresh)
+    owns = _classify_name_binding(an, name, var_type, source, fresh=fresh,
                                   init_type=init_type)
-    note_binding_loans(an.ctx, name, var_type, init)
-    note_binding_provenance(an, name, var_type, init)
+    note_binding_loans(ctx, name, var_type, source)
+    note_binding_provenance(an, name, var_type, source)
+    # A handed-over element is the binding's own: it refers to no storage
+    # that may not outlive it.
+    if (var_type is not None and not var_type.is_value_type()
+            and not source.handover and an.scopes is not None):
+        an.scopes.check_escape(name, value, node, element=bool(source.path))
     return owns
 
 
 def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
                            name: str, var_type: TpyType | None,
-                           init: TpyExpr, *, fresh: bool,
+                           init: BindingSource, *, fresh: bool,
                            init_type: TpyType | None) -> BindingOwns:
-    """`record_name_binding`'s ownership half."""
+    """`record_name_binding`'s ownership half. An element source is a place
+    unless its value hands the element over."""
     ctx = an.ctx
     ctx.func.own_consume_aliases.pop(name, None)
-    if not an.compat.is_lvalue(init):
+    if not init.lvalue:
         ctx.func.rvalue_vars.add(name)
         if not record_binding_ownership(ctx, name, var_type, init,
                                         lvalue=False):
@@ -338,10 +396,7 @@ def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
         # excludes the name here; a name that could hold a subclass value
         # on some path was never added. var_type == init_type excludes a
         # widening annotation.
-        if (name not in ctx.func.current_reassigned_vars
-                and isinstance(init, TpyCall)
-                and isinstance(init.func, TpyName)
-                and ctx.registry.get_record(init.func.name) is not None
+        if (name not in ctx.func.current_reassigned_vars and init.record_ctor
                 and init_type is not None and var_type == init_type):
             ctx.func.current_fresh_ctor_locals.add(name)
         else:
@@ -356,19 +411,21 @@ def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
                   and not is_protocol_union(var_type)
                   and not holds_generator_object(var_type))
     reassigned = ctx.func.current_reassigned_vars
-    plain_bind = (isinstance(init, TpyName) and fresh
-                  and name not in reassigned and init.name not in reassigned)
-    if plain_bind and not hands_over:
+    # A plain bind `x = y` of two non-reassigned names.
+    value = (init.name if init.name is not None and fresh
+             and name not in reassigned
+             and init.name.name not in reassigned else None)
+    if value is not None and not hands_over:
         # A value moves through with no owning slot to record.
-        an.compat.retract_hidden_borrowed_last_use(init)
-    if (plain_bind and hands_over
-            and an.compat.claim_name_move(init, OwnType(var_type))):
+        an.compat.retract_hidden_borrowed_last_use(value)
+    if (value is not None and hands_over
+            and an.compat.claim_name_move(value, OwnType(var_type))):
         ctx.func.rvalue_vars.add(name)
         note_owned_local(ctx, name, var_type)
         ctx.func.move_through_vars.add(name)
         # The source moved into this local, so consuming the local consumes
         # what the source's Own param handed in.
-        key = own_consume_key(ctx, init.name)
+        key = own_consume_key(ctx, value.name)
         if key is not None:
             ctx.func.own_consume_aliases[name] = key
         return BindingOwns.MOVED
@@ -378,16 +435,18 @@ def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
 
 
 def record_binding_ownership(ctx: SemanticContext, name: str,
-                             var_type: TpyType | None, init: TpyExpr, *,
+                             var_type: TpyType | None,
+                             init: BindingSource, *,
                              lvalue: bool) -> bool:
     """Whether a binding of `name` owns what it binds, recorded alike by
-    every binding form (a declaration, an assignment, a walrus): owned only
-    when the source genuinely creates a value (a constructor, an `Own`
-    return, a literal, an operator), never for an lvalue or a
-    borrow-producing call (a `T&` or pointer-form result), whose later
-    move-out would corrupt the aliased source. A borrow records the
-    statement-level borrow fact. Move-through is the declaration's own."""
-    if not lvalue and binds_owned_value(ctx, init):
+    every binding form (a declaration, an assignment, a walrus, an unpack
+    target): owned only when the source genuinely creates a value (a
+    constructor, an `Own` return, a literal, an operator; an element its
+    value hands over), never for an lvalue or a borrow-producing call (a
+    `T&` or pointer-form result), whose later move-out would corrupt the
+    aliased source. A borrow records the statement-level borrow fact.
+    Move-through is the declaration's own."""
+    if not lvalue and init.owned:
         note_owned_local(ctx, name, var_type)
         return True
     ctx.func.owned_locals.discard(name)
@@ -397,20 +456,23 @@ def record_binding_ownership(ctx: SemanticContext, name: str,
 
 def note_binding_provenance(an: 'StatementAnalyzer | ExpressionAnalyzer',
                             name: str, var_type: TpyType | None,
-                            init: TpyExpr) -> None:
+                            init: BindingSource) -> None:
     """Where the value a binding of `name` holds comes from -- whether it
     derives from a parameter, may be returned, and (a `Ptr`) is non-null --
     recorded alike by every binding form: a declaration, an assignment, a
-    walrus. `an` is the analyzer doing the binding."""
+    walrus, an unpack target. `an` is the analyzer doing the binding."""
     if var_type is None:
         return
     if _needs_provenance_tracking(var_type):
-        derived, safe = an.compat.binding_durability(init)
+        # A handed-over element is a fresh local. Any other element lives
+        # where its element read `t[i]` does: the durability climb lends a
+        # call's result whole, so an element's leaves are its value's.
+        derived, safe = ((False, False) if init.handover
+                         else an.compat.binding_durability(init.value))
         an.init.mark_provenance(name, derived)
         an.init.mark_safe_to_return(name, safe)
     if isinstance(var_type, PtrType):
-        an.init.mark_non_null_ptr(name, expr_yields_non_null_ptr(
-            init, an.ctx.func.non_null_ptr_vars))
+        an.init.mark_non_null_ptr(name, init.non_null)
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
@@ -498,18 +560,21 @@ def _temp_arg_warning(fi: FunctionInfo, idx: int) -> str:
 
 
 def _register_tuple_binding_borrows(
-        ctx: SemanticContext, borrower: Holder, value: TpyExpr,
+        ctx: SemanticContext, borrower: Holder, source: BindingSource,
         target_type: TpyType) -> None:
-    """Keep the loans carried by a local tuple's selected borrow payload."""
+    """Keep the loans carried by a local tuple's selected borrow payload. A
+    tuple element of a value carries its element read's; the literal and
+    select arms below read the element `source.path` names, never the
+    value whole."""
     bare = unwrap_readonly(target_type)
     if isinstance(bare, OptionalType):
         bare = unwrap_readonly(bare.inner)
     if not isinstance(bare, TupleType) or not bare.has_borrowing_element():
         return
-    inner = value
-    while isinstance(inner, TpyCoerce):
-        inner = inner.expr
-    leaves = tuple_literal_elems(inner, bare)
+    source = literal_element_source(source)
+    inner = peel_coerce(source.value)
+    leaves = (tuple_literal_elems(inner, bare) if not source.path
+              else None)
     if leaves is not None:
         for leaf in leaves:
             slot = unwrap_readonly(unwrap_ref_type(leaf.slot))
@@ -517,7 +582,7 @@ def _register_tuple_binding_borrows(
                 # A borrow-form tuple VALUE at a nested slot copies its
                 # element pointers along.
                 _register_tuple_binding_borrows(
-                    ctx, borrower, leaf.elem, slot)
+                    ctx, borrower, BindingSource(leaf.elem), slot)
                 continue
             # A view element files no loan here, as a scalar view local
             # does not (`v = mk().name` is quiet): its borrow is the view's.
@@ -532,35 +597,40 @@ def _register_tuple_binding_borrows(
             if (capture is TupleElemCapture.VALUE
                     and not isinstance(slot, TypeParamRef)):
                 continue
-            register_binding_loans(ctx, borrower, leaf.elem, leaf.slot)
+            register_binding_loans(ctx, borrower, BindingSource(leaf.elem),
+                                   leaf.slot)
     elif isinstance(inner, TpyIfExpr):
-        _register_tuple_binding_borrows(ctx, borrower, inner.then_expr, bare)
-        _register_tuple_binding_borrows(ctx, borrower, inner.else_expr, bare)
+        # Either arm may be what the binding reads, at the same element.
+        for arm in (inner.then_expr, inner.else_expr):
+            _register_tuple_binding_borrows(
+                ctx, borrower, dataclasses.replace(source, value=arm), bare)
     else:
         if isinstance(inner, (TpyName, TpySubscript, TpyFieldAccess)):
-            register_binding_borrow(ctx, borrower, inner)
+            register_binding_borrow(ctx, borrower, source)
         _register_call_result_borrow(ctx, borrower, inner)
 
 
 def register_binding_loans(ctx: SemanticContext, holder: Holder,
-                           value: TpyExpr,
+                           source: BindingSource,
                            bound_type: 'TpyType | None') -> None:
-    """The loans a binding of `value` at type `bound_type` files for
-    `holder` -- a local, a walrus target, a tuple leaf's binding: the
-    tuple's borrowed elements, the place a reference value aliases (whole
-    object ALIAS, field FIELD, element ELEMENT), and the operands a call
-    result may point into (a borrowing view's too). An inferred str/bytes view (`PendingViewType`)
-    files no call-result loan: every write to what it views owns it."""
-    if bound_type is None:
+    """The loans a binding of `source` at type `bound_type` files for
+    `holder` -- a local, a walrus target, an unpack target, a tuple leaf's
+    binding: the tuple's borrowed elements, the place a reference value
+    aliases (whole object ALIAS, field FIELD, element ELEMENT), and the
+    operands a call result may point into (a borrowing view's too). An
+    inferred str/bytes view (`PendingViewType`) files no call-result loan:
+    every write to what it views owns it. A handed-over element is the
+    binding's own: nothing is lent."""
+    if bound_type is None or source.handover:
         return
-    _register_tuple_binding_borrows(ctx, holder, value, bound_type)
+    _register_tuple_binding_borrows(ctx, holder, source, bound_type)
     if not bound_type.is_value_type():
-        register_binding_borrow(ctx, holder, value)
+        register_binding_borrow(ctx, holder, source)
     bare = unwrap_readonly(bound_type)
     if isinstance(bare, PendingViewType):
         return
     if not bound_type.is_value_type() or is_borrowing_view_type(bare):
-        _register_call_result_borrow(ctx, holder, peel_coerce(value))
+        _register_call_result_borrow(ctx, holder, peel_coerce(source.value))
 
 
 def _format_aug_target(target: TpyExpr) -> str:
@@ -733,6 +803,60 @@ def update_ephemeral_alias_fact(ctx: SemanticContext, name: str,
         eph[name] = eph[root]
     else:
         eph.pop(name, None)
+
+
+def _mark_bound_loop_var_sources(ctx: SemanticContext, name: str,
+                                 var_type: TpyType, value: TpyExpr) -> None:
+    """A REASSIGNED local bound off a loop var points into it with one
+    pointer type for every referent (`T* x = &(var)`), and a reassigned
+    borrow tuple takes its element pointers out of it the same way, so
+    the loop var cannot bind const. A local bound once is a read-only
+    bind: it takes the loop var's constness, and a write through it
+    climbs to the loop var (`mark_binding_written`) -- unless it becomes
+    a pointer slot (`ScopeTracker._hoist`; a resumable body's frame
+    local). The source may be the loop var itself, any field / element
+    chain rooted at it (`x = h.b`), or each operand a select may pick."""
+    cur = ctx.func.current_function
+    frame_slot = isinstance(cur, TpyFunction) and (cur.is_generator
+                                                   or cur.is_async)
+    if name not in ctx.func.current_reassigned_vars and not frame_slot:
+        return
+    if not (not var_type.is_value_type()
+            or _local_points_into_source(var_type)):
+        return
+    mark_roots(ctx, storage_roots(value, Use.HOLDER, None, MayLend(ctx)),
+               MarkRequest(params=False, loop_vars=True))
+
+
+def _mark_rebound_roots(an: 'StatementAnalyzer | ExpressionAnalyzer',
+                        var_type: TpyType, source: BindingSource, *,
+                        rebind: bool) -> None:
+    """A reassigned local that points into its source -- a reference
+    local (`T* p = &(src)`), a borrow or pointer tuple's element
+    pointers -- marks the roots its value points into written, so they
+    stay `T&`. Asked of the type alone, so the same whatever order the
+    name's bindings come in; asked here, at the binding, because a
+    local or loop-variable root climbs through borrows as they stand
+    now (`mark_param_mutated`). A tuple's roots are the root rule's
+    (`binding_roots`: each ternary arm, each borrowed literal element,
+    what a call may lend); the scalar keeps the place walk, which
+    reads a handle's referent and a call's receiver lend only. A rebind
+    to a value the binding owns, and a handed-over element, point into
+    nothing."""
+    if source.handover or not _local_points_into_source(var_type):
+        return
+    ctx = an.ctx
+    bare = unwrap_readonly(unwrap_ref_type(var_type))
+    if (isinstance(bare, TupleType)
+            or (isinstance(bare, OptionalType)
+                and bare.wraps_pointer_repr_tuple())):
+        mark_roots(ctx, [StorageKey.of_name(n) for n in
+                         binding_roots(ctx, source.value) or ()],
+                   MarkRequest())
+    elif not (rebind and not source.lvalue):
+        mark_roots(ctx, storage_roots(source.value, Use.PLACE,
+                                      ctx.get_expr_type, MayLend(ctx)),
+                   MarkRequest())
 
 
 class StatementAnalyzer:
@@ -1219,11 +1343,12 @@ class StatementAnalyzer:
     def _binds_fresh_frame(self, stmt: TpyVarDecl) -> bool:
         """An unpack target bound to a temp that holds a new generator
         (`g, k = counter(1), 2`), not another name's (`g, h = h, g`)."""
-        temp = stmt.init
-        decl = (self.ctx.func.var_decl_by_name.get(temp.name)
-                if isinstance(temp, TpyName) else None)
-        return (decl is not None and decl.init is not None
-                and is_rvalue_source(self.ctx, decl.init))
+        return is_rvalue_source(self.ctx, self._binding_source(stmt).reads)
+
+    def _binding_source(self, stmt: TpyVarDecl) -> BindingSource:
+        assert stmt.init is not None
+        return binding_source(self, stmt.init,
+                              unpack_target=stmt.unpack_target)
 
     def _check_gen_rebind(self, stmt: TpyVarDecl,
                           prev: ConcreteGenType) -> None:
@@ -1719,6 +1844,22 @@ class StatementAnalyzer:
             return bool(places) and all(unowned_place(a) for a in places)
         return unowned_place(e)
 
+    def _unpack_element_source(self, stmt: TpyTupleUnpack, i: int,
+                               rec: UnpackTarget) -> BindingSource:
+        """The source of statement unpack target `i`: element `i` of the
+        value, handed over where the unpack's record says so
+        (`unpack_target_records`); a place where the value is one, or the
+        element is a reference the value lends. A tuple literal's element
+        is a value of its own."""
+        value = stmt.value
+        source = BindingSource.element(
+            value, (i,), handover=rec.owned,
+            lvalue=rec.ref or self.compat.is_lvalue(value),
+            readonly=(reads_readonly(self.ctx, value)
+                      or isinstance(rec.type, ReadonlyType)))
+        elem = literal_element_source(source)
+        return source if elem.path else binding_source(self, elem.value)
+
     def _owned_element_is_pointer(self, name: str, index: int) -> bool:
         """Whether the tuple `name` this body OWNS holds element `index` as a
         pointer to an object outside it (`std::tuple<A, B*>` -- a mixed
@@ -1880,58 +2021,6 @@ class StatementAnalyzer:
         return (func is not None
                 and getattr(func, 'name', None) == "__init__"
                 and getattr(func, 'is_method', False))
-
-    def _mark_bound_loop_var_sources(self, name: str, var_type: TpyType,
-                                     value: TpyExpr) -> None:
-        """A REASSIGNED local bound off a loop var points into it with one
-        pointer type for every referent (`T* x = &(var)`), and a reassigned
-        borrow tuple takes its element pointers out of it the same way, so
-        the loop var cannot bind const. A local bound once is a read-only
-        bind: it takes the loop var's constness, and a write through it
-        climbs to the loop var (`mark_binding_written`) -- unless it becomes
-        a pointer slot (`ScopeTracker._hoist`; a resumable body's frame
-        local). The source may be the loop var itself, any field / element
-        chain rooted at it (`x = h.b`), or each operand a select may pick.
-        One rule for a declaration and a plain assignment."""
-        cur = self.ctx.func.current_function
-        frame_slot = isinstance(cur, TpyFunction) and (cur.is_generator
-                                                       or cur.is_async)
-        if (name not in self.ctx.func.current_reassigned_vars
-                and not frame_slot):
-            return
-        if not (not var_type.is_value_type()
-                or _local_points_into_source(var_type)):
-            return
-        mark_roots(self.ctx, storage_roots(value, Use.HOLDER, None,
-                                           MayLend(self.ctx)),
-                   MarkRequest(params=False, loop_vars=True))
-
-    def _mark_rebound_roots(self, var_type: TpyType, value: TpyExpr, *,
-                            rebind: bool) -> None:
-        """A reassigned local that points into its source -- a reference
-        local (`T* p = &(src)`), a borrow or pointer tuple's element
-        pointers -- marks the roots its value points into written, so they
-        stay `T&`. Asked of the type alone, so the same whatever order the
-        name's bindings come in; asked here, at the binding, because a
-        local or loop-variable root climbs through borrows as they stand
-        now (`mark_param_mutated`). A tuple's roots are the root rule's
-        (`binding_roots`: each ternary arm, each borrowed literal element,
-        what a call may lend); the scalar keeps the place walk, which
-        reads a handle's referent and a call's receiver lend only."""
-        if not _local_points_into_source(var_type):
-            return
-        bare = unwrap_readonly(unwrap_ref_type(var_type))
-        if (isinstance(bare, TupleType)
-                or (isinstance(bare, OptionalType)
-                    and bare.wraps_pointer_repr_tuple())):
-            mark_roots(self.ctx, [StorageKey.of_name(n) for n in
-                                  binding_roots(self.ctx, value) or ()],
-                       MarkRequest())
-        elif not (rebind and not self.compat.is_lvalue(value)):
-            mark_roots(self.ctx, storage_roots(value, Use.PLACE,
-                                               self.ctx.get_expr_type,
-                                               MayLend(self.ctx)),
-                       MarkRequest())
 
     def _annotate_tuple_elem_capture(
         self, literal: TpyTupleLiteral, tuple_type: TupleType,
@@ -6975,40 +7064,28 @@ class StatementAnalyzer:
                 var_type = bound
                 self.ctx.var_types[stmt] = var_type
                 self.ctx.func.current_scope.define(stmt.name, var_type)
-        # Reassignment revives a consumed variable
-        self.ctx.func.consumed_vars.discard(stmt.name)
-        # Flag the local if it's bound to a tuple literal with a FRESH
-        # non-value member (would dangle at a later bare-name yield/return);
-        # clears on any other reassignment.
-        self.compat.update_tuple_member_local_facts(stmt.name, var_type, stmt.init)
-        update_ephemeral_alias_fact(self.ctx, stmt.name, var_type, stmt.init)
+        if stmt.init is None:
+            # A bare re-declaration drops the tuple-member hazards the name's
+            # old binding had; a binding's are the binder's.
+            self.compat.update_tuple_member_local_facts(stmt.name, var_type,
+                                                        None)
         # Reassigning a loop variable prevents const-ref binding
         if existing_type is not None:
             mark_roots(self.ctx, [StorageKey.of_name(stmt.name)],
                        MarkRequest(params=False, loop_vars=True))
-        if stmt.init is not None and var_type is not None:
-            self._mark_bound_loop_var_sources(stmt.name, var_type, stmt.init)
-        # Borrow tracking: reassignment breaks aliases in both directions.
-        # `retarget_storage_borrows` runs before `remove_borrower` so that
-        # borrowers of `name` get re-pointed to `name`'s former upstream
-        # (with kind promoted to the most-restrictive in the chain) rather
-        # than silently dropped. Required for chains through reassigned vars
-        # (e.g. `view = s; s = items[1]`) to keep tracking the source.
-        _handle_pinned_view_rebind(self.ctx, stmt.name, stmt)
         bt = self.ctx.func.borrow_tracker
         stamp_bind_kind(self.ctx, stmt, stmt.name, stmt.init, var_type,
                         rebind=existing_type is not None)
-        bt.rebind_borrower(stmt.name, stmt.init)
-        if (stmt.init is not None and var_type is not None
-                and self.compat.settles_body_local(stmt.name, module=True)):
-            # The binding is an owning sink of what it owns (`SinkRead.binds`).
-            self.compat.register_sink(stmt.init, unwrap_ref_type(var_type),
-                                      TupleSink.LOCAL, per_leaf=True,
-                                      binds=stmt)
+        if stmt.init is not None:
+            record_name_binding(self, stmt.name, var_type,
+                                self._binding_source(stmt),
+                                fresh=existing_type is None,
+                                init_type=init_type, node=stmt)
         # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
         # registration. Keyed on the init shape alone so every binding
         # form (fresh, annotated-erased, rebind) is covered, and placed
-        # after remove_borrower so the fresh borrow survives.
+        # after the binder's release of the old loans so the fresh borrow
+        # survives.
         _coro_init = (stmt.init.expr if isinstance(stmt.init, TpyCoerce)
                       else stmt.init)
         if (isinstance(_coro_init, TpyMethodCall)
@@ -7052,18 +7129,6 @@ class StatementAnalyzer:
                         bt.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
             elif is_str_view_type(var_type) or is_bytes_view_type(var_type):
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-                # An explicit view annotation bound to a temporary dangles: the
-                # backing storage dies at end-of-statement. Reject (an owned
-                # str/bytes annotation copies; an inferred local would promote).
-                # Locals only: a module global outlives the function, and a
-                # Final[str] constant is constexpr/static view storage.
-                if (not self.ctx.is_top_level and not stmt.is_final
-                        and view_source_is_temporary(self.ctx, init_inner)):
-                    raise self.ctx.error(
-                        temporary_view_bind_message(
-                            var_type, f"'{stmt.name}'", stmt.name),
-                        stmt,
-                    )
                 # A view from slicing a stable source borrows it: register the
                 # element borrow so a later in-place mutation of the source
                 # warns -- `s += ...` reallocates str's std::string buffer (and
@@ -7094,10 +7159,6 @@ class StatementAnalyzer:
         # so a loan here could only warn about a borrow that no longer
         # exists. A spelled `StrView` / `BytesView` cannot fall back, and
         # keeps the loan and its mutate-while-borrowed diagnostic.
-        if (stmt.init is not None
-                and stmt.name in self.ctx.func.current_reassigned_vars
-                and var_type is not None):
-            self._mark_rebound_roots(var_type, stmt.init, rebind=False)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -7109,15 +7170,6 @@ class StatementAnalyzer:
                 self.ctx.func.narrowed_types[stmt.name] = init_type
                 facts = {stmt.name: init_type}
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
-        # Update rvalue status for hoist eligibility (both new vars and reassignments)
-        if stmt.init:
-            record_name_binding(self, stmt.name, var_type, stmt.init,
-                                fresh=existing_type is None,
-                                init_type=init_type)
-
-        # Scope escape check for variable declarations (new and reassignment)
-        if stmt.init and not var_type.is_value_type():
-            self.scopes.check_escape(stmt.name, stmt.init, stmt)
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(stmt.name, var_type)
         # Track first var_decl for later type updates on reassignment-driven inference.
@@ -7275,16 +7327,18 @@ class StatementAnalyzer:
             self.ctx, stmt.value, rhs_type, readonly=rhs_readonly,
             consumed=source_consumed, borrowed=borrowed_elems,
             step=stmt.step_handover if stmt.is_loop_head else None)
+        # A rebound target binds at its declared type, as `a = t[i]` does.
+        bind_types: dict[int, TpyType] = {}
         for i, name in enumerate(stmt.targets):
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
             rec = records[i]
             owned, is_ref, elem_type = rec.owned, rec.ref, rec.type
             stmt.is_owned.append(owned)
             stmt.is_ref.append(is_ref)
-            if (is_ref and name is not None
+            if (is_ref and name is not None and stmt.is_loop_head
                     and not isinstance(stmt.value, TpyTupleLiteral)):
-                # The target refers to the source's element (a literal's is
-                # copied in, see below).
+                # The target refers to the step's element; a statement's
+                # target is recorded by the binder (`record_name_binding`).
                 note_nonowning_bind(self.ctx, name, stmt.value,
                                     source_path=(i,))
             stmt.is_rebound.append(
@@ -7306,6 +7360,7 @@ class StatementAnalyzer:
             if existing is not None and self.compat.write_binds_local(name):
                 existing = None
             if existing is not None:
+                bind_types[i] = existing
                 self._check_nonvalue_rebinding(name, stmt)
                 if self.pend.rebind(name, elem_type, elem_expr, stmt) is None:
                     self._unpack_store_type(name, existing, elem_type,
@@ -7370,13 +7425,12 @@ class StatementAnalyzer:
                         self.ctx.declared_var_types[(stmt.loc.line, name)] = (
                             unwrap_own(elem_type))
                 stmt.is_new.append(not slot)
-                # An Own[T] element is moved out of the source tuple, so the
-                # fresh target is an owned movable local -- same status as a
-                # single-assign owned rvalue (`x = make_one()`), registered the
-                # same way. Narrower than the single-assign path on purpose:
-                # gated to non-reassigned targets, since a reassigned target
-                # becomes a T* pointer-local with different movability.
-                if owned and name not in self.ctx.func.current_reassigned_vars:
+                # An Own[T] element is moved out of the step, so the fresh
+                # head target is an owned movable local. Gated to
+                # non-reassigned targets, since a reassigned target becomes
+                # a T* pointer-local with different movability.
+                if (owned and stmt.is_loop_head
+                        and name not in self.ctx.func.current_reassigned_vars):
                     self.ctx.func.rvalue_vars.add(name)
                     note_owned_local(self.ctx, name, elem_type)
             # Promote a str/bytes view target to owned when it binds an owned-temp
@@ -7474,20 +7528,26 @@ class StatementAnalyzer:
                         f"'{name}' instead of aliasing it (CPython aliases); "
                         f"bind it on its own line to alias", stmt)
 
-        # Register element-borrow edges so a later mutation through an
-        # unpacked target (a, b = p; a.x = ...) traces back to the source
-        # tuple's storage. Mirrors the deferred-element-ref pattern used for
-        # `a = items[0]`. Two source shapes:
-        #   - name source `a, b = p`     -> edges p -> a, p -> b
-        #   - tuple-literal source `a, b = (x, y)` -> edges x -> a, y -> b
-        # Only register for slots whose unpacked type exposes a mutable
-        # borrow surface; value-only elements never need the edge.
-        if not self.ctx.is_top_level:
+        # A statement's target binds its element of the value as its element
+        # read `x = t[i]` does, through the one binder (a literal's element
+        # is its own value).
+        if not stmt.is_loop_head:
+            for i, name in enumerate(stmt.targets):
+                if name is not None:
+                    record_name_binding(
+                        self, name, bind_types.get(i, stmt.target_types[i]),
+                        self._unpack_element_source(stmt, i, records[i]),
+                        fresh=stmt.is_new[i],
+                        init_type=stmt.target_types[i], node=stmt)
+        # A loop head's targets file element-borrow edges so a later
+        # mutation through one (`for a, b in ps: a.x = ...`) traces back to
+        # the step's storage. Only for slots whose unpacked type exposes a
+        # mutable borrow surface; value-only elements never need the edge.
+        elif not self.ctx.is_top_level:
             bt = self.ctx.func.borrow_tracker
-            literal_src = stmt.value if isinstance(stmt.value, TpyTupleLiteral) else None
-            name_src_root = (holder_root(stmt.value, MayLend(self.ctx),
-                                         proven=True)
-                             if literal_src is None else None)
+            # Every loop head unpacks the loop's per-iteration holder name.
+            assert isinstance(stmt.value, TpyName), stmt.value
+            src_root = holder_root(stmt.value, MayLend(self.ctx), proven=True)
             for i, name in enumerate(stmt.targets):
                 if name is None or not stmt.is_ref[i]:
                     continue
@@ -7497,11 +7557,6 @@ class StatementAnalyzer:
                 # edge here just bloats the borrow tracker.
                 if not param_has_mutable_borrow_surface(stmt.target_types[i]):
                     continue
-                if literal_src is not None and i < len(literal_src.elements):
-                    src_root = holder_root(literal_src.elements[i],
-                                           MayLend(self.ctx), proven=True)
-                else:
-                    src_root = name_src_root
                 if src_root is None or src_root == name:
                     continue
                 # A loop var over an iterator whose yield names each element's
@@ -7514,14 +7569,11 @@ class StatementAnalyzer:
                                 else [SitedKey(StorageKey.of_name(src_root),
                                                self.ctx.binding_site(src_root))])
                 lenders = [s.key for s in lender_sites]
-                through_pointer = (literal_src is None and elem_srcs is None
-                                   and isinstance(stmt.value, TpyName)
+                through_pointer = (elem_srcs is None
                                    and self._owned_element_is_pointer(
                                        stmt.value.name, i))
                 # Off a tuple name the target points into element `i` of it.
-                unpacked = (("lit", i) if literal_src is None
-                            and elem_srcs is None
-                            and isinstance(stmt.value, TpyName) else None)
+                unpacked = ("lit", i) if elem_srcs is None else None
                 for lender in lenders:
                     bt.add_borrow(lender, name, BorrowKind.ELEMENT,
                                   elem_index=unpacked,
@@ -7541,9 +7593,10 @@ class StatementAnalyzer:
         # deleted-copy C++ error. The source of an Own param's elements hands
         # each owned element to its target, so the warning then asks per
         # element whether its target was consumed.
-        for name in stmt.targets:
-            if name is not None:
-                self.ctx.func.own_consume_aliases.pop(name, None)
+        if stmt.is_loop_head:
+            for name in stmt.targets:
+                if name is not None:
+                    self.ctx.func.own_consume_aliases.pop(name, None)
         if (not self.ctx.is_top_level and any(stmt.is_owned)
                 and isinstance(stmt.value, TpyName)
                 and self.compat._is_owned_var(stmt.value.name)):
@@ -8094,22 +8147,9 @@ class StatementAnalyzer:
                 if isinstance(value_type, ReadonlyType):
                     target_type = make_readonly(target_type)
             self.ctx.func.current_scope.define(stmt.target.name, target_type)
-            # Reassignment revives a consumed variable
-            self.ctx.func.consumed_vars.discard(stmt.target.name)
-            self.compat.update_tuple_member_local_facts(
-                stmt.target.name, target_type, stmt.value)
-            update_ephemeral_alias_fact(
-                self.ctx, stmt.target.name, target_type, stmt.value)
-            # Borrow tracking: reassignment breaks aliases in both directions.
-            # Retarget runs before remove_borrower so borrowers of the target
-            # get re-pointed to the upstream source (with promoted kind),
-            # keeping chains through reassigned vars valid.
-            _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
-            bt = self.ctx.func.borrow_tracker
             # Stamped below, once a tuple literal's element captures (what
             # the binding owns) are annotated.
             bind_value, bind_type = stmt.value, target_type
-            bt.rebind_borrower(stmt.target.name, stmt.value)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
@@ -8240,25 +8280,15 @@ class StatementAnalyzer:
                                                TpyNamedExpr))
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, TpyName):
-            # After the literal's element captures: they say which elements
-            # the binding keeps a reference into.
-            self._mark_rebound_roots(inner_target, stmt.value, rebind=True)
             stamp_bind_kind(self.ctx, stmt, stmt.target.name, bind_value,
                             bind_type, rebind=True)
-            if (target_type is not None
-                    and self.compat.settles_body_local(
-                        stmt.target.name, module=True)):
-                # The binding is an owning sink of what it owns
-                # (`SinkRead.binds`).
-                self.compat.register_sink(
-                    stmt.value, unwrap_ref_type(target_type),
-                    TupleSink.LOCAL, per_leaf=True,
-                    binds=stmt)
             # The declaration rebind's binding record (`x = v`), the one
-            # every binding of a name takes.
+            # every binding of a name takes -- after the literal's element
+            # captures: they say which elements the binding keeps a
+            # reference into.
             record_name_binding(self, stmt.target.name, target_type,
-                                stmt.value, fresh=False,
-                                init_type=value_type)
+                                binding_source(self, stmt.value), fresh=False,
+                                init_type=value_type, node=stmt)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if (stmt.loc is not None and not copy_warning_fired
                     and not takes_elements):
@@ -8269,13 +8299,6 @@ class StatementAnalyzer:
                                  "field" if isinstance(stmt.target,
                                                        TpyFieldAccess)
                                  else "container"), stmt.value)
-
-        # Scope escape check for assignments to named variables
-        if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
-            self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
-        if isinstance(stmt.target, TpyName):
-            self._mark_bound_loop_var_sources(stmt.target.name, target_type,
-                                              stmt.value)
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):

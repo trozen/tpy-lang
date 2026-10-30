@@ -303,8 +303,10 @@ class ScopeTracker:
         return list(by_name.values())
 
     def check_escape(self, target_name: str, source_expr: TpyExpr,
-                     node: TpyExpr | TpyStmt | None) -> None:
-        """Diagnose binding storage that may not outlive its new name.
+                     node: TpyExpr | TpyStmt | None, *,
+                     element: bool = False) -> None:
+        """Diagnose binding storage that may not outlive its new name
+        (`element`: the name binds an element of `source_expr`).
 
         Hoisting the source's storage to function scope keeps the target
         from dangling, but both names then share ONE slot, so the target
@@ -321,7 +323,8 @@ class ScopeTracker:
         for root in escaping:
             if not root.through_call and not self._can_hoist(root.name):
                 raise self._escape_error(root.name,
-                                         self._escape_remedy(root, source_expr),
+                                         self._escape_remedy(root, source_expr,
+                                                            element),
                                          node)
         for root in escaping:
             if not self._can_hoist(root.name):
@@ -332,7 +335,7 @@ class ScopeTracker:
                 # undiagnosed rather than rejected:
                 # BUGS.md#call-source-escape-through-alias-unchecked.
                 continue
-            remedy = self._escape_remedy(root, source_expr)
+            remedy = self._escape_remedy(root, source_expr, element)
             self._hoist(target_name, root.name, warned=not root.assumed)
             if root.assumed:
                 # The storage decision cannot wait -- it shapes the rest of
@@ -368,7 +371,8 @@ class ScopeTracker:
             f"reference to '{source_name}' may outlive its storage; {remedy}",
             node)
 
-    def _escape_remedy(self, root: Place, source_expr: TpyExpr) -> str:
+    def _escape_remedy(self, root: Place, source_expr: TpyExpr,
+                       element: bool = False) -> str:
         # copy() is not available for a @nocopy source -- naming it there
         # sends the author into a second, unrelated rejection.
         source_type = (self.ctx.func.current_scope.lookup(root.name)
@@ -378,11 +382,12 @@ class ScopeTracker:
         bare = source_expr
         while isinstance(bare, TpyCoerce):
             bare = bare.expr
-        if root.through_call or not (isinstance(bare, TpyName)
-                                     and bare.name == root.name):
+        if root.through_call or element or not (isinstance(bare, TpyName)
+                                                and bare.name == root.name):
             # copy() of the ROOT is the wrong remedy behind a call, which
             # would hand back a reference into the dying copy, and for a
-            # part of it (`keep = p[0]`), whose copy is of another type.
+            # part of it (`keep = p[0]`, an unpack target), whose copy is of
+            # another type.
             return "use copy() on the assigned value for an independent value"
         return f"use copy({root.name}) for an independent value"
 

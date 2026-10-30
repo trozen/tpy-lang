@@ -20,11 +20,11 @@ main::make_named@182:0: uncovered (unsupported return type), summary: opaque (un
 main::make_finally@188:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_from@197:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::with_nocopy@202:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::nonescaping@212:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::escaping_copy@230:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::shadowed@250:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::marked@261:0: uncovered (generic body)
-main::main@265:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nonescaping@214:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::escaping_copy@232:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::shadowed@252:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::marked@263:0: uncovered (generic body)
+main::main@267:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::P.bump@13:4: covered (storage: no_proof_required), summary: known
 main::H.put@74:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::P.__init__@10:4: covered (storage: no_proof_required), summary: known

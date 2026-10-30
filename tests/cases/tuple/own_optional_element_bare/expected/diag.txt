@@ -18,9 +18,10 @@ main.py:161: warning: Own[P] element 0 of tuple param 't' is never consumed (unp
 main.py:169: warning: copies tuple[Own[P], int32] into owned storage; use copy() to make this explicit
 main.py:168: warning: Own[P] element 0 of tuple param 't' is never consumed (unpacked into 'a', which is not stored in a field, forwarded to another Own[T], or returned)
 main.py:198: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
-main.py:212: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:239: warning: Escaping closure 'g' copies local 'a2' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
-main.py:230: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:254: warning: lambda at line 254 copies the object 'a' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:250: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:322: warning: copies P into owned storage (argument 't' tuple element 0); use copy() to make this explicit
+main.py:202: warning: Own[P] element 0 of tuple param 't' is never consumed (unpacked into 'c', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:214: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:241: warning: Escaping closure 'g' copies local 'a2' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:232: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:256: warning: lambda at line 256 copies the object 'a' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:252: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:324: warning: copies P into owned storage (argument 't' tuple element 0); use copy() to make this explicit
