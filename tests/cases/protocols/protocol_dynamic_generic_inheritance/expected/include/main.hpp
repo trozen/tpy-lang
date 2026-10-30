@@ -86,11 +86,11 @@ struct tpy::Adapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<
     T get() override { return inner.get(); }
 };
 
-template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Source_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
+    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
@@ -102,12 +102,12 @@ struct tpy::Adapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counte
     T get() override { return inner.get(); }
 };
 
-template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Counter_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    void bump() override { inner.bump(); }
-    T get() override { return inner.get(); }
+    void bump() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.bump(); }
+    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

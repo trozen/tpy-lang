@@ -87,12 +87,12 @@ struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::main::__NamedPet_Concept__ T>
+template<typename T> requires tpyapp::main::__NamedPet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return std::string(inner.name()); }
-    std::string speak() override { return std::string(inner.speak()); }
+    std::string name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.name()); }
+    std::string speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.speak()); }
 };
 
 namespace tpyapp::main {

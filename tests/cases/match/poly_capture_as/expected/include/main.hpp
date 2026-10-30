@@ -80,7 +80,7 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     std::string speak() const override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

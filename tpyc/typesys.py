@@ -3041,6 +3041,17 @@ def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
     return t
 
 
+def peel_slot(t: 'TpyType') -> 'TpyType':
+    """The payload a slot or a leaf of type `t` holds: every `Own`,
+    `readonly`, reference and Send/Sync wrapper peeled, in whatever order
+    they nest (`readonly[Own[X]]` and `Own[readonly[X]]` both hold `X`)."""
+    while True:
+        u = unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(t))))
+        if u is t:
+            return u
+        t = u
+
+
 def peel_binding(t: 'TpyType') -> 'TpyType':
     """The type a BINDING of `t` holds: the transparent wrappers stripped
     (readonly, Ref, Send / Sync), then `Own` -- an `Own[T]` binding is

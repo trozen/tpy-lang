@@ -119,11 +119,11 @@ struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::main::__Speaker_Concept__ T>
+template<typename T> requires tpyapp::main::__Speaker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() override { return std::string(inner.speak()); }
+    std::string speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.speak()); }
 };
 
 namespace tpyapp::main {

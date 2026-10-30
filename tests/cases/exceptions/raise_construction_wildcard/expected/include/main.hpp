@@ -136,7 +136,7 @@ struct tpy::Adapter<tpyapp::main::Shows, T> : tpyapp::main::Shows {
     std::string show() const override { return std::string(inner.show()); }
 };
 
-template<tpyapp::main::__Shows_Concept__ T>
+template<typename T> requires tpyapp::main::__Shows_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Shows, T> : tpyapp::main::Shows {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

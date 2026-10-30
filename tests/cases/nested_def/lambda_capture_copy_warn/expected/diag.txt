@@ -1,11 +1,11 @@
-main.py:421: warning: lambda at line 421 copies the object 'q' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:422: warning: lambda at line 422 copies the object 'zs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:435: warning: lambda at line 435 copies the object 'mod_x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:443: warning: lambda at line 443 copies the object 'mod_y' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:419: warning: 'i' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
-main.py:421: warning: 'q' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
-main.py:435: warning: 'mod_x' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
-main.py:440: warning: 'mod_v' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:422: warning: lambda at line 422 copies the object 'q' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:423: warning: lambda at line 423 copies the object 'zs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:436: warning: lambda at line 436 copies the object 'mod_x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:444: warning: lambda at line 444 copies the object 'mod_y' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:420: warning: 'i' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:422: warning: 'q' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:436: warning: 'mod_x' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:441: warning: 'mod_v' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
 main.py:68: warning: lambda at line 68 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:78: warning: lambda at line 78 copies the object 'p' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:257: warning: lambda at line 257 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
@@ -54,5 +54,5 @@ main.py:304: warning: lambda at line 304 copies 'k' when it is created
 main.py:304: warning: lambda at line 304 copies 's' when it is created
 main.py:311: warning: lambda at line 311 may keep its own copy of 'p'; changes made after it is created may not be seen
 main.py:308: warning: Own[P] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:333: warning: lambda at line 333 may keep its own copy of 's'; changes made after it is created may not be seen
-main.py:353: warning: lambda at line 353 may keep its own copy of 'f'; changes made after it is created may not be seen
+main.py:334: warning: lambda at line 334 may keep its own copy of 's'; changes made after it is created may not be seen
+main.py:354: warning: lambda at line 354 may keep its own copy of 'f'; changes made after it is created may not be seen

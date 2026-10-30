@@ -589,12 +589,12 @@ struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     int32_t get() override { return inner.get(); }
 };
 
-template<tpyapp::main::__Shape_Concept__ T>
+template<typename T> requires tpyapp::main::__Shape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void bump() override { inner.bump(); }
-    int32_t get() override { return inner.get(); }
+    void bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(); }
+    int32_t get() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

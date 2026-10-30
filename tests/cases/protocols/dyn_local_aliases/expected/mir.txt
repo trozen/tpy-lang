@@ -1,0 +1,48 @@
+main::__tpy_init: uncovered (module initialization)
+main::make_sq@99:0: covered (storage: no_proof_required), summary: known
+main::free_function@104:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::inferred_const@115:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::readonly_param@123:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::pointer_sources@131:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::nocopy_source@144:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::inheritance@152:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::value_type@166:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::rvalues@177:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::protocol_source@186:0: uncovered (unsupported parameter type)
+main::error_return_body@210:0: uncovered (error-return body)
+main::closure@222:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::at_if@230:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::at_try@239:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::at_while@253:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::at_with@263:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::at_for@272:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::block_local@283:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::block_escape@301:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::look@316:0: uncovered (unsupported parameter type)
+main::look_ro@320:0: uncovered (unsupported parameter type)
+main::const_args@326:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::opt_look@331:0: uncovered (unsupported parameter type)
+main::opt_look_ro@337:0: uncovered (unsupported parameter type)
+main::optional_param@345:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::inherit_try_with@358:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::hoisted_readonly@377:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::isinstance_const@385:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::loop_refill@395:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@408:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Sq.area@29:4: covered (storage: no_proof_required), summary: known
+main::Sq.grow@32:4: covered (storage: no_proof_required), summary: known
+main::Pinned.area@44:4: covered (storage: no_proof_required), summary: known
+main::Pinned.grow@47:4: covered (storage: no_proof_required), summary: known
+main::Dog.area@58:4: covered (storage: no_proof_required)
+main::Dog.grow@61:4: covered (storage: no_proof_required)
+main::V.area@72:4: uncovered (missing receiver fact)
+main::VI.area@83:4: uncovered (missing receiver fact)
+main::Ctx.__enter__@92:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Ctx.__exit__@95:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::User.method@202:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::Sq.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Pinned.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@54:4: covered (storage: no_proof_required), summary: known
+main::V.__init__@68:4: uncovered (missing record layout)
+main::VI.__init__@79:4: uncovered (missing record layout)
+main::User.__init__@196:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

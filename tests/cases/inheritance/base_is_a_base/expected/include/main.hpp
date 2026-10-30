@@ -2170,11 +2170,11 @@ struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::main::__Speaker_Concept__ T>
+template<typename T> requires tpyapp::main::__Speaker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() override { return std::string(inner.speak()); }
+    std::string speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.speak()); }
 };
 
 template<tpyapp::main::__Meter_Concept__ T>
@@ -2185,11 +2185,11 @@ struct tpy::Adapter<tpyapp::main::Meter, T> : tpyapp::main::Meter {
     int32_t m() override { return inner.m(); }
 };
 
-template<tpyapp::main::__Meter_Concept__ T>
+template<typename T> requires tpyapp::main::__Meter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Meter, T> : tpyapp::main::Meter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t m() override { return inner.m(); }
+    int32_t m() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.m(); }
 };
 
 template<tpyapp::main::__SupAddable_Concept__ T>
@@ -2200,7 +2200,7 @@ struct tpy::Adapter<tpyapp::main::SupAddable, T> : tpyapp::main::SupAddable {
     int32_t __add__(int32_t o) const override { return inner + o; }
 };
 
-template<tpyapp::main::__SupAddable_Concept__ T>
+template<typename T> requires tpyapp::main::__SupAddable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::SupAddable, T> : tpyapp::main::SupAddable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

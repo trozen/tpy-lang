@@ -97,11 +97,11 @@ struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     std::string describe() override { return std::string(inner.describe()); }
 };
 
-template<tpyapp::main::__Describable_Concept__ T>
+template<typename T> requires tpyapp::main::__Describable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string describe() override { return std::string(inner.describe()); }
+    std::string describe() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.describe()); }
 };
 
 template<tpyapp::main::__Noise_Concept__ T>
@@ -112,11 +112,11 @@ struct tpy::Adapter<tpyapp::main::Noise, T> : tpyapp::main::Noise {
     std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
-template<tpyapp::main::__Noise_Concept__ T>
+template<typename T> requires tpyapp::main::__Noise_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Noise, T> : tpyapp::main::Noise {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string make_noise() override { return std::string(inner.make_noise()); }
+    std::string make_noise() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.make_noise()); }
 };
 
 namespace tpyapp::main {

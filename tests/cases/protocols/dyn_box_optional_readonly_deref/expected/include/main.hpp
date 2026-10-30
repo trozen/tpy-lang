@@ -102,7 +102,7 @@ struct tpy::Adapter<tpyapp::main::Speakable, T> : tpyapp::main::Speakable {
     std::string speak() const override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::main::__Speakable_Concept__ T>
+template<typename T> requires tpyapp::main::__Speakable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Speakable, T> : tpyapp::main::Speakable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

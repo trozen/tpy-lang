@@ -64,6 +64,7 @@ from ...sema.binding_ownership import (NOT_OWNED, Acquired, BindingOwnership,
                                        local_ownership,
                                        param_ownership,
                                        receiver_ownership, site_ownership)
+from ...sema.dyn_erasure import is_dyn_base_local
 from ...sema.storage_policy import StorageVerdict, first_binding_storage
 from ...sema.storage_walk import pointee_root
 from ...sema.own_copy import contains_reference_type
@@ -1537,8 +1538,8 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
             and _checks._dyn_own_forward_call_arg(init, svt, an) is not None):
         return _mk(site, name, typ, F.VALUE, BC.DYN_OWN_ERASED,
                    effective_type=svt)
-    if (not site.in_branch and isinstance(vtype, NominalType)
-            and is_dyn_protocol(vtype) and isinstance(svt_u, OwnType)):
+    if (not site.in_branch and is_dyn_base_local(vtype)
+            and isinstance(svt_u, OwnType)):
         # The deferred-erasure coroutine frame local is a value
         # `std::optional<frame>`, read as a pointer local like every
         # @dynamic local.
@@ -1659,10 +1660,9 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
 
 
 def _dyn_local_row(site, name, typ) -> 'BindingRepr | None':
-    """A @dynamic protocol local's record, outside a branch only: the
-    pointer over the object it names, whichever form binds it."""
-    if (site.in_branch or not isinstance(typ, NominalType)
-            or not is_dyn_protocol(typ)):
+    """A @dynamic protocol local's record: the pointer over the object it
+    names, whichever form binds it."""
+    if not is_dyn_base_local(typ):
         return None
     return _mk(site, name, typ, F.DYN, BC.DYN, pointer=True,
                move_exception=M.DYN)
@@ -2200,7 +2200,7 @@ class _HoistRung(NamedTuple):
 def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
                          inp: 'PlanInputs', ctx) -> '_HoistRung | None':
     """How a branch-first non-value hoist predecls, for every statement:
-    a nullable borrow tuple, a borrow tuple, an if chain's `@dynamic` base
+    a nullable borrow tuple, a borrow tuple, a `@dynamic` base
     pointer, a for head's container unpack target (the pointer the head
     re-points); a plain non-value bound once is the owned slot
     (`std::optional<T>`); reassigned or borrow-only, or a pointer-repr
@@ -2214,7 +2214,6 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
     match re-seats by address)."""
     an, pre, func = ctx.analyzer, ctx.prescan, ctx.func
     stmt = site.node
-    at_if = isinstance(stmt, TpyIf)
     at_match = isinstance(stmt, TpyMatch)
     if _p._optional_borrow_tuple(var_type, an) is not None:
         return _HoistRung(F.OPT_BORROW_TUPLE)
@@ -2225,8 +2224,7 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
                    or (_p._binding_form_tuple(var_type, an) is not None
                        and not _open_t_escaping_capture(site, name, var_type,
                                                         inp))))
-    dyn = (at_if and isinstance(var_type, NominalType)
-           and is_dyn_protocol(var_type))
+    dyn = is_dyn_base_local(var_type)
     if not (btuple or dyn) and _ptr_null_hoist(stmt, name, var_type, inp,
                                                ctx):
         return _HoistRung(F.POINTER, head_target=True)

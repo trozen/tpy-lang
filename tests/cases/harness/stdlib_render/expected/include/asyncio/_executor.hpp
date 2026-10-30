@@ -471,12 +471,12 @@ struct tpy::Adapter<tpystd::asyncio::_executor::AnyTask, T> : tpystd::asyncio::_
     void cancel_any() override { inner.cancel_any(); }
 };
 
-template<tpystd::asyncio::_executor::__AnyTask_Concept__ T>
+template<typename T> requires tpystd::asyncio::_executor::__AnyTask_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::asyncio::_executor::AnyTask, T> : tpystd::asyncio::_executor::AnyTask {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    bool poll_any(::tpystd::coro::Waker waker) override { return inner.poll_any(std::move(waker)); }
-    void cancel_any() override { inner.cancel_any(); }
+    bool poll_any(::tpystd::coro::Waker waker) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.poll_any(std::move(waker)); }
+    void cancel_any() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.cancel_any(); }
 };
 
 namespace tpystd::asyncio::_executor {

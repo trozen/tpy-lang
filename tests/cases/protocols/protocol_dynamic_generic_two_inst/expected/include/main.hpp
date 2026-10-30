@@ -78,11 +78,11 @@ struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Cont
     T get() override { return inner.get(); }
 };
 
-template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Container_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
+    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

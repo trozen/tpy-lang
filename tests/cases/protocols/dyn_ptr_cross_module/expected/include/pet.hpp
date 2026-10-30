@@ -41,12 +41,12 @@ struct tpy::Adapter<tpyapp::pet::Counter, T> : tpyapp::pet::Counter {
     int32_t value() override { return inner.value(); }
 };
 
-template<tpyapp::pet::__Counter_Concept__ T>
+template<typename T> requires tpyapp::pet::__Counter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::pet::Counter, T> : tpyapp::pet::Counter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void bump(int32_t by) override { inner.bump(by); }
-    int32_t value() override { return inner.value(); }
+    void bump(int32_t by) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(by); }
+    int32_t value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
 };
 
 namespace tpyapp::pet {

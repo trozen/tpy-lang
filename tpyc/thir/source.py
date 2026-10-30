@@ -476,11 +476,14 @@ class BindingRepr:
 
     @property
     def owned_slot_object(self) -> bool:
-        """An owned `std::optional<T>` slot read as the object it holds (a
-        walrus's, a hoist's), through its deref -- not a rebound record's
-        slot of its own, which reads as the `T*` aiming at it."""
+        """An owned `std::optional<T>` slot engaged wherever it is read (a
+        walrus's, a hoist's), read as the object it holds through its deref
+        -- not a rebound record's slot of its own, which reads as the `T*`
+        aiming at it, nor a storage that may be empty (`nullable_storage`:
+        an `Own[P | None]` parameter)."""
         return (self.form is BindingForm.OWNED_SLOT
-                and not self.reads_as_pointer)
+                and not self.reads_as_pointer
+                and not self.nullable_storage)
 
     @property
     def optional_borrow_tuple(self) -> bool:

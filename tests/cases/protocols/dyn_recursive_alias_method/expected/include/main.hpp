@@ -62,11 +62,11 @@ struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     int32_t count(::tpyapp::treelib::Tree<::tpy::BigInt>& t) override { return inner.count(t); }
 };
 
-template<tpyapp::main::__Counter_Concept__ T>
+template<typename T> requires tpyapp::main::__Counter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t count(::tpyapp::treelib::Tree<::tpy::BigInt>& t) override { return inner.count(t); }
+    int32_t count(::tpyapp::treelib::Tree<::tpy::BigInt>& t) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.count(t); }
 };
 
 namespace tpyapp::main {

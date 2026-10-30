@@ -327,12 +327,12 @@ struct tpy::Adapter<tpyapp::main::Taker, T> : tpyapp::main::Taker {
     int32_t one(tpyapp::main::Tok&& t) override { return inner.one(std::move(t)); }
 };
 
-template<tpyapp::main::__Taker_Concept__ T>
+template<typename T> requires tpyapp::main::__Taker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Taker, T> : tpyapp::main::Taker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t pair(std::tuple<tpyapp::main::Tok, tpyapp::main::Tok>&& p) override { return inner.pair(std::move(p)); }
-    int32_t one(tpyapp::main::Tok&& t) override { return inner.one(std::move(t)); }
+    int32_t pair(std::tuple<tpyapp::main::Tok, tpyapp::main::Tok>&& p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.pair(std::move(p)); }
+    int32_t one(tpyapp::main::Tok&& t) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.one(std::move(t)); }
 };
 
 namespace tpyapp::main {

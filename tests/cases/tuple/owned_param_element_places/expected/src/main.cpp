@@ -151,6 +151,25 @@ int32_t readonly_owned_write(std::tuple<Box, int32_t>&& p) {
     return (::tpy::add_check<int32_t>(x.get(), k));
 }
 
+// # `readonly[Own[tuple]]` param: the wrappers peel in either order to the
+// # owned tuple, so an element alias is mutable, the element moves into an
+// # `Own[T]` slot, and a name in the argument literal is a warned copy.
+// def ro_own_alias(p: readonly[Own[tuple[Box, int32]]]) -> int32:
+//     o = p[0]  # tpyc: ok
+//     o.n += 10
+//     return p[0].n + p[1]
+int32_t ro_own_alias(std::tuple<Box, int32_t> p) {
+    Box& o = std::get<0>(p);
+    o.n = ::tpy::add_check<int32_t>(o.n, 10);
+    return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)));
+}
+
+// def ro_own_pass(keep: list[Box], p: readonly[Own[tuple[Box, int32]]]) -> int32:
+//     return sink(keep, p[0])  # tpyc: ok
+int32_t ro_own_pass(std::vector<Box>& keep, std::tuple<Box, int32_t> p) {
+    return ::tpyapp::main::sink(keep, std::move(std::get<0>(p)));
+}
+
 // # method call on the element, and through a field of it
 // def method_owned(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/never consumed/)
 //     p[0].inc()  # tpyc: ok
@@ -363,6 +382,13 @@ void unpack_borrowed(const std::tuple<Box*, Color>& p) {
 //     keep[0].n += 1000
 //     print("pass_kept", keep[0].n, keep[1].n)
 //     print("pass_live_alias", pass_live_alias(keep, (Box(6), 2)))
+//     print("ro_own_alias", ro_own_alias((Box(1), 2)))
+//     print("ro_own_pass", ro_own_pass(keep, (Box(5), 2)))
+//     keep[-1].n += 1000
+//     print("ro_own_kept", keep[-1].n)
+//     rb = Box(3)
+//     # the callee's write lands on the copy, so `rb` is read only as `rb.n - rb.n`
+//     print("ro_own_copy", ro_own_alias((rb, 2)), rb.n - rb.n)  # tpyc: warning(/copies Box into owned storage \(argument 'p' tuple element 0\)/)
 //     r = ret_whole((Box(7), 2))
 //     r.n += 500
 //     print("ret_whole", r.n)
@@ -400,6 +426,12 @@ void main() {
     ::tpy::__getitem__(keep, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(keep, 0).n, 1000);
     std::cout << "pass_kept" << " " << ::tpy::__getitem__(keep, 0).n << " " << ::tpy::__getitem__(keep, 1).n << "\n" << ::tpy::check_signals;
     std::cout << "pass_live_alias" << " " << ::tpyapp::main::pass_live_alias(keep, std::tuple<Box, int32_t>{Box(6), 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_own_alias" << " " << ::tpyapp::main::ro_own_alias(std::tuple<Box, int32_t>{Box(1), 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_own_pass" << " " << ::tpyapp::main::ro_own_pass(keep, std::tuple<Box, int32_t>{Box(5), 2}) << "\n" << ::tpy::check_signals;
+    ::tpy::__getitem__(keep, -1).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(keep, -1).n, 1000);
+    std::cout << "ro_own_kept" << " " << ::tpy::__getitem__(keep, -1).n << "\n" << ::tpy::check_signals;
+    Box rb = Box(3);
+    std::cout << "ro_own_copy" << " " << ::tpyapp::main::ro_own_alias(std::tuple<Box, int32_t>{Box(rb), 2}) << " " << (::tpy::sub_check<int32_t>(rb.n, rb.n)) << "\n" << ::tpy::check_signals;
     Box r = ::tpyapp::main::ret_whole(std::tuple<Box, int32_t>{Box(7), 2});
     r.n = ::tpy::add_check<int32_t>(r.n, 500);
     std::cout << "ret_whole" << " " << r.n << "\n" << ::tpy::check_signals;

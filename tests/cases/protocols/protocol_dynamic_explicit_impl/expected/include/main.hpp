@@ -70,12 +70,12 @@ struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     int32_t id() override { return inner.id(); }
 };
 
-template<tpyapp::main::__Describable_Concept__ T>
+template<typename T> requires tpyapp::main::__Describable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string describe() override { return std::string(inner.describe()); }
-    int32_t id() override { return inner.id(); }
+    std::string describe() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.describe()); }
+    int32_t id() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.id(); }
 };
 
 namespace tpyapp::main {

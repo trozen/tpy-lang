@@ -100,6 +100,19 @@ def readonly_owned_write(p: readonly[tuple[Own[Box], int32]]) -> int32:  # tpyc:
     return x.get() + k
 
 
+# `readonly[Own[tuple]]` param: the wrappers peel in either order to the
+# owned tuple, so an element alias is mutable, the element moves into an
+# `Own[T]` slot, and a name in the argument literal is a warned copy.
+def ro_own_alias(p: readonly[Own[tuple[Box, int32]]]) -> int32:
+    o = p[0]  # tpyc: ok
+    o.n += 10
+    return p[0].n + p[1]
+
+
+def ro_own_pass(keep: list[Box], p: readonly[Own[tuple[Box, int32]]]) -> int32:
+    return sink(keep, p[0])  # tpyc: ok
+
+
 # method call on the element, and through a field of it
 def method_owned(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/never consumed/)
     p[0].inc()  # tpyc: ok
@@ -240,6 +253,13 @@ def main() -> None:
     keep[0].n += 1000
     print("pass_kept", keep[0].n, keep[1].n)
     print("pass_live_alias", pass_live_alias(keep, (Box(6), 2)))
+    print("ro_own_alias", ro_own_alias((Box(1), 2)))
+    print("ro_own_pass", ro_own_pass(keep, (Box(5), 2)))
+    keep[-1].n += 1000
+    print("ro_own_kept", keep[-1].n)
+    rb = Box(3)
+    # the callee's write lands on the copy, so `rb` is read only as `rb.n - rb.n`
+    print("ro_own_copy", ro_own_alias((rb, 2)), rb.n - rb.n)  # tpyc: warning(/copies Box into owned storage \(argument 'p' tuple element 0\)/)
     r = ret_whole((Box(7), 2))
     r.n += 500
     print("ret_whole", r.n)

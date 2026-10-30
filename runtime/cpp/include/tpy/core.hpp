@@ -584,6 +584,14 @@ TPY_COLD_NORETURN inline void tpy_panic(std::string_view msg) {
     std::exit(1);
 }
 
+// The body of a protocol adapter's mutating override when the adapter borrows a
+// const object (`RefAdapter<P, const T>`): C++ needs the vtable slot filled, but
+// the object only sits behind a readonly protocol reference, so sema and C++
+// both refuse the call and this never runs.
+TPY_COLD_NORETURN inline void unreachable_override() {
+    tpy_panic("internal error: mutating method reached through a readonly protocol reference");
+}
+
 // Normalizes uncaught-exception output across libstdc++/libc++. Installed from
 // codegen-emitted main() via std::set_terminate; not installed when codegen
 // runs in --no-main mode, so host applications keep their own terminate handler.

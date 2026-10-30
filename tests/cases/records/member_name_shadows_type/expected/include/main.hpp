@@ -315,11 +315,11 @@ struct tpy::Adapter<tpyapp::main::shape, T> : tpyapp::main::shape {
     ::tpy::BigInt area() override { return inner.area(); }
 };
 
-template<tpyapp::main::__shape_Concept__ T>
+template<typename T> requires tpyapp::main::__shape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::shape, T> : tpyapp::main::shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::BigInt area() override { return inner.area(); }
+    ::tpy::BigInt area() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.area(); }
 };
 
 namespace tpyapp::main {

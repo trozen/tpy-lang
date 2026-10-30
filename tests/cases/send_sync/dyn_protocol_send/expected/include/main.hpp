@@ -68,11 +68,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     int32_t speak() override { return inner.speak(); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t speak() override { return inner.speak(); }
+    int32_t speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.speak(); }
 };
 
 namespace tpyapp::main {

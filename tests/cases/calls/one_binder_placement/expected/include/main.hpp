@@ -299,11 +299,11 @@ struct tpy::Adapter<tpyapp::main::Valued, T> : tpyapp::main::Valued {
     int32_t value() override { return inner.value(); }
 };
 
-template<tpyapp::main::__Valued_Concept__ T>
+template<typename T> requires tpyapp::main::__Valued_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Valued, T> : tpyapp::main::Valued {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t value() override { return inner.value(); }
+    int32_t value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
 };
 
 namespace tpyapp::main {

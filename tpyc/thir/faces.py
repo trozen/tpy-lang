@@ -1452,6 +1452,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # same object, `Base* p2 = &(*p1);` / `p2 = &(*p1);` (no slot).
     "decl.dyn_protocol_erased",
     "reseat.dyn_protocol_erased",
+    # A @dynamic slot that borrows its source (`dyn_entry`): a structural
+    # conformer's `RefAdapter<Base, C> __slot_N{q};` (`_ref`), or no slot
+    # for an inheritance conformer, `Base* p = &(d);` (`_alias`) -- at a
+    # local's decl, its reseat and a module global's write.
+    "decl.dyn_protocol_ref",
+    "decl.dyn_protocol_alias",
+    "reseat.dyn_protocol_ref",
+    "reseat.dyn_protocol_alias",
+    "top_level.dyn_protocol",
+    "top_level.dyn_protocol_ref",
+    "top_level.dyn_protocol_alias",
     # Widened value-tuple RETURN elements: a NESTED value-tuple element (spelled
     # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
     # / a scalar value bare). Return-slot only.

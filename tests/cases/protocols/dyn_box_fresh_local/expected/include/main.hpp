@@ -72,11 +72,11 @@ struct tpy::Adapter<tpyapp::main::Conn, T> : tpyapp::main::Conn {
     int32_t port() override { return inner.port(); }
 };
 
-template<tpyapp::main::__Conn_Concept__ T>
+template<typename T> requires tpyapp::main::__Conn_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Conn, T> : tpyapp::main::Conn {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t port() override { return inner.port(); }
+    int32_t port() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.port(); }
 };
 
 namespace tpyapp::main {

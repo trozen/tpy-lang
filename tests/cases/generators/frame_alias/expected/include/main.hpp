@@ -282,11 +282,11 @@ struct tpy::Adapter<tpyapp::main::Getter, T> : tpyapp::main::Getter {
     int32_t get() override { return inner.get(); }
 };
 
-template<tpyapp::main::__Getter_Concept__ T>
+template<typename T> requires tpyapp::main::__Getter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Getter, T> : tpyapp::main::Getter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t get() override { return inner.get(); }
+    int32_t get() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

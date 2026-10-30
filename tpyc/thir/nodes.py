@@ -2683,9 +2683,11 @@ class THIRPtrLocalDecl(THIRStmt):
     init: THIRExpr | None = None
     cpp_type: str | None = None
     val_cpp: str | None = None
-    # GLOBAL_RVALUE only: the write sits inside a top-level branch/loop, so
-    # the in-place slot decl drops the `static` (a static would init once
-    # across iterations).
+    # The decl sits in a block nested in its scope (a branch / loop / handler
+    # body), so it runs zero or more times per entry of the scope and its slot
+    # cannot be the scope's once-initialized one: a GLOBAL_RVALUE slot is a
+    # plain block local (no `static`), a DYN_PROTOCOL slot the function-top
+    # `std::optional` the decl emplaces.
     branch_scope: bool = False
     # DYN_PROTOCOL only: the protocol base pointer spelling (`Base` of
     # `Base* p`), distinct from `cpp_type` (the concrete/adapter SLOT spelling).

@@ -91,12 +91,12 @@ struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     int32_t value() override { return inner.value(); }
 };
 
-template<tpyapp::main::__Counter_Concept__ T>
+template<typename T> requires tpyapp::main::__Counter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void increment() override { inner.increment(); }
-    int32_t value() override { return inner.value(); }
+    void increment() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.increment(); }
+    int32_t value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
 };
 
 namespace tpyapp::main {

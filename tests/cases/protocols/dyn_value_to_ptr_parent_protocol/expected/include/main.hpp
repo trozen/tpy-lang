@@ -85,11 +85,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     int32_t name() override { return inner.name(); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t name() override { return inner.name(); }
+    int32_t name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.name(); }
 };
 
 template<tpyapp::main::__NamedPet_Concept__ T>
@@ -101,12 +101,12 @@ struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     int32_t name() override { return inner.name(); }
 };
 
-template<tpyapp::main::__NamedPet_Concept__ T>
+template<typename T> requires tpyapp::main::__NamedPet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t label() override { return inner.label(); }
-    int32_t name() override { return inner.name(); }
+    int32_t label() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.label(); }
+    int32_t name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.name(); }
 };
 
 namespace tpyapp::main {

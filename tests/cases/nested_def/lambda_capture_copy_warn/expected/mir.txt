@@ -24,21 +24,21 @@ main::while_unpack@284:0: uncovered (unsupported native container element), summ
 main::keep_t@297:0: uncovered (generic body)
 main::cost@302:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::rebound_param@308:0: uncovered (reference parameter reseat), summary: opaque (reference parameter reseat)
-main::dyn_local@331:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
-main::callable_state@351:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::main@357:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::dyn_local@332:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::callable_state@352:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@358:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Holder.keep@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::M.make@66:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Ctx.__enter__@190:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Ctx.__exit__@193:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Bag.reader@255:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Bag.reader@255:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::Sq.area@327:4: covered (storage: no_proof_required), summary: known
-main::Counter.__call__@346:4: covered (storage: no_proof_required), summary: known
+main::Sq.area@328:4: covered (storage: no_proof_required), summary: known
+main::Counter.__call__@347:4: covered (storage: no_proof_required), summary: known
 main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@17:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::M.__init__@63:4: covered (storage: no_proof_required), summary: known
 main::C.__init__@77:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Bag.__init__@251:4: covered (storage: no_proof_required), summary: known
-main::Sq.__init__@324:4: covered (storage: no_proof_required), summary: known
-main::Counter.__init__@343:4: covered (storage: no_proof_required), summary: known
+main::Sq.__init__@325:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@344:4: covered (storage: no_proof_required), summary: known

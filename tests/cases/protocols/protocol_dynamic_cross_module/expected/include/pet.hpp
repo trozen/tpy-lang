@@ -38,11 +38,11 @@ struct tpy::Adapter<tpyapp::pet::Pet, T> : tpyapp::pet::Pet {
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpyapp::pet::__Pet_Concept__ T>
+template<typename T> requires tpyapp::pet::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::pet::Pet, T> : tpyapp::pet::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() override { return std::string(inner.speak()); }
+    std::string speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.speak()); }
 };
 
 namespace tpyapp::pet {

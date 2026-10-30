@@ -81,11 +81,11 @@ struct tpy::Adapter<tpyapp::main::SP, T> : tpyapp::main::SP {
     void put(std::string v) override { inner.put(std::move(v)); }
 };
 
-template<tpyapp::main::__SP_Concept__ T>
+template<typename T> requires tpyapp::main::__SP_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::SP, T> : tpyapp::main::SP {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void put(std::string v) override { inner.put(std::move(v)); }
+    void put(std::string v) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.put(std::move(v)); }
 };
 
 namespace tpyapp::main {

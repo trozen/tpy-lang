@@ -666,11 +666,11 @@ struct tpy::Adapter<tpyapp::main::P, T> : tpyapp::main::P {
     ::tpy::BigInt other() override { return inner.other(); }
 };
 
-template<tpyapp::main::__P_Concept__ T>
+template<typename T> requires tpyapp::main::__P_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::P, T> : tpyapp::main::P {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::BigInt other() override { return inner.other(); }
+    ::tpy::BigInt other() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.other(); }
 };
 
 template<tpyapp::main::__Q_Concept__ T>
@@ -683,13 +683,13 @@ struct tpy::Adapter<tpyapp::main::Q, T> : tpyapp::main::Q {
     void bump() override { inner.bump(); }
 };
 
-template<tpyapp::main::__Q_Concept__ T>
+template<typename T> requires tpyapp::main::__Q_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Q, T> : tpyapp::main::Q {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::BigInt extra() override { return inner.extra(); }
-    ::tpy::BigInt value() override { return inner.value(); }
-    void bump() override { inner.bump(); }
+    ::tpy::BigInt extra() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.extra(); }
+    ::tpy::BigInt value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
+    void bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 
 namespace tpyapp::main {

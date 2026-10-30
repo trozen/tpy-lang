@@ -27,7 +27,7 @@ from ..parse.nodes import (SourceLocation, TpyNestedDef, walk_body_stmts,
                           walk_expr_tree)
 from ..sema import alias_rebind
 from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
-                                 peel_slot, tuple_borrowed_paths,
+                                 tuple_borrowed_paths,
                                  tuple_source_elem_owned)
 from ..sema.binding_ownership import ReadKind, local_ownership
 from ..sema.compatibility import TupleSink, TypeCompatibility
@@ -48,7 +48,7 @@ from ..thir.nodes import (THIRCoerce, THIRConsumingIter, THIRFieldAccess,
 from ..thir.testutil import _compile as _compile_program, _entry
 from ..thir.source import Held
 from ..typesys import (SendType, TpyType, TupleType, TypeParamRef,
-                       unwrap_own, unwrap_readonly)
+                       peel_slot, unwrap_own, unwrap_readonly)
 from ..value_category import peel_value_wrappers
 
 _LEAF_IN_WARNING = re.compile(r"(?:copies|may copy) .*\(.*tuple element "

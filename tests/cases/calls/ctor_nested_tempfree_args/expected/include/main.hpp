@@ -166,11 +166,11 @@ struct tpy::Adapter<tpyapp::main::DynP, T> : tpyapp::main::DynP {
     int32_t ping() override { return inner.ping(); }
 };
 
-template<tpyapp::main::__DynP_Concept__ T>
+template<typename T> requires tpyapp::main::__DynP_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::DynP, T> : tpyapp::main::DynP {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t ping() override { return inner.ping(); }
+    int32_t ping() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.ping(); }
 };
 
 namespace tpyapp::main {

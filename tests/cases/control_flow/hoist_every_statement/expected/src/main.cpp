@@ -1043,6 +1043,133 @@ __gen_gen_addr gen_addr(int32_t n) {
     return __gen_gen_addr(n);
 }
 
+// # A `@dynamic` protocol local first bound inside each statement: an
+// # existing object is aliased (the write through `g` reaches `p`), a fresh
+// # one is owned by the local's slot.
+// def dyn_try(p: Plant) -> None:
+//     try:
+//         g: Grower = p  # tpyc: ok
+//     except ValueError:
+//         g = Plant(0)
+//     g.grow()
+//     try:
+//         f: Grower = Plant(5)  # tpyc: ok
+//     except ValueError:
+//         f = p
+//     f.grow()
+//     print("dyn_try", p.n, g.size(), f.size())
+void dyn_try(Plant& p) {
+    std::optional<::tpy::RefAdapter<Grower, Plant>> __slot_1;
+    std::optional<::tpy::Adapter<Grower, Plant>> __slot_2;
+    std::optional<::tpy::Adapter<Grower, Plant>> __slot_3;
+    std::optional<::tpy::RefAdapter<Grower, Plant>> __slot_4;
+    Grower* g;
+    {
+        try {
+            __slot_1.emplace(p);
+            g = &*__slot_1;
+        } catch (const ::tpy::ValueError&) {
+            __slot_2.emplace(Plant(0));
+            g = &*__slot_2;
+        }
+    }
+    g->grow();
+    Grower* f;
+    {
+        try {
+            __slot_3.emplace(Plant(5));
+            f = &*__slot_3;
+        } catch (const ::tpy::ValueError&) {
+            __slot_4.emplace(p);
+            f = &*__slot_4;
+        }
+    }
+    f->grow();
+    std::cout << "dyn_try" << " " << p.n << " " << g->size() << " " << f->size() << "\n" << ::tpy::check_signals;
+}
+
+// def dyn_while(p: Plant) -> None:
+//     while True:
+//         g: Grower = p  # tpyc: ok
+//         f: Grower = Plant(5)  # tpyc: ok
+//         break
+//     g.grow()
+//     f.grow()
+//     print("dyn_while", p.n, g.size(), f.size())
+void dyn_while(Plant& p) {
+    std::optional<::tpy::RefAdapter<Grower, Plant>> __slot_1;
+    std::optional<::tpy::Adapter<Grower, Plant>> __slot_2;
+    Grower* g;
+    Grower* f;
+    while (true) {
+        __slot_1.emplace(p);
+        g = &*__slot_1;
+        __slot_2.emplace(Plant(5));
+        f = &*__slot_2;
+        break;
+    }
+    g->grow();
+    f->grow();
+    std::cout << "dyn_while" << " " << p.n << " " << g->size() << " " << f->size() << "\n" << ::tpy::check_signals;
+}
+
+// def dyn_with(p: Plant) -> None:
+//     with Ctx():
+//         g: Grower = p  # tpyc: ok
+//         f: Grower = Plant(5)  # tpyc: ok
+//     g.grow()
+//     f.grow()
+//     print("dyn_with", p.n, g.size(), f.size())
+void dyn_with(Plant& p) {
+    std::optional<::tpy::RefAdapter<Grower, Plant>> __slot_1;
+    std::optional<::tpy::Adapter<Grower, Plant>> __slot_2;
+    Grower* f;
+    Grower* g;
+    auto __ctx_9 = Ctx();
+    __ctx_9.__enter__();
+    try {
+        __slot_1.emplace(p);
+        g = &*__slot_1;
+        __slot_2.emplace(Plant(5));
+        f = &*__slot_2;
+        goto __with_exit_9;
+    } catch (::tpy::BaseException& __exc_9) {
+        __ctx_9.__exit__({}, &__exc_9, {});
+        throw;
+    } catch (...) {
+        __ctx_9.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_9:
+    __ctx_9.__exit__({}, nullptr, {});
+    g->grow();
+    f->grow();
+    std::cout << "dyn_with" << " " << p.n << " " << g->size() << " " << f->size() << "\n" << ::tpy::check_signals;
+}
+
+// def dyn_for(p: Plant) -> None:
+//     for _i in range(1):
+//         g: Grower = p  # tpyc: ok
+//         f: Grower = Plant(5)  # tpyc: ok
+//     g.grow()
+//     f.grow()
+//     print("dyn_for", p.n, g.size(), f.size())
+void dyn_for(Plant& p) {
+    std::optional<::tpy::RefAdapter<Grower, Plant>> __slot_1;
+    std::optional<::tpy::Adapter<Grower, Plant>> __slot_2;
+    Grower* g;
+    Grower* f;
+    for (int32_t _i = 0; _i < 1; ++_i) {
+        __slot_1.emplace(p);
+        g = &*__slot_1;
+        __slot_2.emplace(Plant(5));
+        f = &*__slot_2;
+    }
+    g->grow();
+    f->grow();
+    std::cout << "dyn_for" << " " << p.n << " " << g->size() << " " << f->size() << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     print("for_const_tuple", for_const_tuple(Holder(3)))
 //     try_error_return(Holder(1))
@@ -1093,6 +1220,10 @@ __gen_gen_addr gen_addr(int32_t n) {
 //     closure_bt_with(Holder(1))
 //     for v in gen_addr(3):
 //         print("gen_addr", v)
+//     dyn_try(Plant(1))
+//     dyn_while(Plant(1))
+//     dyn_with(Plant(1))
+//     dyn_for(Plant(1))
 void main() {
     Holder __tmp_1 = Holder(3);
     std::cout << "for_const_tuple" << " " << ::tpyapp::main::for_const_tuple(__tmp_1) << "\n" << ::tpy::check_signals;
@@ -1170,6 +1301,14 @@ void main() {
             std::cout << "gen_addr" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
+    Plant __tmp_12 = Plant(1);
+    ::tpyapp::main::dyn_try(__tmp_12);
+    Plant __tmp_13 = Plant(1);
+    ::tpyapp::main::dyn_while(__tmp_13);
+    Plant __tmp_14 = Plant(1);
+    ::tpyapp::main::dyn_with(__tmp_14);
+    Plant __tmp_15 = Plant(1);
+    ::tpyapp::main::dyn_for(__tmp_15);
 }
 
 // main()

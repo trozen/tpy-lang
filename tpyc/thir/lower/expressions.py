@@ -163,10 +163,10 @@ from ...codegen_cpp.context import (
 )
 from ...codegen_cpp.protocols import (dynamic_adapter_type,
                                       dynamic_base_name,
-                                      dynamic_ref_adapter_type,
+                                      dyn_slot_cpp,
                                       narrow_cast_member,
                                       narrow_cast_rhs)
-from ...sema.dyn_erasure import record_inherits_dynamic
+from ...sema.dyn_erasure import DynSlotEntry
 from ...sema.match import peel_match_qualifiers
 from ...typesys import (
     varargs_elem_cpp,
@@ -514,6 +514,7 @@ from .predicates import (
     _own_proto_container_slot,
     _union_elem_value_tuple,
     _protocol_arg_temp,
+    _walrus_src_is_const,
     _bounded_tparam_protocol,
     _protocol_binding,
     _protocol_subscript_recv,
@@ -5172,7 +5173,7 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
             or walrus_owned_slot(lc.binding(name))):
         return True
     rec = lc.binding(name)
-    if (rec.owned_slot_object and not rec.nullable_storage
+    if (rec.owned_slot_object
             and use.admits(SinkForm.PTR_OPT_PASSTHROUGH)):
         # An owned slot engaged wherever it is read, at a pointer sink, is
         # the object it holds: the sink takes its address.
@@ -17146,8 +17147,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             note_detail("call.protocol_arg_pending")
             raise ThirUnsupported(call_reject_reason("expr.call"))
         rvalue = not isinstance(a, TpyName)
-        spec = _protocol_arg_temp(proto, at, lc.render_type(at), lc.analyzer,
-                                  rvalue=rvalue)
+        spec = _protocol_arg_temp(
+            proto, at, lc.render_type, lc.analyzer, rvalue=rvalue,
+            const=(not rvalue and is_dyn_protocol(proto)
+                   and _walrus_src_is_const(a, lc)))
         if spec is not None:
             # Admitted only under `temps_ok`; a silent fall-through would drop
             # the adapter wrap and pass the concrete. A match guard admits calls
@@ -17585,32 +17588,30 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                         addr_of=True,
                                         movable=unwrap_ref_type(tmp_t).is_movable(),
                                         form=Form.BORROW, loc=loc), lc)
-        if opt_face in ('adapter_rvalue', 'adapter_name'):
+        if isinstance(opt_face, DynSlotEntry):
             # Structural conformer at an Optional[@dynamic P] slot: the
-            # vtable rides an adapter temp -- Adapter<P, C> (owning, ctor
-            # rvalue) / RefAdapter<P, C> (non-owning, name lvalue), brace
-            # init, then `&(__tmp_N)` binds the nullable base pointer.
+            # vtable rides the classifier's adapter temp -- Adapter<P, C>
+            # (owning, ctor rvalue) / RefAdapter<P, C> (non-owning, name
+            # lvalue; `const C` over a const source), brace init, then
+            # `&(__tmp_N)` binds the nullable base pointer.
             if not temp_args:
                 raise ThirUnsupported(
                     "optional-ptr adapter face outside a flush position")
-            if isinstance(a, TpyName) and lc.binding(a.name).pointer:
-                raise ThirUnsupported("optional-ptr adapter pointer source")
             inner = unwrap_readonly(ot.inner)
-            at_c = lc.analyzer.get_expr_type(a)
-            at_c = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at_c)))
-                    if at_c is not None else None)
-            if not isinstance(at_c, NominalType):
-                raise ThirUnsupported("optional-ptr adapter source type")
-            concrete_cpp = lc.render_type(at_c)
-            adapter_cpp = (
-                dynamic_adapter_type(inner, concrete_cpp, lc.analyzer)
-                if opt_face == 'adapter_rvalue'
-                else dynamic_ref_adapter_type(inner, concrete_cpp,
-                                              lc.analyzer))
+            rvalue = opt_face.owns
+            entry = replace(opt_face, const=(not rvalue
+                                             and _walrus_src_is_const(a, lc)))
+            adapter_cpp = dyn_slot_cpp(inner, entry,
+                                       lc.render_type(entry.concrete),
+                                       lc.analyzer)
+            # A pointer local or a narrowed optional reads `(*b)`.
+            src_use = (_NESTED_ARG_USE if rvalue else
+                       replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
+                               forms=_POS_FORMS[SinkPos.CALL_ARG]))
             _witness("optptr.adapter_temp")
             return _hoisted(THIRArgTemp(
                 result_type=inner, cpp_type=adapter_cpp, brace_init=True,
-                init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
+                init=_lower_expr(a, lc, declared, use=src_use),
                 addr_of=True, form=Form.BORROW, loc=loc), lc)
         if opt_face == 'pass' or (isinstance(a, TpyName)
                                   and lc.binding(a.name).reads_as_pointer):

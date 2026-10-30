@@ -76,7 +76,7 @@ struct tpy::Adapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Clon
     T value() const override { return inner.value(); }
 };
 
-template<typename T, tpyapp::main::__Cloneable_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Cloneable_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}

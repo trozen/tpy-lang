@@ -97,12 +97,12 @@ struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Cont
     void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
 };
 
-template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Container_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
-    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
+    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    void set(::tpy::param_val_or_ref_t<T> val) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.set(val); }
 };
 
 namespace tpyapp::main {

@@ -16,6 +16,10 @@ pass_whole 5
 pass_local 5
 pass_kept 1005 5
 pass_live_alias 6
+ro_own_alias 13
+ro_own_pass 5
+ro_own_kept 1005
+ro_own_copy 15 0
 ret_whole 508
 ret_local 8
 unpack_call 6 True

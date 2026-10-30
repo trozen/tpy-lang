@@ -41,7 +41,7 @@ void main() {
     ::tpy::RefAdapter<Pet, Dog> __tmp_3{d};
     ::tpyapp::main::greet_bare(__tmp_3);
     ::tpyapp::main::consume(::tpy::make_adapter<Pet>(Dog(5)));
-    ::tpy::Adapter<Pet, Dog> __slot_1{d};
+    ::tpy::RefAdapter<Pet, Dog> __slot_1{d};
     Pet* q = &__slot_1;
     std::cout << "local:" << " " << q->speak() << "\n" << ::tpy::check_signals;
 }

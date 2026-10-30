@@ -498,7 +498,7 @@ void rebound_param(P&& p, bool c) {
 //     sq.k = 3
 //     print("dynamic:", f())
 void dyn_local(Sq& sq) {
-    ::tpy::Adapter<Shape, Sq> __slot_1{sq};
+    ::tpy::RefAdapter<Shape, Sq> __slot_1{sq};
     Shape* s = &__slot_1;
     std::function<int32_t()> f = [s]() -> int32_t { return s->area(); };
     sq.k = 3;

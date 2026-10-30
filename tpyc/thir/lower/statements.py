@@ -82,7 +82,7 @@ from ...parse.nodes import (
     read_names,
 )
 from ...typesys import (
-    dyn_protocol_borrow_result,peel_binding, pointer_repr_optional, repr_shape,
+    dyn_protocol_borrow_result,peel_binding, peel_slot, pointer_repr_optional, repr_shape,
                        returns_cpp_reference_shape, store_takes_elements, without_readonly)
 from ...typesys import (
     CallableType,
@@ -158,12 +158,14 @@ from ...codegen_cpp.forms import (
     reads_storage_form_optional,
 )
 from ...codegen_cpp.protocols import (
-    dynamic_adapter_type,
     dynamic_base_name,
+    dyn_slot_cpp,
     protocol_param_template_name,
 )
 from ...coercions import CoercionContext
-from ...sema.dyn_erasure import dyn_erasure_coercion, record_inherits_dynamic
+from ...sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_binding_owns,
+                                 dyn_entry, dyn_erasure_coercion,
+                                 is_dyn_base_local)
 from ...codegen_cpp.context import (escape_cpp_name,
                                     ternary_iterable_lends_storage)
 from ...prescan import (
@@ -2341,12 +2343,14 @@ def _hoist_opt_btuple(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
 
 def _hoist_dyn(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
                declared: dict[str, TpyType], lc: '_LowerCtx') -> HoistDecl:
-    """`Base* name;`; each reseat allocates its adapter slot (the
-    DYN_PROTOCOL rebind arm)."""
+    """`Base* name;` (`const Base*` when every source is const); each
+    binding takes its own entry (the @dynamic rebind arms)."""
     vtype = _hoist_type(rec, lc.analyzer)
     declared[name] = vtype
     _witness("hoist.dyn_protocol")
-    return HoistDecl(name, f"{dynamic_base_name(vtype, lc.analyzer)}*")
+    const_pfx = "const " if rec.const else ""
+    return HoistDecl(name, f"{const_pfx}"
+                     f"{dynamic_base_name(peel_slot(vtype), lc.analyzer)}*")
 
 
 _HoistBuilder = Callable[[_Hoist, str, TpyType, BindingRepr,
@@ -4362,20 +4366,18 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             concrete_type = analyzer.get_expr_type(stmt.init)
             if (concrete_type is not None
                     and not is_protocol_type(concrete_type)):
-                concrete_cpp = lc.render_type(concrete_type)
-                if record_inherits_dynamic(concrete_type, slot_t,
-                                           analyzer.registry):
-                    slot_cpp = concrete_cpp
-                else:
-                    slot_cpp = dynamic_adapter_type(slot_t, concrete_cpp,
-                                                    analyzer)
+                entry, slot_cpp, value = _dyn_slot_source(
+                    stmt, slot_t, lc, declared, const=False,
+                    site="top_level")
                 _witness("top_level.global_dyn_rebind")
+                if entry.entry is DynEntry.ALIAS:
+                    return THIRPtrLocalRebind(
+                        name=stmt.name,
+                        kind=PtrSlotKind.DYN_PROTOCOL_ERASED,
+                        value=value, loc=loc)
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL,
-                    value=_lower_expr(
-                        stmt.init, lc, declared,
-                        use=_ExprUse(slot_target=concrete_type)),
-                    val_cpp=slot_cpp, loc=loc)
+                    value=value, val_cpp=slot_cpp, loc=loc)
         _gsp_arg = (stmt.init.args[0]
                     if (isinstance(stmt.init, TpyCall)
                         and stmt.init.func_name == "iter"
@@ -4815,12 +4817,16 @@ def _lower_coro_frame_local_decl(stmt: TpyVarDecl, lc: _LowerCtx,
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: TpyType,
                              rec: BindingRepr, lc: _LowerCtx,
                              declared: dict[str, TpyType],
-                             loc) -> THIRPtrLocalDecl:
-    """First decl of a @dynamic protocol local (`p: P = Concrete(...)`): a
-    concrete/adapter `__slot_N{init}` storage + a protocol `Base* p =
-    &__slot_N;` alias -- the non-erased arm -- or the alias of an
-    already-erased source. A hoisted local rejects with a named detail."""
-    analyzer = lc.analyzer
+                             loc, *, in_branch: bool) -> THIRPtrLocalDecl:
+    """First decl of a @dynamic protocol local (`p: P = source`), by
+    `dyn_entry`: a slot the local owns (`Dog __slot_N{Dog()};`,
+    `Adapter<Base, C> __slot_N{C()};`) or borrows (`RefAdapter<Base, C>
+    __slot_N{q};`) aliased by `Base* p = &__slot_N;`, or no slot -- `Base* p
+    = &(source);` for an already-erased source or an inheritance conformer
+    the local does not own. A const source declares `const Base* p`. Inside
+    a branch / loop / handler body the slot is the reseat's function-top
+    `std::optional` (`branch_scope`), so an outer alias of `p` outlives the
+    block. A hoisted local rejects with a named detail."""
     # A HOISTED (escaping) @dynamic local's first decl may take a different
     # shape than this direct init slot -- a later rung.
     if stmt.name in lc.prescan.hoisted:
@@ -4829,37 +4835,63 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: TpyType,
     # A REASSIGNED local's FIRST decl emits identically to a non-reassigned
     # one (the direct init slot); its reseats take the rebind arm (its
     # record).
-    concrete_type = analyzer.get_expr_type(stmt.init)
-    if concrete_type is None:
-        note_detail("decl.dyn_protocol_erased")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    if is_protocol_type(concrete_type):
-        # Already-erased source: alias the same object (`Base* p2 = &(*p1);`
-        # for a pointer-local source, `&(pet)` for a `Pet&` param), no slot.
-        erased = _lower_dyn_erased_source(stmt.init, lc, declared)
-        if erased is None:
-            note_detail("decl.dyn_protocol_erased")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        _witness("decl.dyn_protocol_erased")
-        # A const source (`ob.get()` on a const handle) is aliased const.
-        const_pfx = "const " if rec.const else ""
+    entry, slot_cpp, value = _dyn_slot_source(stmt, vtype, lc, declared,
+                                              const=rec.const, site="decl")
+    base_cpp = (("const " if rec.const else "")
+                + dynamic_base_name(vtype, lc.analyzer))
+    if entry.entry is DynEntry.ALIAS:
         return THIRPtrLocalDecl(
             name=stmt.name, resolved_type=vtype,
-            kind=PtrSlotKind.DYN_PROTOCOL_ERASED, init=erased,
-            base_cpp=const_pfx + dynamic_base_name(vtype, analyzer),
-            loc=loc)
-    concrete_cpp = lc.render_type(concrete_type)
-    if record_inherits_dynamic(concrete_type, vtype, analyzer.registry):
-        slot_cpp = concrete_cpp  # direct inheritance -- plain concrete slot
-    else:
-        slot_cpp = dynamic_adapter_type(vtype, concrete_cpp, analyzer)
-    init = _lower_expr(stmt.init, lc, declared,
-                       use=_ExprUse(slot_target=concrete_type))
-    _witness("decl.dyn_protocol")
+            kind=PtrSlotKind.DYN_PROTOCOL_ERASED, init=value,
+            base_cpp=base_cpp, loc=loc)
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.DYN_PROTOCOL,
-        init=init, cpp_type=slot_cpp,
-        base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
+        init=value, cpp_type=slot_cpp, base_cpp=base_cpp,
+        branch_scope=in_branch, loc=loc)
+
+
+def _dyn_slot_source(stmt, proto: TpyType, lc: _LowerCtx,
+                     declared: dict[str, TpyType], *, const: bool,
+                     site: str
+                     ) -> 'tuple[DynSlotEntry, str | None, THIRExpr]':
+    """The `(entry, slot_cpp, value)` of a binding of `stmt.init` into a
+    @dynamic slot of `proto` (a local's decl or reseat, a module global's
+    write): `dyn_entry`'s verdict, its slot spelling (None for ALIAS) and the
+    lowered source -- an owned one as the slot's init, a borrowed one through
+    the indirect read (a pointer local or a narrowed optional reads
+    `(*b)`), an already-erased one deref'd."""
+    analyzer = lc.analyzer
+    init = stmt.init
+    proto = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(proto)))
+    concrete_type = analyzer.get_expr_type(init)
+    if concrete_type is None:
+        note_detail(f"{site}.dyn_protocol_erased")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    entry = dyn_entry(proto, concrete_type, analyzer,
+                      owned=dyn_binding_owns(analyzer, init, concrete_type),
+                      const=const)
+    if entry.entry is DynEntry.ALIAS and is_protocol_type(entry.concrete):
+        # Already-erased source: alias the same object (`Base* p2 = &(*p1);`
+        # for a pointer-local source, `&(pet)` for a `Pet&` param).
+        erased = _lower_dyn_erased_source(init, lc, declared)
+        if erased is None:
+            note_detail(f"{site}.dyn_protocol_erased")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness(f"{site}.dyn_protocol_erased")
+        return entry, None, erased
+    if entry.owns:
+        value = _lower_expr(init, lc, declared,
+                            use=_ExprUse(slot_target=concrete_type))
+        _witness(f"{site}.dyn_protocol")
+    else:
+        value = _lower_expr(init, lc, declared,
+                            use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                         forms=_ONLY_INDIRECT_READ))
+        _witness(f"{site}.dyn_protocol_"
+                 + ("ref" if entry.entry is DynEntry.REF else "alias"))
+    slot_cpp = dyn_slot_cpp(proto, entry, lc.render_type(entry.concrete),
+                            analyzer)
+    return entry, slot_cpp, value
 
 
 def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
@@ -9244,7 +9276,8 @@ def _decl_coro_frame_local(stmt, vtype, rec, scope, loc):
 
 def _decl_dyn(stmt, vtype, rec, scope, loc):
     node = _lower_dyn_protocol_decl(stmt, vtype, rec, scope.lc,
-                                    scope.declared, loc)
+                                    scope.declared, loc,
+                                    in_branch=scope.in_branch)
     scope.declared[stmt.name] = vtype
     return node
 
@@ -10186,35 +10219,17 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
             if lc.func.is_generator or lc.func.is_async:
                 note_detail("reseat.dyn_protocol")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            proto_vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.name])))
-            concrete_type = analyzer.get_expr_type(stmt.init)
-            if concrete_type is None:
-                note_detail("reseat.dyn_protocol_erased")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            if is_protocol_type(concrete_type):
-                # Already-erased reseat (`p2 = p1`): re-alias, no slot.
-                erased = _lower_dyn_erased_source(stmt.init, lc, declared)
-                if erased is None:
-                    note_detail("reseat.dyn_protocol_erased")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                _witness("reseat.dyn_protocol_erased")
+            entry, slot_cpp, value = _dyn_slot_source(
+                stmt, declared[stmt.name], lc, declared,
+                const=lc.declaring(stmt.name).const, site="reseat")
+            if entry.entry is DynEntry.ALIAS:
+                # Re-alias, no slot (`p2 = &(*p1);`, `p = &(d);`).
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL_ERASED,
-                    value=erased, loc=loc)
-            concrete_cpp = lc.render_type(concrete_type)
-            if record_inherits_dynamic(concrete_type, proto_vt, analyzer.registry):
-                slot_cpp = concrete_cpp
-            else:
-                slot_cpp = dynamic_adapter_type(proto_vt, concrete_cpp,
-                                                analyzer)
-            _witness("reseat.dyn_protocol")
+                    value=value, loc=loc)
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL,
-                value=_lower_expr(
-                    stmt.init, lc, declared,
-                    use=_ExprUse(slot_target=concrete_type)),
-                val_cpp=slot_cpp, loc=loc)
+                value=value, val_cpp=slot_cpp, loc=loc)
         reseat_u = pointer_repr_optional(declared[stmt.name])
         if reseat_u is not None:
             # A slotless OPT_PTR_SLOT local (never rvalue-reassigned --
@@ -10819,8 +10834,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # the emplace + reseat stay inline in the branch.
             if scope.in_branch:
                 _gvt = declared.get(stmt.name)
-                _gvu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _gvt))) if _gvt is not None else None)
                 # In-branch flavors that lower: the @dynamic rebind (static
                 # slot hoists, emplace inline), an RVALUE write in a
                 # non-loop branch (the `static` slot initializes on the
@@ -10831,8 +10844,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # loop scope left out: it keeps `static`, so the slot would
                 # initialize once and freeze the first iteration's value.
                 if not (
-                        (isinstance(_gvu, NominalType)
-                         and is_dyn_protocol(_gvu))
+                        (_gvt is not None and is_dyn_base_local(_gvt))
                         or ((lc.in_for_body or scope.loop_depth == 0)
                             and stmt.init is not None
                             and is_rvalue_source(lc.analyzer, stmt.init))

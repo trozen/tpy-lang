@@ -302,14 +302,14 @@ struct tpy::Adapter<tpystd::http::client::_Connection, T> : tpystd::http::client
     void close() override { inner.close(); }
 };
 
-template<tpystd::http::client::___Connection_Concept__ T>
+template<typename T> requires tpystd::http::client::___Connection_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::http::client::_Connection, T> : tpystd::http::client::_Connection {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void connect() override { inner.connect(); }
-    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) override { inner.request(method, url, body, headers); }
-    tpystd::http::client::HTTPResponse getresponse() override { return inner.getresponse(); }
-    void close() override { inner.close(); }
+    void connect() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.connect(); }
+    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.request(method, url, body, headers); }
+    tpystd::http::client::HTTPResponse getresponse() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.getresponse(); }
+    void close() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.close(); }
 };
 
 namespace tpystd::http::client {

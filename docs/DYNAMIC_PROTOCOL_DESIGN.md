@@ -128,8 +128,15 @@ def greet_fast[T: Pet](pet: T) -> None:
 Dynamic protocol variables use the existing pointer-local and slot hoisting
 infrastructure. No heap allocation occurs.
 
-**Local variable** -- when Dog explicitly inherits Pet, the slot is a plain Dog (direct
-inheritance from the base class). Otherwise an owning adapter wraps the value:
+**Local variable** -- a value enters a `@dynamic` local (its declaration, a reseat, a
+module global's write; the call argument below too) by one rule, `dyn_entry`
+(`tpyc/sema/dyn_erasure.py`): it is ALIASED when the binding does not own it and OWNED
+only when the binding does (an rvalue, or a name binding of a value type, which copies
+by the language rule). An aliased inheritance conformer or already-erased source is the
+object's address (no slot); an aliased structural conformer rides a zero-copy
+`RefAdapter` (`RefAdapter<Base, const C>` and a `const Base*` over a const source). An
+owned inheritance conformer takes a plain concrete slot, an owned structural one the
+owning `Adapter`:
 
 ```python
 pet: Pet = Dog()       # Dog(Pet) -> direct inheritance
@@ -151,6 +158,27 @@ tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
 Pet* pet = &__slot_1;
 pet->make_noise();   // virtual dispatch via adapter
 ```
+
+Bound from an existing object, the local aliases it, as CPython's name does:
+
+```python
+pet: Pet = parrot      # structural lvalue: a write through `pet` reaches `parrot`
+other: Pet = dog       # Dog(Pet) lvalue: the object's own address
+```
+
+```cpp
+tpy::RefAdapter<Pet, Parrot> __slot_1{parrot};
+Pet* pet = &__slot_1;
+Pet* other = &dog;
+```
+
+A value-type conformer (`class V(ValueType)`) bound from a name keeps its copy: the
+binding copies a value type, so a later `v = V(5)` is not seen through the local. A
+local first bound inside an `if` / `try` / `while` / `with` / `for` and read after it is
+predeclared `Pet* pet;` (`const Pet*` when every source is const), each binding
+following the rule above. A local declared inside such a block takes its slot as a
+reassignment does -- a `std::optional` at function scope the declaration emplaces -- so
+an outer name that keeps it stays valid after the block.
 
 **Reassignment** creates additional slots at each reassignment site:
 
@@ -455,14 +483,19 @@ struct tpy::Adapter<Speakable, T> : Speakable {
 };
 ```
 
-**4. Ref adapter** (partial specialization of `tpy::RefAdapter`, at global scope):
+**4. Ref adapter** (partial specialization of `tpy::RefAdapter`, at global scope). A
+const source borrows through `RefAdapter<Speakable, const T>`, so the constraint peels
+the const, and a mutating override -- unreachable there, since a const source binds a
+`const Speakable*` -- has its forward to the impl compiled out for a const impl. The
+override must still exist (the base declares it pure virtual), so its body is the
+never-returning `::tpy::unreachable_override()`, which only fills the vtable slot:
 
 ```cpp
-template<__Speakable_Concept__ T>
+template<typename T> requires __Speakable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<Speakable, T> : Speakable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void speak() override { inner.speak(); }
+    void speak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.speak(); }
 };
 ```
 
@@ -632,8 +665,12 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
    `tpy::Adapter<Pet, T>`, and `tpy::RefAdapter<Pet, T>` for each `@dynamic` protocol.
    Base class in user namespace; adapters as partial specializations at global scope.
 3. **Protocol-typed locals** (done) -- `pet: Pet = Dog()` generates stack slot +
-   pointer-local (`Pet*`). Direct inheritors use plain concrete slot;
-   structural conformance uses owning adapter slot. Reassignment allocates new slots.
+   pointer-local (`Pet*`). An owned source (an rvalue, a value type's copy): direct
+   inheritors use a plain concrete slot, structural conformance the owning adapter
+   slot; a source the binding does not own is aliased (the object's address, or a
+   `RefAdapter`). A reassignment takes a new slot of its own, except an inheritance
+   conformer the binding does not own and an already-erased protocol source, which
+   re-point the pointer at the object (no slot, the ALIAS entry).
 4. **Protocol-typed function params** (done) -- `def f(pet: Pet)` generates
    `f(Pet& pet)`. Call-site dispatch: direct inheritors pass by implicit upcast
    (zero cost); structural lvalues use RefAdapter (zero-copy, mutations visible);

@@ -66,11 +66,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     std::string name() override { return std::string(inner.name()); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return std::string(inner.name()); }
+    std::string name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.name()); }
 };
 
 namespace tpyapp::main {

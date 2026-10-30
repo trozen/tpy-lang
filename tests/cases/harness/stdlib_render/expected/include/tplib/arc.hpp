@@ -275,15 +275,15 @@ struct tpy::Adapter<tpystd::tplib::arc::_ArcCellBase, T> : tpystd::tplib::arc::_
     bool release_weak() override { return inner.release_weak(); }
 };
 
-template<tpystd::tplib::arc::___ArcCellBase_Concept__ T>
+template<typename T> requires tpystd::tplib::arc::___ArcCellBase_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::tplib::arc::_ArcCellBase, T> : tpystd::tplib::arc::_ArcCellBase {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void incr_strong() override { inner.incr_strong(); }
-    bool release_strong() override { return inner.release_strong(); }
-    bool try_incr_strong() override { return inner.try_incr_strong(); }
-    void incr_weak() override { inner.incr_weak(); }
-    bool release_weak() override { return inner.release_weak(); }
+    void incr_strong() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.incr_strong(); }
+    bool release_strong() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.release_strong(); }
+    bool try_incr_strong() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.try_incr_strong(); }
+    void incr_weak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.incr_weak(); }
+    bool release_weak() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.release_weak(); }
 };
 
 namespace tpystd::tplib::arc {

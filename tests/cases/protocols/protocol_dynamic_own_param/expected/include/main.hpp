@@ -133,11 +133,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     std::string_view name() override { return inner.name(); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string_view name() override { return inner.name(); }
+    std::string_view name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.name(); }
 };
 
 template<tpyapp::main::__NamedPet_Concept__ T>
@@ -149,12 +149,12 @@ struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     std::string_view name() override { return inner.name(); }
 };
 
-template<tpyapp::main::__NamedPet_Concept__ T>
+template<typename T> requires tpyapp::main::__NamedPet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string_view species() override { return inner.species(); }
-    std::string_view name() override { return inner.name(); }
+    std::string_view species() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.species(); }
+    std::string_view name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.name(); }
 };
 
 namespace tpyapp::main {

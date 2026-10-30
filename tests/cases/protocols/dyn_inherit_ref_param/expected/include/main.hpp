@@ -80,13 +80,13 @@ struct tpy::Adapter<tpyapp::main::Sink, T> : tpyapp::main::Sink {
     int32_t width(std::vector<std::string>& tags) override { return inner.width(tags); }
 };
 
-template<tpyapp::main::__Sink_Concept__ T>
+template<typename T> requires tpyapp::main::__Sink_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Sink, T> : tpyapp::main::Sink {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t total(::tpy::ordered_map<std::string, int32_t>* items) override { return inner.total(items); }
-    void bump(::tpy::ordered_map<std::string, int32_t>& items) override { inner.bump(items); }
-    int32_t width(std::vector<std::string>& tags) override { return inner.width(tags); }
+    int32_t total(::tpy::ordered_map<std::string, int32_t>* items) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.total(items); }
+    void bump(::tpy::ordered_map<std::string, int32_t>& items) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(items); }
+    int32_t width(std::vector<std::string>& tags) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.width(tags); }
 };
 
 namespace tpyapp::main {

@@ -478,12 +478,12 @@ struct tpy::Adapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
     void close() override { inner.close(); }
 };
 
-template<tpystd::io::__RawBinaryIO_Concept__ T>
+template<typename T> requires tpystd::io::__RawBinaryIO_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::Bytes read(int32_t size) override { return inner.read(size); }
-    void close() override { inner.close(); }
+    ::tpy::Bytes read(int32_t size) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.read(size); }
+    void close() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.close(); }
 };
 
 template<tpystd::io::__RawBinaryWriter_Concept__ T>
@@ -496,13 +496,13 @@ struct tpy::Adapter<tpystd::io::RawBinaryWriter, T> : tpystd::io::RawBinaryWrite
     int64_t fileno() override { return inner.fileno(); }
 };
 
-template<tpystd::io::__RawBinaryWriter_Concept__ T>
+template<typename T> requires tpystd::io::__RawBinaryWriter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::io::RawBinaryWriter, T> : tpystd::io::RawBinaryWriter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t write(::tpy::BytesView data) override { return inner.write(data); }
-    void close() override { inner.close(); }
-    int64_t fileno() override { return inner.fileno(); }
+    int32_t write(::tpy::BytesView data) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.write(data); }
+    void close() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.close(); }
+    int64_t fileno() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.fileno(); }
 };
 
 namespace tpystd::io {

@@ -1,8 +1,18 @@
-"""The `@dynamic` erasure at an `Own[@dynamic P]` slot: which conversion a
-source takes into the erased `unique_ptr<P>` -- none (an already-erased
-`Own[P]`, forwarded), `std::make_unique<U>` (a record inheriting P), the
-owning `make_adapter<Base>` Adapter (a structural conformer, an async-def
-factory call), or the bound coroutine handle's unwrap. Sema publishes the
+"""How a value enters a `@dynamic` protocol.
+
+A borrowing slot (a local, a reseat, a module global, a call argument's
+temp) takes `dyn_entry`'s adapter choice: a source the binding does not own
+is aliased -- an already-erased source or an inheritance conformer is the
+object's address, a structural conformer a `RefAdapter` (over `const C` for
+a const source) -- and one it owns (an rvalue, a name binding of a value
+type) is held: an inheritance conformer in a concrete slot, a structural
+one in an owning `Adapter`.
+
+The erasure at an `Own[@dynamic P]` slot: which conversion a source takes
+into the erased `unique_ptr<P>` -- none (an already-erased `Own[P]`,
+forwarded), `std::make_unique<U>` (a record inheriting P), the owning
+`make_adapter<Base>` Adapter (a structural conformer, an async-def factory
+call), or the bound coroutine handle's unwrap. Sema publishes the
 conversion on the source as a coercion (`dyn_erasure_coercion`, the
 `into_dyn_*` rows of the coercion registry) where the slot is a result;
 the call-argument and binding sinks ask `classify_dyn_own_arg`
@@ -10,6 +20,8 @@ directly."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .. import qnames
@@ -17,11 +29,11 @@ from ..parse.nodes import TpyCall, TpyCoerce, TpyMethodCall, TpyName
 from ..coercions import (DYN_ERASURES, INTO_DYN_ADAPTER, INTO_DYN_FACTORY,
                          INTO_DYN_HANDLE, INTO_DYN_INHERIT, Coercion)
 from ..type_def_registry import protocol_info_of, is_subtype
-from ..value_category import is_rvalue_source
+from ..value_category import binds_owned_value, is_rvalue_source
 from ..typesys import (
     ConcreteCoroType, NominalType, OwnType, TpyType, TypeParamRef,
-    is_dyn_protocol, is_protocol_type, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync,
+    is_dyn_protocol, is_protocol_type, peel_slot, unwrap_readonly,
+    unwrap_ref_type, unwrap_send_sync,
 )
 
 if TYPE_CHECKING:
@@ -91,6 +103,80 @@ def _implements_dynamic(record_info, target) -> bool:
                 or is_subtype(pi, target)):
             return True
     return False
+
+
+class DynEntry(Enum):
+    """How a value enters a `@dynamic` protocol slot (a local, a reseat, a
+    global, a call argument's temp)."""
+    # No slot: the protocol pointer is the object's address (an already
+    # erased source, or an inheritance conformer the slot does not own).
+    ALIAS = auto()
+    # The owning concrete slot of an inheritance conformer (`Dog __slot{..}`).
+    CONCRETE = auto()
+    # The owning `Adapter<Base, C>` of a structural conformer.
+    OWNING = auto()
+    # The borrowing `RefAdapter<Base, C>` of a structural conformer
+    # (`RefAdapter<Base, const C>` over a const source).
+    REF = auto()
+
+
+@dataclass(frozen=True)
+class DynSlotEntry:
+    """`dyn_entry`'s verdict: the entry, the conformer type the slot wraps
+    (readonly / Own / Send / Ref peeled; the protocol itself for ALIAS of an
+    erased source) and whether the source renders const, so the protocol
+    pointer and a RefAdapter's impl take `const`."""
+    entry: DynEntry
+    concrete: TpyType
+    const: bool
+
+    @property
+    def owns(self) -> bool:
+        return self.entry in (DynEntry.CONCRETE, DynEntry.OWNING)
+
+
+def dyn_entry(proto: NominalType, source_type: TpyType, analyzer, *,
+              owned: bool, const: bool) -> DynSlotEntry:
+    """How a source of `source_type` enters a slot of the @dynamic protocol
+    `proto`: aliased when the slot does not own it -- an already-erased
+    source or an inheritance conformer is the object's address, a
+    structural conformer a `RefAdapter` -- and owned only when the binding
+    owns it (`owned`: an rvalue, or a name binding of a value type --
+    `dyn_binding_owns`): the concrete slot for an inheritance conformer, the
+    `Adapter` for a structural one. `const` is the source's rendered
+    const-ness."""
+    u = peel_slot(source_type)
+    if is_protocol_type(u):
+        return DynSlotEntry(DynEntry.ALIAS, u, const)
+    if record_inherits_dynamic(u, proto, analyzer.registry):
+        return DynSlotEntry(DynEntry.CONCRETE if owned else DynEntry.ALIAS,
+                            u, const)
+    return DynSlotEntry(DynEntry.OWNING if owned else DynEntry.REF, u, const)
+
+
+def is_dyn_base_local(t: TpyType) -> bool:
+    """Whether a binding of type `t` is a @dynamic base-pointer local:
+    readonly / Ref / Send / Sync peeled in any order, a @dynamic protocol
+    with no `Own` anywhere in the wrapper chain -- an `Own[@dynamic P]`
+    binding is the erased owner, not a pointer."""
+    while True:
+        if isinstance(t, OwnType):
+            return False
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if u is t:
+            return isinstance(t, NominalType) and is_dyn_protocol(t)
+        t = u
+
+
+def dyn_binding_owns(analyzer, init: 'TpyExpr',
+                     source_type: TpyType) -> bool:
+    """Whether a NAME binding of `init` into a @dynamic slot owns the value:
+    a fresh value the binding owns (`binds_owned_value`), or any value of a
+    value type, which a binding copies by the language rule. A call
+    argument is no binding: it owns only an rvalue."""
+    if binds_owned_value(analyzer, init):
+        return True
+    return peel_slot(source_type).is_value_type()
 
 
 def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
@@ -217,10 +303,7 @@ def conformer_source(a: 'TpyExpr', analyzer) -> 'NominalType | None':
     elif not isinstance(a, TpyName):
         return None
     at = analyzer.get_expr_type(a)
-    at_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-            if at is not None else None)
-    if isinstance(at_u, OwnType):
-        at_u = unwrap_readonly(at_u.wrapped)
+    at_u = peel_slot(at) if at is not None else None
     # A protocol-typed source can never take the conformer wraps
     # (Adapter<P, P> over abstract P has no sizeof).
     if not (isinstance(at_u, NominalType) and at_u.is_user_record

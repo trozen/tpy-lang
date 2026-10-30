@@ -163,12 +163,12 @@ struct tpy::Adapter<tpyapp::main::Src, T> : tpyapp::main::Src {
     void bump() override { inner.bump(); }
 };
 
-template<tpyapp::main::__Src_Concept__ T>
+template<typename T> requires tpyapp::main::__Src_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Src, T> : tpyapp::main::Src {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t get() override { return inner.get(); }
-    void bump() override { inner.bump(); }
+    int32_t get() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.get(); }
+    void bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 
 template<tpyapp::main::__RoSrc_Concept__ T>
@@ -179,7 +179,7 @@ struct tpy::Adapter<tpyapp::main::RoSrc, T> : tpyapp::main::RoSrc {
     int32_t get() const override { return inner.get(); }
 };
 
-template<tpyapp::main::__RoSrc_Concept__ T>
+template<typename T> requires tpyapp::main::__RoSrc_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::RoSrc, T> : tpyapp::main::RoSrc {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
@@ -195,12 +195,12 @@ struct tpy::Adapter<tpyapp::main::Src2<T>, __tpy_Impl> : tpyapp::main::Src2<T> {
     void bump() override { inner.bump(); }
 };
 
-template<typename T, tpyapp::main::__Src2_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpyapp::main::__Src2_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Src2<T>, __tpy_Impl> : tpyapp::main::Src2<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
-    void bump() override { inner.bump(); }
+    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    void bump() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 
 namespace tpyapp::main {

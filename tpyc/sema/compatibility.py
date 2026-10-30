@@ -13,7 +13,7 @@ from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
 from ..type_def_registry import has_view_param_form
-from ..typesys import pointer_repr_optional, readonly_access, resolve_int_literals, BIGINT
+from ..typesys import peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals, BIGINT
 from ..typesys import (
     is_value_type_bound,
     same_class, Representation, return_representation,
@@ -49,7 +49,7 @@ from . import own_copy
 from .alias_rebind import (ElemPath, bare_tuple, declared_call_paths,
                            is_reference_leaf,
                            leaf_paths, owned_slot_paths,
-                           peel_slot, pointer_tuple_names, reference_paths,
+                           pointer_tuple_names, reference_paths,
                            top_level, tuple_borrowed_paths, tuple_elem_owned,
                            tuple_source_elem_owned)
 from .binding_ownership import (CompMove, ReadKind, bound_name,

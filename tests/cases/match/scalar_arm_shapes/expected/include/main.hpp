@@ -121,11 +121,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     int32_t bump() override { return inner.bump(); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t bump() override { return inner.bump(); }
+    int32_t bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.bump(); }
 };
 
 namespace tpyapp::main {

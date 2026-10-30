@@ -4188,7 +4188,8 @@ class Recorder:
 | Class explicitly inherits protocol (`class Dog(Pet)`) | Direct C++ inheritance (`struct Dog : Pet`), implicit upcast to `Pet&` | Zero -- same as hand-written virtual dispatch |
 | Structural conformance, lvalue arg (`greet(parrot)`) | Ref adapter (`tpy::RefAdapter<Pet, Parrot>{parrot}`) | One indirection, zero copy |
 | Structural conformance, rvalue arg (`greet(Parrot())`) | Owning adapter (`tpy::Adapter<Pet, Parrot>{Parrot()}`) | Owns the value, no dangling |
-| Local protocol variable (`pet: Pet = Dog()`) | Stack slot + `Pet*` pointer-local | Zero (direct inheritance) or adapter (structural) |
+| Local protocol variable from a fresh value (`pet: Pet = Dog()`) | Stack slot the local owns + `Pet*` pointer-local | Zero (direct inheritance) or owning adapter (structural) |
+| Local protocol variable from an existing object (`pet: Pet = parrot`, `pet = dog`) | Aliases it: `Pet* pet = &dog;` (inheritance) or `tpy::RefAdapter<Pet, Parrot> __slot_1{parrot};` (structural; `RefAdapter<Pet, const Parrot>` + `const Pet*` over a const source) | One indirection, zero copy, mutations visible |
 
 When a class explicitly inherits a `@dynamic` protocol, the compiler generates C++ struct inheritance with `override` on matching methods:
 ```python
@@ -4197,9 +4198,9 @@ class Dog(Pet):                    # -> struct Dog : Pet {
         return "Woof"
 ```
 
-Structural conformance (satisfying the protocol without inheriting it) uses adapter wrapping at dispatch points. The ref adapter ensures lvalue arguments are passed by reference (mutations visible to caller), while the owning adapter is used for rvalues.
+Structural conformance (satisfying the protocol without inheriting it) uses adapter wrapping at dispatch points. One rule picks the entry at every position (a local's declaration, a reseat, a module global's write, a call argument): a source the binding does not own is aliased -- the ref adapter, or the object's own address for an inheriting class -- so a mutation through either name is seen through the other, as in CPython; a fresh value (an rvalue) is owned by the slot (the owning adapter, or the concrete slot). A value-type conformer (`class V(ValueType)`) bound from a name is copied, as any value-type binding is; as a call argument it is passed by reference. A local first bound inside an `if` / `try` / `while` / `with` / `for` (or declared and used inside one) takes the same entry.
 
-**Conditional/loop reassignment** -- when a dynamic protocol variable is declared or reassigned inside an `if`/`else` branch, the adapter slot is hoisted to function scope via `std::optional` so the value outlives the block:
+**Conditional/loop reassignment** -- when a dynamic protocol variable is declared or reassigned inside a compound statement (`if`/`else`, `try`, `while`, `with`, `for`) and read after it, the adapter slot is hoisted to function scope via `std::optional` so the value outlives the block. A rebind inside a loop refills the same slot on every pass, so a second name still holding the previous pass's object is warned (`'t' will not keep the object it was given -- 's' is rebound here ...`). An aliased block-local record read through the protocol after its block dangles (`BUGS.md#block-local-escapes-through-outer-alias`):
 
 ```python
 def choose_pet(cond: bool) -> None:

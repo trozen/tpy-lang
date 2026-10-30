@@ -111,7 +111,7 @@ struct tpy::Adapter<tpyapp::main::Tag, T> : tpyapp::main::Tag {
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
 };
 
-template<tpyapp::main::__Tag_Concept__ T>
+template<typename T> requires tpyapp::main::__Tag_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Tag, T> : tpyapp::main::Tag {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

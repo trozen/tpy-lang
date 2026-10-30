@@ -290,11 +290,11 @@ struct tpy::Adapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
     int32_t value() override { return inner.value(); }
 };
 
-template<tpyapp::main::__DynValued_Concept__ T>
+template<typename T> requires tpyapp::main::__DynValued_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t value() override { return inner.value(); }
+    int32_t value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
 };
 
 namespace tpyapp::main {

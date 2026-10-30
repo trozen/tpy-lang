@@ -102,11 +102,11 @@ struct tpy::Adapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
     std::string what() override { return std::string(inner.what()); }
 };
 
-template<tpyapp::main::__Throwable_Concept__ T>
+template<typename T> requires tpyapp::main::__Throwable_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string what() override { return std::string(inner.what()); }
+    std::string what() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.what()); }
 };
 
 namespace tpyapp::main {

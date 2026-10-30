@@ -23,13 +23,14 @@ from typing import Iterable
 from enum import Enum, auto
 
 from ...sema.alias_rebind import (bare_tuple, is_reference_leaf, leaves_at,
-                                  peel_slot, reference_paths)
+                                  reference_paths)
 from ...sema.context import ElemPath, paths_overlap
 from ...sema.dyn_erasure import dyn_forward_ok
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
     contains_type_param,
+    peel_slot,
     FloatLiteralType,
     param_takes_ownership,
     INT32,

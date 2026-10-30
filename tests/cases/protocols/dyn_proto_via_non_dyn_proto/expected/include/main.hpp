@@ -69,11 +69,11 @@ struct tpy::Adapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
     std::string base_method() override { return std::string(inner.base_method()); }
 };
 
-template<tpyapp::main::__DynBase_Concept__ T>
+template<typename T> requires tpyapp::main::__DynBase_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string base_method() override { return std::string(inner.base_method()); }
+    std::string base_method() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.base_method()); }
 };
 
 namespace tpyapp::main {

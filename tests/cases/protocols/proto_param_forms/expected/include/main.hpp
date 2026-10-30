@@ -201,13 +201,13 @@ struct tpy::Adapter<tpyapp::main::Dyn, T> : tpyapp::main::Dyn {
     int32_t tag() override { return inner.tag(); }
 };
 
-template<tpyapp::main::__Dyn_Concept__ T>
+template<typename T> requires tpyapp::main::__Dyn_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Dyn, T> : tpyapp::main::Dyn {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t bump(tpyapp::main::Rec& r) override { return inner.bump(r); }
-    tpyapp::main::Rec pick(tpyapp::main::Holder& h) override { return inner.pick(h); }
-    int32_t tag() override { return inner.tag(); }
+    int32_t bump(tpyapp::main::Rec& r) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.bump(r); }
+    tpyapp::main::Rec pick(tpyapp::main::Holder& h) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.pick(h); }
+    int32_t tag() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.tag(); }
 };
 
 namespace tpyapp::main {

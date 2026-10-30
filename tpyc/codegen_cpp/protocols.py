@@ -26,7 +26,8 @@ from .context import (
     escape_cpp_name, qualified_cpp_name, expand_cpp_template, forward_param,
 )
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
-from ..sema.dyn_erasure import dyn_forward_ok, record_inherits_dynamic
+from ..sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_forward_ok,
+                                record_inherits_dynamic)
 from ..symbol_binding import lookup_imported, SymbolKind
 from ..identity_map import IdentityMap
 from ..modules.defs import UNARYOP_TO_METHOD
@@ -155,9 +156,25 @@ def dynamic_adapter_type(protocol: NominalType, concrete_cpp: str,
 
 
 def dynamic_ref_adapter_type(protocol: NominalType, concrete_cpp: str,
-                             analyzer) -> str:
-    """The non-owning adapter type: `::tpy::RefAdapter<Base, Concrete>`."""
-    return f"::tpy::RefAdapter<{dynamic_base_name(protocol, analyzer)}, {concrete_cpp}>"
+                             analyzer, *, const: bool = False) -> str:
+    """The non-owning adapter type: `::tpy::RefAdapter<Base, Concrete>`, or
+    `::tpy::RefAdapter<Base, const Concrete>` over a const source."""
+    impl = f"const {concrete_cpp}" if const else concrete_cpp
+    return f"::tpy::RefAdapter<{dynamic_base_name(protocol, analyzer)}, {impl}>"
+
+
+def dyn_slot_cpp(protocol: NominalType, entry: DynSlotEntry,
+                 concrete_cpp: str, analyzer) -> 'str | None':
+    """The slot spelling of a `dyn_entry` verdict (`concrete_cpp`: the
+    conformer's rendered type), None for an ALIAS (no slot)."""
+    if entry.entry is DynEntry.CONCRETE:
+        return concrete_cpp
+    if entry.entry is DynEntry.OWNING:
+        return dynamic_adapter_type(protocol, concrete_cpp, analyzer)
+    if entry.entry is DynEntry.REF:
+        return dynamic_ref_adapter_type(protocol, concrete_cpp, analyzer,
+                                        const=entry.const)
+    return None
 
 
 def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
@@ -1187,12 +1204,19 @@ class ProtocolGenerator:
                 )
             tparam_decls = [f"typename {tp}" for tp in protocol.type_params]
             tparam_refs = ", ".join(protocol.type_params)
-            tparam_decls.append(f"{qconcept}<{tparam_refs}> {impl}")
-            template_header = "template<" + ", ".join(tparam_decls) + ">"
+            template_header = ("template<" + ", ".join(
+                [*tparam_decls, f"{qconcept}<{tparam_refs}> {impl}"]) + ">")
+            # A const source borrows through `RefAdapter<Base, const C>`, so
+            # its constraint checks the conformer with the const peeled.
+            ref_header = ("template<" + ", ".join(
+                [*tparam_decls, f"typename {impl}"]) + "> requires "
+                f"{qconcept}<std::remove_const_t<{impl}>, {tparam_refs}>")
             qbase = f"{qbase_name}<{tparam_refs}>"
         else:
             impl = _ADAPTER_IMPL_NON_GENERIC
             template_header = f"template<{qconcept} {impl}>"
+            ref_header = (f"template<typename {impl}> requires "
+                          f"{qconcept}<std::remove_const_t<{impl}>>")
             qbase = qbase_name
 
         # -- Owning adapter (for locals and rvalue call-site args) --
@@ -1205,20 +1229,28 @@ class ProtocolGenerator:
                                     module_namespace, user_type_names)
         out.write("};\n\n")
 
-        # -- Ref adapter (for lvalue call-site args, zero-copy) --
-        out.write(f"{template_header}\n")
+        # -- Ref adapter (an lvalue source, zero-copy; const for a const one) --
+        out.write(f"{ref_header}\n")
         out.write(f"struct tpy::RefAdapter<{qbase}, {impl}> : {qbase} {{\n")
         out.write(f"{INDENT}{impl}& inner;\n")
         out.write(f"{INDENT}RefAdapter({impl}& ref) : inner(ref) {{}}\n")
         self._gen_adapter_overrides(out, all_methods, protocol_info,
-                                    module_namespace, user_type_names)
+                                    module_namespace, user_type_names,
+                                    const_impl_guard=impl)
         out.write("};\n")
 
     def _gen_adapter_overrides(self, out: TextIO, all_methods: list[MethodSignature],
                                protocol_info: 'ProtocolInfo',
                                module_namespace: str = "",
-                               user_type_names: set[str] | None = None) -> None:
-        """Emit method override bodies shared by owning and ref adapters."""
+                               user_type_names: set[str] | None = None,
+                               const_impl_guard: str | None = None) -> None:
+        """Emit method override bodies shared by owning and ref adapters.
+
+        `const_impl_guard` names the ref adapter's impl parameter: a const
+        impl only ever sits behind a `const Base*` (the source is const), so
+        a mutating override is unreachable there, and its forward -- a
+        non-const call on a const reference -- must not be instantiated; it
+        panics instead, so a broken invariant is a diagnosed failure."""
         for method_sig in all_methods:
             ret_cpp = self._dynamic_return_type(method_sig)
             const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
@@ -1233,7 +1265,11 @@ class ProtocolGenerator:
             if user_type_names and module_namespace:
                 ret_cpp = self._qualify_user_types(ret_cpp, module_namespace, user_type_names)
                 params_cpp = self._qualify_user_types(params_cpp, module_namespace, user_type_names)
-            out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
+            body = f"{ret_kw}{call_expr};"
+            if const_impl_guard is not None and not const_qual:
+                body = (f"if constexpr (std::is_const_v<{const_impl_guard}>) "
+                        f"::tpy::unreachable_override(); else {body}")
+            out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {body} }}\n")
 
     @staticmethod
     def _qualify_user_types(cpp_str: str, module_namespace: str,

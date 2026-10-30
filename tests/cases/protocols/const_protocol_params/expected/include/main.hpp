@@ -113,7 +113,7 @@ struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     int32_t area() const override { return inner.area(); }
 };
 
-template<tpyapp::main::__Shape_Concept__ T>
+template<typename T> requires tpyapp::main::__Shape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

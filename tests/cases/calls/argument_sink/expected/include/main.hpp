@@ -1316,11 +1316,11 @@ struct tpy::Adapter<tpyapp::main::DynShape, T> : tpyapp::main::DynShape {
     int32_t area() override { return inner.area(); }
 };
 
-template<tpyapp::main::__DynShape_Concept__ T>
+template<typename T> requires tpyapp::main::__DynShape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::DynShape, T> : tpyapp::main::DynShape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t area() override { return inner.area(); }
+    int32_t area() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.area(); }
 };
 
 namespace tpyapp::main {

@@ -121,11 +121,11 @@ struct tpy::Adapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
     void do_mutate() override { inner.do_mutate(); }
 };
 
-template<tpyapp::main::__Mutating_Concept__ T>
+template<typename T> requires tpyapp::main::__Mutating_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void do_mutate() override { inner.do_mutate(); }
+    void do_mutate() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.do_mutate(); }
 };
 
 namespace tpyapp::main {

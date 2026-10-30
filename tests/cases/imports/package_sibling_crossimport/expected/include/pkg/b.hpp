@@ -85,11 +85,11 @@ struct tpy::Adapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
     int32_t greet() override { return inner.greet(); }
 };
 
-template<tpyapp::pkg::b::__Greeter_Concept__ T>
+template<typename T> requires tpyapp::pkg::b::__Greeter_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t greet() override { return inner.greet(); }
+    int32_t greet() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.greet(); }
 };
 
 namespace tpyapp::pkg::b {

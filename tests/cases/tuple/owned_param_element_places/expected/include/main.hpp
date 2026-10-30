@@ -57,6 +57,10 @@ int32_t alias_loop(std::tuple<Box, Box>&& p);
 int32_t alias_readonly(std::tuple<Box, int32_t>&& p);
 // def readonly_owned_write(p: readonly[tuple[Own[Box], int32]]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t readonly_owned_write(std::tuple<Box, int32_t>&& p);
+// def ro_own_alias(p: readonly[Own[tuple[Box, int32]]]) -> int32:
+int32_t ro_own_alias(std::tuple<Box, int32_t> p);
+// def ro_own_pass(keep: list[Box], p: readonly[Own[tuple[Box, int32]]]) -> int32:
+int32_t ro_own_pass(std::vector<Box>& keep, std::tuple<Box, int32_t> p);
 // def method_owned(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t method_owned(std::tuple<Box, Box>&& p);
 // def method_mixed(p: tuple[Own[Box], Box]) -> int32:  # tpyc: warning(/never consumed/)

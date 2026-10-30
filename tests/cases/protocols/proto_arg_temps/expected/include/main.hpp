@@ -340,15 +340,15 @@ struct tpy::Adapter<tpyapp::main::DSink, T> : tpyapp::main::DSink {
     int32_t take_ru(::tpy::Union<const tpyapp::main::Other*, const tpyapp::main::R*> p) override { return inner.take_ru(p); }
 };
 
-template<tpyapp::main::__DSink_Concept__ T>
+template<typename T> requires tpyapp::main::__DSink_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::DSink, T> : tpyapp::main::DSink {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t take_rec(tpyapp::main::R&& p) override { return inner.take_rec(std::move(p)); }
-    int32_t take_list(std::vector<int32_t>&& p) override { return inner.take_list(std::move(p)); }
-    int32_t take_str(std::string p) override { return inner.take_str(std::move(p)); }
-    int32_t take_union(const ::tpy::Union<int32_t, std::string>& u) override { return inner.take_union(u); }
-    int32_t take_ru(::tpy::Union<const tpyapp::main::Other*, const tpyapp::main::R*> p) override { return inner.take_ru(p); }
+    int32_t take_rec(tpyapp::main::R&& p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_rec(std::move(p)); }
+    int32_t take_list(std::vector<int32_t>&& p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_list(std::move(p)); }
+    int32_t take_str(std::string p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_str(std::move(p)); }
+    int32_t take_union(const ::tpy::Union<int32_t, std::string>& u) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_union(u); }
+    int32_t take_ru(::tpy::Union<const tpyapp::main::Other*, const tpyapp::main::R*> p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_ru(p); }
 };
 
 template<tpyapp::main::__Bumper_Concept__ T>
@@ -359,11 +359,11 @@ struct tpy::Adapter<tpyapp::main::Bumper, T> : tpyapp::main::Bumper {
     int32_t bump() override { return inner.bump(); }
 };
 
-template<tpyapp::main::__Bumper_Concept__ T>
+template<typename T> requires tpyapp::main::__Bumper_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Bumper, T> : tpyapp::main::Bumper {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t bump() override { return inner.bump(); }
+    int32_t bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.bump(); }
 };
 
 template<tpyapp::main::__Taker_Concept__ T>
@@ -374,11 +374,11 @@ struct tpy::Adapter<tpyapp::main::Taker, T> : tpyapp::main::Taker {
     int32_t take_p(tpyapp::main::Bumper& p) override { return inner.take_p(p); }
 };
 
-template<tpyapp::main::__Taker_Concept__ T>
+template<typename T> requires tpyapp::main::__Taker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Taker, T> : tpyapp::main::Taker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t take_p(tpyapp::main::Bumper& p) override { return inner.take_p(p); }
+    int32_t take_p(tpyapp::main::Bumper& p) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.take_p(p); }
 };
 
 namespace tpyapp::main {

@@ -141,8 +141,9 @@ from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
-from ...sema.dyn_erasure import (classify_dyn_own_arg, conformer_source,
-                                 dyn_forward_ok, resolve_own_source_type)
+from ...sema.dyn_erasure import (DynSlotEntry, classify_dyn_own_arg,
+                                 conformer_source, dyn_forward_ok,
+                                 resolve_own_source_type)
 from ...value_category import (
     call_hands_back_value, call_result_holdable, call_result_is_reference,
     call_result_live_in_statement, call_returns_cpp_ref,
@@ -6127,9 +6128,7 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         rvalue = True
     else:
         return False
-    # The rendered concrete spelling only matters at lowering; the gate's
-    # temp-vs-bare verdict is spelling-independent.
-    spec = _protocol_arg_temp(proto, at, "", analyzer, rvalue=rvalue)
+    spec = _protocol_arg_temp(proto, at, None, analyzer, rvalue=rvalue)
     if spec is None:
         return _witness("protoarg.bare")
     return temps_ok and _witness("argtemp.protocol")
@@ -6152,7 +6151,7 @@ def _protocol_bare_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = analyzer.get_expr_type(a)
     if at is None:
         return False
-    return (_protocol_arg_temp(proto, at, "", analyzer, rvalue=False) is None
+    return (_protocol_arg_temp(proto, at, None, analyzer, rvalue=False) is None
             and _witness("protoarg.bare"))
 
 def _copy_iter_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -7256,13 +7255,10 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
             # ctor-shape verdict here.
             return temps_ok
         return temps_ok and _ctor_shape_ok(a, analyzer)
-    if face == 'adapter_rvalue':
-        # The structural-conformer Adapter temp -- flush positions only.
-        return temps_ok and _ctor_shape_ok(a, analyzer)
-    if face == 'adapter_name':
-        # The RefAdapter lvalue temp -- flush positions only; pointer-local
-        # sources keep rejecting at the lowering arm (deref unwitnessed).
-        return temps_ok and a.name in locals_
+    if isinstance(face, DynSlotEntry):
+        # The structural-conformer adapter temp -- flush positions only.
+        return temps_ok and (_ctor_shape_ok(a, analyzer) if face.owns
+                             else a.name in locals_)
     if face == 'lift':
         return _field_receiver_ok(a, locals_, analyzer)
     if face == 'container_temp':

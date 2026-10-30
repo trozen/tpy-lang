@@ -167,7 +167,7 @@ struct tpy::Adapter<tpyapp::main::Sizes, T> : tpyapp::main::Sizes {
     int32_t size() const override { return inner.size(); }
 };
 
-template<tpyapp::main::__Sizes_Concept__ T>
+template<typename T> requires tpyapp::main::__Sizes_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Sizes, T> : tpyapp::main::Sizes {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

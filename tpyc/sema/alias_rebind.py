@@ -60,12 +60,14 @@ from ..storage_trace import StepKind, Trace, is_unbound_field, trace
 from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
-    OptionalType, OwnType, ReadonlyType, TpyType, TupleType, TypeParamRef,
-    drop_own_marker, make_readonly, owned_payload, pointer_repr_optional, unwrap_optional_own, unwrap_own,
+    NominalType, OptionalType, OwnType, ReadonlyType, TpyType, TupleType,
+    TypeParamRef, is_dyn_protocol, is_protocol_type,
+    drop_own_marker, make_readonly, owned_payload, peel_slot, pointer_repr_optional, unwrap_optional_own, unwrap_own,
     unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
     without_type_param_bounds,
 )
+from .dyn_erasure import DynEntry, dyn_binding_owns, dyn_entry
 from ..value_category import (binds_owned_value, call_operands,
                               getitem_call_of, leaves_hold_no_pointer,
                               may_hold_pointer, peel_coerce)
@@ -135,12 +137,6 @@ class BindKind(Enum):
 
 
 # -- sema-side stamps ---------------------------------------------------------
-
-def peel_slot(t: TpyType) -> TpyType:
-    """The payload a slot or a leaf of type `t` holds: its wrappers
-    (`Own`, `readonly`, a reference, Send/Sync) peeled."""
-    return unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(t))))
-
 
 def bare_tuple(t: TpyType | None) -> TupleType | None:
     """`t` as a tuple, its wrappers (`peel_slot`) peeled; None for no
@@ -1899,8 +1895,10 @@ class _Replay:
              kind: BindKind | None, st: _State, node: object) -> None:
         if value is not None:
             self.expr_effects(value, st, stmt, top_is_bind=True)
+        fills = kind is BindKind.RVALUE or self.fills_dyn_slot(name, value)
         if node is stmt and self.is_site(
-                stmt, name, kind, self.local_type(name, value),
+                stmt, name, BindKind.RVALUE if fills else kind,
+                self.local_type(name, value),
                 self.ctx.tuple_elem_owned.get(node)):
             self.note_site(stmt, name, value, None, st)
         loans = self.loans_of(name, self.groups(stmt), value, st)
@@ -1912,7 +1910,25 @@ class _Replay:
                                      fresh=kind is BindKind.RVALUE,
                                      held=loans)
         st.loans[name] = loans
-        self.bind_storage(name, node if kind is BindKind.RVALUE else None, st)
+        self.bind_storage(name, node if fills else None, st)
+
+    def fills_dyn_slot(self, name: str, value: TpyExpr | None) -> bool:
+        """Whether binding `value` to the @dynamic protocol local `name`
+        puts an object of the binding's own in its slot -- an owning one, or
+        the `RefAdapter` over a borrowed source (`dyn_entry`), whose loan of
+        the source the binding keeps too -- which the statement refills each
+        time it runs."""
+        decl = self.local_type(name, value)
+        proto = peel_slot(decl) if decl is not None else None
+        if (value is None or not isinstance(proto, NominalType)
+                or not is_dyn_protocol(proto)):
+            return False
+        src = self.ctx.get_expr_type(value)
+        if src is None:
+            return False
+        return dyn_entry(proto, src, self.ctx,
+                         owned=dyn_binding_owns(self.ctx, value, src),
+                         const=False).entry is not DynEntry.ALIAS
 
     def bind_storage(self, name: str, owner: object | None,
                      st: _State) -> None:
@@ -2420,7 +2436,10 @@ class _Replay:
         if var_type is not None and self.ctx.is_type_nocopy(var_type):
             fix = (f"both names share its storage and '{name}' cannot be "
                    f"copied; bind the new value to a name of its own")
-        elif clobbered[alias] is BorrowKind.ALIAS and whole_object:
+        elif (clobbered[alias] is BorrowKind.ALIAS and whole_object
+              # A protocol-typed local has no `copy()` spelling.
+              and not (var_type is not None
+                       and is_protocol_type(peel_slot(var_type)))):
             # Not for a tuple: its copy duplicates the elements it owns,
             # where CPython's `copy` of a tuple is the same object.
             fix = (f"both names share its storage; bind '{alias}' with "

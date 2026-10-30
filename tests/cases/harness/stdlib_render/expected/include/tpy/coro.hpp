@@ -113,11 +113,11 @@ struct tpy::Adapter<tpystd::coro::Awaker, T> : tpystd::coro::Awaker {
     void mark_runnable(int32_t task_id, int32_t generation) override { inner.mark_runnable(task_id, generation); }
 };
 
-template<tpystd::coro::__Awaker_Concept__ T>
+template<typename T> requires tpystd::coro::__Awaker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpystd::coro::Awaker, T> : tpystd::coro::Awaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void mark_runnable(int32_t task_id, int32_t generation) override { inner.mark_runnable(task_id, generation); }
+    void mark_runnable(int32_t task_id, int32_t generation) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.mark_runnable(task_id, generation); }
 };
 
 template<typename T, tpystd::coro::__Cancellable_Concept__<T> __tpy_Impl>
@@ -129,12 +129,12 @@ struct tpy::Adapter<tpystd::coro::Cancellable<T>, __tpy_Impl> : tpystd::coro::Ca
     void cancel() override { inner.cancel(); }
 };
 
-template<typename T, tpystd::coro::__Cancellable_Concept__<T> __tpy_Impl>
+template<typename T, typename __tpy_Impl> requires tpystd::coro::__Cancellable_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpystd::coro::Cancellable<T>, __tpy_Impl> : tpystd::coro::Cancellable<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { return inner.__poll__(std::move(waker)); }
-    void cancel() override { inner.cancel(); }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.__poll__(std::move(waker)); }
+    void cancel() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.cancel(); }
 };
 
 namespace tpystd::coro {

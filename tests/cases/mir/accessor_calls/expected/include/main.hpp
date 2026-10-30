@@ -258,11 +258,11 @@ struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     void grow() override { inner.grow(); }
 };
 
-template<tpyapp::main::__Shape_Concept__ T>
+template<typename T> requires tpyapp::main::__Shape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void grow() override { inner.grow(); }
+    void grow() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.grow(); }
 };
 
 namespace tpyapp::main {

@@ -85,11 +85,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     ::tpy::BigInt legs() override { return inner.legs(); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::BigInt legs() override { return inner.legs(); }
+    ::tpy::BigInt legs() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.legs(); }
 };
 
 namespace tpyapp::main {

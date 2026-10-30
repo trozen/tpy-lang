@@ -1475,25 +1475,12 @@ def binding_write_parts(stmt: 'THIRPtrLocalRebind | THIRAssign',
                     f"{name} = ::tpy::optional_to_ptr({slot})"]
         if stmt.kind is PtrSlotKind.DYN_PROTOCOL:
             # @dynamic rebind: a FRESH hoisted optional slot per reseat (a
-            # distinct concrete/adapter type per target). Slot drawn before
-            # the value; its decl hoists to the function top, the emplace +
-            # `p = &*slot` reseat stay inline. `val_cpp` carries the slot
-            # (concrete/adapter) spelling. At module-init scope the slot
-            # spells `static std::optional<T> __global_slot_N;` (slot_static
-            # / slot_prefix), so protocol GLOBALS share this arm -- the one
-            # rebind slot draw that is scope-safe by construction (no
-            # assert_local_slot).
-            slot = state.next_slot()
-            val_cpp = _emit_expr(stmt.value, state)
-            # Backstop: this hoist has no drain point in a leaf emitter; lowering
-            # defers generator/async bodies, so reaching here undrainable is a bug.
-            assert state.hoist_drainable, (
-                "DYN_PROTOCOL rebind hoist reached a non-draining leaf emitter")
-            state.hoist_lines.append(
-                f"{state.slot_static}std::optional<{stmt.val_cpp}> "
-                f"{state.slot_prefix}_{slot};")
-            return [f"{state.slot_prefix}_{slot}.emplace({val_cpp})",
-                    f"{name} = &*{state.slot_prefix}_{slot}"]
+            # distinct concrete/adapter type per target). `val_cpp` carries
+            # the slot (concrete/adapter) spelling. At module-init scope the
+            # slot spells `static std::optional<T> __global_slot_N;`, so
+            # protocol GLOBALS share this arm.
+            slot, val_cpp = _dyn_hoisted_slot(stmt.val_cpp, stmt.value, state)
+            return [f"{slot}.emplace({val_cpp})", f"{name} = &*{slot}"]
         if stmt.kind is PtrSlotKind.DYN_PROTOCOL_ERASED:
             # `p2 = p1` where p1 is already erased: re-alias, no slot (the deref'd
             # source renders its own parens).
@@ -1648,6 +1635,22 @@ def frame_with_pointer_bind(target: str, enter_cpp: str,
     value = (own_slot_fill(field, enter_cpp, False) if field is not None
              else f"&({enter_cpp})")
     return f"{target} = {value};"
+
+
+def _dyn_hoisted_slot(slot_cpp: str, value: 'THIRExpr',
+                      state: '_EmitState') -> tuple[str, str]:
+    """A @dynamic binding's own `std::optional<slot_cpp>` slot, declared at
+    the body's top (drawn before the value renders), and the value's C++."""
+    n = state.next_slot()
+    val_cpp = _emit_expr(value, state)
+    # Backstop: this hoist has no drain point in a leaf emitter; lowering
+    # defers generator/async bodies, so reaching here undrainable is a bug.
+    assert state.hoist_drainable, (
+        "a @dynamic slot hoist reached a non-draining leaf emitter")
+    slot = f"{state.slot_prefix}_{n}"
+    state.hoist_lines.append(
+        f"{state.slot_static}std::optional<{slot_cpp}> {slot};")
+    return slot, val_cpp
 
 
 def own_slot_fill(slot: str, val_cpp: str, rebuild: bool) -> str:
@@ -4189,6 +4192,14 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = {init_cpp};\n")
             out.write(f"{indent}{stmt.cpp_type} {name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
+        elif (stmt.kind is PtrSlotKind.DYN_PROTOCOL
+              and stmt.branch_scope):
+            # A block-local @dynamic local: the rebind's function-top slot,
+            # so an alias of it kept outside the block stays valid.
+            slot, init_cpp = _dyn_hoisted_slot(stmt.cpp_type, stmt.init,
+                                               state)
+            out.write(f"{indent}{slot}.emplace({init_cpp});\n")
+            out.write(f"{indent}{stmt.base_cpp}* {name} = &*{slot};\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
             # @dynamic protocol local: a concrete/adapter slot brace-inited from
             # the init, aliased by a protocol Base* pointer (the non-erased

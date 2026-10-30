@@ -90,12 +90,12 @@ struct tpy::Adapter<tpyapp::main::HasValue, T> : tpyapp::main::HasValue {
     void bump() override { inner.bump(); }
 };
 
-template<tpyapp::main::__HasValue_Concept__ T>
+template<typename T> requires tpyapp::main::__HasValue_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::HasValue, T> : tpyapp::main::HasValue {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t value() override { return inner.value(); }
-    void bump() override { inner.bump(); }
+    int32_t value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
+    void bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 
 namespace tpyapp::main {

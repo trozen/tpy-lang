@@ -61,11 +61,11 @@ struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
-template<tpyapp::main::__Pet_Concept__ T>
+template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string make_noise() override { return std::string(inner.make_noise()); }
+    std::string make_noise() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.make_noise()); }
 };
 
 namespace tpyapp::main {

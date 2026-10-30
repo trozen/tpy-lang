@@ -124,11 +124,11 @@ struct tpy::Adapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
     void mark(int32_t task_id) override { inner.mark(task_id); }
 };
 
-template<tpyapp::main::__Awaker_Concept__ T>
+template<typename T> requires tpyapp::main::__Awaker_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    void mark(int32_t task_id) override { inner.mark(task_id); }
+    void mark(int32_t task_id) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.mark(task_id); }
 };
 
 namespace tpyapp::main {

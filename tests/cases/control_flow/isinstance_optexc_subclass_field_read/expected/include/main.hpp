@@ -83,11 +83,11 @@ struct tpy::Adapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
     std::string kind() override { return std::string(inner.kind()); }
 };
 
-template<tpyapp::main::__Eventful_Concept__ T>
+template<typename T> requires tpyapp::main::__Eventful_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string kind() override { return std::string(inner.kind()); }
+    std::string kind() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.kind()); }
 };
 
 namespace tpyapp::main {

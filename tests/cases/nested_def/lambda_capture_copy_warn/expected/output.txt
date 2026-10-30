@@ -27,7 +27,7 @@ reseat: 1 2 3
 rebind_after: 0 0 11
 while_unpack: 0 10 3 7
 rebound_param: 5
-dynamic: 4
+dynamic: 9
 callable_state: 1 1 2 2
 module: 0 1 1 1
 module_block: 0 1 0 10 1

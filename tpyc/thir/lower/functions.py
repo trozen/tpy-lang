@@ -1758,6 +1758,9 @@ def _rejects_global_slot(node) -> bool:
                                  # in the emit arm), so it survives
                                  # `__tpy_init` like GLOBAL_RVALUE's.
                                  PtrSlotKind.DYN_PROTOCOL,
+                                 # An aliased @dynamic write (`g = &(d);`)
+                                 # draws no slot.
+                                 PtrSlotKind.DYN_PROTOCOL_ERASED,
                                  # A hoisted global's optional slot rides
                                  # the hoist lines, spelled with the same
                                  # slot_static/slot_prefix pair.

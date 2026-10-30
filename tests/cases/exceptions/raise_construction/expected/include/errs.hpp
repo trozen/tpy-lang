@@ -108,7 +108,7 @@ struct tpy::Adapter<tpyapp::errs::Shows, T> : tpyapp::errs::Shows {
     std::string show() const override { return std::string(inner.show()); }
 };
 
-template<tpyapp::errs::__Shows_Concept__ T>
+template<typename T> requires tpyapp::errs::__Shows_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::errs::Shows, T> : tpyapp::errs::Shows {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}

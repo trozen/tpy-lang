@@ -39,4 +39,8 @@ method_nbt_while 2
 closure_bt_with 2
 gen_addr 103
 gen_addr 104
+dyn_try 2 2 6
+dyn_while 2 2 6
+dyn_with 2 2 6
+dyn_for 2 2 6
 module_try 10 100

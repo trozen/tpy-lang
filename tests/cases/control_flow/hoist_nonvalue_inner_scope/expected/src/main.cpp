@@ -205,8 +205,8 @@ void post_loop_redecl() {
     std::cout << "post_loop_redecl" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
-// # @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots. Rvalue
-// # arms only: an lvalue arm copies the source (BUGS.md#dyn-local-lvalue-bind-copies).
+// # @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots (an
+// # lvalue arm's alias is pinned by protocols/dyn_local_aliases).
 // def dyn_protocol() -> None:
 //     for i in range(3):
 //         if i % 2 == 0:

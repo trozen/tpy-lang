@@ -65,12 +65,12 @@ struct tpy::Adapter<tpyapp::pa::P, T> : tpyapp::pa::P {
     void bump() override { inner.bump(); }
 };
 
-template<tpyapp::pa::__P_Concept__ T>
+template<typename T> requires tpyapp::pa::__P_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::pa::P, T> : tpyapp::pa::P {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    ::tpy::BigInt value() override { return inner.value(); }
-    void bump() override { inner.bump(); }
+    ::tpy::BigInt value() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.value(); }
+    void bump() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 
 namespace tpyapp::pa {

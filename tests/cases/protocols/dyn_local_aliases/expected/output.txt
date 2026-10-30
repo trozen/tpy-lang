@@ -1,0 +1,38 @@
+free_function 9 3 25
+inferred_const 9 9
+readonly_param 16 16
+pointer_sources 9 3
+pointer_sources 16 4
+nocopy_source 9 3
+inheritance 9 3 16
+inheritance 36 3
+inheritance 16 4
+value_type 4 5 9 6
+rvalues 9 2 64
+protocol_source 25 25
+constructor 9 3
+method 16 4 3
+error_return_body 9 3
+closure 9 3
+at_if 1 9 3
+at_if 0 1 2
+at_try 9 3 25
+at_while 9 3 25
+at_with 9 3 25
+at_for 9 3 25
+block_local 9 3
+block_local 25
+block_local 16 4
+block_local 25 5
+block_escape 16 36 4
+const_args 9 9 3
+optional_param 9 3
+optional_param 16 4
+optional_param 16 4
+inherit_try_with 16 9 3
+inherit_try_with 36 16 4
+hoisted_readonly 16 4
+isinstance_const 5 25
+loop_refill 3 9 1
+module_global 9 3
+module_global 16 4

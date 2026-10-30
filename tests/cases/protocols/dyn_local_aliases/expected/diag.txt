@@ -1,0 +1,4 @@
+main.py:452: warning: 'S' will not keep the object it was given -- 'G' is rebound on each iteration and both names share its storage; use copy(G) for an independent value
+main.py:455: warning: 'T' will not keep the object it was given -- 'D' is rebound on each iteration and both names share its storage; use copy(D) for an independent value
+main.py:224: warning: lambda at line 224 may keep its own copy of 's'; changes made after it is created may not be seen
+main.py:400: warning: 't' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own

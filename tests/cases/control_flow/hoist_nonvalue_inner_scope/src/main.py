@@ -152,8 +152,8 @@ def post_loop_redecl() -> None:
     print("post_loop_redecl", f.n)
 
 
-# @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots. Rvalue
-# arms only: an lvalue arm copies the source (BUGS.md#dyn-local-lvalue-bind-copies).
+# @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots (an
+# lvalue arm's alias is pinned by protocols/dyn_local_aliases).
 def dyn_protocol() -> None:
     for i in range(3):
         if i % 2 == 0:

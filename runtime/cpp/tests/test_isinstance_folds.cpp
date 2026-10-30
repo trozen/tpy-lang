@@ -44,6 +44,12 @@ template<> struct RefAdapter<Base, Plain> : Base {
     Plain& inner;
     explicit RefAdapter(Plain& p) : inner(p) {}
 };
+// A const source borrows through the const-impl shape, which generated code's
+// partial specialization always provides.
+template<> struct RefAdapter<Base, const Plain> : Base {
+    const Plain& inner;
+    explicit RefAdapter(const Plain& p) : inner(p) {}
+};
 }  // namespace tpy
 
 int main() {
@@ -85,6 +91,9 @@ int main() {
     check(tpy::isinstance_any_of<const D, AP>(
               static_cast<const Base&>(borrowed)),
           "a borrowing adapter behind a const reference");
+    const tpy::RefAdapter<Base, const Plain> borrowed_const(plain);
+    check(tpy::isinstance_any_of<AP>(static_cast<const Base&>(borrowed_const)),
+          "a const-impl borrowing adapter behind a const reference");
     check(tpy::isinstance_any_of<AP>(tpy::Adapter<Base, Plain>{}),
           "a prvalue adapter");
     check(!tpy::isinstance_any_of<AP>(b), "a nominal object is no adapter");

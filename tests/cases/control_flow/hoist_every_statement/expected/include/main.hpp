@@ -7,6 +7,27 @@
 
 namespace tpyapp::main {
 
+struct Grower;
+// @dynamic
+// class Grower(Protocol):
+template<typename T>
+concept __Grower_Concept__ = requires(T& t) {
+    { t.grow() } -> std::convertible_to<void>;
+    { t.size() } -> std::convertible_to<int32_t>;
+};
+
+struct Grower {
+    virtual void grow() = 0;
+    virtual int32_t size() const = 0;
+    virtual ~Grower() = default;
+};
+
+} // namespace tpyapp::main
+
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Grower> : std::true_type {};
+
+namespace tpyapp::main {
+
 struct Bad;
 struct Box;
 struct Pin;
@@ -15,6 +36,7 @@ struct BoxPair;
 struct Ctx;
 struct OptHolder;
 struct Walker;
+struct Plant;
 
 extern Box* mod_src;
 extern Box* mod_alias;
@@ -105,6 +127,14 @@ void storage_opt_elem(std::vector<std::optional<Box>>& opts);
 void closure_bt_with(Holder& h);
 // def gen_addr(n: int32) -> Iterator[int32]:
 __gen_gen_addr gen_addr(int32_t n);
+// def dyn_try(p: Plant) -> None:
+void dyn_try(Plant& p);
+// def dyn_while(p: Plant) -> None:
+void dyn_while(Plant& p);
+// def dyn_with(p: Plant) -> None:
+void dyn_with(Plant& p);
+// def dyn_for(p: Plant) -> None:
+void dyn_for(Plant& p);
 // def main() -> None:
 void main();
 
@@ -252,6 +282,50 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
     return os;
 }
 
+// class Plant:
+struct Plant {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Plant() = default;
+    explicit Plant(int32_t n);
+
+    // def grow(self) -> None:
+    void grow();
+
+    // @readonly
+    // def size(self) -> int32:
+    int32_t size() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Plant";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Plant& obj) {
+    ::tpy::print_object_default(os, "Plant", obj);
+    return os;
+}
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Grower_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Grower, T> : tpyapp::main::Grower {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    void grow() override { inner.grow(); }
+    int32_t size() const override { return inner.size(); }
+};
+
+template<typename T> requires tpyapp::main::__Grower_Concept__<std::remove_const_t<T>>
+struct tpy::RefAdapter<tpyapp::main::Grower, T> : tpyapp::main::Grower {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    void grow() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.grow(); }
+    int32_t size() const override { return inner.size(); }
+};
+
+namespace tpyapp::main {
+
 // def gen_addr(n: int32) -> Iterator[int32]:
 struct __gen_gen_addr : public ::tpy::next_iter_mixin<__gen_gen_addr, int32_t> {
     ::tpy::frame_state __state;
@@ -337,6 +411,23 @@ inline void Walker::nbt_while() {
         std::get<1>((*t))->n = ::tpy::add_check<int32_t>(std::get<1>((*t))->n, 1);
     }
     std::cout << "method_nbt_while" << " " << std::get<1>(this->pair).n << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Plant::Plant(int32_t n) : n(n) {}
+
+// def grow(self) -> None:
+//     self.n += 1
+inline void Plant::grow() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+}
+
+// @readonly
+// def size(self) -> int32:
+//     return self.n
+inline int32_t Plant::size() const {
+    return this->n;
 }
 void __tpy_init();
 } // namespace tpyapp::main

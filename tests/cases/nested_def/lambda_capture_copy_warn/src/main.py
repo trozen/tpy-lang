@@ -313,8 +313,9 @@ def rebound_param(p: Own[P], c: bool) -> None:  # tpyc: warning(/never consumed/
     print("rebound_param:", f())
 
 
-# dynamic: a @dynamic protocol local is not settled here, so the wording
-# hedges (the local itself copies the record, BUGS.md#dyn-local-lvalue-bind-copies)
+# dynamic: a @dynamic protocol local is a pointer to its object, so the
+# capture copies the pointer and the hedged warning is spurious
+# (BUGS.md#hedged-capture-copy-unrebound-param)
 @dynamic
 class Shape(Protocol):
     def area(self) -> int32: ...

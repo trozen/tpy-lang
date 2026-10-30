@@ -1,9 +1,9 @@
 # A local first bound inside a compound statement and read after it is
 # predeclared by one driver whatever the statement: every section binds it
 # at a different statement and then reads or mutates through it.
-from typing import Iterator
+from typing import Iterator, Protocol
 
-from tpy import int32, Own, nocopy, error_return, ReturnException, readonly
+from tpy import int32, Own, nocopy, error_return, ReturnException, readonly, dynamic
 
 
 class Bad(Exception, ReturnException):
@@ -526,6 +526,73 @@ def gen_addr(n: int32) -> Iterator[int32]:
     yield b.val
 
 
+@dynamic
+class Grower(Protocol):
+    def grow(self) -> None: ...
+
+    @readonly
+    def size(self) -> int32: ...
+
+
+class Plant:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def grow(self) -> None:
+        self.n += 1
+
+    @readonly
+    def size(self) -> int32:
+        return self.n
+
+
+# A `@dynamic` protocol local first bound inside each statement: an
+# existing object is aliased (the write through `g` reaches `p`), a fresh
+# one is owned by the local's slot.
+def dyn_try(p: Plant) -> None:
+    try:
+        g: Grower = p  # tpyc: ok
+    except ValueError:
+        g = Plant(0)
+    g.grow()
+    try:
+        f: Grower = Plant(5)  # tpyc: ok
+    except ValueError:
+        f = p
+    f.grow()
+    print("dyn_try", p.n, g.size(), f.size())
+
+
+def dyn_while(p: Plant) -> None:
+    while True:
+        g: Grower = p  # tpyc: ok
+        f: Grower = Plant(5)  # tpyc: ok
+        break
+    g.grow()
+    f.grow()
+    print("dyn_while", p.n, g.size(), f.size())
+
+
+def dyn_with(p: Plant) -> None:
+    with Ctx():
+        g: Grower = p  # tpyc: ok
+        f: Grower = Plant(5)  # tpyc: ok
+    g.grow()
+    f.grow()
+    print("dyn_with", p.n, g.size(), f.size())
+
+
+def dyn_for(p: Plant) -> None:
+    for _i in range(1):
+        g: Grower = p  # tpyc: ok
+        f: Grower = Plant(5)  # tpyc: ok
+    g.grow()
+    f.grow()
+    print("dyn_for", p.n, g.size(), f.size())
+
+
 def main() -> None:
     print("for_const_tuple", for_const_tuple(Holder(3)))
     try_error_return(Holder(1))
@@ -576,6 +643,10 @@ def main() -> None:
     closure_bt_with(Holder(1))
     for v in gen_addr(3):
         print("gen_addr", v)
+    dyn_try(Plant(1))
+    dyn_while(Plant(1))
+    dyn_with(Plant(1))
+    dyn_for(Plant(1))
 
 
 main()

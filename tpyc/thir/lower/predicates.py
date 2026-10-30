@@ -9,6 +9,7 @@ body and do not construct THIR; lowering arms consume their results locally.
 
 from __future__ import annotations
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from ...parse.nodes import (
     const_tuple_index,
@@ -60,7 +61,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
-from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding,
+from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
 from ...typesys import (
@@ -196,11 +197,10 @@ from ...codegen_cpp.context import (
 )
 from ...namespace import BindingKind
 from ...codegen_cpp.protocols import (
-    dynamic_adapter_type,
     dynamic_base_name,
-    dynamic_ref_adapter_type,
+    dyn_slot_cpp,
 )
-from ...sema.dyn_erasure import record_inherits_dynamic
+from ...sema.dyn_erasure import DynEntry, DynSlotEntry, dyn_entry
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
 from ...prescan import literal_constant
@@ -3307,15 +3307,16 @@ def _protocol_union_arg(arg: TpyExpr, ptype: 'TpyType | None',
     # slot) is the same C++ lvalue inside the body -- the render asks
     # the Own-stripped expr type, so the addr lift covers it identically
     # (`_items(ArrayList<T, 8>(&(items)))`).
-    at = _unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        locals_[arg.name]))))
-    # A STRUCTURAL conformer of a @dynamic member is NOT Base-derived in
-    # C++, so `&(name)` cannot bind the base pointer -- that name takes
-    # the RefAdapter temp face (`_optional_ptr_arg_face`'s adapter_name).
+    at = peel_slot(locals_[arg.name])
+    # A name enters a @dynamic member's slot by `dyn_entry`: only an ALIAS
+    # (an inheritance conformer) binds the base pointer as `&(name)`; a
+    # structural conformer takes the RefAdapter temp face
+    # (`_optional_ptr_dyn_face`'s REF entry).
     members = _nullable_protocol_slot(ptype) or []
     if any(isinstance(m, NominalType) and is_dyn_protocol(m)
            and not (isinstance(at, NominalType) and at.is_user_record
-                    and record_inherits_dynamic(at, m, analyzer.registry))
+                    and dyn_entry(m, at, analyzer, owned=False,
+                                  const=False).entry is DynEntry.ALIAS)
            for m in members):
         return None
     if record_like(at, analyzer) or is_span(at):
@@ -3415,34 +3416,35 @@ def _bounded_tparam_protocol(t: 'TpyType | None',
     return b if b is not None and is_protocol_type(b) else None
 
 def _protocol_arg_temp(proto: 'NominalType', arg_type: 'TpyType | None',
-                       arg_cpp_type: str, analyzer, *,
-                       rvalue: bool) -> 'tuple[str | None, bool] | None':
+                       render: 'Callable[[TpyType], str] | None',
+                       analyzer, *,
+                       rvalue: bool, const: bool = False
+                       ) -> 'tuple[str | None, bool] | None':
     """The `(cpp_type, brace_init)` of the `__tmp_N` a protocol slot hoists for
     this arg, or None when the arg passes bare.
 
-    The dynamic-protocol arg rule plus the free-call `is_ref_param() +
-    is_temporary_expr` temp arm. `arg_cpp_type` is the arg's rendered concrete
-    C++ spelling (the caller renders it; the gate never needs the string):
+    A @dynamic slot takes `dyn_entry`'s verdict (an argument owns only an
+    rvalue; `const`: the source renders const): ALIAS passes bare (an
+    already-erased source forwards, an inheritance-conformer lvalue binds
+    `Base&`), every other entry hoists its slot (`Dog __tmp_N{Dog()};`,
+    `::tpy::Adapter<Base, C> __tmp_N{C()};`, the zero-copy
+    `::tpy::RefAdapter<Base, C> __tmp_N{p};`). `render` spells the
+    entry's conformer (the lowering's type renderer); None at the gate,
+    whose temp-vs-bare verdict never needs the spelling.
 
-    - the arg is already protocol-typed -> bare (the deref render forwards);
-    - @dynamic slot, INHERITANCE conformer (the C++ struct derives from the
-      abstract base): an lvalue binds `Base&` directly -> bare; an rvalue
-      materializes the concrete `Dog __tmp_N{Dog()};`
-    - @dynamic slot, STRUCTURAL conformer (no C++ base): always a temp -- an
-      owning `::tpy::Adapter<Base, C> __tmp_N{C()};` for an rvalue, a
-      zero-copy `::tpy::RefAdapter<Base, C> __tmp_N{p};` for an lvalue;
-    - structural slot: an lvalue deduces `T_p` from the arg -> bare; an rvalue
-      hoists the un-spelled `auto __tmp_N = C(...);` (a braced-init-list cannot
-      deduce a template param, and the temp must outlive the call).
+    A structural slot: an already-protocol arg or an lvalue deduces `T_p`
+    from the arg -> bare; an rvalue hoists the un-spelled
+    `auto __tmp_N = C(...);` (a braced-init-list cannot deduce a template
+    param, and the temp must outlive the call).
     """
     if is_protocol_type(arg_type):
         return None
     if not is_dyn_protocol(proto):
         return (None, False) if rvalue else None
-    if record_inherits_dynamic(arg_type, proto, analyzer.registry):
-        return (arg_cpp_type, True) if rvalue else None
-    wrap = dynamic_adapter_type if rvalue else dynamic_ref_adapter_type
-    return (wrap(proto, arg_cpp_type, analyzer), True)
+    entry = dyn_entry(proto, arg_type, analyzer, owned=rvalue, const=const)
+    concrete_cpp = render(entry.concrete) if render is not None else ""
+    slot_cpp = dyn_slot_cpp(proto, entry, concrete_cpp, analyzer)
+    return None if slot_cpp is None else (slot_cpp, True)
 
 def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
     """Coarse type-family tag for the reject-detail sub-classifiers
@@ -10217,7 +10219,8 @@ def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | N
     return pt
 
 def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
-                           declared: dict[str, TpyType], analyzer) -> str | None:
+                           declared: dict[str, TpyType], analyzer
+                           ) -> 'str | DynSlotEntry | None':
     """Classify a call arg against a pointer-repr `Optional[record]` slot into
     its optional-ptr arg face: 'none' (the `nullptr` literal), 'pass'
     (a pointer-repr Optional binding -- already `T*`, renders bare), 'name'
@@ -10243,7 +10246,9 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     unproven-Optional / slice subscripts, coerced args, `self`, non-ctor
     rvalues (`Ptr[T]`-typed calls etc. reject). Shared by the eligibility
     gate (which adds receiver checks) and `_lower_call_arg` so both key one
-    verdict; constructor args are validated during recursive lowering."""
+    verdict; constructor args are validated during recursive lowering.
+    A user-record ctor rvalue or name at an `Optional[@dynamic P]` slot
+    enters by `_optional_ptr_dyn_face`."""
     ot = _optional_ptr_arg_slot(ptype, analyzer)
     if ot is None:
         return None
@@ -10339,17 +10344,9 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         at = analyzer.get_expr_type(a)
         if at == inner:
             return 'ctor'
-        # A STRUCTURAL-conformer ctor rvalue at an Optional[@dynamic P]
-        # slot: not Base-derived in C++, so the vtable rides an owning
-        # Adapter temp (`::tpy::Adapter<P, C> __tmp{C(..)};` + `&(__tmp)`).
-        # Checked BEFORE the subclass-fact branch: a dyn-protocol inner
-        # passes polymorphic_source_inner for ANY distinct record, but the
-        # bare child temp upcast is only valid for an INHERITING conformer.
-        if (isinstance(at, NominalType) and at.is_user_record
-                and isinstance(inner, NominalType) and is_dyn_protocol(inner)
-                and not record_inherits_dynamic(at, inner,
-                                                analyzer.registry)):
-            return 'adapter_rvalue'
+        dyn_face = _optional_ptr_dyn_face(inner, at, analyzer, rvalue=True)
+        if dyn_face is not None:
+            return dyn_face
         # A SUBCLASS ctor rvalue: the CHILD-typed temp's address binds the
         # base pointer implicitly (`ClickEvent __tmp_2 = ClickEvent(..);
         # describe(&(__tmp_2))` -- the upcast temp).
@@ -10414,25 +10411,38 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         return None
     if isinstance(at, OwnType):
         at = unwrap_readonly(at.wrapped)
+    dyn_face = _optional_ptr_dyn_face(inner, at, analyzer, rvalue=False)
+    if dyn_face is not None:
+        return dyn_face
     at_r = _resolve_plain_alias(at, analyzer)
     # A subclass-record name takes the same `&(name)`: C++ binds the
     # derived address to the base pointer implicitly (the `Ptr[Base]`
     # param precedent).
     if at_r == inner_r or analyzer.registry.is_subclass_of(at_r, inner_r):
         return 'name'
-    # A STRUCTURAL-conformer NAME lvalue at an Optional[@dynamic P] slot:
-    # the non-owning RefAdapter temp (`::tpy::RefAdapter<P, C> __tmp{x};`
-    # + `&(__tmp)`) -- the lvalue sibling of the adapter_rvalue face. The
-    # RAW expr type must be the bare record: the face keys the unstripped
-    # get_expr_type, so a readonly-wrapped conformer takes the generic tail
-    # instead of the RefAdapter (whose ctor wants `impl&`).
-    if (isinstance(a, TpyName)
-            and isinstance(analyzer.get_expr_type(a), NominalType)
-            and isinstance(at, NominalType) and at.is_user_record
-            and isinstance(inner, NominalType) and is_dyn_protocol(inner)
-            and not record_inherits_dynamic(at, inner, analyzer.registry)):
-        return 'adapter_name'
     return None
+
+
+def _optional_ptr_dyn_face(inner: TpyType, at: 'TpyType | None', analyzer,
+                           *, rvalue: bool) -> 'str | DynSlotEntry | None':
+    """The optional-ptr face of a user-record ctor rvalue or name (of type
+    `at`, wrappers peeled) at an `Optional[@dynamic P]` slot, by
+    `dyn_entry` (the call argument owns only the rvalue): an inheritance
+    conformer's ALIAS is the 'name' face (`&(d)`) and its CONCRETE the
+    'ctor' upcast temp; a structural conformer's adapter temp
+    (`Adapter<P, C> __tmp{C(..)};` / `RefAdapter<P, C> __tmp{q};`, then
+    `&(__tmp)`) is the entry itself, whose `const` the lowering fills from
+    the source. None: not this shape."""
+    if not (isinstance(inner, NominalType) and is_dyn_protocol(inner)
+            and isinstance(at, NominalType) and at.is_user_record
+            and not at.is_protocol):
+        return None
+    entry = dyn_entry(inner, at, analyzer, owned=rvalue, const=False)
+    if entry.entry is DynEntry.ALIAS:
+        return 'name'
+    if entry.entry is DynEntry.CONCRETE:
+        return 'ctor'
+    return entry
 
 def _union_literal_temp_arg(a: TpyExpr, ptype: TpyType | None, analyzer,
                             *, literal_type) -> 'UnionType | None':

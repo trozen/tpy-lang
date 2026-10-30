@@ -74,13 +74,13 @@ struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     void scale(double factor) override { inner.scale(factor); }
 };
 
-template<tpyapp::main::__Shape_Concept__ T>
+template<typename T> requires tpyapp::main::__Shape_Concept__<std::remove_const_t<T>>
 struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    double area() override { return inner.area(); }
-    std::string name() override { return std::string(inner.name()); }
-    void scale(double factor) override { inner.scale(factor); }
+    double area() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return inner.area(); }
+    std::string name() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.name()); }
+    void scale(double factor) override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.scale(factor); }
 };
 
 namespace tpyapp::main {

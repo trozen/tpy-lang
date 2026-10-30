@@ -60,6 +60,9 @@ std::unique_ptr<Base> make_adapter(Concrete&& c) {
 // `Pet` -- so `dynamic_cast<Cat*>` would always fail. Try both adapter shapes
 // and project the contained `.inner`. Returns nullptr when neither matches
 // (the object behind the pointer is a different conformer, or null).
+//
+// A const source borrows through `RefAdapter<Base, const T>`, which sema only
+// ever puts behind a `const Base*`, so only the const overload probes it.
 template<typename Base, typename T>
 T* dyn_adapter_cast(Base* p) {
     if (auto* a = dynamic_cast<Adapter<Base, T>*>(p)) return &a->inner;
@@ -75,6 +78,8 @@ const T* dyn_adapter_cast(const Base* p) {
     // const-input overload's `const T*` contract.
     if (auto* r = dynamic_cast<const RefAdapter<Base, T>*>(p))
         return &static_cast<const T&>(r->inner);
+    if (auto* c = dynamic_cast<const RefAdapter<Base, const T>*>(p))
+        return &c->inner;
     return nullptr;
 }
 
