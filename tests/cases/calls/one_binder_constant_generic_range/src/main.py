@@ -34,8 +34,6 @@ class Narrow[N: int]:
         x: int8 = N  # tpyc: ok
         # An optional payload converts as the scalar does: one int8 check.
         m: int8 | None = N  # tpyc: ok
-        # Printed through int(): an int8 | None prints its raw byte
-        # (BUGS.md#print-optional-int8-raw-byte).
         if m is not None:
             print("int8", x, int(m))
 

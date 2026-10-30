@@ -1,0 +1,1 @@
+main.py:8: warning: format spec on float | str pads its str() text; CPython passes it to the value's __format__ (write {v!s:.2} to state that)

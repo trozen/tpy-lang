@@ -63,6 +63,8 @@ _SELFCHECKS = [
      "dict.get(key, default) returns the stored value or the default itself over reference types, by value otherwise"),
     ("test_assert_lent.cpp",
      "a call bound as a borrow passes through assert_lent as the same object in the same const-ness"),
+    ("test_text_optional_ptr.cpp",
+     "optionals, pointers and union pointer alternatives render None or their payload, never an address"),
     ("test_none_access_host.cpp",
      "a failed None check is caught as NoneAccessError with its message, and keeps the marker through clone/__raise__"),
 ]

@@ -31,7 +31,7 @@ from ..typesys import (
     PendingDictType, PendingSetType, DictLiteralInfo, SetLiteralInfo,
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
-    is_protocol_type, container_to_str_template, contains_type_param,
+    is_protocol_type, container_to_str_template, contains_type_param, ptr_text_pointee,
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
@@ -46,7 +46,8 @@ from ..parse import (
     const_tuple_index,
     ResultForm,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
+    TpyFStringValue, TpyFString, FSTRING_CONV_NONE, FSTRING_CONV_REPR, FSTRING_CONV_STR,
+    FormatSpecFields,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyFunction,
@@ -7221,17 +7222,63 @@ class ExpressionAnalyzer:
 
     @staticmethod
     def _is_formattable(t: TpyType) -> bool:
-        """True for types that f-string can format directly (no __str__/__repr__ needed)."""
+        """True for the scalars an f-string formats directly, which keep
+        their own format-spec meaning (the rest format their str() text)."""
         return (is_numeric_type(t) or is_char_type(t) or is_any_str_type(t)
                 or isinstance(t, (IntLiteralType, FloatLiteralType))
                 or is_enum_type(t))
 
+    def _fstring_parts(self, t: TpyType) -> 'list[TpyType] | None':
+        """The types an f-string slot of type `t` renders: a union, an
+        Optional, a Ptr and a recursive alias render the part they hold (the
+        runtime's __str__ / repr_of visit it), None the text "None"; None when
+        a part has no text rendering."""
+        # Per-kind recursion: part-wise Stringable / Representable
+        # conformance waits on protocol parameter slots in the call-argument
+        # conversion.
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if isinstance(t, NoneType):
+            return []
+        if isinstance(t, UnionType):
+            parts: list[TpyType] = []
+            for m in t.members:
+                sub = self._fstring_parts(m)
+                if sub is None:
+                    return None
+                parts.extend(sub)
+            return parts
+        if isinstance(t, OptionalType):
+            return self._fstring_parts(t.inner)
+        if isinstance(t, PtrType):
+            pointee = ptr_text_pointee(t)
+            # The f-string renders a pointer through `__str__`, whose `char*`
+            # overload reads a C string, so an open pointee instantiated at
+            # char would read past it (BUGS.md#list-ptr-char-prints-garbage).
+            # print is unaffected: `_opt_pointee_wide` admits an open pointee
+            # and routes it to `print_optional`, which dereferences first.
+            if pointee is None:
+                return None
+            if isinstance(pointee, TypeParamRef):
+                return [t]
+            return self._fstring_parts(pointee)
+        if isinstance(t, RecursiveAliasInstanceType):
+            body = t.substituted_body()
+            if body is not t:
+                return self._fstring_parts(body)
+        return [t]
+
     def _is_fstring_renderable(self, t: TpyType, repr_only: bool = False) -> bool:
         """True if t can appear in an f-string slot (and is __repr__-able when
-        repr_only). Recurses into UnionType members (codegen dispatches via
-        std::visit to the runtime variant __str__/__repr__ overloads)."""
-        if isinstance(t, UnionType):
-            return all(self._is_fstring_renderable(m, repr_only) for m in t.members)
+        repr_only)."""
+        parts = self._fstring_parts(t)
+        return parts is not None and all(
+            self._renders_as_text(part, repr_only) for part in parts)
+
+    def _renders_as_text(self, t: TpyType, repr_only: bool) -> bool:
+        if isinstance(t, PtrType):
+            return False  # a Ptr to an open T (`_fstring_parts`)
+        if container_to_str_template(t) is not None or isinstance(t, AnyType):
+            return True
         if repr_only:
             if self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE):
                 return True
@@ -7259,36 +7306,82 @@ class ExpressionAnalyzer:
                 if isinstance(resolved, OwnType):
                     resolved = resolved.wrapped
                 conv = part.conversion
+                shown = self._user_type_name(unwrap_readonly(
+                    unwrap_ref_type(unwrap_send_sync(resolved))))
+                open_ptr = next((p for p in self._fstring_parts(resolved) or []
+                                 if isinstance(p, PtrType)), None)
+                if open_ptr is not None:
+                    raise self.ctx.error(
+                        f"{self._user_type_name(open_ptr)} with a generic pointee"
+                        " cannot be used in an f-string yet; print it or"
+                        " dereference it first", part.expr)
 
-                if container_to_str_template(resolved) is not None:
-                    pass  # containers have runtime to_str
-                elif isinstance(resolved, AnyType):
-                    pass  # Any dispatches via the per-type str/repr ops slot
-                elif conv == FSTRING_CONV_REPR:
+                if conv == FSTRING_CONV_REPR:
                     if not self._is_fstring_renderable(resolved, repr_only=True):
                         raise self.ctx.error(
-                            f"Type {part_type} cannot use !r conversion (no __repr__ method)",
+                            f"Type {shown} cannot use !r conversion (no __repr__ method)",
                             part.expr,
                         )
                 elif conv == FSTRING_CONV_STR:
                     if not self._is_fstring_renderable(resolved):
                         raise self.ctx.error(
-                            f"Type {part_type} cannot use !s conversion"
+                            f"Type {shown} cannot use !s conversion"
                             " (no __str__ or __repr__ method)",
                             part.expr,
                         )
                 elif not self._is_fstring_renderable(resolved):
                     raise self.ctx.error(
-                        f"Type {part_type} cannot be used in f-string"
+                        f"Type {shown} cannot be used in f-string"
                         " (no __str__ or __repr__ method)",
                         part.expr,
                     )
-                if part.format_spec is not None and (is_big_int_type(resolved) or isinstance(resolved, IntLiteralType)):
-                    raise self.ctx.error(
-                        "Format specs on int are not yet supported (use a fixed-width type like int32)",
-                        part.expr,
-                    )
+                self._check_fstring_spec(part, resolved, shown)
         return STR
+
+    def _check_fstring_spec(self, part: TpyFStringValue, resolved: TpyType,
+                            shown: str) -> None:
+        """A spec on a scalar keeps the scalar's meaning; anywhere else it
+        applies to the str() text, which TPy renders where CPython would call
+        the held value's __format__ -- loud unless `!s`/`!r` says so."""
+        fields = part.format_spec_fields
+        direct = (part.conversion == FSTRING_CONV_NONE
+                  and self._is_formattable(resolved))
+        if fields is None:
+            if part.conversion == FSTRING_CONV_NONE and not direct:
+                for held in self._fstring_parts(resolved) or []:
+                    if self._has_format(held):
+                        self.ctx.warning(
+                            f"{self._user_type_name(held)} has __format__,"
+                            " which TPy does not call: the f-string formats"
+                            " its str() text; write {v!s} to state that",
+                            part.expr)
+                        break
+            return
+        if direct:
+            if is_big_int_type(resolved) or isinstance(resolved, IntLiteralType):
+                raise self.ctx.error(
+                    "Format specs on int are not yet supported (use a fixed-width type like int32)",
+                    part.expr,
+                )
+            return
+        spec = part.format_spec
+        reason = _text_spec_error(fields)
+        if reason is not None:
+            raise self.ctx.error(
+                f"Format spec ':{spec}' cannot apply to text: {reason}"
+                " (only fill, alignment, width, precision and 's' format"
+                " a str() / repr() text)", part.expr)
+        if part.conversion == FSTRING_CONV_NONE:
+            self.ctx.warning(
+                f"format spec on {shown} pads its str() text; CPython passes"
+                f" it to the value's __format__ (write {{v!s:{spec}}} to"
+                " state that)", part.expr)
+
+    def _has_format(self, t: TpyType) -> bool:
+        record = self.ctx.registry.get_record_for_type(t)
+        return (record is not None and not record.is_native
+                and self.ctx.registry.mro_method_definer(
+                    record, "__format__") is not None)
 
     # --- Lambda expressions ---
 
@@ -7777,3 +7870,18 @@ class ExpressionAnalyzer:
                     f"resolved (use a lambda instead)"
                 )
         return tuple(inferred[tp] for tp in fi.type_params), None
+
+
+def _text_spec_error(fields: FormatSpecFields) -> str | None:
+    """Why a parsed format spec cannot format text, or None: text takes fill,
+    alignment, width, precision and the 's' type; a sign, '#', the '0' flag
+    or a numeric presentation type is a number's option."""
+    if fields.sign is not None:
+        return f"the sign option '{fields.sign}' is a number's option"
+    if fields.alt:
+        return "the '#' option is a number's option"
+    if fields.zero:
+        return "the '0' flag is a number's option"
+    if fields.type not in ("", "s"):
+        return f"'{fields.type}' is a number's presentation type"
+    return None

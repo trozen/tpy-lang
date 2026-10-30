@@ -62,13 +62,13 @@ void __tpy_init() {
     y = 10;
     std::cout << ::tpy::print_optional_val(y) << "\n" << ::tpy::check_signals;
     b = std::nullopt;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(b) << "\n" << ::tpy::check_signals;
     b = true;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(b) << "\n" << ::tpy::check_signals;
     f = std::nullopt;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(f) << "\n" << ::tpy::check_signals;
     f = 3.14;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(f) << "\n" << ::tpy::check_signals;
     z = 0;
     std::cout << ::tpy::print_bool((!z.has_value())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(z) << "\n" << ::tpy::check_signals;

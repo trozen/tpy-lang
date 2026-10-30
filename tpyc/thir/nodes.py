@@ -4264,10 +4264,6 @@ class PrintForm(Enum):
       * `OPT_VAL` -- `::tpy::print_optional_val(...)` on the whole (bare,
         un-narrowed) value-repr `Optional[int/char/str]` (the value-repr
         Optional arm, plain form).
-      * `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` -- the same on `Optional[bool]` /
-        `Optional[float]`, taking an explicit Formatter + inner-type template
-        (`<::tpy::print_bool, T>` / `<::tpy::print_float, T>`); the inner C++
-        type rides `THIRPrintArg.opt_inner_cpp`.
       * `OPT_PTR` -- `::tpy::print_optional(...)` on a bare pointer-repr
         `Optional[F1-record]` NAME (the pointer-repr arm, CTAD form:
         a record inner streams via its own operator<<, no Formatter).
@@ -4293,8 +4289,6 @@ class PrintForm(Enum):
     VALUE_GENERIC = auto()
     BYTEARRAY = auto()  # `::tpy::ByteArrayPrinter(...)` -- a bytearray name
     OPT_VAL = auto()
-    OPT_VAL_BOOL = auto()
-    OPT_VAL_FLOAT = auto()
     OPT_VAL_FMT = auto()  # `print_optional_val<FMT, INNER>(...)` -- an inner
                           # whose C++ type has no plain operator<< (container /
                           # tuple / bytes / bytearray) needs an explicit
@@ -4310,8 +4304,8 @@ class THIRPrintArg:
     `print_form` is named distinctly from `THIRExpr.form` (the unrelated
     borrow/storage axis) to keep the two from being conflated. `opt_inner_cpp`
     carries the Optional inner's C++ spelling for the templated
-    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT`/`OPT_VAL_FMT`/`OPT_PTR_FMT` wrappers (None
-    for every other form); `opt_fmt_cpp` the Formatter for the last two.
+    `OPT_VAL_FMT`/`OPT_PTR_FMT` wrappers (None
+    for every other form); `opt_fmt_cpp` the Formatter for both.
     `deref` streams the referent of a pointer-shaped read (`(*std::get<1>(t))`
     -- a borrow-tuple record element): print is a VALUE position, so the
     pointer the element read hands back has to be dereferenced here rather

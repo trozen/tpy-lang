@@ -2006,9 +2006,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # placeholder (lowering, routed args only)
     "fstr.container_arg",           # tuple/list/dict/set arg -> to_str helper
     "fstr.container_call_arg",      # container-returning CALL under that wrap
-    "fstr.user_arg",                # user record / bound type param /
-                                    # stub declaring __str__/__repr__ -> __str__
-    "fstr.union_arg",               # union arg -> runtime __str__ visitor
+    "fstr.str_arg",                 # any other Stringable arg (Optional, Ptr,
+                                    # union, record, type param) -> __str__
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
     "with.manager_borrowed_field",  # field-access lvalue manager: `auto& __ctx_N = <obj>.f;`
@@ -2440,6 +2439,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "print.opt_ptr_call",         # ptr-repr Optional-returning call print
                                   # arg: print_optional over the bare T*
                                   # call result
+    "print.ptr",                  # Ptr print arg: print_optional over the
+                                  # bare pointer
     "print.record_name",          # F1-record NAME print arg: the raw
                                   # operator<< stream, pointer bindings
                                   # deref

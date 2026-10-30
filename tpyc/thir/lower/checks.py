@@ -15,7 +15,7 @@ from ...parse.nodes import (
     SourceLocation,
     lambda_of,
     is_property_getter_read,
-    FSTRING_CONV_REPR,
+    FSTRING_CONV_NONE, FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
     FunctionLinkage,
     TpyArrayLiteral,
@@ -138,7 +138,7 @@ from ...type_def_registry import (
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container
-from ...typesys import make_list
+from ...typesys import make_list, ptr_text_pointee
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...sema.dyn_erasure import (DynSlotEntry, classify_dyn_own_arg,
@@ -347,7 +347,6 @@ from .predicates import (
     _ru_wrapper_scalar_literal_arg,
     _own_viewfam_param,
     _resolved_bytes_value,
-    _declares_str_or_repr,
     _resolved_scalar,
     _resolved_str_value,
     _resolved_viewfam_value,
@@ -13608,14 +13607,17 @@ def _print_optval_opt(a: TpyExpr, analyzer,
     return None
 
 def _print_optptr_form(
-        opt: 'OptionalType') -> 'tuple[PrintForm, str | None, str | None]':
-    """The `print_optional` wrapper for a POINTER-repr Optional print arg
-    (the print emit's pointer-repr arm): CTAD when the pointee streams through its
-    own `operator<<`, `<Formatter, Inner>` when it does not (containers,
-    bytearray). The inner spelling is the raw `inner.to_cpp()` -- this arm
-    never takes the view-storage override, which only the value-repr
-    arm consults."""
-    inner = opt.inner
+        opt: 'OptionalType | PtrType',
+) -> 'tuple[PrintForm, str | None, str | None]':
+    """The `print_optional` wrapper for a nullable pointer print arg -- a
+    POINTER-repr Optional or a `Ptr` (the print emit's pointer-repr arm):
+    CTAD when the pointee streams through its own `operator<<`,
+    `<Formatter, Inner>` when it does not (containers, bytearray, the
+    scalars Python prints differently from C++). The inner spelling is the
+    raw `inner.to_cpp()` -- this arm never takes the view-storage override,
+    which only the value-repr arm consults."""
+    inner = (opt.inner if isinstance(opt, OptionalType)
+             else unwrap_readonly(opt.pointee))
     inner_cpp = inner.to_cpp()
     fmt = _optional_print_formatter(inner, inner_cpp)
     if fmt is None:
@@ -13646,7 +13648,8 @@ def _optional_print_formatter(inner: TpyType, inner_cpp: str) -> 'str | None':
     """The container-formatter rule: the Formatter a
     print_optional / print_optional_val needs when the Optional inner's C++
     type has no plain `operator<<` (containers, tuples, bytes, bytearray).
-    None means the CTAD/plain form. bytearray is checked before bytes -- it is
+    None means the CTAD/plain form, which prints a bool, a float and an
+    8-bit int as Python does. bytearray is checked before bytes -- it is
     also `is_any_bytes_type`, and the two reprs differ."""
     if is_bytearray_type(inner):
         return "::tpy::ByteArrayPrinter"
@@ -13693,19 +13696,12 @@ def _print_optval_form(
         params: 'dict[str, TpyType] | None' = None
 ) -> 'tuple[PrintForm, str | None, str | None]':
     """The `print_optional_val` wrapper for a value-repr Optional print arg:
-    `Optional[bool]` /
-    `Optional[float]` take an explicit Formatter + inner-type template
-    (`<::tpy::print_bool, T>` / `<::tpy::print_float, T>`, both float widths on
-    the float branch), a container / tuple / bytes inner the kind-keyed
-    Formatter, every other inner (int / char / str) the plain form. Returns
-    `(form, inner_cpp, fmt_cpp)`. The bool/float inners are never a view
-    family, so their inner spelling collapses to `inner.to_cpp()`; the
-    Formatter arm threads the view-storage override."""
+    an inner the Formatter table names (a container / tuple / bytes) takes
+    it with an explicit inner-type template, every other inner the plain
+    form, which prints a scalar as Python does. Returns
+    `(form, inner_cpp, fmt_cpp)`; the Formatter arm threads the view-storage
+    override."""
     inner = opt.inner
-    if is_bool_type(inner):
-        return PrintForm.OPT_VAL_BOOL, inner.to_cpp(), None
-    if is_float_type(inner):
-        return PrintForm.OPT_VAL_FLOAT, inner.to_cpp(), None
     inner_cpp = (_optional_print_inner_cpp(a, inner, params)
                  if a is not None and params is not None else inner.to_cpp())
     fmt = _optional_print_formatter(inner, inner_cpp)
@@ -14115,6 +14111,32 @@ def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
     return _witness("print.tuple_record_elem")
 
 
+def _print_ptr(a: TpyExpr, analyzer) -> 'PtrType | None':
+    """A `Ptr` print arg read as a name, field or call whose pointee renders
+    as text (`ptr_text_pointee`): like a pointer-repr Optional it prints its
+    pointee, or None when null -- never the address."""
+    if not isinstance(a, (TpyName, TpyFieldAccess, TpyCall, TpyMethodCall)):
+        return None
+    t = analyzer.get_expr_type(a)
+    tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+          if t is not None else None)
+    if not isinstance(tb, PtrType) or ptr_text_pointee(tb) is None:
+        return None
+    return tb
+
+
+def _print_ptr_form(
+        ptr: 'PtrType', analyzer,
+) -> 'tuple[PrintForm, str | None, str | None]':
+    """A Ptr prints as a pointer-repr Optional of the same pointee does: a
+    pointee that path streams (`_opt_pointee_wide`) takes `print_optional`
+    with the Formatter it picks; any other its `::tpy::__str__` text, None
+    when null."""
+    if _opt_pointee_wide(ptr.inner_pointee, analyzer):
+        return _print_optptr_form(ptr)
+    return PrintForm.STR, None, None
+
+
 def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """One print arg in the no-kwargs common-arg subset: a str/bytes literal,
     an eligible scalar (fixed-int / bool / double), a char (streamed raw --
@@ -14127,6 +14149,8 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     if isinstance(a, TpyNoneLiteral):
         # `print(None)` -> the bare "None" string literal (the print emit's
         # first arm).
+        return True
+    if _print_ptr(a, analyzer) is not None:
         return True
     if _print_optval_opt(a, analyzer, locals_) is not None:
         # An UN-narrowed value-repr Optional[scalar/str] read -> the bare
@@ -14253,26 +14277,29 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                       has_spec: bool,
                       declared: dict[str, TpyType]) -> 'str | None | object':
     """The Python-compatible formatting wrapper for one interpolated f-string
-    arg, as a positional `{0}` template (None = pass through bare) -- the
-    supported subset of the per-arg wrapper table -- or `_FSTRING_INELIGIBLE`
-    for any row outside it. The type row is
-    established first:
-    `!r` then overrides it with `repr_of` (the conversion row precedes
-    every type row, and no supported type is a container, so `repr_of` fires
-    for all of them); `!s` is a no-op outside the user-type row, which is not
-    supported -- so an unsupported type stays rejected under any conversion (its
-    inner render is not pinned by the slice). A format spec flips the bool row
-    to `static_cast<int>` and the float rows to bare (std::format handles the
-    spec on double/float directly); the 8-bit-int and enum casts apply
-    spec-or-not. bool is checked before the 8-bit-int row, keeping the table
-    order (bool carries 8-bit int traits but must format as True/False). An
-    int constant (`f"{5}"`, `f"{2**40}"`) takes no row: it lowers to a
-    literal, and the f-string lowering adds `.to_string()` when that literal
-    renders as BigInt. Fixed widths format bare at the fall-through; a
-    runtime BigInt
-    takes the `.to_string()` row (a spec'd int/BigInt arg is a sema error, so
-    the spec never reaches that row)."""
+    arg, as a positional `{0}` template (None = pass through bare), or
+    `_FSTRING_INELIGIBLE` when the arg has no type.
+
+    Containers render via the runtime to_str helpers under any conversion
+    (Python str/repr of a container coincide). A direct scalar keeps its own
+    row: a format spec flips the bool row to `static_cast<int>` and the float
+    rows to bare (std::format handles the spec on double/float directly); the
+    8-bit-int and enum casts apply spec-or-not; bool is checked before the
+    8-bit-int row (bool carries 8-bit int traits but must format as
+    True/False). An int constant takes no row: it lowers to a literal, and
+    the f-string lowering adds `.to_string()` when that literal renders as
+    BigInt; a runtime BigInt takes the `.to_string()` row (a spec'd int/BigInt
+    arg is a sema error). Every other operand sema admitted (Optional, Ptr,
+    union, record, bytes, range, a type parameter) renders its
+    `::tpy::__str__` text.
+
+    The conversion row comes after: `!r` is `repr_of`; `!s` keeps the type
+    row, except that a spec after it formats TEXT, so a scalar row that
+    formats a number or a char is wrapped in `::tpy::__str__`. A spec on a
+    non-scalar without a conversion formats the same text (sema warns)."""
+    numeric_spec = has_spec and conv == FSTRING_CONV_NONE
     row: 'str | None | object' = _FSTRING_INELIGIBLE
+    text = True
     if isinstance(a, TpyStrLiteral):
         row = None  # const char[N] formats directly
     else:
@@ -14282,29 +14309,30 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
         bigint_key = _narrow_key_type(a, declared, analyzer)
         ctmpl = container_to_str_template(t)
         if ctmpl is not None:
-            # Containers (tuple/list/span/dict/set) render via the runtime
-            # to_str helpers irrespective of conversion: the
-            # container arm precedes the conv rows, so !r/!s never
-            # override it (Python str/repr of a container coincide).
             _witness("fstr.container_arg")
             return ctmpl
+        tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        rt = resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
         if (_resolved_str_value(t, analyzer) is not None
                 or _is_string_owned(t)):
             row = None  # string/string_view/concat-result format directly
         elif is_bool_type(t):
-            row = ("static_cast<int>({0})" if has_spec
+            row = ("static_cast<int>({0})" if numeric_spec
                    else "::tpy::bool_to_str({0})")
+            text = not numeric_spec
         elif _eligible_char(t):
             _witness("fstr.char_arg")
             row = None  # char formats directly (no int_traits, so no cast)
+            text = False
         # A bare float literal (FloatLiteralType) resolves to float64 in an
         # f-string slot -- there is no float32-typed context inside one -- so
         # it takes the same row as a concrete double. A concrete float32 arg
         # casts up first (float_to_str takes double) -- unless a spec routes
         # it bare into std::format.
         elif isinstance(t, FloatLiteralType) or is_float_type(t):
-            if has_spec:
+            if numeric_spec:
                 row = None
+                text = False
             elif is_float32_type(t):
                 row = "::tpy::float_to_str(static_cast<double>({0}))"
             else:
@@ -14313,7 +14341,8 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
             # An int constant lowers to a literal, whose render type alone
             # picks bare vs `.to_string()` (the f-string lowering).
             row = None
-        elif _runtime_bigint(bigint_key, analyzer) and not has_spec:
+            text = False
+        elif _runtime_bigint(bigint_key, analyzer) and not numeric_spec:
             # A runtime BigInt formats via `.to_string()`, keyed on the
             # DECLARED type (`is_runtime_bigint`). Placed ahead of the
             # 8-bit-int and enum casts.
@@ -14321,38 +14350,24 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
             row = _FSTRING_BIGINT_WRAP
         elif _eligible_enum(t, analyzer) is not None:
             row = "static_cast<int>({0})"
-        elif isinstance(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(t))), AnyType):
+            text = False
+        elif is_fixed_int_type(rt):
+            tr = int_traits_of(rt)
+            row = ("static_cast<int>({0})"
+                   if tr is not None and tr.bits == 8 else None)
+            text = False
+        elif isinstance(tu, AnyType) and not has_spec:
             # A raw Any arg formats bare -- std::format has a `tpy::Any`
-            # formatter (per-type str dispatch); !r overrides to repr_of below.
+            # formatter (per-type str dispatch), which takes no spec.
             _witness("fstr.any_arg")
             row = None
-        elif (isinstance(t, NominalType) and t.is_user_record) \
-                or isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(t))), TypeParamRef) \
-                or _declares_str_or_repr(t, analyzer):
-            # A user record / bound type param / stub type declaring
-            # __str__ or __repr__ (bytes, range) renders via __str__ (its ADL
-            # override binds the per-record definition); a !r conversion
-            # overrides it with repr_of below, the conversion row.
-            # The user-record half is not subsumed by the declares test: a
-            # subclass inheriting __str__ declares none itself. The
-            # type-param half unwraps readonly/Send shells -- a const
-            # method's `self.value: T` read arrives readonly-wrapped.
-            _witness("fstr.user_arg")
-            row = "::tpy::__str__({0})"
-        elif isinstance(t, UnionType):
-            # std::variant is not std::formattable: route through the runtime
-            # __str__ visitor that dispatches per alternative; !r overrides
-            # to repr_of below.
-            _witness("fstr.union_arg")
-            row = "::tpy::__str__({0})"
         else:
-            rt = resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
-            if is_fixed_int_type(rt):
-                tr = int_traits_of(rt)
-                row = ("static_cast<int>({0})"
-                       if tr is not None and tr.bits == 8 else None)
+            # Sema admitted the operand as Stringable: an Optional, a Ptr, a
+            # union, a record, a type parameter, bytes / range, an Any under
+            # a spec. Its __str__ text, None for an empty Optional or a null
+            # pointer.
+            _witness("fstr.str_arg")
+            row = "::tpy::__str__({0})"
     if row is _FSTRING_INELIGIBLE:
         return _FSTRING_INELIGIBLE
     if conv == FSTRING_CONV_REPR:
@@ -14360,4 +14375,7 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
         return "::tpy::repr_of({0})"
     if conv == FSTRING_CONV_STR:
         _witness("fstr.conv_str")
+        if has_spec and not text:
+            inner = "{0}" if row is None else row
+            return "::tpy::__str__(" + inner + ")"
     return row

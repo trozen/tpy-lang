@@ -60,7 +60,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_float(f) << "\n" << ::tpy::check_signals;
     flag = std::nullopt;
     flag = ::tpyapp::main::get_flag();
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(flag) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(flag) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

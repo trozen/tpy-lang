@@ -33,7 +33,7 @@ void main() {
     Box<bool> b2 = Box<bool>(true);
     std::optional<bool> v3 = b2.get();
     if ((v3.has_value())) {
-        std::cout << "bool:" << " " << ::tpy::print_optional_val<::tpy::print_bool, bool>(v3) << "\n" << ::tpy::check_signals;
+        std::cout << "bool:" << " " << ::tpy::print_optional_val(v3) << "\n" << ::tpy::check_signals;
     }
 }
 

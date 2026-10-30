@@ -1,0 +1,57 @@
+global: None A(5)
+global: None A(5)
+free: 3 2.5 True hi A(1) [1, 2]
+free: 3 2.5 True 'hi' A(1)
+free: [     3] [hi  ]
+free: None None None None None None
+free: None None None None None
+free: [  None] [None]
+ptr: A(1) 3.0 True 7
+ptr: A(1) 3.0
+ptr: A(1) 3.0 True 7
+null: None None None
+null: None None
+write: A(42)
+write: A(42)
+union: 3.14159 B<2> None 3.14159 None
+union: [3.]
+union: abc A(42) 5 'abc' 5
+union: [ab]
+spec: [ab] [  abc]
+span: [4, 5] [4, 5]
+readonly: A(42)
+readonly: A(42)
+ctor: 9 A(42)
+method: 9 A(42) 9
+method: 9 A(42)
+gen: None A(42)
+async: 1 A(42)
+error_return: None
+['comp: 1', 'comp: None']
+closure: None
+try: 9
+finally: A(42)
+match: 9 A(42)
+misc: None Color.GREEN [1, [2, 3]] 5 None
+misc: None None 4 5 None
+generic: 4 A(42) None
+D(s='q', o=None)
+format: F()
+scalar: [3.] [42   ] [  True] [  x] [x] [  x  ]
+int8: 5 200
+int8: None None
+empty: [7] [1180591620717411303424]
+payload: str A(42)
+payload: None None
+payload: None 6
+held: F()
+held: F()
+held: F()
+generic print: 3.0 3.0
+generic print: True True
+generic print: 7 7
+ptr forms: None None None None None None A(42) [8, 9]
+ptr forms: None None None None None None None None
+ptr tree: None
+inherit: F()
+none: None None

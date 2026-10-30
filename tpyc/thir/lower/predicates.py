@@ -2037,19 +2037,6 @@ def _resolved_bytes_value(t: TpyType | None, analyzer) -> TpyType | None:
         return t
     return None
 
-def _declares_str_or_repr(t: TpyType | None, analyzer) -> bool:
-    """`TypeRegistry.answers_str_or_repr` for the type's record, a pending
-    bytes local resolved first."""
-    if t is None:
-        return False
-    bt = _resolved_bytes_value(t, analyzer)
-    t = bt if bt is not None else unwrap_readonly(unwrap_ref_type(
-        unwrap_send_sync(t)))
-    if not isinstance(t, NominalType):
-        return False
-    rec = analyzer.registry.get_record_for_type(t)
-    return rec is not None and analyzer.registry.answers_str_or_repr(rec)
-
 def _resolved_viewfam_value(t: TpyType | None, analyzer) -> TpyType | None:
     """The resolved str- OR bytes-family slice value -- the two view families
     share the slice/iteration receiver shapes and emit machinery -- or None."""

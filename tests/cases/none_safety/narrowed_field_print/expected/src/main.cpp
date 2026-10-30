@@ -33,12 +33,12 @@ void show_guarded(const Config& cfg) {
         std::cout << "no name" << "\n" << ::tpy::check_signals;
     }
     if ((cfg.flag.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(cfg.flag) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::print_optional_val(cfg.flag) << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "no flag" << "\n" << ::tpy::check_signals;
     }
     if ((cfg.ratio.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(cfg.ratio) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::print_optional_val(cfg.ratio) << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "no ratio" << "\n" << ::tpy::check_signals;
     }

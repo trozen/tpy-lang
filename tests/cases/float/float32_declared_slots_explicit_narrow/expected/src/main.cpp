@@ -174,7 +174,7 @@ void main(double wide) {
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::tuple<float, ::tpy::BigInt> t = std::tuple<float, ::tpy::BigInt>{static_cast<float>(wide), ::tpy::BigInt(1)};
     std::optional<float> o = (((wide > 0)) ? (std::optional<float>(static_cast<float>(wide))) : (std::optional<float>(std::nullopt)));
-    std::cout << "tuple:" << " " << ::tpy::TuplePrinter(t) << " " << ::tpy::print_optional_val<::tpy::print_float, float>(o) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple:" << " " << ::tpy::TuplePrinter(t) << " " << ::tpy::print_optional_val(o) << "\n" << ::tpy::check_signals;
     std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<float>>(::tpyapp::main::halves(s.xs, wide))) << "\n" << ::tpy::check_signals;
     std::cout << "async:" << " " << ::tpy::print_float(static_cast<double>(::tpystd::asyncio::run<float>(::tpy::make_adapter<::tpystd::coro::Cancellable<float>>(::tpyapp::main::fetch(wide))))) << "\n" << ::tpy::check_signals;
     std::cout << "closure:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::bump(a, wide))) << "\n" << ::tpy::check_signals;

@@ -4642,10 +4642,6 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::ByteArrayPrinter({inner})"
     if a.print_form is PrintForm.OPT_VAL:
         return f"::tpy::print_optional_val({inner})"
-    if a.print_form is PrintForm.OPT_VAL_BOOL:
-        return f"::tpy::print_optional_val<::tpy::print_bool, {a.opt_inner_cpp}>({inner})"
-    if a.print_form is PrintForm.OPT_VAL_FLOAT:
-        return f"::tpy::print_optional_val<::tpy::print_float, {a.opt_inner_cpp}>({inner})"
     if a.print_form is PrintForm.OPT_VAL_FMT:
         return (f"::tpy::print_optional_val<{a.opt_fmt_cpp}, "
                 f"{a.opt_inner_cpp}>({inner})")

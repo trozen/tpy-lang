@@ -152,16 +152,49 @@ inline auto repr_of(const T& x) {
     return __repr__(x);
 }
 
-// Pointer-repr Optional[Record] (`A | None` lowers to nullable `A*`):
-// emit "None" for null, otherwise repr the pointee. Restricted to class
-// pointers so raw `int*`/`char*` don't get caught (the latter has its
-// own __repr__ for string literals).
+// A nullable pointer -- a pointer-repr Optional (`A | None` lowers to
+// `A*`), a `Ptr[T]`, a union's pointer alternative: "None" for null,
+// otherwise the pointee's repr. A char pointer is a C string and keeps its
+// own __repr__.
 template<typename T>
-    requires std::is_class_v<T>
+    requires text_pointee<T>
 inline std::string repr_of(T* p) {
     if (!p) return "None";
-    using ::tpy::__repr__;
-    return std::string(__repr__(*p));
+    return std::string(::tpy::repr_of(*p));
+}
+
+// The text overloads dunder.hpp declares, defined after every header that
+// contributes a __str__ / __repr__ overload, so a payload or an alternative
+// of any kind reaches its own.
+template<typename T>
+std::string __str__(const std::optional<T>& x) {
+    if (!x.has_value()) return "None";
+    return std::string(::tpy::__str__(*x));
+}
+
+template<typename T>
+    requires text_pointee<T>
+std::string __str__(T* p) {
+    if (!p) return "None";
+    return std::string(::tpy::__str__(*p));
+}
+
+// Union: the active alternative's text; a pointer alternative goes through
+// the pointer overload, so a null one is None.
+template<typename... Ts>
+std::string __str__(const std::variant<Ts...>& v) {
+    return std::visit([](const auto& a) -> std::string {
+        return std::string(::tpy::__str__(a));
+    }, v);
+}
+
+// Goes through repr_of so ADL on the alternative type finds per-record
+// overrides emitted alongside user records.
+template<typename... Ts>
+std::string __repr__(const std::variant<Ts...>& v) {
+    return std::visit([](const auto& a) -> std::string {
+        return std::string(::tpy::repr_of(a));
+    }, v);
 }
 } // namespace tpy
 

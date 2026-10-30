@@ -1,0 +1,3 @@
+Pins the warned divergence of a format spec on a union holding a float: TPy
+prints the spec applied to the str() text ([3.]), CPython formats the float
+([3.1]).

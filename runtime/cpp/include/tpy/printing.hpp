@@ -448,6 +448,16 @@ std::string __repr__(const std::array<T, N>& v) {
     return list_to_str(v);
 }
 
+template <typename T, std::size_t E>
+std::string __str__(std::span<T, E> v) {
+    return list_to_str(v);
+}
+
+template <typename T, std::size_t E>
+std::string __repr__(std::span<T, E> v) {
+    return list_to_str(v);
+}
+
 // --- print(*xs): items whose count is known only at run time ---
 
 // The default element writer of a `*xs` segment: the element's own

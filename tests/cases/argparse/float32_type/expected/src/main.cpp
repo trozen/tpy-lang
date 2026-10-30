@@ -20,7 +20,7 @@ void main() {
     if (!((args.gain.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::print_float(static_cast<double>(args.scale)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(static_cast<double>(args.bias)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, float>(args.gain) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(args.gain) << "\n" << ::tpy::check_signals;
 }
 
 // args = parser.parse_args(["2.5", "--gain", "1.25"])

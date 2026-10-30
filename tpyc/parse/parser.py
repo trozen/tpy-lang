@@ -35,7 +35,7 @@ from .nodes import (
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
     ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
+    TpyFStringValue, TpyFString, FSTRING_CONV_ASCII, FormatSpecFields,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyStarUnpack, TpyCall, TpyMethodCall,
@@ -119,69 +119,67 @@ class _UnparsedAnnotation(ParseError):
         super().__init__(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
 
-def _validate_fstring_format_spec(spec: str) -> str | None:
-    """Validate an f-string format spec against C++ std::format support.
-
-    Returns an error message for Python-only features, or None if valid.
-    Python features not supported by std::format: '=' alignment, 'z' option,
-    ',' and '_' grouping, 'n' and '%' type codes.
-    """
-    if not spec:
-        return None
-
+def _parse_fstring_format_spec(spec: str) -> 'FormatSpecFields | str':
+    """Parse an f-string format spec into its fields, or an error message
+    for a Python-only feature std::format does not take: '=' alignment, the
+    'z' option, ',' and '_' grouping, the 'n' and '%' types."""
     pos = 0
     n = len(spec)
+    fill = align = sign = None
+    alt = zero = False
+    width = precision = None
 
     # [[fill]align] -- fill can be ANY character if followed by an align char
     _ALIGN = '<>^='
     if n >= 2 and spec[1] in _ALIGN:
-        if spec[1] == '=':
-            return "'=' alignment is not supported"
+        fill, align = spec[0], spec[1]
         pos = 2
-    elif spec[0] in _ALIGN:
-        if spec[0] == '=':
-            return "'=' alignment is not supported"
+    elif n >= 1 and spec[0] in _ALIGN:
+        align = spec[0]
         pos = 1
+    if align == '=':
+        return "'=' alignment is not supported"
 
-    # [sign]
     if pos < n and spec[pos] in '+- ':
+        sign = spec[pos]
         pos += 1
 
-    # [z]
     if pos < n and spec[pos] == 'z':
         return "'z' option is not supported"
 
-    # [#]
     if pos < n and spec[pos] == '#':
+        alt = True
         pos += 1
 
-    # [0]
     if pos < n and spec[pos] == '0':
+        zero = True
         pos += 1
 
-    # [width]
+    start = pos
     while pos < n and spec[pos].isdigit():
         pos += 1
+    if pos > start:
+        width = int(spec[start:pos])
 
-    # [grouping_option]
     if pos < n and spec[pos] in ',_':
         return f"'{spec[pos]}' grouping is not supported"
 
-    # [.precision]
     if pos < n and spec[pos] == '.':
         pos += 1
+        start = pos
         while pos < n and spec[pos].isdigit():
             pos += 1
+        precision = int(spec[start:pos]) if pos > start else None
 
-    # [type]
-    if pos < n:
-        t = spec[pos]
-        if t == 'n':
-            return "'n' (locale-aware) type is not supported"
-        if t == '%':
-            return "'%' (percentage) type is not supported"
+    type_ = spec[pos:]
+    if type_[:1] == 'n':
+        return "'n' (locale-aware) type is not supported"
+    if type_[:1] == '%':
+        return "'%' (percentage) type is not supported"
 
-    return None
+    return FormatSpecFields(fill=fill, align=align, sign=sign, alt=alt,
+                            zero=zero, width=width, precision=precision,
+                            type=type_)
 
 
 def _overload_display(form: OverloadForm) -> str:
@@ -4631,6 +4629,7 @@ class Parser:
                     raise ParseError("f-string !a conversion is not supported", node)
                 expr = self._parse_expr(val.value)
                 fmt_spec: str | None = None
+                fmt_fields: FormatSpecFields | None = None
                 if val.format_spec is not None:
                     # format_spec is a JoinedStr; only constant specs are supported
                     spec_parts = []
@@ -4641,11 +4640,17 @@ class Parser:
                             raise ParseError(
                                 "Expressions inside f-string format specs are not supported", node
                             )
-                    fmt_spec = "".join(spec_parts)
-                    err = _validate_fstring_format_spec(fmt_spec)
-                    if err is not None:
-                        raise ParseError(f"Unsupported f-string format spec: {err}", node)
-                parts.append(TpyFStringValue(expr=expr, conversion=conv, format_spec=fmt_spec))
+                    # `f"{v:}"` is Python's format(v, ""), i.e. no spec.
+                    fmt_spec = "".join(spec_parts) or None
+                    if fmt_spec is not None:
+                        parsed = _parse_fstring_format_spec(fmt_spec)
+                        if isinstance(parsed, str):
+                            raise ParseError(
+                                f"Unsupported f-string format spec: {parsed}", node)
+                        fmt_fields = parsed
+                parts.append(TpyFStringValue(expr=expr, conversion=conv,
+                                             format_spec=fmt_spec,
+                                             format_spec_fields=fmt_fields))
             else:
                 raise ParseError(self._describe_unsupported_expr(val), node)
         return TpyFString(parts=parts, loc=loc)

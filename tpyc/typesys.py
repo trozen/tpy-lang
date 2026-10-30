@@ -4079,6 +4079,17 @@ def is_void_like_type(t: 'TpyType | None') -> bool:
     return isinstance(t, (NoneType, VoidType))
 
 
+def ptr_text_pointee(t: 'PtrType') -> 'TpyType | None':
+    """The pointee a `Ptr` renders as text (its `None` when null), or None
+    when it has none: an opaque pointer has no pointee, and C++ cannot tell
+    a pointer to one char from a C string."""
+    from .type_def_registry import is_char_type
+    pointee = t.inner_pointee
+    if is_void_like_type(pointee) or is_char_type(pointee):
+        return None
+    return pointee
+
+
 def is_callable_type(t: 'TpyType | None') -> bool:
     """True for callable function-type aliases (CallableType)."""
     return isinstance(t, CallableType)

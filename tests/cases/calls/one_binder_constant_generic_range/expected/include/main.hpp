@@ -238,8 +238,6 @@ inline void Unsigned<N>::run() const {
 //     x: int8 = N  # tpyc: ok
 //     # An optional payload converts as the scalar does: one int8 check.
 //     m: int8 | None = N  # tpyc: ok
-//     # Printed through int(): an int8 | None prints its raw byte
-//     # (BUGS.md#print-optional-int8-raw-byte).
 //     if m is not None:
 //         print("int8", x, int(m))
 template<std::size_t N>
@@ -276,7 +274,7 @@ template<std::size_t N>
 inline void Floats<N>::run() const {
     std::optional<double> f = static_cast<double>(N);
     std::optional<::tpy::BigInt> i = ::tpy::BigInt(static_cast<uint64_t>(N));
-    std::cout << "optional" << " " << ::tpy::print_optional_val<::tpy::print_float, double>(f) << " " << ::tpy::print_optional_val(i) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpy::print_optional_val(f) << " " << ::tpy::print_optional_val(i) << "\n" << ::tpy::check_signals;
 }
 
 // def run(self) -> None:

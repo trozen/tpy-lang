@@ -1,0 +1,1 @@
+main.py:7: error: Format spec ':.2f' cannot apply to text: 'f' is a number's presentation type (only fill, alignment, width, precision and 's' format a str() / repr() text)

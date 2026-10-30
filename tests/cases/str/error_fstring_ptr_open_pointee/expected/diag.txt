@@ -1,0 +1,1 @@
+main.py:7: error: Ptr[T] with a generic pointee cannot be used in an f-string yet; print it or dereference it first

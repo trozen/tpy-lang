@@ -46,6 +46,17 @@ inline std::ostream& operator<<(std::ostream& os, const print_bool& pb) {
     return os;
 }
 
+// An int8 / uint8 prints as its number; the stream would write the byte.
+struct print_int8 {
+    int value;
+    explicit print_int8(int v) : value(v) {}
+};
+
+inline std::ostream& operator<<(std::ostream& os, const print_int8& pi) {
+    os << pi.value;
+    return os;
+}
+
 /**
  * Helper struct for float printing that matches Python's repr() behavior.
  *
@@ -682,20 +693,36 @@ struct print_optional_val {
 template<typename T>
 print_optional_val(const std::optional<T>&) -> print_optional_val<void, T>;
 
+namespace detail {
+// The payload of a print_optional / print_optional_val with no explicit
+// Formatter, written as Python prints it: an open `T` reaches this with a
+// bool, a float or an 8-bit int as well as a type whose operator<< is right.
+template<typename T>
+void write_python_value(std::ostream& os, const T& v) {
+    using U = std::remove_cv_t<T>;
+    if constexpr (std::is_same_v<U, bool>) {
+        os << print_bool(v);
+    } else if constexpr (std::is_floating_point_v<U>) {
+        os << print_float(static_cast<double>(v));
+    } else if constexpr (std::is_same_v<U, int8_t> || std::is_same_v<U, uint8_t>) {
+        os << print_int8(v);
+    } else if constexpr (std::is_enum_v<U>
+                         && requires(U x) { ::tpy::EnumUtil<U>::name(x); }) {
+        // Enum: route through the shared EnumUtil formatter. Avoids
+        // requiring an operator<< for the enum (which @native enums don't
+        // emit -- would conflict with any user-provided one).
+        ::tpy::detail::write_enum_repr(os, v);
+    } else {
+        os << v;
+    }
+}
+}  // namespace detail
+
 template<typename Formatter, typename T>
 inline std::ostream& operator<<(std::ostream& os, const print_optional_val<Formatter, T>& po) {
     if (po.opt.has_value()) {
         if constexpr (std::is_same_v<Formatter, void>) {
-            if constexpr (std::is_enum_v<T>
-                          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }) {
-                // Enum: route through the shared EnumUtil formatter.
-                // Avoids requiring an operator<< for the enum (which
-                // @native enums don't emit -- would conflict with any
-                // user-provided one).
-                ::tpy::detail::write_enum_repr(os, *po.opt);
-            } else {
-                os << *po.opt;
-            }
+            detail::write_python_value(os, *po.opt);
         } else {
             os << Formatter(*po.opt);
         }
@@ -717,17 +744,24 @@ template<typename Formatter, typename T>
 struct print_optional {
     const T* ptr;
     explicit print_optional(const T* p) : ptr(p) {}
+    // A generic `T | None` parameter (`opt_cparam_t<T>`) is a value
+    // optional at a value-type instantiation and a pointer otherwise; the
+    // print renders both alike.
+    explicit print_optional(const std::optional<T>& o)
+        : ptr(o.has_value() ? &*o : nullptr) {}
 };
 
-// Deduction guide: print_optional(ptr) deduces Formatter=void.
+// Deduction guides: print_optional(ptr) deduces Formatter=void.
 template<typename T>
 print_optional(const T*) -> print_optional<void, T>;
+template<typename T>
+print_optional(const std::optional<T>&) -> print_optional<void, T>;
 
 template<typename Formatter, typename T>
 inline std::ostream& operator<<(std::ostream& os, const print_optional<Formatter, T>& po) {
     if (po.ptr) {
         if constexpr (std::is_same_v<Formatter, void>) {
-            os << *(po.ptr);
+            detail::write_python_value(os, *(po.ptr));
         } else {
             os << Formatter(*(po.ptr));
         }

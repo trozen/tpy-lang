@@ -8387,6 +8387,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         FSTRING_CONV_REPR):
                     note_detail("fstring.conversion")
                     raise ThirUnsupported("expr.fstring")
+                if isinstance(part.expr, TpyNoneLiteral):
+                    # str(None) and repr(None) are both the text "None".
+                    if part.format_spec is None:
+                        parts.append("None")
+                    else:
+                        parts.append(THIRFStringArg(
+                            expr=THIRStrLiteral(
+                                result_type=analyzer.get_expr_type(part.expr),
+                                value="None", loc=loc),
+                            wrap=None, format_spec=part.format_spec))
+                    continue
                 wrap = _fstring_arg_wrap(part.expr, analyzer, part.conversion,
                                          part.format_spec is not None,
                                          declared)
@@ -8412,11 +8423,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     _witness("fstr.container_call_arg")
                     part_use = replace(part_use,
                                        result=_ExprResultUse.ITERABLE)
+                part_ty = analyzer.get_expr_type(part.expr)
                 try:
+                    # `::tpy::__str__` renders a whole Optional, None or not.
                     lowered_part = _lower_expr(
                         part.expr, lc, declared, use=part_use,
                         field_owned_str_ok=isinstance(
-                            part.expr, TpyFieldAccess))
+                            part.expr, TpyFieldAccess),
+                        allow_whole_optional=isinstance(
+                            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                                part_ty))) if part_ty is not None else None,
+                            OptionalType))
                 except ThirUnsupported as ex:
                     # The landmark names the interpolation position; the
                     # operand's own reason rides it, or the tag hides which

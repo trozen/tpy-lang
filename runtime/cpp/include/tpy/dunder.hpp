@@ -376,6 +376,24 @@ inline bool ptr_truthy(const T* p) {
 // tpy::__str__
 // =============================================
 
+// A pointer whose pointee renders as text: an object, never one char (C++
+// cannot tell it from a C string) and never an opaque `void`.
+template<typename T>
+concept text_pointee = !std::is_same_v<std::remove_cv_t<T>, char>
+                       && !std::is_void_v<T>;
+
+// A pointer the generic fallbacks below must not render: as an address.
+template<typename T>
+concept object_pointer = std::is_pointer_v<T>
+                         && text_pointee<std::remove_pointer_t<T>>;
+
+// None or the payload's text. Declared here, defined in tpy.hpp after every
+// container overload, so a payload of any kind (a list, a union) is reached
+// from the templates below that call through them.
+template<typename T> std::string __str__(const std::optional<T>& x);
+template<typename T> requires text_pointee<T> std::string __str__(T* p);
+template<typename... Ts> std::string __str__(const std::variant<Ts...>& v);
+
 // Builtin type overloads (needed for generic T contexts)
 inline std::string __str__(bool x) { return x ? "True" : "False"; }
 inline std::string __str__(std::nullptr_t) { return "None"; }
@@ -418,6 +436,7 @@ auto __str__(const T& x) {
 template<typename T>
     requires (!requires(const T& t) { t.__str__(); })
           && (!requires(const T& t) { t.__repr__(); })
+          && (!object_pointer<T>)
           && std::formattable<T, char>
 auto __str__(const T& x) {
     return std::format("{}", x);
@@ -438,27 +457,13 @@ template<typename T>
     requires (!requires(const T& t) { t.__str__(); })
           && (!requires(const T& t) { t.__repr__(); })
           && (!std::is_enum_v<T>)
+          && (!object_pointer<T>)
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __str__(const T& x) {
     std::ostringstream ss;
     ss << x;
     return ss.str();
-}
-
-// Union (std::variant): visit the active alternative and recurse. Pointer
-// alternatives (T*) are dereffed before dispatch (matches the variant
-// repr overload below).
-template<typename... Ts>
-std::string __str__(const std::variant<Ts...>& v) {
-    return std::visit([](auto&& a) -> std::string {
-        using A = std::remove_cvref_t<decltype(a)>;
-        if constexpr (std::is_pointer_v<A>) {
-            return std::string(::tpy::__str__(*a));
-        } else {
-            return std::string(::tpy::__str__(a));
-        }
-    }, v);
 }
 
 // =============================================
@@ -473,6 +478,8 @@ std::string __str__(const std::variant<Ts...>& v) {
 // name visible at parse time, so the forward declaration precedes those
 // template bodies.
 template<typename T> auto repr_of(const T& x);
+template<typename T> requires text_pointee<T> std::string repr_of(T* p);
+template<typename... Ts> std::string __repr__(const std::variant<Ts...>& v);
 
 // Default template: user types that define __repr__() method
 template<typename T>
@@ -564,6 +571,7 @@ template<typename T>
           && (!std::same_as<T, String>)
           && (!std::same_as<T, std::string_view>)
           && (!std::floating_point<T>)
+          && (!object_pointer<T>)
           && std::formattable<T, char>
 auto __repr__(const T& x) {
     return std::format("{}", x);
@@ -594,6 +602,7 @@ template<typename T>
     requires (!requires(const T& t) { t.__repr__(); })
           && (!requires { T::__tpy_class_name__; })
           && (!std::is_enum_v<T>)
+          && (!object_pointer<T>)
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __repr__(const T& x) {
@@ -602,22 +611,6 @@ std::string __repr__(const T& x) {
     return ss.str();
 }
 
-// Union (std::variant): visit the active alternative and recurse. Each
-// alternative type must have its own __repr__ overload reachable above;
-// pointer-variant alternatives (T*) are dereffed before dispatch. Goes
-// through repr_of so ADL on the alternative type finds per-record
-// overrides emitted alongside user records.
-template<typename... Ts>
-std::string __repr__(const std::variant<Ts...>& v) {
-    return std::visit([](auto&& a) -> std::string {
-        using A = std::remove_cvref_t<decltype(a)>;
-        if constexpr (std::is_pointer_v<A>) {
-            return std::string(::tpy::repr_of(*a));
-        } else {
-            return std::string(::tpy::repr_of(a));
-        }
-    }, v);
-}
 
 // =============================================
 // tpy::__hash__

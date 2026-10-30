@@ -111,9 +111,9 @@ void __tpy_init() {
     x = std::nullopt;
     std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     y = true;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(y) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(y) << "\n" << ::tpy::check_signals;
     z = 2.5;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(z) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(z) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

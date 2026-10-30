@@ -206,12 +206,28 @@ FSTRING_CONV_REPR = 114   # !r
 FSTRING_CONV_ASCII = 97   # !a
 
 
+@dataclass(frozen=True)
+class FormatSpecFields:
+    """A format spec's fields: [[fill]align][sign][#][0][width][.precision]
+    [type] (a grouping option is a parse error)."""
+    fill: str | None
+    align: str | None
+    sign: str | None
+    alt: bool
+    zero: bool
+    width: int | None
+    precision: int | None
+    type: str
+
+
 @dataclass
 class TpyFStringValue:
     """Formatted expression inside an f-string: {expr:spec}."""
     expr: TpyExpr
     conversion: int = FSTRING_CONV_NONE
     format_spec: str | None = None
+    # The parser's reading of `format_spec`, None when there is no spec.
+    format_spec_fields: 'FormatSpecFields | None' = None
 
 
 @dataclass

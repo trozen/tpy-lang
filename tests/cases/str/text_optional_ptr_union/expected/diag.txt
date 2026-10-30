@@ -1,0 +1,11 @@
+main.py:110: warning: format spec on float | str pads its str() text; CPython passes it to the value's __format__ (write {v!s:.2} to state that)
+main.py:110: warning: format spec on float | str pads its str() text; CPython passes it to the value's __format__ (write {v!s:>5} to state that)
+main.py:146: warning: F has __format__, which TPy does not call: the f-string formats its str() text; write {v!s} to state that
+main.py:147: warning: F has __format__, which TPy does not call: the f-string formats its str() text; write {v!s} to state that
+main.py:148: warning: F has __format__, which TPy does not call: the f-string formats its str() text; write {v!s} to state that
+main.py:173: warning: G has __format__, which TPy does not call: the f-string formats its str() text; write {v!s} to state that
+main.py:184: warning: format spec on B pads its str() text; CPython passes it to the value's __format__ (write {v!s:>8} to state that)
+main.py:185: warning: format spec on bytes pads its str() text; CPython passes it to the value's __format__ (write {v!s:>8} to state that)
+main.py:186: warning: format spec on Any pads its str() text; CPython passes it to the value's __format__ (write {v!s:>8} to state that)
+main.py:187: warning: format spec on None pads its str() text; CPython passes it to the value's __format__ (write {v!s:>5} to state that)
+main.py:278: warning: F has __format__, which TPy does not call: the f-string formats its str() text; write {v!s} to state that

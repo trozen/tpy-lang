@@ -347,6 +347,7 @@ from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
     _optional_record_field_inner, _covariant_record_upcast_ok, _print_arg_form,
     _star_elem_print_form, _print_arg_ok, _print_tuple_opt_ternary,
     _wrap_print_form, _opt_strview_to_str_own_elem_arg, _print_optptr_form,
+    _print_ptr, _print_ptr_form,
     _print_optval_form, _print_optval_opt, _ptr_union_source_ok,
     _ctor_shape_ok, _dyn_own_conformer_arg, _dyn_own_coro_factory_arg,
     _dyn_own_forward_call_arg, _dyn_own_handle_arg, _native_ctx_manager_ok,
@@ -14879,6 +14880,16 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                         use=_ExprUse(pos=SinkPos.PRINT_ARG,
                                      allow_temps=temps_ok)),
             _cf, _ci, opt_fmt_cpp=_cfmt)
+    if (_ptr := _print_ptr(a, lc.analyzer)) is not None:
+        # A Ptr read: the bare pointer inside `::tpy::print_optional(...)`,
+        # the pointer-repr Optional's wrap.
+        _witness("print.ptr")
+        _pf, _pi, _pfmt = _print_ptr_form(_ptr, lc.analyzer)
+        return THIRPrintArg(
+            _lower_expr(a, lc, declared,
+                        use=_ExprUse(pos=SinkPos.PRINT_ARG,
+                                     allow_temps=temps_ok)),
+            _pf, _pi, opt_fmt_cpp=_pfmt)
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact lowering consumed (`_wrap_print_form`).
