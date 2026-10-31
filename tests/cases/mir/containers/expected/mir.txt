@@ -45,7 +45,7 @@ main::arr_first@421:0: covered (storage: no_proof_required), summary: known
 main::holds@427:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
 main::comp@432:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::extend_it@437:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::nested@442:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested@442:0: covered (storage: no_proof_required), summary: known
 main::rack_items@459:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
 main::rack_rec@467:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::touch_all@496:0: covered (storage: no_proof_required), summary: known

@@ -165,18 +165,11 @@ def _flip(fact):
     return replace(fact, readonly=not fact.readonly)
 
 
-def test_a_forged_container_alias_fact_is_not_read(program) -> None:
-    # `ys = xs` binds const: its access is the declaration's, whatever a fact says.
-    plain = _forged(program, "container_alias")
-    assert isinstance(plain, MIRFunction)
-    assert _forged(program, "container_alias", native_container=_flip) == plain
-    # A `readonly[...]` declaration reads only although it is not bound
-    # const, a mutable fact or none.
+def test_a_readonly_container_alias_declaration_reads_only(program) -> None:
+    # A `readonly[...]` declaration reads only although it is not bound const.
+    assert isinstance(_forged(program, "container_alias"), MIRFunction)
     declared = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False)
     assert isinstance(declared, MIRFunction), declared
-    mutable = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False,
-                      native_container=lambda f: replace(f, readonly=False))
-    assert mutable == declared
 
 
 def test_a_forged_record_alias_fact_is_not_read(program) -> None:

@@ -37,7 +37,7 @@ from .storage import analyze_storage
 from .test_constructors import built as built_record, field_write, rewritten, statements
 from .testutil import (
     construct, bind_parameters, constructor_summaries, Redeclared, borrowed_shape, bound, leaf_shape, repass, reslot,
-    prepared,
+    no_layouts, prepared,
 )
 from .prepare import validate_function
 from .reach import reaches, storage_destination, storage_exclusions
@@ -1503,7 +1503,7 @@ def test_member_write_reach(program: _Program, written: tuple[str, ...], retaine
             fields.append(record[step])
             record = line if step == "line" else point
         return MIRReferent(MIRPlace(MIRSlotId(body, roots[root.rstrip("!")]), tuple(fields)), external)
-    assert reaches(referent(written), referent(retained), storage_exclusions({}, {})) is expected
+    assert reaches(referent(written), referent(retained), storage_exclusions({}, no_layouts())) is expected
 
 
 # --- a record move empties its source ---------------------------------------------------

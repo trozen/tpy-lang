@@ -261,7 +261,9 @@ class MIRSpokenPlace:
     by the binding that introduced it, "temporary" -- an expression's
     storage spelled by its source text, "iteration" -- a loop's cursor
     over `name`), and the container region it lies in, when any
-    ("elements", "structure"; whatever follows the region is not spelled)."""
+    ("elements", "structure"; whatever follows the region is not spelled;
+    a cursor's is "elements" when it walks one container element, spelled
+    by its source text)."""
     name: str
     origin: str
     region: str | None = None
@@ -303,6 +305,11 @@ def spoken_place(place: MIRPlace, names: MIRStorageNames, source: Source | None 
             if inner is None:
                 return None
             if slot.shape.holding is MIRHolding.CURSOR:
+                # A cursor over a container element walks that element: spelled by its source text.
+                walked = names.slots.get(through.root)
+                if (inner.region == "elements" and walked is not None and walked.span is not None
+                        and source is not None and (text := source(walked.span))):
+                    return MIRSpokenPlace(text, "iteration", "elements")
                 return MIRSpokenPlace(inner.name, "iteration")
             if inner.region is not None or not projections:
                 return inner if not projections else MIRSpokenPlace(inner.name, inner.origin, inner.region)

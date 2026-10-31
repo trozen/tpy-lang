@@ -16,7 +16,7 @@ main::test_hint_float32_literal@94:0: uncovered (print argument needs a scalar l
 main::test_hint_lambda@100:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::empty_list@107:0: uncovered (generic body)
 main::test_hint_generic_call@111:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::make_groups@118:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_hint_nested_empty@121:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::make_groups@118:0: covered (storage: no_proof_required), summary: known
+main::test_hint_nested_empty@121:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_float_seed@128:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_captured_none_seed@137:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -13,7 +13,9 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, NominalType, OwnType, ReadonlyType, Representation, passing_representation
+from ..typesys import (
+    BOOL, INT32, NominalType, OwnType, ReadonlyType, Representation, passing_representation, unwrap_ref_type,
+)
 from .call_contract import (
     MIRParameterBinding, MIRProtocolParameter, MIRReturnOrigin, MIRSummaryState,
     derived_binding, param_type, parameter_binding, parameter_contract_problem, signature_params, summary_problem,
@@ -370,12 +372,13 @@ def test_a_lent_record_and_a_lent_container_bind_by_one_rule(active: _Program, n
     param, binding = _param(active, name), _binding(active, name)
     assert not binding.storage and not binding.private_owned
     # The loan's access is its passing's, record and container alike; THIR's
-    # per-kind fact is never read: a forged one, or none, binds the same.
-    fact = "borrowed_record" if binding.cls is MIRClass.RECORD else "native_container"
+    # record fact is never read: a forged one, or none, binds the same.
     assert binding.readonly is (param.passing is ParamPassing.CONST_REF)
-    for readonly in (False, True):
-        assert parameter_binding(replace(param, **{fact: replace(getattr(param, fact), readonly=readonly)})) == binding
-    assert parameter_binding(replace(param, **{fact: None})) == binding
+    if binding.cls is MIRClass.RECORD:
+        for readonly in (False, True):
+            assert parameter_binding(replace(param, borrowed_record=replace(param.borrowed_record,
+                                                                            readonly=readonly))) == binding
+        assert parameter_binding(replace(param, borrowed_record=None)) == binding
     # Both are lent by reference only.
     assert parameter_binding(replace(param, passing=ParamPassing.VALUE)) == (
         "call parameter passing differs from its type")
@@ -387,21 +390,8 @@ def test_a_declared_readonly_container_binds_readonly(active: _Program) -> None:
     assert binding.value.readonly
 
 
-def test_a_mutable_fact_on_a_declared_readonly_container_is_not_read(active: _Program) -> None:
-    # The declaration decides the access: a forged MUTABLE fact gives the
-    # slot no writable loan, at the binding or at the body.
-    fn = active.functions["readonly_container"]
-    param = _param(active, "readonly_container")
-    forged = replace(param, native_container=replace(param.native_container, readonly=False))
-    assert parameter_binding(forged) == _binding(active, "readonly_container")
-    forged_body = lower_function(replace(fn, params=(forged,)), MIRBodyId("binding", "forged"),
-                                 definitions=active.definitions)
-    body = lower_function(fn, MIRBodyId("binding", "forged"), definitions=active.definitions)
-    assert forged_body == body
-
-
-def test_a_stub_container_without_a_fact_binds_at_its_declared_access(active: _Program) -> None:
-    param = replace(_param(active, "container"), native_container=None)
+def test_a_stub_container_binds_at_its_declared_access(active: _Program) -> None:
+    param = _param(active, "container")
     for readonly in (False, True):
         lent = replace(param, passing=param.type.param_passing(readonly))
         binding = parameter_binding(lent, Declared(readonly))
@@ -409,8 +399,7 @@ def test_a_stub_container_without_a_fact_binds_at_its_declared_access(active: _P
         # A loan is passed at its declared access: the declaration, not the passing, decides it.
         assert parameter_binding(lent, Declared(not readonly)) == "call parameter passing differs from its type"
     # Handed over, it is the callee's own storage whatever it declares.
-    owned = parameter_binding(replace(_param(active, "owned_container"), native_container=None),
-                              Declared(True))
+    owned = parameter_binding(_param(active, "owned_container"), Declared(True))
     assert (owned.cls, owned.storage, owned.readonly, owned.private_owned) == (MIRClass.CONTAINER, True, False, True)
 
 
@@ -532,14 +521,12 @@ def test_a_stub_binds_at_its_declared_access(active: _Program) -> None:
     # A stub publishes no fact: its declaration is the binding's one access
     # input, also where its passing alone would give another.
     mut_span, span = _param(active, "mut_span"), _param(active, "span")
-    wrapped = replace(_param(active, "readonly_container"), native_container=None)
+    wrapped = _param(active, "readonly_container")
     for readonly in (False, True):
-        lent = parameter_binding(replace(mut_span, native_container=None),
-                                 Declared(readonly))
+        lent = parameter_binding(mut_span, Declared(readonly))
         assert (lent.cls, lent.readonly) == (MIRClass.CONTAINER_VIEW, readonly)
         # Readonly elements are read only whatever the declaration says.
-        assert parameter_binding(replace(span, native_container=None),
-                                 Declared(readonly)).readonly
+        assert parameter_binding(span, Declared(readonly)).readonly
         # A `readonly[...]` container reads only at any declared access and passing.
         assert parameter_binding(wrapped, Declared(readonly)).readonly
     # A stub record binds by its type too: `readonly[R]` reads only.
@@ -615,14 +602,10 @@ def test_each_refusal_names_its_reason(active: _Program) -> None:
     shelf = active.functions["Shelf.me"].receiver
     ignored = [
         (bump, {"borrowed_record": replace(bump.borrowed_record, readonly=True)}),
-        (mut_span, {"native_container": replace(mut_span.native_container, readonly=True)}),
-        (span, {"native_container": replace(span.native_container, readonly=False)}),
-        (span, {"native_container": container.native_container, "borrowed_record": ref}),
+        (span, {"borrowed_record": ref}),
         (_param(active, "owned_record"), {"borrowed_record": th.THIRBorrowedRecord(ref.type, True)}),
-        (owned_container, {"native_container": replace(owned_container.native_container, readonly=True)}),
         (either, {"borrowed_record": ref}),
         (maybe, {"borrowed_record": ref}),
-        (container, {"native_container": "list"}),
         (record, {"borrowed_record": "P"}),
         (record, {"borrowed_record": th.THIRBorrowedRecord(INT32, True)}),
         (record, {"borrowed_record": shelf}),
@@ -643,23 +626,18 @@ def test_each_refusal_names_its_reason(active: _Program) -> None:
 
 
 def test_a_binding_holding_another_container_is_refused(active: _Program) -> None:
-    container, other = _param(active, "container"), _param(active, "grow")
-    # `list[P]`'s fact on a declared `list[int32]` parameter is not read.
-    wrong = replace(other.native_container, readonly=container.native_container.readonly)
-    assert _bound(replace(container, native_container=wrong)) == _binding(active, "container")
-    # A binding holding that container fails the contract check and the summary check alike.
+    other = _param(active, "grow")
+    # A binding holding `list[P]` for a declared `list[int32]` parameter
+    # fails the contract check and the summary check alike.
     binding = _binding(active, "container")
-    bad = replace(binding, value=value_shape(wrong.type, access=binding.readonly, role=MIRRole.LOAN))
+    bad = replace(binding, value=value_shape(other.type, access=binding.readonly, role=MIRRole.LOAN))
     assert _contract(bad) == "reference type mismatch"
     assert summary_problem(replace(_summary(active, "container"), parameters=(bad,)), no_layouts()) == (
         "reference type mismatch")
 
 
-@pytest.mark.parametrize("fact", [True, False])
-def test_an_owned_container_is_handed_over_at_own_only(active: _Program, fact: bool) -> None:
+def test_an_owned_container_is_handed_over_at_own_only(active: _Program) -> None:
     param = _param(active, "owned_container")
-    if not fact:
-        param = replace(param, native_container=None)
     assert isinstance(parameter_binding(param), MIRParameterBinding)
     # By value it would be a copy the caller makes, not the object it hands
     # over: `Own[list[T]]` is passed at OWN only.
@@ -695,8 +673,7 @@ def test_a_binding_without_its_holding_is_refused(active: _Program) -> None:
     cases = [
         # A view handed over: a view never owns what it views.
         (th.THIRParam("v", OwnType(view.type), passing=ParamPassing.VALUE), "unsupported parameter type"),
-        (th.THIRParam("xs", OwnType(span.type), native_container=span.native_container,
-                      passing=ParamPassing.VALUE), "unsupported parameter type"),
+        (th.THIRParam("xs", OwnType(span.type), passing=ParamPassing.VALUE), "unsupported parameter type"),
         # A tuple, union or Optional without its layout.
         (replace(pair, tuple_layout=None), "unsupported parameter type"),
         (replace(either, union_layout=None), "unsupported parameter type"),
@@ -712,33 +689,16 @@ def test_a_binding_without_its_holding_is_refused(active: _Program) -> None:
     assert (readonly_scalar.type, readonly_scalar.cls, readonly_scalar.scalar_value) == (INT32, MIRClass.LEAF, True)
 
 
-def test_a_container_thir_declined_a_fact_for_derives_from_its_type(active: _Program) -> None:
-    # THIR publishes no fact for `list[readonly[int32]]`: the binding is
-    # derived from the type and the passing, as for `list[int32]`.
-    param = _param(active, "clear_readonly")
-    assert param.native_container is None
+def test_a_container_of_readonly_elements_derives_from_its_type(active: _Program) -> None:
+    # `list[readonly[int32]]`: the binding is derived from the type and the
+    # passing, as for `list[int32]`.
     binding = _binding(active, "clear_readonly")
     assert (binding.cls, binding.storage, binding.readonly) == (MIRClass.CONTAINER, False, False)
     assert _body(active, "clear_readonly").parameter_bindings == (binding,)
 
 
-def test_a_forged_container_element_is_not_read(active: _Program) -> None:
-    # The members are the type's, whatever element a fact names.
-    ints, records = _param(active, "container"), _param(active, "grow")
-    point = records.native_container.element
-    shelf = th.THIRBorrowedRecord(active.functions["Shelf.me"].receiver.type, False)
-    cases = [
-        (ints, th.THIRBorrowedRecord(point.type, False), "unsupported native container element"),
-        (ints, BOOL, "unsupported native container element"),
-        (records, shelf, "unsupported native container element"),
-        (records, replace(point, readonly=not records.native_container.readonly), "unsupported native container element"),
-        # A record element is pointed at, never stored in the fact inline.
-        (records, th.THIROwnedRecord(point.type, records.native_container.readonly),
-         "unsupported native container element"),
-    ]
-    for param, element, _ in cases:
-        forged = replace(param, native_container=replace(param.native_container, element=element))
-        assert _bound(forged) == _bound(param), (param.name, element)
+def test_an_inline_record_member_differs_only_in_its_holding(active: _Program) -> None:
+    point = th.THIRBorrowedRecord(unwrap_ref_type(_param(active, "grow").type).type_args[0], False)
     # The inline element differs from THIR's only in its holding: that is what refuses it.
     inline = thir_member(th.THIROwnedRecord(point.type, point.readonly))
     assert (inline.type, inline.cls, inline.readonly, inline.is_pointer) == (
@@ -822,11 +782,6 @@ def test_a_malformed_wrapper_layout_is_refused(active: _Program) -> None:
         "tuple layout arity")
     assert parameter_binding(replace(either, union_layout=th.THIRUnionLayout(either.union_layout.type, (INT32,)))) == (
         "unsupported union layout")
-
-
-def test_a_container_view_without_a_fact_derives_from_its_type(active: _Program) -> None:
-    span = replace(_param(active, "span"), native_container=None)
-    assert _bound(span) == _binding(active, "span")
 
 
 def test_a_summary_binding_declares_the_signature_type(active: _Program) -> None:

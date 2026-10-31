@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::new_list@70:0: covered (storage: no_proof_required), summary: known
 main::new_set@74:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::free_function@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::receivers@106:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::receivers@106:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::ro_reader@138:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::ro_records@147:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::walk@181:0: uncovered (unsupported parameter type)
@@ -22,9 +22,9 @@ main::Grouper.add@160:4: uncovered (container source needs a place), summary: op
 main::Grouper.size@163:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::Holder.first@174:4: uncovered (generic body)
 main::DefaultDict.__init__@12:4: uncovered (generic constructor)
-main::Rows.__init__@33:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Rows.__init__@33:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@43:4: uncovered (generic constructor)
 main::Pt.__init__@56:4: covered (storage: no_proof_required), summary: known
 main::Pts.__init__@63:4: covered (storage: no_proof_required), summary: known
-main::Grouper.__init__@156:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::Grouper.__init__@156:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@170:4: uncovered (generic constructor)

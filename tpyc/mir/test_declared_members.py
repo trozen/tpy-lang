@@ -11,7 +11,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..thir.scalar_leaves import MIRClass
 from ..typesys import BIGINT, INT32, STR, STRVIEW, NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
 from .call_contract import MIRSummaryState
 from .collect import MIRVerdictStatus, enumerate_bodies, line_facts
@@ -225,6 +225,13 @@ def pack_total(*xs: readonly[int32]) -> int32:
     return t
 
 
+def nested_rows(rows: list[list[Point]]) -> int32:
+    t = 0
+    for row in rows:
+        t += row[0].x
+    return t
+
+
 def pack_read(*items: Point) -> int32:
     t = 0
     for p in items:
@@ -353,7 +360,8 @@ def test_layout_refusals(active) -> None:
     for typ, reason in ((_nominal("builtins.dict", STR, point), "unsupported native container element"),
                         (_bare(_param(active, "pair_points").type), "unsupported native container element"),
                         (_nominal("tpy.SpanIter", INT32), "unsupported native container type"),
-                        (_nominal("builtins.list", _nominal("builtins.list", INT32)),
+                        # A nested member is refused by the member rule at its own depth.
+                        (_nominal("builtins.list", _nominal("builtins.dict", STR, point)),
                          "unsupported native container element")):
         with pytest.raises(MIRUnsupported, match=reason):
             definitions.container(None, typ)
@@ -366,10 +374,13 @@ def test_layout_refusals(active) -> None:
 
 def test_member_builder_refusals(active) -> None:
     point = _bare(_param(active, "keyed", "p").type)
-    # An element holding a borrow, and a nested container, are refused from the type alone.
+    # An element holding a borrow, and a nested container of an unmodeled member, are refused
+    # from the type alone; a nested container of modeled members is admitted with its own members.
     assert container_members(_nominal("builtins.list", STRVIEW), False) == "container holds a borrow"
-    assert container_members(_nominal("builtins.list", _nominal("builtins.list", BIGINT)), False) \
-        == "unsupported native container element"
+    nested_dict = _nominal("builtins.list", _nominal("builtins.dict", INT32, point))
+    assert container_members(nested_dict, False) == "unsupported native container element"
+    inner, = container_members(_nominal("builtins.list", _nominal("builtins.list", BIGINT)), True)
+    assert inner.cls is MIRClass.CONTAINER and inner.readonly and inner.members == (owned_shape(BIGINT, True),)
     # A dict's value is a leaf, as its key is: the record a list admits is refused there.
     assert container_members(_nominal("builtins.list", point), False) == (owned_shape(point),)
     assert container_members(_nominal("builtins.dict", INT32, point), False) == "unsupported native container element"
@@ -377,7 +388,7 @@ def test_member_builder_refusals(active) -> None:
                                                                              owned_shape(STR, True))
     # The composer builds a slot's container only once it is admitted: the
     # lowering admits it first, so no body reaches this; a direct caller is refused.
-    for refused in (_nominal("builtins.list", STRVIEW), _nominal("builtins.list", _nominal("builtins.list", BIGINT))):
+    for refused in (_nominal("builtins.list", STRVIEW), nested_dict):
         with pytest.raises(MIRValidationError, match="unadmitted container members"):
             value_shape(refused)
 
@@ -389,9 +400,10 @@ def test_admission_checks_the_supplied_layout(active) -> None:
     layout = definitions.get(None, point).layout
     assert admitted_members(listed, False, {point: layout}) == (owned_shape(point),)
     assert admitted_members(listed, False, {}) == "missing record layout"
-    # A layout whose field is no leaf is refused although the declaration's
-    # fields are leaves; so is an opaque one, and one storing a readonly field.
-    forged = replace(layout, fields=(MIRField(MIRFieldId(point, "x"), _nominal("builtins.list", INT32)),))
+    # A layout whose field is neither a leaf nor a container is refused
+    # although the declaration's fields are leaves; so is an opaque one, and
+    # one storing a readonly field.
+    forged = replace(layout, fields=(MIRField(MIRFieldId(point, "x"), point),))
     assert admitted_members(listed, False, {point: forged}) == "unsupported native container element"
     assert admitted_members(listed, False, {point: replace(layout, opaque=True)}) == (
         "unsupported native container element")
@@ -403,74 +415,26 @@ def test_admission_checks_the_supplied_layout(active) -> None:
     assert admitted_members(point, False, {point: layout}) == "unsupported native container type"
 
 
-# --- THIR validator ----------------------------------------------------------------
-
-def _thir_rejects(fn: th.THIRFunction, message: str) -> None:
-    with pytest.raises(THIRValidationError, match=message):
-        validate_thir(fn)
-
-
-def _loop(fn: th.THIRFunction) -> th.THIRForEach:
-    return next(s for s in fn.body if isinstance(s, th.THIRForEach))
-
-
-def _with_loop(fn: th.THIRFunction, loop: th.THIRForEach) -> th.THIRFunction:
-    return replace(fn, body=tuple(loop if isinstance(s, th.THIRForEach) else s for s in fn.body))
-
-
-def test_thir_publishes_a_view_fact_for_its_own_declared_element(active) -> None:
-    fn = active[2]["values_total"]
-    validate_thir(fn)
-    source = _loop(fn).iteration.source
-    assert source.type.qualified_name() == "builtins.dict_values" and source.element == INT32
-    keys = _param(active, "keys_param")
-    assert keys.native_container == th.THIRNativeContainer(_bare(keys.type), STR, keys.native_container.readonly)
-    # Neither an items view (no single element) nor a record value member gets a fact.
-    assert _param(active, "pair_points").native_container is None and _param(active, "table").native_container is None
-
-
-def test_thir_validator_rejects_a_view_fact_that_binds_no_element(active) -> None:
-    fn = active[2]["keys_param"]
-    param = _param(active, "keys_param")
-    items = _nominal("builtins.dict_items", STR, INT32)
-    damaged = replace(param, type=items, native_container=th.THIRNativeContainer(items, STR, True))
-    _thir_rejects(replace(fn, params=(damaged,)), "invalid native container fact")
-
-
-def test_thir_validator_rejects_a_record_element_beside_a_value_member(active) -> None:
-    fn = active[2]["pair_points"]
-    param = _param(active, "pair_points")
-    typ = _bare(param.type)
-    point = typ.type_args[0]
-    damaged = replace(param, native_container=th.THIRNativeContainer(typ, th.THIRBorrowedRecord(point, True), True))
-    _thir_rejects(replace(fn, params=(damaged,)), "invalid native element fact")
-
-
-def test_thir_validator_rejects_a_stub_result_loop_over_no_view(active) -> None:
-    fn = active[2]["values_total"]
-    loop = _loop(fn)
-    lst = _nominal("builtins.list", INT32)
-    iterable = replace(loop.iterable, result_type=lst)
-    iteration = replace(loop.iteration, source=th.THIRNativeContainer(lst, INT32, loop.iteration.source.readonly))
-    _thir_rejects(_with_loop(fn, replace(loop, iterable=iterable, iteration=iteration)),
-                  "native iteration fact disagrees with emitted binding")
-
-
-def test_thir_validator_rejects_a_cursor_over_an_owner_that_binds_none(active) -> None:
-    fn = active[2]["pair_walk"]
-    loop = _loop(fn)
-    assert loop.iteration is None
-    typ = _bare(loop.iterable.result_type)
-    readonly = _param(active, "pair_walk").native_container.readonly
-    iteration = th.THIRNativeIteration(th.THIRNativeContainer(typ, STR, readonly))
-    _thir_rejects(_with_loop(fn, replace(loop, iteration=iteration)), "native iteration source binds no element")
-
-
 # --- MIR validator -----------------------------------------------------------------
 
 def _mir_rejects(fn, message: str) -> None:
     with pytest.raises(MIRValidationError, match=re.escape(message)):
         validate_function(fn)
+
+
+def test_mir_validator_admits_a_parameter_with_nested_members(active) -> None:
+    # `list[list[Point]]`: the element is a container whose own element is
+    # a record, each with its layout, at the parameter's access.
+    fn = active[1]["nested_rows"].function
+    validate_function(fn)
+    rows = next(s for s in fn.slots if s.name == "rows")
+    inner = rows.shape.element
+    assert inner.cls is MIRClass.CONTAINER and inner.element.cls is MIRClass.RECORD
+    assert not isinstance(admitted_members(rows.type, rows.readonly, fn.record_layouts), str)
+    # The nested record's layout is what the body supplies: without it the members are refused.
+    point = inner.element.type
+    assert admitted_members(rows.type, rows.readonly, {}) == "missing record layout"
+    assert point in fn.record_layouts
 
 
 def test_mir_validator_rejects_a_cursor_over_a_view_that_binds_none(active) -> None:

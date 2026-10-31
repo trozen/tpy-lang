@@ -5,6 +5,6 @@ main::str_elem@28:0: uncovered (unsupported parameter type), summary: opaque (un
 main::rec_elem@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::nested_elem@44:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::doubled@52:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::drive@58:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::drive@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@70:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

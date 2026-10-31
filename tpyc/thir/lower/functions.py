@@ -9,7 +9,7 @@ from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
 from .callables import definition_signature, method_definition, method_receiver, resolved_definition
 from ..scalar_leaves import record_owner
-from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
+from .storage import borrowed_record, optional_layout, record_layout, tuple_parameter_layout
 from ...identity_map import IdentityMap
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
@@ -798,7 +798,6 @@ def body_params(src_params, lc: _LowerCtx, analyzer) -> tuple[THIRParam, ...]:
     return tuple(THIRParam(
         name=n, type=t,
         passing=t.param_passing(recs[n].const),
-        native_container=native_container(t, recs[n].const, analyzer),
         union_layout=_union_source_layout(n, t, lc, recs[n]),
         borrowed_record=borrowed_record(t, recs[n].const, analyzer),
         optional_layout=optional_layout(t, analyzer, borrow=True,

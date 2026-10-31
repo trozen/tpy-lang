@@ -14,7 +14,9 @@ from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
-from ..typesys import BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType, return_representation
+from ..typesys import (
+    BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType, return_representation, unwrap_readonly, unwrap_ref_type,
+)
 from .definitions import declared_fields
 from .call_contract import (
     signature_result,
@@ -22,7 +24,7 @@ from .call_contract import (
 )
 from .coverage import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, enumerate_bodies, line_facts
-from .definitions import MIRDefinitions, MIROwnedLeafDefinition
+from .definitions import MIRDefinitions, MIROwnedLeafDefinition, aggregate_facts
 from .dump import _call as _dump_call
 from .dependencies import MIRReferent, resolve_referents
 from .nodes import (
@@ -230,18 +232,18 @@ def conflicts(fn: MIRFunction) -> set[tuple[MIRPlace, MIRPlace]]:
 ])
 def test_reaches_container_regions(written: MIRReferent, retained: MIRReferent, expected: bool) -> None:
     slots = {s.id: s for s in (param(0), param(1), holder(2, kind=MIRSlotKind.PARAMETER))}
-    assert reaches(written, retained, storage_exclusions(slots, {})) is expected
+    assert reaches(written, retained, storage_exclusions(slots, records_of(RECORD))) is expected
 
 
 def test_reach_spares_a_static_literal_and_owned_leaf_buffers_spare_containers() -> None:
     slots = {s.id: s for s in (param(0), param(1), holder(2, BAG, MIRSlotKind.PARAMETER))}
     static = MIRReferent(place(0, ELEMENTS), True, static=True)
-    assert not reaches(ref(0, STRUCTURE), static, storage_exclusions(slots, {}))
+    assert not reaches(ref(0, STRUCTURE), static, storage_exclusions(slots, no_layouts()))
     # A str field's buffer holds no container: a whole container across
     # origins is not reached, an elements region of one may be (it may view it).
     name = MIRField(MIRFieldId(BAG, "name"), STR)
-    assert not reaches(ref(2, name), ref(1), storage_exclusions(slots, {}))
-    assert reaches(ref(2, name), ref(1, ELEMENTS), storage_exclusions(slots, {}))
+    assert not reaches(ref(2, name), ref(1), storage_exclusions(slots, no_layouts()))
+    assert reaches(ref(2, name), ref(1, ELEMENTS), storage_exclusions(slots, no_layouts()))
 
 
 def test_container_regions_of_one_origin_are_disjoint_siblings() -> None:
@@ -572,20 +574,26 @@ def definitions(compiled) -> MIRDefinitions:
     return compiled_definitions(compiled[0], tuple(compiled[2].thir_constructors.values()))
 
 
+def container_param(decl: th.THIRFunction) -> tuple[NominalType, bool]:
+    """The container type `decl`'s first parameter holds, and whether it is lent readonly."""
+    param = decl.params[0]
+    return unwrap_readonly(unwrap_ref_type(param.type)), param.passing is ParamPassing.CONST_REF
+
+
 def cell_type(compiled) -> NominalType:
-    return declared(compiled, "first").params[0].native_container.element.type
+    return container_param(declared(compiled, "first"))[0].type_args[0]
 
 
 def grow_body(compiled) -> MIRFunction:
     """`grow(ps)`: `ps.append(Cell(1))`, built by hand."""
     decl = declared(compiled, "grow")
-    container = decl.params[0].native_container
-    cell = container.element.type
+    container, readonly = container_param(decl)
+    cell = container.type_args[0]
     record = MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True)
-    ps = MIRSlot(sid(0), borrowed_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
+    ps = MIRSlot(sid(0), borrowed_shape(container, readonly=readonly, members=(owned_shape(cell),)),
                  MIRSlotKind.PARAMETER, "ps")
     slots = (ps, owned(1, cell), scalar(2))
-    call = MIRCall(append_summary(container.type, cell), (sid(0), sid(1)), True)
+    call = MIRCall(append_summary(container, cell), (sid(0), sid(1)), True)
     return with_calls(MIRFunction(B, VoidType(), slots, (MIRBlock(bid(0), (
         assign(2, MIRConstant(1)),
         assign(1, construction(record, sid(2)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
@@ -643,9 +651,9 @@ def test_an_argument_temporary_the_body_reads_keeps_the_summary_opaque(compiled)
 
 def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
     decl = declared(compiled, "first")
-    container = decl.params[0].native_container
-    cell = container.element.type
-    ps = MIRSlot(sid(0), borrowed_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
+    container, readonly = container_param(decl)
+    cell = container.type_args[0]
+    ps = MIRSlot(sid(0), borrowed_shape(container, readonly=readonly, members=(owned_shape(cell),)),
                  MIRSlotKind.PARAMETER, "ps")
     result_slot = MIRSlot(sid(1), borrowed_shape(cell), MIRSlotKind.TEMPORARY)
     returned = signature_result(decl.resolved_callee.signature)
@@ -664,9 +672,9 @@ def test_an_element_field_write_is_published_under_the_elements_region(compiled)
     # A write of an element's scalar field is a summary path like any other
     # walk: `p0[elements].value`, which the caller resolves to its list.
     decl = declared(compiled, "first")
-    container = decl.params[0].native_container
-    cell = container.element.type
-    ps = MIRSlot(sid(0), borrowed_shape(container.type, members=(owned_shape(cell),)), MIRSlotKind.PARAMETER, "ps")
+    container, _ = container_param(decl)
+    cell = container.type_args[0]
+    ps = MIRSlot(sid(0), borrowed_shape(container, members=(owned_shape(cell),)), MIRSlotKind.PARAMETER, "ps")
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     result_slot = MIRSlot(sid(1), borrowed_shape(cell), MIRSlotKind.TEMPORARY)
     returned = signature_result(decl.resolved_callee.signature)
@@ -912,3 +920,28 @@ def test_borrowed_container_verdicts(borrowed_verdicts, name: str, expected: tup
     verdict = borrowed_verdicts[name]
     assert verdict.status is MIRVerdictStatus.COVERED, verdict.reason
     assert verdict.conflicts == expected
+
+
+NESTED_NOCOPY = '''from tpy import int32, nocopy
+
+@nocopy
+class Tok:
+    n: int32
+    def __init__(self, n: int32):
+        self.n = n
+
+def toks(ts: list[list[Tok]]) -> int32:
+    return ts[0][0].n
+'''
+
+
+def test_a_nested_nocopy_element_makes_every_enclosing_container_not_copyable() -> None:
+    compiler, modules = _compile(NESTED_NOCOPY)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    found = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+    rows, _ = container_param(next(fn for node, fn in ctx.thir_functions.items() if node.name == "toks"))
+    with activate_compiler(compiler):
+        outer = aggregate_facts(rows, found.layouts.get)
+        inner = aggregate_facts(rows.type_args[0], found.layouts.get)
+    assert inner is not None and not inner.copyable
+    assert outer is not None and not outer.copyable and outer.movable

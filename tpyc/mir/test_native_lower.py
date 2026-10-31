@@ -183,21 +183,6 @@ def test_native_transfers_targets_and_constructor_tail(artifacts) -> None:
     assert execute(bodies["first"], ContainerValue(()), heap=heap) == 42
 
 
-@pytest.mark.parametrize("damage", ["missing", "source"])
-def test_the_iteration_source_fact_is_not_read(artifacts, damage: str) -> None:
-    # The loop's source is the place MIR builds: THIR's description of it, or none, changes nothing.
-    functions, bodies, definitions, _ = artifacts
-    fn = functions["retained"]
-    loop = next(s for s in fn.body if isinstance(s, th.THIRForEach))
-    if damage == "missing":
-        loop = replace(loop, iteration=None)
-    else:
-        loop = replace(loop, iteration=replace(loop.iteration, source=replace(loop.iteration.source, readonly=True)))
-    damaged = replace(fn, body=tuple(loop if isinstance(s, th.THIRForEach) else s for s in fn.body))
-    assert lower_function(damaged, MIRBodyId("native", "retained"), definitions=definitions) == \
-        lower_function(fn, MIRBodyId("native", "retained"), definitions=definitions)
-
-
 def test_a_reassigned_source_is_no_fixed_holder_rule(artifacts) -> None:
     # A holder reseated beside its iteration is a pointer holder like a
     # record's: the dependencies follow the reseat, no layout set is read.

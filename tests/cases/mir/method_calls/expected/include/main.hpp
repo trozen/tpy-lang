@@ -118,7 +118,7 @@ Gauge& pick(Gauge& g);
 int32_t result_receiver(Gauge& g);
 // def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
 int32_t temp_receiver(int32_t k);
-// def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(covered)
 void element_receiver(std::vector<Gauge>& gs);
 // def generic_record(c: Cell[int32]) -> int32:  # tpyc: mir(uncovered /^unsupported parameter type$/)
 int32_t generic_record(Cell<int32_t>& c);

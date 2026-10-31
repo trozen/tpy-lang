@@ -1402,7 +1402,7 @@ def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
             source_in_enclosing=outermost, loc=loc)
     return _statements.build_loop_node(
         "each", gen.var, route.et, body, lc, declared, iterable=iterable,
-        source=it, const_loop_var=gen.const_loop_var,
+        const_loop_var=gen.const_loop_var,
         binding=_statements._loop_var_record(gen.var, gen, lc),
         iterable_lvalue=route.iterable_lvalue,
         presize=presize if route.sized_reserve else None,

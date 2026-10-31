@@ -835,14 +835,14 @@ def _validate_structure(fn: MIRFunction) -> None:
 
     def record_copy_ok(value: MIRCopy, typ: TpyType) -> bool:
         """A copy of record or container storage of type `typ`: the owned
-        storage a holder points at, the body's own storage, or an inline
-        member; it may raise exactly when copying it may (or an element
-        access on the way)."""
+        storage a holder points at, the body's own storage, an inline
+        member or a container element; it may raise exactly when copying it
+        may (or an element access on the way)."""
         source = place_info(value.source)
         projections = value.source.projections
         return (facts(typ).copyable and source.type == typ and source.owned_place
                 and (projections in ((), object_prefix(slots[value.source.root].shape))
-                     or isinstance(projections[-1], MIRField))
+                     or isinstance(projections[-1], (MIRField, MIRContainerElements)))
                 and value.may_raise is (record_copy_may_raise(typ) or reaches_element(value.source)))
 
     def slot_type(slot: MIRSlotId) -> TpyType:

@@ -62,8 +62,8 @@ main::SibOuter.First.__init__@199:8: uncovered (member definition: missing const
 main::KeyHolder.__init__@211:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::HKey.__init__@219:4: covered (storage: no_proof_required), summary: known
 main::Node.__init__@235:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::CycA.__init__@251:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::CycB.__init__@258:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::CycA.__init__@251:4: uncovered (recursive container element), summary: opaque (recursive container element)
+main::CycB.__init__@258:4: uncovered (recursive container element), summary: opaque (recursive container element)
 main::HcHolder.__init__@266:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::HcKey.__init__@274:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::ProtoDerived.__init__@294:4: uncovered (generic constructor)

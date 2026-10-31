@@ -65,8 +65,8 @@ main::P.self_two_hop@72:4: certified, summary: opaque (summary record: record me
 main::P.self_box@78:4: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
 main::P.self_list@83:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::P.self_narrowed@88:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-main::P.self_index_ro@95:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
-main::P.self_index_mut@100:4: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::P.self_index_ro@95:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
+main::P.self_index_mut@100:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::G.view_above@129:4: uncovered (unsupported view source), summary: opaque (unsupported view source)
 main::G.c@134:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::G.c@134:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

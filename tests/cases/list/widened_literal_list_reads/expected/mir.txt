@@ -7,7 +7,7 @@ main::show@25:0: covered (storage: no_proof_required), summary: known
 main::neg@29:0: covered (storage: no_proof_required), summary: known
 main::flag@33:0: covered (storage: no_proof_required), summary: known
 main::take_any@37:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::grow@41:0: uncovered (unsupported native container element)
+main::grow@41:0: covered (storage: no_proof_required)
 main::pair_sum@46:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::pick@61:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::has_item@69:0: uncovered (generic body)

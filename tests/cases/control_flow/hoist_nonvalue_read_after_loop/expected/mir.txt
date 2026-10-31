@@ -40,7 +40,7 @@ main::sib_unpack@510:0: uncovered (unsupported statement), summary: opaque (unsu
 main::sib_box@521:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::sib_optional@532:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::sib_readonly@550:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
-main::sib_container_elem@563:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::sib_container_elem@563:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::two_loop_list_sibling@580:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::two_loop_str_views@599:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::two_loop_str_owned@607:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)

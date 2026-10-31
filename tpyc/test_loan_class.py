@@ -19,7 +19,8 @@ from tpyc.typesys import (
     BYTES_FAMILY, STR_FAMILY, view_family_of, view_owned_leaf,
 )
 from tpyc.thir.scalar_leaves import (
-    binds_cursor, binds_element, container_view, declared_members, modeled_members, native_container_type,
+    RECURSIVE_ELEMENT, binds_cursor, container_view, declared_members, element_problem, members_problem,
+    modeled_members, native_container_type,
     owned_constant, owned_leaf, plain_record_element, storage_leaf, view_compatible, view_leaf,
 )
 from tpyc.thir.testutil import _compile, _entry
@@ -492,13 +493,18 @@ class Bag:
     def __init__(self) -> None:
         self.items = []
 
+class Node:
+    kids: list[Node]
+    def __init__(self) -> None:
+        self.kids = []
+
 class Pair(ValueType):
     x: int32
     def __init__(self, x: int32) -> None:
         self.x = x
 
 def use(point: Point, named: Named, ordered: Ordered, same: Same, hashed: Hashed, copied: Copied,
-        dropped: Dropped, bag: Bag, pair: Pair, span: Span[int32], rspan: Span[readonly[int32]],
+        dropped: Dropped, bag: Bag, node: Node, pair: Pair, span: Span[int32], rspan: Span[readonly[int32]],
         d: dict[str, int32]) -> None:
     print(point.x, named.name, ordered.x, same.x, hashed.x, copied.x, dropped.x, len(bag.items), pair.x,
           span[0], rspan[0], len(d.keys()), len(d.values()))
@@ -600,12 +606,19 @@ def test_plain_record_elements_run_no_user_code(container_types):
         assert modeled_members(_nominal("builtins.list", point))
         assert modeled_members(_nominal("tpy.Array", STR, 2))
         assert modeled_members(_nominal("builtins.dict", STR, INT32))
-        # A type with a value member holds leaves only; a set element is any
-        # admitted element (sema refuses one with no hash), nested containers are out.
+        # A type with a value member stores no record directly; a set element is any
+        # admitted element (sema refuses one with no hash). The rule holds at any depth:
+        # a nested container, a record holding one, and a nested refusal.
         assert modeled_members(_nominal("builtins.set", point))
         assert not modeled_members(_nominal("builtins.set", types["hashed"]))
         assert not modeled_members(_nominal("builtins.dict", STR, point))
-        assert not modeled_members(_nominal("builtins.list", _nominal("builtins.list", INT32)))
+        assert modeled_members(_nominal("builtins.list", _nominal("builtins.list", INT32)))
+        assert modeled_members(_nominal("builtins.dict", STR, _nominal("builtins.list", point)))
+        assert modeled_members(_nominal("builtins.list", types["bag"])) and not plain_record_element(types["bag"])
+        assert not modeled_members(_nominal("builtins.list", _nominal("builtins.dict", STR, point)))
+        # A type reaching itself through its members is refused by name.
+        assert element_problem(types["node"]) == RECURSIVE_ELEMENT
+        assert members_problem(_nominal("builtins.list", types["node"])) == RECURSIVE_ELEMENT
         assert not modeled_members(_nominal("builtins.list", types["ordered"]))
         assert not modeled_members(INT32) and not modeled_members(STR)
 
@@ -639,13 +652,6 @@ def test_declared_members_are_the_stub_type_parameters_at_the_type_arguments(con
         for typ in (INT32, STRVIEW, _nominal("tpy.SpanIter", INT32)):
             assert declared_members(typ) is None and not binds_cursor(typ), typ
 
-
-def test_a_loop_variable_binds_the_element_or_views_it(container_types):
-    compiler, types = container_types
-    with activate_compiler(compiler):
-        assert binds_element(INT32, INT32) and binds_element(ReadonlyType(types["point"]), types["point"])
-        assert binds_element(STRVIEW, STR) and binds_element(STR, STR)
-        assert not binds_element(STRVIEW, INT32) and not binds_element(INT64, INT32)
 
 
 _UPCAST_RECORDS = """\

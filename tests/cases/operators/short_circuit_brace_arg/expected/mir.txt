@@ -6,7 +6,7 @@ main::take_i8@32:0: covered (storage: no_proof_required), summary: known
 main::take_f32@37:0: covered (storage: no_proof_required), summary: known
 main::take_f64@42:0: covered (storage: no_proof_required), summary: known
 main::take_arr@47:0: covered (storage: no_proof_required), summary: known
-main::take_nested@52:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take_nested@52:0: covered (storage: no_proof_required), summary: known
 main::take_dict@57:0: covered (storage: no_proof_required), summary: known
 main::take_set@62:0: covered (storage: no_proof_required), summary: known
 main::take_any@67:0: uncovered (generic body)
@@ -21,7 +21,7 @@ main::protocol_union@136:0: uncovered (stub protocol argument is not a builtin l
 main::narrow_int@141:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::narrow_float@145:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::fixed_array@149:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::nested_list@155:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested_list@155:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::same_width_int@162:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::same_width_float@166:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::empty_literal@173:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)

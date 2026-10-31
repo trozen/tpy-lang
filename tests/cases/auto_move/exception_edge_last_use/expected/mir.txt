@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::take@25:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take@25:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
 main::boom@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::check@40:0: uncovered (error-return body)
 main::handler_raise_finally@81:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -27,7 +27,7 @@ main::Swallow.__exit__@64:4: uncovered (unsupported parameter type), summary: op
 main::Res.__enter__@74:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Res.__exit__@77:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
-main::Sink.__init__@18:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Sink.__init__@18:4: covered (storage: no_proof_required), summary: known
 main::Plain.__init__@47:4: covered (storage: no_proof_required), summary: known
 main::Swallow.__init__@58:4: covered (storage: no_proof_required), summary: known
 main::Res.__init__@71:4: covered (storage: no_proof_required), summary: known

@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::collect@20:0: uncovered (unsupported native container element)
+main::collect@20:0: uncovered (unsupported parameter type)
 main::via_closure@40:0: uncovered (unsupported parameter type)
 main::via_try@51:0: uncovered (unsupported parameter type)
 main::via_match@61:0: uncovered (unsupported parameter type)
-main::via_comp@72:0: uncovered (unsupported native container element)
+main::via_comp@72:0: uncovered (unsupported parameter type)
 main::via_gen@76:0: uncovered (unsupported parameter type)
 main::via_async@83:0: uncovered (async body)
 main::capture@91:0: uncovered (unsupported parameter type)
@@ -28,14 +28,14 @@ main::first@255:0: uncovered (unsupported parameter type)
 main::take@261:0: covered (storage: no_proof_required), summary: known
 main::take_cell@265:0: covered (storage: no_proof_required), summary: known
 main::repeat@269:0: uncovered (reference yield)
-main::main@274:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@274:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::Sink.absorb@34:4: uncovered (unsupported parameter type)
 main::Item.finish@138:4: uncovered (missing receiver fact)
 main::C.__copy__@197:4: uncovered (custom record special member)
 main::Key.__hash__@239:4: covered (storage: no_proof_required), summary: known
 main::Key.__eq__@242:4: covered (storage: no_proof_required)
 main::Cell.__init__@16:4: covered (storage: no_proof_required), summary: known
-main::Sink.__init__@31:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Sink.__init__@31:4: covered (storage: no_proof_required), summary: known
 main::Item.__init__@132:4: covered (storage: no_proof_required), summary: known
 main::C.__init__@194:4: uncovered (custom record special member), summary: opaque (custom record special member)
 main::Key.__init__@236:4: covered (storage: no_proof_required), summary: known

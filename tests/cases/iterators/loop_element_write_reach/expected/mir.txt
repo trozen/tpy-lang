@@ -21,7 +21,7 @@ main::tuple_alias@205:0: covered (storage: not_covered: THIRVarDecl: borrowed op
 main::list_comp@212:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::dict_comp@216:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::set_comp@220:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::two_clause@224:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::two_clause@224:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::comp_zip@229:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::varargs@235:0: covered (storage: no_proof_required)
 main::array@240:0: covered (storage: no_proof_required), summary: known
@@ -31,10 +31,10 @@ main::tuple_target@255:0: uncovered (unsupported native container element), summ
 main::zip_slot@261:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::enumerated@266:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::reversed_src@271:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::nested_loops@308:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::nested_def_write@315:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::genexpr_in_loop@324:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::enumerate_in_loop@332:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested_loops@308:0: covered (storage: no_proof_required), summary: known
+main::nested_def_write@315:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::genexpr_in_loop@324:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::enumerate_in_loop@332:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::other_method@340:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::deep_above@345:0: covered (storage: no_proof_required), summary: known
 main::deep_below@350:0: covered (storage: no_proof_required), summary: known
@@ -44,7 +44,7 @@ main::alias_receiver@367:0: certified, summary: known
 main::nested_receiver@374:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_alias_receiver@383:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_alias_arg@391:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::outer_alias_nested@401:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::outer_alias_nested@401:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::local_source@410:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::comp_shadow@419:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::comp_shadow_alias@425:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
@@ -57,7 +57,7 @@ main::read_only@497:0: covered (storage: no_proof_required), summary: known
 main::const_receiver@505:0: covered (storage: no_proof_required), summary: known
 main::const_alias_receiver@513:0: certified, summary: known
 main::const_nested_receiver@522:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::auto_readonly_alias@533:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::auto_readonly_alias@533:0: certified, summary: known
 main::closure_rebound_capture@542:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::aug_owned_local@573:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::aug_nonlocal_owned@581:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

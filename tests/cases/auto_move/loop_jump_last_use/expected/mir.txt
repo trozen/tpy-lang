@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
 main::fail_at@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::take@72:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::take_list@77:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::first@83:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::take@72:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::take_list@77:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::first@83:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::for_break@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::while_break@96:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::while_true_break@107:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
@@ -31,10 +31,10 @@ main::zero_trip_while@369:0: uncovered (call needs finalized known summary), sum
 main::while_true_rebind@379:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::gen_break@389:0: uncovered (loop across a suspension)
 main::async_break@399:0: uncovered (async body)
-main::iterable_consumed@429:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::iterable_consumed_return@438:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::alias_iterable_consumed@446:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::alias_call_borrow@456:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::iterable_consumed@429:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::iterable_consumed_return@438:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::alias_iterable_consumed@446:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::alias_call_borrow@456:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::last_use_break@465:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::else_skipped_by_break@476:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@489:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
@@ -46,7 +46,7 @@ main::Res.__enter__@60:4: covered (storage: not_covered: borrow evidence: demand
 main::Res.__exit__@63:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Runner.run@420:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::P.__init__@14:4: covered (storage: no_proof_required), summary: known
-main::Sink.__init__@22:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Sink.__init__@22:4: covered (storage: no_proof_required), summary: known
 main::Guard.__init__@33:4: covered (storage: no_proof_required), summary: known
 main::Suppress.__init__@44:4: covered (storage: no_proof_required), summary: known
 main::Res.__init__@57:4: covered (storage: no_proof_required), summary: known

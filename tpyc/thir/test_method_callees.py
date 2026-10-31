@@ -1191,9 +1191,6 @@ def test_a_call_carries_the_access_its_receiver_is_emitted_at(receivers: Program
     assert calls and all(c.receiver_access == th.THIRBorrowedRecord(c.resolved_callee.signature.param_types[0],
                                                                      readonly if c.method_cpp == "items" else False)
                          for c in calls)
-    # The loop over the follows-receiver result walks it at that access.
-    loop, = nodes(fn, th.THIRForEach)
-    assert loop.iteration.source.readonly is readonly
 
 
 def test_a_self_receiver_has_the_access_of_its_clone(receivers: Program) -> None:
@@ -1212,28 +1209,19 @@ def test_a_loop_in_each_clone_walks_at_its_clone_access(receivers: Program, owne
     for fn, readonly in ((mutable, False), (const, True)):
         call, = nodes(fn, th.THIRMethodCall)
         assert call.receiver_access.readonly is readonly
-        loop, = nodes(fn, th.THIRForEach)
-        assert loop.iteration.source.readonly is readonly
 
 
 def test_a_const_local_alias_receiver_is_readonly(receivers: Program) -> None:
-    # A local alias of a readonly parameter is emitted const; the loop over
-    # the follows-receiver result walks it at that access.
+    # A local alias of a readonly parameter is emitted const.
     fn = receivers.fn(None, "const_alias")
     call, = nodes(fn, th.THIRMethodCall)
     assert call.receiver_access.readonly is True
-    loop, = nodes(fn, th.THIRForEach)
-    assert loop.iteration.source.readonly is True
 
 
 def test_a_const_loop_variable_receiver_is_readonly(receivers: Program) -> None:
     fn = receivers.fn(None, "loop_var")
     call, = nodes(fn, th.THIRMethodCall)
     assert call.receiver_access.readonly is True
-    # The inner loop walks the call result; the outer one, over the readonly
-    # list parameter, carries no native iteration fact.
-    facts = [loop.iteration for loop in nodes(fn, th.THIRForEach) if loop.iteration is not None]
-    assert facts and all(fact.source.readonly for fact in facts)
 
 
 def test_validator_holds_the_receiver_access_to_the_receiver(receivers: Program) -> None:

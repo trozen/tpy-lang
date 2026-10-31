@@ -438,8 +438,8 @@ def extend_it(xs: list[int32], ys: list[int32]) -> None:  # tpyc: mir(uncovered 
     xs.extend(ys)
 
 
-# free function: kept refusal -- a container element that is itself a container
-def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(uncovered /^unsupported native container element$/)
+# free function: a container element that is itself a container
+def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(covered)
     return xss[0][0]
 
 

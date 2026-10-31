@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@49:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Point.__init__@14:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@33:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.__init__@33:4: uncovered (unsupported container element), summary: opaque (unsupported container element)

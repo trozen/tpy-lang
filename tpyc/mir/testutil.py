@@ -107,13 +107,12 @@ def bindings_of(fn: th.THIRFunction) -> tuple[MIRParameterBinding, ...]:
     return bindings
 
 
-def _member_fact(member: MIRShape | None, element: bool = False) -> object:
+def _member_fact(member: MIRShape | None) -> object:
     """The THIR fact a layout lays member `member` out as (the inverse of
-    `thir_member`); a container's record element is a borrowed one."""
+    `thir_member`)."""
     if member is None or member.cls is not MIRClass.RECORD:
         return None if member is None else member.type
-    borrowed = element or member.is_pointer
-    return (th.THIRBorrowedRecord if borrowed else th.THIROwnedRecord)(member.type, member.readonly)
+    return (th.THIRBorrowedRecord if member.is_pointer else th.THIROwnedRecord)(member.type, member.readonly)
 
 
 def slot_param(slot: MIRSlot, passing: ParamPassing | None = None) -> th.THIRParam:
@@ -126,9 +125,6 @@ def slot_param(slot: MIRSlot, passing: ParamPassing | None = None) -> th.THIRPar
     match shape.cls:
         case MIRClass.RECORD if shape.is_pointer:
             facts["borrowed_record"] = th.THIRBorrowedRecord(shape.type, shape.readonly)
-        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if shape.members:
-            facts["native_container"] = th.THIRNativeContainer(
-                shape.type, _member_fact(shape.element, element=True), shape.readonly)
         case MIRClass.OPTIONAL:
             facts["optional_layout"] = th.THIROptionalLayout(_member_fact(shape.payload))
         case MIRClass.TUPLE:

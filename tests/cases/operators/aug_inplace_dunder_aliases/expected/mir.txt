@@ -31,7 +31,7 @@ main::Acc.__imul__@107:4: covered (storage: not_covered: borrow evidence: demand
 main::Small.__iadd__@116:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::Holder.add@127:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::Slots.__setitem__@217:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
-main::ListSlots.__setitem__@295:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ListSlots.__setitem__@295:4: covered (storage: no_proof_required), summary: known
 main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::P.__init__@18:4: uncovered (missing record layout)
 main::Bump.__init__@82:4: covered (storage: no_proof_required), summary: known
@@ -41,4 +41,4 @@ main::Holder.__init__@124:4: covered (storage: no_proof_required), summary: know
 main::Cell.__init__@155:4: covered (storage: no_proof_required), summary: known
 main::Slots.__init__@214:4: covered (storage: no_proof_required), summary: known
 main::Row.__init__@285:4: covered (storage: no_proof_required), summary: known
-main::ListSlots.__init__@292:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ListSlots.__init__@292:4: covered (storage: no_proof_required), summary: known

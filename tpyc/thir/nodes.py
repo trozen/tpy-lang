@@ -104,20 +104,6 @@ class THIRTupleStorageAlias:
 
 
 @dataclass(frozen=True)
-class THIRNativeContainer:
-    type: NominalType
-    element: TpyType | THIRBorrowedRecord
-    readonly: bool
-
-
-@dataclass(frozen=True)
-class THIRNativeIteration:
-    """The container a begin/end loop walks in place; how its variable
-    binds an element is the loop record's `loop_binding`."""
-    source: THIRNativeContainer
-
-
-@dataclass(frozen=True)
 class THIROptionalLayout:
     """An absent value or one scalar snapshot / borrowed record identity."""
     payload: TpyType | THIRBorrowedRecord
@@ -2489,7 +2475,6 @@ class THIRVarDecl(THIRStmt):
     storage_placement: THIRStoragePlacement | None = field(default=None, kw_only=True)
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
     tuple_storage_alias: THIRTupleStorageAlias | None = field(default=None, kw_only=True)
-    native_container: THIRNativeContainer | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE
@@ -3642,7 +3627,6 @@ class THIRForEach(THIRStmt):
     # Branch-first-declared value locals used after the loop (see THIRForRange).
     hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
-    iteration: THIRNativeIteration | None = None
     # The frame field that OWNS this loop's source, and the field's own C++
     # type. Set for a loop inside a resumable body whose source is a fresh
     # value AND whose body can bind an element into borrowing frame storage:
@@ -4433,7 +4417,6 @@ class THIRParam:
     optional_layout: THIROptionalLayout | None = None
     union_layout: THIRUnionLayout | None = None
     tuple_layout: THIRTupleLayout | None = None
-    native_container: THIRNativeContainer | None = None
     # How the signature passes it (`TpyType.param_passing` at the param's
     # const verdict); None when unpublished (a hand-built body).
     passing: ParamPassing | None = None

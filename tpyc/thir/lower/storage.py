@@ -12,17 +12,13 @@ from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
-from ..scalar_leaves import (
-    binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_hierarchy,
-    modeled_members, native_container_subject, native_container_type, owned_leaf,
-    readonly_elements, record_owner, storage_leaf,
-)
+from ..scalar_leaves import holds_elements, leaf_constant, leaf_global, modeled_hierarchy, record_owner, storage_leaf
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
-    THIRNativeContainer, THIRCall, THIRCtorCall, THIRMethodCall, THIRVarDecl, record_rvalue_storage,
+    THIRCall, THIRCtorCall, THIRMethodCall, record_rvalue_storage,
 )
 
 if TYPE_CHECKING:
@@ -88,45 +84,6 @@ def borrowed_record(typ: TpyType, readonly: bool,
             analyzer.registry.get_record_for_type(reference.type)) is None):
         return None
     return reference
-
-
-def native_container(typ: TpyType, readonly: bool,
-                     analyzer: 'SemanticAnalyzer') -> THIRNativeContainer | None:
-    """The element a native container or container view of `typ` stores or
-    views, as its stub declares it (`declared_members`), when MIR models its
-    members: a scalar or owned leaf, or a plain record element
-    (`plain_record_element`) of a type with no value member. A view's
-    readonly comes from its own element argument; a view whose iteration
-    binds no single element (an items view) has no fact."""
-    readonly = readonly or isinstance(unwrap_ref_type(typ), ReadonlyType)
-    typ = native_container_subject(typ)
-    members = declared_members(typ)
-    if members is None or not modeled_members(typ):
-        return None
-    element, value, _ = members
-    if container_view(typ):
-        if not binds_cursor(typ):
-            return None
-        readonly = readonly or readonly_elements(typ)
-        element = unwrap_readonly(element)
-    elif any(unwrap_readonly(unwrap_ref_type(m)) != m for m in (element, value) if m is not None):
-        return None
-    if storage_leaf(element) or owned_leaf(element):
-        return THIRNativeContainer(typ, element, readonly)
-    reference = borrowed_record(element, readonly, analyzer)
-    return THIRNativeContainer(typ, reference, readonly) if reference is not None else None
-
-
-def owned_container_decl(decl: THIRVarDecl) -> bool:
-    """Whether `decl` binds container storage of its own: an initialized
-    local in a non-borrow form whose initializer yields the declared
-    container, with no other storage fact."""
-    return (decl.native_container is None and decl.init is not None and decl.form is not Form.BORROW
-            and native_container_type(decl.resolved_type)
-            and native_container_subject(decl.init.result_type) == decl.resolved_type
-            and all(f is None for f in (decl.alias_binding, decl.storage_borrow, decl.owned_storage,
-                                        decl.tuple_layout, decl.tuple_storage_alias, decl.optional_layout,
-                                        decl.union_layout)))
 
 
 def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
@@ -386,11 +343,3 @@ def field_identity(receiver: NominalType, name: str, analyzer: 'SemanticAnalyzer
         return None
     declaring, member = found
     return THIRFieldIdentity(record_owner(declaring), member.name, member.type)
-
-
-def native_container_field(expr: THIRExpr) -> bool:
-    """Whether `expr` reads a record field declared as a native container.
-    A field identity is published for every declared member, so a field
-    of another type (a `Span`, a tuple) must not pass for a container."""
-    return (isinstance(expr, THIRFieldAccess) and expr.field_identity is not None
-            and native_container_type(unwrap_readonly(expr.field_identity.type)))

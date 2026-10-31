@@ -9,7 +9,7 @@ source it comes from (`loan_access`).
 A leaf: it reads THIR's nodes and value classes and the type system,
 never another MIR module."""
 
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 from types import MappingProxyType
@@ -18,8 +18,8 @@ from typing import Protocol
 from ..thir import nodes as th
 from ..thir.nodes import Form
 from ..thir.scalar_leaves import (
-    MIRClass, binds_cursor, declared_members, holds_loan, modeled_ancestors, modeled_field, modeled_members,
-    native_container_subject, readonly_elements, record_type, value_class,
+    UNSUPPORTED_ELEMENT, MIRClass, binds_cursor, declared_members, holds_loan, members_problem, modeled_ancestors,
+    modeled_field, native_container_subject, readonly_elements, record_type, value_class,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -278,6 +278,18 @@ def lent_record(shape: MIRShape) -> MIRShape | None:
     return shape if shape.borrowed_record else None
 
 
+def element_result(container: MIRShape, result: TpyType) -> bool:
+    """Whether a borrowed result of type `result` that a whole-container
+    parameter of `container` returns lies in its elements region, where
+    the caller projects a whole-parameter return origin: a result that is
+    no container (an element, a view of the elements), or a container of
+    the member type (an element itself). Decided by the member shape."""
+    if not container.whole_container:
+        return False
+    bare = unwrap_readonly(result)
+    return value_class(bare) is not MIRClass.CONTAINER or bare == unwrap_readonly(container.subscript.type)
+
+
 _STORAGE_CLASSES = frozenset({MIRClass.OWNED_LEAF, MIRClass.RECORD, MIRClass.CONTAINER})
 # Storage with member places of its own (an owned leaf's buffer has none),
 # lent alike by a pointer at it; a source decides a loan's access.
@@ -370,8 +382,12 @@ def holding_representation(holding: MIRHolding) -> Representation:
 
 def with_access(members: tuple[MIRShape | None, ...], readonly: bool) -> tuple[MIRShape | None, ...]:
     """A holder's view of a container's members: a readonly holder reaches
-    readonly members, stored so: `step` reads them as they are."""
-    return tuple(m if m is None else replace(m, readonly=m.readonly or readonly) for m in members)
+    readonly members, and readonly members of theirs at every depth, stored
+    so: `step` reads them as they are."""
+    if not readonly:
+        return members
+    return tuple(m if m is None else replace(m, readonly=True, members=with_access(m.members, True))
+                 for m in members)
 
 
 def member_types(typ: TpyType) -> tuple[TpyType, ...] | None:
@@ -388,11 +404,11 @@ def member_types(typ: TpyType) -> tuple[TpyType, ...] | None:
 def container_members(typ: TpyType, readonly: bool) -> tuple[MIRShape, ...] | str:
     """The members a holder of native container or container view `typ`
     reaches at access `readonly`, from the type alone; else the refusal.
-    A member holds no borrow and is one MIR models (`modeled_members`: an
-    inert or owned leaf, or the plain record element of a type with no
-    value member). A member's access is its own wrapper's, a holder's on
-    top (`with_access`); an inert leaf has none of its own. The layouts a
-    body supplies for the members are `admitted_members`'."""
+    A member holds no borrow and is one MIR models (`members_problem`: an
+    inert or owned leaf, a plain record element, or a native container of
+    such members, at any depth). A member's access is its own wrapper's, a
+    holder's on top (`with_access`); an inert leaf has none of its own. The
+    layouts a body supplies for the members are `admitted_members`'."""
     members = member_types(typ)
     if members is None:
         return "unsupported native container type"
@@ -400,16 +416,35 @@ def container_members(typ: TpyType, readonly: bool) -> tuple[MIRShape, ...] | st
     # needs the retention contracts MIR does not model yet.
     if any(holds_loan(m) for m in members):
         return "container holds a borrow"
-    # A nested container or a record holding one has element places
-    # beyond one hop.
-    if not modeled_members(typ):
-        return "unsupported native container element"
+    if (problem := members_problem(typ)) is not None:
+        return problem
     shapes = []
     for member in members:
         bare = unwrap_readonly(member)
         cls = value_class(bare)
         shapes.append(value_shape(bare, cls, access=cls is not MIRClass.LEAF and isinstance(member, ReadonlyType)))
     return with_access(tuple(shapes), readonly)
+
+
+def nested_members(types: Iterable[TpyType], fields_of: Callable[[NominalType], Iterable[MIRField]]
+                   ) -> Iterator[TpyType]:
+    """Each bare type that places under storage of `types` reach, once, at
+    any depth: the types themselves, a native container's members, and the
+    members of a record's container fields (`fields_of`: the fields of the
+    record's layout)."""
+    pending = list(types)
+    seen: set[TpyType] = set()
+    while pending:
+        typ = unwrap_readonly(pending.pop())
+        if typ in seen:
+            continue
+        seen.add(typ)
+        yield typ
+        match value_class(typ):
+            case MIRClass.CONTAINER:
+                pending.extend(member_types(typ) or ())
+            case MIRClass.RECORD:
+                pending.extend(f.type for f in fields_of(typ) if value_class(f.type) is MIRClass.CONTAINER)
 
 
 def subject_class(declared: TpyType) -> MIRClass | None:
@@ -436,11 +471,12 @@ def admission_problem(subject: TpyType, cls: MIRClass | None) -> str | None:
 
 def admitted_members(typ: TpyType, readonly: bool, layouts: Records) -> tuple[MIRShape, ...] | str:
     """The members of native container or container view `typ` at access
-    `readonly` (`container_members`) whose layouts `layouts` supplies;
-    else the refusal: an owned leaf's layout is its opaque buffer, a
-    record's is no opaque one and stores leaf fields only. The supplied
-    layout is checked, not the declaration (`plain_record_element`): a
-    layout a body supplies may differ."""
+    `readonly` (`container_members`) whose layouts `layouts` supplies, at
+    every depth; else the refusal: an owned leaf's layout is its opaque
+    buffer, a record's is no opaque one and stores leaf fields or
+    containers whose members are admitted, a container member's members
+    are admitted. The supplied layout is checked, not the declaration
+    (`element_problem`): a layout a body supplies may differ."""
     members = container_members(typ, readonly)
     if isinstance(members, str):
         return members
@@ -451,9 +487,19 @@ def admitted_members(typ: TpyType, readonly: bool, layouts: Records) -> tuple[MI
                 return "missing owned-leaf layout"
             case MIRClass.RECORD if layout is None:
                 return "missing record layout"
-            case MIRClass.RECORD if layout.opaque or not all(
-                    not isinstance(f.type, ReadonlyType) and value_class(f.type) in _LEAVES for f in layout.fields):
-                return "unsupported native container element"
+            case MIRClass.RECORD if layout.opaque:
+                return UNSUPPORTED_ELEMENT
+            case MIRClass.RECORD:
+                for f in layout.fields:
+                    cls = None if isinstance(f.type, ReadonlyType) else value_class(f.type)
+                    if cls is MIRClass.CONTAINER:
+                        if isinstance(problem := admitted_members(f.type, False, layouts), str):
+                            return problem
+                    elif cls not in _LEAVES:
+                        return UNSUPPORTED_ELEMENT
+            case MIRClass.CONTAINER:
+                if isinstance(problem := admitted_members(member.type, member.readonly, layouts), str):
+                    return problem
     return members
 
 

@@ -371,8 +371,8 @@ int32_t temp_receiver(int32_t k) {
     return Gauge(k).read();
 }
 
-// # kept refusal: an element receiver
-// def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// # an element receiver: the record element is borrowed in place
+// def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(covered)
 //     gs[0].bump()
 void element_receiver(std::vector<Gauge>& gs) {
     ::tpy::__getitem__(gs, 0).bump();

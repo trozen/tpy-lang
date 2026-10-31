@@ -109,7 +109,7 @@ int32_t holds(const std::vector<std::string_view>& vs);
 std::vector<int32_t> comp(const std::vector<int32_t>& xs);
 // def extend_it(xs: list[int32], ys: list[int32]) -> None:  # tpyc: mir(uncovered /^stub declares no contract$/)
 void extend_it(std::vector<int32_t>& xs, std::vector<int32_t>& ys);
-// def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(uncovered /^unsupported native container element$/)
+// def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(covered)
 int32_t nested(const std::vector<std::vector<int32_t>>& xss);
 // def rack_items(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t rack_items(Rack& r, bool flag);

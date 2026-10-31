@@ -4,7 +4,7 @@ main::val_str@28:0: uncovered (unsupported hoisted value)
 main::make_pair@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::val_tuple@42:0: uncovered (unsupported hoisted value)
 main::owning@53:0: uncovered (unsupported hoisted value)
-main::borrow_alias@65:0: uncovered (unsupported native container element)
+main::borrow_alias@65:0: uncovered (unsupported hoisted value)
 main::pick@75:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::value_of@81:0: covered (storage: no_proof_required), summary: known
 main::opt_ptr@89:0: uncovered (unsupported hoisted value)

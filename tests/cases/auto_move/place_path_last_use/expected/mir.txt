@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::mkld@83:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::grow@87:0: covered (storage: no_proof_required), summary: known
-main::keep_l@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::keep_l@92:0: covered (storage: no_proof_required), summary: known
 main::mka@222:0: covered (storage: no_proof_required), summary: known
 main::mkh@226:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::mkc@230:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
@@ -9,8 +9,8 @@ main::eat_a@234:0: uncovered (unsupported native container element), summary: op
 main::eat_b@240:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
 main::eat_nb@245:0: covered (storage: no_proof_required), summary: known
 main::eat_s@249:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::eat_l@253:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::eat_l2@260:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::eat_l@253:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::eat_l2@260:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::sink_a@266:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::two@271:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::two_a@276:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -42,7 +42,7 @@ main::consuming_nested@435:0: uncovered (reference needs local name), summary: o
 main::value_store@439:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::value_member@448:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::list_member@454:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::list_element@460:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_element@460:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::temp_del@466:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::temp_del_reads@472:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
 main::read_later@487:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
@@ -65,7 +65,7 @@ main::borrowed_param@602:0: uncovered (call needs finalized known summary), summ
 main::global_root@610:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::inherited_del@615:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::mid_path_del@621:0: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
-main::nested_del@627:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nested_del@627:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::narrowed_root@633:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::same_call_path_borrower@642:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::unpack_store@649:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
@@ -91,7 +91,7 @@ main::HW.__enter__@115:4: covered (storage: no_proof_required), summary: known
 main::HW.__exit__@118:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::HN.__del__@138:4: uncovered (missing receiver fact)
 main::Nest.take@151:4: uncovered (reference needs local name)
-main::KL.keep@171:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::KL.keep@171:4: covered (storage: no_proof_required), summary: known
 main::Slot.put@188:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Keeper.eat@205:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Pair.take@213:4: uncovered (reference needs local name)
@@ -111,7 +111,7 @@ main::HN.__init__@135:4: uncovered (custom record special member), summary: opaq
 main::I.__init__@143:4: covered (storage: no_proof_required), summary: known
 main::Nest.__init__@148:4: covered (storage: no_proof_required), summary: known
 main::SB.__init__@160:4: covered (storage: no_proof_required), summary: known
-main::KL.__init__@168:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::KL.__init__@168:4: covered (storage: no_proof_required), summary: known
 main::HM.__init__@178:4: covered (storage: no_proof_required), summary: known
 main::Slot.__init__@185:4: covered (storage: no_proof_required), summary: known
 main::Slot2.__init__@197:4: covered (storage: no_proof_required), summary: known

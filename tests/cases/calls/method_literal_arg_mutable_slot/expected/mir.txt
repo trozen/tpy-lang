@@ -8,7 +8,7 @@ main::K.fill@28:4: covered (storage: no_proof_required), summary: known
 main::K.fill_recs@32:4: covered (storage: no_proof_required), summary: known
 main::K.fill_dict@36:4: covered (storage: no_proof_required), summary: known
 main::K.fill_set@40:4: covered (storage: no_proof_required), summary: known
-main::K.fill_nested@44:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::K.fill_nested@44:4: covered (storage: no_proof_required), summary: known
 main::K.pick@50:4: covered (storage: no_proof_required), summary: known
 main::K.stash@55:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::K.total@60:4: covered (storage: no_proof_required), summary: known

@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@13:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::pick@21:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@13:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::pick@21:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

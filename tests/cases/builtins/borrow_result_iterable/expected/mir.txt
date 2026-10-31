@@ -13,7 +13,7 @@ main::iter_fn@125:0: uncovered (unsupported native container element), summary: 
 main::rebind_fn@143:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::bag_fn@161:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::fresh_fn@171:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
-main::rows_fn@178:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::rows_fn@178:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::next_fn@188:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::next_param@204:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::show_v@209:0: covered (storage: no_proof_required), summary: known

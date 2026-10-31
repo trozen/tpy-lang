@@ -412,7 +412,6 @@ def test_unmodeled_hierarchies_keep_no_facts(program: Program) -> None:
     fn = program.functions[(None, "excluded")]
     assert all(p.borrowed_record is None for p in fn.params)
     assert not _field_ids(fn)
-    assert program.functions[(None, "elements")].params[0].native_container is None
     assert all(name not in program.inherited for name in ("IntBox", "SubErr", "NSub"))
 
 

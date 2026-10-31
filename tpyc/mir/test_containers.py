@@ -15,7 +15,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import (
-    BOOL, INT32, STR, NominalType, OwnType, ReadonlyType, TpyType, VoidType, make_list, make_span,
+    BOOL, INT32, STR, NominalType, OwnType, ReadonlyType, TpyType, TupleType, VoidType, make_list, make_span,
     return_representation, unwrap_readonly, unwrap_ref_type,
 )
 from .call_contract import MIRCallSummary
@@ -273,11 +273,6 @@ def _bare(typ: TpyType) -> TpyType:
     return unwrap_readonly(unwrap_ref_type(typ))
 
 
-def _element_fact(typ: NominalType, readonly: bool) -> TpyType | th.THIRBorrowedRecord:
-    element = _bare(declared_members(typ)[0])
-    return element if element.name in ("int32", "str", "bool") else th.THIRBorrowedRecord(element, readonly)
-
-
 def _setitem_stub(receiver: NominalType, preserves: bool = True) -> th.THIRStubCallee:
     # The real stub takes the value as `Own[T]`.
     element = OwnType(declared_members(receiver)[0])
@@ -307,27 +302,17 @@ def _rewrite(node, change):
     return change(replace(node, **updates) if updates else node)
 
 
-def _published(fn: th.THIRFunction, *, readonly_iteration: bool = False, preserves: bool | None = None,
-               setitem: bool = True) -> th.THIRFunction:
-    """`fn` with the container facts the THIR producer attaches: owned
-    container locals, container field identities, iteration over any
-    container place, element-write stubs, container parameters' facts."""
+def _published(fn: th.THIRFunction, *, preserves: bool | None = None, setitem: bool = True) -> th.THIRFunction:
+    """`fn` with the container facts the THIR producer attaches: container
+    field identities and element-write stubs."""
     def change(node):
         match node:
-            case th.THIRVarDecl(native_container=None, init=th.THIRContainerLiteral()) if (
-                    native_container_type(_bare(node.resolved_type))):
-                typ = _bare(node.resolved_type)
-                return replace(node, native_container=th.THIRNativeContainer(typ, _element_fact(typ, False), False))
             case th.THIRFieldAccess(field_identity=None) if (native_container_type(_bare(node.result_type))
                                                              or isinstance(node.receiver, th.THIRSubscript)):
                 # A container field, or a field of a container's record element.
                 owner = _bare(node.receiver.result_type)
                 identity = th.THIRFieldIdentity(owner, node.field_cpp, _bare(node.result_type))
                 return replace(node, field_identity=identity)
-            case th.THIRForEach(iteration=None):
-                typ = _bare(node.iterable.result_type)
-                source = th.THIRNativeContainer(typ, _element_fact(typ, readonly_iteration), readonly_iteration)
-                return replace(node, iteration=th.THIRNativeIteration(source))
             case th.THIRSetItem():
                 if not setitem:
                     return replace(node, stub_callee=None)
@@ -338,12 +323,7 @@ def _published(fn: th.THIRFunction, *, readonly_iteration: bool = False, preserv
                     return replace(node, stub_callee=stub)
                 return replace(node, stub_callee=_setitem_stub(_bare(node.target.receiver.result_type), bool(preserves)))
         return node
-    params = tuple(replace(p, native_container=th.THIRNativeContainer(
-        _bare(p.type), _element_fact(_bare(p.type), p.passing is ParamPassing.CONST_REF),
-        p.passing is ParamPassing.CONST_REF))
-        if p.native_container is None and native_container_type(_bare(p.type)) and _bare(p.type).type_args
-        and _bare(declared_members(_bare(p.type))[0]).name == "str" else p for p in fn.params)
-    return replace(fn, params=params, body=_rewrite(fn.body, change))
+    return replace(fn, body=_rewrite(fn.body, change))
 
 
 def _lower(unit: _Unit, name: str, **facts) -> MIRFunction | MIRNotCovered:
@@ -438,7 +418,7 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
     copy = _lines(_fn(active, "str_copy"))
     assert any(re.fullmatch(r"%\d+ = copy \(\*%0\)\[elements\] may-raise \[initialize\]", line) for line in copy)
     # Iteration reads an owned-leaf element through a view of it.
-    walk = _fn(active, "walk_strs", readonly_iteration=True)
+    walk = _fn(active, "walk_strs")
     s = _slot(walk, "s")
     assert (s.type.name, s.shape.holding, s.readonly) == ("StrView", MIRHolding.POINTER, True)
     assert any(isinstance(st, MIRAssign) and isinstance(st.value, MIRIteratorRead) and st.target.root == s.id
@@ -561,7 +541,7 @@ def test_an_element_write_through_a_span_or_on_an_array(active) -> None:
 def test_a_container_field_is_a_place_of_its_record(active) -> None:
     lines = _lines(_fn(active, "head"))
     assert "%2 = read (*%0).__main__.Bag::items[elements] may-raise" in lines
-    lines = _lines(_fn(active, "sum_items", readonly_iteration=True))
+    lines = _lines(_fn(active, "sum_items"))
     assert any(re.fullmatch(r"%3 = borrow \(\*%0\)\.__main__\.Bag::items", line) for line in lines)
     assert "%4 = iterator-init %3" in lines
     items = _fn(active, "items_of")
@@ -602,17 +582,11 @@ def test_container_members_are_initialized_at_entry(active) -> None:
 
 def test_kept_refusals(active) -> None:
     assert _lower(active, "holds").reason == "container holds a borrow"
-    assert _lower(active, "nested").reason == "unsupported native container element"
-    # A container local is classed by its type: THIR's fact, or none, changes nothing.
-    fn = active.functions["own"]
-    bare = replace(fn, body=_rewrite(fn.body, lambda n: replace(n, native_container=None)
-                                     if isinstance(n, th.THIRVarDecl) else n))
-    assert lower_function(bare, MIRBodyId("containers", "own"), definitions=active.definitions) == \
-        lower_function(fn, MIRBodyId("containers", "own"), definitions=active.definitions)
+    # A nested container is modeled: its element is a container place of its own.
+    assert isinstance(_lower(active, "nested"), MIRFunction)
     # A container a parameter cannot write.
     fn = _published(active.functions["set_scalar"])
-    readonly = replace(fn, params=tuple(replace(p, passing=ParamPassing.CONST_REF, native_container=replace(
-        p.native_container, readonly=True)) for p in fn.params))
+    readonly = replace(fn, params=tuple(replace(p, passing=ParamPassing.CONST_REF) for p in fn.params))
     assert lower_function(readonly, MIRBodyId("containers", "ro"), definitions=active.definitions).reason \
         == "readonly element store"
 
@@ -705,7 +679,7 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     _rejects(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, receiver)),
              "field write needs its initialization or replacement fact")
     # A container field whose members MIR does not model.
-    nested = make_list(make_list(INT32))
+    nested = make_list(make_list(TupleType((INT32, INT32))))
     def nested_field(s: MIRAssign) -> MIRAssign:
         *head, field = s.value.source.projections
         return replace(s, value=MIRBorrow(MIRPlace(s.value.source.root, (*head, replace(field, type=nested)))))
@@ -824,7 +798,7 @@ def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     t = _slot(span_sum, "t").id
     _rejects(_replace_first(span_sum, _assign(MIRIteratorInit), lambda s: replace(s, value=MIRIteratorInit(t))),
              "iterator source or access mismatch")
-    walk = _fn(active, "walk_strs", readonly_iteration=True)
+    walk = _fn(active, "walk_strs")
     n = _slot(walk, "n").id
     _rejects(_replace_first(walk, _assign(MIRIteratorRead), lambda s: replace(s, target=MIRPlace(n))),
              "iterator element type or access mismatch")

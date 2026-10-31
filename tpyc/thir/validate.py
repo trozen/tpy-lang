@@ -67,9 +67,8 @@ from ..typesys import (
     is_inert_leaf, return_representation, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .scalar_leaves import (
-    binds_cursor, binds_element, container_view, declared_members, holds_elements, leaf_constant, leaf_global,
-    modeled_ancestors, native_container_subject, native_container_type, optional_record_field, owned_leaf,
-    plain_record_element, readonly_elements, storage_leaf,
+    holds_elements, leaf_constant, leaf_global, modeled_ancestors, native_container_subject, native_container_type,
+    optional_record_field, owned_leaf, storage_leaf,
 )
 from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
@@ -89,7 +88,7 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     PtrSlotKind, THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral,
     THIRTupleLayout, THIROwnedRecord, THIRStoragePlacement,
-    THIRTupleStorageAlias, THIRNativeContainer, THIRNativeIteration,
+    THIRTupleStorageAlias,
     THIRForEach, THIRForRange, THIROptionalLayout, THIROptionalPtrArg,
     THIROptionalRead, THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
     THIRUnionLiteral, THIRWrapperDefault, THIRIsinstance, THIRNarrowAlias,
@@ -120,13 +119,6 @@ class THIRValidationError(Exception):
     inconsistent THIR)."""
 
 
-def _user_container_call(node: object, container: TpyType) -> bool:
-    """A user call returning the native container `container` by reference."""
-    return (isinstance(node, (THIRCall, THIRMethodCall)) and node.resolved_callee is not None
-            and node.resolved_callee.signature.return_representation is Representation.REFERENCE
-            and native_container_subject(node.resolved_callee.signature.return_type) == container)
-
-
 def _declared_member(fact: THIRFieldIdentity) -> bool:
     """Whether a field identity names a member its owner declares, at the
     member's declared type. An owner with no TypeDef (THIR lowered outside
@@ -154,37 +146,6 @@ def _member_read(declared: TpyType, result: TpyType) -> bool:
         return all(any(_member_read(unwrap_readonly(m), unwrap_readonly(p)) for m in declared.members)
                    for p in parts)
     return False
-
-
-def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
-    """A container or container view fact names the element its stub
-    declares (`declared_members`), at the access the type and binding give."""
-    bare = native_container_subject(typ)
-    members = declared_members(bare)
-    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare or members is None
-            or type(fact.readonly) is not bool
-            or isinstance(unwrap_ref_type(typ), ReadonlyType) and not fact.readonly):
-        _fail(owner, node, "invalid native container fact")
-    member = fact.element
-    declared, value, _ = members
-    view = container_view(bare)
-    # A view yielding both members at once binds no single element.
-    if view and not binds_cursor(bare):
-        _fail(owner, node, "invalid native container fact")
-    if value is not None and not (storage_leaf(value) or owned_leaf(value)):
-        _fail(owner, node, "invalid native container arguments")
-    if view:
-        # A view's element access is its element argument's.
-        if readonly_elements(bare) and not fact.readonly:
-            _fail(owner, node, "invalid native element fact")
-        declared = unwrap_readonly(declared)
-    element_type = member.type if isinstance(member, THIRBorrowedRecord) else member
-    if (element_type != declared
-            or not (not isinstance(member, THIRBorrowedRecord)
-                    and (storage_leaf(element_type) or owned_leaf(element_type))) and not (
-                isinstance(member, THIRBorrowedRecord) and plain_record_element(member.type)
-                and value is None and member.readonly is fact.readonly)):
-        _fail(owner, node, "invalid native element fact")
 
 
 def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType) -> None:
@@ -646,27 +607,6 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 or fact.type.type_args or fact.type.is_protocol or fact.type != node.result_type
                 or fact.readonly is not False or node.form is not Form.STORAGE or not source):
             _fail(owner, node, "full-expression storage disagrees with its record rvalue")
-    if isinstance(node, THIRVarDecl) and node.native_container is not None:
-        _check_native_container(owner, node, node.native_container, node.resolved_type)
-        others = (node.alias_binding, node.storage_borrow, node.owned_storage, node.tuple_layout,
-                  node.tuple_storage_alias, node.optional_layout, node.union_layout, node.storage_placement)
-        if node.form is not Form.BORROW:
-            # Container storage of the local's own, from an initializer
-            # yielding the declared container.
-            if (node.init is None or node.resolved_type != node.native_container.type
-                    or not native_container_type(node.resolved_type)
-                    or native_container_subject(node.init.result_type) != node.native_container.type
-                    or node.is_const is not node.native_container.readonly
-                    or any(f is not None for f in others)):
-                _fail(owner, node, "owned native container disagrees with binding")
-        elif (not (isinstance(node.init, THIRName) and node.init.form is Form.BORROW
-                     or isinstance(node.init, THIRFieldAccess) and node.init.field_identity is not None
-                     and unwrap_readonly(node.init.field_identity.type) == node.native_container.type
-                     or _user_container_call(node.init, node.native_container.type))
-                or unwrap_readonly(unwrap_ref_type(node.init.result_type)) != node.native_container.type
-                or node.is_const is not node.native_container.readonly
-                or any(f is not None for f in others)):
-            _fail(owner, node, "native container alias disagrees with binding")
     if isinstance(node, (THIRIf, THIRWhile, THIRForRange, THIRForEach)):
         _check_hoists(owner, node)
     if isinstance(node, THIRIf):
@@ -675,33 +615,6 @@ def _check_node(owner: str, node: THIRNode) -> None:
         for link in if_chain(node)[1:]:
             if link.hoist_decls:
                 _fail(owner, link, "elif link carries a predeclaration")
-    if isinstance(node, THIRForEach) and node.iteration is not None:
-        fact = node.iteration
-        source = node.iterable
-        # A named container, a container field of a named record, or a
-        # container view a method stub returns.
-        view = isinstance(source, THIRMethodCall) and source.stub_callee is not None
-        call = isinstance(fact, THIRNativeIteration) and isinstance(fact.source, THIRNativeContainer) and (
-            _user_container_call(source, fact.source.type))
-        place = isinstance(source, THIRName) or (
-            isinstance(source, THIRFieldAccess) and source.field_identity is not None
-            and isinstance(source.receiver, (THIRName, THIRSelf))
-            and isinstance(fact, THIRNativeIteration) and isinstance(fact.source, THIRNativeContainer)
-            and unwrap_readonly(source.field_identity.type) == fact.source.type
-            and (not isinstance(source.field_identity.type, ReadonlyType) or fact.source.readonly))
-        if (not isinstance(fact, THIRNativeIteration) or not ((place or call) and node.iterable_lvalue or view)
-                or node.consuming or node.str_literal_iterable):
-            _fail(owner, node, "native iteration fact disagrees with emitted binding")
-        _check_native_container(owner, node, fact.source, node.iterable.result_type)
-        # A stub's result is a place only as a view of its receiver's elements.
-        if view and not container_view(fact.source.type):
-            _fail(owner, node, "native iteration fact disagrees with emitted binding")
-        if not binds_cursor(fact.source.type):
-            _fail(owner, node, "native iteration source binds no element")
-        element = fact.source.element
-        if not binds_element(node.elem_type, (
-                element.type if isinstance(element, THIRBorrowedRecord) else element)):
-            _fail(owner, node, "native iteration element mismatch")
     if isinstance(node, (THIRLambda, THIRNestedDef)):
         _check_captures(owner, node)
     if (isinstance(node, (THIRCall, THIRMethodCall))
@@ -1532,11 +1445,6 @@ def _walk_resumable_return(owner: str, ret: THIRResumableReturn) -> None:
 def _check_param(owner: str, param: THIRParam) -> None:
     """The storage facts of one function or constructor parameter: each
     agrees with the parameter's type, and at most one describes it."""
-    if param.native_container is not None:
-        _check_native_container(owner, param, param.native_container, param.type)
-        if any(f is not None for f in (param.borrowed_record, param.optional_layout,
-                                      param.union_layout, param.tuple_layout)):
-            _fail(owner, param, "conflicting parameter facts")
     if param.tuple_layout is not None:
         if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
             _fail(owner, param, "conflicting parameter facts")

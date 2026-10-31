@@ -8,7 +8,6 @@ from ..compilation_context import activate_compiler
 from ..codegen_cpp.context import CodeGenContext
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
-from ..thir.temp_plan import prepare_temporaries
 from ..thir.test_for_temp_plan import SOURCE
 from ..thir.testutil import _compile, _entry
 from .testutil import compiled_definitions, placed_storage, prepared, workspace_functions
@@ -223,17 +222,6 @@ def test_missing_for_scope_evidence_does_not_gain_coverage(artifacts: Artifacts)
     result = lower_function(replace(fn, temp_plan=None), body(artifacts, "ranges").id, definitions=definitions,
                             summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "named argument needs complete temporary plan"
-
-
-def test_the_iteration_fact_is_not_read(artifacts: Artifacts) -> None:
-    # The loop's source is the container place MIR builds, not THIR's description of it.
-    ctx, workspace, definitions = artifacts
-    fn = next(f for f in ctx.thir_functions.values() if f.name == "native")
-    statements = tuple(replace(s, iteration=None) if isinstance(s, th.THIRForEach) else s for s in fn.body)
-    damaged = replace(fn, body=statements, temp_plan=prepare_temporaries(statements))
-    result = lower_function(damaged, body(artifacts, "native").id,
-                            definitions=definitions, summaries=workspace.summaries)
-    assert result == body(artifacts, "native")
 
 
 @pytest.mark.parametrize("loop", [

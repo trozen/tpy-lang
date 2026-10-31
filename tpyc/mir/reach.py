@@ -21,6 +21,7 @@ from .shapes import (
 from .validate import reaches_element
 from .value import (
     AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
+    member_types,
 )
 
 
@@ -162,10 +163,29 @@ def _replaced_leaf(place: MIRPlace) -> bool:
             and value_class(member.type) is MIRClass.OWNED_LEAF)
 
 
-def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
-    """A referent naming a container object itself (a borrowed container
-    parameter's own origin), which no container holds as an element."""
-    return not ref.place.projections and slots[ref.place.root].shape.whole_container
+def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
+    """The type of the container object a referent names itself (a
+    borrowed container parameter's own origin), else None."""
+    shape = slots[ref.place.root].shape
+    return shape.type if not ref.place.projections and shape.whole_container else None
+
+
+def _container_holds(container: TpyType, target: TpyType, records: MIRRecords) -> bool:
+    """Whether storage of container type `container` may hold a `target`
+    container among its members at any depth: a member of that type, a
+    container member that may hold one, or a record member with a
+    container field that may -- a record whose declared fields are unknown
+    here may. Members are acyclic (`element_problem` refuses a recursive one)."""
+    # A walk of types, not of the holder's member shapes: a record member's
+    # shape carries no fields, so below it only declared field types answer.
+    def holds(member: TpyType) -> bool:
+        bare = unwrap_readonly(member)
+        cls = value_class(bare)
+        if cls is MIRClass.RECORD:
+            declared = records.fields.get(bare, None)
+            return declared is None or any(holds(f.type) for f in declared)
+        return bare == target or cls is MIRClass.CONTAINER and any(map(holds, member_types(bare) or ()))
+    return any(map(holds, member_types(container) or ()))
 
 
 def _referent_shape(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
@@ -177,17 +197,22 @@ def _referent_shape(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
     return referent_walk(ref.place, slots, records).end
 
 
-def storage_exclusions(slots: Mapping[MIRSlotId, MIRSlot],
-                       records: Mapping[TpyType, MIRRecordLayout]) -> DistinctExternal:
+def storage_exclusions(slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> DistinctExternal:
     """Retention's and scope_lifetime's oracle: a replacement of external
     storage may free a loan held anywhere external, except that no record
     or container lives inside an opaque buffer (a leaf replacement spares
-    an aggregate) and no container is an element of another (a shape or
-    elements write spares a whole container)."""
+    an aggregate) and a shape or elements write spares a whole container
+    the written container's members cannot hold (`_container_holds`)."""
     def may(written: MIRReferent, target: MIRReferent) -> bool:
         if not _replaced_leaf(written.place):
-            region = bool(written.place.projections) and isinstance(written.place.projections[-1], REGION_STEPS)
-            return not (region and _whole_container(target, slots))
+            projections = written.place.projections
+            if not (projections and isinstance(projections[-1], REGION_STEPS)):
+                return True
+            whole = _whole_container(target, slots)
+            if whole is None:
+                return True
+            holder = referent_walk(MIRPlace(written.place.root, projections[:-1]), slots, records).end
+            return holder is None or _container_holds(holder.type, whole, records)
         shape = _referent_shape(target, slots, records)
         return shape is None or shape.cls not in AGGREGATE_CLASSES
     return may

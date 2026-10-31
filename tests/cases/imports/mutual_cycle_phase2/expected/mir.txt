@@ -19,7 +19,7 @@ cz::__tpy_init: uncovered (module initialization)
 cz::forward@6:0: covered (storage: no_proof_required), summary: known
 cz::one@10:0: covered (storage: no_proof_required), summary: known
 ga::__tpy_init: uncovered (module initialization)
-ga::total@8:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+ga::total@8:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 ga::one@12:0: covered (storage: no_proof_required), summary: known
 ga::<genexpr>@9:14: uncovered (generator expression)
 gb::__tpy_init: uncovered (module initialization)
@@ -29,7 +29,7 @@ gy::__tpy_init: uncovered (module initialization)
 gy::size@7:0: covered (storage: no_proof_required), summary: known
 gy::back@11:0: covered (storage: no_proof_required), summary: known
 gz::__tpy_init: uncovered (module initialization)
-gz::total@5:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+gz::total@5:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 gz::one@9:0: covered (storage: no_proof_required), summary: known
 gz::<genexpr>@6:14: uncovered (generator expression)
 item::__tpy_init: uncovered (module initialization)
@@ -38,7 +38,7 @@ item::Bag.__init__@14:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::const_section@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::borrow_section@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::genexpr_section@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::genexpr_section@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::receiver_section@43:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
 main::method_section@54:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
 main::writer_section@64:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

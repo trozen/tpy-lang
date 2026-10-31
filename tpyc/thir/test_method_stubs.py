@@ -10,7 +10,7 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..type_def_registry import ParamPassing
-from ..typesys import INT32, STR, STRVIEW, NominalType, OwnType, ReadonlyType, Representation, VoidType
+from ..typesys import INT32, STR, STRVIEW, NominalType, OwnType, Representation, VoidType
 from . import nodes as th
 from .testutil import _compile, _entry
 from .validate import THIRValidationError, _iter_children, validate_function
@@ -193,36 +193,13 @@ def test_a_subscript_write_publishes_the_setitem_overload_its_index_selects(lowe
     assert record.signature.passings == (ParamPassing.MUT_REF, ParamPassing.VALUE, ParamPassing.OWN)
 
 
-def test_container_facts_cover_owned_leaves_spans_and_owned_containers(lowered) -> None:
-    fn = lowered["facts"]
-    params = {p.name: p.native_container for p in fn.params}
-    assert params["names"] == th.THIRNativeContainer(_list(STR), STR, True)
-    assert params["d"].element == STR and params["d"].readonly
-    named = params["named"].element
-    assert isinstance(named, th.THIRBorrowedRecord) and named.type.qualified_name() == "__main__.Named"
-    # A Span's access is its element argument's.
-    assert params["sp"].element == INT32 and not params["sp"].readonly
-    assert params["rsp"].element == INT32 and params["rsp"].readonly
-    # An owned container parameter publishes the container it holds.
-    assert params["own"].type == _list(INT32)
-    # A borrow, user code on an element, a hashed record, nested storage: no fact.
-    for name in ("views", "ordered", "nested", "table"):
-        assert params[name] is None, name
-    assert params["points"] is not None
-
-
 def test_owned_container_locals_and_view_loops(lowered) -> None:
     fn = lowered["facts"]
     decls = {d.name: d for d in nodes(fn, th.THIRVarDecl)}
-    xs, ys, alias = decls["xs"], decls["ys"], decls["alias"]
-    assert xs.form is not th.Form.BORROW and xs.native_container.type == xs.resolved_type
-    assert ys.native_container == th.THIRNativeContainer(_list(INT32), INT32, False)
-    assert alias.form is th.Form.BORROW and alias.native_container == ys.native_container
-    # A Span local is a view of storage elsewhere, not storage of its own.
-    assert decls["s"].native_container is None
+    assert decls["xs"].form is not th.Form.BORROW and decls["alias"].form is th.Form.BORROW
     loop, = nodes(fn, th.THIRForEach)
     # The loop variable views the str key it binds.
-    assert loop.elem_type == STRVIEW and loop.iteration.source.element == STR
+    assert loop.elem_type == STRVIEW
 
 
 def _replace_node(fn: th.THIRFunction, old: th.THIRNode, new: th.THIRNode) -> th.THIRFunction:
@@ -297,36 +274,6 @@ def test_validator_rejects_a_constructed_result_on_a_method_stub(lowered) -> Non
         validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
 
 
-def test_validator_rejects_inconsistent_container_facts(lowered) -> None:
-    fn = lowered["facts"]
-    validate_function(fn)
-    decls = {d.name: d for d in nodes(fn, th.THIRVarDecl)}
-    ys, s = decls["ys"], decls["s"]
-    span = next(p for p in fn.params if p.name == "rsp")
-    loop, = nodes(fn, th.THIRForEach)
-    fact = ys.native_container
-    for old, new, reason in (
-        # Owned storage: the binding's access, a view local, an initializer of another type.
-        (ys, replace(ys, is_const=True), "owned native container disagrees with binding"),
-        (s, replace(s, native_container=th.THIRNativeContainer(s.resolved_type, INT32, False)),
-         "owned native container disagrees with binding"),
-        (ys, replace(ys, init=replace(ys.init, result_type=_list(STR))),
-         "owned native container disagrees with binding"),
-        # An owned-leaf element is its own type; a loop variable views only an owned leaf.
-        (ys, replace(ys, native_container=replace(fact, element=STR)), "invalid native element fact"),
-        (loop, replace(loop, iteration=replace(loop.iteration, source=replace(
-            loop.iteration.source, type=NominalType("dict", (INT32, INT32), _module_qname="builtins.dict"),
-            element=INT32))), "invalid native container fact"),
-    ):
-        with pytest.raises(THIRValidationError, match=reason):
-            validate_function(_replace_node(fn, old, new))
-    # A readonly Span element is never published mutable.
-    damaged = replace(span, native_container=replace(span.native_container, readonly=False))
-    with pytest.raises(THIRValidationError, match="invalid native element fact"):
-        validate_function(replace(fn, params=tuple(damaged if p is span else p for p in fn.params)))
-    assert span.type.type_args[0] == ReadonlyType(INT32)
-
-
 def test_container_fields_and_element_fields_publish_identities(lowered) -> None:
     fn = lowered["fields"]
     accesses = {a.field_identity.name: a for a in nodes(fn, th.THIRFieldAccess)}
@@ -337,56 +284,30 @@ def test_container_fields_and_element_fields_publish_identities(lowered) -> None
     items = accesses["items"]
     assert items.field_identity.type == _list(INT32)
     loop, = nodes(fn, th.THIRForEach)
-    # A field iterable publishes its container, const through a readonly receiver.
     assert loop.iterable is items
-    assert loop.iteration.source == th.THIRNativeContainer(_list(INT32), INT32, True)
 
 
 def test_validator_rejects_inconsistent_field_facts(lowered) -> None:
     fn = lowered["fields"]
     validate_function(fn)
     accesses = {a.field_identity.name: a for a in nodes(fn, th.THIRFieldAccess)}
-    x, items = accesses["x"], accesses["items"]
-    loop, = nodes(fn, th.THIRForEach)
+    x = accesses["x"]
     subscript = x.receiver
     # An element field needs a container element receiver.
     not_elements = replace(subscript, receiver=replace(subscript.receiver, result_type=STR))
     with pytest.raises(THIRValidationError, match="field identity disagrees with its access"):
         validate_function(_replace_node(fn, x, replace(x, receiver=not_elements)))
-    # A field iterable must hold the container the fact names.
-    other = replace(items, field_identity=replace(items.field_identity, type=_list(STR)), result_type=_list(STR))
-    with pytest.raises(THIRValidationError, match="native iteration fact disagrees with emitted binding"):
-        validate_function(_replace_node(fn, loop, replace(loop, iterable=other)))
 
 
-def test_a_dict_view_loop_publishes_the_element_its_iteration_declares(lowered) -> None:
+def test_a_dict_view_loop_iterates_the_view_a_stub_returns(lowered) -> None:
     loop, = nodes(lowered["methods"], th.THIRForEach)
     view = loop.iterable.result_type
     assert isinstance(loop.iterable, th.THIRMethodCall) and view.qualified_name() == "builtins.dict_values"
-    # A values view yields its value argument; the receiver is mutable here.
-    assert loop.iteration.source == th.THIRNativeContainer(view, INT32, False)
+    assert loop.elem_type == INT32
 
 
-def test_validator_rejects_an_inconsistent_view_loop(lowered) -> None:
-    fn = lowered["methods"]
-    loop, = nodes(fn, th.THIRForEach)
-    source = loop.iteration.source
-    for damaged, why in ((replace(source, element=STR), "invalid native element fact"),
-                         (replace(source, type=_list(INT32)), "invalid native container fact")):
-        with pytest.raises(THIRValidationError, match=why):
-            validate_function(_replace_node(fn, loop, replace(loop, iteration=replace(loop.iteration, source=damaged))))
-    # A view loop needs a stub call to iterate.
-    with pytest.raises(THIRValidationError, match="native iteration fact disagrees with emitted binding"):
-        validate_function(_replace_node(fn, loop, replace(loop, iterable=replace(loop.iterable, stub_callee=None))))
-
-
-def test_a_local_alias_of_a_container_field_publishes_its_container(lowered) -> None:
+def test_a_local_alias_of_a_container_field_borrows_it(lowered) -> None:
     fn = lowered["alias_field"]
     validate_function(fn)
     decl, = (d for d in nodes(fn, th.THIRVarDecl) if d.name == "x")
     assert isinstance(decl.init, th.THIRFieldAccess) and decl.form is th.Form.BORROW
-    assert decl.native_container == th.THIRNativeContainer(_list(INT32), INT32, False)
-    # The alias holds the container its field identity names.
-    other = replace(decl.init, field_identity=replace(decl.init.field_identity, type=_list(STR)))
-    with pytest.raises(THIRValidationError, match="native container alias disagrees with binding"):
-        validate_function(_replace_node(fn, decl, replace(decl, init=other)))

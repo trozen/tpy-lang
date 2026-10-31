@@ -11,7 +11,7 @@ from ..thir.test_method_stubs import _replace_node, nodes as _thir_nodes
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import (
-    INT32, STR, NominalType, OptionalType, OwnType, ReadonlyType, RefType, Representation, VoidType, return_representation,
+    INT32, STR, STRVIEW, NominalType, OptionalType, OwnType, ReadonlyType, RefType, Representation, VoidType, return_representation,
     unwrap_ref_type,
 )
 from .call_contract import (
@@ -810,8 +810,9 @@ def test_a_container_result_may_be_more_readonly_than_its_type(program: _Program
     assert result_problem(frozen, th.THIRBorrowedRecord(INTS, False), ref) == "invalid borrowed result"
     strs = NominalType("list", (STR,), _module_qname="builtins.list")
     assert result_problem(mutable, th.THIRBorrowedRecord(strs, False), ref) == "invalid borrowed result"
-    # A nested container has no region MIR models: refused, never raised.
-    nested = NominalType("list", (INTS,), _module_qname="builtins.list")
+    # A container whose nested member holds a borrow has no region MIR models: refused, never raised.
+    views = NominalType("list", (STRVIEW,), _module_qname="builtins.list")
+    nested = NominalType("list", (views,), _module_qname="builtins.list")
     assert result_problem(nested, th.THIRBorrowedRecord(nested, False), ref) == "invalid borrowed result"
     # A container returned as storage borrows nothing.
     assert result_problem(mutable, th.THIRBorrowedRecord(INTS, False), Representation.STORAGE) == (

@@ -108,14 +108,6 @@ def native_container_type(typ: object) -> bool:
     return td is not None and td.owns_elements
 
 
-def binds_element(loop_type: TpyType, element: TpyType) -> bool:
-    """Whether a loop variable of `loop_type` binds a container element of
-    type `element`: the element itself (a scalar copy, a record alias), or
-    a view of an owned-leaf element (a `StrView` key of a `dict[str, V]`)."""
-    loop = unwrap_readonly(unwrap_ref_type(loop_type))
-    return loop == element or owned_leaf(element) and view_compatible(loop, element)
-
-
 def native_container_subject(typ: TpyType) -> TpyType:
     """The container a value of `typ` is: seen through the reference and
     access wrappers, and through the ownership wrapper of an owned
@@ -182,18 +174,32 @@ def binds_cursor(typ: object) -> bool:
     return members is not None and members.cursor
 
 
-def modeled_members(typ: object) -> bool:
-    """Whether MIR models the members the native container or container
-    view `typ` declares (`declared_members`): every member is a container
-    element (`container_element`), and a type with a value member holds
-    scalar or owned leaves only, in both members."""
+UNSUPPORTED_ELEMENT = "unsupported native container element"
+RECURSIVE_ELEMENT = "recursive container element"
+
+
+def members_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str | None:
+    """Why MIR does not model the members the native container or container
+    view `typ` declares (`declared_members`), None when it does: every
+    member is a container element (`element_problem`), and a type with a
+    value member stores no record directly in either member. `path` holds
+    the types the enclosing members' rule is walking through."""
     members = declared_members(typ)
     if members is None:
-        return False
+        return UNSUPPORTED_ELEMENT
     element, value, _ = members
-    leaves_only = value is not None
-    return all(storage_leaf(m) or owned_leaf(m) or not leaves_only and plain_record_element(m)
-               for m in (unwrap_readonly(element), *(() if value is None else (unwrap_readonly(value),))))
+    for member in (element, *(() if value is None else (value,))):
+        if value is not None and record_type(unwrap_readonly(member)):
+            return UNSUPPORTED_ELEMENT
+        if (problem := element_problem(member, path)) is not None:
+            return problem
+    return None
+
+
+def modeled_members(typ: object) -> bool:
+    """Whether MIR models the members the native container or container
+    view `typ` declares (`members_problem`)."""
+    return members_problem(typ) is None
 
 
 # The dunders a native container operation dispatches on its elements
@@ -235,33 +241,67 @@ def modeled_ancestors(typ: object) -> tuple[NominalType, ...] | None:
     return None if chain is None else tuple(record_owner(r) for r in chain[1:])
 
 
-def plain_record_element(typ: object) -> bool:
-    """A record a native container may hold as an element MIR models: a
-    record whose struct hierarchy MIR models (`modeled_hierarchy`) where no
-    record declares a custom copy, move or destructor or a comparison or
-    hash dunder (so no container operation can run user code on it), and
-    whose fields -- inherited ones included -- are scalar leaves or owned
-    leaves (so an element place is at most one field deep). Asked under the
-    compilation that registered the record."""
+def _plain_record_fields(typ: object) -> tuple[TpyType, ...] | None:
+    """The field types -- inherited ones included -- of a record a native
+    container may hold as an element: a record whose struct hierarchy MIR
+    models (`modeled_hierarchy`) where no record declares a custom copy,
+    move or destructor or a comparison or hash dunder (so no container
+    operation can run user code on it). None for any other type. A record
+    with no TypeDef (lowered outside its compilation) reads as plain with
+    no fields, as `record_type` reads it, rather than failing closed."""
     if not record_type(typ):
-        return False
+        return None
     td = type_def_of(typ)
     if td is None:
-        # As `record_type`: a record with no TypeDef (lowered outside its
-        # compilation) reads as plain rather than failing closed.
-        return True
+        return ()
     chain = modeled_hierarchy(td.record) if td.record is not None else None
     if chain is None or any(r.has_copy or r.has_move or r.has_del for r in chain):
-        return False
+        return None
     if any(r.get_method_overloads(name) for r in chain for name in _ELEMENT_DISPATCH_DUNDERS):
-        return False
-    return all(storage_leaf(f.type) or owned_leaf(f.type) for r in chain for f in r.fields)
+        return None
+    return tuple(f.type for r in chain for f in r.fields)
+
+
+def plain_record_element(typ: object) -> bool:
+    """A plain record (`_plain_record_fields`) whose fields are scalar
+    leaves or owned leaves only, so a place inside it is at most one field
+    deep. Asked under the compilation that registered the record."""
+    fields = _plain_record_fields(typ)
+    return fields is not None and all(storage_leaf(f) or owned_leaf(f) for f in fields)
+
+
+def element_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str | None:
+    """Why MIR does not model `typ` as a native container's member, None
+    when it does -- the one member rule, at any depth: a scalar or owned
+    leaf; a plain record (`_plain_record_fields`) whose every field is such
+    a leaf or a native container whose members are container elements; or
+    such a native container itself (`members_problem`). A type that reaches
+    itself through its members is refused by name; `path` holds the types
+    the walk is inside, so sibling members of one type stay admissible."""
+    bare = unwrap_readonly(typ)
+    if storage_leaf(bare) or owned_leaf(bare):
+        return None
+    if bare in path:
+        return RECURSIVE_ELEMENT
+    inside = path | {bare}
+    if native_container_type(bare):
+        return members_problem(bare, inside)
+    fields = _plain_record_fields(bare)
+    if fields is None:
+        return UNSUPPORTED_ELEMENT
+    for field in fields:
+        if storage_leaf(field) or owned_leaf(field):
+            continue
+        if not native_container_type(field):
+            return UNSUPPORTED_ELEMENT
+        if (problem := element_problem(field, inside)) is not None:
+            return problem
+    return None
 
 
 def container_element(typ: object) -> bool:
-    """An element type MIR models in a native container: a scalar leaf, an
-    owned leaf, or a plain record (`plain_record_element`)."""
-    return storage_leaf(typ) or owned_leaf(typ) or plain_record_element(typ)
+    """A member type MIR models in a native container (`element_problem`)."""
+    return element_problem(typ) is None
 
 
 def leaf_global(typ: object) -> bool:

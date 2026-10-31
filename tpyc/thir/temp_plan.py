@@ -242,7 +242,7 @@ class _Planner:
                 case th.THIRForEach():
                     _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var",
                                   "iterable_lvalue", "orelse", "hoist_loop_var", "hoist_decls",
-                                  "hoisted_bindings", "iteration"})
+                                  "hoisted_bindings"})
                     if not stmt.iterable_lvalue:
                         raise _Unplanned()
                     self.head((stmt.iterable,))
@@ -254,7 +254,7 @@ class _Planner:
                         raise _Unplanned()
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "form", "is_const",
                                   "cpp_local_representation", "owned_storage", "storage_placement", "storage_borrow",
-                                  "alias_binding"} | _LAYOUT_FACTS | {"tuple_layout", "native_container"})
+                                  "alias_binding"} | _LAYOUT_FACTS | {"tuple_layout"})
                     if stmt.init is not None:
                         self.expr(stmt.init)
                     self.flush(stmt, scope)

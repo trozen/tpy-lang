@@ -677,8 +677,8 @@ void extend_it(std::vector<int32_t>& xs, std::vector<int32_t>& ys) {
     ::tpy::list_extend(xs, ys);
 }
 
-// # free function: kept refusal -- a container element that is itself a container
-// def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(uncovered /^unsupported native container element$/)
+// # free function: a container element that is itself a container
+// def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(covered)
 //     return xss[0][0]
 int32_t nested(const std::vector<std::vector<int32_t>>& xss) {
     return ::tpy::__getitem__(::tpy::__getitem__(xss, 0), 0);

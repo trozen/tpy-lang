@@ -5,7 +5,7 @@ branches, loops, with, try, raise, and narrowing statements.
 from __future__ import annotations
 import copy
 from collections.abc import Callable, Iterator, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, full_expression_record, native_container, native_container_field, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, full_expression_record, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .callables import (CallSignature, call_signature, definition_signature, setitem_stub_callee,
                         method_signature, with_method_callees)
 from .captures import capture_facts
@@ -86,7 +86,6 @@ from ...typesys import (
                        returns_cpp_reference_shape, store_takes_elements, without_readonly)
 from ...typesys import (
     CallableType,
-    is_readonly_result_type,
     unwrap_qualifiers,
     unwrap_own,
     AnyType,
@@ -199,19 +198,16 @@ from ..reject import (
     note_detail,
     stmt_reject_reason,
 )
-from ..scalar_leaves import (
-    binds_cursor, binds_element, container_view, native_container_subject, native_container_type, record_owner,
-    storage_leaf,
-)
+from ..scalar_leaves import record_owner, storage_leaf
 from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     builds_assigned_record,
     THIROptionalRead, THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
-    THIRBytesLiteral, THIRCall, THIRCoerce, THIRNoneCheck,
+    THIRBytesLiteral, THIRCoerce, THIRNoneCheck,
     THIRContainerLiteral, THIRContinue,
     THIRCloseLocal, THIRStmtSeq, THIRDelVar, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRExpr, THIRExprStmt, THIRFieldAccess,
-    THIRConsumingIter, THIRBorrowedRecord, THIRForEach, THIRNativeIteration,
+    THIRConsumingIter, THIRForEach,
     THIRForIterProto, THIRForRange, THIRFormConvert, THIRIf, THIRIfExpr,
     THIRIsinstance, THIRDynIsinstance, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
     THIRModuleVar, THIRMove, THIRName, THIRDynNarrowAlias,
@@ -779,7 +775,6 @@ def build_loop_node(shape: str, var: str, et: TpyType,
                     range_call: 'TpyCall | None' = None,
                     step_kind: str = "plus_one",
                     iterable: 'THIRExpr | None' = None,
-                    source: 'TpyExpr | None' = None,
                     const_loop_var: bool = False,
                     iterable_lvalue: bool = True,
                     consuming: bool = False,
@@ -823,60 +818,11 @@ def build_loop_node(shape: str, var: str, et: TpyType,
             const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
             binding=binding, **position_facts)
     assert shape == "each", shape
-    iteration = (None if source is None else _native_iteration(
-        iterable, source, et, lc, iterable_lvalue=iterable_lvalue,
-        consuming=consuming))
     return THIRForEach(
         var=var, elem_type=et, iterable=iterable, body=body,
         const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
         consuming=consuming, hoist_loop_var=hoist_loop_var,
-        iteration=iteration, binding=binding, **position_facts)
-
-
-def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
-                      lc: _LowerCtx, *, iterable_lvalue: bool,
-                      consuming: bool) -> 'THIRNativeIteration | None':
-    """The native container a begin/end loop walks in place -- None for a
-    fresh value or a consuming wrapper, which have no place."""
-    analyzer = lc.analyzer
-    source_fact = None
-    if iterable_lvalue and not consuming:
-        if isinstance(iterable, THIRName):
-            source_fact = native_container(iterable.result_type,
-                                           _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
-        elif native_container_field(iterable) and isinstance(iterable.receiver, (THIRName, THIRSelf)):
-            # A container field of a named record: const when the
-            # receiver lends const (C++ propagates it through the member).
-            source_fact = native_container(
-                iterable.result_type,
-                _iteration_yields_const(source, lc, analyzer)
-                or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
-        elif (isinstance(iterable, (THIRCall, THIRMethodCall)) and iterable.resolved_callee is not None
-              and native_container_type(native_container_subject(iterable.result_type))):
-            # The container a user callee returns by reference, walked in
-            # place: const when its return type is, or, for a callable whose
-            # result follows its receiver, when the call's receiver is
-            # emitted const (`THIRMethodCall.receiver_access`).
-            signature = iterable.resolved_callee.signature
-            source_fact = native_container(
-                iterable.result_type,
-                is_readonly_result_type(signature.return_type)
-                or signature.result_follows_receiver and isinstance(iterable, THIRMethodCall)
-                and iterable.receiver_access.readonly, analyzer)
-    elif (not consuming and isinstance(iterable, THIRMethodCall)
-          and iterable.stub_callee is not None):
-        # A container view a stub returns (`d.keys()`) walks its own
-        # declared element; any other result is a fresh value, no place.
-        if container_view(native_container_subject(iterable.result_type)):
-            source_fact = native_container(
-                iterable.result_type, _iteration_yields_const(source, lc, analyzer), analyzer)
-    if source_fact is not None and (not binds_cursor(source_fact.type) or not binds_element(et, (
-            source_fact.element.type if isinstance(source_fact.element, THIRBorrowedRecord)
-            else source_fact.element))):
-        source_fact = None
-    if source_fact is None:
-        return None
-    return THIRNativeIteration(source_fact)
+        binding=binding, **position_facts)
 
 
 def _module_slot_global(name: str, lc: '_LowerCtx') -> bool:
@@ -3683,10 +3629,6 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         init = _borrow_local_source(stmt, lc, declared, allow_temps=True)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init,
-            # The container a user callee returns by reference, aliased in place.
-            native_container=(native_container(vtype, is_const, lc.analyzer)
-                              if isinstance(init, (THIRCall, THIRMethodCall)) and init.resolved_callee is not None
-                              and native_container_type(native_container_subject(vtype)) else None),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.REF_ALIAS:
@@ -3696,14 +3638,6 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
-            # An alias of a named container, or of a container field. A
-            # subclass object (`x: dict[K, V] = sub`) is a record whose
-            # container base MIR does not model as one.
-            native_container=(native_container(vtype, is_const, lc.analyzer)
-                              if (isinstance(src, THIRName)
-                                  and native_container_subject(src.result_type)
-                                  == native_container_subject(vtype))
-                              or native_container_field(src) else None),
             storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
@@ -5314,10 +5248,6 @@ def _finish_stmt(result: THIRStmt, lc: _LowerCtx,
                     and not value.deref):
                 result = replace(result, **{attr: replace(value, optional_read=replace(
                     value.optional_read, extract=False))})
-    if (isinstance(result, THIRVarDecl) and owned_container_decl(result)
-            and (fact := native_container(result.resolved_type, result.is_const, lc.analyzer)) is not None
-            and fact.readonly is result.is_const):
-        result = replace(result, native_container=fact)
     if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl)):
         placement = None
         if isinstance(result, THIRVarDecl):
@@ -13564,7 +13494,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         return build_loop_node(
             "each", stmt.var, et, body, lc, declared,
             iterable=iterable,
-            source=stmt.iterable,
             const_loop_var=stmt.const_loop_var,
             binding=_loop_var_record(stmt.var, stmt, lc),
             iterable_lvalue=route.iterable_lvalue,

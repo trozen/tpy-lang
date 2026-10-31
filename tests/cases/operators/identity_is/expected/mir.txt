@@ -13,7 +13,7 @@ main::container_fn@207:0: uncovered (unsupported expression), summary: opaque (u
 main::same_ptr@230:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::arr_first@234:0: covered (storage: no_proof_required), summary: known
 main::literal_fn@240:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-main::nested_fn@269:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested_fn@269:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::none_pair_fn@278:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::as_right@284:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::ro_same@289:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

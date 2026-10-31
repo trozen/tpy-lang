@@ -1982,7 +1982,7 @@ form facts, never on lists of accepted kinds.
   ([Optional record fields](#optional-record-fields)). Remaining, in this
   order: Optional scalar and tuple fields; view fields slice 4
   (wrapper and container members; TODO.md lists the items);
-  nested container elements; record elements whose record has record
+  record elements whose record has record
   fields (`list[Line]`); record-element literal member-init. From here
   on each step builds the call-effect contracts it needs -- invalidation,
   exceptional behavior, retention beyond view members -- where
@@ -2445,26 +2445,25 @@ as the corpus grows).
   `dict[K, K]` has two members (`value.container_members`, shared by the
   definitions and the validator). Each member is an `MIRShape` held by
   value -- the container stores it -- whose class is an inert leaf, an
-  owned leaf or a plain record, its access the container's
-  (`value.with_access`). Admission keys on `typesys.loan_class` (a native
+  owned leaf, a plain record or a container of admitted members, its
+  access the container's at every depth (`value.with_access`). Admission keys on `typesys.loan_class` (a native
   container's `holds` is its element's, it is lendable) and on the
   declared type: since slice 3 MIR derives a container binding from its
-  type and access and reads none of the `native_container` facts THIR
-  still publishes on `THIRParam`, `THIRVarDecl` and `THIRForEach.iteration`
-  (owned-leaf keys, values and elements, `Span[T]` parameters, owned
-  container locals and record elements); no renderer reads them. Admitted elements: inert leaves, owned
-  leaves, and plain records whose fields are leaves or owned leaves (no
-  container field inside an element, so no path is deeper than
-  `container[elements].F::x`; a top-level record may hold container fields).
-  A type with a value member (a dict, an items view) holds leaves in BOTH
-  members: a record-valued dict refuses at the layout ("unsupported native
-  container element"). No rule names hashing: sema refuses a record without
+  type and access; the `native_container` facts THIR published on
+  `THIRParam`, `THIRVarDecl` and `THIRForEach.iteration`, which no reader
+  consumed, are deleted (2026-10-31). Admitted elements (since 2026-10-31,
+  at any depth, "Nested container elements" below):
+  inert leaves, owned leaves, plain records whose fields are such leaves
+  or containers of admitted members, and containers of admitted members.
+  A type with a value member (a dict, an items view) stores no record
+  directly in either member: a record-valued dict refuses at the layout
+  ("unsupported native container element"). No rule names hashing: sema refuses a record without
   `__hash__` / `__eq__` as a set element or dict key, and a record
   declaring them is no plain record element (`plain_record_element`), so
   no admitted element runs user code inside a container operation. An
   element whose `loan_class.holds` is YES refuses
-  ("container holds a borrow"); a container element of a container refuses
-  ("unsupported native container element"). Holders: an owned container
+  ("container holds a borrow"); a type that reaches itself through its
+  members refuses ("recursive container element"). Holders: an owned container
   local or `Own[list[T]]` parameter is a holder over a backing slot of its
   own, as an owned record is (one aggregate, 2026-10-22); a field and a
   result hold container storage by value; a `list[T]` parameter at CONST_REF /
@@ -2591,6 +2590,22 @@ as the corpus grows).
   transfer into a view member ([view fields](#view-fields)). A user method's summary
   follows the same rules with the receiver as parameter 0
   ([second half](#b3-contract-second-half-user-method-calls)).
+- **Nested container elements (2026-10-31).** One member rule at any
+  depth (`scalar_leaves.element_problem`): an inert or owned leaf, a plain
+  record whose fields are such leaves or containers of such members, or a
+  native container of such members (a dict's value is never a record
+  itself). A place reaches `xs[elements][elements]`,
+  `xs[elements][structure]` and `bags[elements].items[elements]`; an
+  element subscript is an aggregate place wherever one is read (a method
+  receiver, an argument, a copy source, a loop source); an element store
+  replaces the element's storage, so it frees what holders inside it hold;
+  a readonly holder reaches readonly members at every depth; a region write
+  spares a whole-container parameter only when the written container's
+  members cannot hold that parameter's type. Element places carry no index
+  or key, so `for v in t["a"]: t["b"].append(v)` conflicts, as evidence
+  only: with an element region on both sides no nested-element conflict
+  warns (TODO "Promote evidence-only conflict classes to warnings", item
+  (2), element identity). `tests/cases/mir/nested_containers`.
 - **Conflict naming.** No container-specific kind: sema's
   `iter_invalidation`, `borrow_invalidation` and `borrowed_container_arg`
   families are all `replacement`. `p = ps[0]; ps[0] = Point(..)` is a
@@ -2604,11 +2619,8 @@ as the corpus grows).
   method's borrowed result rooted inside its receiver (the second half's
   own deferred list); a callee retaining a loan anywhere but a view
   member (the loan-transfer contract covers only those,
-  [view fields](#view-fields)); nested
-  container elements beyond one hop ("unsupported native container
-  element"), which also keeps
-  `BUGS.md#elem-index-certainty-ignores-rebinds` and the `rows[0]` face of
-  `BUGS.md#mutating-callee-non-name-arg-unchecked` out of reach; `extend`
+  [view fields](#view-fields)); a dict whose VALUE is a record
+  (`dict[str, Inner]`, "unsupported native container element"); `extend`
   (an `Iterable` parameter), `xs += ys` and slice assignment ("unsupported
   statement"); iterating or
   unpacking `items()` (tuple elements); `in` (`THIRMembership`); protocol
@@ -2619,7 +2631,9 @@ as the corpus grows).
   not tracked, so `xs[i] = v` under a live iterator conflicts); stepped
   slices; tuple, Optional and union elements; `bytearray`; a dict view
   bound to a local is a lowering reject today
-  (`BUGS.md#dict-view-local-binding-rejected`); a constructor member-init
+  (`BUGS.md#dict-view-local-binding-rejected`); a type reaching itself
+  through its members (`class Node: kids: list[Node]`, "recursive
+  container element"); a constructor member-init
   from a literal of RECORD elements (`self.ps = [Point(1), Point(2)]`)
   lowers since unit 7, as an ordinary statement; a container returned by reference from a RECORD
   parameter (`items_of(b) -> list[int32]` returning `b.items`) now
@@ -3725,7 +3739,9 @@ and setter and `getter_through_field`; `mir/method_calls`
 - **Kept refusals**, by reason.
   - A record ELEMENT whose record has record fields (`[Built(x, "e")]`),
     "unsupported native container element" (`listed`): a container element
-    stays a record of leaf fields (`plain_record_element`).
+    is a record of leaf fields and container fields whose members are
+    elements themselves (`container_element`; container fields since
+    2026-10-31), never of record-typed fields.
   - Union, tuple, scalar-Optional, `str | None`, `Ptr`, `Box` and `Rc`
     fields, and Optional fields whose payload holds a loan or has a record
     field, "unsupported record fields" at the definition (a tuple and an Optional

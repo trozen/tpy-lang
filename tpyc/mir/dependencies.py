@@ -24,7 +24,7 @@ from .nodes import (
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
-    loan_field, member_types, WRAPPER_CLASSES,
+    element_result, loan_field, member_types, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
@@ -626,7 +626,7 @@ def resolve_call_returns(present: MIRPresentCall, state: MIRReferents, slots: Ma
     origin's place (`call_place`), resolved in sequence like a direct
     borrow of it. A whole-parameter origin is the argument; what a
     container lends other than itself (an element, a view of it) lies in
-    its elements region, so a `result` holder that is no container takes
+    its elements region (`element_result`), so the `result` holder takes
     that region of a container argument. A path is never re-projected."""
     call = present.call
     origins: set[MIRReferent] = set()
@@ -635,8 +635,7 @@ def resolve_call_returns(present: MIRPresentCall, state: MIRReferents, slots: Ma
         refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
         if not refs:
             return None
-        if (not origin.path and result is not None and not result.shape.whole_container
-                and argument.shape.whole_container):
+        if not origin.path and result is not None and element_result(argument.shape, result.type):
             refs = _project(refs, MIRContainerElements())
         origins.update(refs)
     return frozenset(origins)

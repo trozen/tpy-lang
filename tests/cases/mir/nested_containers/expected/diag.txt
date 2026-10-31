@@ -1,0 +1,9 @@
+main.py:83: warning: this call may move the elements of 'rows', but the iteration over 'rows[0]' still walks them and continues on line 82; iterate over a copy ('copy(rows[0])'), or make the changes after the loop
+main.py:117: warning: argument 'rows[0]' points into 'rows', which 'grow_outer' modifies through parameter 'rows' while it still uses 'row'; pass a copy ('copy(rows[0])') or restructure so the call does not hand over both
+main.py:260: warning: copies list[list[int32]] into field; use copy() to make this explicit
+main.py:83: warning: Mutation of 'rows' while iterating over it ('append' invalidates the iterator)
+main.py:89: warning: Mutation of 't[...]' while iterating over it ('append' invalidates the iterator)
+main.py:95: warning: Mutation of 'rows[...]' while iterating over it (element assignment invalidates the iterator)
+main.py:101: warning: Mutation of 't[...]' while iterating over it (element assignment invalidates the iterator)
+main.py:130: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)
+main.py:231: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)

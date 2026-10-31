@@ -438,8 +438,8 @@ def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver acc
     return Gauge(k).read()
 
 
-# kept refusal: an element receiver
-def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+# an element receiver: the record element is borrowed in place
+def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(covered)
     gs[0].bump()
 
 

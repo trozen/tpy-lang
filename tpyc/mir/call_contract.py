@@ -11,8 +11,8 @@ from ..thir.nodes import (
 )
 from ..thir.param_contract import bound_passing
 from ..thir.scalar_leaves import (
-    MIRClass, binds_cursor, container_element, container_view, holds_loan, modeled_members, native_container_subject,
-    native_container_type, optional_record_field, owned_leaf, owned_value_type, plain_record_element,
+    MIRClass, binds_cursor, container_element, container_view, holds_loan, members_problem, modeled_members, native_container_subject,
+    native_container_type, optional_record_field, owned_leaf, owned_value_type,
     record_type, storage_leaf, value_class, view_compatible, view_endpoint, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of
@@ -106,8 +106,8 @@ class MIRReturnOrigin:
     is a container field of a record parameter, `(F::name,)` an owned-leaf
     field a view result views, `(F::line, L::a)` a record member a record
     result is). An empty path is the whole parameter, whose caller projects
-    a container argument into its elements region when the result is no
-    container itself."""
+    a container argument into its elements region when the result lies
+    there (`value.element_result`)."""
     parameter: int
     path: MIRParameterPath = ()
 
@@ -717,8 +717,8 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         return "stub protocol argument is not a builtin leaf"
     if _holds_borrow(receiver):
         return "container holds a borrow"
-    if not modeled_members(receiver):
-        return "unsupported native container element"
+    if (problem := members_problem(receiver)) is not None:
+        return problem
     receiver_binding = parameter_binding(THIRParam("self", receiver, passing=signature.passings[0]),
                                          Declared(callee.readonly[0]))
     if isinstance(receiver_binding, str):
@@ -743,8 +743,7 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     elif not isinstance(result, VoidType):
         stored = native_container_subject(result)
         if not (representation is Representation.STORAGE
-                and (storage_leaf(stored) or owned_leaf(stored) or plain_record_element(stored)
-                     or native_container_type(stored) and modeled_members(stored))):
+                and container_element(stored)):
             return "unsupported stub result type"
     return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), writes, frozenset(),
                           returns, frozenset(), False, frozenset())

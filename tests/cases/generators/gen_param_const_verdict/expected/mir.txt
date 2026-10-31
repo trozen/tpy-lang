@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::ro@58:0: uncovered (loop across a suspension)
 main::drive_ro@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::mut@73:0: uncovered (reference yield)
-main::sub_hop@81:0: uncovered (unsupported native container element)
+main::sub_hop@81:0: uncovered (loop across a suspension)
 main::chain_hop@92:0: uncovered (loop across a suspension)
 main::achain_hop@99:0: uncovered (async body)
 main::alias_ro@111:0: uncovered (unsupported native container element)
@@ -22,6 +22,6 @@ main::main@206:0: uncovered (call needs finalized known summary), summary: opaqu
 main::Bag.scan@52:4: uncovered (loop across a suspension)
 main::Rec.__init__@17:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@24:4: covered (storage: no_proof_required), summary: known
-main::Shelf.__init__@33:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Depot.__init__@40:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::Shelf.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Depot.__init__@40:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@47:4: covered (storage: no_proof_required), summary: known

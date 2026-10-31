@@ -3,5 +3,5 @@ main::test_bool_list@4:0: uncovered (print argument needs a scalar leaf), summar
 main::test_float_list@8:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::test_str_list@12:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_bool_array@16:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::test_nested_bool@20:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::test_nested_bool@20:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

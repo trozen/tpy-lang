@@ -5,8 +5,8 @@ main::gen@57:0: covered (storage: no_facts: storage facts have not been publishe
 main::generator_alias@66:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::named_like_sink@75:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::iterating_wording@98:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::outer_loop_kept@113:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::distinct_elements@127:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::outer_loop_kept@113:0: covered (storage: not_covered: THIRPtrLocalDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: opaque (summary output effect)
+main::distinct_elements@127:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::slice_store_holder@136:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::P.__init__@11:4: covered (storage: no_proof_required), summary: known

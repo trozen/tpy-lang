@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::drop@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::drop@24:0: covered (storage: no_proof_required), summary: known
 main::main@30:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
-main::Picker.run@14:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Picker.first@20:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Picker.run@14:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Picker.first@20:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

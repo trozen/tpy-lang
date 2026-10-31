@@ -13,11 +13,11 @@ main::field_free@137:0: uncovered (reference needs local name), summary: opaque 
 main::field_closure@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::pick_box@169:0: certified, summary: known
 main::select_fn@175:0: certified, summary: known
-main::select_sections@189:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::select_sections@189:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::chain@207:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::items@215:0: uncovered (loop across a suspension)
 main::first@220:0: uncovered (unsupported parameter type)
-main::walrus_rows@227:0: uncovered (unsupported native container element)
+main::walrus_rows@227:0: uncovered (loop across a suspension)
 main::view_of@240:0: covered (storage: no_proof_required), summary: known
 main::callable_view@244:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::tag_first@263:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

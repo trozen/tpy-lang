@@ -115,7 +115,7 @@ main::Sub.__init__@49:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@56:4: uncovered (generic constructor)
 main::Sink.__init__@71:4: covered (storage: no_proof_required), summary: known
 main::Wide.__init__@79:4: covered (storage: no_proof_required), summary: known
-main::Rows.__init__@94:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Rows.__init__@94:4: covered (storage: no_proof_required), summary: known
 main::Keys.__init__@109:4: covered (storage: no_proof_required), summary: known
 main::RoGet.__init__@129:4: covered (storage: no_proof_required), summary: known
 main::Fallback.__init__@151:4: covered (storage: no_proof_required), summary: known
@@ -125,7 +125,7 @@ main::Stages.__init__@196:4: covered (storage: no_proof_required), summary: know
 main::OwnKeys.__init__@213:4: covered (storage: no_proof_required), summary: known
 main::Rec.__init__@226:4: covered (storage: no_proof_required), summary: known
 main::Props.__init__@234:4: covered (storage: no_proof_required), summary: known
-main::Grid.__init__@257:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Grid.__init__@257:4: covered (storage: no_proof_required), summary: known
 main::Val.__init__@270:4: covered (storage: no_proof_required), summary: known
 main::Token.__init__@318:4: covered (storage: no_proof_required), summary: known
 main::Stock.__init__@354:4: covered (storage: no_proof_required), summary: known

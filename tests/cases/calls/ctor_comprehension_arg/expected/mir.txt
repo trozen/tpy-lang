@@ -8,7 +8,7 @@ main::ctor_nested_call@90:0: uncovered (named argument needs complete temporary 
 main::make@95:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::ctor_element_and_condition@100:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::own_slots@109:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
-main::own_stub_elem@122:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::own_stub_elem@122:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::own_marker_and_pending@136:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::rebind_slot_reseat@148:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::closure@171:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

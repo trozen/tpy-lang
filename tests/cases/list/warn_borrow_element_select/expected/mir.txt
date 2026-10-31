@@ -12,8 +12,8 @@ main::strongest_kind@97:0: uncovered (reference needs local name), summary: opaq
 main::strongest_kind_reversed@107:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::whole_arms@115:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@124:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Tree.__getitem__@90:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Tree.__getitem__@90:4#2: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Tree.append@93:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Tree.__getitem__@90:4: uncovered (recursive container element), summary: opaque (recursive container element)
+main::Tree.__getitem__@90:4#2: uncovered (recursive container element), summary: opaque (recursive container element)
+main::Tree.append@93:4: uncovered (recursive container element), summary: opaque (recursive container element)
 main::Rec.__init__@11:4: covered (storage: no_proof_required), summary: known
-main::Tree.__init__@86:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Tree.__init__@86:4: uncovered (recursive container element), summary: opaque (recursive container element)

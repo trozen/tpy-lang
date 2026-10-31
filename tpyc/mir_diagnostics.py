@@ -511,7 +511,7 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         what = f"this {action} frees the old value of {target.quoted}"
         kept = "it"
     if verb == "walks":
-        fix = (f"iterate over a copy ('copy({target.name})'), or make the changes after the loop"
+        fix = (f"iterate over a copy ('copy({words.place(hazard.holder).name})'), or make the changes after the loop"
                if target.region is not None else "make the change after the loop")
     elif target.region == "structure":
         fix = f"look it up again after this {action}, or copy what {holder} {verb} first"

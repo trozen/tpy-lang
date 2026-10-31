@@ -614,7 +614,8 @@ def test_method_stub_summary_gates(methods) -> None:
     append = methods.stubs["methods"]["append"][0]
     signature = append.signature
     xs, value = signature.param_types
-    nested = replace(xs, type_args=(xs,))
+    # A nested container whose own member MIR does not model (a tuple) is refused at its depth.
+    nested = replace(xs, type_args=(replace(xs, type_args=(TupleType((INT32, INT32)),)),))
     damaged_receiver = (STR, value)
     for damaged, reason in (
         (replace(append, identity=replace(append.identity, param_types=damaged_receiver),
@@ -677,7 +678,7 @@ def test_user_summaries_publish_container_writes(methods) -> None:
     fn = methods.thir["shapes"]
     params = {p.name: p for p in fn.params}
     bag = params["bag"].borrowed_record
-    xs = params["xs"].native_container.type
+    xs = unwrap_readonly(unwrap_ref_type(params["xs"].type))
     items = th.THIRFieldIdentity(bag.type, "items", xs)
     sp, rsp = (params[n].type for n in ("sp", "rsp"))
     types = tuple(p.type for p in fn.params)
@@ -737,7 +738,7 @@ def test_user_summaries_return_container_views_and_elements_of_parameters(method
     assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={1}), no_layouts()) == (
         "unsupported return origin type or access")
     # A record result's access is its declared type's.
-    point = ps.native_container.element.type
+    point = unwrap_readonly(unwrap_ref_type(ps.type)).type_args[0]
     element = RefType(ReadonlyType(point))
     assert summary_problem(_user_summary(fn, bindings, ret=element, returns={1}), no_layouts()) is None
     assert summary_problem(_user_summary(fn, bindings, ret=element, returns={0}), no_layouts()) == (
@@ -749,11 +750,11 @@ def test_user_summaries_return_container_views_and_elements_of_parameters(method
 def test_a_pure_stub_reads_a_native_container_through_its_protocol_parameter(methods) -> None:
     fn = methods.thir["methods"]
     params = {p.name: p for p in fn.params}
-    assert stub_protocol_argument(params["xs"].native_container.type)
+    assert stub_protocol_argument(unwrap_readonly(unwrap_ref_type(params["xs"].type)))
     assert stub_protocol_argument(INT32) and stub_protocol_argument(STR)
     # A container holding a borrow, or of records running user code, is not the stub's own code.
     views = unwrap_readonly(unwrap_ref_type(params["vs"].type))
     ordered = unwrap_readonly(unwrap_ref_type(params["os"].type))
     assert not stub_protocol_argument(views) and not stub_protocol_argument(ordered)
-    assert not stub_protocol_argument(ps_type := params["ps"].native_container.element.type)
+    assert not stub_protocol_argument(ps_type := unwrap_readonly(unwrap_ref_type(params["ps"].type)).type_args[0])
     assert ps_type.qualified_name() == "__main__.Point"

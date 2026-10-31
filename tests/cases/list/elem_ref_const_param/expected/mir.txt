@@ -8,7 +8,7 @@ main::read_via_read_only_call@45:0: covered (storage: not_covered: THIRVarDecl: 
 main::write_elem_ref@53:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::write_via_mutating_call@59:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::write_via_alias@65:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
-main::read_nested@74:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::write_nested@80:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@86:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::read_nested@74:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::write_nested@80:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::main@86:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

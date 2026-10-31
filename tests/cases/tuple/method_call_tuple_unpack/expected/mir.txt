@@ -9,7 +9,7 @@ main::literal_stack@108:0: uncovered (unsupported native container element), sum
 main::literal_stack_bound@116:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::literal_local_tuple@125:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::for_head@134:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::dict_items_literal@143:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::dict_items_literal@143:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::static_method@151:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::module_qualified@158:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::protocol_generic@165:0: uncovered (generic body)

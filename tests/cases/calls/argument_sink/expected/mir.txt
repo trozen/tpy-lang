@@ -32,7 +32,7 @@ main::use_union@416:0: uncovered (constructor argument type), summary: opaque (c
 main::reference_args@430:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::poke_gen@547:0: uncovered (generic body)
 main::inc_pod@553:0: covered (storage: no_proof_required), summary: known
-main::more_reference_args@557:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::more_reference_args@557:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::tick@594:0: covered (storage: no_proof_required), summary: known
 main::mk_rk@599:0: covered (storage: no_proof_required), summary: known
 main::receiver_order@603:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
@@ -149,7 +149,7 @@ main::GH.__init__@373:4: covered (storage: no_proof_required), summary: known
 main::UB.__init__@407:4: covered (storage: no_proof_required), summary: known
 main::Numbers.__init__@426:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::AgesIn.__init__@505:4: covered (storage: no_proof_required), summary: known
-main::AgesOut.__init__@513:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::AgesOut.__init__@513:4: covered (storage: no_proof_required), summary: known
 main::MaybeHeap.__init__@521:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Pod.__init__@536:4: covered (storage: no_proof_required), summary: known
 main::PodHolder.__init__@543:4: covered (storage: no_proof_required), summary: known

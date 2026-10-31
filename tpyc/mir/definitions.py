@@ -24,7 +24,7 @@ from .call_contract import MIRParameterBinding
 from .coverage import MIRUnsupported, plain, require
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape,
-    RecordFields, admitted_members, container_members, loan_field, member_types,
+    RecordFields, admitted_members, container_members, loan_field, nested_members,
 )
 
 
@@ -126,10 +126,10 @@ def aggregate_facts(typ: TpyType, layout_of: Callable[[NominalType], MIRRecordLa
         members = container_members(typ, False)
         if isinstance(members, str):
             return None
-        layouts = [layout_of(m.type) for m in members if m.cls is MIRClass.RECORD]
-        if any(layout is None for layout in layouts):
+        facts = [aggregate_facts(m.type, layout_of) for m in members if m.cls in AGGREGATE_CLASSES]
+        if any(f is None for f in facts):
             return None
-        return MIRAggregateFacts(all(layout.copyable for layout in layouts), True, True)
+        return MIRAggregateFacts(all(f.copyable for f in facts), True, True)
     layout = layout_of(typ)
     if layout is None:
         return None
@@ -619,13 +619,9 @@ def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
     """The records whose definitions `ctor`'s definition reads: its struct
     bases, its record fields, and its container fields' record members."""
     reads = [bi.base for bi in ctor.base_inits if isinstance(bi.base, NominalType)]
-    for f in ctor.record_layout.fields:
-        bare = inline_member_type(f.type)
-        members = member_types(bare) if value_class(bare) is MIRClass.CONTAINER else None
-        for typ in (bare,) if members is None else members:
-            if value_class(typ) is MIRClass.RECORD:
-                reads.append(unwrap_readonly(typ))
-    return reads
+    # A member record's own definition reads what lies past it.
+    members = nested_members((inline_member_type(f.type) for f in ctor.record_layout.fields), lambda _: ())
+    return reads + [typ for typ in members if value_class(typ) is MIRClass.RECORD]
 
 
 def container_definition(node: object, typ: NominalType,
@@ -641,15 +637,21 @@ def container_definition(node: object, typ: NominalType,
         raise MIRUnsupported(node, members)
     records: dict[NominalType, MIRConstructorDefinition] = {}
     layouts: dict[TpyType, MIRRecordLayout] = {}
-    for member in members:
-        if member.cls is MIRClass.RECORD:
-            definition = definition_of(member.type)
-            if isinstance(definition, str):
-                raise MIRUnsupported(node, definition)
-            records[member.type] = definition
-            layouts[member.type] = definition.layout
-        elif member.cls is MIRClass.OWNED_LEAF:
-            layouts[member.type] = owned_leaf_layout(member.type)
+
+    def fields_of(record: NominalType) -> tuple[MIRField, ...]:
+        definition = definition_of(record)
+        if isinstance(definition, str):
+            raise MIRUnsupported(node, definition)
+        records[record] = definition
+        layouts[record] = definition.layout
+        return definition.layout.fields
+
+    for member in nested_members((m.type for m in members), fields_of):
+        cls = value_class(member)
+        if cls is MIRClass.OWNED_LEAF:
+            layouts[member] = owned_leaf_layout(member)
+        elif cls is MIRClass.CONTAINER and isinstance(nested := container_members(member, False), str):
+            raise MIRUnsupported(node, nested)
     admitted = admitted_members(typ, False, layouts)
     require(node, not isinstance(admitted, str), admitted)
     return MIRContainerDefinition(admitted, tuple(records.values()))
