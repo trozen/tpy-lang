@@ -576,7 +576,7 @@ until written through) needs whole-function analysis, not per-reader arms.
 Result-representation readers share `typesys.classify_result_representation`.
 An explicit position selects synchronous call classification, async payload
 classification, the erased callable's declared return spelling, or a
-generator's yield slot (`GENERATOR_YIELD`: `YIELD_TUPLE` for a tuple in its
+generator's yield slot (`GENERATOR_YIELD`: `RESULT_TUPLE` for a tuple in its
 result form, `YIELD_BORROW` for a reference element in `val_or_ref<T>`,
 `YIELD_TRAIT` for an open `T` the generator lends through `yield_slot_t<T>`,
 `STORAGE` otherwise), which both the frame skeleton's `__next__` slot and

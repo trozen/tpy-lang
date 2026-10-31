@@ -9568,6 +9568,23 @@ Send/Sync rules for built-in types:
     error (task results live in owned slots that outlive the borrow's
     source) naming the escape hatch -- declare `-> Own[C]` and return
     an owned value (`tpy.copy(...)` a borrowed source such as `self`).
+  - A tuple holding a reference or an open-`T` element (`-> tuple[int32,
+    C]`, `-> tuple[T, int32]`) is the sync tuple return's form (since
+    2026-10-31): `Poll<std::tuple<int32_t, C*>>`, so `t = await f(c)`,
+    `n, x = await f(c)`, `(await f(c))[1].v = 9`, an `async for` over such
+    an `__anext__` and an `async with` over such an `__aenter__` alias
+    the caller's objects across suspensions; a generic tuple borrows only
+    at a reference instantiation. Like `-> C`, it is direct-await-only:
+    `asyncio.run` / `create_task` / `wait_for` refuse it, advising the
+    per-element owned spelling `-> tuple[int32, Own[C]]`. A
+    `return await` forwards a tuple payload in the same form; a
+    borrowing tuple into an owned one is refused for now
+    (`res.return_await_form`, BUGS.md#async-return-await-tuple-form-change-rejects),
+    while an owned tuple into a borrowing one, or a borrowing tuple rooted
+    in the forwarder's own local or temporary, is the sync return's
+    "Cannot return this tuple" error.
+  - A `Callable` payload is held as the sync return holds it
+    (`std::function<...>`), at a direct `await` and through a task.
   - Pointer-variant Union and recursive-union-wrapper returns still
     keep storage form (consumer-side work pending -- see BUGS.md).
   - An async `return v` converts its value as a sync `return` does,
@@ -9578,10 +9595,10 @@ Send/Sync rules for built-in types:
     owned storage" warning; `return None` at `-> C | None`, an empty
     container literal and `[x] * n` at an owned list compile; a literal
     takes the payload's spelling (`::tpy::BigInt(42)`); an argument
-    temporary hoists ahead of the return as in sync. Still refused (the
-    payload's own C++ type, TODO.md): union, `Callable`,
-    `Own[X | None]`, tuple-with-borrowed-element and non-scalar value
-    Optional payloads. Separately, a `return` inside a plain `with` body
+    temporary hoists ahead of the return as in sync. Still refused (an
+    await consumer cannot hold the payload's form yet, TODO.md): union,
+    `Own[X | None]`, non-scalar value Optional payloads, and a tuple with
+    a nested tuple, union or Optional element beside a reference. Separately, a `return` inside a plain `with` body
     of an `async def` is refused (BUGS.md#async-with-body-return).
 - **Working (v1.5 M9)**: `asyncio.gather(*tasks)` (variadic-positional)
   and `asyncio.gather_list(tasks)` (list-shaped) -- two homogeneous

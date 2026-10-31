@@ -1,0 +1,31 @@
+bind 1 7
+generic bind 1 8
+generic value 3 1
+callable 8
+task callable 14
+method 3 11
+method generic 4 12
+unpack 1 13
+generic unpack 1 14
+nested 15
+generic nested 16
+append 1 16
+fin_inline finally
+fin_inline 5 17
+fin_suspend finally
+fin_suspend 6 18
+fwd 1 19
+fwd callable 10
+readonly unpack 1 22
+task fwd 3 1
+wait fwd 3 1
+lit ok
+readonly gen 1
+readonly gen 23
+opt generic 5 True
+temp arg 99 1
+async for 1 10
+async for 2 20
+async with 7 21
+run owned 2 99 30
+run generic value 3 1

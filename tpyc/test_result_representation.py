@@ -26,6 +26,7 @@ RECURSIVE = RecursiveAliasInstanceType("example.Tree", (INT32,))
 STORAGE = AsyncReturnForm.STORAGE
 BORROW = AsyncReturnForm.BORROW
 TRAIT = AsyncReturnForm.TRAIT
+TUPLE = AsyncReturnForm.TUPLE
 
 
 @pytest.fixture(autouse=True)
@@ -66,12 +67,23 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(ReadonlyType(RECURSIVE), True, STORAGE, "Tree<int32_t>",
                  id="readonly-recursive-wrapper"),
     pytest.param(TupleType(()), False, STORAGE, "std::tuple<>", id="empty-tuple"),
-    pytest.param(TupleType((CELL,)), False, STORAGE, "std::tuple<Cell>",
+    pytest.param(TupleType((CELL,)), False, TUPLE, "std::tuple<Cell>",
                  id="singleton-tuple"),
-    pytest.param(TupleType((CELL, INT32)), False, STORAGE,
+    pytest.param(TupleType((CELL, INT32)), False, TUPLE,
                  "std::tuple<Cell, int32_t>", id="mixed-tuple"),
-    pytest.param(TupleType((RefType(CELL),)), False, STORAGE,
+    pytest.param(TupleType((RefType(CELL),)), False, TUPLE,
                  "std::tuple<Cell&>", id="tuple-preserves-raw-ref"),
+    pytest.param(TupleType((GENERIC, INT32)), False, TUPLE,
+                 "std::tuple<T, int32_t>", id="generic-tuple"),
+    # An owned element, or one with a form of its own beside a reference,
+    # keeps the storage tuple.
+    pytest.param(TupleType((OwnType(CELL), INT32)), False, STORAGE,
+                 "std::tuple<Cell, int32_t>", id="owned-element-tuple"),
+    pytest.param(TupleType((CELL, OptionalType(INT32))), False, STORAGE,
+                 "std::tuple<Cell, std::optional<int32_t>>",
+                 id="optional-beside-reference-tuple"),
+    pytest.param(TupleType((INT32, INT32)), False, STORAGE,
+                 "std::tuple<int32_t, int32_t>", id="value-tuple"),
     pytest.param(ReadonlyType(CELL), True, BORROW, "Cell", id="readonly"),
     # Qualifier order is observable today; erasure must not normalize it away.
     pytest.param(ReadonlyType(GENERIC), True, TRAIT, "T", id="readonly-generic"),

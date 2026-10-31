@@ -1,0 +1,1 @@
+main.py:20: error: cannot bind this coroutine to a handle: 'pick' returns a borrow of 'tuple[int32, Box]' (a tuple holding a reference), and binding it here requires the type-erased handle, whose result must be owned. Declare the async def '-> tuple[int32, Own[Box]]' (return an owned value; copy a borrowed source explicitly), or await the call directly

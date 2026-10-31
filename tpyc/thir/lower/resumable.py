@@ -81,6 +81,9 @@ from ...typesys import pointer_variant_union
 from ...typesys import (
     AnyType,
     CallableType,
+    ResultPosition,
+    ResultRepresentation,
+    classify_result_representation,
     ConcreteCoroType,
     IntLiteralType,
     NominalType,
@@ -106,6 +109,7 @@ from ...codegen_cpp import emit_prims
 from ...codegen_cpp.context import escape_cpp_name
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ..frame import (
+    AwaitKind,
     AwaitMode,
     FrameLocalKind,
     THIRAsyncWithSetup,
@@ -185,7 +189,6 @@ from .predicates import (
     _f1_record,
     record_like,
     _f1_tuple,
-    _generic_value_tuple_return,
     _narrowed_opt_field_read,
     _optional_ptr_borrow,
     _optional_ptr_borrow_wide,
@@ -201,6 +204,7 @@ from .predicates import (
     _value_opt_view,
     _value_tuple,
     _value_tuple_return,
+    _generic_value_tuple_return,
     generic_opt_trait_type,
     unit_opt_instantiation,
 )
@@ -273,12 +277,15 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
 
 
 def _async_payload_refused(rt_decl: 'TpyType | None', analyzer) -> bool:
-    """The async payload types no Poll payload spells yet: the result
-    conversion takes every value at the slot its classification gives,
-    and what is left is the payload's own C++ type -- a union (value or
-    pointer variant), a Callable, an owned Optional (`Own[X | None]`), a
-    tuple holding a borrowed or non-value element, a value Optional of
-    anything but a scalar, and the types no capture family reads."""
+    """The async payload types whose classification has a form some await
+    consumer cannot hold yet: the result conversion takes every value at
+    the slot its classification gives, so what is left is the awaiting
+    side -- a union (value or pointer variant), an owned Optional
+    (`Own[X | None]`), a value Optional of anything but a scalar, a
+    storage tuple with a reference, union or Optional element the
+    allow-list below does not hold, and the types no capture family
+    reads. A tuple in its result form (`RESULT_TUPLE`) and a Callable are
+    held as the sync return holds them."""
     if not isinstance(rt_decl, TpyType):
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt_decl)))
@@ -286,6 +293,8 @@ def _async_payload_refused(rt_decl: 'TpyType | None', analyzer) -> bool:
         return False
     owned = isinstance(u, OwnType)
     payload = unwrap_readonly(u.wrapped) if owned else u
+    if isinstance(payload, CallableType) and not owned:
+        return False
     if isinstance(payload, (UnionType, CallableType)):
         return True
     if isinstance(payload, OptionalType):
@@ -295,8 +304,13 @@ def _async_payload_refused(rt_decl: 'TpyType | None', analyzer) -> bool:
                 and _value_opt_scalar(u, analyzer) is None
                 and _storage_optional_return_type(u, analyzer) is None)
     if isinstance(payload, TupleType):
+        if classify_result_representation(
+                rt_decl, position=ResultPosition.ASYNC_PAYLOAD
+        ) is ResultRepresentation.RESULT_TUPLE:
+            return False
         return (_value_tuple_return(u, analyzer) is None
-                and _generic_value_tuple_return(u, analyzer) is None)
+                and _generic_value_tuple_return(u, analyzer) is None
+                and not payload.all_elements_plain_values())
     # What is left is a capture family's own type: a value scalar, an open
     # `T`, a str / bytes, or a reference type -- owned only where it is a
     # reference type or an open `T`.
@@ -1186,6 +1200,27 @@ def _with_enter_reject(stmt: 'THIRWithEnter | THIRAsyncWithSetup', analyzer,
     return None
 
 
+def _return_await_changes_form(func: TpyFunction,
+                               payload: 'THIRAwaitSuspension') -> bool:
+    """`return await f()` of a borrowing tuple payload at a storage tuple
+    return: the forward hands the awaited payload on as it is (or copies a
+    borrowed scalar through its pointer), so the per-element copy into the
+    storage tuple has no forward yet -- the awaited result is not a value
+    the return's conversion can take. Whether the awaited result borrows is
+    sema's fact at the await, the one the lift slot reads. The reverse (an
+    owned tuple into a borrowing return) is sema's dangling-return error."""
+    declared = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        func.return_type))) if func.return_type is not None else None
+    if isinstance(declared, OwnType):
+        declared = unwrap_readonly(declared.wrapped)
+    if not isinstance(declared, TupleType):
+        return False
+    return (payload.await_node.await_result_is_borrow
+            and classify_result_representation(
+                func.return_type, position=ResultPosition.ASYNC_PAYLOAD)
+            is not ResultRepresentation.RESULT_TUPLE)
+
+
 def _payload_reject(payload: 'THIRSuspensionPayload', analyzer) -> str | None:
     """Await-payload gate (async bodies). INLINE (statically-known async def,
     incl. bound methods -- R5b) is admitted; the receiver/args are lowered in
@@ -1779,6 +1814,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 reason = _payload_reject(payload, analyzer)
                 if reason is not None:
                     return _reject(reason)
+                if (payload.kind is AwaitKind.RETURN
+                        and _return_await_changes_form(func, payload)):
+                    return _reject("res.return_await_form",
+                                   payload.source_loc)
                 if payload.async_for_uid is not None:
                     saw_async_loop = True
                     if payload.bind_target is not None:
@@ -1788,10 +1827,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         # on an optional field). A VALUE-tuple unpack HOLDER
                         # (`async for k, sq in p:`) is the same bare-field
                         # ASSIGN bind; its head unpack ref-binds it via the
-                        # value-tuple name-source arm. The borrow-tuple leg is
-                        # unreachable from here today: it would need an
-                        # `__anext__` returning a pointer-repr tuple, and that
-                        # coroutine's own frame rejects at res.return_type.
+                        # value-tuple name-source arm. A borrowing tuple
+                        # step (`__anext__ -> tuple[int32, Box]`) binds its
+                        # pointers into the BORROW_TUPLE field.
                         bt = gen_local_types.get(payload.bind_target)
                         if not _loop_var_bind_ok(
                                 bt, payload.bind_target, analyzer,

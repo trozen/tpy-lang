@@ -1,0 +1,2 @@
+main.py:206: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:246: warning: Result borrows from temporary argument 'x'; the temporary is destroyed at end-of-statement

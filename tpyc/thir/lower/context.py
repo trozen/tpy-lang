@@ -1258,7 +1258,7 @@ def _result_layout(result: 'ResultRepresentation', t: TpyType
     its own result would be), the template an open `T` is spelled
     through, and the form a borrow is held in where it is not the
     reference the representation gives (an async payload's pointer)."""
-    if result is ResultRepresentation.YIELD_TUPLE:
+    if result is ResultRepresentation.RESULT_TUPLE:
         return return_representation(t), False, None, None
     if result is ResultRepresentation.YIELD_BORROW:
         return Representation.REFERENCE, False, None, None

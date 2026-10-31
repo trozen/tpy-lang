@@ -245,6 +245,8 @@ class AsyncReturnForm(Enum):
     STORAGE = auto()  # by-value payload: value types, Own[T], unions, ...
     BORROW = auto()   # pointer payload: T* (incl. pointer-repr Optional)
     TRAIT = auto()    # generic T: ::tpy::val_or_ptr_t<T> at instantiation
+    TUPLE = auto()    # a tuple in its result form: each element as TRAIT /
+                      #   BORROW / STORAGE would hold it alone
 
 
 def async_return_form(ret_type: 'TpyType | None') -> AsyncReturnForm:
@@ -255,7 +257,19 @@ def async_return_form(ret_type: 'TpyType | None') -> AsyncReturnForm:
         return AsyncReturnForm.BORROW
     if representation is ResultRepresentation.ASYNC_TRAIT:
         return AsyncReturnForm.TRAIT
+    if representation is ResultRepresentation.RESULT_TUPLE:
+        return AsyncReturnForm.TUPLE
     return AsyncReturnForm.STORAGE
+
+
+def _instantiation_borrows(inner: 'TpyType | None') -> bool:
+    """Whether an open `T` held through `val_or_ptr_t<T>` is a pointer at
+    this substitution: a reference type is, a value type is not."""
+    inner = (unwrap_readonly(unwrap_ref_type(inner))
+             if inner is not None else None)
+    return (inner is not None and not inner.is_value_type()
+            and not isinstance(inner, TypeParamRef)
+            and not is_protocol_type(inner))
 
 
 def async_result_aliases(declared_return: 'TpyType | None',
@@ -265,21 +279,49 @@ def async_result_aliases(declared_return: 'TpyType | None',
 
     `declared_return` is the async def's raw declared return (the
     pre-Cancellable-wrap `FunctionInfo.async_inner_return`);
-    `inner_type` is the (substituted) awaited type, consulted only for
-    the generic TRAIT form, where borrow-ness is decided per
-    instantiation exactly as `val_or_ptr_t<T>` decides it: non-value ->
-    pointer.
+    `inner_type` is the (substituted) awaited type, consulted for the
+    generic TRAIT form, where borrow-ness is decided per instantiation
+    exactly as `val_or_ptr_t<T>` decides it: non-value -> pointer. A
+    TUPLE payload borrows when one of its elements does, each element
+    answered as that form would answer it alone.
     """
     form = async_return_form(declared_return)
     if form is AsyncReturnForm.BORROW:
         return True
     if form is AsyncReturnForm.TRAIT:
-        inner = (unwrap_readonly(unwrap_ref_type(inner_type))
+        return _instantiation_borrows(inner_type)
+    if form is AsyncReturnForm.TUPLE:
+        declared = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared_return)))
+        inner = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(inner_type)))
                  if inner_type is not None else None)
-        return (inner is not None and not inner.is_value_type()
-                and not isinstance(inner, TypeParamRef)
-                and not is_protocol_type(inner))
+        assert isinstance(declared, TupleType), declared
+        if isinstance(inner, TupleType):
+            assert len(inner.element_types) == len(declared.element_types), (
+                declared, inner)
+            substituted = inner.element_types
+        else:
+            substituted = declared.element_types
+        return any(
+            async_result_aliases(d, s) for d, s in zip(
+                declared.element_types, substituted))
     return False
+
+
+def owned_payload_spelling(awaited: TpyType) -> str:
+    """The declared result that makes a borrowing await result owned, as
+    the erasure-boundary refusals advise it: `Own[Box]` for a reference,
+    and for a tuple each borrowing element wrapped (`tuple[int32,
+    Own[Box]]`) -- the storage tuple the sync tuple return's advice
+    names, never `Own[tuple[...]]`."""
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(awaited)))
+    if isinstance(bare, TupleType):
+        elems = ", ".join(
+            f"Own[{unwrap_readonly(e)}]" if _instantiation_borrows(e)
+            else str(e)
+            for e in bare.element_types)
+        return f"tuple[{elems}]"
+    return f"Own[{awaited}]"
 
 
 class ValueCategoryAnalyzer(Protocol):

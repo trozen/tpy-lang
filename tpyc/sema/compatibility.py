@@ -41,7 +41,7 @@ from ..typesys import (
 from .. import qnames
 from ..identity_map import IdentityMap
 from ..value_category import (
-    async_result_aliases,
+    async_result_aliases, owned_payload_spelling,
     CONTAINER_LITERAL_NODES, getitem_call_of, is_iterator_protocol,
     is_rvalue_source,
     peel_coerce, peel_value_wrappers, const_place,
@@ -2891,7 +2891,8 @@ class TypeCompatibility:
                     f"'-> {borrowed_inner}' makes the awaited result a "
                     f"borrow of the caller's data, which is only valid at a "
                     f"direct 'await'. This consumer stores an owned result: "
-                    f"declare the async def '-> Own[{borrowed_inner}]' and "
+                    f"declare the async def "
+                    f"'-> {owned_payload_spelling(borrowed_inner)}' and "
                     f"return an owned value (tpy.copy(...) a borrowed "
                     f"source such as 'self')",
                     expr if getattr(expr, "loc", None) else None)
@@ -7588,11 +7589,13 @@ class TypeCompatibility:
         dangles = False
         if isinstance(inner, (TpyFieldAccess, TpySubscript)):
             dangles = self.is_dangling_return(inner)
-        elif isinstance(inner, (TpyCall, TpyMethodCall)):
-            # A relayed call: the callee's return_borrows_from names which
-            # receiver/args the returned pointers root in -- dangling iff
-            # that source is. An owning-rvalue return (Own[tuple] or
-            # per-element Own) is a dying temporary: lifting it dangles.
+        elif isinstance(inner, (TpyCall, TpyMethodCall, TpyAwait)):
+            # A relayed call (or a borrowing await of one): the callee's
+            # return_borrows_from names which receiver/args the returned
+            # pointers root in -- dangling iff that source is. An
+            # owning-rvalue call return (Own[tuple] or per-element Own) is
+            # a dying temporary: lifting it dangles; an await's owned
+            # payload is a temporary to is_dangling_return already.
             dangles = (self.is_dangling_return(inner)
                        or self._is_owning_tuple_call(inner))
         elif isinstance(inner, TpyName):

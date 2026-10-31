@@ -3109,9 +3109,10 @@ class ResultRepresentation(Enum):
     # An open `T` yielded through `yield_slot_t<T>`: a borrow or a value per
     # instantiation.
     YIELD_TRAIT = "yield_trait"
-    # A tuple yielded in its result form (`to_cpp_return`): each element as
-    # its own result would be, a reference element as a pointer.
-    YIELD_TUPLE = "yield_tuple"
+    # A tuple yielded, or an async payload held, in its result form
+    # (`to_cpp_return`): each element as its own result would be, a reference
+    # element as a pointer.
+    RESULT_TUPLE = "result_tuple"
 
 
 def dyn_protocol_borrow_result(t: 'TpyType | None') -> 'NominalType | None':
@@ -3160,7 +3161,7 @@ def classify_result_representation(
         # std::expected can hold. `readonly` is peeled before the tuple test,
         # or a readonly tuple would collapse to a copying storage slot.
         if isinstance(unwrap_ref_type(unwrap_readonly(ret_type)), TupleType):
-            return ResultRepresentation.YIELD_TUPLE
+            return ResultRepresentation.RESULT_TUPLE
         # A bare reference element is handed out through `val_or_ref<T>`
         # (`std::optional<T&>` is ill-formed pre-C++26). The forms with a
         # representation of their own (an Optional / union pointer or
@@ -3192,6 +3193,9 @@ def classify_result_representation(
             return ResultRepresentation.STORAGE
         if isinstance(rt, TypeParamRef):
             return ResultRepresentation.ASYNC_TRAIT
+        # A tuple holding a borrow is the sync tuple return's form.
+        if isinstance(rt, TupleType) and rt.holds_result_form_payload():
+            return ResultRepresentation.RESULT_TUPLE
         if isinstance(rt, OptionalType):
             return (ResultRepresentation.ASYNC_POINTER if rt.uses_pointer_repr()
                     else ResultRepresentation.STORAGE)
@@ -5652,6 +5656,47 @@ class TupleType(TpyType):
         element, borrow -> storage copies each pointee in. Drives the
         storage<->pointer wrap sites."""
         return any(self._element_is_pointer_repr(e) for e in self.element_types)
+
+    @staticmethod
+    def _element_is_plain_value(e: 'TpyType') -> bool:
+        """Whether element `e` is a plain value: no nested tuple, union,
+        Optional, `Own` or open `T`."""
+        p = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+        return (not isinstance(p, (TupleType, UnionType, OptionalType,
+                                   OwnType, TypeParamRef))
+                and p.is_value_type())
+
+    @classmethod
+    def _element_result_is_storage(cls, e: 'TpyType') -> bool:
+        """Whether element `e` is a plain value whose result form is its
+        storage (not a Literal-str's view)."""
+        return (cls._element_is_plain_value(e)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+                .return_passing() is ReturnPassing.VALUE)
+
+    def all_elements_plain_values(self) -> bool:
+        """True if every element is a plain value, so the tuple's storage
+        form holds each element as a scalar of its own."""
+        return all(self._element_is_plain_value(e)
+                   for e in self.element_types)
+
+    def holds_result_form_payload(self) -> bool:
+        """True if an async payload of this tuple is held in its result form
+        (`to_cpp_return`), as the sync return is: every element a plain
+        reference type (a `T*`), an open `T` (`val_or_ptr_t<T>`), or a
+        plain value whose result form is its storage, and at least one of
+        the first two. Every other tuple keeps its storage form, which
+        equals the result form for a value / `Own` tuple; a nested tuple,
+        union or Optional element has a form no await consumer holds yet."""
+        lends = False
+        for e in self.element_types:
+            if (self._element_is_val_or_ptr(e)
+                    or (self._element_is_pointer_repr(e)
+                        and e.value_form() is ValueForm.BORROW_REF)):
+                lends = True
+            elif not self._element_result_is_storage(e):
+                return False
+        return lends
 
     def has_nested_pointer_repr_element(self) -> bool:
         """True if any element AT ANY DEPTH through nested value tuples is a

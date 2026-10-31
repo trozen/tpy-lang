@@ -42,7 +42,7 @@ struct __coro_make_pair {
           k(k_),
           v(v_) {}
 
-    ::tpystd::tpy::Poll<std::tuple<K, V>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_make_pair<K, V>&) {
@@ -52,14 +52,14 @@ struct __coro_make_pair {
 // async def make_pair[K, V](k: K, v: V) -> tuple[K, V]:
 //     return (k, v)
 template <typename K, typename V>
-::tpystd::tpy::Poll<std::tuple<K, V>> __coro_make_pair<K, V>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> __coro_make_pair<K, V>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::tuple<K, V> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(v)};
-        return ::tpystd::tpy::Poll<std::tuple<K, V>>::ready(std::move(__tpy_async_ret));
+        std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(v)};
+        return ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

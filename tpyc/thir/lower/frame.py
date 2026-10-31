@@ -84,7 +84,7 @@ from .predicates import frame_temp_arg_slot, frame_temp_elem_slots
 from .context import binding_source_sites
 from .checks import gen_recv_ctor_temp
 from .bindings import (body_rebound_names, ptr_tuple_decision,
-                       ptr_tuple_elem_storage)
+                       ptr_tuple_elem_storage, unpack_target_elem_readonly)
 from .frame_cfg import (CFGBuilder, _CFGNotYetSupported, _top_level_await_in,
                         case_entry_order, collect_frame_nested_defs,
                         no_throw_blocks,
@@ -1070,11 +1070,13 @@ class FrameBuilder:
             # One-shot by construction: created here, consumed by `stmt` (the
             # single replacement below). Records it as a movable source so a
             # tuple-unpack reading it moves elements out instead of copying.
-            # INVARIANT: only OWNED results may be added here -- an await
-            # result is always owned, and `owning_generator_tuple_locals`
-            # relies on that to give a reference-element lift tuple owning
-            # (not borrow) frame storage. Do not add a borrow/aliasing source.
-            self.state.one_shot_lift_names.add(name)
+            # INVARIANT: only OWNED results may be added here --
+            # `owning_generator_tuple_locals` relies on that to give a
+            # reference-element lift tuple owning (not borrow) frame
+            # storage. A borrowing await result (a tuple payload in its
+            # result form) stays out: its lift holds the payload's pointers.
+            if not await_node.await_result_is_borrow:
+                self.state.one_shot_lift_names.add(name)
             await_t = self.get_expr_type(await_node)
             if await_t is None:
                 raise CodeGenError(
@@ -2464,7 +2466,8 @@ class FrameBuilder:
                                 aliases.add(tname)
                                 borrows_from(tname, s.value)
                                 elem_const = src_const or (
-                                    i < len(s.is_const_ref) and s.is_const_ref[i])
+                                    i < len(s.is_const_ref) and s.is_const_ref[i]
+                                ) or unpack_target_elem_readonly(s, i)
                                 if elem_const:
                                     mark_frame_const(state, tname)
                 # A walrus binds in expression position, so it is invisible to
@@ -3677,8 +3680,9 @@ class FrameBuilder:
         # Type/provenance-driven owning tuple locals:
         #  - a tuple with an OWN element held by value owns its storage
         #    regardless of how it is bound;
-        #  - an `__await_lift_*` temp is ALWAYS an owned result, so even a
-        #    reference-element tuple (e.g. `tuple[list[T], int]`) needs owning
+        #  - an `__await_lift_*` temp of an owned result (every one in
+        #    `one_shot`), so even a reference-element tuple (e.g.
+        #    `tuple[list[T], int]`) needs owning
         #    `frame_slot<std::tuple<...>>` rather than the borrow-form
         #    `std::tuple<T*, ...>` field a non-await borrow tuple would get --
         #    the owned result can't be assigned into a pointer-element field.

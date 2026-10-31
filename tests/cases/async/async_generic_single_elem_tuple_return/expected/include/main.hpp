@@ -43,7 +43,7 @@ struct __coro_solo {
           __cancel_pending(false),
           x(x_) {}
 
-    ::tpystd::tpy::Poll<std::tuple<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_solo<T>&) {
@@ -55,7 +55,7 @@ struct __coro_solo {
 //     # The single-element tuple return is the subject.
 //     return (x,)
 template <typename T>
-::tpystd::tpy::Poll<std::tuple<T>> __coro_solo<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>> __coro_solo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -65,12 +65,12 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<T>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::tuple<T> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>>(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));
-        return ::tpystd::tpy::Poll<std::tuple<T>>::ready(std::move(__tpy_async_ret));
+        std::tuple<::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>>(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));
+        return ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

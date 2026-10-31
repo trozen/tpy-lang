@@ -685,7 +685,8 @@ class AsyncCoroCodegen:
         root rule) gates what may be returned as a borrow: sources root
         in caller-durable storage that outlives the frame. Generic `-> T`
         defers the split to instantiation via `val_or_ptr_t<T>` (value ->
-        T, object -> T*), mirroring sync's `val_or_ref_t`. Pointer-variant
+        T, object -> T*), mirroring sync's `val_or_ref_t`; a tuple holding
+        such an element is the sync tuple return's form. Pointer-variant
         Union returns share the root cause but their await-result consumer
         (frame-slot binding + isinstance narrowing) is not yet borrow-form
         aware, and recursive-union wrappers have no pointer spelling --
@@ -699,6 +700,8 @@ class AsyncCoroCodegen:
                 return rt.to_cpp_return()
             const_pfx = "const " if isinstance(rt, ReadonlyType) else ""
             return f"{const_pfx}{self.types.type_to_cpp(bare)}*"
+        if form is ResultRepresentation.RESULT_TUPLE:
+            return rt.to_cpp_return()
         if form is ResultRepresentation.ASYNC_TRAIT:
             bare = unwrap_readonly(unwrap_send_sync(rt))
             trait = ("val_or_cptr_t" if isinstance(rt, ReadonlyType)
@@ -1591,7 +1594,7 @@ class AsyncCoroCodegen:
         rep = classify_result_representation(
             yt, position=ResultPosition.GENERATOR_YIELD,
             generic_borrows=func.generic_yield_borrows)
-        if rep is ResultRepresentation.YIELD_TUPLE:
+        if rep is ResultRepresentation.RESULT_TUPLE:
             return yt.to_cpp_return()
         cpp = self.types.type_to_cpp(yt)
         if rep in (ResultRepresentation.YIELD_BORROW,

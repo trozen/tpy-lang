@@ -115,7 +115,7 @@ struct __coro_Container_labeled {
           __self(__self),
           x(x_) {}
 
-    ::tpystd::tpy::Poll<std::tuple<std::string, T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Container_labeled<T>&) {
@@ -126,14 +126,14 @@ struct __coro_Container_labeled {
 // async def labeled[T](self, x: T) -> tuple[str, T]:
 //     return (self.label, x)
 template <typename T>
-::tpystd::tpy::Poll<std::tuple<std::string, T>> __coro_Container_labeled<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>> __coro_Container_labeled<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::tuple<std::string, T> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
-        return ::tpystd::tpy::Poll<std::tuple<std::string, T>>::ready(std::move(__tpy_async_ret));
+        std::tuple<std::string, ::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
+        return ::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

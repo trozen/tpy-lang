@@ -170,6 +170,7 @@ from .context import (
 from ..value_category import (
     frame_factory_callee,
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
+    owned_payload_spelling,
     iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of,
@@ -1205,12 +1206,16 @@ class StatementAnalyzer:
             # erased Cancellable[T] promises an owned payload -- so a
             # borrow-returning coroutine must not degrade to it.
             if aliases:
+                what = ("a tuple holding a reference"
+                        if isinstance(unwrap_readonly(inner), TupleType)
+                        else "a reference type")
                 raise self.ctx.error(
                     f"cannot bind this coroutine to a handle: "
-                    f"'{fi.name}' returns a borrow of '{inner}' (a "
-                    f"reference type), and binding it here requires the "
-                    f"type-erased handle, whose result must be owned. "
-                    f"Declare the async def '-> Own[{inner}]' (return an "
+                    f"'{fi.name}' returns a borrow of '{inner}' ({what}), "
+                    f"and binding it here requires the type-erased "
+                    f"handle, whose result must be owned. Declare the "
+                    f"async def "
+                    f"'-> {owned_payload_spelling(inner)}' (return an "
                     f"owned value; copy a borrowed source explicitly), "
                     f"or await the call directly",
                     init)

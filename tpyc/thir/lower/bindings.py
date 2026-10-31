@@ -2832,6 +2832,14 @@ def _unpack_target_shape(stmt: TpyTupleUnpack, i: int, tt, an
     return _TargetShape(F.VALUE, copies=True)
 
 
+def unpack_target_elem_readonly(stmt: 'TpyTupleUnpack', i: int) -> bool:
+    """Whether target `i` of an unpack binds a `readonly` element: a fact
+    of the element's type, whatever the source, so its pointer is const."""
+    raw = stmt.target_types[i] if i < len(stmt.target_types) else None
+    return isinstance(unwrap_ref_type(unwrap_send_sync(raw))
+                      if isinstance(raw, TpyType) else None, ReadonlyType)
+
+
 def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
     """The const of the element pointer an unpack's pointer or reference
     target binds: a readonly element type (a fact of element `i`, not of
@@ -2841,9 +2849,7 @@ def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
     from . import statements as _st
     stmt = site.node
     an = inp.analyzer
-    raw = stmt.target_types[i] if i < len(stmt.target_types) else None
-    if isinstance(unwrap_ref_type(unwrap_send_sync(raw))
-                  if isinstance(raw, TpyType) else None, ReadonlyType):
+    if unpack_target_elem_readonly(stmt, i):
         return True
     if stmt.is_loop_head:
         loop = site.loop

@@ -1,0 +1,2 @@
+main.py:18: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:18: error: in function 'owned': this construct is not yet supported by C++ code generation (res.return_await_form)
