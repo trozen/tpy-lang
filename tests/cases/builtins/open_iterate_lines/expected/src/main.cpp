@@ -47,7 +47,7 @@ __gen_stripped stripped(std::string_view path) {
         if ((*__for_it_0) == (*__for_end_0)) {
             (*fh).close();
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(n);
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(std::move(n));
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         line = *((*__for_it_0))++;

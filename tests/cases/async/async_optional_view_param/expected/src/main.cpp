@@ -26,7 +26,7 @@ namespace tpyapp::main {
         __sub_0.reset();
         if ((!b.has_value())) {
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = -1;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(-1);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         __state = S_DONE;

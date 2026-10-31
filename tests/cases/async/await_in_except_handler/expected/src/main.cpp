@@ -64,7 +64,7 @@ __coro_fail fail() {
             x = std::move(__r0).value();
             __sub_0.reset();
             __state = S_DONE;
-            int32_t __tpy_async_ret = x;
+            int32_t __tpy_async_ret = std::move(x);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
@@ -82,7 +82,7 @@ __coro_fail fail() {
         y = std::move(__r1).value();
         __sub_1.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = y;
+        int32_t __tpy_async_ret = std::move(y);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_INITIAL:  // entry

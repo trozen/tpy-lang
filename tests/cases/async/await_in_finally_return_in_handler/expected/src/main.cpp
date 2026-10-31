@@ -70,7 +70,7 @@ __coro_cleanup cleanup() {
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
             try {
-                this->__finally_ret_0 = 99;
+                this->__finally_ret_0 = ::tpy::BigInt(99);
                 this->__finally_pending_0 = true;
                 __state = S_JOIN_2;
                 continue;

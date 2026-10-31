@@ -22,12 +22,12 @@ namespace tpyapp::main {
             (void)std::move(__r0).value();
             __sub_0.reset();
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 1;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(1);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 42;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (...) {
             __sub_0.reset();
@@ -45,7 +45,7 @@ namespace tpyapp::main {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 42;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (...) {
             throw;

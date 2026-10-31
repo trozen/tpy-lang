@@ -52,7 +52,7 @@ __gen_walk_value walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         t = &(*((*__for_it_0))++);
@@ -109,7 +109,7 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         kv = *((*__for_it_0))++;

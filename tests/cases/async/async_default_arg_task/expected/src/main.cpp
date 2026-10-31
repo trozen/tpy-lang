@@ -401,7 +401,7 @@ __coro_method_task_override method_task_override() {
     }
     case S_JOIN_1: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = out;
+        int32_t __tpy_async_ret = std::move(out);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_2: {
@@ -548,7 +548,7 @@ __coro_aexit_default aexit_default() {
     }
     case S_JOIN_2: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = total;
+        int32_t __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -112,7 +112,7 @@ void main() {
     }
     case S_JOIN_0: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = n;
+        int32_t __tpy_async_ret = std::move(n);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {

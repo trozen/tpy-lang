@@ -81,7 +81,7 @@ __gen_gen gen(Holder& h) {
         __sub_0.reset();
         h.opt = static_cast<Pet&&>(Dog("a-opt"));
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 3;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(3);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -64,7 +64,7 @@ from ...parse.nodes import (
 )
 from ...typesys import ANY, binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
-    drop_own_marker, dyn_protocol_borrow_result, is_open_type_param_return, make_readonly,
+    drop_own_marker, dyn_protocol_borrow_result, make_readonly,
     param_takes_ownership)
 from ...typesys import (
     ConcreteFrameType,
@@ -184,7 +184,7 @@ from ...coercions import (wrap_into_any, CoercionContext, coercion_rule,
                           context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
-    CONTAINER_LITERAL_NODES, place_dies,
+    CONTAINER_LITERAL_NODES, place_dies, returns_open_type_param,
     lends_from_dying_source,
     property_access_returns_cpp_ref,
     call_hands_back_value, call_result_is_reference,
@@ -684,7 +684,6 @@ from .checks import (
     _own_move_source_slice_facts,
     _r_own_move_source_slice,
     _own_tuple_move_arg_facts,
-    _own_tuple_borrow_lift_arg_facts,
     _own_tuple_decay_copy_arg_facts,
     mixed_slot_btuple_name,
     builds_named_frame,
@@ -1453,16 +1452,6 @@ def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
         a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
         lc.names_with("movable"), lc.analyzer, getattr(lc.func, "name", None),
         lc.names_with("borrow_tuple_mixed"), lc.names_with("ptr_tuple"))
-
-
-def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
-                               lc: '_LowerCtx',
-                               declared: dict[str, TpyType]) -> bool:
-    """`_own_tuple_borrow_lift_arg_facts` over the lowering context."""
-    return _own_tuple_borrow_lift_arg_facts(
-        a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
-        lc.analyzer, lc.names_with("pointer"), lc.names_with("storage_tuple"),
-        _own_param_names(lc), lc.names_with("borrow_tuple_mixed"))
 
 
 def _own_tuple_decay_copy_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3150,8 +3139,7 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
     elif lhs_fresh:
         if not temps_ok:
             # The LHS temp is declared at the enclosing statement's flush,
-            # which this position does not have (an async return renders
-            # into the frame skeleton's own line).
+            # which this position does not have.
             rej("valuesel.fresh_lhs_position")
         if not rtu.is_movable():
             # The chosen LHS leaves its temp by a move, which a `@nomove`
@@ -6258,14 +6246,14 @@ def _new_object_result(e: 'TpyExpr | None', node: THIRExpr,
     an `Own` or by-value stamped result (`call_hands_back_value`), or a
     by-value C++ return (`_prvalue`) whose declared return is no open type
     parameter -- that one is `val_or_ref_t<T>`, a reference at a reference
-    instantiation (`is_open_type_param_return`) -- and no pointer form."""
+    instantiation (`returns_open_type_param`) -- and no pointer form."""
     if e is None:
         return False
     if call_hands_back_value(e):
         return not lends_pointer_form_result(lc.analyzer, e)
     fi = getattr(e, "resolved_function_info", None)
-    ret = fi.root.return_type if fi is not None else None
-    return (ret is not None and not is_open_type_param_return(ret)
+    return (fi is not None and fi.root.return_type is not None
+            and not returns_open_type_param(fi.root)
             and _prvalue(e, node, lc)
             and not lends_pointer_form_result(lc.analyzer, e))
 

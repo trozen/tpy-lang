@@ -1116,12 +1116,13 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
     if position is SlotPosition.RETURN and result is not None:
         if t is None:
             return None
-        rep, stored, trait = _result_layout(result, t)
+        rep, stored, trait, form = _result_layout(result, t)
         return _built_slot(
             t, storage_type(t), rep, position, SlotConstruct.RETURN,
             analyzer, placement=placement,
             const=result_const or is_readonly_result_type(t),
-            stored=stored, implicit_move=implicit_move, trait=trait)
+            stored=stored, implicit_move=implicit_move, trait=trait,
+            form=form)
     if position is SlotPosition.RETURN:
         assert signature is not None, (
             "a body with a result lowers under its signature")
@@ -1251,21 +1252,29 @@ def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
 
 
 def _result_layout(result: 'ResultRepresentation', t: TpyType
-                   ) -> 'tuple[Representation, bool, TraitAbi | None]':
+                   ) -> 'tuple[Representation, bool, TraitAbi | None, BindingForm | None]':
     """How a classified result position holds `t`: its representation,
     whether a tuple holds every element as storage (rather than each as
-    its own result would be), and the template an open `T` is spelled
-    through."""
+    its own result would be), the template an open `T` is spelled
+    through, and the form a borrow is held in where it is not the
+    reference the representation gives (an async payload's pointer)."""
     if result is ResultRepresentation.YIELD_TUPLE:
-        return return_representation(t), False, None
+        return return_representation(t), False, None, None
     if result is ResultRepresentation.YIELD_BORROW:
-        return Representation.REFERENCE, False, None
+        return Representation.REFERENCE, False, None, None
     if result is ResultRepresentation.YIELD_TRAIT:
-        return Representation.TRAIT, False, TraitAbi.YIELD_SLOT
+        return Representation.TRAIT, False, TraitAbi.YIELD_SLOT, None
+    if result is ResultRepresentation.ASYNC_POINTER:
+        # A Poll payload travels by value up the poll chain, which no C++
+        # reference does: the borrow is its pointer.
+        return Representation.REFERENCE, False, None, BindingForm.POINTER
+    if result is ResultRepresentation.ASYNC_TRAIT:
+        return Representation.TRAIT, False, TraitAbi.VAL_OR_PTR, None
     assert result is ResultRepresentation.STORAGE, result
     # A declared view is held by value but points into storage elsewhere.
     view = return_representation(t) is Representation.VIEW
-    return (Representation.VIEW if view else Representation.STORAGE), True, None
+    return ((Representation.VIEW if view else Representation.STORAGE), True,
+            None, None)
 
 
 def result_cpp(signature: 'THIRCallableSignature',
@@ -1328,6 +1337,22 @@ def yield_slot(lc: '_LowerCtx') -> 'Slot | None':
                     result=classify_result_representation(
                         yt, position=ResultPosition.GENERATOR_YIELD,
                         generic_borrows=lc.func.generic_yield_borrows),
+                    implicit_move=False)
+
+
+def async_payload_slot(lc: '_LowerCtx') -> 'Slot | None':
+    """The slot an async body's `return` hands its value to: the declared
+    result held as its ASYNC_PAYLOAD classification says (a borrow as its
+    pointer, an open `T` through `val_or_ptr_t<T>`). The printer binds the
+    payload to a local before `Poll::ready`, so nothing moves implicitly: a
+    move out of the frame is spelled."""
+    rt = lc.func.return_type
+    if not isinstance(rt, TpyType) or isinstance(
+            unwrap_readonly(unwrap_ref_type(rt)), VoidType):
+        return None
+    return slot_for(rt, SlotPosition.RETURN, lc.analyzer,
+                    result=classify_result_representation(
+                        rt, position=ResultPosition.ASYNC_PAYLOAD),
                     implicit_move=False)
 
 

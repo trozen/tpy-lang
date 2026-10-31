@@ -233,7 +233,7 @@ __gen_gen_arms gen_arms(int32_t k, int64_t big) {
         (void)std::move(__r1).value();
         __sub_1.reset();
         __state = S_DONE;
-        int64_t __tpy_async_ret = y;
+        int64_t __tpy_async_ret = std::move(y);
         return ::tpystd::tpy::Poll<int64_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

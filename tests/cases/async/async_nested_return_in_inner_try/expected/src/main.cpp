@@ -110,7 +110,7 @@ __coro_sub sub(std::string_view label) {
     case S_JOIN_4: {
         try {
             try {
-                this->__finally_ret_1 = 7;
+                this->__finally_ret_1 = ::tpy::BigInt(7);
                 this->__finally_pending_1 = true;
                 __state = S_JOIN_5;
                 continue;

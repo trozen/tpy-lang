@@ -62,7 +62,7 @@ __gen_gen gen() {
         __sub_0.reset();
         std::cout << "h\n" << ::tpy::check_signals;
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 2;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(2);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -57,7 +57,7 @@ __coro_wrapped wrapped(std::tuple<::tpy::BigInt> n) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::optional<::tpy::BigInt> __tpy_async_ret = n;
+        std::optional<::tpy::BigInt> __tpy_async_ret = std::move(n);
         return ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -227,7 +227,7 @@ void main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 7;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(7);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -137,8 +137,7 @@ RULE_TESTS = {
 # --- the return family -------------------------------------------------------
 
 STATEMENTS_FILE = os.path.join(LOWER, "statements.py")
-RETURN_FUNCS = ("_lower_resumable_return_value", "_return_tuple_literal",
-                "result_value")
+RETURN_FUNCS = ("_return_tuple_literal", "result_value")
 # A construction or kind test in the return arm belongs to the row whose
 # witness / reject key sits in the innermost `if` around it (test + body).
 # The rows landing 1 converts through `convert`; what is left in them is the
@@ -635,12 +634,8 @@ def return_numbers():
     for label, node in return_units():
         out["binding_test_sites"] += [_unit_site(label, line)
                                       for line in binding_tests(node)]
-        # The resumable payload is landing 2's own checkpoint, whole.
-        unit_key = ("res.return_value"
-                    if label.endswith("_lower_resumable_return_value")
-                    else None)
         for name, line in constructions(node):
-            key = unit_key or _row_of(node, line)
+            key = _row_of(node, line)
             reason = landing2_reason(key) if key else None
             site = _unit_site(label, line, "%s [%s]" % (name, key))
             if reason is not None:
@@ -654,7 +649,7 @@ def return_numbers():
             if kind in LITERAL_KINDS:
                 out["b_literal"] += 1
                 continue
-            key = unit_key or _row_of(node, line)
+            key = _row_of(node, line)
             reason = landing2_reason(key) if key else None
             site = _unit_site(label, line, "%s [%s]" % (kind, key))
             if reason is not None:
@@ -885,11 +880,11 @@ def return_audit():
 
 
 # The decision graphs of the sinks landing 2 moves onto `convert`, each
-# audited from its own entry with the shared stops only: the call argument,
-# the async return payload, and the generator yield value (a ladder inside
-# `_lower_resumable`, entered through the functions it calls).
+# audited from its own entry with the shared stops only: the call argument
+# and the generator yield value (a ladder inside `_lower_resumable`, entered
+# through the functions it calls). The async return payload converts
+# through the return's own result sink.
 ARG_AUDIT_ENTRIES = ("_lower_call_arg_at",)
-PAYLOAD_AUDIT_ENTRIES = ("_lower_resumable_return_value",)
 RESUMABLE_FILE = os.path.join(LOWER, "resumable.py")
 
 
@@ -1167,8 +1162,6 @@ def _measure():
         "arg": audit(entries=ARG_AUDIT_ENTRIES,
                      where="ARG_AUDIT_ENTRIES"),
         "yield": yield_audit(),
-        "payload": audit(entries=PAYLOAD_AUDIT_ENTRIES,
-                         where="PAYLOAD_AUDIT_ENTRIES"),
     }
     return {
         "landing2_audits": {k: {"walked": a["walked"],
@@ -1276,7 +1269,6 @@ def _gated_sites(m):
         # graphs, each to fall as its slice migrates.
         "arg_d": l2["arg"]["unexplained_sites"],
         "yield_d": l2["yield"]["unexplained_sites"],
-        "payload_d": l2["payload"]["unexplained_sites"],
     }
 
 

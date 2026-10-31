@@ -90,7 +90,7 @@ __gen_dead_return dead_return(std::vector<Node>& items) {
     }
     case S_JOIN_1: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = acc;
+        int32_t __tpy_async_ret = std::move(acc);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_3: {

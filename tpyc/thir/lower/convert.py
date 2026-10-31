@@ -991,7 +991,7 @@ def open_param_result(expr: THIRExpr, slot: Slot) -> 'Plan | None':
     open-`T` param (not `Own[T]`) is that read."""
     s = expr.source
     if (slot.holds is not SlotHolds.TRAIT
-            or slot.trait is TraitAbi.YIELD_SLOT
+            or slot.trait in (TraitAbi.YIELD_SLOT, TraitAbi.VAL_OR_PTR)
             or slot.construct is SlotConstruct.PASS
             or not _open_param_read(s)):
         return None

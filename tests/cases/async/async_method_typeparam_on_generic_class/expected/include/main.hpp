@@ -76,7 +76,7 @@ template <typename T, typename U>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_to_return<U>(label));
+        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(label);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

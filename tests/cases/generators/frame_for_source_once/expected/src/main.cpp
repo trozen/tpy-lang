@@ -152,7 +152,7 @@ __gen_gen_call_src gen_call_src() {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         c = &(*((*__for_it_0))++);
@@ -202,7 +202,7 @@ __coro_async_accessor async_accessor(Bag& b) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         c = &(*((*__for_it_0))++);
@@ -591,7 +591,7 @@ __gen_own_param_iter_src own_param_iter_src(Holder h) {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_6 = ::tpy::unwrap_ref(*(*__for_r_0));
@@ -641,7 +641,7 @@ __coro_async_combinator_temp async_combinator_temp() {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_7 = ::tpy::unwrap_ref(*(*__for_r_0));
@@ -705,7 +705,7 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
     }
     case S_JOIN_1: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = total;
+        int32_t __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

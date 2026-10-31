@@ -6880,31 +6880,6 @@ def _own_tuple_move_arg_facts(
     return _is_move_source_facts(a, movable_locals, analyzer, func_name)
 
 
-def _own_tuple_borrow_lift_arg_facts(
-        a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
-        narrowed: 'AbstractSet[str]', inline_narrowed, analyzer,
-        pointers: 'AbstractSet[str]',
-        storage_tuple_locals: 'AbstractSet[str]',
-        own_param_names: 'AbstractSet[str]',
-        own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
-    """A BORROW-form tuple NAME at an Own-element tuple RETURN whose copy
-    sema declared: the storage tuple built element by element copies the
-    referents in (the warned copy). STORAGE-form bindings stay out."""
-    au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                      inline_narrowed,
-                                      own_borrow_tuple_locals)
-    if (au is None
-            or verdict(analyzer.ctx, a).disposition is not Disposition.COPY):
-        return False
-    if (a.name in pointers or a.name in storage_tuple_locals
-            or a.name in own_param_names):
-        return False
-    # BORROW form only: the binding's tuple must carry a pointer-repr
-    # element (the `std::tuple<Box*, ...>` local); an all-storage binding
-    # would need the decay-copy.
-    return au.has_pointer_repr_element()
-
-
 def _own_tuple_decay_copy_arg_facts(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         narrowed: 'AbstractSet[str]', inline_narrowed,

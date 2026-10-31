@@ -140,7 +140,7 @@ __gen_tuple_temp_gen tuple_temp_gen(std::string_view s) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::string __tpy_async_ret = v;
+        std::string __tpy_async_ret = std::move(v);
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

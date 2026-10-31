@@ -295,7 +295,7 @@ void reraise() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 1;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(1);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -43,7 +43,7 @@ __coro_sub sub() {
         x = std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = x;
+        int32_t __tpy_async_ret = std::move(x);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

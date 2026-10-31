@@ -48,7 +48,7 @@ __coro_cleanup cleanup() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        this->__finally_ret_0 = 2;
+        this->__finally_ret_0 = ::tpy::BigInt(2);
         this->__finally_pending_0 = true;
         __state = S_JOIN_1;
         continue;
@@ -58,7 +58,7 @@ __coro_cleanup cleanup() {
         [[fallthrough]];
     case S_JOIN_0: {
         try {
-            this->__finally_ret_0 = 1;
+            this->__finally_ret_0 = ::tpy::BigInt(1);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;

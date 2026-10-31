@@ -210,7 +210,7 @@ std::optional<int32_t> cross_width(std::optional<int8_t> p) {
 //     return s
 ::tpy::Union<A*, S*> ptr_union_narrowed(A* o, S& s) {
     if ((o != nullptr)) {
-        return &((*o));
+        return o;
     }
     return &(s);
 }

@@ -365,7 +365,7 @@ __gen_gen_unpack_body gen_unpack_body(const std::vector<int32_t>& xs) {
                 std::cout << "async_body in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_DONE;
-            int32_t __tpy_async_ret = n;
+            int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         a = ((*__for_i_0))++;
@@ -425,7 +425,7 @@ __coro_async_body async_body(const std::vector<int32_t>& xs) {
                 std::cout << "async_two_siblings in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_DONE;
-            int32_t __tpy_async_ret = n;
+            int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         a = ((*__for_i_0))++;

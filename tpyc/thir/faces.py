@@ -773,9 +773,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A DISCARDED element-subscript statement: the checked
     # __getitem__(recv, i); evaluated for effect/bounds.
     "expr_stmt.subscript_discard",
-    # A BORROW-form Own-element tuple NAME at the same return: the warned
-    # copy is built into storage element by element.
-    "ret.own_tuple_borrow_lift",
     "btuple.reseat_borrow_call",    # borrow-tuple name reseated from a call
                                     # returning its own pointer tuple
     # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`,
@@ -1255,9 +1252,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A CONTAINER field as the `::tpy::seq_contains` haystack
     # (`item in self.xs` -> `::tpy::seq_contains(this->xs, item)`).
     "binop.membership_container_field",
-    # A str-family FIELD source at a RESUMABLE str return slot: the bare
-    # member read feeds the `<ret_cpp> __tpy_async_ret = <value>;` decl.
-    "res.return_str_field",
     # A str-family FIELD read under a view-TARGET coerce (`return self.s` at a
     # StrView slot): the coerce renders its inner bare, so the member read is
     # the emitted form. Declared-type keyed -- a narrowed `str | None` field
@@ -1964,9 +1958,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bound bare at its decl (no slot)
     "print.opt_ptr_name",           # whole ptr-opt name arg:
                                     # ::tpy::print_optional(name)
-    "res.return_copy_record",       # `return copy(x)` at an owned-record
-                                    # async return: `C __tpy_async_ret =
-                                    # C(x);` (the sync sink's copy row)
     "arg.opt_strview_own_shim",     # VIEW-inner source into an owned
                                     # Optional element slot: the `__ov` shim
     "truthy.value_opt_whole",       # narrowed value-opt name truthiness:
@@ -2644,16 +2635,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # or the bare alias-of-alias pointer copy)
     "res.nested_def_member",        # frame nested def -> the marker-line stmt
     "res.nested_def_body",          # frame nested def MEMBER body lowered
-    "res.return_self_borrow",       # `return self` at a Poll<T*> slot: &(__self)
-    "res.return_tuple_literal",     # value-tuple literal at the async return slot
-    "res.return_generic_tuple",     # generic tuple literal at the async return slot
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "binop.poly_inline_narrow",     # inline poly-isinstance under && (spelled static_cast RHS)
     "truthy.optional_field_whole",  # truthy Optional field condition (is_truthy over raw storage)
     "mil.demote_placement",         # MIL demote: an arm reported a no-flush temp
-    "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
-    "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)
     "res.for_narrowed_opt_src",     # narrowed value-opt iterable, bare leaf
                                     # (skeleton unwraps)

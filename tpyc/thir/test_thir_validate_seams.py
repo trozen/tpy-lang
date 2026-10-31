@@ -224,14 +224,6 @@ class TestNarrowedRules:
         with pytest.raises(THIRValidationError, match="no-op form convert"):
             validate_resumable_leaves("f", self._in_return(bad))
 
-    def test_async_return_addr_of_coerce_passes(self):
-        # `&(x)` materializes a pointer prvalue out of a borrow source.
-        inner = THIRLiteral(result_type=INT32, value=1, form=Form.BORROW)
-        ok = THIRCoerce(result_type=INT32, expr=inner,
-                        coercion_name="async_ret_addr_of", wrap="&({0})",
-                        form=Form.VALUE)
-        validate_resumable_leaves("f", self._in_return(ok))
-
     def test_unnamed_wrap_with_the_same_shape_still_raises(self):
         inner = THIRLiteral(result_type=INT32, value=1, form=Form.BORROW)
         bad = THIRCoerce(result_type=INT32, expr=inner,
@@ -335,13 +327,22 @@ class TestTransparentWrapperTemps:
             validate_resumable_leaves("f", body)
 
     def test_coerced_temp_outside_a_flush_position_raises(self):
-        # A resumable RETURN VALUE has no flush point (the scaffolding binds
-        # it into its own slot), and transparency does not manufacture one.
+        # A resumable return whose payload slot hosts no temporary (one that
+        # lends) has no flush point, and transparency does not manufacture
+        # one.
         body = _at(LeafRole.RETURN,
                    THIRResumableReturn(value=self._coerced_temp()))
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
             validate_resumable_leaves("f", body)
+
+    def test_coerced_temp_at_a_hosting_return_passes(self):
+        # The scaffolding flushes ahead of the value's line where the
+        # payload slot hosts temporaries.
+        body = _at(LeafRole.RETURN,
+                   THIRResumableReturn(value=self._coerced_temp(),
+                                       hosts_temps=True))
+        validate_resumable_leaves("f", body)
 
 
 class TestValidator:

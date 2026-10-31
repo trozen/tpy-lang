@@ -61,7 +61,7 @@ __coro_sub sub() {
         z = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, y)), 1));
         std::cout << "after-2" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        int32_t __tpy_async_ret = z;
+        int32_t __tpy_async_ret = std::move(z);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

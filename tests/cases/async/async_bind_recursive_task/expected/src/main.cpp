@@ -18,7 +18,7 @@ namespace tpyapp::main {
         __state = S_DONE;  // until a yield sets where to resume
         if ((n <= 1)) {
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 1;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(1);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         __coro_arg_0 = ((n) - (::tpy::BigInt(1)));

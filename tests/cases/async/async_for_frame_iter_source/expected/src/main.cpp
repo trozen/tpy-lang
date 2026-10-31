@@ -39,7 +39,7 @@ namespace tpyapp::main {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, bag));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));

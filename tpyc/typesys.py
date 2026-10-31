@@ -3052,6 +3052,27 @@ def peel_slot(t: 'TpyType') -> 'TpyType':
         t = u
 
 
+def holds_result_member(local: 'TpyType | None', result: 'TpyType') -> bool:
+    """Whether a local's storage is the result's own type or, at a by-value
+    Optional / union result, one member's (`peel_slot` on each side): a
+    finally-deferred return moves the local out after the chain and the
+    final return converts it into the result. Sema stamps the deferral
+    with it (`DeferredCapture`); the lowering builds what the stamp names."""
+    if local is None:
+        return False
+    held = peel_slot(local)
+    res = peel_slot(result)
+    if held == res:
+        return True
+    if isinstance(res, OptionalType) and not res.uses_pointer_repr():
+        members: 'tuple[TpyType, ...]' = (res.inner,)
+    elif isinstance(res, UnionType) and not res.uses_pointer_repr():
+        members = res.members
+    else:
+        return False
+    return any(peel_slot(m) == held for m in members)
+
+
 def peel_binding(t: 'TpyType') -> 'TpyType':
     """The type a BINDING of `t` holds: the transparent wrappers stripped
     (readonly, Ref, Send / Sync), then `Own` -- an `Own[T]` binding is
@@ -8365,9 +8386,9 @@ class FunctionInfo:
     # async def only: the raw declared return (`C`, `Own[C]`, `T`, ...)
     # BEFORE the Cancellable[T] wrap. `return_type` carries the wrapped,
     # Own-normalized call-site type, which cannot distinguish a borrow
-    # contract (`-> C`) from an ownership one (`-> Own[C]`); the
-    # async-return-form classification (value_category.async_return_form)
-    # reads this field.
+    # contract (`-> C`) from an ownership one (`-> Own[C]`); what an
+    # `await` hands back (value_category.async_result_aliases) reads this
+    # field.
     async_inner_return: Optional[TpyType] = None
     is_property_getter: bool = False
     is_property_setter: bool = False

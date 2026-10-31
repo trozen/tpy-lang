@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from ...diagnostics import SemanticError
 from ...parse.nodes import (
     is_property_getter_read,
-    RebindStorage,
+    RebindStorage, DeferredCapture,
     TryTier,
     TpyArrayLiteral,
     TpyAssert,
@@ -142,8 +142,7 @@ from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.frame_names import sub_struct_qualname
 from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
                      frame_ptr_slot_name)
-from ...sema.alias_rebind import bare_tuple
-from ...sema.source_records import moves_place, read_record, verdict
+from ...sema.source_records import moves_place, read_record
 from ...sema.call_lends import Retention, expr_lends_storage
 from ..param_contract import arg_retention
 from ...sema.context import UnnamedHolder
@@ -189,7 +188,6 @@ from ...value_category import (
     binds_owned_value, call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
     CONTAINER_LITERAL_NODES, is_rvalue_source,
     property_access_returns_cpp_ref,
-    async_return_form, AsyncReturnForm,
 )
 from ..faces import witness as _witness
 from ..reject import (
@@ -231,7 +229,7 @@ from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoiste
 from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_genrec_return,
     _tuple_opt_elem_subscript, place_hops,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
-    _value_tuple_return, _viewfam_return_slots,
+    _value_tuple_return,
     _alias_call_source_ok, overload_if_fold, _call_storage_optional_return,
     receiver_is_const, _expr_is_const_source, _call_arm_variant, copy_call_arg,
     _storage_family_ok, _narrow_alias_name, _fresh_narrow_local,
@@ -270,7 +268,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _storage_optional_return_wide,
     _optional_ptr_borrow_name, _optional_ptr_borrow_wide,
     _optional_ptr_borrow_wide_name, _wrapper_union_like,
-    _wrapper_ref_tuple_return, _storage_optional_return_type, _unwrap_own,
+    _wrapper_ref_tuple_return, _unwrap_own,
     _owned_str_append_target, _btuple_owning_call_init, _owned_viewfam_elem,
     _plain_member_call_markers_ok, _plain_method_fi_ok, _value_opt_scalar,
     _value_opt_callable, _value_opt_tuple, _value_opt_tuple_inner,
@@ -281,7 +279,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _resolved_viewfam_value, _view_inner_value_opt, _value_opt_view,
     _is_range_call, _runtime_bigint, _narrow_key_type, _range_object_value,
     _slice_object_type, _storage_call_container, _storage_call_ret, _span_slot,
-    _str_field_value_read, _wrap_view_owned_sink, _owned_viewfam_slot,
+    _wrap_view_owned_sink, _owned_viewfam_slot,
     _owned_copy_sink, _str_self_append_rhs, _type_family_tag,
     _type_param_value_slot, _peel_coerce, _subscript_container_recv_type,
     _unwrap_lit_coerce, _ru_container_literal_ok, _ru_instance_literal_ok,
@@ -290,6 +288,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
 from .context import (
     FrameLocalClass,
     lends_elements,
+    async_payload_slot,
     result_hosts_temps,
     return_slot,
     Slot,
@@ -307,7 +306,6 @@ from .context import (
     _ONLY_FIELD_RECV_BORROW,
     _ONLY_BTUPLE_SLOT,
     _ONLY_INDIRECT_READ,
-    _ONLY_SELECT_PRVALUE,
     _ONLY_SELECT_FRESH_PRVALUE,
     _ONLY_SELECT_SLOT,
     _ONLY_SELF_TYPED,
@@ -358,9 +356,8 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       NameFacts, Source, tuple_elems)
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (
-    ElemRead, Plan, Refuse, borrowed_path_element_message, convert, converted,
-    layout_tuple, open_param_result, spelled, store_slot, to_local,
-    view_to_owned)
+    ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
+    layout_tuple, spelled, to_local)
 from .expressions import (
     _lower_into_dyn,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
@@ -368,7 +365,7 @@ from .expressions import (
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
     _lower_slice_recv, _constructs_value, _flush_witness, _hoists_arg_temp,
-    _own_tuple_borrow_lift_arg, _deref_loop_source, _lower_isinstance_cond,
+    _deref_loop_source, _lower_isinstance_cond,
     _narrow_member_cpp, _narrow_subject_const, _narrow_subject_is_ptr,
     _union_source_layout, _union_extraction, _inline_union_member,
     _narrow_variant_cpp, _poly_casts, _poly_isinstance, _any_isinstance,
@@ -6813,239 +6810,6 @@ def result_value(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
     return _slot_literal_retype(value, rdecl, lc)
 
 
-def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
-                                  declared: dict[str, TpyType]) -> 'THIRExpr':
-    """POSITION-BLIND value render for `_make_async_return`'s scaffolding
-    sites (pending-slot store / pre-finally capture / direct ready), shared
-    by the ReturnT terminator arm and nested leaf returns: the scaffolding
-    binds the value to a `<ret_cpp> __tpy_async_ret = <value>;` local (whose
-    decl type supplies the conversion) and only then wraps it in Poll::ready
-    -- so a literal at a wider slot stays bare `42`, NOT the sync-return
-    arm's target-typed `::tpy::BigInt(42)`. Lower the value directly,
-    bypassing `_lower_stmt`'s return-coercion arm. Two exceptions render
-    target-typed anyway: the owned str/bytes slot's view->owned copy, the
-    result slot's row (`convert.view_to_owned`), and value-tuple /
-    generic-tuple literals (the tuple-literal-targeted arm)."""
-    rslot = return_slot(lc)
-    if _eligible_char(rslot.type) and isinstance(ret.value, TpyStrLiteral):
-        raise ThirUnsupported(stmt_reject_reason(ret))
-    if (record_like(rslot.type, lc.analyzer)
-            and isinstance(ret.value, (TpyArrayLiteral, TpyDictLiteral,
-                                       TpySetLiteral))
-            and not ret.value.children()):
-        # An EMPTY container literal is the one shape the position-blind tail
-        # cannot serve: the type is spelled only when a target is passed
-        # (the T*-ambiguity guard), and this render has none -- so it would
-        # emit a bare `= {}` instead of
-        # `std::vector<T>{}`. The sync return slot IS targeted, hence its
-        # opposite rule.
-        note_detail("return.empty_container_literal")
-        raise ThirUnsupported(stmt_reject_reason(ret))
-    ret_vopt = _value_opt_return(rslot, lc.analyzer)
-    if ret_vopt is not None:
-        # Value-repr Optional[scalar] slot (`std::optional<T>
-        # __tpy_async_ret = ...`): None spells the STORAGE literal
-        # (std::nullopt), a value-opt param/local name passes the WHOLE
-        # optional bare (deref-on-narrow stripped, the sync return arm's
-        # rule); other scalar sources ride the position-blind tail (the
-        # optional's converting ctor absorbs the bare scalar). A
-        # coerce-wrapped value-opt name mirrors the sync arm's reject.
-        if isinstance(ret.value, TpyNoneLiteral):
-            return THIRLiteral(result_type=ret_vopt, value=None,
-                               form=Form.STORAGE,
-                               loc=getattr(ret.value, "loc", None))
-        if (isinstance(ret.value, TpyName)
-                and _value_opt_binding_kind(ret.value.name, lc)
-                in (ValueOptKind.SCALAR, ValueOptKind.RECORD)):
-            return replace(
-                _lower_expr(ret.value, lc, declared,
-                            allow_whole_optional=True),
-                deref=False)
-        peeled = _peel_coerce(ret.value)
-        if (isinstance(peeled, TpyName)
-                and (peeled.name in lc.prescan.value_opt_params
-                     or lc.binding(peeled.name).value_opt
-                     is ValueOptKind.SCALAR)):
-            note_detail("return.optval_coerced_param")
-            raise ThirUnsupported(stmt_reject_reason(ret))
-    ret_vt = (_value_tuple_return(rslot.declared, lc.analyzer)
-              or _union_elem_value_tuple(rslot.declared, lc.analyzer))
-    if ret_vt is not None and isinstance(ret.value, TpyTupleLiteral):
-        # A value-tuple literal renders the spelled brace-init against the
-        # return slot (the sync return arm's render: value-opt element
-        # slots spell std::nullopt, Own-element names move); the
-        # scaffolding's `<ret_cpp> __tpy_async_ret = <value>;` decl
-        # consumes it position-independently, like the frame-field flavor.
-        # Off-slice element shapes reject inside _lower_tuple_literal
-        # (rejecting the body); name/call sources ride the position-blind
-        # tail below (bare renders -- the decl absorbs the copy/move).
-        value = _lower_tuple_literal(ret.value, ret_vt, lc, declared)
-        _witness("res.return_tuple_literal")
-        return value
-    if (ret_vt is not None and isinstance(ret.value, TpyName)
-            and _own_tuple_borrow_lift_arg(ret.value, ret_vt, lc, declared)):
-        # The sync return's declared-copy lift: a borrow-form tuple name
-        # into Own element slots is copied into storage element by element.
-        # The position-blind decl below would bind it bare, and a borrow
-        # tuple does not convert to the storage one.
-        _witness("ret.own_tuple_borrow_lift")
-        return _own_tuple_name_copy(ret.value, ret_vt, lc, declared)
-    ret_gt = _generic_value_tuple_return(rslot.declared, lc.analyzer)
-    if ret_gt is not None and isinstance(ret.value, TpyTupleLiteral):
-        # A generic tuple literal renders the spelled brace-init with
-        # per-element `to_val_or_ptr` wraps (the val_or_ptr form under the
-        # tuple-literal-targeted return); non-literal sources ride the
-        # position-blind tail below.
-        value = _lower_generic_tuple_literal(ret.value, ret_gt, lc, declared)
-        _witness("res.return_generic_tuple")
-        return value
-    if _unlifted_declared_copy(ret.value, lc):
-        note_detail("return.own_element_copy_source")
-        raise ThirUnsupported(stmt_reject_reason(ret))
-    # A str-family FIELD source reads bare into the scaffolding's
-    # `<ret_cpp> __tpy_async_ret = <value>;` decl (`__self.name`), the same
-    # read the sync return tail prechecks -- the frame's receiver respelling
-    # is the receiver machinery's job, not this arm's.
-    res_str_field = (isinstance(ret.value, TpyFieldAccess)
-                     and _viewfam_return_slots(
-                         rslot.declared, lc.analyzer)[0] is not None
-                     and _str_field_value_read(ret.value, declared,
-                                               lc.analyzer)
-                     and _witness("res.return_str_field"))
-    # `return copy(x)` at an owned-record async return: the copy-construct
-    # rvalue (`C __tpy_async_ret = C(__self);`) -- the sync return sink's
-    # interception row (the special-builtin gate rejects copy() in the
-    # generic call tail, so every sink intercepts it itself). The default
-    # excluded-source set, NOT the sync sink's narrower admission_pointers
-    # override (preserved there verbatim for a filed defect).
-    if (ret.value is not None
-            and _record_storage_return(rslot.declared,
-                                       lc.analyzer) is not None):
-        copy_row = _lower_copy_record(ret.value, lc, declared,
-                                      loc=getattr(ret, "loc", None))
-        if copy_row is not None:
-            _witness("res.return_copy_record")
-            return copy_row
-    form = async_return_form(lc.func.return_type)
-    _ret_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        lc.func.return_type)))
-        if isinstance(lc.func.return_type, TpyType) else None)
-    # Storage Optional[F1-record] slot: `return None` spells the STORAGE
-    # nullopt (the scalar value-opt row's record twin -- ret_value_opt
-    # itself stays scalar-keyed for the sync arm); every other source
-    # rides the position-blind tail (the optional's converting ctor).
-    _ret_sopt = _storage_optional_return_type(_ret_bare, lc.analyzer)
-    if _ret_sopt is not None and isinstance(ret.value, TpyNoneLiteral):
-        _witness("res.return_opt_record_none")
-        return THIRLiteral(result_type=_ret_sopt, value=None,
-                           form=Form.STORAGE,
-                           loc=getattr(ret.value, "loc", None))
-    # The ptr-repr Optional FIELD lift (`return h.opt` at `-> Box | None`):
-    # the whole `std::optional<T>` member lifts to the `T*` payload via
-    # optional_to_ptr -- the sync ret.ptr_opt_field row's async twin.
-    if (form is AsyncReturnForm.BORROW
-            and isinstance(_ret_bare, OptionalType)
-            and isinstance(ret.value, TpyFieldAccess)
-            and not lc.func.is_property_getter
-            and _field_receiver_ok(ret.value, declared, lc.analyzer)
-            and _optional_ptr_borrow_wide(
-                lc.analyzer.get_expr_type(ret.value), lc.analyzer)
-            is not None):
-        _witness("res.return_ptr_opt_field")
-        return THIRFormConvert(
-            result_type=_ret_bare,
-            value=_lower_field_source(ret.value, lc, declared),
-            form=Form.BORROW, loc=getattr(ret, "loc", None))
-    # The self-FIELD borrow rung (`return self.inner` ->
-    # `Server* __tpy_async_ret = &(__self.inner);`): the field read is a
-    # borrow lvalue, so it lowers BORROW_BIND (the STORAGE use below
-    # would take the record-copy family's reject).
-    borrow_self_field = (
-        form is AsyncReturnForm.BORROW
-        and isinstance(ret.value, TpyFieldAccess)
-        and isinstance(ret.value.obj, TpyName)
-        and ret.value.obj.name == lc.self_receiver
-        and not lc.self_is_pointer
-        and _field_markers_clean(ret.value))
-    # The scaffolding's `<ret_cpp> __tpy_async_ret = <value>;` decl is a
-    # STORAGE sink like the sync return slot, so the value lowers with the
-    # sync return arm's result use. allow_temps stays off: the skeleton
-    # composes the render into its own line and has no verified flush
-    # point -- a temp-hoisting value keeps rejecting.
-    # An owned return direct-initializes the payload, so a ternary takes its
-    # prvalue `?:`. A select's slot is not admitted: inside a nested block the
-    # skeleton declares it after the block that uses it.
-    # The move facts sit on the lowered name, which the view-owned wrap
-    # may enclose. A record payload is taken as a value: a pointer-bound
-    # source reads through its deref, as the sync result's stored read does.
-    value_forms = (_ONLY_SELECT_PRVALUE | _ONLY_INDIRECT_READ
-                   if _ret_bare is not None and record_like(_ret_bare, lc.analyzer)
-                   else _ONLY_SELECT_PRVALUE)
-    raw_value = _lower_expr(ret.value, lc, declared,
-                            field_prechecked=res_str_field,
-                            use=_ExprUse(result=(_ExprResultUse.BORROW_BIND
-                                                 if borrow_self_field
-                                                 else _ExprResultUse.STORAGE),
-                                         forms=(_NO_FORMS
-                                                if form is AsyncReturnForm.BORROW
-                                                else value_forms)))
-    # The result slot's own conversions the payload takes so far: a view
-    # source's owned copy and the open-`T` param lift.
-    plan = (view_to_owned(raw_value, rslot, lc.analyzer)
-            or open_param_result(raw_value, rslot))
-    value = raw_value if plan is None else plan.expr
-    if plan is not None and plan.row is not None:
-        _witness("return." + plan.row)
-    if form is AsyncReturnForm.BORROW:
-        # Pointer-payload family (bare reference-type returns): the SELF
-        # rung -- `return self` lifts the receiver lvalue
-        # (`Res* __tpy_async_ret = &(__self);`) -- and the self-FIELD
-        # rung above. Every other source (alias names, the return-await
-        # forward's `__ret0` scaffolding) rejects.
-        if ((isinstance(ret.value, TpyName)
-                and ret.value.name == lc.self_receiver
-                and not lc.self_is_pointer)
-                or borrow_self_field):
-            _witness("res.return_self_borrow")
-            return THIRCoerce(
-                result_type=value.result_type, expr=value,
-                coercion_name="async_ret_addr_of",
-                wrap="&({0})",
-                loc=getattr(ret, "loc", None))
-        note_detail("return.borrow_form")
-        raise ThirUnsupported(stmt_reject_reason(ret))
-    if form is AsyncReturnForm.TRAIT:
-        # Generic `-> T` slot (`val_or_ptr_t<T>`, `val_or_cptr_t<T>` for a
-        # declared `-> readonly[T]` -- the frame's payload type): the trait
-        # lift. The move gate skips non-STORAGE forms, so no THIRMove
-        # composes with this wrap.
-        declared = unwrap_ref_type(unwrap_send_sync(lc.func.return_type))
-        t_cpp = lc.render_type(unwrap_readonly(declared))
-        trait = ("val_or_cptr_t" if is_readonly_result_type(declared)
-                 else "val_or_ptr_t")
-        return THIRCoerce(
-            result_type=value.result_type, expr=value,
-            coercion_name="async_ret_val_or_ptr",
-            wrap=(f"::tpy::to_val_or_ptr<::tpy::{trait}<{t_cpp}>>"
-                  f"({{0}})"),
-            loc=getattr(ret, "loc", None))
-    # The direct-ready last-use move. The record's `movable` is deliberately
-    # partial (owned-tuple params and the gen_async force-seeds are
-    # missing), but those shapes reject upstream. Baked position-blind; the
-    # emit hook unwraps the THIRMove at pre-finally scaffolding sites
-    # (render_return_value's allow_move). Bare names only (a coerce-wrapped
-    # source renders a fresh conversion temp); STORAGE-form slots only
-    # (borrow/trait forms alias, which the move gate's form check excludes).
-    if (isinstance(ret.value, TpyName)
-            and _node_moves(raw_value)):
-        vt = lc.analyzer.get_expr_type(ret.value)
-        vt = unwrap_readonly(vt) if vt is not None else None
-        if vt is not None and not vt.copy_is_cheap():
-            value = THIRMove(result_type=value.result_type, value=value,
-                             loc=getattr(ret, "loc", None))
-    return value
-
-
 def unpack_claim_agrees(stmt: TpyTupleUnpack, lc: _LowerCtx) -> bool:
     """Whether the targets an unpack of a tuple NAME owns (`is_owned`, the
     walk's tags taken before the body settled) are the elements its
@@ -8078,30 +7842,6 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         value=value, loc=stmt.loc)
 
 
-def _unlifted_declared_copy(value: 'TpyExpr | None',
-                            lc: '_LowerCtx') -> bool:
-    """A BORROW-form tuple name whose element copy sema declared, reaching a
-    return's bare tail: every slot that can build the copy lifted it before,
-    so a bare render here would hand a tuple of pointers to a slot that owns
-    (a mixed `-> tuple[Own[P], P]` return, say) -- reject it at the statement
-    instead of in the C++ build. A storage-form binding (a loop variable over
-    stored tuples) copies correctly bare."""
-    return (isinstance(value, TpyName)
-            and bare_tuple(lc.analyzer.get_expr_type(value)) is not None
-            and bool(verdict(lc.analyzer.ctx, value).copied)
-            and not lc.binding(value.name).storage_tuple)
-
-
-def _own_tuple_name_copy(source: TpyName, slot: TpyType, lc: '_LowerCtx',
-                         declared: dict[str, TpyType]) -> THIRExpr:
-    """The lift of a tuple NAME into an owning return, built element by
-    element: each borrowed element is copied in, and the elements the read
-    moves are moved (`convert`)."""
-    value = _lower_expr(source, lc, declared, allow_unrouted_name=True)
-    return converted(value, store_slot(unwrap_readonly(unwrap_ref_type(
-        unwrap_send_sync(slot))), lc.analyzer), lc.analyzer)
-
-
 def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
                             declared: dict[str, TpyType]) -> THIRStmt:
     """R1c frame_slot write (`xs.emplace(std::vector<int32_t>{1, 2});` --
@@ -8486,20 +8226,6 @@ def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
             if isinstance(lc.func.return_type, TpyType) else None)
 
 
-def _value_opt_return(slot: 'Slot', analyzer) -> 'OptionalType | None':
-    """A value-repr `Optional` result slot over a cheap scalar, a value
-    record or a value-bound type parameter (`std::optional<T>`): `None` is
-    the empty optional, a value-opt name passes whole."""
-    rt = slot.declared
-    vopt = _value_opt_scalar(rt, analyzer) or _value_opt_record(rt)
-    if vopt is None:
-        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-        if (isinstance(u, OptionalType) and not u.uses_pointer_repr()
-                and _is_type_param_slot(unwrap_readonly(u.inner))):
-            vopt = u
-    return vopt
-
-
 def _return_carries_value(stmt: TpyReturn, lc: _LowerCtx) -> bool:
     """Whether a return renders an operand. The parser canonicalizes the
     bare `return` to `return None`, so the void form is decided here, once:
@@ -8520,57 +8246,33 @@ def _return_carries_value(stmt: TpyReturn, lc: _LowerCtx) -> bool:
 def _finally_deferred_recipe(
         ret: TpyReturn, lc: _LowerCtx, declared: dict,
         loc) -> 'THIRFinallyDeferredReturn | None':
-    """The two-recipe table over the lc binding facts; None for a stamped
-    shape the table does not cover (the caller rejects).
+    """The recipe sema's stamp names (`DeferredCapture`), over the lc
+    binding facts; None when the name carries a spelling the capture cannot
+    take the address of (the caller rejects).
 
-    Shape A (Own[T] slot): `auto* p = &(lvalue);` ... `std::move(*p)`.
-    Shape B (storage-Optional slot off a pointer-repr Optional local):
-    `auto* p = name;` ... `::tpy::ptr_to_optional_move(p)`.
+    OWN_STORAGE: `auto* p = &(lvalue);` ... `std::move(*p)`, converted into
+    the result at the return. POINTER_OPTIONAL (a pointer-repr Optional
+    local into a storage Optional result): `auto* p = name;` ...
+    `::tpy::ptr_to_optional_move(p)`.
     """
     # Sema stamps a name under identity coercions only (`String` into `str`:
     # both spell std::string, so `std::move(*p)` converts at the return).
     value = ret.finally_deferred_name
-    if value is None:
+    shape = ret.finally_deferred_shape
+    if value is None or shape is None:
         return None
-    name = value.name
-    if _deferred_name_renamed(name, lc, declared):
+    if _deferred_name_renamed(value.name, lc, declared):
         return None
-    ret = _fn_return_type(lc)
-    ret_u = unwrap_ref_type(ret) if ret is not None else None
-    if ret_u is None:
-        return None
-    # A CONSUMING method's receiver is an owned source like any Own[T] local,
-    # so sema stamps `return self` under a finally the same way -- but there
-    # is no C++ local called `self`, and the deferral is what the shape needs:
-    # a finally that mutates the receiver must be seen by the returned object
-    # (CPython hands back the very object). So the receiver keeps the
-    # deferred capture and only its BASE render changes, to the receiver read
-    # every other `self` site emits. The move that follows is the recipe's own
-    # `std::move(*p)`, so `return self` has one move path either way.
-    if name == lc.self_receiver:
-        if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
-            return None
-        return THIRFinallyDeferredReturn(
-            capture=_deferred_self_base(value, lc, declared),
-            indirect=False, optional_move=False, loc=loc)
     captured = _deferred_capture_base(value, lc, declared)
     if captured is None:
         return None
     base, indirect = captured
-    if isinstance(ret_u, OptionalType) and not ret_u.uses_pointer_repr():
-        if indirect:
-            return THIRFinallyDeferredReturn(capture=base, optional_move=True,
-                                             loc=loc)
-        # An owned nullable tuple local IS the slot's by-value optional:
-        # shape A moves it out whole after the chain.
-        if (_value_opt_tuple(declared.get(name), lc.analyzer) is not None
-                and unwrap_readonly(unwrap_send_sync(declared[name]))
-                == unwrap_readonly(unwrap_send_sync(ret_u))):
-            return THIRFinallyDeferredReturn(capture=base, indirect=False,
-                                             optional_move=False, loc=loc)
-        return None
-    if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
-        return None
+    if shape is DeferredCapture.POINTER_OPTIONAL:
+        # The capture is the local's pointer itself.
+        if not indirect:
+            return None
+        return THIRFinallyDeferredReturn(capture=base, optional_move=True,
+                                         loc=loc)
     return THIRFinallyDeferredReturn(capture=base, indirect=indirect,
                                      optional_move=False, loc=loc)
 
@@ -8578,7 +8280,9 @@ def _finally_deferred_recipe(
 def _deferred_self_base(value: TpyName, lc: _LowerCtx,
                         declared: dict) -> THIRSelf:
     """The consuming receiver's capture base: the receiver read every other
-    `self` site emits (there is no C++ local called `self`)."""
+    `self` site emits (there is no C++ local called `self`). A consuming
+    receiver is an owned source like any Own[T] local, so it takes the same
+    recipe: a finally that mutates it must be seen by the returned object."""
     return stamped(THIRSelf(result_type=declared[value.name],
                             form=Form.BORROW, cpp=lc.self_cpp,
                             deref=lc.self_is_pointer,
@@ -10680,12 +10384,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # Unreachable in a LEAF (a suspension splits the compound);
                 # reject rather than assert if a CFG change ever leaks one.
                 raise ThirUnsupported("res.leaf_return")
-            value = (_lower_resumable_return_value(stmt, lc, declared)
-                     if _return_carries_value(stmt, lc) else None)
+            payload = (async_payload_slot(lc)
+                       if _return_carries_value(stmt, lc) else None)
+            value = (result_value(stmt.value, payload, lc, declared, scope,
+                                  stmt)
+                     if payload is not None else None)
             deferred = _resumable_deferred_recipe(stmt, lc, declared, value)
             node = THIRResumableReturn(
                 has_operand=stmt.value is not None, value=value, loc=loc,
-                deferred=deferred)
+                deferred=deferred,
+                hosts_temps=(payload is not None
+                             and result_hosts_temps(payload, lc)))
             lc.nested_returns.append(node)
             _witness("res.nested_return")
             return node

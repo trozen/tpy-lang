@@ -14,7 +14,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::vector<int32_t> __tpy_async_ret = {1, 2};
+        std::vector<int32_t> __tpy_async_ret = std::vector<int32_t>{1, 2};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -58,7 +58,7 @@ __coro_make_bytes make_bytes() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::array<int32_t, 3> __tpy_async_ret = {7, 8, 9};
+        std::array<int32_t, 3> __tpy_async_ret = std::array<int32_t, 3>{7, 8, 9};
         return ::tpystd::tpy::Poll<std::array<int32_t, 3>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

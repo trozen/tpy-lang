@@ -53,7 +53,7 @@ __coro_add_one add_one(int32_t x) {
         b = std::move(__r1).value();
         __sub_1.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = b;
+        int32_t __tpy_async_ret = std::move(b);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

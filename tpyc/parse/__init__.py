@@ -7,7 +7,7 @@ All existing imports like ``from .parse import X`` continue to work.
 
 from .nodes import (
     ParseError, SourceLocation, RecordLinkage, FunctionLinkage, VarLinkage,
-    RebindStorage, TryTier,
+    RebindStorage, TryTier, DeferredCapture,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
     ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -61,7 +61,7 @@ from .parser import Parser
 __all__ = [
     # nodes
     "ParseError", "SourceLocation", "RecordLinkage", "FunctionLinkage", "VarLinkage",
-    "RebindStorage", "TryTier",
+    "RebindStorage", "TryTier", "DeferredCapture",
     "TpyExpr", "TpyIntLiteral", "TpyFloatLiteral", "TpyStrLiteral", "TpyBytesLiteral",
     "TpyFStringValue", "TpyFString", "FormatSpecFields",
     "FSTRING_CONV_NONE", "FSTRING_CONV_STR", "FSTRING_CONV_REPR", "FSTRING_CONV_ASCII",

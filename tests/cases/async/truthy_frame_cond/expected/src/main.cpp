@@ -116,7 +116,7 @@ __coro_list_branch list_branch(const std::vector<int32_t>& xs) {
             continue;
         } else {
             __state = S_DONE;
-            int32_t __tpy_async_ret = n;
+            int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     }

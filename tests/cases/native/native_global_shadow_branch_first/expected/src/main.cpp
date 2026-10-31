@@ -111,7 +111,7 @@ int32_t routed(int32_t n) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = frame_count;
+        int32_t __tpy_async_ret = std::move(frame_count);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

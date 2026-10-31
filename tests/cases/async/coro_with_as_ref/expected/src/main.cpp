@@ -42,7 +42,7 @@ namespace tpyapp::main {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
         __state = S_DONE;
-        int32_t __tpy_async_ret = s;
+        int32_t __tpy_async_ret = std::move(s);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

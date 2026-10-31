@@ -59,7 +59,8 @@ Holder make_holder(int32_t n) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(Quiet(2), xs)));
+        Quiet __tmp_1 = Quiet(2);
+        int32_t __tpy_async_ret = ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(__tmp_1, xs)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

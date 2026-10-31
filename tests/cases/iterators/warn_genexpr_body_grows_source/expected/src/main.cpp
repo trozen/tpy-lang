@@ -392,7 +392,7 @@ __gen_gen_body gen_body(std::vector<int32_t>& xs, bool big) {
             t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>(v, ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_async_body_20(1, big, xs)))));
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = t;
+        int32_t __tpy_async_ret = std::move(t);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -781,7 +781,7 @@ __gen_ternary_bound ternary_bound(const std::vector<int32_t>& xs, const std::vec
         __for_r_0.emplace((*g).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = t;
+            int32_t __tpy_async_ret = std::move(t);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));

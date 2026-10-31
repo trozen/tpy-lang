@@ -15,7 +15,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 205;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(205);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -635,7 +635,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 201;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(201);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -652,7 +652,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 202;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(202);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -669,7 +669,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 203;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(203);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -686,7 +686,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 204;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(204);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

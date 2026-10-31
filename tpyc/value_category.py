@@ -461,7 +461,7 @@ def result_is_fresh(analyzer: 'ValueCategoryAnalyzer',
     if (isinstance(expr, TpyCallLike)
             and expr.result_form is ResultForm.BORROW):
         return False
-    if _returns_open_type_param(fi):
+    if returns_open_type_param(fi):
         # `val_or_ref_t<T>`: by value at a value instantiation, as the
         # monomorphic twin returns it (`property_access_returns_cpp_ref`).
         # An Optional or a union is left out: the runtime's value-type
@@ -858,11 +858,50 @@ def finalized_on_path(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     return False
 
 
+def open_type_param_call_result(call: 'TpyExpr | None',
+                                t: 'TpyType | None') -> bool:
+    """A call whose result is a still-open `T` its callee declares bare
+    (`returns_open_type_param`): `val_or_ref_t<T>`, a reference at a
+    reference instantiation and the value at a value one -- the borrow
+    form, as an open-T tuple element's."""
+    if (not isinstance(call, (TpyCall, TpyMethodCall)) or t is None
+            or not isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(t))), TypeParamRef)):
+        return False
+    fi = call.resolved_function_info
+    return fi is not None and returns_open_type_param(fi.root)
+
+
+def _open_param_result_lends(analyzer: ValueCategoryAnalyzer,
+                             expr: TpyExpr) -> 'list[TpyExpr] | None':
+    """The operands an open-T call result (`open_type_param_call_result`)
+    may be a reference into: its callee's recorded `return_borrows_from`,
+    every operand where it records none. None for any other expression,
+    a coercion that builds a fresh value among them."""
+    while (isinstance(expr, TpyCoerce)
+           and not expr.coercion.builds_fresh_value):
+        expr = expr.expr
+    if not open_type_param_call_result(expr, analyzer.get_expr_type(expr)):
+        return None
+    ops = call_operands(expr)
+    if ops is None:
+        return None
+    recorded = ops.fi.root.return_borrows_from
+    return [o for i, o in ops.indexed() if recorded is None or i in recorded]
+
+
 def place_dies(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     """Whether `expr`'s storage dies with its statement: an rvalue, or a
     member or element read off one (a container's `operator[]` hands back
-    an lvalue whose owner still dies with the statement)."""
+    an lvalue whose owner still dies with the statement). An open-T call
+    result is a reference into the operands it lends at a reference
+    instantiation, so it dies exactly when one of them does; a member read
+    off one (`f(x).a`, an attribute of T's protocol bound) still answers
+    dying -- the lowering refuses every such read before a verdict asks."""
     while True:
+        lent = _open_param_result_lends(analyzer, expr)
+        if lent is not None:
+            return any(place_dies(analyzer, o) for o in lent)
         if is_rvalue_source(analyzer, expr):
             return True
         if not isinstance(expr, (TpySubscript, TpyFieldAccess)):
@@ -1734,12 +1773,12 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
     # slot the source counts as borrowed. What the slot then REPORTS is
     # decided per instantiation (sema/own_copy.py), so the value-typed half
     # costs no diagnostic.
-    if _returns_open_type_param(link[0]):
+    if returns_open_type_param(link[0]):
         return True
     return not is_rvalue_source(analyzer, inner)
 
 
-def _returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
+def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     """The callee's declared return is a bare, still-open type parameter, and
     the callee is one whose declaration says what its return convention is.
 

@@ -333,7 +333,7 @@ void or_positions(const C& a) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        C __tpy_async_ret = ((c) ? (a) : (C(50)));
+        C __tpy_async_ret = C(((c) ? (a) : (C(50))));
         return ::tpystd::tpy::Poll<C>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

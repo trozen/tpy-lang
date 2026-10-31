@@ -1034,23 +1034,13 @@ def _check_node(owner: str, node: THIRNode) -> None:
             # result (`std::optional<span>` absorbs the as_span rvalue).
             or (isinstance(rt, OptionalType)
                 and is_span(unwrap_readonly(rt.inner))))
-        # The async return slot's borrow/trait lifts (`&(x)`,
-        # `to_val_or_ptr<val_or_ptr_t<T>>(x)`) materialize a pointer or
-        # trait-selected prvalue out of any source form, so they are
-        # form-producing like the ptr/span families. Keyed by NAME, not by
-        # result type: both deliberately keep the SOURCE's type spelling
-        # (the pointer/trait spelling lives in the wrap), so the ptr row
-        # above structurally cannot see them.
-        value_wrap_target = node.coercion_name in (
-            "async_ret_addr_of", "async_ret_val_or_ptr")
         # The optional-borrow-tuple wrap (`std::optional<B>{<borrow rhs>}`)
         # materializes a STORAGE optional out of the borrow tuple -- form-
         # producing like the ptr/span families.
         opt_btuple_target = node.coercion_name == "opt_btuple_wrap"
         if node.form is not node.expr.form and not (
                 (view_target and node.form is Form.BORROW)
-                or ((value_target or value_wrap_target)
-                    and node.form is Form.VALUE)
+                or (value_target and node.form is Form.VALUE)
                 or (opt_btuple_target and node.form is Form.STORAGE)):
             _fail(owner, node,
                   f"coerce form {node.form.name} != inner "
@@ -1416,6 +1406,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         if node.value is not None:
             _walk(owner, node.value, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRResumableReturn):
+        _walk_resumable_return(owner, node)
+        return
     if isinstance(node, THIRFinallyDeferredReturn):
         # A tuple part evaluated before the chain is its own declaration
         # line, which the sync emit flushes its temps ahead of.
@@ -1518,6 +1511,23 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
               argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
               eager_only=eager_only and isinstance(node, THIRExpr),
               via_transparent=isinstance(node, _TRANSPARENT_WRAPPERS))
+
+
+def _walk_resumable_return(owner: str, ret: THIRResumableReturn) -> None:
+    """A routed resumable body's return, a terminator's or one nested in
+    a leaf: the scaffolding flushes the value's temporaries once, ahead of
+    the line that renders it, where its payload slot hosts any
+    (`hosts_temps`); a deferred tuple part evaluated before the chain is
+    one of those lines, as in the sync deferred return."""
+    if ret.value is not None:
+        _walk(owner, ret.value, argtemp_ok=ret.hosts_temps)
+    if ret.deferred is not None:
+        if ret.deferred.capture is not None:
+            _walk(owner, ret.deferred.capture)
+        for part in _deferred_leaf_parts(ret.deferred.tuple_parts):
+            _walk(owner, part.expr,
+                  argtemp_ok=(ret.hosts_temps
+                              and part.kind is DeferredPartKind.TEMP))
 
 
 def _check_param(owner: str, param: THIRParam) -> None:
@@ -1813,15 +1823,7 @@ def _validate_resumable_leaves(owner: str,
             if not isinstance(leaf, THIRResumableReturn):
                 _fail(owner, leaves, "return slot holds "
                       f"{type(leaf).__name__}")
-            # The scaffolding renders the value and the deferred capture
-            # into lines with no flush point.
-            if leaf.value is not None:
-                _walk(owner, leaf.value)
-            if leaf.deferred is not None:
-                if leaf.deferred.capture is not None:
-                    _walk(owner, leaf.deferred.capture)
-                for part in _deferred_leaf_parts(leaf.deferred.tuple_parts):
-                    _walk(owner, part.expr)
+            _walk_resumable_return(owner, leaf)
         elif role is LeafRole.LOOP_STEP:
             if not isinstance(leaf, THIRLent):
                 _fail(owner, leaves, "loop step slot holds "

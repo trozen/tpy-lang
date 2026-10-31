@@ -3929,6 +3929,7 @@ class TypeCompatibility:
         if r.path is None or r.path == ():
             ret.finally_deferred_capture = False
             ret.finally_deferred_name = None
+            ret.finally_deferred_shape = None
             ret.finally_deferred_leaves = ()
         else:
             ret.finally_deferred_leaves = tuple(

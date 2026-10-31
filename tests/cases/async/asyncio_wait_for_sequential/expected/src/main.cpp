@@ -23,7 +23,7 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 10;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(10);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -54,7 +54,7 @@ __coro_first first() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 20;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(20);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

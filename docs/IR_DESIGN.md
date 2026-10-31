@@ -1565,10 +1565,10 @@ prove still apply to the committed-snapshot oracle that replaced them.
   either way diverges one side.
 - **Own params own their storage** -> they read STORAGE form (a validator sink-rule catch;
   an Own-param BORROW mislabel was the rule's first live catch).
-- **Position-blind vs target-typed render:** the async frame-field-write arm and the async
-  return-value arm render position-blind (a literal at a wider slot stays bare `42`, never
-  `::tpy::BigInt(42)`), unlike the sync target-typed arms. Lower these through `_lower_expr`,
-  not the return-coercion path.
+- **Position-blind vs target-typed render:** the async frame-field-write arm renders
+  position-blind (a literal at a wider slot stays bare `42`, never `::tpy::BigInt(42)`),
+  unlike the sync target-typed arms. Lower it through `_lower_expr`, not the
+  return-coercion path.
 - Arg-temps flush only at the simple-statement positions (expr-stmt / var-decl init /
   name assign / return / field write / print arg); nested-call and while/elif-condition
   args have no flush point and stay AST.

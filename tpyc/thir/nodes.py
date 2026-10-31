@@ -2970,10 +2970,14 @@ class THIRResumableReturn(THIRStmt):
     or at a slot that takes none); `deferred` the capture recipe of a
     sema-stamped finally-deferred return (None exactly when unstamped:
     the lowering rejects a stamped shape it has no recipe for);
-    `has_operand` whether the source return names an operand."""
+    `has_operand` whether the source return names an operand;
+    `hosts_temps` whether the value may carry a temporary the printer
+    flushes ahead of the line that renders it (the payload slot's
+    placement, `result_hosts_temps`)."""
     has_operand: bool = True
     value: 'THIRExpr | None' = None
     deferred: 'THIRStmt | None' = None
+    hosts_temps: bool = False
 
 
 @dataclass(frozen=True)

@@ -632,7 +632,8 @@ def stored_use(dest: Slot, member_t: TpyType, analyzer, *,
         source lifts WHOLE (PTR_OPT_LIFT / UNION_VALUE_LIFT), never
         dereffed;
       * every member taken as a value: a pointer-bound source reads through
-        its deref (INDIRECT_READ);
+        its deref (INDIRECT_READ) -- not at a pointer slot, which binds the
+        pointer itself;
       * a record / container member of an owning slot: a select renders
         its prvalue, which the slot's own construction copies from
         (SELECT_PRVALUE, sema warns the copy of an existing object);
@@ -652,7 +653,7 @@ def stored_use(dest: Slot, member_t: TpyType, analyzer, *,
         forms = _ONLY_PTR_OPT_PASSTHROUGH | _STORAGE_COPY_FORMS
     else:
         forms = _slot_lift_forms(ptr_opt, ptr_union) | _STORAGE_COPY_FORMS
-        if not (ptr_opt or ptr_union):
+        if not (ptr_opt or ptr_union or dest.holds is SlotHolds.POINTER):
             forms = forms | _VALUE_READ_FORMS
     reference = (dest.holds in (SlotHolds.POINTER, SlotHolds.BORROWS)
                  or lends_elements(dest))

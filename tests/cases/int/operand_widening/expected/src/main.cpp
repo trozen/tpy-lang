@@ -49,7 +49,7 @@ __gen_gen gen(int64_t a, int32_t b, int32_t e) {
         __sub_0.reset();
         r = (::tpy::add_check<int64_t>(a, static_cast<int64_t>(b)));
         __state = S_DONE;
-        int64_t __tpy_async_ret = r;
+        int64_t __tpy_async_ret = std::move(r);
         return ::tpystd::tpy::Poll<int64_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -1,0 +1,5 @@
+main.py:48: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:90: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:175: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:195: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:260: warning: upcast narrows 'Sub' to 'Box' -- only 'Box' fields and methods will be accessible; keep the concrete type or make 'Box' a @dynamic protocol

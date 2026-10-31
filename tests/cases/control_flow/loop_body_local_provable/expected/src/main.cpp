@@ -87,7 +87,7 @@ __gen_gen_pos gen_pos() {
             v = (::tpy::add_check<int32_t>(i, 3));
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = v;
+        int32_t __tpy_async_ret = std::move(v);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -972,7 +972,7 @@ __gen_else_gen else_gen(bool flag) {
         }
         __after_else_0:;
         __state = S_DONE;
-        int32_t __tpy_async_ret = v;
+        int32_t __tpy_async_ret = std::move(v);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -97,7 +97,7 @@ __gen_abandoned abandoned() {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));

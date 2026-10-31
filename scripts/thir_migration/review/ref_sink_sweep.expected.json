@@ -60,9 +60,9 @@
   "[1] *%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "array_i__async__global_name__tuple_elem": [
   "ok",
@@ -225,9 +225,9 @@
   "[1] %pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "array_i__async__param__tuple_elem": [
   "ok",
@@ -2315,9 +2315,9 @@
   "[1] method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "bytearray__async__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2480,9 +2480,9 @@
   "[1] method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "bytearray__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -5165,9 +5165,9 @@
   "[1] method_call(%G, ->push_back, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%G])]) [raw])"
  ],
  "deref_list__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "deref_list__async__global_name__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -5330,9 +5330,9 @@
   "[1] method_call(%pv, push_back, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv])]) [raw])"
  ],
  "deref_list__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "deref_list__async__param__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -8015,9 +8015,9 @@
   "[1] %G->x = coerce(lit(9) -> int32) [2] print(%G->x [raw])"
  ],
  "deref_rec__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "deref_rec__async__global_name__tuple_elem": [
   "ok",
@@ -8180,9 +8180,9 @@
   "[1] %pv.x = coerce(lit(9) -> int32) [2] print(%pv.x [raw])"
  ],
  "deref_rec__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "deref_rec__async__param__tuple_elem": [
   "ok",
@@ -10865,9 +10865,9 @@
   "[1] *%G[str('z')] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "dict_si__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "dict_si__async__global_name__tuple_elem": [
   "ok",
@@ -11030,9 +11030,9 @@
   "[1] %pv[str('z')] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "dict_si__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "dict_si__async__param__tuple_elem": [
   "ok",
@@ -13445,9 +13445,9 @@
   "[1] held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "gen_rec__async__global_name__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13610,9 +13610,9 @@
   "[1] held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "gen_rec__async__param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -16160,9 +16160,9 @@
   "[1] method_call(%G, ->push_back, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "list_i__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "list_i__async__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -16325,9 +16325,9 @@
   "[1] method_call(%pv, push_back, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_i__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "list_i__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -18875,9 +18875,9 @@
   "[1] method_call(%G, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "list_r__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "list_r__async__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -19040,9 +19040,9 @@
   "[1] method_call(%pv, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_r__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "list_r__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -21265,9 +21265,9 @@
   "[1] %G->x = binop(%G->x, +, lit(1)) [2] print(%G->x [raw])"
  ],
  "rec__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "rec__async__global_name__tuple_elem": [
   "ok",
@@ -21430,9 +21430,9 @@
   "[1] %pv.x = binop(%pv.x, +, lit(1)) [2] print(%pv.x [raw])"
  ],
  "rec__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "rec__async__param__tuple_elem": [
   "ok",
@@ -24470,9 +24470,9 @@
   "[1] method_call(%G, ->insert, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "set_i__async__global_name__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] %G"
  ],
  "set_i__async__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24635,9 +24635,9 @@
   "[1] method_call(%pv, insert, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "set_i__async__param__return_borrow": [
-  "reject:stmt.return:return.borrow_form",
+  "ok",
   "",
-  ""
+  "return_values: [0] optptr{&(%pv)}"
  ],
  "set_i__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",

@@ -4551,13 +4551,11 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         # this node to `_make_async_return` /
         # `_make_generator_resumable_return`, which render its value and
         # deferred recipe from it.
-        # No temps.flush here: `_lower_resumable_return_value` lowers with
-        # the default `_ExprUse()` (allow_temps=False), so the value can
-        # never carry a THIRArgTemp -- widening that seam to temp-bearing
-        # values must add the flush.
         if state.resumable_return_hook is None:
             raise THIRCodeGenError(
                 "THIRResumableReturn outside resumable leaf emission")
+        # The maker flushes the value's temporaries ahead of the line that
+        # renders it, inside the code it hands back.
         out.write(state.resumable_return_hook(stmt, indent_level))
     elif isinstance(stmt, THIRFrameNestedDef):
         # The member itself is scaffolding-emitted; the statement position
@@ -4984,22 +4982,15 @@ class ResumableLeafEmitter:
         finally:
             self._state.temps = saved
 
-    def render_return_value(self, ret, *, allow_move: bool = False) -> str:
+    def render_return_value(self, ret) -> str:
         """Render a return's lowered value (`THIRResumableReturn.value`) for
         `_make_async_return`'s scaffolding (the ret-tmp init / pending-slot
-        store). The lowering bakes the last-use move (THIRMove)
-        position-blind; the scaffolding knows the site, so a pre-finally
-        store unwraps it -- an alias bound before the try can still read the
-        local from the finally body. Defaults to no-move, the fail-safe
-        polarity: a call site that forgets the kwarg gets the copy, never
-        the move."""
+        store). The lowering decided its move, as a sync return's."""
         node = ret.value
         if node is None:
             raise THIRCodeGenError(
                 "resumable seam: routed body has no lowered return value "
                 "(lowering/seam disagreement)")
-        if not allow_move and isinstance(node, THIRMove):
-            node = node.value
         return _emit_expr(node, self._state)
 
     def render_deferred_return(self, ret) -> 'tuple[list[str], str]':

@@ -108,7 +108,7 @@ __gen_gen gen(bool c) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = (*n);
+        int32_t __tpy_async_ret = std::move((*n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

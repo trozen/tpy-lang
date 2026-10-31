@@ -94,7 +94,7 @@ __coro_second second() {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            this->__finally_ret_0 = 5;
+            this->__finally_ret_0 = ::tpy::BigInt(5);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;

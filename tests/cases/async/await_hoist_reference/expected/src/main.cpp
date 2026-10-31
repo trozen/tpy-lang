@@ -12,7 +12,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
+        std::vector<int32_t> __tpy_async_ret = std::vector<int32_t>{10, 20, 30};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -89,7 +89,7 @@ __coro_get_multiplier get_multiplier() {
             total = (::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, multiplier))));
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = total;
+        int32_t __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

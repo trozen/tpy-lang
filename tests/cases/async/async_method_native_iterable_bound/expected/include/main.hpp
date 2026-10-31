@@ -86,7 +86,7 @@ template <::tpy::NativeIterable<int32_t> T>
             result = ::tpy::add_check<int32_t>(result, x);
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = result;
+        int32_t __tpy_async_ret = std::move(result);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

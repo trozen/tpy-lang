@@ -60,7 +60,7 @@ __gen_gen gen(uint64_t x, const std::vector<int8_t>& ks) {
         __sub_0.reset();
         r = (::tpy::lshift_check<int32_t>(x, k));
         __state = S_DONE;
-        int8_t __tpy_async_ret = ::tpy::int_cast_check<int8_t>(r);
+        int8_t __tpy_async_ret = ::tpy::int_cast_check<int8_t>(std::move(r));
         return ::tpystd::tpy::Poll<int8_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

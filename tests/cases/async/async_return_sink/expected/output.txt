@@ -1,0 +1,65 @@
+field_of 10
+field_of bound 11
+element_of 20
+element_of bound 21
+accessor_of 30
+accessor_of bound 31
+either 40
+either bound 41
+maybe 50
+maybe none True
+owned_copy 41
+empty []
+repeated [4, 4, 4]
+big 42
+poked 6
+ident value 7
+ident ref 60
+method inner 70
+method snapshot 70
+unwrap 61
+unwrap bound 62
+unwrap value 8
+indexed 63
+indexed bound 64
+sync_indexed 67
+sync_indexed bound 68
+sync_nested_open 69
+sync_nested_open bound 70
+nested_open 65
+nested_open bound 66
+tup_finally fin 3
+tup_finally 3 1
+tup_finally_await fin 4
+tup_finally_await 4 1
+own_finally fin 7
+own_finally 7
+own_finally_await fin 8
+own_finally_await 8
+param_finally 109
+sync_param_finally 110
+local_opt_finally 112
+sync_local_opt_finally 113
+own_union_finally 114
+sub_union_finally 115
+str_param_union fin sp
+str_param_union sp
+int_union_finally fin 16
+int_union_finally 16
+string_union_finally fin ab
+string_union_finally ab
+declared_union_finally fin du
+declared_union_finally du
+declared_opt_finally fin do
+declared_opt_finally do
+V.f finally hello
+V.f hello
+take 118
+take_async 117
+mk 6
+temp_finally fin
+temp_finally 7
+borrow_finally 170 170
+pick_flag 10
+nested 80
+by_match 90

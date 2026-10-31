@@ -29,7 +29,7 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            ::tpy::BigInt __tpy_async_ret_0 = ::tpy::BigInt(x);
+            ::tpy::BigInt __tpy_async_ret_0 = ::tpy::BigInt(std::move(x));
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_DONE;

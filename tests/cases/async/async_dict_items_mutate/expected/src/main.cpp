@@ -37,7 +37,7 @@ namespace tpyapp::main {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = n;
+            int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_0 = std::tuple<int32_t, C*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }

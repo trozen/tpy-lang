@@ -79,7 +79,7 @@ __coro_cleanup cleanup() {
             __sub_0.reset();
             std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 42;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (...) {
             __sub_0.reset();
@@ -98,7 +98,7 @@ __coro_cleanup cleanup() {
             __sub_1.reset();
             std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 42;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (...) {
             __sub_1.reset();
@@ -107,7 +107,7 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_0: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 0;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(0);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_2: {
@@ -122,7 +122,7 @@ __coro_cleanup cleanup() {
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = 42;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (...) {
             throw;

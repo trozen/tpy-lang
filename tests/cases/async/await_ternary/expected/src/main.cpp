@@ -16,7 +16,7 @@ namespace tpyapp::main {
         __state = S_DONE;  // until a yield sets where to resume
         std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 1;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(1);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -40,7 +40,7 @@ __coro_one one(std::string_view tag) {
         __state = S_DONE;  // until a yield sets where to resume
         std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 2;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(2);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

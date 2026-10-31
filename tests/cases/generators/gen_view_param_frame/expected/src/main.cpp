@@ -375,7 +375,7 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
-            std::string __tpy_async_ret = out;
+            std::string __tpy_async_ret = std::move(out);
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;
@@ -437,7 +437,7 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = n;
+            int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));

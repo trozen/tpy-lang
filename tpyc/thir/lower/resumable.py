@@ -77,9 +77,10 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyVarDecl,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union
+from ...typesys import pointer_variant_union
 from ...typesys import (
     AnyType,
+    CallableType,
     ConcreteCoroType,
     IntLiteralType,
     NominalType,
@@ -140,7 +141,7 @@ from .checks import (
 )
 from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
                       SlotPlacement,
-                      yield_slot,
+                      async_payload_slot, result_hosts_temps, yield_slot,
                       _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_FRAME_FACTORY,
                       _ONLY_SELF_TYPED, _Prescan,
@@ -191,12 +192,10 @@ from .predicates import (
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
-    _res_container_return,
     _resolved_bytes_value,
     _resolved_str_value,
     _slot_free_ptr_reseat_ok,
     _type_family_tag,
-    _unwrap_own,
     _value_opt_callable,
     _value_opt_scalar,
     _value_opt_view,
@@ -216,7 +215,6 @@ from .statements import (
     _lower_frame_field_assign,
     _lower_frame_slot_write,
     _lower_narrow_cond,
-    _lower_resumable_return_value,
     _reject_tuple_site_own,
     _lower_stmt,
     _lower_stmts,
@@ -256,12 +254,9 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
       (`param_val_or_ref_t<T>` ctor param -> `val_or_ref_t<T>` field), so
       value-typed T copies in, object-typed T borrows, and the field reads
       bare either way.
-    - RETURN: NOT the trait chain -- `_make_async_return` binds a plain
-      `{ret_cpp} __tpy_async_ret = <value>;`, so the slot is a plain `T` and
-      the leaf renders its source bare. (That plain-T binding is also why an
-      object-typed T return COPIES where CPython aliases -- see BUGS.md. When
-      that fix routes the return through `val_or_ref_t<T>`, re-check this arm
-      and the return leaf TOGETHER.)
+    - RETURN: the payload slot holds an open `T` through `val_or_ptr_t<T>`
+      (`async_payload_slot`), which the result conversion lifts the source
+      into.
     - YIELD: the yield slot bridges storage->pointer only for tuple slots
       and borrow-form loop vars; a bare `T` yield source is neither, so it
       passes through unchanged.
@@ -275,6 +270,43 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
         return True
     return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
                       TypeParamRef)
+
+
+def _async_payload_refused(rt_decl: 'TpyType | None', analyzer) -> bool:
+    """The async payload types no Poll payload spells yet: the result
+    conversion takes every value at the slot its classification gives,
+    and what is left is the payload's own C++ type -- a union (value or
+    pointer variant), a Callable, an owned Optional (`Own[X | None]`), a
+    tuple holding a borrowed or non-value element, a value Optional of
+    anything but a scalar, and the types no capture family reads."""
+    if not isinstance(rt_decl, TpyType):
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt_decl)))
+    if isinstance(u, VoidType):
+        return False
+    owned = isinstance(u, OwnType)
+    payload = unwrap_readonly(u.wrapped) if owned else u
+    if isinstance(payload, (UnionType, CallableType)):
+        return True
+    if isinstance(payload, OptionalType):
+        if owned:
+            return True
+        return (not payload.uses_pointer_repr()
+                and _value_opt_scalar(u, analyzer) is None
+                and _storage_optional_return_type(u, analyzer) is None)
+    if isinstance(payload, TupleType):
+        return (_value_tuple_return(u, analyzer) is None
+                and _generic_value_tuple_return(u, analyzer) is None)
+    # What is left is a capture family's own type: a value scalar, an open
+    # `T`, a str / bytes, or a reference type -- owned only where it is a
+    # reference type or an open `T`.
+    if owned:
+        return not (record_like(payload, analyzer)
+                    or isinstance(payload, TypeParamRef))
+    return not (_res_capture_ok(u, analyzer)
+                or _resolved_str_value(u, analyzer) is not None
+                or _resolved_bytes_value(u, analyzer) is not None
+                or record_like(u, analyzer))
 
 
 def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
@@ -1617,68 +1649,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # The family names WHICH param slot blocked; the bare landmark
             # collapses unrelated capture shapes into one tally line.
             return _reject(f"res.param_type:{_type_family_tag(pt, analyzer)}")
-    if not is_generator:
-        rt = func.return_type if isinstance(func.return_type, TpyType) else None
-        rt_inner = (unwrap_readonly(unwrap_send_sync(rt))
-                    if rt is not None else None)
-        # Owned str/bytes returns take the result slot's view->owned copy
-        # (`convert.view_to_owned`), keyed on the lowered source's facts --
-        # the row every sync str return takes. One render serves all three
-        # async scaffolding sites (`_async_ret_to_borrow` is a no-op for
-        # str/bytes).
-        if not (rt is None or isinstance(rt_inner, VoidType)
-                or _res_capture_ok(rt, analyzer)
-                or _resolved_str_value(rt, analyzer) is not None
-                or _resolved_bytes_value(rt, analyzer) is not None
-                # Value-tuple return slot (`std::tuple<...>` by value,
-                # Own[F1-record] elements included): the return value
-                # gates per-shape in _lower_resumable_return_value's
-                # tuple arm (a literal renders the spelled brace-init,
-                # position-independent like the frame-field flavor).
-                or _value_tuple_return(rt, analyzer) is not None
-                # Generic tuple slot (>=1 TypeParamRef element, spelled
-                # `val_or_ptr_t<T>` per element): a literal renders the
-                # spelled brace-init with `to_val_or_ptr` element wraps in
-                # _lower_resumable_return_value's generic arm.
-                or _generic_value_tuple_return(rt, analyzer) is not None
-                # Value-repr Optional[scalar] (`std::optional<T>` slot):
-                # the return value gates per-shape in
-                # _lower_resumable_return_value's value-opt arm.
-                or _value_opt_scalar(rt, analyzer) is not None
-                # Container storage slot (`std::vector`/`map`/`set` by
-                # value): sources ride the position-blind tail (a last-use
-                # movable name with a THIRMove wrap), except the empty
-                # literal the return arm rejects.
-                or _res_container_return(rt, analyzer) is not None
-                # Own[F1-record] slot (`Poll<Box>` payload, `<Box>
-                # __tpy_async_ret = std::move(...)`): STORAGE form, so the
-                # position-blind tail's last-use move serves the sources;
-                # bare reference-type returns stay on return.borrow_form.
-                or (isinstance(rt_inner, OwnType)
-                    and record_like(_unwrap_own(rt_inner), analyzer))
-                # Own[T] slot (generic ownership transfer, `Poll<T>` value
-                # payload): STORAGE form like the bare-T return, so the
-                # position-blind tail serves the sources; the return-await
-                # forward (`__ret0`) is skeleton.
-                or (isinstance(rt_inner, OwnType)
-                    and isinstance(unwrap_readonly(rt_inner.wrapped),
-                                   TypeParamRef))
-                # Bare record / container slot (Poll<T*> pointer payload): the value
-                # tail admits only the SELF lift rung (`&(__self)`); every
-                # other source keeps the return.borrow_form fence.
-                or record_like(rt_inner, analyzer)
-                # Storage Optional[F1-record] slot (`-> Own[Box] | None` ->
-                # `Poll<std::optional<Box>>`): the sync F2c return family's
-                # async twin -- None spells nullopt at the return arm's
-                # record-opt rung, ctor rvalues ride the position-blind
-                # tail (the optional's converting ctor absorbs them).
-                or _storage_optional_return_type(rt_inner, analyzer)
-                is not None
-                # Pointer-repr Optional slot (`-> Box | None` -> Poll<Box*>,
-                # BORROW form): sources gate in the return arm's BORROW
-                # rungs (the field optional_to_ptr lift; others fence).
-                or pointer_repr_optional(rt_inner) is not None):
-            return _reject("res.return_type")
+    if not is_generator and _async_payload_refused(func.return_type,
+                                                    analyzer):
+        return _reject("res.return_type")
     # Forwarded proto-param aliases (`xs = it`) are compile-time renames:
     # the decl emits nothing and every read renders the backing param
     # (the `generator_storage_name` substitution). Admitted whenever
@@ -2343,14 +2316,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     has_operand=ret.value is not None, loc=ret.loc)
                 return
             begin_stmt()
-            # Value render shared with nested leaf returns (see
-            # `_lower_resumable_return_value` for the position-blind
-            # contract).
-            value = _lower_resumable_return_value(ret, lc, declared)
+            # An async return converts its value into the payload slot
+            # exactly as a sync `return` converts into its result slot.
+            payload = async_payload_slot(lc)
+            value = result_value(ret.value, payload, lc, declared,
+                                 _LowerScope(lc, declared), ret)
             leaves[t.slot] = THIRResumableReturn(
                 has_operand=ret.value is not None, value=value,
                 deferred=_resumable_deferred_recipe(ret, lc, declared, value),
-                loc=ret.loc)
+                hosts_temps=result_hosts_temps(payload, lc), loc=ret.loc)
             _witness("res.return_value")
         elif isinstance(t, THIRFrameRaise):
             leaves[t.slot] = _lower_leaf(t.raise_stmt)

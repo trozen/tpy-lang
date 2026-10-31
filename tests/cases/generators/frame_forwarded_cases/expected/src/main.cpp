@@ -690,7 +690,7 @@ __gen_stop_in_region stop_in_region(const std::vector<int32_t>& xs) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         x = *((*__for_it_0))++;
@@ -777,7 +777,7 @@ __coro_async_loop async_loop(const std::vector<int32_t>& xs) {
     }
     case S_JOIN_2: {
         __state = S_DONE;
-        int32_t __tpy_async_ret = total;
+        int32_t __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_3: {

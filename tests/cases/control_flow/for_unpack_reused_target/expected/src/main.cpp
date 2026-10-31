@@ -118,7 +118,7 @@ __gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = i;
+            int32_t __tpy_async_ret = std::move(i);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_5 = *((*__for_it_0))++;

@@ -1223,6 +1223,19 @@ class RebindStorage(Enum):
     OWN = "own"
 
 
+class DeferredCapture(Enum):
+    """How a finally-deferred `return <name>` holds the local across the
+    chain -- decided by sema (`_mark_finally_deferred_return`), read by the
+    lowering's recipe. OWN_STORAGE: `auto* p = &(name);` before, then
+    `std::move(*p)`, which the return converts into the result (the result
+    itself, or a member of a by-value Optional / union result,
+    `holds_result_member`). POINTER_OPTIONAL: a pointer-repr Optional local
+    into a storage Optional result, `auto* p = name;` then
+    `::tpy::ptr_to_optional_move(p)`."""
+    OWN_STORAGE = "own_storage"
+    POINTER_OPTIONAL = "pointer_optional"
+
+
 class TryTier(Enum):
     """How a `try` statement dispatches -- decided by sema's tier
     classification, read by the lowering and the resumable CFG. RETURN:
@@ -1441,8 +1454,9 @@ class TpyReturn(TpyStmt):
     # after it, so finally mutations stay visible (CPython aliasing).
     finally_deferred_capture: bool = False
     # With the stamp on a returned name: that name, under the identity
-    # coercions the return may wrap it in.
+    # coercions the return may wrap it in, and how the capture holds it.
     finally_deferred_name: Optional['TpyName'] = None
+    finally_deferred_shape: Optional[DeferredCapture] = None
     # With the stamp on a returned tuple literal: the index paths of the
     # members that are such locals (each captured by pointer before the
     # chain); every other member is evaluated into a temporary there.

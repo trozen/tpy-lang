@@ -136,7 +136,7 @@ __gen_gen gen() {
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
-            int64_t __tpy_async_ret = total;
+            int64_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int64_t>::ready(std::move(__tpy_async_ret));
         }
         _ = ((*__for_i_0))++;
@@ -941,7 +941,7 @@ __gen_first_gen first_gen() {
         x = static_cast<int32_t>(3);
         std::cout << "first_async" << " " << x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        int32_t __tpy_async_ret = y;
+        int32_t __tpy_async_ret = std::move(y);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -163,7 +163,7 @@ from ...coercions import (BIGINT_NARROW, OPTIONAL_STR_TO_STRVIEW,
                           IDENTITY_STR_COERCIONS,
                           context_free_wrap_template)
 from ...value_category import (
-    CONTAINER_LITERAL_NODES,
+    CONTAINER_LITERAL_NODES, open_type_param_call_result,
     call_hands_back_value, call_value_optional,
     call_result_is_reference,
     call_returns_cpp_ref, getitem_call_of,
@@ -3963,29 +3963,6 @@ def _unown_type_args(t: TpyType) -> TpyType:
         ta.wrapped if isinstance(ta, OwnType) else ta
         for ta in t.type_args))
 
-def _res_container_return(t: TpyType | None, analyzer) -> 'TpyType | None':
-    """The RESUMABLE container return slot (`Poll<std::vector<T>>` /
-    `expected<std::vector<T>, StopIteration>`), or None. Wider than the sync
-    `_record_storage_return` at the `Own` axis: a coroutine's return slot
-    holds `T` by value whether or not the signature spells `Own`, so a bare
-    `-> list[T]` (reachable when the value comes from an await, the only
-    source sema admits without `Own`) shares the render. The value rides the
-    position-blind tail -- the scaffolding's `{ret_cpp} __tpy_async_ret =
-    <value>;` decl supplies the type, so names/calls/literals emit bare.
-
-    That plain-`T` binding is also why a container return COPIES where CPython
-    aliases (the reference-type divergence `_res_capture_ok`'s RETURN bullet
-    records against BUGS.md) -- an existing divergence this arm does not
-    change; when the fix routes returns through
-    `val_or_ref_t<T>`, re-check THIS arm together with the capture arm and the
-    return leaf, exactly as that bullet instructs."""
-    if t is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
-    return t if record_like(t, analyzer) else None
-
 def _plain_container_read(t: TpyType | None) -> bool:
     """A plain (non-`Own`) reference-form container read at a position where
     the bare read IS the whole render -- the for-head, whose begin()/end() are taken
@@ -6821,34 +6798,8 @@ def _tparam_protocol_field_over_field_ok(e: TpyExpr, bounds: 'dict | None',
     return _bounded_tparam_protocol(analyzer.get_expr_type(e.obj),
                                     bounds) is not None
 
-def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
-                          analyzer) -> bool:
-    """A value-position read of a str-family field off an admitted receiver
-    (`recv.field`, `_field_receiver_ok`): an owned `std::string` member reads
-    bare as STORAGE (a view sink binds it implicitly, an owned sink copies by
-    value); a `StrView` member reads bare as BORROW, so the owned-str sinks
-    that admit it fire the explicit view->owned copy (`std::string(...)` at
-    the return convert) -- both render at the positions that admit the read
-    (the str-family return slot, a print / f-string arg). A `String`
-    field resolves INSIDE the slice but is excluded here by the
-    `is_str_type`/`is_str_view_type` filter below -- its owned form has no
-    view sink to convert at. An unbound-self `BaseN.field` read joins the
-    row: its render is the same bare member read behind a fixed qualifier."""
-    if not (isinstance(e, TpyFieldAccess)
-            and _field_receiver_or_unbound_self_ok(e, declared, analyzer)):
-        return False
-    return _str_view_family_value(analyzer.get_expr_type(e), analyzer)
-
-def _str_view_family_value(t: TpyType | None, analyzer) -> bool:
-    """The str/StrView slice of `_resolved_str_value` -- `String` resolves
-    inside the slice but is excluded (its owned form has no view sink to
-    convert at, so no body arm renders it)."""
-    st = _resolved_str_value(t, analyzer)
-    return st is not None and (is_str_type(st) or is_str_view_type(st))
-
 def _bytes_view_family_value(t: TpyType | None, analyzer) -> bool:
-    """The bytes/BytesView slice of `_resolved_bytes_value` -- the bytes twin
-    of `_str_view_family_value`. An owned `::tpy::Bytes` member reads bare as
+    """The bytes/BytesView slice of `_resolved_bytes_value`. An owned `::tpy::Bytes` member reads bare as
     STORAGE, a `BytesView` (span) member as BORROW; the render is the bare
     `.field` tail at every position that admits the read, so the RECEIVER is
     the field ladder's question, not this row's."""
@@ -9163,10 +9114,12 @@ def call_declared_held(call: 'TpyCall | TpyMethodCall | None',
                        t: 'TpyType | None') -> 'Held | None':
     """What a call result of type `t` holds by its callee's declared return
     alone: an `Own` result FRESH (ownership wins), a tuple with a pointer
-    or open-T element BORROWED; None where the declaration does not say."""
+    or open-T element, or a bare open `T`, BORROWED; None where the
+    declaration does not say."""
     if call is not None and _own_declared_result(call):
         return Held.FRESH
-    if _pointer_repr_tuple_result(t):
+    if (_pointer_repr_tuple_result(t)
+            or open_type_param_call_result(call, t)):
         return Held.BORROWED
     return None
 

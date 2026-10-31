@@ -66,7 +66,7 @@ __coro_cleanup cleanup() {
             std::rethrow_exception(__tmp);
         }
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 7;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(7);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {

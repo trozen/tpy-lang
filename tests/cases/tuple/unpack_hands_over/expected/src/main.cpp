@@ -997,7 +997,7 @@ __coro_tick tick() {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = s;
+            int32_t __tpy_async_ret = std::move(s);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_18 = &(::tpy::unwrap_ref(*(*__for_r_0)));
@@ -1109,7 +1109,7 @@ __coro_async_for_head async_for_head() {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = total;
+            int32_t __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_20 = &(::tpy::unwrap_ref(*(*__for_r_0)));

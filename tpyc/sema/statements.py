@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import (drop_own_marker, pointer_repr_optional, pointer_variant_union,
+                       holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
 from ..typesys import (
@@ -83,7 +84,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import (
-    SourceLocation, VarLinkage, op_spelling, name_path,
+    SourceLocation, VarLinkage, op_spelling, name_path, DeferredCapture,
 )
 from .arg_binding import source_view
 from .calls import class_callee
@@ -169,7 +170,7 @@ from .context import (
 from ..value_category import (
     frame_factory_callee,
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
-    async_return_form, AsyncReturnForm, iterator_source_callee,
+    iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of,
 )
@@ -1608,13 +1609,15 @@ class StatementAnalyzer:
         the finally chain runs before the deferred move, and on any path
         where handlers read the name this return never executed.
 
-        Only stamp shapes codegen's deferred-capture recipes cover -- a stamp
-        without a recipe falls back to the eager copy, whose pre-mutation
-        value silently diverges from CPython's aliasing pending return, so
-        the gate errs narrow: plain non-value scalars returned as Own[T], and
-        pointer-repr Optional locals returned as a storage Optional, and the
-        same per member for a returned tuple. Narrowed Optional sources and
-        union-typed values keep the eager capture.
+        The stamp names the recipe (`DeferredCapture`) and is the one
+        decision: the lowering builds what it names. Only shapes a recipe
+        covers are stamped, and the gate errs narrow: plain non-value
+        locals returned as Own[T], or into a by-value Optional / union
+        result one of whose members is the local's own type
+        (`holds_result_member`), and pointer-repr Optional locals returned
+        as a storage Optional, and the same per member for a returned
+        tuple. Declared union locals, and a local no member of an Optional
+        / union result holds, keep the eager capture.
         """
         # A returned Own param is consumed by the return whatever capture
         # takes it (a finally that rebinds it keeps an eager one).
@@ -1641,33 +1644,37 @@ class StatementAnalyzer:
         exp = unwrap_ref_type(expected)
         val = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
         declared = self._declared_binding(value.name)
-        eligible = False
+        shape: DeferredCapture | None = None
         if (result_owns_storage(exp)
                 and not unwrap_own(exp).copy_is_cheap()
                 and not isinstance(exp, OptionalType)):
-            eligible = self._own_slot_deferrable(declared, val)
+            # At a by-value union result the moved-out local must be one
+            # member's own type; inside `Own[...]` the return converts it
+            # as the eager return would (a subclass into its base member).
+            if (self._own_slot_deferrable(declared, val)
+                    and (not isinstance(exp, UnionType)
+                         or holds_result_member(declared, exp))):
+                shape = DeferredCapture.OWN_STORAGE
         elif isinstance(exp, OptionalType) and not exp.uses_pointer_repr():
             # Shape B: pointer-repr Optional local returned as the storage
             # Optional (Own[T] | None) -- the ptr_to_optional_move arm. The
             # analyzed type may be narrowed to T, so key on the declared
             # binding.
-            eligible = pointer_repr_optional(declared) is not None
-            # An owned nullable tuple local holds the slot's own by-value
-            # optional, so it defers like an Own[T] local (shape A): the
-            # finally's write through it must reach the returned tuple.
-            if (not eligible and isinstance(declared, OptionalType)
-                    and not declared.uses_pointer_repr()):
-                inner = unwrap_readonly(declared.inner)
-                eligible = (isinstance(inner, TupleType)
-                            and any(isinstance(unwrap_readonly(et), OwnType)
-                                    and not unwrap_readonly(
-                                        unwrap_own(et)).copy_is_cheap()
-                                    for et in inner.element_types))
-        if eligible:
+            if pointer_repr_optional(declared) is not None:
+                shape = DeferredCapture.POINTER_OPTIONAL
+            # An owned nullable tuple local holding the slot's own by-value
+            # optional, or a local of the payload's own type, is shape A:
+            # the finally's write through it must reach the returned value.
+            elif ((self._owned_nullable_tuple(declared)
+                   or self._own_slot_deferrable(declared, val))
+                  and holds_result_member(declared, exp)):
+                shape = DeferredCapture.OWN_STORAGE
+        if shape is not None:
             restored = value not in self.ctx.all_last_uses
             self.ctx.all_last_uses.add(value)
             stmt.finally_deferred_capture = True
             stmt.finally_deferred_name = value
+            stmt.finally_deferred_shape = shape
             self.compat.record_owning_read(FinallyCapture(
                 value.name, value, stmt, None,
                 restored_last_use=restored))
@@ -1745,6 +1752,20 @@ class StatementAnalyzer:
         if declared is not None:
             declared = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
         return declared
+
+    @staticmethod
+    def _owned_nullable_tuple(declared: 'TpyType | None') -> bool:
+        """A by-value Optional local over a tuple owning a reference-type
+        element: it holds its elements itself, as an Own[T] local does."""
+        if not (isinstance(declared, OptionalType)
+                and not declared.uses_pointer_repr()):
+            return False
+        inner = unwrap_readonly(declared.inner)
+        return (isinstance(inner, TupleType)
+                and any(isinstance(unwrap_readonly(et), OwnType)
+                        and not unwrap_readonly(
+                            unwrap_own(et)).copy_is_cheap()
+                        for et in inner.element_types))
 
     @staticmethod
     def _own_slot_deferrable(declared: 'TpyType | None', val: TpyType) -> bool:
@@ -3570,6 +3591,7 @@ class StatementAnalyzer:
                 if path is None or path == ():
                     ret.finally_deferred_capture = False
                     ret.finally_deferred_name = None
+                    ret.finally_deferred_shape = None
                     ret.finally_deferred_leaves = ()
                     leaf = ret.value
                     while isinstance(leaf, TpyCoerce):

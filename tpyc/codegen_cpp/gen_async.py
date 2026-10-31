@@ -49,8 +49,7 @@ from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
                        yield_borrow_slot_cpp)
 from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType
-from ..value_category import (async_return_form, AsyncReturnForm,
-                              for_source_is_rvalue)
+from ..value_category import for_source_is_rvalue
 from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
 from . import emit_prims
@@ -677,7 +676,8 @@ class AsyncCoroCodegen:
         return ", ".join(parts)
 
     def _ret_cpp(self, func: TpyFunction) -> str:
-        """The coro's Poll payload C++ type, per `async_return_form`:
+        """The coro's Poll payload C++ type, per its ASYNC_PAYLOAD result
+        classification (the slot the body's returns convert into):
         borrow-contract returns (bare reference types and pointer-repr
         Optionals) use pointer form, matching the sync `to_cpp_return`
         convention -- so the await binding aliases the source rather than
@@ -691,14 +691,15 @@ class AsyncCoroCodegen:
         aware, and recursive-union wrappers have no pointer spelling --
         both keep storage form (see BUGS.md)."""
         rt = unwrap_ref_type(func.return_type)
-        form = async_return_form(func.return_type)
-        if form is AsyncReturnForm.BORROW:
+        form = classify_result_representation(
+            func.return_type, position=ResultPosition.ASYNC_PAYLOAD)
+        if form is ResultRepresentation.ASYNC_POINTER:
             bare = unwrap_readonly(unwrap_send_sync(rt))
             if isinstance(bare, OptionalType):
                 return rt.to_cpp_return()
             const_pfx = "const " if isinstance(rt, ReadonlyType) else ""
             return f"{const_pfx}{self.types.type_to_cpp(bare)}*"
-        if form is AsyncReturnForm.TRAIT:
+        if form is ResultRepresentation.ASYNC_TRAIT:
             bare = unwrap_readonly(unwrap_send_sync(rt))
             trait = ("val_or_cptr_t" if isinstance(rt, ReadonlyType)
                      else "val_or_ptr_t")
@@ -2001,25 +2002,16 @@ class AsyncCoroCodegen:
         raise CodeGenError(
             "internal: resumable return outside a resumable body emission")
 
-    def _async_return_value_cpp(self, ret: 'THIRResumableReturn', ret_type,
-                                *, to_borrow: bool,
-                                allow_move: bool = False) -> str:
-        """The value render for `_make_async_return`'s three scaffolding
-        sites (pending-slot store / pre-finally capture / direct ready) --
-        and the resumable THIR seam's return-value chokepoint: a routed
-        body renders the value from its lowered node, the scaffolding
-        around it is shared skeleton either way. `allow_move` is True only
-        at the direct-ready site: the pre-finally sites must copy, because
-        an alias bound before the try can still read the local from the
-        finally body (liveness's alias tracking does not survive the
-        return arm, so the last-use fact alone cannot rule that out)."""
-        # The render is position-blind: it replaces only the value string,
-        # and every view/borrow lift the scaffolding would otherwise apply is
-        # covered at lowering for each admitted return shape. Serves ReturnT
-        # terminators AND nested leaf returns (THIRResumableReturn's emit hook
-        # re-enters _make_async_return, which lands back here). Widening the
-        # return-shape gate must revisit this seam.
-        return self._leaf.render_return_value(ret, allow_move=allow_move)
+    def _async_return_value_cpp(self, ret: 'THIRResumableReturn',
+                                out: 'io.StringIO', indent: str) -> str:
+        """The value render for `_make_async_return`'s scaffolding sites
+        (pending-slot store / pre-finally capture / direct ready), from the
+        return's lowered node. The value's temporaries flush into `out`
+        here, once, ahead of the line that renders it -- and so ahead of a
+        finally chain the scaffolding emits after it."""
+        cpp = self._leaf.render_return_value(ret)
+        self.ctx.temps.flush(out, indent)
+        return cpp
 
     def _make_async_return(self, ret: 'THIRResumableReturn',
                            indent: str) -> str:
@@ -2050,8 +2042,7 @@ class AsyncCoroCodegen:
                 # move is NOT the fix (an alias in the finally would read a
                 # gutted object); the deferral needs a parked discriminant
                 # at AsyncFinallyExit -- tracked in BUGS.md.
-                expr_cpp = self._async_return_value_cpp(ret, ret_type,
-                                                        to_borrow=True)
+                expr_cpp = self._async_return_value_cpp(ret, out, indent)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-
@@ -2077,6 +2068,7 @@ class AsyncCoroCodegen:
                 # A stamped return ALWAYS has a recipe: lowering rejects the
                 # whole body when it cannot build one.
                 recipe = self._leaf.render_deferred_return(ret)
+                self.ctx.temps.flush(out, indent)
             if recipe is not None:
                 captures, deferred_materialize = recipe
                 chain = io.StringIO()
@@ -2087,8 +2079,7 @@ class AsyncCoroCodegen:
                     out.write(f"{indent}{maybe_unused}{line}\n")
                 out.write(chain.getvalue())
             else:
-                expr_cpp = self._async_return_value_cpp(ret, ret_type,
-                                                        to_borrow=True)
+                expr_cpp = self._async_return_value_cpp(ret, out, indent)
                 ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
                 self.ctx.iter_counter += 1
                 chain = io.StringIO()
@@ -2123,11 +2114,7 @@ class AsyncCoroCodegen:
                         f"{deferred_materialize});\n")
                     return out.getvalue()
                 if ret_tmp is None:
-                    # Direct ready: no finally chain follows, so this is the
-                    # one site where a last-use move is unconditionally safe.
-                    expr_cpp = self._async_return_value_cpp(ret, ret_type,
-                                                            to_borrow=True,
-                                                            allow_move=True)
+                    expr_cpp = self._async_return_value_cpp(ret, out, indent)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't
                     # compile because the template parameter can't be deduced.
@@ -4258,8 +4245,10 @@ class AsyncCoroCodegen:
             # -- the same copy `copy(await ...)` spells, which sema warned
             # about at this return. Every other payload forwards as-is.
             if (payload.await_node.await_result_is_borrow
-                    and async_return_form(func.return_type)
-                    is AsyncReturnForm.STORAGE
+                    and classify_result_representation(
+                        func.return_type,
+                        position=ResultPosition.ASYNC_PAYLOAD)
+                    is ResultRepresentation.STORAGE
                     and not self._is_void_return(func)):
                 _fwd_cpp = self._ret_cpp(func)
                 out.write(f"{indent}{_fwd_cpp} __ret{suspension_index} = "

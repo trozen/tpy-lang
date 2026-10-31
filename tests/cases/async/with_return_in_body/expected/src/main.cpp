@@ -119,7 +119,7 @@ __coro_main_coro main_coro() {
         __state = S_DONE;  // until a yield sets where to resume
         std::cout << "aenter" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = 42;
+        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(42);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

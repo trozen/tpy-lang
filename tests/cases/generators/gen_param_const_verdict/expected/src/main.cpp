@@ -83,7 +83,7 @@ __gen_chain_hop chain_hop(Shelf& s) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = t;
+            int32_t __tpy_async_ret = std::move(t);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         r = &(*((*__for_it_0))++);
@@ -147,7 +147,7 @@ __gen_alias_mut alias_mut(std::vector<Depot>& ds) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = t;
+            int32_t __tpy_async_ret = std::move(t);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         d = &(*((*__for_it_0))++);
@@ -280,7 +280,7 @@ int32_t drive_match(const Box& b) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            int32_t __tpy_async_ret = t;
+            int32_t __tpy_async_ret = std::move(t);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         x = *((*__for_it_0))++;

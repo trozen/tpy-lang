@@ -200,7 +200,7 @@ A finally_rebind(int32_t k) {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            this->__finally_ret_0 = a;
+            this->__finally_ret_0 = A(a);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;
@@ -276,7 +276,7 @@ __coro_own_param_suspend own_param_suspend(A a) {
     }
     case S_JOIN_1: {
         try {
-            this->__finally_ret_0 = (*a);
+            this->__finally_ret_0 = A((*a));
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;

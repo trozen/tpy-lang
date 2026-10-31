@@ -48,7 +48,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            this->__finally_ret_0 = (*xs);
+            this->__finally_ret_0 = std::vector<int32_t>((*xs));
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;

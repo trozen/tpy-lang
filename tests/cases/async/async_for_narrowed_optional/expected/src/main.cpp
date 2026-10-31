@@ -27,7 +27,7 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
         __state = S_DONE;  // until a yield sets where to resume
         if ((!s.has_value())) {
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = -1;
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(-1);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         n = 0;
@@ -49,7 +49,7 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(n);
+            ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(std::move(n));
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         _c = *((*__for_it_0))++;
