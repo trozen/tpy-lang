@@ -59,7 +59,7 @@ struct Picker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
-    ::tpy::print_object_default(os, "Picker", obj);
+    ::tpy::print_object_default(os, Picker::__tpy_class_name__, obj);
     return os;
 }
 

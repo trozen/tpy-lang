@@ -54,7 +54,7 @@ struct Err : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct Thrower {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Thrower& obj) {
-    ::tpy::print_object_default(os, "Thrower", obj);
+    ::tpy::print_object_default(os, Thrower::__tpy_class_name__, obj);
     return os;
 }
 

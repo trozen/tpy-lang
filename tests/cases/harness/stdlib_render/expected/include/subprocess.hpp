@@ -83,7 +83,7 @@ struct Popen {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Popen& obj) {
-    ::tpy::print_object_default(os, "Popen", obj);
+    ::tpy::print_object_default(os, Popen::__tpy_class_name__, obj);
     return os;
 }
 

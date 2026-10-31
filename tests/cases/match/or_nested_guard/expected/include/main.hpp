@@ -100,7 +100,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(n={})", ::tpy::repr_of(this->n));
+    return std::format("Dog(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
@@ -110,7 +110,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(n={})", ::tpy::repr_of(this->n));
+    return std::format("Cat(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline Bird::Bird(const ::tpy::BigInt& n) : n(n) {}
@@ -120,7 +120,7 @@ inline bool Bird::__eq__(const Bird& other) const {
 }
 
 inline std::string Bird::__repr__() const {
-    return std::format("Bird(n={})", ::tpy::repr_of(this->n));
+    return std::format("Bird(n={})", std::string(::tpy::repr_of(this->n)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

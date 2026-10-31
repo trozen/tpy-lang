@@ -94,7 +94,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +105,7 @@ struct Stop : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stop& obj) {
-    ::tpy::print_object_default(os, "Stop", obj);
+    ::tpy::print_object_default(os, Stop::__tpy_class_name__, obj);
     return os;
 }
 
@@ -122,7 +122,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -141,7 +141,7 @@ struct Acc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
-    ::tpy::print_object_default(os, "Acc", obj);
+    ::tpy::print_object_default(os, Acc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct Plus {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plus& obj) {
-    ::tpy::print_object_default(os, "Plus", obj);
+    ::tpy::print_object_default(os, Plus::__tpy_class_name__, obj);
     return os;
 }
 
@@ -182,7 +182,7 @@ struct Maker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
-    ::tpy::print_object_default(os, "Maker", obj);
+    ::tpy::print_object_default(os, Maker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -201,7 +201,7 @@ struct Taker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Taker& obj) {
-    ::tpy::print_object_default(os, "Taker", obj);
+    ::tpy::print_object_default(os, Taker::__tpy_class_name__, obj);
     return os;
 }
 

@@ -328,7 +328,7 @@ inline bool Base::__eq__(const Base& other) const {
 }
 
 inline std::string Base::__repr__() const {
-    return std::format("Base(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
+    return std::format("Base(name={}, age={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)));
 }
 
 inline Base Base::from_json(std::string_view __s) {
@@ -439,7 +439,7 @@ inline bool WithDefaults::__eq__(const WithDefaults& other) const {
 }
 
 inline std::string WithDefaults::__repr__() const {
-    return std::format("WithDefaults(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("WithDefaults(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline WithDefaults WithDefaults::from_json(std::string_view __s) {
@@ -550,7 +550,7 @@ inline bool Tagged::__eq__(const Tagged& other) const {
 }
 
 inline std::string Tagged::__repr__() const {
-    return std::format("Tagged(tag={}, note={})", ::tpy::repr_of(this->tag), ::tpy::repr_of(this->note));
+    return std::format("Tagged(tag={}, note={})", std::string(::tpy::repr_of(this->tag)), std::string(::tpy::repr_of(this->note)));
 }
 
 inline Tagged Tagged::from_json(std::string_view __s) {
@@ -652,7 +652,7 @@ inline bool User::__eq__(const User& other) const {
 }
 
 inline std::string User::__repr__() const {
-    return std::format("User(name={}, age={}, email={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age), ::tpy::repr_of(this->email));
+    return std::format("User(name={}, age={}, email={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)), std::string(::tpy::repr_of(this->email)));
 }
 
 inline User User::from_json(std::string_view __s) {
@@ -754,7 +754,7 @@ inline bool Extended::__eq__(const Extended& other) const {
 }
 
 inline std::string Extended::__repr__() const {
-    return std::format("Extended(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+    return std::format("Extended(x={}, y={}, z={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)), std::string(::tpy::repr_of(this->z)));
 }
 
 inline Extended Extended::from_json(std::string_view __s) {
@@ -856,7 +856,7 @@ inline bool Scored::__eq__(const Scored& other) const {
 }
 
 inline std::string Scored::__repr__() const {
-    return std::format("Scored(tag={}, note={}, score={})", ::tpy::repr_of(this->tag), ::tpy::repr_of(this->note), ::tpy::repr_of(this->score));
+    return std::format("Scored(tag={}, note={}, score={})", std::string(::tpy::repr_of(this->tag)), std::string(::tpy::repr_of(this->note)), std::string(::tpy::repr_of(this->score)));
 }
 
 inline Scored Scored::from_json(std::string_view __s) {
@@ -958,7 +958,7 @@ inline bool Admin::__eq__(const Admin& other) const {
 }
 
 inline std::string Admin::__repr__() const {
-    return std::format("Admin(name={}, age={}, email={}, role={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age), ::tpy::repr_of(this->email), ::tpy::repr_of(this->role));
+    return std::format("Admin(name={}, age={}, email={}, role={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)), std::string(::tpy::repr_of(this->email)), std::string(::tpy::repr_of(this->role)));
 }
 
 inline Admin Admin::from_json(std::string_view __s) {

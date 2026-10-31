@@ -27,7 +27,7 @@ struct Cookie {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cookie& obj) {
-    ::tpy::print_object_default(os, "Cookie", obj);
+    ::tpy::print_object_default(os, Cookie::__tpy_class_name__, obj);
     return os;
 }
 
@@ -54,7 +54,7 @@ struct Jar {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Jar& obj) {
-    ::tpy::print_object_default(os, "Jar", obj);
+    ::tpy::print_object_default(os, Jar::__tpy_class_name__, obj);
     return os;
 }
 

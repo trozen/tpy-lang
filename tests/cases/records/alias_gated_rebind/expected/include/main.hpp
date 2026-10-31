@@ -100,7 +100,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +119,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
-    ::tpy::print_object_default(os, "Counted", obj);
+    ::tpy::print_object_default(os, Counted::__tpy_class_name__, obj);
     return os;
 }
 
@@ -178,7 +178,7 @@ struct Fail : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
-    ::tpy::print_object_default(os, "Fail", obj);
+    ::tpy::print_object_default(os, Fail::__tpy_class_name__, obj);
     return os;
 }
 
@@ -194,7 +194,7 @@ struct Wrap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +212,7 @@ struct Walker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
-    ::tpy::print_object_default(os, "Walker", obj);
+    ::tpy::print_object_default(os, Walker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -229,7 +229,7 @@ struct Built {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built::__tpy_class_name__, obj);
     return os;
 }
 
@@ -243,7 +243,7 @@ struct Runner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
-    ::tpy::print_object_default(os, "Runner", obj);
+    ::tpy::print_object_default(os, Runner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -260,7 +260,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 

@@ -145,7 +145,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -161,7 +161,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -172,7 +172,7 @@ struct Missing : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
-    ::tpy::print_object_default(os, "Missing", obj);
+    ::tpy::print_object_default(os, Missing::__tpy_class_name__, obj);
     return os;
 }
 
@@ -193,7 +193,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +212,7 @@ struct HolderTwin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HolderTwin& obj) {
-    ::tpy::print_object_default(os, "HolderTwin", obj);
+    ::tpy::print_object_default(os, HolderTwin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -229,7 +229,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -247,7 +247,7 @@ struct GenBase {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenBase<T>& obj) {
-    ::tpy::print_object_default(os, "GenBase", obj);
+    ::tpy::print_object_default(os, GenBase<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -267,7 +267,7 @@ struct OptHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const OptHolder<T>& obj) {
-    ::tpy::print_object_default(os, "OptHolder", obj);
+    ::tpy::print_object_default(os, OptHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -285,7 +285,7 @@ struct GBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GBox<T>& obj) {
-    ::tpy::print_object_default(os, "GBox", obj);
+    ::tpy::print_object_default(os, GBox<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -307,7 +307,7 @@ struct Shadowed {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Shadowed<T>& obj) {
-    ::tpy::print_object_default(os, "Shadowed", obj);
+    ::tpy::print_object_default(os, Shadowed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -323,7 +323,7 @@ struct GenMid : GenBase<T> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenMid<T>& obj) {
-    ::tpy::print_object_default(os, "GenMid", obj);
+    ::tpy::print_object_default(os, GenMid<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -337,7 +337,7 @@ struct GenLeaf : GenMid<Cell> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GenLeaf& obj) {
-    ::tpy::print_object_default(os, "GenLeaf", obj);
+    ::tpy::print_object_default(os, GenLeaf::__tpy_class_name__, obj);
     return os;
 }
 

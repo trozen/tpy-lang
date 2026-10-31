@@ -96,7 +96,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -174,7 +174,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    ::tpy::print_object_default(os, "Owner", obj);
+    ::tpy::print_object_default(os, Owner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -246,7 +246,7 @@ struct UnionHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const UnionHolder& obj) {
-    ::tpy::print_object_default(os, "UnionHolder", obj);
+    ::tpy::print_object_default(os, UnionHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -265,7 +265,7 @@ struct Kitty : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Kitty& obj) {
-    ::tpy::print_object_default(os, "Kitty", obj);
+    ::tpy::print_object_default(os, Kitty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -421,7 +421,7 @@ inline bool Slot::__eq__(const Slot& other) const {
 }
 
 inline std::string Slot::__repr__() const {
-    return std::format("Slot(n={})", ::tpy::repr_of(this->n));
+    return std::format("Slot(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline Pair::Pair(Slot&& left, Slot&& right)
@@ -433,7 +433,7 @@ inline bool Pair::__eq__(const Pair& other) const {
 }
 
 inline std::string Pair::__repr__() const {
-    return std::format("Pair(left={}, right={})", ::tpy::repr_of(this->left), ::tpy::repr_of(this->right));
+    return std::format("Pair(left={}, right={})", std::string(::tpy::repr_of(this->left)), std::string(::tpy::repr_of(this->right)));
 }
 
 // def __init__(self, n: int32) -> None:

@@ -100,7 +100,7 @@ struct error : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const error& obj) {
-    ::tpy::print_object_default(os, "error", obj);
+    ::tpy::print_object_default(os, error::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct _Stream {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Stream& obj) {
-    ::tpy::print_object_default(os, "_Stream", obj);
+    ::tpy::print_object_default(os, _Stream::__tpy_class_name__, obj);
     return os;
 }
 
@@ -147,7 +147,7 @@ struct _Pump {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Pump& obj) {
-    ::tpy::print_object_default(os, "_Pump", obj);
+    ::tpy::print_object_default(os, _Pump::__tpy_class_name__, obj);
     return os;
 }
 
@@ -179,7 +179,7 @@ struct _Compress {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Compress& obj) {
-    ::tpy::print_object_default(os, "_Compress", obj);
+    ::tpy::print_object_default(os, _Compress::__tpy_class_name__, obj);
     return os;
 }
 
@@ -229,7 +229,7 @@ struct _Decompress {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Decompress& obj) {
-    ::tpy::print_object_default(os, "_Decompress", obj);
+    ::tpy::print_object_default(os, _Decompress::__tpy_class_name__, obj);
     return os;
 }
 

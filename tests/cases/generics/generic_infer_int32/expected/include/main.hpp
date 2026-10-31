@@ -30,7 +30,7 @@ struct Same {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Same<T>& obj) {
-    ::tpy::print_object_default(os, "Same", obj);
+    ::tpy::print_object_default(os, Same<T>::__tpy_class_name__, obj);
     return os;
 }
 

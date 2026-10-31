@@ -362,7 +362,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline Person::Person(std::string_view name, int32_t age)
@@ -374,7 +374,7 @@ inline bool Person::__eq__(const Person& other) const {
 }
 
 inline std::string Person::__repr__() const {
-    return std::format("Person(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
+    return std::format("Person(name={}, age={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)));
 }
 
 inline Line::Line(Point&& start, Point&& end)
@@ -386,7 +386,7 @@ inline bool Line::__eq__(const Line& other) const {
 }
 
 inline std::string Line::__repr__() const {
-    return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
+    return std::format("Line(start={}, end={})", std::string(::tpy::repr_of(this->start)), std::string(::tpy::repr_of(this->end)));
 }
 
 inline NamedPoint::NamedPoint(std::string_view name, Point&& pos)
@@ -398,7 +398,7 @@ inline bool NamedPoint::__eq__(const NamedPoint& other) const {
 }
 
 inline std::string NamedPoint::__repr__() const {
-    return std::format("NamedPoint(name={}, pos={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pos));
+    return std::format("NamedPoint(name={}, pos={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->pos)));
 }
 
 inline Polygon::Polygon(std::vector<Point>&& vertices) : vertices(std::move(vertices)) {}
@@ -408,7 +408,7 @@ inline bool Polygon::__eq__(const Polygon& other) const {
 }
 
 inline std::string Polygon::__repr__() const {
-    return std::format("Polygon(vertices={})", ::tpy::repr_of(this->vertices));
+    return std::format("Polygon(vertices={})", std::string(::tpy::repr_of(this->vertices)));
 }
 
 inline Drawing::Drawing(std::string_view title, std::vector<Point>&& shapes)
@@ -420,7 +420,7 @@ inline bool Drawing::__eq__(const Drawing& other) const {
 }
 
 inline std::string Drawing::__repr__() const {
-    return std::format("Drawing(title={}, shapes={})", ::tpy::repr_of(this->title), ::tpy::repr_of(this->shapes));
+    return std::format("Drawing(title={}, shapes={})", std::string(::tpy::repr_of(this->title)), std::string(::tpy::repr_of(this->shapes)));
 }
 
 inline Wrapper::Wrapper(NamedPoint&& inner) : inner(std::move(inner)) {}
@@ -430,7 +430,7 @@ inline bool Wrapper::__eq__(const Wrapper& other) const {
 }
 
 inline std::string Wrapper::__repr__() const {
-    return std::format("Wrapper(inner={})", ::tpy::repr_of(this->inner));
+    return std::format("Wrapper(inner={})", std::string(::tpy::repr_of(this->inner)));
 }
 
 inline MaybeNamed::MaybeNamed(std::string_view name, int32_t value)
@@ -442,7 +442,7 @@ inline bool MaybeNamed::__eq__(const MaybeNamed& other) const {
 }
 
 inline std::string MaybeNamed::__repr__() const {
-    return std::format("MaybeNamed(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
+    return std::format("MaybeNamed(name={}, value={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->value)));
 }
 
 inline Container::Container(std::vector<Point>&& items) : items(std::move(items)) {}
@@ -452,7 +452,7 @@ inline bool Container::__eq__(const Container& other) const {
 }
 
 inline std::string Container::__repr__() const {
-    return std::format("Container(items={})", ::tpy::repr_of(this->items));
+    return std::format("Container(items={})", std::string(::tpy::repr_of(this->items)));
 }
 
 inline MultiList::MultiList(std::vector<Point>&& points, std::vector<std::string>&& labels)
@@ -464,7 +464,7 @@ inline bool MultiList::__eq__(const MultiList& other) const {
 }
 
 inline std::string MultiList::__repr__() const {
-    return std::format("MultiList(points={}, labels={})", ::tpy::repr_of(this->points), ::tpy::repr_of(this->labels));
+    return std::format("MultiList(points={}, labels={})", std::string(::tpy::repr_of(this->points)), std::string(::tpy::repr_of(this->labels)));
 }
 
 inline DictOfDC::DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
@@ -474,7 +474,7 @@ inline bool DictOfDC::__eq__(const DictOfDC& other) const {
 }
 
 inline std::string DictOfDC::__repr__() const {
-    return std::format("DictOfDC(items={})", ::tpy::repr_of(this->items));
+    return std::format("DictOfDC(items={})", std::string(::tpy::repr_of(this->items)));
 }
 
 inline TupleMixed::TupleMixed(std::tuple<Point, int32_t> pair) : pair(std::move(pair)) {}

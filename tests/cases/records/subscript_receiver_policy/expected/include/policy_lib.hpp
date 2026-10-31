@@ -32,7 +32,7 @@ struct Inferred {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inferred& obj) {
-    ::tpy::print_object_default(os, "Inferred", obj);
+    ::tpy::print_object_default(os, Inferred::__tpy_class_name__, obj);
     return os;
 }
 

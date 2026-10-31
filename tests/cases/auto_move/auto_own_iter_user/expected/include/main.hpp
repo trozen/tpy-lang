@@ -32,7 +32,7 @@ struct IntList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
-    ::tpy::print_object_default(os, "IntList", obj);
+    ::tpy::print_object_default(os, IntList::__tpy_class_name__, obj);
     return os;
 }
 

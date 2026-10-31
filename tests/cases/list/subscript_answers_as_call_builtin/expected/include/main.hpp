@@ -120,7 +120,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Q {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Q& obj) {
-    ::tpy::print_object_default(os, "Q", obj);
+    ::tpy::print_object_default(os, Q::__tpy_class_name__, obj);
     return os;
 }
 
@@ -156,7 +156,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct TooLong : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TooLong& obj) {
-    ::tpy::print_object_default(os, "TooLong", obj);
+    ::tpy::print_object_default(os, TooLong::__tpy_class_name__, obj);
     return os;
 }
 
@@ -185,7 +185,7 @@ struct Grid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
-    ::tpy::print_object_default(os, "Grid", obj);
+    ::tpy::print_object_default(os, Grid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -203,7 +203,7 @@ struct ByP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ByP& obj) {
-    ::tpy::print_object_default(os, "ByP", obj);
+    ::tpy::print_object_default(os, ByP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -224,7 +224,7 @@ struct Named {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 

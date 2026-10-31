@@ -119,7 +119,7 @@ struct Wide : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wide& obj) {
-    ::tpy::print_object_default(os, "Wide", obj);
+    ::tpy::print_object_default(os, Wide::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -158,7 +158,7 @@ struct Maker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
-    ::tpy::print_object_default(os, "Maker", obj);
+    ::tpy::print_object_default(os, Maker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct Scope {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
-    ::tpy::print_object_default(os, "Scope", obj);
+    ::tpy::print_object_default(os, Scope::__tpy_class_name__, obj);
     return os;
 }
 
@@ -186,7 +186,7 @@ struct Refused : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Refused& obj) {
-    ::tpy::print_object_default(os, "Refused", obj);
+    ::tpy::print_object_default(os, Refused::__tpy_class_name__, obj);
     return os;
 }
 

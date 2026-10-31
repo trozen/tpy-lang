@@ -25,6 +25,7 @@ enum class JsonToken : int32_t {
 template<>
 struct tpy::EnumUtil<::tpystd::tplib::json::parser::JsonToken> {
     static constexpr std::string_view type_name = "JsonToken";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpystd::tplib::json::parser::JsonToken e);
     static const std::array<::tpystd::tplib::json::parser::JsonToken, 10> members;
     static ::tpystd::tplib::json::parser::JsonToken from_value(int32_t v);
@@ -35,7 +36,7 @@ struct tpy::EnumUtil<::tpystd::tplib::json::parser::JsonToken> {
 namespace tpystd::tplib::json::parser {
 
 inline std::ostream& operator<<(std::ostream& __os, JsonToken __e) {
-    return __os << "JsonToken." << ::tpy::EnumUtil<JsonToken>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct JsonError;
@@ -61,7 +62,7 @@ struct JsonError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const JsonError& obj) {
-    ::tpy::print_object_default(os, "JsonError", obj);
+    ::tpy::print_object_default(os, JsonError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -177,7 +178,7 @@ struct JsonReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
-    ::tpy::print_object_default(os, "JsonReader", obj);
+    ::tpy::print_object_default(os, JsonReader::__tpy_class_name__, obj);
     return os;
 }
 

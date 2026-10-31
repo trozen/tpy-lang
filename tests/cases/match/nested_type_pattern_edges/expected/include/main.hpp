@@ -96,7 +96,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +146,7 @@ struct FloatHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FloatHolder& obj) {
-    ::tpy::print_object_default(os, "FloatHolder", obj);
+    ::tpy::print_object_default(os, FloatHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -162,7 +162,7 @@ struct BoolHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BoolHolder& obj) {
-    ::tpy::print_object_default(os, "BoolHolder", obj);
+    ::tpy::print_object_default(os, BoolHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -174,7 +174,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(name={})", ::tpy::repr_of(this->name));
+    return std::format("Cat(name={})", std::string(::tpy::repr_of(this->name)));
 }
 
 inline Dog::Dog(std::string_view name) : name(name) {}
@@ -184,7 +184,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(name={})", ::tpy::repr_of(this->name));
+    return std::format("Dog(name={})", std::string(::tpy::repr_of(this->name)));
 }
 
 // def __init__(self, pet: Cat | Dog) -> None:

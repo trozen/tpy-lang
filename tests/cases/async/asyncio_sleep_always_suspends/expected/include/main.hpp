@@ -75,7 +75,7 @@ struct State {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const State& obj) {
-    ::tpy::print_object_default(os, "State", obj);
+    ::tpy::print_object_default(os, State::__tpy_class_name__, obj);
     return os;
 }
 

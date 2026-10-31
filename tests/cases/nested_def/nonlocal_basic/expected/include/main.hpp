@@ -34,7 +34,7 @@ struct N {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const N& obj) {
-    ::tpy::print_object_default(os, "N", obj);
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
     return os;
 }
 

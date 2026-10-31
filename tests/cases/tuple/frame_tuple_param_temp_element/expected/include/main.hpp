@@ -150,7 +150,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -179,7 +179,7 @@ struct G {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const G& obj) {
-    ::tpy::print_object_default(os, "G", obj);
+    ::tpy::print_object_default(os, G::__tpy_class_name__, obj);
     return os;
 }
 
@@ -194,7 +194,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -208,7 +208,7 @@ struct E {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+    ::tpy::print_object_default(os, E::__tpy_class_name__, obj);
     return os;
 }
 
@@ -222,7 +222,7 @@ struct K {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 
@@ -243,7 +243,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -261,7 +261,7 @@ struct Named {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 
@@ -275,7 +275,7 @@ struct U {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const U& obj) {
-    ::tpy::print_object_default(os, "U", obj);
+    ::tpy::print_object_default(os, U::__tpy_class_name__, obj);
     return os;
 }
 

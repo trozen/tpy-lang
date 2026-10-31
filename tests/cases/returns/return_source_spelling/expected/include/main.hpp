@@ -43,7 +43,7 @@ struct Name {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Name& obj) {
-    ::tpy::print_object_default(os, "Name", obj);
+    ::tpy::print_object_default(os, Name::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -65,7 +65,7 @@ struct W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
-    ::tpy::print_object_default(os, "W", obj);
+    ::tpy::print_object_default(os, W::__tpy_class_name__, obj);
     return os;
 }
 
@@ -81,7 +81,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Leaf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -120,7 +120,7 @@ struct Tree {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
-    ::tpy::print_object_default(os, "Tree", obj);
+    ::tpy::print_object_default(os, Tree::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct W2 : W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W2& obj) {
-    ::tpy::print_object_default(os, "W2", obj);
+    ::tpy::print_object_default(os, W2::__tpy_class_name__, obj);
     return os;
 }
 

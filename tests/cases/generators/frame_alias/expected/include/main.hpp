@@ -190,7 +190,7 @@ struct Src {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
-    ::tpy::print_object_default(os, "Src", obj);
+    ::tpy::print_object_default(os, Src::__tpy_class_name__, obj);
     return os;
 }
 
@@ -213,7 +213,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -224,7 +224,7 @@ struct ParseError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    ::tpy::print_object_default(os, "ParseError", obj);
+    ::tpy::print_object_default(os, ParseError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -249,7 +249,7 @@ struct Bag {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -268,7 +268,7 @@ struct Val {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Val& obj) {
-    ::tpy::print_object_default(os, "Val", obj);
+    ::tpy::print_object_default(os, Val::__tpy_class_name__, obj);
     return os;
 }
 

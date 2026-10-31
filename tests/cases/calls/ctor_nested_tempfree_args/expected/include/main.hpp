@@ -59,7 +59,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
-    ::tpy::print_object_default(os, "W", obj);
+    ::tpy::print_object_default(os, W::__tpy_class_name__, obj);
     return os;
 }
 
@@ -95,7 +95,7 @@ struct KList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KList& obj) {
-    ::tpy::print_object_default(os, "KList", obj);
+    ::tpy::print_object_default(os, KList::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct KMut {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KMut& obj) {
-    ::tpy::print_object_default(os, "KMut", obj);
+    ::tpy::print_object_default(os, KMut::__tpy_class_name__, obj);
     return os;
 }
 
@@ -133,7 +133,7 @@ struct KRec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KRec& obj) {
-    ::tpy::print_object_default(os, "KRec", obj);
+    ::tpy::print_object_default(os, KRec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct KOpt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KOpt& obj) {
-    ::tpy::print_object_default(os, "KOpt", obj);
+    ::tpy::print_object_default(os, KOpt::__tpy_class_name__, obj);
     return os;
 }
 

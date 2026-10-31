@@ -30,7 +30,7 @@ struct Box {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Box<N>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<N>::__tpy_class_name__, obj);
     return os;
 }
 

@@ -61,7 +61,7 @@ inline bool Bag::__eq__(const Bag& other) const {
 }
 
 inline std::string Bag::__repr__() const {
-    return std::format("Bag(n={}, items={})", ::tpy::repr_of(this->n), ::tpy::repr_of(this->items));
+    return std::format("Bag(n={}, items={})", std::string(::tpy::repr_of(this->n)), std::string(::tpy::repr_of(this->items)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

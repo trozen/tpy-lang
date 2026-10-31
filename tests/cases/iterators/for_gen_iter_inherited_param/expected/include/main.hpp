@@ -33,7 +33,7 @@ struct BaseSource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseSource& obj) {
-    ::tpy::print_object_default(os, "BaseSource", obj);
+    ::tpy::print_object_default(os, BaseSource::__tpy_class_name__, obj);
     return os;
 }
 
@@ -49,7 +49,7 @@ struct Source : BaseSource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
-    ::tpy::print_object_default(os, "Source", obj);
+    ::tpy::print_object_default(os, Source::__tpy_class_name__, obj);
     return os;
 }
 

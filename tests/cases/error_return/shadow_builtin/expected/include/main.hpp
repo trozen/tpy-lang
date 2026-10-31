@@ -24,7 +24,7 @@ struct StopIteration : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StopIteration& obj) {
-    ::tpy::print_object_default(os, "StopIteration", obj);
+    ::tpy::print_object_default(os, StopIteration::__tpy_class_name__, obj);
     return os;
 }
 

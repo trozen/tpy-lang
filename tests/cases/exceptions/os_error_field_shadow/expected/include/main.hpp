@@ -29,7 +29,7 @@ struct Weird : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Weird& obj) {
-    ::tpy::print_object_default(os, "Weird", obj);
+    ::tpy::print_object_default(os, Weird::__tpy_class_name__, obj);
     return os;
 }
 

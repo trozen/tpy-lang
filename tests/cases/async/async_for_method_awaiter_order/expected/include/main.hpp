@@ -35,7 +35,7 @@ struct Collector {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
-    ::tpy::print_object_default(os, "Collector", obj);
+    ::tpy::print_object_default(os, Collector::__tpy_class_name__, obj);
     return os;
 }
 
@@ -56,7 +56,7 @@ struct Countdown {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Countdown& obj) {
-    ::tpy::print_object_default(os, "Countdown", obj);
+    ::tpy::print_object_default(os, Countdown::__tpy_class_name__, obj);
     return os;
 }
 

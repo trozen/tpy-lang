@@ -119,7 +119,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct Bad : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
-    ::tpy::print_object_default(os, "Bad", obj);
+    ::tpy::print_object_default(os, Bad::__tpy_class_name__, obj);
     return os;
 }
 
@@ -145,7 +145,7 @@ struct M {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
-    ::tpy::print_object_default(os, "M", obj);
+    ::tpy::print_object_default(os, M::__tpy_class_name__, obj);
     return os;
 }
 
@@ -165,7 +165,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -181,7 +181,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -197,7 +197,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -213,7 +213,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -232,7 +232,7 @@ struct Gauge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
-    ::tpy::print_object_default(os, "Gauge", obj);
+    ::tpy::print_object_default(os, Gauge::__tpy_class_name__, obj);
     return os;
 }
 
@@ -248,7 +248,7 @@ struct Dial {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dial& obj) {
-    ::tpy::print_object_default(os, "Dial", obj);
+    ::tpy::print_object_default(os, Dial::__tpy_class_name__, obj);
     return os;
 }
 

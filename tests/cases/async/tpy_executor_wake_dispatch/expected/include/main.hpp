@@ -52,7 +52,7 @@ struct NeverComplete {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NeverComplete& obj) {
-    ::tpy::print_object_default(os, "NeverComplete", obj);
+    ::tpy::print_object_default(os, NeverComplete::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct CountdownThenReady {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CountdownThenReady& obj) {
-    ::tpy::print_object_default(os, "CountdownThenReady", obj);
+    ::tpy::print_object_default(os, CountdownThenReady::__tpy_class_name__, obj);
     return os;
 }
 

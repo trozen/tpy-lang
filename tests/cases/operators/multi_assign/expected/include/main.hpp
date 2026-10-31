@@ -30,7 +30,7 @@ struct Obj {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Obj& obj) {
-    ::tpy::print_object_default(os, "Obj", obj);
+    ::tpy::print_object_default(os, Obj::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Clamped {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
-    ::tpy::print_object_default(os, "Clamped", obj);
+    ::tpy::print_object_default(os, Clamped::__tpy_class_name__, obj);
     return os;
 }
 

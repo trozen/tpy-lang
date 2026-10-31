@@ -55,7 +55,7 @@ struct Loud {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Loud& obj) {
-    ::tpy::print_object_default(os, "Loud", obj);
+    ::tpy::print_object_default(os, Loud::__tpy_class_name__, obj);
     return os;
 }
 

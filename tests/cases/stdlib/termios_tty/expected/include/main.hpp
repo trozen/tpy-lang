@@ -54,7 +54,7 @@ struct RawSession {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RawSession& obj) {
-    ::tpy::print_object_default(os, "RawSession", obj);
+    ::tpy::print_object_default(os, RawSession::__tpy_class_name__, obj);
     return os;
 }
 
@@ -78,7 +78,7 @@ struct CbreakMode {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CbreakMode& obj) {
-    ::tpy::print_object_default(os, "CbreakMode", obj);
+    ::tpy::print_object_default(os, CbreakMode::__tpy_class_name__, obj);
     return os;
 }
 

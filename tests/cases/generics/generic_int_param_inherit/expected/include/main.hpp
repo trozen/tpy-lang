@@ -30,7 +30,7 @@ struct Base {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Base<T, N>& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -48,7 +48,7 @@ struct Child : Base<T, N> {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Child<T, N>& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct GrandChild : Child<T, N> {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
-    ::tpy::print_object_default(os, "GrandChild", obj);
+    ::tpy::print_object_default(os, GrandChild<T, N>::__tpy_class_name__, obj);
     return os;
 }
 

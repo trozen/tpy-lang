@@ -27,7 +27,7 @@ struct Walker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
-    ::tpy::print_object_default(os, "Walker", obj);
+    ::tpy::print_object_default(os, Walker::__tpy_class_name__, obj);
     return os;
 }
 

@@ -179,7 +179,7 @@ struct Random {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Random& obj) {
-    ::tpy::print_object_default(os, "Random", obj);
+    ::tpy::print_object_default(os, Random::__tpy_class_name__, obj);
     return os;
 }
 

@@ -1,0 +1,4 @@
+print 20
+fstring 20 [  20] <Level.High: 20>
+repr <Level.High: 20>
+list [<Level.Low: 10>, <Level.High: 20>]

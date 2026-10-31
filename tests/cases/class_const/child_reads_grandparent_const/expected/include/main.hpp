@@ -25,7 +25,7 @@ struct Grand {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grand& obj) {
-    ::tpy::print_object_default(os, "Grand", obj);
+    ::tpy::print_object_default(os, Grand::__tpy_class_name__, obj);
     return os;
 }
 
@@ -36,7 +36,7 @@ struct Mid : Grand {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mid& obj) {
-    ::tpy::print_object_default(os, "Mid", obj);
+    ::tpy::print_object_default(os, Mid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct Grandchild : Mid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grandchild& obj) {
-    ::tpy::print_object_default(os, "Grandchild", obj);
+    ::tpy::print_object_default(os, Grandchild::__tpy_class_name__, obj);
     return os;
 }
 

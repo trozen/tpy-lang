@@ -32,7 +32,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::repr_of(s) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(s)) << "\n" << ::tpy::check_signals;
     std::cout << s.sum() << "\n" << ::tpy::check_signals;
 }
 

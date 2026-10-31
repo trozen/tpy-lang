@@ -25,7 +25,7 @@ struct Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
-    ::tpy::print_object_default(os, "Parent", obj);
+    ::tpy::print_object_default(os, Parent::__tpy_class_name__, obj);
     return os;
 }
 
@@ -36,7 +36,7 @@ struct ChildA : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChildA& obj) {
-    ::tpy::print_object_default(os, "ChildA", obj);
+    ::tpy::print_object_default(os, ChildA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct ChildB : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChildB& obj) {
-    ::tpy::print_object_default(os, "ChildB", obj);
+    ::tpy::print_object_default(os, ChildB::__tpy_class_name__, obj);
     return os;
 }
 

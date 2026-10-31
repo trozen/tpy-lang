@@ -79,9 +79,9 @@ std::string describe(::cfg::Mode m) {
 //     print(Mode.MANUAL.name)
 //     print(Mode.MANUAL.value)
 void main() {
-    std::cout << ::tpy::__repr__(::cfg::Mode::None) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::__repr__(::cfg::Mode::Auto) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::__repr__(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(::cfg::Mode::None) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(::cfg::Mode::Auto) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(::cfg::Mode::None) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(::cfg::Mode::Auto) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::EnumUtil<::cfg::Mode>::name(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;

@@ -20,6 +20,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -30,7 +31,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct NotFound;
@@ -118,7 +119,7 @@ struct NotFound : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    ::tpy::print_object_default(os, "NotFound", obj);
+    ::tpy::print_object_default(os, NotFound::__tpy_class_name__, obj);
     return os;
 }
 
@@ -140,7 +141,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -155,7 +156,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -173,7 +174,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

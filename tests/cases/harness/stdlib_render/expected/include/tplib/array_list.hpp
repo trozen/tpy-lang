@@ -666,7 +666,7 @@ inline std::string ArrayList<T, N>::__repr__() const {
         } else {
             sep = true;
         }
-        s += ::tpy::repr_of(item);
+        s += std::string(::tpy::repr_of(item));
     }
     s += "]";
     return s;
@@ -676,7 +676,7 @@ inline std::string ArrayList<T, N>::__repr__() const {
 //     return repr(self)
 template<typename T, std::size_t N>
 inline std::string ArrayList<T, N>::__str__() const {
-    return ::tpy::repr_of((*this));
+    return std::string(::tpy::repr_of((*this)));
 }
 
 template<typename T, std::size_t N>

@@ -22,7 +22,7 @@ bool Pair::__eq__(const Pair& other) const {
 }
 
 std::string Pair::__repr__() const {
-    return std::format("Pair(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Pair(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 // from dataclasses import dataclass
 // from b import sum_pair

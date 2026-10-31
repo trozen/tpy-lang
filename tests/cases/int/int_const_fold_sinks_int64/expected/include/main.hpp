@@ -20,6 +20,7 @@ enum class Sign : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Code> {
     static constexpr std::string_view type_name = "Code";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Code e);
     static const std::array<::tpyapp::main::Code, 1> members;
     static ::tpyapp::main::Code from_value(int32_t v);
@@ -30,6 +31,7 @@ struct tpy::EnumUtil<::tpyapp::main::Code> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Sign> {
     static constexpr std::string_view type_name = "Sign";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Sign e);
     static const std::array<::tpyapp::main::Sign, 1> members;
     static ::tpyapp::main::Sign from_value(int32_t v);
@@ -40,11 +42,11 @@ struct tpy::EnumUtil<::tpyapp::main::Sign> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Code __e) {
-    return __os << "Code." << ::tpy::EnumUtil<Code>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Sign __e) {
-    return __os << "Sign." << ::tpy::EnumUtil<Sign>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Counter;
@@ -98,7 +100,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +118,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

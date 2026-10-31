@@ -80,7 +80,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -99,7 +99,7 @@ struct F {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const F& obj) {
-    ::tpy::print_object_default(os, "F", obj);
+    ::tpy::print_object_default(os, F::__tpy_class_name__, obj);
     return os;
 }
 

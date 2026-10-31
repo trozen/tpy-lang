@@ -187,7 +187,7 @@ __coro_sleeper sleeper() {
             continue;
         } catch (const ::tpy::CancelledError& e) {
             __sub_1 = nullptr;
-            std::cout << "cancel-task" << " " << ::tpy::repr_of(std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
+            std::cout << "cancel-task" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -200,10 +200,10 @@ __coro_sleeper sleeper() {
             try {
                 throw ::tpy::CancelledError("");
             } catch (const ::tpy::CancelledError& e2) {
-                std::cout << "cancel-raise" << " " << ::tpy::repr_of(std::string(::tpy::__str__(e2))) << "\n" << ::tpy::check_signals;
+                std::cout << "cancel-raise" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(e2)))) << "\n" << ::tpy::check_signals;
             }
         }
-        std::cout << "cancel-direct" << " " << ::tpy::repr_of(std::string(::tpy::__str__(::tpy::CancelledError("")))) << "\n" << ::tpy::check_signals;
+        std::cout << "cancel-direct" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(::tpy::CancelledError(""))))) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -280,7 +280,7 @@ void main() {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            std::cout << "return-only" << " " << e.code << " " << ::tpy::repr_of(std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
+            std::cout << "return-only" << " " << e.code << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
         __after_try_1:;
     }
@@ -295,7 +295,7 @@ void main() {
         __except_3:;
         {
             auto& e2 = *__err_opt_3;
-            std::cout << "return-only-explicit" << " " << e2.code << " " << ::tpy::repr_of(std::string(::tpy::__str__(e2))) << "\n" << ::tpy::check_signals;
+            std::cout << "return-only-explicit" << " " << e2.code << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(e2)))) << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -303,28 +303,28 @@ void main() {
         try {
             throw Thrown();
         } catch (const Thrown& t) {
-            std::cout << "thrown-subclass" << " " << ::tpy::repr_of(std::string(::tpy::__str__(t))) << "\n" << ::tpy::check_signals;
+            std::cout << "thrown-subclass" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(t)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::ValueError("");
         } catch (const ::tpy::ValueError& v) {
-            std::cout << "raise-builtin" << " " << ::tpy::repr_of(std::string(::tpy::__str__(v))) << "\n" << ::tpy::check_signals;
+            std::cout << "raise-builtin" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(v)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Plain("hello");
         } catch (const Plain& p) {
-            std::cout << "inherited-arg" << " " << ::tpy::repr_of(std::string(::tpy::__str__(p))) << "\n" << ::tpy::check_signals;
+            std::cout << "inherited-arg" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(p)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Plain("");
         } catch (const Plain& p2) {
-            std::cout << "inherited-argless" << " " << ::tpy::repr_of(std::string(::tpy::__str__(p2))) << "\n" << ::tpy::check_signals;
+            std::cout << "inherited-argless" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(p2)))) << "\n" << ::tpy::check_signals;
         }
     }
     ME<::tpy::BigInt> m = ME<::tpy::BigInt>(std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>{std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}});
@@ -338,11 +338,11 @@ void main() {
         try {
             throw EB<std::vector<int32_t>>(std::vector<int32_t>{1, 2});
         } catch (const ::tpy::Exception& eb) {
-            std::cout << "raise-generic-inferred" << " " << ::tpy::repr_of(std::string(::tpy::__str__(eb))) << "\n" << ::tpy::check_signals;
+            std::cout << "raise-generic-inferred" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(eb)))) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::gen_section();
-    std::cout << "generatorexit-direct" << " " << ::tpy::repr_of(std::string(::tpy::__str__(::tpy::GeneratorExit("")))) << "\n" << ::tpy::check_signals;
+    std::cout << "generatorexit-direct" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(::tpy::GeneratorExit(""))))) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::cancel_section()));
 }
 

@@ -30,7 +30,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Store {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Store<T>& obj) {
-    ::tpy::print_object_default(os, "Store", obj);
+    ::tpy::print_object_default(os, Store<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -113,7 +113,7 @@ struct Digits {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Digits& obj) {
-    ::tpy::print_object_default(os, "Digits", obj);
+    ::tpy::print_object_default(os, Digits::__tpy_class_name__, obj);
     return os;
 }
 

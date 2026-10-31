@@ -47,7 +47,7 @@ struct IntBox : Container<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 

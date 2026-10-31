@@ -83,7 +83,7 @@ struct Pet : Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
-    ::tpy::print_object_default(os, "Pet", obj);
+    ::tpy::print_object_default(os, Pet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -100,7 +100,7 @@ struct CM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
-    ::tpy::print_object_default(os, "CM", obj);
+    ::tpy::print_object_default(os, CM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -118,7 +118,7 @@ struct Dog : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct Cat : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -150,7 +150,7 @@ struct WatchDog : Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WatchDog& obj) {
-    ::tpy::print_object_default(os, "WatchDog", obj);
+    ::tpy::print_object_default(os, WatchDog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct GuardDog : WatchDog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GuardDog& obj) {
-    ::tpy::print_object_default(os, "GuardDog", obj);
+    ::tpy::print_object_default(os, GuardDog::__tpy_class_name__, obj);
     return os;
 }
 

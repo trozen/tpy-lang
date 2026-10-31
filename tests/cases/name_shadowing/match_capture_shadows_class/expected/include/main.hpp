@@ -27,7 +27,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    ::tpy::print_object_default(os, "Registry", obj);
+    ::tpy::print_object_default(os, Registry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -43,7 +43,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 

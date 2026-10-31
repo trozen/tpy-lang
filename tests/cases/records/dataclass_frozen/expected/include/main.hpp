@@ -108,7 +108,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline uint64_t Point::__hash__() const {
@@ -126,7 +126,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
+    return std::format("Config(name={}, value={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->value)));
 }
 
 inline uint64_t Config::__hash__() const {

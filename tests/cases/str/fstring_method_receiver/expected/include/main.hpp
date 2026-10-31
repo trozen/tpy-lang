@@ -32,7 +32,7 @@ struct Page {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Page& obj) {
-    ::tpy::print_object_default(os, "Page", obj);
+    ::tpy::print_object_default(os, Page::__tpy_class_name__, obj);
     return os;
 }
 

@@ -49,7 +49,7 @@ struct IntBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct StrBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
-    ::tpy::print_object_default(os, "StrBox", obj);
+    ::tpy::print_object_default(os, StrBox::__tpy_class_name__, obj);
     return os;
 }
 

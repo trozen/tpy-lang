@@ -34,7 +34,7 @@ struct Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
-    ::tpy::print_object_default(os, "Resource", obj);
+    ::tpy::print_object_default(os, Resource::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct CopyableResource : Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {
-    ::tpy::print_object_default(os, "CopyableResource", obj);
+    ::tpy::print_object_default(os, CopyableResource::__tpy_class_name__, obj);
     return os;
 }
 

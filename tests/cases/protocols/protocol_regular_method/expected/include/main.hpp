@@ -38,7 +38,7 @@ struct Value {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
-    ::tpy::print_object_default(os, "Value", obj);
+    ::tpy::print_object_default(os, Value::__tpy_class_name__, obj);
     return os;
 }
 

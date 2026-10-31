@@ -77,6 +77,7 @@ template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Q> : std::true_type {}
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -87,6 +88,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Kind e);
     static const std::array<::tpyapp::main::Kind, 2> members;
     static ::tpyapp::main::Kind from_value(int32_t v);
@@ -97,11 +99,11 @@ struct tpy::EnumUtil<::tpyapp::main::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Payload;
@@ -209,7 +211,7 @@ struct Payload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
-    ::tpy::print_object_default(os, "Payload", obj);
+    ::tpy::print_object_default(os, Payload::__tpy_class_name__, obj);
     return os;
 }
 
@@ -262,22 +264,22 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Holds& obj) {
-    ::tpy::print_object_default(os, "Outer.Holds", obj);
+    ::tpy::print_object_default(os, Outer::Holds::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Err& obj) {
-    ::tpy::print_object_default(os, "Outer.Err", obj);
+    ::tpy::print_object_default(os, Outer::Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -306,7 +308,7 @@ struct Err : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -326,7 +328,7 @@ struct KErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KErr& obj) {
-    ::tpy::print_object_default(os, "KErr", obj);
+    ::tpy::print_object_default(os, KErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -342,7 +344,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -354,7 +356,7 @@ struct Sub : ::tpyapp::m::Outer::Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -366,7 +368,7 @@ struct SubP : ::tpyapp::pkg::sub::mod::Outer::Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubP& obj) {
-    ::tpy::print_object_default(os, "SubP", obj);
+    ::tpy::print_object_default(os, SubP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -382,7 +384,7 @@ struct Holds2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holds2& obj) {
-    ::tpy::print_object_default(os, "Holds2", obj);
+    ::tpy::print_object_default(os, Holds2::__tpy_class_name__, obj);
     return os;
 }
 
@@ -398,7 +400,7 @@ struct Holds3 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holds3& obj) {
-    ::tpy::print_object_default(os, "Holds3", obj);
+    ::tpy::print_object_default(os, Holds3::__tpy_class_name__, obj);
     return os;
 }
 
@@ -414,7 +416,7 @@ struct Holds4 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holds4& obj) {
-    ::tpy::print_object_default(os, "Holds4", obj);
+    ::tpy::print_object_default(os, Holds4::__tpy_class_name__, obj);
     return os;
 }
 
@@ -435,7 +437,7 @@ struct Wrap {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -458,7 +460,7 @@ struct Config {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    ::tpy::print_object_default(os, "Config", obj);
+    ::tpy::print_object_default(os, Config::__tpy_class_name__, obj);
     return os;
 }
 
@@ -473,7 +475,7 @@ struct Leaf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -497,12 +499,12 @@ struct Tree {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
-    ::tpy::print_object_default(os, "Tree", obj);
+    ::tpy::print_object_default(os, Tree::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Tree::Leaf& obj) {
-    ::tpy::print_object_default(os, "Tree.Leaf", obj);
+    ::tpy::print_object_default(os, Tree::Leaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -516,7 +518,7 @@ struct Factory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
-    ::tpy::print_object_default(os, "Factory", obj);
+    ::tpy::print_object_default(os, Factory::__tpy_class_name__, obj);
     return os;
 }
 
@@ -538,7 +540,7 @@ struct Probe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
-    ::tpy::print_object_default(os, "Probe", obj);
+    ::tpy::print_object_default(os, Probe::__tpy_class_name__, obj);
     return os;
 }
 
@@ -562,7 +564,7 @@ struct D : Q {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 
@@ -578,7 +580,7 @@ struct LErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LErr& obj) {
-    ::tpy::print_object_default(os, "LErr", obj);
+    ::tpy::print_object_default(os, LErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -595,7 +597,7 @@ struct Cfg {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cfg& obj) {
-    ::tpy::print_object_default(os, "Cfg", obj);
+    ::tpy::print_object_default(os, Cfg::__tpy_class_name__, obj);
     return os;
 }
 
@@ -642,17 +644,17 @@ struct Shade {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shade& obj) {
-    ::tpy::print_object_default(os, "Shade", obj);
+    ::tpy::print_object_default(os, Shade::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Shade::LErr& obj) {
-    ::tpy::print_object_default(os, "Shade.LErr", obj);
+    ::tpy::print_object_default(os, Shade::LErr::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Shade::Cfg& obj) {
-    ::tpy::print_object_default(os, "Shade.Cfg", obj);
+    ::tpy::print_object_default(os, Shade::Cfg::__tpy_class_name__, obj);
     return os;
 }
 
@@ -699,6 +701,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Outer::Kind e);
     static const std::array<::tpyapp::main::Outer::Kind, 2> members;
     static ::tpyapp::main::Outer::Kind from_value(int32_t v);
@@ -709,6 +712,7 @@ struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Config::Mode> {
     static constexpr std::string_view type_name = "Mode";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Config::Mode e);
     static const std::array<::tpyapp::main::Config::Mode, 2> members;
     static ::tpyapp::main::Config::Mode from_value(int32_t v);
@@ -719,6 +723,7 @@ struct tpy::EnumUtil<::tpyapp::main::Config::Mode> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Shade::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Shade::Color e);
     static const std::array<::tpyapp::main::Shade::Color, 2> members;
     static ::tpyapp::main::Shade::Color from_value(int32_t v);
@@ -729,6 +734,7 @@ struct tpy::EnumUtil<::tpyapp::main::Shade::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Shade::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Shade::Kind e);
     static const std::array<::tpyapp::main::Shade::Kind, 2> members;
     static ::tpyapp::main::Shade::Kind from_value(int32_t v);
@@ -739,19 +745,19 @@ struct tpy::EnumUtil<::tpyapp::main::Shade::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Config::Mode __e) {
-    return __os << "Mode." << ::tpy::EnumUtil<Config::Mode>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Shade::Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Shade::Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Shade::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Shade::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 // async def async_except() -> None:

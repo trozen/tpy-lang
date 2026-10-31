@@ -35,7 +35,7 @@ struct Pair {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const Pair<K, V>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<K, V>::__tpy_class_name__, obj);
     return os;
 }
 

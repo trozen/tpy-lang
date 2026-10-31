@@ -17,6 +17,7 @@ enum class Mode : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Mode> {
     static constexpr std::string_view type_name = "Mode";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Mode e);
     static const std::array<::tpyapp::main::Mode, 2> members;
     static ::tpyapp::main::Mode from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::main::Mode> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Mode __e) {
-    return __os << "Mode." << ::tpy::EnumUtil<Mode>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Rec;
@@ -75,7 +76,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -96,7 +97,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +117,7 @@ struct Box2 {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box2<T>& obj) {
-    ::tpy::print_object_default(os, "Box2", obj);
+    ::tpy::print_object_default(os, Box2<T>::__tpy_class_name__, obj);
     return os;
 }
 

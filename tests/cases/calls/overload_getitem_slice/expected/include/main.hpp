@@ -39,7 +39,7 @@ struct MyList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
-    ::tpy::print_object_default(os, "MyList", obj);
+    ::tpy::print_object_default(os, MyList::__tpy_class_name__, obj);
     return os;
 }
 

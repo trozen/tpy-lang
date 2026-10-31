@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def expected(err: int32) -> str:
 //     return "(" + str(err) + ", " + repr(os.strerror(err)) + ")"
 std::string expected(int32_t err) {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), ::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err))))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
 }
 
 // def free_function() -> None:
@@ -310,13 +310,13 @@ void repr_str() {
     int64_t master = std::get<0>(__tup_1);
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes attrs = ::tpystd::termios::tcgetattr(slave);
-    std::string text = ::tpy::repr_of(attrs);
+    std::string text = std::string(::tpy::repr_of(attrs));
     std::cout << "repr: repr equals str:" << " " << ::tpy::print_bool((text == std::string(::tpy::__str__(attrs)))) << "\n" << ::tpy::check_signals;
     std::cout << "repr: ends with ]]:" << " " << ::tpy::print_bool(::tpy::str_endswith(text, "]]")) << "\n" << ::tpy::check_signals;
     std::vector<std::string> cooked = ::tpy::str_split(::tpy::str_slice(text, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(text, ", ["), 3)), -2}), ", ");
     std::cout << "repr: cooked cc all bytes:" << " " << ::tpy::print_bool(((::tpy::__len__(cooked) == ::tpy_const_termios_nccs) && ::tpy::builtin_all(::tpyapp::main::__genexpr_repr_str_1(cooked)))) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::TermAttributes old = ::tpystd::tty::setraw(slave);
-    std::string raw = ::tpy::repr_of(::tpystd::termios::tcgetattr(slave));
+    std::string raw = std::string(::tpy::repr_of(::tpystd::termios::tcgetattr(slave)));
     std::vector<std::string> items = ::tpy::str_split(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(raw, ", ["), 3)), -2}), ", ");
     int32_t nbytes = 0;
     auto& __obj_0 = items;

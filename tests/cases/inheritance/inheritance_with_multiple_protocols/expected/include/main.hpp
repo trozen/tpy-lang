@@ -48,7 +48,7 @@ struct Vehicle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
-    ::tpy::print_object_default(os, "Vehicle", obj);
+    ::tpy::print_object_default(os, Vehicle::__tpy_class_name__, obj);
     return os;
 }
 

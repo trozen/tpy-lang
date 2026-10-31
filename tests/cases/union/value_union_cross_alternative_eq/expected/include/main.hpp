@@ -172,9 +172,15 @@ struct Tree {
 
     bool operator==(const Tree&) const requires std::equality_comparable<variant_type> = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 
@@ -185,7 +191,7 @@ struct Boom : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
-    ::tpy::print_object_default(os, "Boom", obj);
+    ::tpy::print_object_default(os, Boom::__tpy_class_name__, obj);
     return os;
 }
 
@@ -202,7 +208,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -221,7 +227,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -244,7 +250,7 @@ struct Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    ::tpy::print_object_default(os, "Circle", obj);
+    ::tpy::print_object_default(os, Circle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -267,7 +273,7 @@ struct Square {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-    ::tpy::print_object_default(os, "Square", obj);
+    ::tpy::print_object_default(os, Square::__tpy_class_name__, obj);
     return os;
 }
 
@@ -377,7 +383,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -406,7 +412,7 @@ struct Marked {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Marked& obj) {
-    ::tpy::print_object_default(os, "Marked", obj);
+    ::tpy::print_object_default(os, Marked::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -558,7 +564,7 @@ inline bool Fixed::__eq__(Fixed other) const {
 }
 
 inline std::string Fixed::__repr__() const {
-    return std::format("Fixed(off={})", ::tpy::repr_of(this->off));
+    return std::format("Fixed(off={})", std::string(::tpy::repr_of(this->off)));
 }
 
 inline uint64_t Fixed::__hash__() const {
@@ -573,7 +579,7 @@ inline bool Zone::__eq__(Zone other) const {
 }
 
 inline std::string Zone::__repr__() const {
-    return std::format("Zone(zid={})", ::tpy::repr_of(this->zid));
+    return std::format("Zone(zid={})", std::string(::tpy::repr_of(this->zid)));
 }
 
 inline uint64_t Zone::__hash__() const {
@@ -633,9 +639,15 @@ struct ShapeTree {
 
     bool operator==(const ShapeTree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const ShapeTree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 struct V {
@@ -649,9 +661,15 @@ struct V {
 
     bool operator==(const V&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const V& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

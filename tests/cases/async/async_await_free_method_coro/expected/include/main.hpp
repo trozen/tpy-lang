@@ -34,7 +34,7 @@ struct Svc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Svc& obj) {
-    ::tpy::print_object_default(os, "Svc", obj);
+    ::tpy::print_object_default(os, Svc::__tpy_class_name__, obj);
     return os;
 }
 

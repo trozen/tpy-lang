@@ -31,7 +31,7 @@ struct Consts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Consts& obj) {
-    ::tpy::print_object_default(os, "Consts", obj);
+    ::tpy::print_object_default(os, Consts::__tpy_class_name__, obj);
     return os;
 }
 

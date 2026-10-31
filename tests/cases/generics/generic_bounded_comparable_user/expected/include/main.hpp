@@ -46,7 +46,7 @@ struct MyInt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
-    ::tpy::print_object_default(os, "MyInt", obj);
+    ::tpy::print_object_default(os, MyInt::__tpy_class_name__, obj);
     return os;
 }
 

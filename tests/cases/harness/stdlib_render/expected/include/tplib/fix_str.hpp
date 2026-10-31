@@ -33,7 +33,7 @@ struct FixStrIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FixStrIter& obj) {
-    ::tpy::print_object_default(os, "FixStrIter", obj);
+    ::tpy::print_object_default(os, FixStrIter::__tpy_class_name__, obj);
     return os;
 }
 

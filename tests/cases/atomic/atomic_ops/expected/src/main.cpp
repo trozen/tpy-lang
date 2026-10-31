@@ -133,7 +133,7 @@ void main() {
     b.__ixor__(1);
     std::cout << b.load() << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
     ::tpystd::tpy::atomic::Atomic<uint32_t> w = ::tpystd::tpy::atomic::Atomic<uint32_t>(static_cast<uint32_t>(4294967295));
     std::cout << w.fetch_add(1, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     std::cout << w.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;

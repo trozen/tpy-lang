@@ -31,7 +31,7 @@ struct WithGetattr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithGetattr& obj) {
-    ::tpy::print_object_default(os, "WithGetattr", obj);
+    ::tpy::print_object_default(os, WithGetattr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct Mixin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mixin& obj) {
-    ::tpy::print_object_default(os, "Mixin", obj);
+    ::tpy::print_object_default(os, Mixin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Combined : WithGetattr, Mixin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
-    ::tpy::print_object_default(os, "Combined", obj);
+    ::tpy::print_object_default(os, Combined::__tpy_class_name__, obj);
     return os;
 }
 

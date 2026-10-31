@@ -24,7 +24,7 @@ struct Sub : ::CppCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 

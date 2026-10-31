@@ -50,7 +50,7 @@ inline bool TaggedItem::__eq__(const TaggedItem& other) const {
 }
 
 inline std::string TaggedItem::__repr__() const {
-    return std::format("TaggedItem(name={}, tags={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->tags));
+    return std::format("TaggedItem(name={}, tags={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->tags)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

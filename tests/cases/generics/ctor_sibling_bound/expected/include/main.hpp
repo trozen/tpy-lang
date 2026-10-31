@@ -31,7 +31,7 @@ struct IntGet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntGet& obj) {
-    ::tpy::print_object_default(os, "IntGet", obj);
+    ::tpy::print_object_default(os, IntGet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct Pair {
 
 template<typename R, typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<R, T>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<R, T>::__tpy_class_name__, obj);
     return os;
 }
 

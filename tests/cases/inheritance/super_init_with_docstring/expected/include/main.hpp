@@ -34,7 +34,7 @@ struct Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
-    ::tpy::print_object_default(os, "Parent", obj);
+    ::tpy::print_object_default(os, Parent::__tpy_class_name__, obj);
     return os;
 }
 
@@ -50,7 +50,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct Child : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Nested : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Nested& obj) {
-    ::tpy::print_object_default(os, "Nested", obj);
+    ::tpy::print_object_default(os, Nested::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct PassSuper : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PassSuper& obj) {
-    ::tpy::print_object_default(os, "PassSuper", obj);
+    ::tpy::print_object_default(os, PassSuper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -110,7 +110,7 @@ struct PassBase : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PassBase& obj) {
-    ::tpy::print_object_default(os, "PassBase", obj);
+    ::tpy::print_object_default(os, PassBase::__tpy_class_name__, obj);
     return os;
 }
 
@@ -123,7 +123,7 @@ struct DocPass : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DocPass& obj) {
-    ::tpy::print_object_default(os, "DocPass", obj);
+    ::tpy::print_object_default(os, DocPass::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct PassMulti : Parent, Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PassMulti& obj) {
-    ::tpy::print_object_default(os, "PassMulti", obj);
+    ::tpy::print_object_default(os, PassMulti::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct PassBetween : Parent, Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PassBetween& obj) {
-    ::tpy::print_object_default(os, "PassBetween", obj);
+    ::tpy::print_object_default(os, PassBetween::__tpy_class_name__, obj);
     return os;
 }
 

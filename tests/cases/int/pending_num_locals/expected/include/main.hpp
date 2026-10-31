@@ -19,6 +19,7 @@ enum class Level : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Level> {
     static constexpr std::string_view type_name = "Level";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Level e);
     static const std::array<::tpyapp::main::Level, 1> members;
     static ::tpyapp::main::Level from_value(int32_t v);
@@ -29,7 +30,7 @@ struct tpy::EnumUtil<::tpyapp::main::Level> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Level __e) {
-    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Failed;
@@ -174,7 +175,7 @@ struct Failed : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
-    ::tpy::print_object_default(os, "Failed", obj);
+    ::tpy::print_object_default(os, Failed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -191,7 +192,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +213,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -226,7 +227,7 @@ struct ArmBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ArmBox& obj) {
-    ::tpy::print_object_default(os, "ArmBox", obj);
+    ::tpy::print_object_default(os, ArmBox::__tpy_class_name__, obj);
     return os;
 }
 

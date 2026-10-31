@@ -186,7 +186,7 @@ struct Stop : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stop& obj) {
-    ::tpy::print_object_default(os, "Stop", obj);
+    ::tpy::print_object_default(os, Stop::__tpy_class_name__, obj);
     return os;
 }
 
@@ -206,7 +206,7 @@ struct Dropper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dropper& obj) {
-    ::tpy::print_object_default(os, "Dropper", obj);
+    ::tpy::print_object_default(os, Dropper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -220,7 +220,7 @@ struct Napper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Napper& obj) {
-    ::tpy::print_object_default(os, "Napper", obj);
+    ::tpy::print_object_default(os, Napper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -234,7 +234,7 @@ struct Installer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Installer& obj) {
-    ::tpy::print_object_default(os, "Installer", obj);
+    ::tpy::print_object_default(os, Installer::__tpy_class_name__, obj);
     return os;
 }
 

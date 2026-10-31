@@ -71,7 +71,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -83,7 +83,7 @@ inline bool Key::__eq__(const Key& other) const {
 }
 
 inline std::string Key::__repr__() const {
-    return std::format("Key(n={})", ::tpy::repr_of(this->n));
+    return std::format("Key(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline uint64_t Key::__hash__() const {

@@ -51,17 +51,17 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Pair& obj) {
-    ::tpy::print_object_default(os, "Outer.Pair", obj);
+    ::tpy::print_object_default(os, Outer::Pair::__tpy_class_name__, obj);
     return os;
 }
 

@@ -31,7 +31,7 @@ struct Opt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opt& obj) {
-    ::tpy::print_object_default(os, "Opt", obj);
+    ::tpy::print_object_default(os, Opt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct C {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct D {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 

@@ -29,7 +29,7 @@ struct Probe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
-    ::tpy::print_object_default(os, "Probe", obj);
+    ::tpy::print_object_default(os, Probe::__tpy_class_name__, obj);
     return os;
 }
 

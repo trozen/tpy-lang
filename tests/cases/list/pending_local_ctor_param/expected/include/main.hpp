@@ -30,7 +30,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -48,7 +48,7 @@ struct Wrap {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -64,7 +64,7 @@ struct DictHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DictHolder& obj) {
-    ::tpy::print_object_default(os, "DictHolder", obj);
+    ::tpy::print_object_default(os, DictHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +80,7 @@ struct SetHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SetHolder& obj) {
-    ::tpy::print_object_default(os, "SetHolder", obj);
+    ::tpy::print_object_default(os, SetHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -100,7 +100,7 @@ struct DataError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DataError& obj) {
-    ::tpy::print_object_default(os, "DataError", obj);
+    ::tpy::print_object_default(os, DataError::__tpy_class_name__, obj);
     return os;
 }
 

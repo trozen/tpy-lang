@@ -37,7 +37,7 @@ struct Resource {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
-    ::tpy::print_object_default(os, "Resource", obj);
+    ::tpy::print_object_default(os, Resource::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ inline bool Child::__eq__(const Child& other) const {
 }
 
 inline std::string Child::__repr__() const {
-    return std::format("Child(extra={})", ::tpy::repr_of(this->extra));
+    return std::format("Child(extra={})", std::string(::tpy::repr_of(this->extra)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct SubHolder : Holder<T> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SubHolder<T>& obj) {
-    ::tpy::print_object_default(os, "SubHolder", obj);
+    ::tpy::print_object_default(os, SubHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 

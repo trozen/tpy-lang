@@ -80,7 +80,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -95,7 +95,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +106,7 @@ struct Fail : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
-    ::tpy::print_object_default(os, "Fail", obj);
+    ::tpy::print_object_default(os, Fail::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Swallow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Swallow& obj) {
-    ::tpy::print_object_default(os, "Swallow", obj);
+    ::tpy::print_object_default(os, Swallow::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct Res {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
-    ::tpy::print_object_default(os, "Res", obj);
+    ::tpy::print_object_default(os, Res::__tpy_class_name__, obj);
     return os;
 }
 

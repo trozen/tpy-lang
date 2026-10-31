@@ -14,6 +14,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::ns::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::ns::Color e);
     static const std::array<::ns::Color, 3> members;
     static ::ns::Color from_value(int32_t v);

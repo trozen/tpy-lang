@@ -58,7 +58,7 @@ struct _MutexCell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _MutexCell<T>& obj) {
-    ::tpy::print_object_default(os, "_MutexCell", obj);
+    ::tpy::print_object_default(os, _MutexCell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -99,7 +99,7 @@ struct _RwLockCell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _RwLockCell<T>& obj) {
-    ::tpy::print_object_default(os, "_RwLockCell", obj);
+    ::tpy::print_object_default(os, _RwLockCell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -138,7 +138,7 @@ struct Mutex {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Mutex<T>& obj) {
-    ::tpy::print_object_default(os, "Mutex", obj);
+    ::tpy::print_object_default(os, Mutex<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct MutexGuard {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MutexGuard<T>& obj) {
-    ::tpy::print_object_default(os, "MutexGuard", obj);
+    ::tpy::print_object_default(os, MutexGuard<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -241,7 +241,7 @@ struct RwLock {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const RwLock<T>& obj) {
-    ::tpy::print_object_default(os, "RwLock", obj);
+    ::tpy::print_object_default(os, RwLock<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -284,7 +284,7 @@ struct ReadGuard {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ReadGuard<T>& obj) {
-    ::tpy::print_object_default(os, "ReadGuard", obj);
+    ::tpy::print_object_default(os, ReadGuard<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -340,7 +340,7 @@ struct WriteGuard {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WriteGuard<T>& obj) {
-    ::tpy::print_object_default(os, "WriteGuard", obj);
+    ::tpy::print_object_default(os, WriteGuard<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -380,7 +380,7 @@ struct Condvar {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Condvar& obj) {
-    ::tpy::print_object_default(os, "Condvar", obj);
+    ::tpy::print_object_default(os, Condvar::__tpy_class_name__, obj);
     return os;
 }
 

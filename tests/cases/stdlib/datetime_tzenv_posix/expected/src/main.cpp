@@ -21,8 +21,8 @@ namespace tpyapp::main {
 //     print(datetime(2021, 7, 15, 16, 0, tzinfo=UTC).astimezone()
 //           == datetime(2021, 7, 15, 12, 0).astimezone())
 void main() {
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone())) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n" << ::tpy::check_signals;

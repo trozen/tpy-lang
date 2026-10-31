@@ -34,7 +34,7 @@ struct Flat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
-    ::tpy::print_object_default(os, "Flat", obj);
+    ::tpy::print_object_default(os, Flat::__tpy_class_name__, obj);
     return os;
 }
 

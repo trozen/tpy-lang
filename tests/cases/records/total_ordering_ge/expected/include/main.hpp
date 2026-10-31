@@ -59,7 +59,7 @@ struct Weight {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Weight& obj) {
-    ::tpy::print_object_default(os, "Weight", obj);
+    ::tpy::print_object_default(os, Weight::__tpy_class_name__, obj);
     return os;
 }
 

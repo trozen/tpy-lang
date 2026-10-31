@@ -22,7 +22,7 @@ struct Tock {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tock& obj) {
-    ::tpy::print_object_default(os, "Tock", obj);
+    ::tpy::print_object_default(os, Tock::__tpy_class_name__, obj);
     return os;
 }
 

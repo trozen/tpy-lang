@@ -27,7 +27,7 @@ struct Box {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Box<T, N>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T, N>::__tpy_class_name__, obj);
     return os;
 }
 

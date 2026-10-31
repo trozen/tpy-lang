@@ -40,7 +40,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+    ::tpy::print_object_default(os, Container<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct Pair {
 
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T, U>::__tpy_class_name__, obj);
     return os;
 }
 

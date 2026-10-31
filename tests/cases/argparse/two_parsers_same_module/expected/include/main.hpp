@@ -45,7 +45,7 @@ struct __tpy_builder_argparse_args_1 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_1& obj) {
-    ::tpy::print_object_default(os, "__tpy_builder_argparse_args_1", obj);
+    ::tpy::print_object_default(os, __tpy_builder_argparse_args_1::__tpy_class_name__, obj);
     return os;
 }
 
@@ -60,7 +60,7 @@ struct __tpy_builder_argparse_args_2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_args_2& obj) {
-    ::tpy::print_object_default(os, "__tpy_builder_argparse_args_2", obj);
+    ::tpy::print_object_default(os, __tpy_builder_argparse_args_2::__tpy_class_name__, obj);
     return os;
 }
 

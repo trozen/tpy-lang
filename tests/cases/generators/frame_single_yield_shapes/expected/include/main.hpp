@@ -42,7 +42,7 @@ struct Labels {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Labels<T>& obj) {
-    ::tpy::print_object_default(os, "Labels", obj);
+    ::tpy::print_object_default(os, Labels<T>::__tpy_class_name__, obj);
     return os;
 }
 

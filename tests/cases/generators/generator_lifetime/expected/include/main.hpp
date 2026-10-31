@@ -185,7 +185,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -202,7 +202,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -223,7 +223,7 @@ struct Refill {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Refill& obj) {
-    ::tpy::print_object_default(os, "Refill", obj);
+    ::tpy::print_object_default(os, Refill::__tpy_class_name__, obj);
     return os;
 }
 
@@ -246,7 +246,7 @@ struct Tally {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-    ::tpy::print_object_default(os, "Tally", obj);
+    ::tpy::print_object_default(os, Tally::__tpy_class_name__, obj);
     return os;
 }
 
@@ -269,7 +269,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 
@@ -293,7 +293,7 @@ struct Lookup {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lookup& obj) {
-    ::tpy::print_object_default(os, "Lookup", obj);
+    ::tpy::print_object_default(os, Lookup::__tpy_class_name__, obj);
     return os;
 }
 
@@ -318,7 +318,7 @@ struct Rows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
-    ::tpy::print_object_default(os, "Rows", obj);
+    ::tpy::print_object_default(os, Rows::__tpy_class_name__, obj);
     return os;
 }
 

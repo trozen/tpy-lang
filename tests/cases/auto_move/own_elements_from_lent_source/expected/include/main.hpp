@@ -134,7 +134,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -174,7 +174,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -198,7 +198,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -224,7 +224,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    ::tpy::print_object_default(os, "Key", obj);
+    ::tpy::print_object_default(os, Key::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

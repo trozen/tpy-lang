@@ -28,7 +28,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct AErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AErr& obj) {
-    ::tpy::print_object_default(os, "AErr", obj);
+    ::tpy::print_object_default(os, AErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -60,7 +60,7 @@ struct BErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BErr& obj) {
-    ::tpy::print_object_default(os, "BErr", obj);
+    ::tpy::print_object_default(os, BErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct PSub : Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PSub& obj) {
-    ::tpy::print_object_default(os, "PSub", obj);
+    ::tpy::print_object_default(os, PSub::__tpy_class_name__, obj);
     return os;
 }
 

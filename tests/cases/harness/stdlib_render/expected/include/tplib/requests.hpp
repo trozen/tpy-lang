@@ -216,7 +216,7 @@ struct FileField {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FileField& obj) {
-    ::tpy::print_object_default(os, "FileField", obj);
+    ::tpy::print_object_default(os, FileField::__tpy_class_name__, obj);
     return os;
 }
 
@@ -233,7 +233,7 @@ struct RequestException : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RequestException& obj) {
-    ::tpy::print_object_default(os, "RequestException", obj);
+    ::tpy::print_object_default(os, RequestException::__tpy_class_name__, obj);
     return os;
 }
 
@@ -306,7 +306,7 @@ struct CaseInsensitiveDict {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CaseInsensitiveDict& obj) {
-    ::tpy::print_object_default(os, "CaseInsensitiveDict", obj);
+    ::tpy::print_object_default(os, CaseInsensitiveDict::__tpy_class_name__, obj);
     return os;
 }
 
@@ -351,7 +351,7 @@ struct Cookie {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cookie& obj) {
-    ::tpy::print_object_default(os, "Cookie", obj);
+    ::tpy::print_object_default(os, Cookie::__tpy_class_name__, obj);
     return os;
 }
 
@@ -408,7 +408,7 @@ struct CookieJar {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CookieJar& obj) {
-    ::tpy::print_object_default(os, "CookieJar", obj);
+    ::tpy::print_object_default(os, CookieJar::__tpy_class_name__, obj);
     return os;
 }
 
@@ -481,7 +481,7 @@ struct Response {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Response& obj) {
-    ::tpy::print_object_default(os, "Response", obj);
+    ::tpy::print_object_default(os, Response::__tpy_class_name__, obj);
     return os;
 }
 
@@ -588,7 +588,7 @@ struct Session {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Session& obj) {
-    ::tpy::print_object_default(os, "Session", obj);
+    ::tpy::print_object_default(os, Session::__tpy_class_name__, obj);
     return os;
 }
 
@@ -605,7 +605,7 @@ struct HTTPError : RequestException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HTTPError& obj) {
-    ::tpy::print_object_default(os, "HTTPError", obj);
+    ::tpy::print_object_default(os, HTTPError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -622,7 +622,7 @@ struct ConnectionError : RequestException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ConnectionError& obj) {
-    ::tpy::print_object_default(os, "ConnectionError", obj);
+    ::tpy::print_object_default(os, ConnectionError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -639,7 +639,7 @@ struct Timeout : RequestException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Timeout& obj) {
-    ::tpy::print_object_default(os, "Timeout", obj);
+    ::tpy::print_object_default(os, Timeout::__tpy_class_name__, obj);
     return os;
 }
 
@@ -656,7 +656,7 @@ struct TooManyRedirects : RequestException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TooManyRedirects& obj) {
-    ::tpy::print_object_default(os, "TooManyRedirects", obj);
+    ::tpy::print_object_default(os, TooManyRedirects::__tpy_class_name__, obj);
     return os;
 }
 
@@ -673,7 +673,7 @@ struct SSLError : ConnectionError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLError& obj) {
-    ::tpy::print_object_default(os, "SSLError", obj);
+    ::tpy::print_object_default(os, SSLError::__tpy_class_name__, obj);
     return os;
 }
 

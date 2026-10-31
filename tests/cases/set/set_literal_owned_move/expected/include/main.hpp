@@ -64,7 +64,7 @@ inline bool P::__eq__(const P& other) const {
 }
 
 inline std::string P::__repr__() const {
-    return std::format("P(x={})", ::tpy::repr_of(this->x));
+    return std::format("P(x={})", std::string(::tpy::repr_of(this->x)));
 }
 
 inline uint64_t P::__hash__() const {

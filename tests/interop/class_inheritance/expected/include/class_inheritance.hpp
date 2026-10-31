@@ -49,7 +49,7 @@ struct Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
-    ::tpy::print_object_default(os, "Shape", obj);
+    ::tpy::print_object_default(os, Shape::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::class_inheritance
@@ -72,7 +72,7 @@ struct BaseBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseBox& obj) {
-    ::tpy::print_object_default(os, "BaseBox", obj);
+    ::tpy::print_object_default(os, BaseBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -95,7 +95,7 @@ struct Circle : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    ::tpy::print_object_default(os, "Circle", obj);
+    ::tpy::print_object_default(os, Circle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -108,7 +108,7 @@ struct MidBox : BaseBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MidBox& obj) {
-    ::tpy::print_object_default(os, "MidBox", obj);
+    ::tpy::print_object_default(os, MidBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +121,7 @@ struct Disc : Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Disc& obj) {
-    ::tpy::print_object_default(os, "Disc", obj);
+    ::tpy::print_object_default(os, Disc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct LeafBox : MidBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LeafBox& obj) {
-    ::tpy::print_object_default(os, "LeafBox", obj);
+    ::tpy::print_object_default(os, LeafBox::__tpy_class_name__, obj);
     return os;
 }
 

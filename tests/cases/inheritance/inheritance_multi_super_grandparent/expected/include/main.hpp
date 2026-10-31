@@ -27,7 +27,7 @@ struct GA {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GA& obj) {
-    ::tpy::print_object_default(os, "GA", obj);
+    ::tpy::print_object_default(os, GA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -38,7 +38,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -49,7 +49,7 @@ struct A : GA {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -63,7 +63,7 @@ struct C : A, B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 

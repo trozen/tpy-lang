@@ -41,7 +41,7 @@ struct Tally : ::tpyapp::pet::Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-    ::tpy::print_object_default(os, "Tally", obj);
+    ::tpy::print_object_default(os, Tally::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct Notifier {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
-    ::tpy::print_object_default(os, "Notifier", obj);
+    ::tpy::print_object_default(os, Notifier::__tpy_class_name__, obj);
     return os;
 }
 

@@ -124,7 +124,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -151,7 +151,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct Keep {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Keep& obj) {
-    ::tpy::print_object_default(os, "Keep", obj);
+    ::tpy::print_object_default(os, Keep::__tpy_class_name__, obj);
     return os;
 }
 
@@ -183,7 +183,7 @@ struct KeepNames {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KeepNames& obj) {
-    ::tpy::print_object_default(os, "KeepNames", obj);
+    ::tpy::print_object_default(os, KeepNames::__tpy_class_name__, obj);
     return os;
 }
 
@@ -199,7 +199,7 @@ struct KeepElem {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KeepElem& obj) {
-    ::tpy::print_object_default(os, "KeepElem", obj);
+    ::tpy::print_object_default(os, KeepElem::__tpy_class_name__, obj);
     return os;
 }
 

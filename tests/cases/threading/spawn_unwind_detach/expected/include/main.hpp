@@ -41,7 +41,7 @@ struct Slow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Slow& obj) {
-    ::tpy::print_object_default(os, "Slow", obj);
+    ::tpy::print_object_default(os, Slow::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    ::tpy::print_object_default(os, "Owner", obj);
+    ::tpy::print_object_default(os, Owner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -78,7 +78,7 @@ struct Cleanup {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cleanup& obj) {
-    ::tpy::print_object_default(os, "Cleanup", obj);
+    ::tpy::print_object_default(os, Cleanup::__tpy_class_name__, obj);
     return os;
 }
 

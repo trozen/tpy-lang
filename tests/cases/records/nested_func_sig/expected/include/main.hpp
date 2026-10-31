@@ -37,12 +37,12 @@ struct Container {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+    ::tpy::print_object_default(os, Container::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Container::Inner& obj) {
-    ::tpy::print_object_default(os, "Container.Inner", obj);
+    ::tpy::print_object_default(os, Container::Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,6 +58,7 @@ Container::Kind get_kind();
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Container::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Container::Kind e);
     static const std::array<::tpyapp::main::Container::Kind, 2> members;
     static ::tpyapp::main::Container::Kind from_value(int32_t v);
@@ -68,7 +69,7 @@ struct tpy::EnumUtil<::tpyapp::main::Container::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Container::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Container::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 

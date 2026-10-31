@@ -80,7 +80,7 @@ struct App {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const App& obj) {
-    ::tpy::print_object_default(os, "App", obj);
+    ::tpy::print_object_default(os, App::__tpy_class_name__, obj);
     return os;
 }
 
@@ -95,7 +95,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct Generic {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Generic<T>& obj) {
-    ::tpy::print_object_default(os, "Generic", obj);
+    ::tpy::print_object_default(os, Generic<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -127,7 +127,7 @@ struct Failure : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Failure& obj) {
-    ::tpy::print_object_default(os, "Failure", obj);
+    ::tpy::print_object_default(os, Failure::__tpy_class_name__, obj);
     return os;
 }
 

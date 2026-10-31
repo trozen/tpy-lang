@@ -86,7 +86,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -102,7 +102,7 @@ struct Mid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mid& obj) {
-    ::tpy::print_object_default(os, "Mid", obj);
+    ::tpy::print_object_default(os, Mid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -120,7 +120,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Hidden {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hidden& obj) {
-    ::tpy::print_object_default(os, "Hidden", obj);
+    ::tpy::print_object_default(os, Hidden::__tpy_class_name__, obj);
     return os;
 }
 
@@ -163,7 +163,7 @@ struct Runner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
-    ::tpy::print_object_default(os, "Runner", obj);
+    ::tpy::print_object_default(os, Runner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -179,7 +179,7 @@ struct Snap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Snap& obj) {
-    ::tpy::print_object_default(os, "Snap", obj);
+    ::tpy::print_object_default(os, Snap::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct Gate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
-    ::tpy::print_object_default(os, "Gate", obj);
+    ::tpy::print_object_default(os, Gate::__tpy_class_name__, obj);
     return os;
 }
 

@@ -84,7 +84,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -117,7 +117,7 @@ struct Line {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
-    ::tpy::print_object_default(os, "Line", obj);
+    ::tpy::print_object_default(os, Line::__tpy_class_name__, obj);
     return os;
 }
 
@@ -135,7 +135,7 @@ struct Built {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct Names {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Names& obj) {
-    ::tpy::print_object_default(os, "Names", obj);
+    ::tpy::print_object_default(os, Names::__tpy_class_name__, obj);
     return os;
 }
 
@@ -169,7 +169,7 @@ struct WrappedNames {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WrappedNames& obj) {
-    ::tpy::print_object_default(os, "WrappedNames", obj);
+    ::tpy::print_object_default(os, WrappedNames::__tpy_class_name__, obj);
     return os;
 }
 
@@ -187,7 +187,7 @@ struct Frame {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Frame& obj) {
-    ::tpy::print_object_default(os, "Frame", obj);
+    ::tpy::print_object_default(os, Frame::__tpy_class_name__, obj);
     return os;
 }
 
@@ -207,7 +207,7 @@ struct Defaults {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Defaults& obj) {
-    ::tpy::print_object_default(os, "Defaults", obj);
+    ::tpy::print_object_default(os, Defaults::__tpy_class_name__, obj);
     return os;
 }
 

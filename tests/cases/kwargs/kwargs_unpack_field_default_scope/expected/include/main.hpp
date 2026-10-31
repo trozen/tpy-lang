@@ -17,6 +17,7 @@ enum class E : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::E e);
     static const std::array<::tpyapp::main::E, 2> members;
     static ::tpyapp::main::E from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::main::E> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, E __e) {
-    return __os << "E." << ::tpy::EnumUtil<E>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Opts;
@@ -53,7 +54,7 @@ struct Opts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
-    ::tpy::print_object_default(os, "Opts", obj);
+    ::tpy::print_object_default(os, Opts::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +69,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 

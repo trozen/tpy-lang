@@ -93,7 +93,7 @@ struct Waker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Waker& obj) {
-    ::tpy::print_object_default(os, "Waker", obj);
+    ::tpy::print_object_default(os, Waker::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpystd::coro

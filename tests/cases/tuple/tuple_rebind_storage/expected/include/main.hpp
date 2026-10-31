@@ -325,7 +325,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -341,7 +341,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -363,7 +363,7 @@ struct Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
-    ::tpy::print_object_default(os, "Tok", obj);
+    ::tpy::print_object_default(os, Tok::__tpy_class_name__, obj);
     return os;
 }
 
@@ -387,7 +387,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -403,7 +403,7 @@ struct Built {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built::__tpy_class_name__, obj);
     return os;
 }
 
@@ -414,7 +414,7 @@ struct Fail : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
-    ::tpy::print_object_default(os, "Fail", obj);
+    ::tpy::print_object_default(os, Fail::__tpy_class_name__, obj);
     return os;
 }
 
@@ -431,7 +431,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -448,7 +448,7 @@ struct HB {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HB& obj) {
-    ::tpy::print_object_default(os, "HB", obj);
+    ::tpy::print_object_default(os, HB::__tpy_class_name__, obj);
     return os;
 }
 
@@ -464,7 +464,7 @@ struct Oops : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Oops& obj) {
-    ::tpy::print_object_default(os, "Oops", obj);
+    ::tpy::print_object_default(os, Oops::__tpy_class_name__, obj);
     return os;
 }
 
@@ -482,7 +482,7 @@ struct HM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HM& obj) {
-    ::tpy::print_object_default(os, "HM", obj);
+    ::tpy::print_object_default(os, HM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -498,7 +498,7 @@ struct HCtor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HCtor& obj) {
-    ::tpy::print_object_default(os, "HCtor", obj);
+    ::tpy::print_object_default(os, HCtor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -514,7 +514,7 @@ struct TwoHop {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TwoHop& obj) {
-    ::tpy::print_object_default(os, "TwoHop", obj);
+    ::tpy::print_object_default(os, TwoHop::__tpy_class_name__, obj);
     return os;
 }
 
@@ -532,7 +532,7 @@ struct Named {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 
@@ -548,7 +548,7 @@ struct Lab {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lab& obj) {
-    ::tpy::print_object_default(os, "Lab", obj);
+    ::tpy::print_object_default(os, Lab::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -572,7 +572,7 @@ struct Labelled {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Labelled& obj) {
-    ::tpy::print_object_default(os, "Labelled", obj);
+    ::tpy::print_object_default(os, Labelled::__tpy_class_name__, obj);
     return os;
 }
 
@@ -591,7 +591,7 @@ struct Keeper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
-    ::tpy::print_object_default(os, "Keeper", obj);
+    ::tpy::print_object_default(os, Keeper::__tpy_class_name__, obj);
     return os;
 }
 

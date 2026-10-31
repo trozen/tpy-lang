@@ -37,7 +37,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -56,7 +56,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -72,7 +72,7 @@ struct NotLastUse {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotLastUse& obj) {
-    ::tpy::print_object_default(os, "NotLastUse", obj);
+    ::tpy::print_object_default(os, NotLastUse::__tpy_class_name__, obj);
     return os;
 }
 
@@ -93,7 +93,7 @@ struct GenericHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
-    ::tpy::print_object_default(os, "GenericHolder", obj);
+    ::tpy::print_object_default(os, GenericHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -113,7 +113,7 @@ struct GenericNotLastUse {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericNotLastUse<T>& obj) {
-    ::tpy::print_object_default(os, "GenericNotLastUse", obj);
+    ::tpy::print_object_default(os, GenericNotLastUse<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct OptHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
-    ::tpy::print_object_default(os, "OptHolder", obj);
+    ::tpy::print_object_default(os, OptHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -145,7 +145,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 

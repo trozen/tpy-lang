@@ -62,7 +62,7 @@ std::optional<::ns::Color> maybe(bool present) {
 //     for c in Color:
 //         print(c)
 //
-//     # Direct print: routes through ::tpy::__repr__(e) in gen_print.
+//     # Direct print: routes through ::tpy::__str__(e), the str() text.
 //     print(Color.Red)
 //
 //     # Optional[NativeEnum]: print_optional_val<void, Color>'s enum branch.
@@ -70,7 +70,7 @@ std::optional<::ns::Color> maybe(bool present) {
 //     print(maybe(False))
 //
 //     # Container of native enum: tpy::detail::print_element -> repr_of ->
-//     # __repr__(T) template (constrained on is_enum_v && EnumUtil).
+//     # the enum __repr__ (`<Color.Red: value>`, the C++ value).
 //     colors: list[Color] = [Color.Red, Color.Green, Color.Blue]
 //     print(colors)
 void main() {
@@ -79,9 +79,9 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::ns::Color c = *__beg_0;
-        std::cout << ::tpy::__repr__(c) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::__str__(c) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__repr__(::ns::Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(::ns::Color::Red) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(true)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(false)) << "\n" << ::tpy::check_signals;
     std::vector<::ns::Color> colors = {::ns::Color::Red, ::ns::Color::Green, ::ns::Color::Blue};

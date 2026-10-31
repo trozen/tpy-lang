@@ -40,7 +40,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Blob {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
-    ::tpy::print_object_default(os, "Blob", obj);
+    ::tpy::print_object_default(os, Blob::__tpy_class_name__, obj);
     return os;
 }
 
@@ -79,7 +79,7 @@ struct Either {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Either& obj) {
-    ::tpy::print_object_default(os, "Either", obj);
+    ::tpy::print_object_default(os, Either::__tpy_class_name__, obj);
     return os;
 }
 

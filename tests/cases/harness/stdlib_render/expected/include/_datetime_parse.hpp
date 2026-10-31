@@ -124,7 +124,7 @@ struct _ParseState {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _ParseState& obj) {
-    ::tpy::print_object_default(os, "_ParseState", obj);
+    ::tpy::print_object_default(os, _ParseState::__tpy_class_name__, obj);
     return os;
 }
 

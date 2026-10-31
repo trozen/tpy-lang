@@ -151,7 +151,7 @@ struct Bag {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct Gen {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gen& obj) {
-    ::tpy::print_object_default(os, "Gen", obj);
+    ::tpy::print_object_default(os, Gen::__tpy_class_name__, obj);
     return os;
 }
 
@@ -179,7 +179,7 @@ struct Opts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
-    ::tpy::print_object_default(os, "Opts", obj);
+    ::tpy::print_object_default(os, Opts::__tpy_class_name__, obj);
     return os;
 }
 
@@ -193,7 +193,7 @@ struct M {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
-    ::tpy::print_object_default(os, "M", obj);
+    ::tpy::print_object_default(os, M::__tpy_class_name__, obj);
     return os;
 }
 
@@ -207,7 +207,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -225,7 +225,7 @@ struct Opt {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Opt<T>& obj) {
-    ::tpy::print_object_default(os, "Opt", obj);
+    ::tpy::print_object_default(os, Opt<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -240,7 +240,7 @@ struct KwPick {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KwPick& obj) {
-    ::tpy::print_object_default(os, "KwPick", obj);
+    ::tpy::print_object_default(os, KwPick::__tpy_class_name__, obj);
     return os;
 }
 
@@ -255,7 +255,7 @@ struct OptPick {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptPick& obj) {
-    ::tpy::print_object_default(os, "OptPick", obj);
+    ::tpy::print_object_default(os, OptPick::__tpy_class_name__, obj);
     return os;
 }
 
@@ -273,7 +273,7 @@ struct OptBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const OptBox<T>& obj) {
-    ::tpy::print_object_default(os, "OptBox", obj);
+    ::tpy::print_object_default(os, OptBox<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -289,7 +289,7 @@ struct Scaler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scaler& obj) {
-    ::tpy::print_object_default(os, "Scaler", obj);
+    ::tpy::print_object_default(os, Scaler::__tpy_class_name__, obj);
     return os;
 }
 
@@ -311,12 +311,12 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -340,7 +340,7 @@ struct Coded : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Coded& obj) {
-    ::tpy::print_object_default(os, "Coded", obj);
+    ::tpy::print_object_default(os, Coded::__tpy_class_name__, obj);
     return os;
 }
 
@@ -354,7 +354,7 @@ struct Calc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
-    ::tpy::print_object_default(os, "Calc", obj);
+    ::tpy::print_object_default(os, Calc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -377,7 +377,7 @@ struct Disp {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Disp& obj) {
-    ::tpy::print_object_default(os, "Disp", obj);
+    ::tpy::print_object_default(os, Disp::__tpy_class_name__, obj);
     return os;
 }
 
@@ -391,7 +391,7 @@ struct Child : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 

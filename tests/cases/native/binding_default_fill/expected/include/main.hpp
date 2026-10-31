@@ -24,6 +24,7 @@ concept P = requires(T& t) {
 template<>
 struct tpy::EnumUtil<::nb::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::nb::E e);
     static const std::array<::nb::E, 2> members;
     static ::nb::E from_value(int32_t v);
@@ -69,7 +70,7 @@ struct GBox1 : ::nb::GBox<W> {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const GBox1<W>& obj) {
-    ::tpy::print_object_default(os, "GBox1", obj);
+    ::tpy::print_object_default(os, GBox1<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +86,7 @@ struct S {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const S& obj) {
-    ::tpy::print_object_default(os, "S", obj);
+    ::tpy::print_object_default(os, S::__tpy_class_name__, obj);
     return os;
 }
 
@@ -103,7 +104,7 @@ struct User {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const User& obj) {
-    ::tpy::print_object_default(os, "User", obj);
+    ::tpy::print_object_default(os, User::__tpy_class_name__, obj);
     return os;
 }
 
@@ -117,7 +118,7 @@ struct GBox2 : GBox1<V> {
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const GBox2<V>& obj) {
-    ::tpy::print_object_default(os, "GBox2", obj);
+    ::tpy::print_object_default(os, GBox2<V>::__tpy_class_name__, obj);
     return os;
 }
 

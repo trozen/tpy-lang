@@ -51,7 +51,7 @@ struct Limiter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Limiter& obj) {
-    ::tpy::print_object_default(os, "Limiter", obj);
+    ::tpy::print_object_default(os, Limiter::__tpy_class_name__, obj);
     return os;
 }
 

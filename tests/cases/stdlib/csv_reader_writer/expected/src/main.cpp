@@ -173,7 +173,7 @@ void write_basic() {
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
     w.writerow({"a", "b", "c"});
     w.writerows({{"1", "2", "3"}, {"x", "y", "z"}});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def write_quoting() -> None:
@@ -186,7 +186,7 @@ void write_quoting() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
     w.writerow({"plain", "has,comma", "has\"quote", "embed\nnl", "embed\rcr"});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def write_custom() -> None:
@@ -200,7 +200,7 @@ void write_custom() {
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, "\t", "\"", true, "\n");
     w.writerow({"a", "b"});
     w.writerow({"c", "d"});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def roundtrip() -> None:

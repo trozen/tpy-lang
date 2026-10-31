@@ -28,7 +28,7 @@ struct BaseErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseErr& obj) {
-    ::tpy::print_object_default(os, "BaseErr", obj);
+    ::tpy::print_object_default(os, BaseErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct DerivedErr : BaseErr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DerivedErr& obj) {
-    ::tpy::print_object_default(os, "DerivedErr", obj);
+    ::tpy::print_object_default(os, DerivedErr::__tpy_class_name__, obj);
     return os;
 }
 

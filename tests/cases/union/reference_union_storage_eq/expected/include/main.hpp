@@ -71,7 +71,7 @@ struct Boom : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
-    ::tpy::print_object_default(os, "Boom", obj);
+    ::tpy::print_object_default(os, Boom::__tpy_class_name__, obj);
     return os;
 }
 
@@ -88,7 +88,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -111,7 +111,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -187,7 +187,7 @@ struct Mark {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mark& obj) {
-    ::tpy::print_object_default(os, "Mark", obj);
+    ::tpy::print_object_default(os, Mark::__tpy_class_name__, obj);
     return os;
 }
 
@@ -209,7 +209,7 @@ struct Kennel {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Kennel& obj) {
-    ::tpy::print_object_default(os, "Kennel", obj);
+    ::tpy::print_object_default(os, Kennel::__tpy_class_name__, obj);
     return os;
 }
 
@@ -225,7 +225,7 @@ struct Crate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Crate& obj) {
-    ::tpy::print_object_default(os, "Crate", obj);
+    ::tpy::print_object_default(os, Crate::__tpy_class_name__, obj);
     return os;
 }
 

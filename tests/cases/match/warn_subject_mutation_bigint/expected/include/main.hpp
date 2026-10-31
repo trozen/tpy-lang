@@ -30,7 +30,7 @@ struct Big {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Big& obj) {
-    ::tpy::print_object_default(os, "Big", obj);
+    ::tpy::print_object_default(os, Big::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Small {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Small& obj) {
-    ::tpy::print_object_default(os, "Small", obj);
+    ::tpy::print_object_default(os, Small::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

@@ -47,7 +47,7 @@ struct Container {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+    ::tpy::print_object_default(os, Container::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct MixedContainer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MixedContainer& obj) {
-    ::tpy::print_object_default(os, "MixedContainer", obj);
+    ::tpy::print_object_default(os, MixedContainer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ struct GenericContainer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj) {
-    ::tpy::print_object_default(os, "GenericContainer", obj);
+    ::tpy::print_object_default(os, GenericContainer<T>::__tpy_class_name__, obj);
     return os;
 }
 

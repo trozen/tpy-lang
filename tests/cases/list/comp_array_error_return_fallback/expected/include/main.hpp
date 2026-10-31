@@ -31,7 +31,7 @@ struct MyErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
-    ::tpy::print_object_default(os, "MyErr", obj);
+    ::tpy::print_object_default(os, MyErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -56,7 +56,7 @@ struct Gauge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
-    ::tpy::print_object_default(os, "Gauge", obj);
+    ::tpy::print_object_default(os, Gauge::__tpy_class_name__, obj);
     return os;
 }
 

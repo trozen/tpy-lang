@@ -176,7 +176,7 @@ struct Haystack {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Haystack& obj) {
-    ::tpy::print_object_default(os, "Haystack", obj);
+    ::tpy::print_object_default(os, Haystack::__tpy_class_name__, obj);
     return os;
 }
 
@@ -192,7 +192,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -211,7 +211,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -229,7 +229,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -250,7 +250,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -274,7 +274,7 @@ struct Clearing {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clearing& obj) {
-    ::tpy::print_object_default(os, "Clearing", obj);
+    ::tpy::print_object_default(os, Clearing::__tpy_class_name__, obj);
     return os;
 }
 
@@ -291,7 +291,7 @@ struct PyMgr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PyMgr& obj) {
-    ::tpy::print_object_default(os, "PyMgr", obj);
+    ::tpy::print_object_default(os, PyMgr::__tpy_class_name__, obj);
     return os;
 }
 

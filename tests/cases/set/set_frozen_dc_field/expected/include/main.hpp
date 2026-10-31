@@ -120,7 +120,7 @@ inline bool Tag::__eq__(const Tag& other) const {
 }
 
 inline std::string Tag::__repr__() const {
-    return std::format("Tag(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
+    return std::format("Tag(name={}, value={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->value)));
 }
 
 inline uint64_t Tag::__hash__() const {
@@ -138,7 +138,7 @@ inline bool SetItem::__eq__(const SetItem& other) const {
 }
 
 inline std::string SetItem::__repr__() const {
-    return std::format("SetItem(name={}, tags={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->tags));
+    return std::format("SetItem(name={}, tags={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->tags)));
 }
 
 inline DictItem::DictItem(::tpy::ordered_map<Tag, std::string>&& lookup) : lookup(std::move(lookup)) {}
@@ -148,7 +148,7 @@ inline bool DictItem::__eq__(const DictItem& other) const {
 }
 
 inline std::string DictItem::__repr__() const {
-    return std::format("DictItem(lookup={})", ::tpy::repr_of(this->lookup));
+    return std::format("DictItem(lookup={})", std::string(::tpy::repr_of(this->lookup)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

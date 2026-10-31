@@ -39,7 +39,7 @@ struct MyTask {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyTask<T>& obj) {
-    ::tpy::print_object_default(os, "MyTask", obj);
+    ::tpy::print_object_default(os, MyTask<T>::__tpy_class_name__, obj);
     return os;
 }
 

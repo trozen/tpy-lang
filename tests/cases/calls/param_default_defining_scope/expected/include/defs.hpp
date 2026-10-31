@@ -24,6 +24,7 @@ enum class E : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::defs::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::defs::E e);
     static const std::array<::tpyapp::defs::E, 2> members;
     static ::tpyapp::defs::E from_value(int32_t v);
@@ -34,7 +35,7 @@ struct tpy::EnumUtil<::tpyapp::defs::E> {
 namespace tpyapp::defs {
 
 inline std::ostream& operator<<(std::ostream& __os, E __e) {
-    return __os << "E." << ::tpy::EnumUtil<E>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct C;
@@ -128,7 +129,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -149,7 +150,7 @@ struct Late {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Late& obj) {
-    ::tpy::print_object_default(os, "Late", obj);
+    ::tpy::print_object_default(os, Late::__tpy_class_name__, obj);
     return os;
 }
 
@@ -162,7 +163,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -194,12 +195,12 @@ struct LateDotted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LateDotted& obj) {
-    ::tpy::print_object_default(os, "LateDotted", obj);
+    ::tpy::print_object_default(os, LateDotted::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const LateDotted::Holder& obj) {
-    ::tpy::print_object_default(os, "LateDotted.Holder", obj);
+    ::tpy::print_object_default(os, LateDotted::Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -235,7 +236,7 @@ inline std::ostream& operator<<(std::ostream& os, const LateRec& obj) {
 }
 
 inline std::ostream& operator<<(std::ostream& os, const LateRec::Holder& obj) {
-    ::tpy::print_object_default(os, "LateRec.Holder", obj);
+    ::tpy::print_object_default(os, LateRec::Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -255,7 +256,7 @@ struct LateCtor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LateCtor& obj) {
-    ::tpy::print_object_default(os, "LateCtor", obj);
+    ::tpy::print_object_default(os, LateCtor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -323,7 +324,7 @@ struct W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
-    ::tpy::print_object_default(os, "W", obj);
+    ::tpy::print_object_default(os, W::__tpy_class_name__, obj);
     return os;
 }
 
@@ -341,7 +342,7 @@ struct LateField {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LateField& obj) {
-    ::tpy::print_object_default(os, "LateField", obj);
+    ::tpy::print_object_default(os, LateField::__tpy_class_name__, obj);
     return os;
 }
 
@@ -379,7 +380,7 @@ struct CV {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CV& obj) {
-    ::tpy::print_object_default(os, "CV", obj);
+    ::tpy::print_object_default(os, CV::__tpy_class_name__, obj);
     return os;
 }
 
@@ -400,7 +401,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -441,7 +442,7 @@ struct G {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const G<T>& obj) {
-    ::tpy::print_object_default(os, "G", obj);
+    ::tpy::print_object_default(os, G<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -457,7 +458,7 @@ struct Stepper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stepper& obj) {
-    ::tpy::print_object_default(os, "Stepper", obj);
+    ::tpy::print_object_default(os, Stepper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -472,7 +473,7 @@ struct Derived : C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
-    ::tpy::print_object_default(os, "Derived", obj);
+    ::tpy::print_object_default(os, Derived::__tpy_class_name__, obj);
     return os;
 }
 
@@ -481,6 +482,7 @@ inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
 template<>
 struct tpy::EnumUtil<::tpyapp::defs::LateDotted::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::defs::LateDotted::E e);
     static const std::array<::tpyapp::defs::LateDotted::E, 2> members;
     static ::tpyapp::defs::LateDotted::E from_value(int32_t v);
@@ -491,7 +493,7 @@ struct tpy::EnumUtil<::tpyapp::defs::LateDotted::E> {
 namespace tpyapp::defs {
 
 inline std::ostream& operator<<(std::ostream& __os, LateDotted::E __e) {
-    return __os << "E." << ::tpy::EnumUtil<LateDotted::E>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 // def gen(s: StrView = S, tail: int32 = 0) -> Iterator[StrView]:
@@ -585,7 +587,7 @@ inline bool LateRec::__eq__(const ::tpyapp::defs::LateRec& other) const {
 }
 
 inline std::string LateRec::__repr__() const {
-    return std::format("LateRec(n={})", ::tpy::repr_of(this->n));
+    return std::format("LateRec(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 // def __init__(self) -> None:
@@ -615,7 +617,7 @@ inline bool Pt::__eq__(const Pt& other) const {
 }
 
 inline std::string Pt::__repr__() const {
-    return std::format("Pt(x={})", ::tpy::repr_of(this->x));
+    return std::format("Pt(x={})", std::string(::tpy::repr_of(this->x)));
 }
 
 inline Made::Made(Pt&& p, ::tpy::ordered_map<int32_t, int32_t>&& ys, int32_t c)
@@ -628,7 +630,7 @@ inline bool Made::__eq__(const Made& other) const {
 }
 
 inline std::string Made::__repr__() const {
-    return std::format("Made(p={}, ys={}, c={})", ::tpy::repr_of(this->p), ::tpy::repr_of(this->ys), ::tpy::repr_of(this->c));
+    return std::format("Made(p={}, ys={}, c={})", std::string(::tpy::repr_of(this->p)), std::string(::tpy::repr_of(this->ys)), std::string(::tpy::repr_of(this->c)));
 }
 
 // def __init__(self) -> None:
@@ -665,7 +667,7 @@ inline bool MadeLater::__eq__(const MadeLater& other) const {
 }
 
 inline std::string MadeLater::__repr__() const {
-    return std::format("MadeLater(xs={}, list={})", ::tpy::repr_of(this->xs), ::tpy::repr_of(this->list));
+    return std::format("MadeLater(xs={}, list={})", std::string(::tpy::repr_of(this->xs)), std::string(::tpy::repr_of(this->list)));
 }
 
 inline Rec::Rec(int32_t n) : n(n) {}
@@ -675,7 +677,7 @@ inline bool Rec::__eq__(const Rec& other) const {
 }
 
 inline std::string Rec::__repr__() const {
-    return std::format("Rec(n={})", ::tpy::repr_of(this->n));
+    return std::format("Rec(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 // def __init__(self) -> None:

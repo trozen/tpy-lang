@@ -34,12 +34,12 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,6 +53,7 @@ Outer::Kind kind_b();
 template<>
 struct tpy::EnumUtil<::tpyapp::pkg::sub::mod::Outer::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::pkg::sub::mod::Outer::Kind e);
     static const std::array<::tpyapp::pkg::sub::mod::Outer::Kind, 2> members;
     static ::tpyapp::pkg::sub::mod::Outer::Kind from_value(int32_t v);
@@ -63,7 +64,7 @@ struct tpy::EnumUtil<::tpyapp::pkg::sub::mod::Outer::Kind> {
 namespace tpyapp::pkg::sub::mod {
 
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 

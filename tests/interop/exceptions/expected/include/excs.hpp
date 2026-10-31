@@ -36,7 +36,7 @@ struct Leave : ::tpy::SystemExit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leave& obj) {
-    ::tpy::print_object_default(os, "Leave", obj);
+    ::tpy::print_object_default(os, Leave::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct LeaveWith : ::tpy::SystemExit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LeaveWith& obj) {
-    ::tpy::print_object_default(os, "LeaveWith", obj);
+    ::tpy::print_object_default(os, LeaveWith::__tpy_class_name__, obj);
     return os;
 }
 

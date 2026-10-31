@@ -34,7 +34,7 @@ struct G {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const G<T>& obj) {
-    ::tpy::print_object_default(os, "G", obj);
+    ::tpy::print_object_default(os, G<T>::__tpy_class_name__, obj);
     return os;
 }
 

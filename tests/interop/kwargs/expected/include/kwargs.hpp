@@ -28,7 +28,7 @@ struct Vec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec& obj) {
-    ::tpy::print_object_default(os, "Vec", obj);
+    ::tpy::print_object_default(os, Vec::__tpy_class_name__, obj);
     return os;
 }
 

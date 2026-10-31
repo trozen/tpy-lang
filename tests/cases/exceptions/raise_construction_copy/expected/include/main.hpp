@@ -67,7 +67,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -87,7 +87,7 @@ struct OwnErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OwnErr& obj) {
-    ::tpy::print_object_default(os, "OwnErr", obj);
+    ::tpy::print_object_default(os, OwnErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -107,7 +107,7 @@ struct Carrier : ::tpy::Exception, Sizes {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Carrier& obj) {
-    ::tpy::print_object_default(os, "Carrier", obj);
+    ::tpy::print_object_default(os, Carrier::__tpy_class_name__, obj);
     return os;
 }
 
@@ -127,7 +127,7 @@ struct Bump : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bump& obj) {
-    ::tpy::print_object_default(os, "Bump", obj);
+    ::tpy::print_object_default(os, Bump::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct GenOwn : Carrier {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenOwn<T>& obj) {
-    ::tpy::print_object_default(os, "GenOwn", obj);
+    ::tpy::print_object_default(os, GenOwn<T>::__tpy_class_name__, obj);
     return os;
 }
 

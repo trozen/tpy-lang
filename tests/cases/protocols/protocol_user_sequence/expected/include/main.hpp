@@ -42,7 +42,7 @@ struct IntWrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
-    ::tpy::print_object_default(os, "IntWrapper", obj);
+    ::tpy::print_object_default(os, IntWrapper::__tpy_class_name__, obj);
     return os;
 }
 

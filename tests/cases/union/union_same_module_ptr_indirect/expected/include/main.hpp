@@ -29,7 +29,7 @@ struct MyWrap {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyWrap<T>& obj) {
-    ::tpy::print_object_default(os, "MyWrap", obj);
+    ::tpy::print_object_default(os, MyWrap<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct Lit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lit& obj) {
-    ::tpy::print_object_default(os, "Lit", obj);
+    ::tpy::print_object_default(os, Lit::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct BinOp {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
-    ::tpy::print_object_default(os, "BinOp", obj);
+    ::tpy::print_object_default(os, BinOp::__tpy_class_name__, obj);
     return os;
 }
 

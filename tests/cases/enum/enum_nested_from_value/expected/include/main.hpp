@@ -26,7 +26,7 @@ struct Message {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-    ::tpy::print_object_default(os, "Message", obj);
+    ::tpy::print_object_default(os, Message::__tpy_class_name__, obj);
     return os;
 }
 
@@ -38,6 +38,7 @@ Message::Kind lookup(int32_t n);
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Message::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Message::Kind e);
     static const std::array<::tpyapp::main::Message::Kind, 2> members;
     static ::tpyapp::main::Message::Kind from_value(int32_t v);
@@ -48,7 +49,7 @@ struct tpy::EnumUtil<::tpyapp::main::Message::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Message::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Message::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 void __tpy_init();

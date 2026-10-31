@@ -126,38 +126,38 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Outer::Box<T>& obj) {
-    ::tpy::print_object_default(os, "Outer.Box", obj);
+    ::tpy::print_object_default(os, Outer::Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Gate& obj) {
-    ::tpy::print_object_default(os, "Outer.Gate", obj);
+    ::tpy::print_object_default(os, Outer::Gate::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Layer& obj) {
-    ::tpy::print_object_default(os, "Outer.Layer", obj);
+    ::tpy::print_object_default(os, Outer::Layer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Layer::Deep& obj) {
-    ::tpy::print_object_default(os, "Outer.Layer.Deep", obj);
+    ::tpy::print_object_default(os, Outer::Layer::Deep::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Layer_Deep& obj) {
-    ::tpy::print_object_default(os, "Outer.Layer_Deep", obj);
+    ::tpy::print_object_default(os, Outer::Layer_Deep::__tpy_class_name__, obj);
     return os;
 }
 
@@ -184,12 +184,12 @@ struct Outer_Layer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer_Layer& obj) {
-    ::tpy::print_object_default(os, "Outer_Layer", obj);
+    ::tpy::print_object_default(os, Outer_Layer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer_Layer::Deep& obj) {
-    ::tpy::print_object_default(os, "Outer_Layer.Deep", obj);
+    ::tpy::print_object_default(os, Outer_Layer::Deep::__tpy_class_name__, obj);
     return os;
 }
 
@@ -202,7 +202,7 @@ struct Outer_Layer_Deep {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer_Layer_Deep& obj) {
-    ::tpy::print_object_default(os, "Outer_Layer_Deep", obj);
+    ::tpy::print_object_default(os, Outer_Layer_Deep::__tpy_class_name__, obj);
     return os;
 }
 

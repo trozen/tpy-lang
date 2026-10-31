@@ -37,7 +37,7 @@ namespace tpyapp::main {
 //     print(tz2 is not None and isinstance(tz2, timezone))
 void main() {
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    std::cout << ::tpy::repr_of(waw) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(waw)) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(waw)) << " " << waw.key() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((waw) == (::tpystd::datetime::ZoneInfo("Europe/Warsaw")))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(waw.utcoffset(std::nullopt)) << " " << ::tpy::print_optional_val(waw.tzname(std::nullopt)) << " " << ::tpy::print_optional_val(waw.dst(std::nullopt)) << "\n" << ::tpy::check_signals;
@@ -48,7 +48,7 @@ void main() {
     std::cout << ::tpy::print_optional_val(winter.utcoffset()) << " " << ::tpy::print_optional_val(winter.tzname()) << " " << ::tpy::print_optional_val(winter.dst()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(summer.utcoffset()) << " " << ::tpy::print_optional_val(summer.tzname()) << " " << ::tpy::print_optional_val(summer.dst()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(waw.utcoffset(summer)) << " " << ::tpy::print_optional_val(waw.tzname(summer)) << " " << ::tpy::print_optional_val(waw.dst(summer)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(summer) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(summer)) << "\n" << ::tpy::check_signals;
     std::cout << summer.isoformat() << " " << summer.isoformat(" ", "minutes") << "\n" << ::tpy::check_signals;
     std::cout << summer.strftime("%Y-%m-%d %H:%M %z %Z") << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::ZoneInfo rey = ::tpystd::datetime::ZoneInfo("Atlantic/Reykjavik");
@@ -58,7 +58,7 @@ void main() {
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = summer.tzinfo();
     std::cout << ::tpy::print_bool((((!std::holds_alternative<std::monostate>(tz)) && std::holds_alternative<::tpystd::datetime::ZoneInfo>(tz)) && ((std::get<::tpystd::datetime::ZoneInfo>(tz)) == (waw)))) << "\n" << ::tpy::check_signals;
     if ((!std::holds_alternative<std::monostate>(tz))) {
-        std::cout << ::tpy::repr_of(tz) << "\n" << ::tpy::check_signals;
+        std::cout << std::string(::tpy::repr_of(tz)) << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime mixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4);

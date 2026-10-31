@@ -42,7 +42,7 @@ struct Trade {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Trade& obj) {
-    ::tpy::print_object_default(os, "Trade", obj);
+    ::tpy::print_object_default(os, Trade::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct NativeHandle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NativeHandle& obj) {
-    ::tpy::print_object_default(os, "NativeHandle", obj);
+    ::tpy::print_object_default(os, NativeHandle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct ArenaBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ArenaBuffer& obj) {
-    ::tpy::print_object_default(os, "ArenaBuffer", obj);
+    ::tpy::print_object_default(os, ArenaBuffer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +92,7 @@ struct SharedTable {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SharedTable& obj) {
-    ::tpy::print_object_default(os, "SharedTable", obj);
+    ::tpy::print_object_default(os, SharedTable::__tpy_class_name__, obj);
     return os;
 }
 

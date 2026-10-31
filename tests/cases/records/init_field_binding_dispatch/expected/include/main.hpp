@@ -21,6 +21,7 @@ enum class E : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::E e);
     static const std::array<::tpyapp::main::E, 2> members;
     static ::tpyapp::main::E from_value(int32_t v);
@@ -31,7 +32,7 @@ struct tpy::EnumUtil<::tpyapp::main::E> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, E __e) {
-    return __os << "E." << ::tpy::EnumUtil<E>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Direct;
@@ -56,7 +57,7 @@ struct Direct {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Direct& obj) {
-    ::tpy::print_object_default(os, "Direct", obj);
+    ::tpy::print_object_default(os, Direct::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +72,7 @@ struct FromModule {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FromModule& obj) {
-    ::tpy::print_object_default(os, "FromModule", obj);
+    ::tpy::print_object_default(os, FromModule::__tpy_class_name__, obj);
     return os;
 }
 
@@ -86,7 +87,7 @@ struct FromImport {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FromImport& obj) {
-    ::tpy::print_object_default(os, "FromImport", obj);
+    ::tpy::print_object_default(os, FromImport::__tpy_class_name__, obj);
     return os;
 }
 
@@ -102,7 +103,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -117,7 +118,7 @@ struct FromNested {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FromNested& obj) {
-    ::tpy::print_object_default(os, "FromNested", obj);
+    ::tpy::print_object_default(os, FromNested::__tpy_class_name__, obj);
     return os;
 }
 
@@ -126,6 +127,7 @@ inline std::ostream& operator<<(std::ostream& os, const FromNested& obj) {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Outer::Kind e);
     static const std::array<::tpyapp::main::Outer::Kind, 2> members;
     static ::tpyapp::main::Outer::Kind from_value(int32_t v);
@@ -136,7 +138,7 @@ struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 

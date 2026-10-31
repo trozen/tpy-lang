@@ -31,7 +31,7 @@ struct Tracker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
-    ::tpy::print_object_default(os, "Tracker", obj);
+    ::tpy::print_object_default(os, Tracker::__tpy_class_name__, obj);
     return os;
 }
 

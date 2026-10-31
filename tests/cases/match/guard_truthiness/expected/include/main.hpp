@@ -22,6 +22,7 @@ enum class Level : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -32,6 +33,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Level> {
     static constexpr std::string_view type_name = "Level";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Level e);
     static const std::array<::tpyapp::main::Level, 2> members;
     static ::tpyapp::main::Level from_value(int32_t v);
@@ -42,11 +44,11 @@ struct tpy::EnumUtil<::tpyapp::main::Level> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Level __e) {
-    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Plain;
@@ -89,7 +91,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -110,7 +112,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void sd(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(date::fromisoformat(s)) << "\n" << ::tpy::check_signals;
+            std::cout << std::string(::tpy::repr_of(date::fromisoformat(s))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
@@ -27,7 +27,7 @@ void sd(std::string_view s) {
 void st(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(time::fromisoformat(s)) << "\n" << ::tpy::check_signals;
+            std::cout << std::string(::tpy::repr_of(time::fromisoformat(s))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
@@ -42,7 +42,7 @@ void st(std::string_view s) {
 void sdt(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(datetime::fromisoformat(s)) << "\n" << ::tpy::check_signals;
+            std::cout << std::string(::tpy::repr_of(datetime::fromisoformat(s))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }

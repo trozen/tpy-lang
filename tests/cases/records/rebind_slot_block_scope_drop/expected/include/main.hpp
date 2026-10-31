@@ -37,7 +37,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 

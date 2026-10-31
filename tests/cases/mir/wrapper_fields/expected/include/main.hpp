@@ -130,7 +130,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -154,7 +154,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -169,7 +169,7 @@ struct Empty {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
-    ::tpy::print_object_default(os, "Empty", obj);
+    ::tpy::print_object_default(os, Empty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -185,7 +185,7 @@ struct Built {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built::__tpy_class_name__, obj);
     return os;
 }
 
@@ -201,7 +201,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -217,7 +217,7 @@ struct Ro {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ro& obj) {
-    ::tpy::print_object_default(os, "Ro", obj);
+    ::tpy::print_object_default(os, Ro::__tpy_class_name__, obj);
     return os;
 }
 
@@ -233,7 +233,7 @@ struct Num {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Num& obj) {
-    ::tpy::print_object_default(os, "Num", obj);
+    ::tpy::print_object_default(os, Num::__tpy_class_name__, obj);
     return os;
 }
 
@@ -253,7 +253,7 @@ struct HL {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HL& obj) {
-    ::tpy::print_object_default(os, "HL", obj);
+    ::tpy::print_object_default(os, HL::__tpy_class_name__, obj);
     return os;
 }
 
@@ -269,7 +269,7 @@ struct S {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const S& obj) {
-    ::tpy::print_object_default(os, "S", obj);
+    ::tpy::print_object_default(os, S::__tpy_class_name__, obj);
     return os;
 }
 
@@ -285,7 +285,7 @@ struct SH {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SH& obj) {
-    ::tpy::print_object_default(os, "SH", obj);
+    ::tpy::print_object_default(os, SH::__tpy_class_name__, obj);
     return os;
 }
 

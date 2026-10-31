@@ -54,7 +54,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    ::tpy::print_object_default(os, "Node", obj);
+    ::tpy::print_object_default(os, Node::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

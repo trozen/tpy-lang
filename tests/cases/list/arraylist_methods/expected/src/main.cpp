@@ -51,7 +51,7 @@ void test_repr() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     a.append(10);
     a.append(20);
-    std::cout << ::tpy::repr_of(a) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(a)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_swap() -> None:

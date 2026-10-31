@@ -145,7 +145,7 @@ struct Err : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -181,7 +181,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -196,7 +196,7 @@ struct Slot {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
-    ::tpy::print_object_default(os, "Slot", obj);
+    ::tpy::print_object_default(os, Slot::__tpy_class_name__, obj);
     return os;
 }
 
@@ -269,7 +269,7 @@ struct M {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
-    ::tpy::print_object_default(os, "M", obj);
+    ::tpy::print_object_default(os, M::__tpy_class_name__, obj);
     return os;
 }
 
@@ -288,7 +288,7 @@ struct Fixed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
-    ::tpy::print_object_default(os, "Fixed", obj);
+    ::tpy::print_object_default(os, Fixed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -304,7 +304,7 @@ struct Starter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Starter& obj) {
-    ::tpy::print_object_default(os, "Starter", obj);
+    ::tpy::print_object_default(os, Starter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -333,7 +333,7 @@ struct PBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const PBox<T>& obj) {
-    ::tpy::print_object_default(os, "PBox", obj);
+    ::tpy::print_object_default(os, PBox<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -354,7 +354,7 @@ struct PHold {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const PHold<T>& obj) {
-    ::tpy::print_object_default(os, "PHold", obj);
+    ::tpy::print_object_default(os, PHold<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -373,7 +373,7 @@ struct PHoldA {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PHoldA& obj) {
-    ::tpy::print_object_default(os, "PHoldA", obj);
+    ::tpy::print_object_default(os, PHoldA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -402,7 +402,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    ::tpy::print_object_default(os, "Key", obj);
+    ::tpy::print_object_default(os, Key::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -478,7 +478,7 @@ struct Va {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Va& obj) {
-    ::tpy::print_object_default(os, "Va", obj);
+    ::tpy::print_object_default(os, Va::__tpy_class_name__, obj);
     return os;
 }
 
@@ -512,7 +512,7 @@ struct GV {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GV<T>& obj) {
-    ::tpy::print_object_default(os, "GV", obj);
+    ::tpy::print_object_default(os, GV<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -531,7 +531,7 @@ struct IntSrc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntSrc& obj) {
-    ::tpy::print_object_default(os, "IntSrc", obj);
+    ::tpy::print_object_default(os, IntSrc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -565,7 +565,7 @@ struct Sh {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sh& obj) {
-    ::tpy::print_object_default(os, "Sh", obj);
+    ::tpy::print_object_default(os, Sh::__tpy_class_name__, obj);
     return os;
 }
 
@@ -584,7 +584,7 @@ struct G {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const G& obj) {
-    ::tpy::print_object_default(os, "G", obj);
+    ::tpy::print_object_default(os, G::__tpy_class_name__, obj);
     return os;
 }
 
@@ -641,7 +641,7 @@ struct V {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const V& obj) {
-    ::tpy::print_object_default(os, "V", obj);
+    ::tpy::print_object_default(os, V::__tpy_class_name__, obj);
     return os;
 }
 
@@ -656,7 +656,7 @@ struct Leaf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -671,7 +671,7 @@ struct UPayload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const UPayload& obj) {
-    ::tpy::print_object_default(os, "UPayload", obj);
+    ::tpy::print_object_default(os, UPayload::__tpy_class_name__, obj);
     return os;
 }
 
@@ -693,7 +693,7 @@ struct UH {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const UH& obj) {
-    ::tpy::print_object_default(os, "UH", obj);
+    ::tpy::print_object_default(os, UH::__tpy_class_name__, obj);
     return os;
 }
 
@@ -717,7 +717,7 @@ struct Stored {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stored& obj) {
-    ::tpy::print_object_default(os, "Stored", obj);
+    ::tpy::print_object_default(os, Stored::__tpy_class_name__, obj);
     return os;
 }
 
@@ -737,7 +737,7 @@ struct RBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const RBox<T>& obj) {
-    ::tpy::print_object_default(os, "RBox", obj);
+    ::tpy::print_object_default(os, RBox<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1256,7 +1256,7 @@ inline bool Frozen::__eq__(const Frozen& other) const {
 }
 
 inline std::string Frozen::__repr__() const {
-    return std::format("Frozen(k={})", ::tpy::repr_of(this->k));
+    return std::format("Frozen(k={})", std::string(::tpy::repr_of(this->k)));
 }
 
 inline uint64_t Frozen::__hash__() const {
@@ -1338,7 +1338,7 @@ inline bool FrozenPair::__eq__(const FrozenPair& other) const {
 }
 
 inline std::string FrozenPair::__repr__() const {
-    return std::format("FrozenPair(k={})", ::tpy::repr_of(this->k));
+    return std::format("FrozenPair(k={})", std::string(::tpy::repr_of(this->k)));
 }
 
 inline uint64_t FrozenPair::__hash__() const {

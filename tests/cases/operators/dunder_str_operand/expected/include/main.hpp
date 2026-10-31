@@ -44,7 +44,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -67,7 +67,7 @@ struct Count {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
-    ::tpy::print_object_default(os, "Count", obj);
+    ::tpy::print_object_default(os, Count::__tpy_class_name__, obj);
     return os;
 }
 
@@ -90,7 +90,7 @@ struct Blob {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
-    ::tpy::print_object_default(os, "Blob", obj);
+    ::tpy::print_object_default(os, Blob::__tpy_class_name__, obj);
     return os;
 }
 
@@ -113,7 +113,7 @@ struct Ratio {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ratio& obj) {
-    ::tpy::print_object_default(os, "Ratio", obj);
+    ::tpy::print_object_default(os, Ratio::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Initial {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Initial& obj) {
-    ::tpy::print_object_default(os, "Initial", obj);
+    ::tpy::print_object_default(os, Initial::__tpy_class_name__, obj);
     return os;
 }
 

@@ -29,7 +29,7 @@ struct E : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+    ::tpy::print_object_default(os, E::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct Payload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
-    ::tpy::print_object_default(os, "Payload", obj);
+    ::tpy::print_object_default(os, Payload::__tpy_class_name__, obj);
     return os;
 }
 
@@ -74,7 +74,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 

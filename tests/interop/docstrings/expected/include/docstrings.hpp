@@ -21,6 +21,7 @@ enum class Bare : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::docstrings::Level> {
     static constexpr std::string_view type_name = "Level";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::docstrings::Level e);
     static const std::array<::tpyapp::docstrings::Level, 2> members;
     static ::tpyapp::docstrings::Level from_value(int32_t v);
@@ -31,6 +32,7 @@ struct tpy::EnumUtil<::tpyapp::docstrings::Level> {
 template<>
 struct tpy::EnumUtil<::tpyapp::docstrings::Bare> {
     static constexpr std::string_view type_name = "Bare";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::docstrings::Bare e);
     static const std::array<::tpyapp::docstrings::Bare, 1> members;
     static ::tpyapp::docstrings::Bare from_value(int32_t v);
@@ -41,11 +43,11 @@ struct tpy::EnumUtil<::tpyapp::docstrings::Bare> {
 namespace tpyapp::docstrings {
 
 inline std::ostream& operator<<(std::ostream& __os, Level __e) {
-    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Bare __e) {
-    return __os << "Bare." << ::tpy::EnumUtil<Bare>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Rejected;
@@ -73,7 +75,7 @@ struct Rejected : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rejected& obj) {
-    ::tpy::print_object_default(os, "Rejected", obj);
+    ::tpy::print_object_default(os, Rejected::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +94,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -107,7 +109,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -118,7 +120,7 @@ struct Derived : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
-    ::tpy::print_object_default(os, "Derived", obj);
+    ::tpy::print_object_default(os, Derived::__tpy_class_name__, obj);
     return os;
 }
 

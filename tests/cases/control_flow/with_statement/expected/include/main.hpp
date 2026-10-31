@@ -83,7 +83,7 @@ struct Logger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
-    ::tpy::print_object_default(os, "Logger", obj);
+    ::tpy::print_object_default(os, Logger::__tpy_class_name__, obj);
     return os;
 }
 
@@ -104,7 +104,7 @@ struct Connection {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
-    ::tpy::print_object_default(os, "Connection", obj);
+    ::tpy::print_object_default(os, Connection::__tpy_class_name__, obj);
     return os;
 }
 
@@ -126,7 +126,7 @@ struct Count {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
-    ::tpy::print_object_default(os, "Count", obj);
+    ::tpy::print_object_default(os, Count::__tpy_class_name__, obj);
     return os;
 }
 
@@ -148,7 +148,7 @@ struct Cb {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cb& obj) {
-    ::tpy::print_object_default(os, "Cb", obj);
+    ::tpy::print_object_default(os, Cb::__tpy_class_name__, obj);
     return os;
 }
 
@@ -170,7 +170,7 @@ struct Items {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
-    ::tpy::print_object_default(os, "Items", obj);
+    ::tpy::print_object_default(os, Items::__tpy_class_name__, obj);
     return os;
 }
 

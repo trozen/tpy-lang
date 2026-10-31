@@ -34,7 +34,7 @@ struct Fixed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
-    ::tpy::print_object_default(os, "Fixed", obj);
+    ::tpy::print_object_default(os, Fixed::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -56,7 +56,7 @@ struct Wide {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wide& obj) {
-    ::tpy::print_object_default(os, "Wide", obj);
+    ::tpy::print_object_default(os, Wide::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -78,7 +78,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 

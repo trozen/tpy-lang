@@ -77,7 +77,7 @@ inline bool Heavy::__eq__(const Heavy& other) const {
 }
 
 inline std::string Heavy::__repr__() const {
-    return std::format("Heavy(value={})", ::tpy::repr_of(this->value));
+    return std::format("Heavy(value={})", std::string(::tpy::repr_of(this->value)));
 }
 
 inline Light::Light(int32_t value) : value(value) {}
@@ -87,7 +87,7 @@ inline bool Light::__eq__(const Light& other) const {
 }
 
 inline std::string Light::__repr__() const {
-    return std::format("Light(value={})", ::tpy::repr_of(this->value));
+    return std::format("Light(value={})", std::string(::tpy::repr_of(this->value)));
 }
 using Item = ::tpy::Union<Heavy, Light>;
 

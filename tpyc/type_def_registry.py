@@ -181,6 +181,9 @@ class EnumInfo:
     underlying_type: "TpyType"
     is_int_enum: bool
     module_name: str | None = None
+    # An `IntEnum` (CPython's ReprEnum): its str() and format() are the
+    # member's value; an `int, Enum` mixin keeps `E.MEMBER` like a plain Enum.
+    str_is_value: bool = False
     is_native: bool = False
     native_name: str | None = None  # canonical ::-prefixed C++ qname for @native enums
     # Per-member C++ enumerator-name override (Python name -> C++ name).
@@ -1248,6 +1251,13 @@ def is_int_enum_type(t: "TpyType") -> bool:
     `enum.is_int_enum`."""
     info = enum_info_of(t)
     return info is not None and info.is_int_enum
+
+
+def is_value_text_enum_type(t: "TpyType") -> bool:
+    """True for an enum whose str() and format() are its member's value (an
+    `IntEnum`); a plain Enum or an `int, Enum` mixin writes `E.MEMBER`."""
+    info = enum_info_of(t)
+    return info is not None and info.str_is_value
 
 
 # --- Population -----------------------------------------------------------

@@ -1,0 +1,1 @@
+main.py:12: error: Format spec ':d' cannot apply to text: 'd' is a number's presentation type (only fill, alignment, width, precision and 's' format a str() / repr() text)

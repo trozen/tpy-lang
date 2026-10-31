@@ -55,7 +55,7 @@ struct Frog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Frog& obj) {
-    ::tpy::print_object_default(os, "Frog", obj);
+    ::tpy::print_object_default(os, Frog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper::__tpy_class_name__, obj);
     return os;
 }
 

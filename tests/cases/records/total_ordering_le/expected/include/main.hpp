@@ -59,7 +59,7 @@ struct Bid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bid& obj) {
-    ::tpy::print_object_default(os, "Bid", obj);
+    ::tpy::print_object_default(os, Bid::__tpy_class_name__, obj);
     return os;
 }
 

@@ -60,7 +60,7 @@ struct SSLError : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLError& obj) {
-    ::tpy::print_object_default(os, "SSLError", obj);
+    ::tpy::print_object_default(os, SSLError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -99,7 +99,7 @@ struct _SslSession {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SslSession& obj) {
-    ::tpy::print_object_default(os, "_SslSession", obj);
+    ::tpy::print_object_default(os, _SslSession::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +146,7 @@ struct SSLContext {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLContext& obj) {
-    ::tpy::print_object_default(os, "SSLContext", obj);
+    ::tpy::print_object_default(os, SSLContext::__tpy_class_name__, obj);
     return os;
 }
 
@@ -201,7 +201,7 @@ struct SSLSocket {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLSocket& obj) {
-    ::tpy::print_object_default(os, "SSLSocket", obj);
+    ::tpy::print_object_default(os, SSLSocket::__tpy_class_name__, obj);
     return os;
 }
 
@@ -228,7 +228,7 @@ struct SSLRawIO {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLRawIO& obj) {
-    ::tpy::print_object_default(os, "SSLRawIO", obj);
+    ::tpy::print_object_default(os, SSLRawIO::__tpy_class_name__, obj);
     return os;
 }
 
@@ -244,7 +244,7 @@ struct SSLCertVerificationError : SSLError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLCertVerificationError& obj) {
-    ::tpy::print_object_default(os, "SSLCertVerificationError", obj);
+    ::tpy::print_object_default(os, SSLCertVerificationError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -260,7 +260,7 @@ struct SSLWantReadError : SSLError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLWantReadError& obj) {
-    ::tpy::print_object_default(os, "SSLWantReadError", obj);
+    ::tpy::print_object_default(os, SSLWantReadError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -276,7 +276,7 @@ struct SSLWantWriteError : SSLError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLWantWriteError& obj) {
-    ::tpy::print_object_default(os, "SSLWantWriteError", obj);
+    ::tpy::print_object_default(os, SSLWantWriteError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -292,7 +292,7 @@ struct SSLZeroReturnError : SSLError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SSLZeroReturnError& obj) {
-    ::tpy::print_object_default(os, "SSLZeroReturnError", obj);
+    ::tpy::print_object_default(os, SSLZeroReturnError::__tpy_class_name__, obj);
     return os;
 }
 

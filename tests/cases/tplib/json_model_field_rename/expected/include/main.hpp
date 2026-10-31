@@ -207,7 +207,7 @@ inline bool User::__eq__(const User& other) const {
 }
 
 inline std::string User::__repr__() const {
-    return std::format("User(first_name={}, last_name={}, age={})", ::tpy::repr_of(this->first_name), ::tpy::repr_of(this->last_name), ::tpy::repr_of(this->age));
+    return std::format("User(first_name={}, last_name={}, age={})", std::string(::tpy::repr_of(this->first_name)), std::string(::tpy::repr_of(this->last_name)), std::string(::tpy::repr_of(this->age)));
 }
 
 inline User User::from_json(std::string_view __s) {
@@ -310,7 +310,7 @@ inline bool WithDefault::__eq__(const WithDefault& other) const {
 }
 
 inline std::string WithDefault::__repr__() const {
-    return std::format("WithDefault(label={}, note={}, score={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->note), ::tpy::repr_of(this->score));
+    return std::format("WithDefault(label={}, note={}, score={})", std::string(::tpy::repr_of(this->label)), std::string(::tpy::repr_of(this->note)), std::string(::tpy::repr_of(this->score)));
 }
 
 inline WithDefault WithDefault::from_json(std::string_view __s) {
@@ -410,7 +410,7 @@ inline bool Base::__eq__(const Base& other) const {
 }
 
 inline std::string Base::__repr__() const {
-    return std::format("Base(item_id={})", ::tpy::repr_of(this->item_id));
+    return std::format("Base(item_id={})", std::string(::tpy::repr_of(this->item_id)));
 }
 
 inline Base Base::from_json(std::string_view __s) {
@@ -519,7 +519,7 @@ inline bool Extended::__eq__(const Extended& other) const {
 }
 
 inline std::string Extended::__repr__() const {
-    return std::format("Extended(item_id={}, label={})", ::tpy::repr_of(this->item_id), ::tpy::repr_of(this->label));
+    return std::format("Extended(item_id={}, label={})", std::string(::tpy::repr_of(this->item_id)), std::string(::tpy::repr_of(this->label)));
 }
 
 inline Extended Extended::from_json(std::string_view __s) {

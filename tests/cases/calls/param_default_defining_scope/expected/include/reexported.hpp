@@ -47,7 +47,7 @@ inline bool MadeReexport::__eq__(const MadeReexport& other) const {
 }
 
 inline std::string MadeReexport::__repr__() const {
-    return std::format("MadeReexport(xs={}, n={})", ::tpy::repr_of(this->xs), ::tpy::repr_of(this->n));
+    return std::format("MadeReexport(xs={}, n={})", std::string(::tpy::repr_of(this->xs)), std::string(::tpy::repr_of(this->n)));
 }
 void __tpy_init();
 } // namespace tpyapp::reexported

@@ -42,7 +42,7 @@ struct SimpleCalc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
-    ::tpy::print_object_default(os, "SimpleCalc", obj);
+    ::tpy::print_object_default(os, SimpleCalc::__tpy_class_name__, obj);
     return os;
 }
 

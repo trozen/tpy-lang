@@ -28,7 +28,7 @@ struct Strict {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
-    ::tpy::print_object_default(os, "Strict", obj);
+    ::tpy::print_object_default(os, Strict::__tpy_class_name__, obj);
     return os;
 }
 

@@ -90,7 +90,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -108,7 +108,7 @@ struct Named {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 
@@ -126,7 +126,7 @@ struct Pool {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pool& obj) {
-    ::tpy::print_object_default(os, "Pool", obj);
+    ::tpy::print_object_default(os, Pool::__tpy_class_name__, obj);
     return os;
 }
 
@@ -143,7 +143,7 @@ struct Pinned {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
-    ::tpy::print_object_default(os, "Pinned", obj);
+    ::tpy::print_object_default(os, Pinned::__tpy_class_name__, obj);
     return os;
 }
 
@@ -159,7 +159,7 @@ struct PinHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PinHolder& obj) {
-    ::tpy::print_object_default(os, "PinHolder", obj);
+    ::tpy::print_object_default(os, PinHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
-    ::tpy::print_object_default(os, "Tok", obj);
+    ::tpy::print_object_default(os, Tok::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -199,7 +199,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -217,7 +217,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

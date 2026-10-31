@@ -1,0 +1,26 @@
+free Color.RED 1 Mix.A
+free Color.RED 1 Mix.A Color.RED 1
+free <Color.RED: 1> <Num.ONE: 1> <Mix.A: 1> <Color.RED: 1> <Num.ONE: 1>
+free [<Color.RED: 1>] [<Num.ONE: 1>] {<Color.RED: 1>: 1} (<Color.RED: 1>, <Num.ONE: 1>)
+free [ Color.RED] [ Mix.A]
+free [         1] [001] [1]
+free 1 <Num.ONE: 1>
+method Color.GREEN 2 Color.GREEN|2 <Color.GREEN: 2> <Num.TWO: 2>
+generator Color.GREEN
+generator <Num.TWO: 2>
+comprehension ['1', '2'] ['<Color.RED: 1>']
+optional Color.RED 2 Color.RED|2 <Color.RED: 1>|<Num.TWO: 2>
+optional None None None|None None|None
+match Color.RED <Color.RED: 1>
+match Color.GREEN
+default True True
+default True False
+alias hi hi 'hi'
+alias ['a', ['b']] ['a', ['b']] ['a', ['b']]
+union 1 <Num.ONE: 1> Color.RED <Color.RED: 1>
+union 1 Color.RED
+union s 's' 7 7
+union s 7
+nested Kind.TEXT <Kind.TEXT: 1> Kind.TEXT
+imported True True
+small <Small.A: -5> [<Small.A: -5>] <Small.A: -5>

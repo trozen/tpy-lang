@@ -80,7 +80,7 @@ struct LocalBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const LocalBox<T>& obj) {
-    ::tpy::print_object_default(os, "LocalBox", obj);
+    ::tpy::print_object_default(os, LocalBox<T>::__tpy_class_name__, obj);
     return os;
 }
 

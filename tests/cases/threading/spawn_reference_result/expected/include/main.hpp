@@ -42,7 +42,7 @@ struct Rows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
-    ::tpy::print_object_default(os, "Rows", obj);
+    ::tpy::print_object_default(os, Rows::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct Tally {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-    ::tpy::print_object_default(os, "Tally", obj);
+    ::tpy::print_object_default(os, Tally::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct Summer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Summer& obj) {
-    ::tpy::print_object_default(os, "Summer", obj);
+    ::tpy::print_object_default(os, Summer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -135,7 +135,7 @@ struct Driver {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Driver& obj) {
-    ::tpy::print_object_default(os, "Driver", obj);
+    ::tpy::print_object_default(os, Driver::__tpy_class_name__, obj);
     return os;
 }
 

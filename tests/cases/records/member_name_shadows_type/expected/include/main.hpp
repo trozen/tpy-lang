@@ -36,6 +36,7 @@ template<> struct tpy::is_dyn_protocol_base<tpyapp::main::shape> : std::true_typ
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -46,7 +47,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct day;
@@ -81,7 +82,7 @@ struct day {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const day& obj) {
-    ::tpy::print_object_default(os, "day", obj);
+    ::tpy::print_object_default(os, day::__tpy_class_name__, obj);
     return os;
 }
 
@@ -100,7 +101,7 @@ struct square {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const square& obj) {
-    ::tpy::print_object_default(os, "square", obj);
+    ::tpy::print_object_default(os, square::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +120,7 @@ struct clock {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const clock& obj) {
-    ::tpy::print_object_default(os, "clock", obj);
+    ::tpy::print_object_default(os, clock::__tpy_class_name__, obj);
     return os;
 }
 
@@ -138,7 +139,7 @@ struct widget {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const widget& obj) {
-    ::tpy::print_object_default(os, "widget", obj);
+    ::tpy::print_object_default(os, widget::__tpy_class_name__, obj);
     return os;
 }
 
@@ -154,7 +155,7 @@ struct gauge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const gauge& obj) {
-    ::tpy::print_object_default(os, "gauge", obj);
+    ::tpy::print_object_default(os, gauge::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +169,7 @@ struct base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const base& obj) {
-    ::tpy::print_object_default(os, "base", obj);
+    ::tpy::print_object_default(os, base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -186,7 +187,7 @@ struct factory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const factory& obj) {
-    ::tpy::print_object_default(os, "factory", obj);
+    ::tpy::print_object_default(os, factory::__tpy_class_name__, obj);
     return os;
 }
 
@@ -203,7 +204,7 @@ struct canvas {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const canvas& obj) {
-    ::tpy::print_object_default(os, "canvas", obj);
+    ::tpy::print_object_default(os, canvas::__tpy_class_name__, obj);
     return os;
 }
 
@@ -221,7 +222,7 @@ struct meter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const meter& obj) {
-    ::tpy::print_object_default(os, "meter", obj);
+    ::tpy::print_object_default(os, meter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -237,7 +238,7 @@ struct fbase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const fbase& obj) {
-    ::tpy::print_object_default(os, "fbase", obj);
+    ::tpy::print_object_default(os, fbase::__tpy_class_name__, obj);
     return os;
 }
 
@@ -251,7 +252,7 @@ struct printer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const printer& obj) {
-    ::tpy::print_object_default(os, "printer", obj);
+    ::tpy::print_object_default(os, printer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -270,7 +271,7 @@ struct holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const holder& obj) {
-    ::tpy::print_object_default(os, "holder", obj);
+    ::tpy::print_object_default(os, holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -284,7 +285,7 @@ struct sub : ::tpyapp::main::base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const sub& obj) {
-    ::tpy::print_object_default(os, "sub", obj);
+    ::tpy::print_object_default(os, sub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -301,7 +302,7 @@ struct fsub : ::tpyapp::main::fbase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const fsub& obj) {
-    ::tpy::print_object_default(os, "fsub", obj);
+    ::tpy::print_object_default(os, fsub::__tpy_class_name__, obj);
     return os;
 }
 

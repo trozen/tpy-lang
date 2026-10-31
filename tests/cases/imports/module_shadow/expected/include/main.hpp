@@ -25,7 +25,7 @@ struct Timer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Timer& obj) {
-    ::tpy::print_object_default(os, "Timer", obj);
+    ::tpy::print_object_default(os, Timer::__tpy_class_name__, obj);
     return os;
 }
 

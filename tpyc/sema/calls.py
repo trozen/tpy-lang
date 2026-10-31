@@ -754,7 +754,7 @@ _MARKER_NOUNS = {
 }
 
 
-_REPR_TEMPLATE = "::tpy::repr_of({0})"
+_REPR_TEMPLATE = "std::string(::tpy::repr_of({0}))"
 
 
 def _repr_fallback_template(typ: TpyType) -> str | None:

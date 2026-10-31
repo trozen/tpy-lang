@@ -125,7 +125,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline DictOfDC::DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
@@ -135,7 +135,7 @@ inline bool DictOfDC::__eq__(const DictOfDC& other) const {
 }
 
 inline std::string DictOfDC::__repr__() const {
-    return std::format("DictOfDC(items={})", ::tpy::repr_of(this->items));
+    return std::format("DictOfDC(items={})", std::string(::tpy::repr_of(this->items)));
 }
 
 inline TupleOfDC::TupleOfDC(std::tuple<Point, int32_t> pair) : pair(std::move(pair)) {}

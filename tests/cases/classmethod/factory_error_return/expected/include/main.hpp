@@ -22,7 +22,7 @@ struct Invalid : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Invalid& obj) {
-    ::tpy::print_object_default(os, "Invalid", obj);
+    ::tpy::print_object_default(os, Invalid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -43,7 +43,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 

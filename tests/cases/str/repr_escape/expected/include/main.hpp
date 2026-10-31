@@ -52,7 +52,7 @@ inline bool Rec::__eq__(const Rec& other) const {
 }
 
 inline std::string Rec::__repr__() const {
-    return std::format("Rec(c={}, o={})", ::tpy::repr_of(this->c), ::tpy::repr_of(this->o));
+    return std::format("Rec(c={}, o={})", std::string(::tpy::repr_of(this->c)), std::string(::tpy::repr_of(this->o)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

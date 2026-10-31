@@ -153,7 +153,7 @@ struct Poll {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Poll<T>& obj) {
-    ::tpy::print_object_default(os, "Poll", obj);
+    ::tpy::print_object_default(os, Poll<T>::__tpy_class_name__, obj);
     return os;
 }
 

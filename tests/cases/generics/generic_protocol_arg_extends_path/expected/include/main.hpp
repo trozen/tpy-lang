@@ -42,7 +42,7 @@ struct MyIter {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyIter<T>& obj) {
-    ::tpy::print_object_default(os, "MyIter", obj);
+    ::tpy::print_object_default(os, MyIter<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct MyList {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyList<T>& obj) {
-    ::tpy::print_object_default(os, "MyList", obj);
+    ::tpy::print_object_default(os, MyList<T>::__tpy_class_name__, obj);
     return os;
 }
 

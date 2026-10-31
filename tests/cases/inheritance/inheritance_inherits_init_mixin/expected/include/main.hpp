@@ -29,7 +29,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -43,7 +43,7 @@ struct Greeter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
-    ::tpy::print_object_default(os, "Greeter", obj);
+    ::tpy::print_object_default(os, Greeter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct WithMixin : Base, Greeter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithMixin& obj) {
-    ::tpy::print_object_default(os, "WithMixin", obj);
+    ::tpy::print_object_default(os, WithMixin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -67,7 +67,7 @@ struct WithMixinReversed : Greeter, Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithMixinReversed& obj) {
-    ::tpy::print_object_default(os, "WithMixinReversed", obj);
+    ::tpy::print_object_default(os, WithMixinReversed::__tpy_class_name__, obj);
     return os;
 }
 

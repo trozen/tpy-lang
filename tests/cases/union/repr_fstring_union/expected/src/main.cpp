@@ -46,9 +46,9 @@ void main() {
     ::tpy::Union<int32_t, std::string> b = ::tpyapp::main::make_su();
     ::tpy::Union<Point, int32_t, std::string> __slot_1 = ::tpyapp::main::make_3u();
     ::tpy::Union<Point*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::repr_of(a) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(a)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(c)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{} and {}", ::tpy::__str__(a), ::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;

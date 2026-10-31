@@ -96,7 +96,7 @@ inline bool A::__eq__(const A& other) const {
 }
 
 inline std::string A::__repr__() const {
-    return std::format("A(x={})", ::tpy::repr_of(this->x));
+    return std::format("A(x={})", std::string(::tpy::repr_of(this->x)));
 }
 
 inline B::B(int32_t x, int32_t y)
@@ -108,7 +108,7 @@ inline bool B::__eq__(const B& other) const {
 }
 
 inline std::string B::__repr__() const {
-    return std::format("B(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("B(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline C::C(int32_t x, int32_t y, int32_t z)
@@ -120,7 +120,7 @@ inline bool C::__eq__(const C& other) const {
 }
 
 inline std::string C::__repr__() const {
-    return std::format("C(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+    return std::format("C(x={}, y={}, z={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)), std::string(::tpy::repr_of(this->z)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

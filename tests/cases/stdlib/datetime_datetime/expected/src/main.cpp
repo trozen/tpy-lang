@@ -98,12 +98,12 @@ void main() {
     std::cout << dt.isoformat() << "\n" << ::tpy::check_signals;
     std::cout << dt.isoformat(" ") << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(dt)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(dt) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(dt)) << "\n" << ::tpy::check_signals;
     std::cout << dt.year() << " " << dt.month() << " " << dt.day() << " " << dt.hour() << " " << dt.minute() << " " << dt.second() << " " << dt.microsecond() << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(5), ::tpy::BigInt(678901)).isoformat() << "\n" << ::tpy::check_signals;
     std::cout << dt.weekday() << " " << dt.isoweekday() << " " << dt.toordinal() << "\n" << ::tpy::check_signals;
     std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(8), ::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;

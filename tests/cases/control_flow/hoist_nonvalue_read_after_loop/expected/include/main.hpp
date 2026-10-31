@@ -207,7 +207,7 @@ struct Flat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
-    ::tpy::print_object_default(os, "Flat", obj);
+    ::tpy::print_object_default(os, Flat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -226,7 +226,7 @@ struct Pic {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pic& obj) {
-    ::tpy::print_object_default(os, "Pic", obj);
+    ::tpy::print_object_default(os, Pic::__tpy_class_name__, obj);
     return os;
 }
 
@@ -248,7 +248,7 @@ struct CM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
-    ::tpy::print_object_default(os, "CM", obj);
+    ::tpy::print_object_default(os, CM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -259,7 +259,7 @@ struct MyErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
-    ::tpy::print_object_default(os, "MyErr", obj);
+    ::tpy::print_object_default(os, MyErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -273,7 +273,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -288,7 +288,7 @@ struct Built {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built::__tpy_class_name__, obj);
     return os;
 }
 
@@ -302,7 +302,7 @@ struct SibHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SibHolder& obj) {
-    ::tpy::print_object_default(os, "SibHolder", obj);
+    ::tpy::print_object_default(os, SibHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -317,7 +317,7 @@ struct SibBuilt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SibBuilt& obj) {
-    ::tpy::print_object_default(os, "SibBuilt", obj);
+    ::tpy::print_object_default(os, SibBuilt::__tpy_class_name__, obj);
     return os;
 }
 

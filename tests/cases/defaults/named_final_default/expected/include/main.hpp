@@ -30,7 +30,7 @@ struct Engine {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Engine& obj) {
-    ::tpy::print_object_default(os, "Engine", obj);
+    ::tpy::print_object_default(os, Engine::__tpy_class_name__, obj);
     return os;
 }
 

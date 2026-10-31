@@ -36,7 +36,7 @@ struct IntListHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
-    ::tpy::print_object_default(os, "IntListHolder", obj);
+    ::tpy::print_object_default(os, IntListHolder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Wrapper {
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper<V>::__tpy_class_name__, obj);
     return os;
 }
 

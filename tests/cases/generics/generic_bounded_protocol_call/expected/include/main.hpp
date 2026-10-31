@@ -73,7 +73,7 @@ struct Printer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
-    ::tpy::print_object_default(os, "Printer", obj);
+    ::tpy::print_object_default(os, Printer<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct MyValue {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
-    ::tpy::print_object_default(os, "MyValue", obj);
+    ::tpy::print_object_default(os, MyValue::__tpy_class_name__, obj);
     return os;
 }
 
@@ -118,7 +118,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -142,7 +142,7 @@ struct Widget {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
-    ::tpy::print_object_default(os, "Widget", obj);
+    ::tpy::print_object_default(os, Widget::__tpy_class_name__, obj);
     return os;
 }
 
@@ -161,7 +161,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 

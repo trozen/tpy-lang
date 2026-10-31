@@ -33,7 +33,7 @@ struct Handle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-    ::tpy::print_object_default(os, "Handle", obj);
+    ::tpy::print_object_default(os, Handle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct TaggedValue {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const TaggedValue<T>& obj) {
-    ::tpy::print_object_default(os, "TaggedValue", obj);
+    ::tpy::print_object_default(os, TaggedValue<T>::__tpy_class_name__, obj);
     return os;
 }
 

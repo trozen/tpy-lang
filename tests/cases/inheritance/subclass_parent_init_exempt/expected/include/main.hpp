@@ -40,7 +40,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Money {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Money& obj) {
-    ::tpy::print_object_default(os, "Money", obj);
+    ::tpy::print_object_default(os, Money::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -80,7 +80,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -96,7 +96,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct TaggedError : ::tpy::Exception, Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TaggedError& obj) {
-    ::tpy::print_object_default(os, "TaggedError", obj);
+    ::tpy::print_object_default(os, TaggedError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct Point3 : Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point3& obj) {
-    ::tpy::print_object_default(os, "Point3", obj);
+    ::tpy::print_object_default(os, Point3::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Ticker : Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ticker& obj) {
-    ::tpy::print_object_default(os, "Ticker", obj);
+    ::tpy::print_object_default(os, Ticker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -159,7 +159,7 @@ struct Child : Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct Named : Ticker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 

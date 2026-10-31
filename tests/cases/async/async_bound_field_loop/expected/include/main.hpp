@@ -34,7 +34,7 @@ struct Summer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
-    ::tpy::print_object_default(os, "Summer", obj);
+    ::tpy::print_object_default(os, Summer<T>::__tpy_class_name__, obj);
     return os;
 }
 

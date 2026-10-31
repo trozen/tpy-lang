@@ -275,7 +275,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -294,7 +294,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -310,7 +310,7 @@ struct HO {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HO& obj) {
-    ::tpy::print_object_default(os, "HO", obj);
+    ::tpy::print_object_default(os, HO::__tpy_class_name__, obj);
     return os;
 }
 
@@ -321,7 +321,7 @@ struct Fail : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
-    ::tpy::print_object_default(os, "Fail", obj);
+    ::tpy::print_object_default(os, Fail::__tpy_class_name__, obj);
     return os;
 }
 
@@ -337,7 +337,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -353,7 +353,7 @@ struct HN {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HN& obj) {
-    ::tpy::print_object_default(os, "HN", obj);
+    ::tpy::print_object_default(os, HN::__tpy_class_name__, obj);
     return os;
 }
 
@@ -369,7 +369,7 @@ struct HOP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HOP& obj) {
-    ::tpy::print_object_default(os, "HOP", obj);
+    ::tpy::print_object_default(os, HOP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -393,7 +393,7 @@ struct C2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C2& obj) {
-    ::tpy::print_object_default(os, "C2", obj);
+    ::tpy::print_object_default(os, C2::__tpy_class_name__, obj);
     return os;
 }
 
@@ -419,7 +419,7 @@ struct K {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -442,7 +442,7 @@ struct Loud {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Loud& obj) {
-    ::tpy::print_object_default(os, "Loud", obj);
+    ::tpy::print_object_default(os, Loud::__tpy_class_name__, obj);
     return os;
 }
 
@@ -465,7 +465,7 @@ struct Mortal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mortal& obj) {
-    ::tpy::print_object_default(os, "Mortal", obj);
+    ::tpy::print_object_default(os, Mortal::__tpy_class_name__, obj);
     return os;
 }
 
@@ -480,7 +480,7 @@ struct HL {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HL& obj) {
-    ::tpy::print_object_default(os, "HL", obj);
+    ::tpy::print_object_default(os, HL::__tpy_class_name__, obj);
     return os;
 }
 
@@ -496,7 +496,7 @@ struct HI {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HI& obj) {
-    ::tpy::print_object_default(os, "HI", obj);
+    ::tpy::print_object_default(os, HI::__tpy_class_name__, obj);
     return os;
 }
 
@@ -512,7 +512,7 @@ struct HJ {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HJ& obj) {
-    ::tpy::print_object_default(os, "HJ", obj);
+    ::tpy::print_object_default(os, HJ::__tpy_class_name__, obj);
     return os;
 }
 
@@ -528,7 +528,7 @@ struct HV {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HV& obj) {
-    ::tpy::print_object_default(os, "HV", obj);
+    ::tpy::print_object_default(os, HV::__tpy_class_name__, obj);
     return os;
 }
 
@@ -544,7 +544,7 @@ struct NestCtor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NestCtor& obj) {
-    ::tpy::print_object_default(os, "NestCtor", obj);
+    ::tpy::print_object_default(os, NestCtor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -560,7 +560,7 @@ struct HT {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HT& obj) {
-    ::tpy::print_object_default(os, "HT", obj);
+    ::tpy::print_object_default(os, HT::__tpy_class_name__, obj);
     return os;
 }
 

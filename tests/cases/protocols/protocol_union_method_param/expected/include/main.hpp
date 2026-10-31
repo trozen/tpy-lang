@@ -44,7 +44,7 @@ struct Processor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
-    ::tpy::print_object_default(os, "Processor", obj);
+    ::tpy::print_object_default(os, Processor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct Ruler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ruler& obj) {
-    ::tpy::print_object_default(os, "Ruler", obj);
+    ::tpy::print_object_default(os, Ruler::__tpy_class_name__, obj);
     return os;
 }
 
@@ -72,7 +72,7 @@ struct Walker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
-    ::tpy::print_object_default(os, "Walker", obj);
+    ::tpy::print_object_default(os, Walker::__tpy_class_name__, obj);
     return os;
 }
 

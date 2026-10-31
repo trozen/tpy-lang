@@ -24,7 +24,7 @@ struct point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const point& obj) {
-    ::tpy::print_object_default(os, "point", obj);
+    ::tpy::print_object_default(os, point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -40,7 +40,7 @@ struct color {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const color& obj) {
-    ::tpy::print_object_default(os, "color", obj);
+    ::tpy::print_object_default(os, color::__tpy_class_name__, obj);
     return os;
 }
 

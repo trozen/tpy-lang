@@ -60,7 +60,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct N {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const N& obj) {
-    ::tpy::print_object_default(os, "N", obj);
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +92,7 @@ struct NB {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NB& obj) {
-    ::tpy::print_object_default(os, "NB", obj);
+    ::tpy::print_object_default(os, NB::__tpy_class_name__, obj);
     return os;
 }
 
@@ -111,7 +111,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 

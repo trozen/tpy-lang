@@ -34,7 +34,7 @@ struct Converter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
-    ::tpy::print_object_default(os, "Converter", obj);
+    ::tpy::print_object_default(os, Converter::__tpy_class_name__, obj);
     return os;
 }
 

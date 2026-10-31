@@ -14,7 +14,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reprs::__next__() 
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpy::repr_of(b);
+        return std::string(::tpy::repr_of(b));
     }
     case S_RESUME_0: {  // after: yield repr(b)  # tpyc: ok
         __state = S_RESUME_1;

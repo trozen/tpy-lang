@@ -27,7 +27,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -48,7 +48,7 @@ struct Derived : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
-    ::tpy::print_object_default(os, "Derived", obj);
+    ::tpy::print_object_default(os, Derived::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

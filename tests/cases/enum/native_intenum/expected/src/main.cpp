@@ -69,7 +69,7 @@ std::string desc(::ns::dir_t d) {
 //     print(d.value)
 void main() {
     ::ns::dir_t d = ::ns::dir_t::UP;
-    std::cout << ::tpy::__repr__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(d) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::desc(d) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::desc(::ns::dir_t::DOWN) << "\n" << ::tpy::check_signals;
     std::cout << static_cast<int>(static_cast<int8_t>(d)) << "\n" << ::tpy::check_signals;

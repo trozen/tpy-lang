@@ -29,6 +29,7 @@ enum class Tone : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Tone> {
     static constexpr std::string_view type_name = "Tone";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Tone e);
     static const std::array<::tpyapp::main::Tone, 2> members;
     static ::tpyapp::main::Tone from_value(int32_t v);
@@ -39,7 +40,7 @@ struct tpy::EnumUtil<::tpyapp::main::Tone> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Tone __e) {
-    return __os << "Tone." << ::tpy::EnumUtil<Tone>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Holder;
@@ -129,7 +130,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +147,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -160,7 +161,7 @@ struct K {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +176,7 @@ struct __enum_Tone {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __enum_Tone& obj) {
-    ::tpy::print_object_default(os, "__enum_Tone", obj);
+    ::tpy::print_object_default(os, __enum_Tone::__tpy_class_name__, obj);
     return os;
 }
 

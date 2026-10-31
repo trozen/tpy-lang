@@ -131,7 +131,7 @@ inline bool Outer::__eq__(const Outer& other) const {
 }
 
 inline std::string Outer::__repr__() const {
-    return std::format("Outer(rank={})", ::tpy::repr_of(this->rank));
+    return std::format("Outer(rank={})", std::string(::tpy::repr_of(this->rank)));
 }
 
 inline bool Outer::__le__(const Outer& other) const {
@@ -159,7 +159,7 @@ inline bool Inner::__eq__(const Inner& other) const {
 }
 
 inline std::string Inner::__repr__() const {
-    return std::format("Inner(rank={})", ::tpy::repr_of(this->rank));
+    return std::format("Inner(rank={})", std::string(::tpy::repr_of(this->rank)));
 }
 
 inline bool Inner::__le__(const Inner& other) const {

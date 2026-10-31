@@ -55,7 +55,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -73,7 +73,7 @@ struct Impl {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
-    ::tpy::print_object_default(os, "Impl", obj);
+    ::tpy::print_object_default(os, Impl::__tpy_class_name__, obj);
     return os;
 }
 
@@ -107,7 +107,7 @@ struct S {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const S& obj) {
-    ::tpy::print_object_default(os, "S", obj);
+    ::tpy::print_object_default(os, S::__tpy_class_name__, obj);
     return os;
 }
 

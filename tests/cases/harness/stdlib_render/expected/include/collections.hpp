@@ -55,7 +55,7 @@ struct Counter {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter<T>::__tpy_class_name__, obj);
     return os;
 }
 

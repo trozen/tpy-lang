@@ -2466,6 +2466,9 @@ class TpyEnum:
     name: str
     members: list[tuple[str, int, SourceLocation | None]]  # auto() already resolved to int by parser
     is_int_enum: bool = False
+    # CPython's ReprEnum flavor (an `IntEnum` base, not an `int, Enum`
+    # mixin): str() and format() give the member's value, not `E.MEMBER`.
+    str_is_value: bool = False
     underlying_type_name: str | None = None  # e.g. "int", "int8", "uint32"
     is_native: bool = False
     native_name: str | None = None  # raw @native arg; sema normalizes to canonical ::-prefixed form

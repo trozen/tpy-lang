@@ -84,13 +84,13 @@ void main() {
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
     ::tpystd::datetime::datetime naive1 = naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5, 1);
     std::cout << ::tpy::print_bool(((naive) == (naive1))) << " " << ::tpy::print_bool((::tpy::__hash__(naive) == ::tpy::__hash__(naive1))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(naive1) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(naive1)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = true;
     ::tpystd::datetime::datetime fixed1 = fixed.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7, 1);
     std::cout << ::tpy::print_bool(((fixed.utcoffset()) == (fixed1.utcoffset()))) << " " << ::tpy::print_bool(((!fixed.dst().has_value()) && (!fixed1.dst().has_value()))) << " " << ::tpy::print_bool((fixed.tzname() == fixed1.tzname())) << " " << ::tpy::print_bool((fixed.timestamp() == fixed1.timestamp())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(fixed1) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(fixed1)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = waw;
     ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8);
     std::cout << rezoned << " " << rezoned.fold() << "\n" << ::tpy::check_signals;

@@ -81,7 +81,7 @@ struct Indexed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Indexed& obj) {
-    ::tpy::print_object_default(os, "Indexed", obj);
+    ::tpy::print_object_default(os, Indexed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -100,7 +100,7 @@ struct Reader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
-    ::tpy::print_object_default(os, "Reader", obj);
+    ::tpy::print_object_default(os, Reader::__tpy_class_name__, obj);
     return os;
 }
 
@@ -117,7 +117,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -128,7 +128,7 @@ struct Err : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +146,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 

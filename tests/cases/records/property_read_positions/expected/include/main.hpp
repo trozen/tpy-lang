@@ -61,7 +61,7 @@ struct BagErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BagErr& obj) {
-    ::tpy::print_object_default(os, "BagErr", obj);
+    ::tpy::print_object_default(os, BagErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +146,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -178,7 +178,7 @@ struct Sinker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sinker& obj) {
-    ::tpy::print_object_default(os, "Sinker", obj);
+    ::tpy::print_object_default(os, Sinker::__tpy_class_name__, obj);
     return os;
 }
 

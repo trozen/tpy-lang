@@ -25,7 +25,7 @@ struct Err : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -41,7 +41,7 @@ struct TimeoutError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TimeoutError& obj) {
-    ::tpy::print_object_default(os, "TimeoutError", obj);
+    ::tpy::print_object_default(os, TimeoutError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -74,17 +74,17 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Err& obj) {
-    ::tpy::print_object_default(os, "Outer.Err", obj);
+    ::tpy::print_object_default(os, Outer::Err::__tpy_class_name__, obj);
     return os;
 }
 

@@ -57,14 +57,14 @@ namespace tpyapp::main {
 //     # inverse: str, print and a bare f-string of a char stay unquoted
 //     print("plain", str(c), c, f"{c}")
 void main() {
-    std::cout << ::tpy::repr_of("a\nb") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("tab\there") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("cr\rfoo") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("back\\slash") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("plain") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("can't") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("dq\"x") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of("'and\"") << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("a\nb")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("tab\there")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("cr\rfoo")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("back\\slash")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("plain")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("can't")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("dq\"x")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("'and\"")) << "\n" << ::tpy::check_signals;
     std::vector<std::string> items = std::vector<std::string>{};
     items.push_back("a\nb");
     items.push_back("c");
@@ -78,7 +78,7 @@ void main() {
     std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_optional("a\nb");
     ::tpyapp::main::show_optional(std::nullopt);
-    std::cout << ::tpy::repr_of("") << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of("")) << "\n" << ::tpy::check_signals;
     std::string_view t = "ab'c\n\\";
     std::cout << "list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<char>>(t)) << "\n" << ::tpy::check_signals;
     std::vector<char> comp = ({
@@ -95,7 +95,7 @@ void main() {
     std::cout << "comp" << " " << ::tpy::ListPrinter(comp) << "\n" << ::tpy::check_signals;
     std::cout << "set" << " " << ::tpy::SetPrinter(::tpy::set_construct<char>(::tpy::list_slice(comp, ::tpy::BasicSlice{2, 3}))) << "\n" << ::tpy::check_signals;
     char c = ::tpy::__getitem__(t, 2);
-    std::cout << "repr" << " " << ::tpy::repr_of(c) << " " << std::format("{}", ::tpy::repr_of(c)) << " " << ::tpy::repr_of(::tpy::__getitem__(t, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "repr" << " " << std::string(::tpy::repr_of(c)) << " " << std::format("{}", ::tpy::repr_of(c)) << " " << std::string(::tpy::repr_of(::tpy::__getitem__(t, 0))) << "\n" << ::tpy::check_signals;
     std::cout << "rec" << " " << Rec(::tpy::__getitem__(t, 1), ::tpy::__getitem__(t, 0)) << " " << Rec(::tpy::__getitem__(t, 1), std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << "plain" << " " << std::string(::tpy::char_to_str(c)) << " " << c << " " << std::format("{}", c) << "\n" << ::tpy::check_signals;
 }
@@ -103,7 +103,7 @@ void main() {
 // def show_optional(s: str | None) -> None:
 //     print(repr(s))
 void show_optional(std::optional<std::string_view> s) {
-    std::cout << ::tpy::repr_of(s) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(s)) << "\n" << ::tpy::check_signals;
 }
 
 // # repr() of strings produces Python-faithful escape form: outer quotes

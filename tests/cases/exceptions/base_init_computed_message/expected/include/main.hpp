@@ -33,7 +33,7 @@ struct Tagged : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct Labelled : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Labelled& obj) {
-    ::tpy::print_object_default(os, "Labelled", obj);
+    ::tpy::print_object_default(os, Labelled::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct Numbered : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbered& obj) {
-    ::tpy::print_object_default(os, "Numbered", obj);
+    ::tpy::print_object_default(os, Numbered::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct Formatted : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Formatted& obj) {
-    ::tpy::print_object_default(os, "Formatted", obj);
+    ::tpy::print_object_default(os, Formatted::__tpy_class_name__, obj);
     return os;
 }
 

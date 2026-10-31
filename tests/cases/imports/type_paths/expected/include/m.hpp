@@ -23,6 +23,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::m::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::m::Color e);
     static const std::array<::tpyapp::m::Color, 2> members;
     static ::tpyapp::m::Color from_value(int32_t v);
@@ -33,7 +34,7 @@ struct tpy::EnumUtil<::tpyapp::m::Color> {
 namespace tpyapp::m {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Outer;
@@ -88,17 +89,17 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Err& obj) {
-    ::tpy::print_object_default(os, "Outer.Err", obj);
+    ::tpy::print_object_default(os, Outer::Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +120,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -135,7 +136,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -151,7 +152,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -171,7 +172,7 @@ struct Err : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -182,7 +183,7 @@ struct RErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RErr& obj) {
-    ::tpy::print_object_default(os, "RErr", obj);
+    ::tpy::print_object_default(os, RErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -191,6 +192,7 @@ inline std::ostream& operator<<(std::ostream& os, const RErr& obj) {
 template<>
 struct tpy::EnumUtil<::tpyapp::m::Outer::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::m::Outer::Kind e);
     static const std::array<::tpyapp::m::Outer::Kind, 2> members;
     static ::tpyapp::m::Outer::Kind from_value(int32_t v);
@@ -201,7 +203,7 @@ struct tpy::EnumUtil<::tpyapp::m::Outer::Kind> {
 namespace tpyapp::m {
 
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 

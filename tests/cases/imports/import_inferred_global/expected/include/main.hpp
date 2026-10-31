@@ -58,7 +58,7 @@ struct Sizer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sizer& obj) {
-    ::tpy::print_object_default(os, "Sizer", obj);
+    ::tpy::print_object_default(os, Sizer::__tpy_class_name__, obj);
     return os;
 }
 

@@ -81,7 +81,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 
@@ -113,7 +113,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Impl {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
-    ::tpy::print_object_default(os, "Impl", obj);
+    ::tpy::print_object_default(os, Impl::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct DynImpl {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DynImpl& obj) {
-    ::tpy::print_object_default(os, "DynImpl", obj);
+    ::tpy::print_object_default(os, DynImpl::__tpy_class_name__, obj);
     return os;
 }
 
@@ -185,7 +185,7 @@ struct Caller {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Caller& obj) {
-    ::tpy::print_object_default(os, "Caller", obj);
+    ::tpy::print_object_default(os, Caller::__tpy_class_name__, obj);
     return os;
 }
 

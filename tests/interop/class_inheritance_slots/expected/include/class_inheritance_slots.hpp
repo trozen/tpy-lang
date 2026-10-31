@@ -69,7 +69,7 @@ struct Gate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
-    ::tpy::print_object_default(os, "Gate", obj);
+    ::tpy::print_object_default(os, Gate::__tpy_class_name__, obj);
     return os;
 }
 
@@ -90,7 +90,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    ::tpy::print_object_default(os, "Node", obj);
+    ::tpy::print_object_default(os, Node::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::class_inheritance_slots
@@ -124,7 +124,7 @@ struct SubGate : Gate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubGate& obj) {
-    ::tpy::print_object_default(os, "SubGate", obj);
+    ::tpy::print_object_default(os, SubGate::__tpy_class_name__, obj);
     return os;
 }
 
@@ -137,7 +137,7 @@ struct MidNode : Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MidNode& obj) {
-    ::tpy::print_object_default(os, "MidNode", obj);
+    ::tpy::print_object_default(os, MidNode::__tpy_class_name__, obj);
     return os;
 }
 
@@ -154,7 +154,7 @@ struct LeafNode : MidNode {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LeafNode& obj) {
-    ::tpy::print_object_default(os, "LeafNode", obj);
+    ::tpy::print_object_default(os, LeafNode::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct HashNode : MidNode {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HashNode& obj) {
-    ::tpy::print_object_default(os, "HashNode", obj);
+    ::tpy::print_object_default(os, HashNode::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::class_inheritance_slots

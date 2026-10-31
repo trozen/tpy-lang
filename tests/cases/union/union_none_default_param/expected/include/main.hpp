@@ -123,7 +123,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -139,7 +139,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -160,7 +160,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -172,7 +172,7 @@ inline bool Fixed::__eq__(Fixed other) const {
 }
 
 inline std::string Fixed::__repr__() const {
-    return std::format("Fixed(off={})", ::tpy::repr_of(this->off));
+    return std::format("Fixed(off={})", std::string(::tpy::repr_of(this->off)));
 }
 
 inline uint64_t Fixed::__hash__() const {
@@ -187,7 +187,7 @@ inline bool Zone::__eq__(Zone other) const {
 }
 
 inline std::string Zone::__repr__() const {
-    return std::format("Zone(zid={})", ::tpy::repr_of(this->zid));
+    return std::format("Zone(zid={})", std::string(::tpy::repr_of(this->zid)));
 }
 
 inline uint64_t Zone::__hash__() const {

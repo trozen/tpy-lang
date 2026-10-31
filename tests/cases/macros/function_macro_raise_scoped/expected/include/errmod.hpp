@@ -28,7 +28,7 @@ struct E : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+    ::tpy::print_object_default(os, E::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct D : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 

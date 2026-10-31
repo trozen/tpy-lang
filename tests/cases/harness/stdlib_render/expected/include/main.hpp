@@ -97,7 +97,7 @@ struct _Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Cell& obj) {
-    ::tpy::print_object_default(os, "_Cell", obj);
+    ::tpy::print_object_default(os, _Cell::__tpy_class_name__, obj);
     return os;
 }
 

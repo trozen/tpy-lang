@@ -38,7 +38,7 @@ struct IntListBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListBox& obj) {
-    ::tpy::print_object_default(os, "IntListBox", obj);
+    ::tpy::print_object_default(os, IntListBox::__tpy_class_name__, obj);
     return os;
 }
 

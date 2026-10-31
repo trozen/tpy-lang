@@ -106,7 +106,7 @@ struct Counts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
-    ::tpy::print_object_default(os, "Counts", obj);
+    ::tpy::print_object_default(os, Counts::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct DefaultDict {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const DefaultDict<K, V>& obj) {
-    ::tpy::print_object_default(os, "DefaultDict", obj);
+    ::tpy::print_object_default(os, DefaultDict<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -147,7 +147,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct Slots {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
-    ::tpy::print_object_default(os, "Slots", obj);
+    ::tpy::print_object_default(os, Slots::__tpy_class_name__, obj);
     return os;
 }
 
@@ -189,7 +189,7 @@ struct PtRows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PtRows& obj) {
-    ::tpy::print_object_default(os, "PtRows", obj);
+    ::tpy::print_object_default(os, PtRows::__tpy_class_name__, obj);
     return os;
 }
 
@@ -209,7 +209,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -230,7 +230,7 @@ struct Tally {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-    ::tpy::print_object_default(os, "Tally", obj);
+    ::tpy::print_object_default(os, Tally::__tpy_class_name__, obj);
     return os;
 }
 
@@ -262,7 +262,7 @@ struct Two {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Two& obj) {
-    ::tpy::print_object_default(os, "Two", obj);
+    ::tpy::print_object_default(os, Two::__tpy_class_name__, obj);
     return os;
 }
 
@@ -294,7 +294,7 @@ struct KeyBase {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const KeyBase<T>& obj) {
-    ::tpy::print_object_default(os, "KeyBase", obj);
+    ::tpy::print_object_default(os, KeyBase<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -317,7 +317,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -335,7 +335,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -356,7 +356,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -371,7 +371,7 @@ struct KeyGen : KeyBase<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const KeyGen<U>& obj) {
-    ::tpy::print_object_default(os, "KeyGen", obj);
+    ::tpy::print_object_default(os, KeyGen<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -384,7 +384,7 @@ struct KeyMono : KeyBase<int64_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KeyMono& obj) {
-    ::tpy::print_object_default(os, "KeyMono", obj);
+    ::tpy::print_object_default(os, KeyMono::__tpy_class_name__, obj);
     return os;
 }
 

@@ -32,7 +32,7 @@ struct Work {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Work& obj) {
-    ::tpy::print_object_default(os, "Work", obj);
+    ::tpy::print_object_default(os, Work::__tpy_class_name__, obj);
     return os;
 }
 

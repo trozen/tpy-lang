@@ -43,7 +43,7 @@ struct Store {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
-    ::tpy::print_object_default(os, "Store", obj);
+    ::tpy::print_object_default(os, Store::__tpy_class_name__, obj);
     return os;
 }
 
@@ -67,7 +67,7 @@ struct StrStore {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrStore& obj) {
-    ::tpy::print_object_default(os, "StrStore", obj);
+    ::tpy::print_object_default(os, StrStore::__tpy_class_name__, obj);
     return os;
 }
 

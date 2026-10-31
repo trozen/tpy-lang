@@ -26,7 +26,7 @@ struct Root {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
-    ::tpy::print_object_default(os, "Root", obj);
+    ::tpy::print_object_default(os, Root::__tpy_class_name__, obj);
     return os;
 }
 
@@ -39,7 +39,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 
@@ -50,7 +50,7 @@ struct Middle : Root {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Middle& obj) {
-    ::tpy::print_object_default(os, "Middle", obj);
+    ::tpy::print_object_default(os, Middle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct Leaf : Middle, Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 

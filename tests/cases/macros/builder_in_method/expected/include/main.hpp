@@ -27,7 +27,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct __tpy_builder_counter_1 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1& obj) {
-    ::tpy::print_object_default(os, "__tpy_builder_counter_1", obj);
+    ::tpy::print_object_default(os, __tpy_builder_counter_1::__tpy_class_name__, obj);
     return os;
 }
 

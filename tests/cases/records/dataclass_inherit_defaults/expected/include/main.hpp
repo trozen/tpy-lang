@@ -75,7 +75,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline Point3D::Point3D(int32_t x, int32_t y, int32_t z)
@@ -87,7 +87,7 @@ inline bool Point3D::__eq__(const Point3D& other) const {
 }
 
 inline std::string Point3D::__repr__() const {
-    return std::format("Point3D(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+    return std::format("Point3D(x={}, y={}, z={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)), std::string(::tpy::repr_of(this->z)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

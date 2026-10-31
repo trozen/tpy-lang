@@ -44,7 +44,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Opt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opt& obj) {
-    ::tpy::print_object_default(os, "Opt", obj);
+    ::tpy::print_object_default(os, Opt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -77,7 +77,7 @@ struct Holder {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const Holder<U>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -93,7 +93,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +105,7 @@ struct IntBox : Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +119,7 @@ struct LabeledBox : Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LabeledBox& obj) {
-    ::tpy::print_object_default(os, "LabeledBox", obj);
+    ::tpy::print_object_default(os, LabeledBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -131,7 +131,7 @@ struct OptMid : Opt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptMid& obj) {
-    ::tpy::print_object_default(os, "OptMid", obj);
+    ::tpy::print_object_default(os, OptMid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -145,7 +145,7 @@ struct ListHolder : Holder<std::vector<T>> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ListHolder<T>& obj) {
-    ::tpy::print_object_default(os, "ListHolder", obj);
+    ::tpy::print_object_default(os, ListHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -165,7 +165,7 @@ struct SubError : AppError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubError& obj) {
-    ::tpy::print_object_default(os, "SubError", obj);
+    ::tpy::print_object_default(os, SubError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -177,7 +177,7 @@ struct TaggedBox : IntBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TaggedBox& obj) {
-    ::tpy::print_object_default(os, "TaggedBox", obj);
+    ::tpy::print_object_default(os, TaggedBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -191,7 +191,7 @@ struct Doubled : LabeledBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Doubled& obj) {
-    ::tpy::print_object_default(os, "Doubled", obj);
+    ::tpy::print_object_default(os, Doubled::__tpy_class_name__, obj);
     return os;
 }
 
@@ -205,7 +205,7 @@ struct NamedGrand : LabeledBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NamedGrand& obj) {
-    ::tpy::print_object_default(os, "NamedGrand", obj);
+    ::tpy::print_object_default(os, NamedGrand::__tpy_class_name__, obj);
     return os;
 }
 
@@ -218,7 +218,7 @@ struct OptLeaf : OptMid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptLeaf& obj) {
-    ::tpy::print_object_default(os, "OptLeaf", obj);
+    ::tpy::print_object_default(os, OptLeaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -232,7 +232,7 @@ struct ViaSuper : ListHolder<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViaSuper& obj) {
-    ::tpy::print_object_default(os, "ViaSuper", obj);
+    ::tpy::print_object_default(os, ViaSuper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -246,7 +246,7 @@ struct ViaName : ListHolder<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViaName& obj) {
-    ::tpy::print_object_default(os, "ViaName", obj);
+    ::tpy::print_object_default(os, ViaName::__tpy_class_name__, obj);
     return os;
 }
 
@@ -260,7 +260,7 @@ struct NamedMid : TaggedBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NamedMid& obj) {
-    ::tpy::print_object_default(os, "NamedMid", obj);
+    ::tpy::print_object_default(os, NamedMid::__tpy_class_name__, obj);
     return os;
 }
 

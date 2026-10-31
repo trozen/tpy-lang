@@ -26,7 +26,7 @@ struct Small {
 
 template<std::size_t M>
 inline std::ostream& operator<<(std::ostream& os, const Small<M>& obj) {
-    ::tpy::print_object_default(os, "Small", obj);
+    ::tpy::print_object_default(os, Small<M>::__tpy_class_name__, obj);
     return os;
 }
 

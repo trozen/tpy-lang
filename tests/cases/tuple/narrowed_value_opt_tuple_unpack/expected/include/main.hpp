@@ -70,7 +70,7 @@ struct K {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 
@@ -87,7 +87,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct Missing : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
-    ::tpy::print_object_default(os, "Missing", obj);
+    ::tpy::print_object_default(os, Missing::__tpy_class_name__, obj);
     return os;
 }
 

@@ -27,7 +27,7 @@ struct Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-    ::tpy::print_object_default(os, "Animal", obj);
+    ::tpy::print_object_default(os, Animal::__tpy_class_name__, obj);
     return os;
 }
 
@@ -43,7 +43,7 @@ struct Tagged : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 

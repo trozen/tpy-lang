@@ -65,7 +65,7 @@ struct Labels {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Labels<T, N>& obj) {
-    ::tpy::print_object_default(os, "Labels", obj);
+    ::tpy::print_object_default(os, Labels<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -89,7 +89,7 @@ struct StrLabels {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrLabels& obj) {
-    ::tpy::print_object_default(os, "StrLabels", obj);
+    ::tpy::print_object_default(os, StrLabels::__tpy_class_name__, obj);
     return os;
 }
 

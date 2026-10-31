@@ -32,7 +32,7 @@ struct Sentinel {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sentinel& obj) {
-    ::tpy::print_object_default(os, "Sentinel", obj);
+    ::tpy::print_object_default(os, Sentinel::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper::__tpy_class_name__, obj);
     return os;
 }
 

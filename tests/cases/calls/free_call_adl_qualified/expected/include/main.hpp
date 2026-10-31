@@ -69,7 +69,7 @@ struct Scaler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scaler& obj) {
-    ::tpy::print_object_default(os, "Scaler", obj);
+    ::tpy::print_object_default(os, Scaler::__tpy_class_name__, obj);
     return os;
 }
 

@@ -29,7 +29,7 @@ struct Denied : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Denied& obj) {
-    ::tpy::print_object_default(os, "Denied", obj);
+    ::tpy::print_object_default(os, Denied::__tpy_class_name__, obj);
     return os;
 }
 

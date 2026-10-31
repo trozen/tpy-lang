@@ -48,7 +48,7 @@ struct LeafCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LeafCounter& obj) {
-    ::tpy::print_object_default(os, "LeafCounter", obj);
+    ::tpy::print_object_default(os, LeafCounter::__tpy_class_name__, obj);
     return os;
 }
 

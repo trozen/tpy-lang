@@ -23,7 +23,7 @@ struct Public {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Public& obj) {
-    ::tpy::print_object_default(os, "Public", obj);
+    ::tpy::print_object_default(os, Public::__tpy_class_name__, obj);
     return os;
 }
 
@@ -38,7 +38,7 @@ struct Hidden {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hidden& obj) {
-    ::tpy::print_object_default(os, "Hidden", obj);
+    ::tpy::print_object_default(os, Hidden::__tpy_class_name__, obj);
     return os;
 }
 

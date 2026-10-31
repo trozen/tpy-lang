@@ -60,7 +60,7 @@ struct KwErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KwErr& obj) {
-    ::tpy::print_object_default(os, "KwErr", obj);
+    ::tpy::print_object_default(os, KwErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -100,17 +100,17 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Err& obj) {
-    ::tpy::print_object_default(os, "Outer.Err", obj);
+    ::tpy::print_object_default(os, Outer::Err::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Dflt& obj) {
-    ::tpy::print_object_default(os, "Outer.Dflt", obj);
+    ::tpy::print_object_default(os, Outer::Dflt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Boxed : ::tpyapp::errs::Carrier {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Boxed<T>& obj) {
-    ::tpy::print_object_default(os, "Boxed", obj);
+    ::tpy::print_object_default(os, Boxed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct Lookup : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lookup& obj) {
-    ::tpy::print_object_default(os, "Lookup", obj);
+    ::tpy::print_object_default(os, Lookup::__tpy_class_name__, obj);
     return os;
 }
 
@@ -171,7 +171,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

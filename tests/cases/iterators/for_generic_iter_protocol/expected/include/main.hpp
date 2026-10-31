@@ -38,7 +38,7 @@ struct StorageIter {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const StorageIter<T, N>& obj) {
-    ::tpy::print_object_default(os, "StorageIter", obj);
+    ::tpy::print_object_default(os, StorageIter<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -72,7 +72,7 @@ struct SimpleList {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const SimpleList<T, N>& obj) {
-    ::tpy::print_object_default(os, "SimpleList", obj);
+    ::tpy::print_object_default(os, SimpleList<T, N>::__tpy_class_name__, obj);
     return os;
 }
 

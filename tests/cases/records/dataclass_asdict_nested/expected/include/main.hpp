@@ -77,7 +77,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline Line::Line(Point&& start, Point&& end)
@@ -89,7 +89,7 @@ inline bool Line::__eq__(const Line& other) const {
 }
 
 inline std::string Line::__repr__() const {
-    return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
+    return std::format("Line(start={}, end={})", std::string(::tpy::repr_of(this->start)), std::string(::tpy::repr_of(this->end)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

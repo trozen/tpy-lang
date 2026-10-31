@@ -93,7 +93,7 @@ struct Grid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
-    ::tpy::print_object_default(os, "Grid", obj);
+    ::tpy::print_object_default(os, Grid::__tpy_class_name__, obj);
     return os;
 }
 

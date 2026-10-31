@@ -52,7 +52,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct Filler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Filler& obj) {
-    ::tpy::print_object_default(os, "Filler", obj);
+    ::tpy::print_object_default(os, Filler::__tpy_class_name__, obj);
     return os;
 }
 
@@ -89,7 +89,7 @@ struct GR {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GR<T>& obj) {
-    ::tpy::print_object_default(os, "GR", obj);
+    ::tpy::print_object_default(os, GR<T>::__tpy_class_name__, obj);
     return os;
 }
 

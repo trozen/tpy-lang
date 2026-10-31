@@ -14,6 +14,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::ns::Tag> {
     static constexpr std::string_view type_name = "Tag";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::ns::Tag e);
     static const std::array<::ns::Tag, 3> members;
     static ::ns::Tag from_value(int32_t v);

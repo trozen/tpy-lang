@@ -28,7 +28,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -50,7 +50,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

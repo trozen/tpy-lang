@@ -78,7 +78,7 @@ struct Zoo {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
-    ::tpy::print_object_default(os, "Zoo", obj);
+    ::tpy::print_object_default(os, Zoo::__tpy_class_name__, obj);
     return os;
 }
 
@@ -90,7 +90,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(name={})", ::tpy::repr_of(this->name));
+    return std::format("Dog(name={})", std::string(::tpy::repr_of(this->name)));
 }
 
 inline Cat::Cat(std::string_view name) : name(name) {}
@@ -100,7 +100,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(name={})", ::tpy::repr_of(this->name));
+    return std::format("Cat(name={})", std::string(::tpy::repr_of(this->name)));
 }
 
 // def __init__(self, pet: Dog | Cat, tag: str) -> None:

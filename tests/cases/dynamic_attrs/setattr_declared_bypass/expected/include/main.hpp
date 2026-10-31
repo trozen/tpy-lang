@@ -33,7 +33,7 @@ struct Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
-    ::tpy::print_object_default(os, "Counted", obj);
+    ::tpy::print_object_default(os, Counted::__tpy_class_name__, obj);
     return os;
 }
 

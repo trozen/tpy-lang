@@ -33,7 +33,7 @@ struct SparseCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SparseCounter& obj) {
-    ::tpy::print_object_default(os, "SparseCounter", obj);
+    ::tpy::print_object_default(os, SparseCounter::__tpy_class_name__, obj);
     return os;
 }
 

@@ -56,7 +56,7 @@ struct Labeled {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Labeled& obj) {
-    ::tpy::print_object_default(os, "Labeled", obj);
+    ::tpy::print_object_default(os, Labeled::__tpy_class_name__, obj);
     return os;
 }
 
@@ -69,7 +69,7 @@ struct Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
-    ::tpy::print_object_default(os, "Counted", obj);
+    ::tpy::print_object_default(os, Counted::__tpy_class_name__, obj);
     return os;
 }
 
@@ -131,7 +131,7 @@ inline bool Base::__eq__(const Base& other) const {
 }
 
 inline std::string Base::__repr__() const {
-    return std::format("Base(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Base(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 // def __init__(self, label: str) -> None:
@@ -147,7 +147,7 @@ inline bool Child::__eq__(const Child& other) const {
 }
 
 inline std::string Child::__repr__() const {
-    return std::format("Child(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+    return std::format("Child(x={}, y={}, z={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)), std::string(::tpy::repr_of(this->z)));
 }
 
 inline Tagged::Tagged(int32_t z)
@@ -160,7 +160,7 @@ inline bool Tagged::__eq__(const Tagged& other) const {
 }
 
 inline std::string Tagged::__repr__() const {
-    return std::format("Tagged(z={})", ::tpy::repr_of(this->z));
+    return std::format("Tagged(z={})", std::string(::tpy::repr_of(this->z)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

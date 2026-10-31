@@ -22,7 +22,7 @@ struct AppError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 

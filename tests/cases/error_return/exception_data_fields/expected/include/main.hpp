@@ -33,7 +33,7 @@ struct ParseError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    ::tpy::print_object_default(os, "ParseError", obj);
+    ::tpy::print_object_default(os, ParseError::__tpy_class_name__, obj);
     return os;
 }
 

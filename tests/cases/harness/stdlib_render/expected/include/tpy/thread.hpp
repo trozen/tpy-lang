@@ -53,7 +53,7 @@ struct JoinHandle {
 
 template<typename R>
 inline std::ostream& operator<<(std::ostream& os, const JoinHandle<R>& obj) {
-    ::tpy::print_object_default(os, "JoinHandle", obj);
+    ::tpy::print_object_default(os, JoinHandle<R>::__tpy_class_name__, obj);
     return os;
 }
 

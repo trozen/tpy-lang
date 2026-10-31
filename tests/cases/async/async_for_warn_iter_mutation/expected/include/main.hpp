@@ -67,7 +67,7 @@ struct SrcIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SrcIter& obj) {
-    ::tpy::print_object_default(os, "SrcIter", obj);
+    ::tpy::print_object_default(os, SrcIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct Source {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
-    ::tpy::print_object_default(os, "Source", obj);
+    ::tpy::print_object_default(os, Source::__tpy_class_name__, obj);
     return os;
 }
 
@@ -108,7 +108,7 @@ struct Shelf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
-    ::tpy::print_object_default(os, "Shelf", obj);
+    ::tpy::print_object_default(os, Shelf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct Feed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Feed& obj) {
-    ::tpy::print_object_default(os, "Feed", obj);
+    ::tpy::print_object_default(os, Feed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct FeedIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FeedIter& obj) {
-    ::tpy::print_object_default(os, "FeedIter", obj);
+    ::tpy::print_object_default(os, FeedIter::__tpy_class_name__, obj);
     return os;
 }
 

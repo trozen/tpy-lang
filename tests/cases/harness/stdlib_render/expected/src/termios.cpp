@@ -8,7 +8,7 @@ namespace tpystd::termios {
 // def _message(err: int32) -> str:
 //     return "(" + str(err) + ", " + repr(strerror(err)) + ")"
 std::string _message(int32_t err) {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), ::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err))))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
 }
 
 // # CPython rejects a negative fd while converting the argument, before any
@@ -91,7 +91,7 @@ std::string TermAttributes::__repr__() const {
         if ((numeric && ((i == ::tpy_const_termios_vmin) || (i == ::tpy_const_termios_vtime)))) {
             out += ::tpy::fixed_to_str<uint8_t>(::tpy::bytes_getitem(this->_cc, i));
         } else {
-            out += ::tpy::repr_of(::tpy::construct<::tpy::Bytes>(std::array<uint8_t, 1>{::tpy::bytes_getitem(this->_cc, i)}));
+            out += std::string(::tpy::repr_of(::tpy::construct<::tpy::Bytes>(std::array<uint8_t, 1>{::tpy::bytes_getitem(this->_cc, i)})));
         }
     }
     return (::tpy::str_concat(out, "]]"));

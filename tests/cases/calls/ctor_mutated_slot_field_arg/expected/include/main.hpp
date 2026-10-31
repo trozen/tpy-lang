@@ -36,7 +36,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
-    ::tpy::print_object_default(os, "W", obj);
+    ::tpy::print_object_default(os, W::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct ListTaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ListTaker& obj) {
-    ::tpy::print_object_default(os, "ListTaker", obj);
+    ::tpy::print_object_default(os, ListTaker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct DictTaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DictTaker& obj) {
-    ::tpy::print_object_default(os, "DictTaker", obj);
+    ::tpy::print_object_default(os, DictTaker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -107,7 +107,7 @@ struct SetTaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SetTaker& obj) {
-    ::tpy::print_object_default(os, "SetTaker", obj);
+    ::tpy::print_object_default(os, SetTaker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -123,7 +123,7 @@ struct RecListTaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RecListTaker& obj) {
-    ::tpy::print_object_default(os, "RecListTaker", obj);
+    ::tpy::print_object_default(os, RecListTaker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -139,7 +139,7 @@ struct BufTaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BufTaker& obj) {
-    ::tpy::print_object_default(os, "BufTaker", obj);
+    ::tpy::print_object_default(os, BufTaker::__tpy_class_name__, obj);
     return os;
 }
 

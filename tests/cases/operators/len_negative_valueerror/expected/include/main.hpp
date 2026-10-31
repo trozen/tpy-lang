@@ -29,7 +29,7 @@ struct NegBig {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NegBig& obj) {
-    ::tpy::print_object_default(os, "NegBig", obj);
+    ::tpy::print_object_default(os, NegBig::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct NegI32 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NegI32& obj) {
-    ::tpy::print_object_default(os, "NegI32", obj);
+    ::tpy::print_object_default(os, NegI32::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct Empty {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
-    ::tpy::print_object_default(os, "Empty", obj);
+    ::tpy::print_object_default(os, Empty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -77,7 +77,7 @@ struct Full {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Full& obj) {
-    ::tpy::print_object_default(os, "Full", obj);
+    ::tpy::print_object_default(os, Full::__tpy_class_name__, obj);
     return os;
 }
 

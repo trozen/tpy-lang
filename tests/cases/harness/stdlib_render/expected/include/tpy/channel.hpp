@@ -40,7 +40,7 @@ struct ChannelClosed : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChannelClosed& obj) {
-    ::tpy::print_object_default(os, "ChannelClosed", obj);
+    ::tpy::print_object_default(os, ChannelClosed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct _ChanState {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _ChanState<T>& obj) {
-    ::tpy::print_object_default(os, "_ChanState", obj);
+    ::tpy::print_object_default(os, _ChanState<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct _Recv {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _Recv<T>& obj) {
-    ::tpy::print_object_default(os, "_Recv", obj);
+    ::tpy::print_object_default(os, _Recv<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct _Send {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _Send<T>& obj) {
-    ::tpy::print_object_default(os, "_Send", obj);
+    ::tpy::print_object_default(os, _Send<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct Sender {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Sender<T>& obj) {
-    ::tpy::print_object_default(os, "Sender", obj);
+    ::tpy::print_object_default(os, Sender<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -230,7 +230,7 @@ struct Receiver {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
-    ::tpy::print_object_default(os, "Receiver", obj);
+    ::tpy::print_object_default(os, Receiver<T>::__tpy_class_name__, obj);
     return os;
 }
 

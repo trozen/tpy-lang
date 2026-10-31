@@ -70,7 +70,7 @@ struct M {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
-    ::tpy::print_object_default(os, "M", obj);
+    ::tpy::print_object_default(os, M::__tpy_class_name__, obj);
     return os;
 }
 
@@ -88,7 +88,7 @@ struct R {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const R& obj) {
-    ::tpy::print_object_default(os, "R", obj);
+    ::tpy::print_object_default(os, R::__tpy_class_name__, obj);
     return os;
 }
 
@@ -112,12 +112,12 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -137,7 +137,7 @@ struct Err : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -446,7 +446,7 @@ inline bool P::__eq__(const P& other) const {
 }
 
 inline std::string P::__repr__() const {
-    return std::format("P(a={}, b={})", ::tpy::repr_of(this->a), ::tpy::repr_of(this->b));
+    return std::format("P(a={}, b={})", std::string(::tpy::repr_of(this->a)), std::string(::tpy::repr_of(this->b)));
 }
 // def gsink[T](x: T, k: int32 = 5) -> T:
 //     return x

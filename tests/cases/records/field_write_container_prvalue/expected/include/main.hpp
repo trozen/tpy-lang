@@ -38,7 +38,7 @@ struct Canvas {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
-    ::tpy::print_object_default(os, "Canvas", obj);
+    ::tpy::print_object_default(os, Canvas::__tpy_class_name__, obj);
     return os;
 }
 

@@ -38,7 +38,7 @@ struct GoodReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
-    ::tpy::print_object_default(os, "GoodReader", obj);
+    ::tpy::print_object_default(os, GoodReader::__tpy_class_name__, obj);
     return os;
 }
 

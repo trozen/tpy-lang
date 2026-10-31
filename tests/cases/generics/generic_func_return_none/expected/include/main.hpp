@@ -33,7 +33,7 @@ struct Int32One {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Int32One& obj) {
-    ::tpy::print_object_default(os, "Int32One", obj);
+    ::tpy::print_object_default(os, Int32One::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct Nothing {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Nothing& obj) {
-    ::tpy::print_object_default(os, "Nothing", obj);
+    ::tpy::print_object_default(os, Nothing::__tpy_class_name__, obj);
     return os;
 }
 

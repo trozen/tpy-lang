@@ -59,7 +59,7 @@ struct Number {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Number& obj) {
-    ::tpy::print_object_default(os, "Number", obj);
+    ::tpy::print_object_default(os, Number::__tpy_class_name__, obj);
     return os;
 }
 
@@ -77,7 +77,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct Scope {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
-    ::tpy::print_object_default(os, "Scope", obj);
+    ::tpy::print_object_default(os, Scope::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +105,7 @@ struct InvalidOperand : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const InvalidOperand& obj) {
-    ::tpy::print_object_default(os, "InvalidOperand", obj);
+    ::tpy::print_object_default(os, InvalidOperand::__tpy_class_name__, obj);
     return os;
 }
 

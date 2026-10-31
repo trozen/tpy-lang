@@ -123,7 +123,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -145,7 +145,7 @@ struct N {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const N& obj) {
-    ::tpy::print_object_default(os, "N", obj);
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -180,7 +180,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -191,7 +191,7 @@ struct Bad : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
-    ::tpy::print_object_default(os, "Bad", obj);
+    ::tpy::print_object_default(os, Bad::__tpy_class_name__, obj);
     return os;
 }
 
@@ -209,7 +209,7 @@ struct Items {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Items<T>& obj) {
-    ::tpy::print_object_default(os, "Items", obj);
+    ::tpy::print_object_default(os, Items<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -227,7 +227,7 @@ struct VBox {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const VBox<T>& obj) {
-    ::tpy::print_object_default(os, "VBox", obj);
+    ::tpy::print_object_default(os, VBox<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -255,7 +255,7 @@ struct Shadow {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Shadow<T>& obj) {
-    ::tpy::print_object_default(os, "Shadow", obj);
+    ::tpy::print_object_default(os, Shadow<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -274,7 +274,7 @@ struct CHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const CHolder<T>& obj) {
-    ::tpy::print_object_default(os, "CHolder", obj);
+    ::tpy::print_object_default(os, CHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -298,7 +298,7 @@ struct RHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const RHolder<T>& obj) {
-    ::tpy::print_object_default(os, "RHolder", obj);
+    ::tpy::print_object_default(os, RHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -327,7 +327,7 @@ struct VHolder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const VHolder<T>& obj) {
-    ::tpy::print_object_default(os, "VHolder", obj);
+    ::tpy::print_object_default(os, VHolder<T>::__tpy_class_name__, obj);
     return os;
 }
 

@@ -30,7 +30,7 @@ struct Boosted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boosted& obj) {
-    ::tpy::print_object_default(os, "Boosted", obj);
+    ::tpy::print_object_default(os, Boosted::__tpy_class_name__, obj);
     return os;
 }
 

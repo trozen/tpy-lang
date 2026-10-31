@@ -33,7 +33,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct DoubleCounter : Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {
-    ::tpy::print_object_default(os, "DoubleCounter", obj);
+    ::tpy::print_object_default(os, DoubleCounter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct GrandChild : DoubleCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
-    ::tpy::print_object_default(os, "GrandChild", obj);
+    ::tpy::print_object_default(os, GrandChild::__tpy_class_name__, obj);
     return os;
 }
 

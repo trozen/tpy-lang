@@ -17,6 +17,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::optionals::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::optionals::Color e);
     static const std::array<::tpyapp::optionals::Color, 2> members;
     static ::tpyapp::optionals::Color from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::optionals::Color> {
 namespace tpyapp::optionals {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Vec2;
@@ -69,7 +70,7 @@ struct Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    ::tpy::print_object_default(os, "Vec2", obj);
+    ::tpy::print_object_default(os, Vec2::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::optionals
@@ -88,7 +89,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +107,7 @@ struct Token {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
-    ::tpy::print_object_default(os, "Token", obj);
+    ::tpy::print_object_default(os, Token::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +120,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -148,7 +149,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

@@ -31,7 +31,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Greeter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
-    ::tpy::print_object_default(os, "Greeter", obj);
+    ::tpy::print_object_default(os, Greeter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -63,7 +63,7 @@ struct Both : Counter, Greeter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
-    ::tpy::print_object_default(os, "Both", obj);
+    ::tpy::print_object_default(os, Both::__tpy_class_name__, obj);
     return os;
 }
 

@@ -97,7 +97,7 @@ struct SocketError : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SocketError& obj) {
-    ::tpy::print_object_default(os, "SocketError", obj);
+    ::tpy::print_object_default(os, SocketError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -115,7 +115,7 @@ struct gaierror : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const gaierror& obj) {
-    ::tpy::print_object_default(os, "gaierror", obj);
+    ::tpy::print_object_default(os, gaierror::__tpy_class_name__, obj);
     return os;
 }
 
@@ -234,7 +234,7 @@ struct socket {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const socket& obj) {
-    ::tpy::print_object_default(os, "socket", obj);
+    ::tpy::print_object_default(os, socket::__tpy_class_name__, obj);
     return os;
 }
 

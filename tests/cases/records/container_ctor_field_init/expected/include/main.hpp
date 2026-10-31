@@ -30,7 +30,7 @@ struct Empty {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
-    ::tpy::print_object_default(os, "Empty", obj);
+    ::tpy::print_object_default(os, Empty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Seeded {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Seeded& obj) {
-    ::tpy::print_object_default(os, "Seeded", obj);
+    ::tpy::print_object_default(os, Seeded::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct Sized {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
-    ::tpy::print_object_default(os, "Sized", obj);
+    ::tpy::print_object_default(os, Sized::__tpy_class_name__, obj);
     return os;
 }
 
@@ -78,7 +78,7 @@ struct Copied {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Copied& obj) {
-    ::tpy::print_object_default(os, "Copied", obj);
+    ::tpy::print_object_default(os, Copied::__tpy_class_name__, obj);
     return os;
 }
 

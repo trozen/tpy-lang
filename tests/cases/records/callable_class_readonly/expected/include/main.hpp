@@ -28,7 +28,7 @@ struct Negate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Negate& obj) {
-    ::tpy::print_object_default(os, "Negate", obj);
+    ::tpy::print_object_default(os, Negate::__tpy_class_name__, obj);
     return os;
 }
 
@@ -50,7 +50,7 @@ struct ScaleBy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ScaleBy& obj) {
-    ::tpy::print_object_default(os, "ScaleBy", obj);
+    ::tpy::print_object_default(os, ScaleBy::__tpy_class_name__, obj);
     return os;
 }
 

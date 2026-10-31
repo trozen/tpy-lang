@@ -82,7 +82,7 @@ inline bool Base::__eq__(const Base& other) const {
 }
 
 inline std::string Base::__repr__() const {
-    return std::format("Base(a={})", ::tpy::repr_of(this->a));
+    return std::format("Base(a={})", std::string(::tpy::repr_of(this->a)));
 }
 
 inline Child::Child(int32_t a, int32_t b)
@@ -94,7 +94,7 @@ inline bool Child::__eq__(const Child& other) const {
 }
 
 inline std::string Child::__repr__() const {
-    return std::format("Child(a={}, b={})", ::tpy::repr_of(this->a), ::tpy::repr_of(this->b));
+    return std::format("Child(a={}, b={})", std::string(::tpy::repr_of(this->a)), std::string(::tpy::repr_of(this->b)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -34,7 +34,7 @@ struct MyBag {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyBag<T>& obj) {
-    ::tpy::print_object_default(os, "MyBag", obj);
+    ::tpy::print_object_default(os, MyBag<T>::__tpy_class_name__, obj);
     return os;
 }
 

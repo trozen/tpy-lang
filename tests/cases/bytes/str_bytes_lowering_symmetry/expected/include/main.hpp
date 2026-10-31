@@ -68,7 +68,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct StrMap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StrMap& obj) {
-    ::tpy::print_object_default(os, "StrMap", obj);
+    ::tpy::print_object_default(os, StrMap::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct BytesMap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BytesMap& obj) {
-    ::tpy::print_object_default(os, "BytesMap", obj);
+    ::tpy::print_object_default(os, BytesMap::__tpy_class_name__, obj);
     return os;
 }
 

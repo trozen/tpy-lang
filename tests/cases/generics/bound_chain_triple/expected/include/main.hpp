@@ -33,7 +33,7 @@ struct Leaf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 

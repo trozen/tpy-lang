@@ -29,7 +29,7 @@ struct Hybrid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hybrid& obj) {
-    ::tpy::print_object_default(os, "Hybrid", obj);
+    ::tpy::print_object_default(os, Hybrid::__tpy_class_name__, obj);
     return os;
 }
 

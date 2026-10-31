@@ -31,7 +31,7 @@ struct InfiniteCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {
-    ::tpy::print_object_default(os, "InfiniteCounter", obj);
+    ::tpy::print_object_default(os, InfiniteCounter::__tpy_class_name__, obj);
     return os;
 }
 

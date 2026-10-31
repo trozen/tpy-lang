@@ -57,7 +57,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -81,7 +81,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    ::tpy::print_object_default(os, "Registry", obj);
+    ::tpy::print_object_default(os, Registry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -115,7 +115,7 @@ struct D {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 

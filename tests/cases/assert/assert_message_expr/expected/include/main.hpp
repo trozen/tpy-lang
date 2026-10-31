@@ -52,7 +52,7 @@ struct Error {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
-    ::tpy::print_object_default(os, "Error", obj);
+    ::tpy::print_object_default(os, Error::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct Checker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Checker& obj) {
-    ::tpy::print_object_default(os, "Checker", obj);
+    ::tpy::print_object_default(os, Checker::__tpy_class_name__, obj);
     return os;
 }
 

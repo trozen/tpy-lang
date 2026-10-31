@@ -39,7 +39,7 @@ struct Required {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Required& obj) {
-    ::tpy::print_object_default(os, "Required", obj);
+    ::tpy::print_object_default(os, Required::__tpy_class_name__, obj);
     return os;
 }
 
@@ -54,7 +54,7 @@ struct NullableField {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NullableField& obj) {
-    ::tpy::print_object_default(os, "NullableField", obj);
+    ::tpy::print_object_default(os, NullableField::__tpy_class_name__, obj);
     return os;
 }
 
@@ -69,7 +69,7 @@ struct Partial {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Partial& obj) {
-    ::tpy::print_object_default(os, "Partial", obj);
+    ::tpy::print_object_default(os, Partial::__tpy_class_name__, obj);
     return os;
 }
 

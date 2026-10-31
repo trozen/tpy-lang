@@ -56,7 +56,7 @@ struct Bag {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const Bag<K, V>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Pos {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pos& obj) {
-    ::tpy::print_object_default(os, "Pos", obj);
+    ::tpy::print_object_default(os, Pos::__tpy_class_name__, obj);
     return os;
 }
 

@@ -31,7 +31,7 @@ struct CachedList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
-    ::tpy::print_object_default(os, "CachedList", obj);
+    ::tpy::print_object_default(os, CachedList::__tpy_class_name__, obj);
     return os;
 }
 

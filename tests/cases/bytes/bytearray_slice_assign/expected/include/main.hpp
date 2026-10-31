@@ -49,7 +49,7 @@ struct Mem {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mem& obj) {
-    ::tpy::print_object_default(os, "Mem", obj);
+    ::tpy::print_object_default(os, Mem::__tpy_class_name__, obj);
     return os;
 }
 

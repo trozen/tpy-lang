@@ -127,7 +127,7 @@ struct SplitResult {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SplitResult& obj) {
-    ::tpy::print_object_default(os, "SplitResult", obj);
+    ::tpy::print_object_default(os, SplitResult::__tpy_class_name__, obj);
     return os;
 }
 
@@ -173,7 +173,7 @@ struct ParseResult {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseResult& obj) {
-    ::tpy::print_object_default(os, "ParseResult", obj);
+    ::tpy::print_object_default(os, ParseResult::__tpy_class_name__, obj);
     return os;
 }
 

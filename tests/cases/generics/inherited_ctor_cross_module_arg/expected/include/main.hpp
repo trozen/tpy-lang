@@ -34,7 +34,7 @@ struct Holder {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const Holder<K, V>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Sub : Holder<::tpyapp::other::Key, int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 

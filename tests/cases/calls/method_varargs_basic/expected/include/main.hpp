@@ -29,7 +29,7 @@ struct Calculator {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
-    ::tpy::print_object_default(os, "Calculator", obj);
+    ::tpy::print_object_default(os, Calculator::__tpy_class_name__, obj);
     return os;
 }
 

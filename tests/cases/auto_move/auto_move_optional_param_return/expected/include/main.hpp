@@ -36,7 +36,7 @@ struct Payload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
-    ::tpy::print_object_default(os, "Payload", obj);
+    ::tpy::print_object_default(os, Payload::__tpy_class_name__, obj);
     return os;
 }
 

@@ -78,7 +78,7 @@ void raise_code(const ::tpy::Union<std::monostate, int32_t, std::string>& u) {
 // def show(tag: str, e: SystemExit) -> None:
 //     print(tag + ": code", e.code, "str", repr(str(e)))
 void show(std::string_view tag, const ::tpy::SystemExit& e) {
-    std::cout << (::tpy::str_concat(tag, ": code")) << " " << ::tpy::__str__(e.code) << " " << "str" << " " << ::tpy::repr_of(std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat(tag, ": code")) << " " << ::tpy::__str__(e.code) << " " << "str" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Section codes: each code form reaches `code` and str().

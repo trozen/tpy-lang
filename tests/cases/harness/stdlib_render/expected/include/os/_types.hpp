@@ -49,7 +49,7 @@ struct stat_result {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const stat_result& obj) {
-    ::tpy::print_object_default(os, "stat_result", obj);
+    ::tpy::print_object_default(os, stat_result::__tpy_class_name__, obj);
     return os;
 }
 

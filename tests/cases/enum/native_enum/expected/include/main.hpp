@@ -14,6 +14,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::ns::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::ns::E e);
     static const std::array<::ns::E, 2> members;
     static ::ns::E from_value(int32_t v);

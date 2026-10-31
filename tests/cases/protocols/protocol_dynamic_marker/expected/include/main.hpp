@@ -45,7 +45,7 @@ struct Root : Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
-    ::tpy::print_object_default(os, "Root", obj);
+    ::tpy::print_object_default(os, Root::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct Sub : Root {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 

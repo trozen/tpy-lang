@@ -36,7 +36,7 @@ struct Thrower {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Thrower& obj) {
-    ::tpy::print_object_default(os, "Thrower", obj);
+    ::tpy::print_object_default(os, Thrower::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct Suppressor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
-    ::tpy::print_object_default(os, "Suppressor", obj);
+    ::tpy::print_object_default(os, Suppressor::__tpy_class_name__, obj);
     return os;
 }
 

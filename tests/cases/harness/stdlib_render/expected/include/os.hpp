@@ -182,7 +182,7 @@ struct DirEntry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DirEntry& obj) {
-    ::tpy::print_object_default(os, "DirEntry", obj);
+    ::tpy::print_object_default(os, DirEntry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -198,7 +198,7 @@ struct _WalkExpand {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _WalkExpand& obj) {
-    ::tpy::print_object_default(os, "_WalkExpand", obj);
+    ::tpy::print_object_default(os, _WalkExpand::__tpy_class_name__, obj);
     return os;
 }
 
@@ -219,7 +219,7 @@ struct _WalkEmit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _WalkEmit& obj) {
-    ::tpy::print_object_default(os, "_WalkEmit", obj);
+    ::tpy::print_object_default(os, _WalkEmit::__tpy_class_name__, obj);
     return os;
 }
 
@@ -237,7 +237,7 @@ struct terminal_size {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const terminal_size& obj) {
-    ::tpy::print_object_default(os, "terminal_size", obj);
+    ::tpy::print_object_default(os, terminal_size::__tpy_class_name__, obj);
     return os;
 }
 

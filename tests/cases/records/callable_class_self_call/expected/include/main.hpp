@@ -27,7 +27,7 @@ struct Recursive {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Recursive& obj) {
-    ::tpy::print_object_default(os, "Recursive", obj);
+    ::tpy::print_object_default(os, Recursive::__tpy_class_name__, obj);
     return os;
 }
 
@@ -43,7 +43,7 @@ struct Fibonacci {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fibonacci& obj) {
-    ::tpy::print_object_default(os, "Fibonacci", obj);
+    ::tpy::print_object_default(os, Fibonacci::__tpy_class_name__, obj);
     return os;
 }
 

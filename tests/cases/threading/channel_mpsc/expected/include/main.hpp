@@ -44,7 +44,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Producer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Producer& obj) {
-    ::tpy::print_object_default(os, "Producer", obj);
+    ::tpy::print_object_default(os, Producer::__tpy_class_name__, obj);
     return os;
 }
 

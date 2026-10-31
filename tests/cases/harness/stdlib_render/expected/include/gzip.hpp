@@ -91,7 +91,7 @@ struct BadGzipFile : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadGzipFile& obj) {
-    ::tpy::print_object_default(os, "BadGzipFile", obj);
+    ::tpy::print_object_default(os, BadGzipFile::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct _PaddedFile {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _PaddedFile& obj) {
-    ::tpy::print_object_default(os, "_PaddedFile", obj);
+    ::tpy::print_object_default(os, _PaddedFile::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct _GzipReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _GzipReader& obj) {
-    ::tpy::print_object_default(os, "_GzipReader", obj);
+    ::tpy::print_object_default(os, _GzipReader::__tpy_class_name__, obj);
     return os;
 }
 
@@ -227,7 +227,7 @@ struct GzipFile {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GzipFile& obj) {
-    ::tpy::print_object_default(os, "GzipFile", obj);
+    ::tpy::print_object_default(os, GzipFile::__tpy_class_name__, obj);
     return os;
 }
 

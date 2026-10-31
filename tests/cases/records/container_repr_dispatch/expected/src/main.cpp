@@ -77,9 +77,9 @@ void main() {
     std::cout << b << "\n" << ::tpy::check_signals;
     std::cout << s << "\n" << ::tpy::check_signals;
     std::cout << r << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(r) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(std::string(::tpy::repr_of(s)), "StrOnly")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(r)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n" << ::tpy::check_signals;
     std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
     std::string bs_str = std::string(::tpy::__str__(bs));
@@ -91,12 +91,12 @@ void main() {
     ReprOnly __slot_1 = ReprOnly(7);
     ReprOnly* opt_some = &__slot_1;
     ReprOnly* opt_none = nullptr;
-    std::cout << ::tpy::repr_of((*opt_some)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(opt_none) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of((*opt_some))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(opt_none)) << "\n" << ::tpy::check_signals;
     Neither n = Neither(8);
-    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(std::string(::tpy::repr_of(n)), "Neither")) << "\n" << ::tpy::check_signals;
     ChildOfRepr c = ChildOfRepr(9);
-    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(c)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::repr_of(r)) << "\n" << ::tpy::check_signals;
 }

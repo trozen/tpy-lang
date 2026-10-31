@@ -28,7 +28,7 @@ struct Split {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Split& obj) {
-    ::tpy::print_object_default(os, "Split", obj);
+    ::tpy::print_object_default(os, Split::__tpy_class_name__, obj);
     return os;
 }
 

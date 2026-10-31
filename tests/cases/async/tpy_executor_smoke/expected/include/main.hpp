@@ -63,7 +63,7 @@ struct CancellableForever {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CancellableForever& obj) {
-    ::tpy::print_object_default(os, "CancellableForever", obj);
+    ::tpy::print_object_default(os, CancellableForever::__tpy_class_name__, obj);
     return os;
 }
 

@@ -33,7 +33,7 @@ struct CountingSink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
-    ::tpy::print_object_default(os, "CountingSink", obj);
+    ::tpy::print_object_default(os, CountingSink::__tpy_class_name__, obj);
     return os;
 }
 

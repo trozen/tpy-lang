@@ -73,7 +73,7 @@ struct _Environ {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _Environ& obj) {
-    ::tpy::print_object_default(os, "_Environ", obj);
+    ::tpy::print_object_default(os, _Environ::__tpy_class_name__, obj);
     return os;
 }
 

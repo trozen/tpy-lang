@@ -33,7 +33,7 @@ struct Lock {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lock& obj) {
-    ::tpy::print_object_default(os, "Lock", obj);
+    ::tpy::print_object_default(os, Lock::__tpy_class_name__, obj);
     return os;
 }
 

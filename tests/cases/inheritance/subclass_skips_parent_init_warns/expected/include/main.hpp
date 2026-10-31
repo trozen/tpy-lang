@@ -39,7 +39,7 @@ struct Labeled {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Labeled& obj) {
-    ::tpy::print_object_default(os, "Labeled", obj);
+    ::tpy::print_object_default(os, Labeled::__tpy_class_name__, obj);
     return os;
 }
 
@@ -54,7 +54,7 @@ struct Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-    ::tpy::print_object_default(os, "Animal", obj);
+    ::tpy::print_object_default(os, Animal::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -86,7 +86,7 @@ struct Failed : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
-    ::tpy::print_object_default(os, "Failed", obj);
+    ::tpy::print_object_default(os, Failed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -128,7 +128,7 @@ struct Tag : Labeled {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -140,7 +140,7 @@ struct Pet : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
-    ::tpy::print_object_default(os, "Pet", obj);
+    ::tpy::print_object_default(os, Pet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -156,7 +156,7 @@ struct Both : Animal, Labeled {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
-    ::tpy::print_object_default(os, "Both", obj);
+    ::tpy::print_object_default(os, Both::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct CodeError : AppError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CodeError& obj) {
-    ::tpy::print_object_default(os, "CodeError", obj);
+    ::tpy::print_object_default(os, CodeError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -216,7 +216,7 @@ struct Dog : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -259,7 +259,7 @@ inline bool Kid::__eq__(const Kid& other) const {
 }
 
 inline std::string Kid::__repr__() const {
-    return std::format("Kid(z={})", ::tpy::repr_of(this->z));
+    return std::format("Kid(z={})", std::string(::tpy::repr_of(this->z)));
 }
 
 // def __init__(self, code: int32) -> None:  # tpyc: warning(/'CodeError.__init__' does not call 'super\(\).__init__\(...\)'; TPy default-constructs the 'AppError' part instead$/)

@@ -34,12 +34,12 @@ struct Library {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Library& obj) {
-    ::tpy::print_object_default(os, "Library", obj);
+    ::tpy::print_object_default(os, Library::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Library::Worker& obj) {
-    ::tpy::print_object_default(os, "Library.Worker", obj);
+    ::tpy::print_object_default(os, Library::Worker::__tpy_class_name__, obj);
     return os;
 }
 

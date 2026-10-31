@@ -28,7 +28,7 @@ struct Formatter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
-    ::tpy::print_object_default(os, "Formatter", obj);
+    ::tpy::print_object_default(os, Formatter::__tpy_class_name__, obj);
     return os;
 }
 

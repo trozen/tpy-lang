@@ -343,11 +343,11 @@ void message() {
         try {
             ::tpyapp::main::interrupt();
         } catch (const ::tpy::KeyboardInterrupt& e) {
-            std::cout << (::tpy::str_concat("message: signal ", ::tpy::repr_of(std::string(::tpy::__str__(e))))) << "\n" << ::tpy::check_signals;
+            std::cout << (::tpy::str_concat("message: signal ", std::string(::tpy::repr_of(std::string(::tpy::__str__(e)))))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << (::tpy::str_concat("message: bare ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt("")))))) << "\n" << ::tpy::check_signals;
-    std::cout << (::tpy::str_concat("message: given ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt("why")))))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("message: bare ", std::string(::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt(""))))))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("message: given ", std::string(::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt("why"))))))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

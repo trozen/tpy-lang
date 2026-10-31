@@ -706,12 +706,11 @@ void write_python_value(std::ostream& os, const T& v) {
         os << print_float(static_cast<double>(v));
     } else if constexpr (std::is_same_v<U, int8_t> || std::is_same_v<U, uint8_t>) {
         os << print_int8(v);
-    } else if constexpr (std::is_enum_v<U>
-                         && requires(U x) { ::tpy::EnumUtil<U>::name(x); }) {
+    } else if constexpr (::tpy::detail::util_enum<U>) {
         // Enum: route through the shared EnumUtil formatter. Avoids
         // requiring an operator<< for the enum (which @native enums don't
         // emit -- would conflict with any user-provided one).
-        ::tpy::detail::write_enum_repr(os, v);
+        ::tpy::detail::write_enum_str(os, v);
     } else {
         os << v;
     }

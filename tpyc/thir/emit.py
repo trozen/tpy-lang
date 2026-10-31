@@ -4624,8 +4624,6 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::__str__({inner})"
     if a.print_form is PrintForm.BYTES:
         return f"::tpy::BytesPrinter({inner})"
-    if a.print_form is PrintForm.REPR:
-        return f"::tpy::__repr__({inner})"
     if a.print_form is PrintForm.LIST:
         return f"::tpy::ListPrinter({inner})"
     if a.print_form is PrintForm.SET:

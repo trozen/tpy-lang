@@ -208,7 +208,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline MaybePoint::MaybePoint(std::string_view label, std::optional<Point>&& pos)
@@ -220,7 +220,7 @@ inline bool MaybePoint::__eq__(const MaybePoint& other) const {
 }
 
 inline std::string MaybePoint::__repr__() const {
-    return std::format("MaybePoint(label={}, pos={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->pos));
+    return std::format("MaybePoint(label={}, pos={})", std::string(::tpy::repr_of(this->label)), std::string(::tpy::repr_of(this->pos)));
 }
 
 inline PointList::PointList(std::vector<std::optional<Point>>&& items) : items(std::move(items)) {}
@@ -230,7 +230,7 @@ inline bool PointList::__eq__(const PointList& other) const {
 }
 
 inline std::string PointList::__repr__() const {
-    return std::format("PointList(items={})", ::tpy::repr_of(this->items));
+    return std::format("PointList(items={})", std::string(::tpy::repr_of(this->items)));
 }
 
 inline Line::Line(Point&& start, Point&& end)
@@ -242,7 +242,7 @@ inline bool Line::__eq__(const Line& other) const {
 }
 
 inline std::string Line::__repr__() const {
-    return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
+    return std::format("Line(start={}, end={})", std::string(::tpy::repr_of(this->start)), std::string(::tpy::repr_of(this->end)));
 }
 
 inline MaybeLine::MaybeLine(std::optional<Line>&& line) : line(std::move(line)) {}
@@ -252,7 +252,7 @@ inline bool MaybeLine::__eq__(const MaybeLine& other) const {
 }
 
 inline std::string MaybeLine::__repr__() const {
-    return std::format("MaybeLine(line={})", ::tpy::repr_of(this->line));
+    return std::format("MaybeLine(line={})", std::string(::tpy::repr_of(this->line)));
 }
 
 inline Mixed::Mixed(std::string_view name, Point&& required, std::optional<Point>&& optional)
@@ -265,7 +265,7 @@ inline bool Mixed::__eq__(const Mixed& other) const {
 }
 
 inline std::string Mixed::__repr__() const {
-    return std::format("Mixed(name={}, required={}, optional={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->required), ::tpy::repr_of(this->optional));
+    return std::format("Mixed(name={}, required={}, optional={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->required)), std::string(::tpy::repr_of(this->optional)));
 }
 
 inline LabeledPoints::LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>&& items) : items(std::move(items)) {}
@@ -275,7 +275,7 @@ inline bool LabeledPoints::__eq__(const LabeledPoints& other) const {
 }
 
 inline std::string LabeledPoints::__repr__() const {
-    return std::format("LabeledPoints(items={})", ::tpy::repr_of(this->items));
+    return std::format("LabeledPoints(items={})", std::string(::tpy::repr_of(this->items)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

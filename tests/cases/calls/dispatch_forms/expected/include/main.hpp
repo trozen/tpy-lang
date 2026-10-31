@@ -77,7 +77,7 @@ struct Acc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
-    ::tpy::print_object_default(os, "Acc", obj);
+    ::tpy::print_object_default(os, Acc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -88,7 +88,7 @@ struct Empty : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
-    ::tpy::print_object_default(os, "Empty", obj);
+    ::tpy::print_object_default(os, Empty::__tpy_class_name__, obj);
     return os;
 }
 

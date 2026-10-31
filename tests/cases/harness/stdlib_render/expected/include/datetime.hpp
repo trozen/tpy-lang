@@ -348,7 +348,7 @@ struct ZoneInfoNotFoundError : ::tpy::KeyError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ZoneInfoNotFoundError& obj) {
-    ::tpy::print_object_default(os, "ZoneInfoNotFoundError", obj);
+    ::tpy::print_object_default(os, ZoneInfoNotFoundError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1239,10 +1239,10 @@ inline std::string timezone::__repr__() const {
     if (((this->_name_id == 0) && (this->_off_us == 0))) {
         return "datetime.timezone.utc";
     }
-    std::string off_repr = ::tpy::repr_of(timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(static_cast<int64_t>(this->_off_us))));
+    std::string off_repr = std::string(::tpy::repr_of(timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(static_cast<int64_t>(this->_off_us)))));
     if ((this->_name_id != 0)) {
         std::string name = ::tpy::stdlib::tz_intern::name_at(this->_name_id);
-        return std::format("datetime.timezone({}, {})", off_repr, ::tpy::repr_of(name));
+        return std::format("datetime.timezone({}, {})", off_repr, std::string(::tpy::repr_of(name)));
     }
     return std::format("datetime.timezone({})", off_repr);
 }
@@ -1347,7 +1347,7 @@ inline ::tpy::BigInt ZoneInfo::__hash__() const {
 // def __repr__(self) -> str:
 //     return f"zoneinfo.ZoneInfo(key={repr(self.key)})"
 inline std::string ZoneInfo::__repr__() const {
-    return std::format("zoneinfo.ZoneInfo(key={})", ::tpy::repr_of(this->key()));
+    return std::format("zoneinfo.ZoneInfo(key={})", std::string(::tpy::repr_of(this->key())));
 }
 
 // def __str__(self) -> str:

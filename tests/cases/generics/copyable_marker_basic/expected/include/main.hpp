@@ -32,7 +32,7 @@ struct Cell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell<T>::__tpy_class_name__, obj);
     return os;
 }
 

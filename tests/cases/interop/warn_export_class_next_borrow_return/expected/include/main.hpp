@@ -29,7 +29,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    ::tpy::print_object_default(os, "Node", obj);
+    ::tpy::print_object_default(os, Node::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct Repeat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Repeat& obj) {
-    ::tpy::print_object_default(os, "Repeat", obj);
+    ::tpy::print_object_default(os, Repeat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct Rows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
-    ::tpy::print_object_default(os, "Rows", obj);
+    ::tpy::print_object_default(os, Rows::__tpy_class_name__, obj);
     return os;
 }
 
@@ -99,7 +99,7 @@ struct Peek {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Peek& obj) {
-    ::tpy::print_object_default(os, "Peek", obj);
+    ::tpy::print_object_default(os, Peek::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct Swapping {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Swapping& obj) {
-    ::tpy::print_object_default(os, "Swapping", obj);
+    ::tpy::print_object_default(os, Swapping::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +146,7 @@ struct Fresh {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
-    ::tpy::print_object_default(os, "Fresh", obj);
+    ::tpy::print_object_default(os, Fresh::__tpy_class_name__, obj);
     return os;
 }
 

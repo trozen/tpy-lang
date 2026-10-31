@@ -62,7 +62,7 @@ struct Unpacker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Unpacker& obj) {
-    ::tpy::print_object_default(os, "Unpacker", obj);
+    ::tpy::print_object_default(os, Unpacker::__tpy_class_name__, obj);
     return os;
 }
 

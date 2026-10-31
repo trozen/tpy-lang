@@ -41,7 +41,7 @@ struct Src {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
-    ::tpy::print_object_default(os, "Src", obj);
+    ::tpy::print_object_default(os, Src::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct CtorWriter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CtorWriter& obj) {
-    ::tpy::print_object_default(os, "CtorWriter", obj);
+    ::tpy::print_object_default(os, CtorWriter::__tpy_class_name__, obj);
     return os;
 }
 

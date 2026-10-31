@@ -41,7 +41,7 @@ struct V3 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const V3& obj) {
-    ::tpy::print_object_default(os, "V3", obj);
+    ::tpy::print_object_default(os, V3::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct Material {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Material& obj) {
-    ::tpy::print_object_default(os, "Material", obj);
+    ::tpy::print_object_default(os, Material::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ struct Body {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Body& obj) {
-    ::tpy::print_object_default(os, "Body", obj);
+    ::tpy::print_object_default(os, Body::__tpy_class_name__, obj);
     return os;
 }
 

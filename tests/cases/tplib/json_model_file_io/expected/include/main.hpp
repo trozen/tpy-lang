@@ -87,7 +87,7 @@ inline bool Item::__eq__(const Item& other) const {
 }
 
 inline std::string Item::__repr__() const {
-    return std::format("Item(name={}, count={}, active={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->count), ::tpy::repr_of(this->active));
+    return std::format("Item(name={}, count={}, active={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->count)), std::string(::tpy::repr_of(this->active)));
 }
 
 inline Item Item::from_json(std::string_view __s) {

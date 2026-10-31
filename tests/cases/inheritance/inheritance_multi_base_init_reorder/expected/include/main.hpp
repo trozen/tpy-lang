@@ -28,7 +28,7 @@ struct Left {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Left& obj) {
-    ::tpy::print_object_default(os, "Left", obj);
+    ::tpy::print_object_default(os, Left::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct Right {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
-    ::tpy::print_object_default(os, "Right", obj);
+    ::tpy::print_object_default(os, Right::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct Child : Left, Right {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 

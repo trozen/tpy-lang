@@ -35,7 +35,7 @@ struct Reg {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
-    ::tpy::print_object_default(os, "Reg", obj);
+    ::tpy::print_object_default(os, Reg::__tpy_class_name__, obj);
     return os;
 }
 

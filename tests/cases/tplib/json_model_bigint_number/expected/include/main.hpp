@@ -78,7 +78,7 @@ inline bool Repo::__eq__(const Repo& other) const {
 }
 
 inline std::string Repo::__repr__() const {
-    return std::format("Repo(name={}, stars={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->stars));
+    return std::format("Repo(name={}, stars={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->stars)));
 }
 
 inline Repo Repo::from_json(std::string_view __s) {

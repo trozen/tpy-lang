@@ -14,6 +14,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::ns::dir_t> {
     static constexpr std::string_view type_name = "Direction";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::ns::dir_t e);
     static const std::array<::ns::dir_t, 2> members;
     static ::ns::dir_t from_value(int8_t v);

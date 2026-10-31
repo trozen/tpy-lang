@@ -206,7 +206,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -224,7 +224,7 @@ struct Runner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
-    ::tpy::print_object_default(os, "Runner", obj);
+    ::tpy::print_object_default(os, Runner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -240,7 +240,7 @@ struct Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
-    ::tpy::print_object_default(os, "Counted", obj);
+    ::tpy::print_object_default(os, Counted::__tpy_class_name__, obj);
     return os;
 }
 
@@ -272,7 +272,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -323,7 +323,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 

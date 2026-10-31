@@ -56,7 +56,7 @@ struct Capped {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Capped& obj) {
-    ::tpy::print_object_default(os, "Capped", obj);
+    ::tpy::print_object_default(os, Capped::__tpy_class_name__, obj);
     return os;
 }
 

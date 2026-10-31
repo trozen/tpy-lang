@@ -46,7 +46,7 @@ struct Impl {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
-    ::tpy::print_object_default(os, "Impl", obj);
+    ::tpy::print_object_default(os, Impl::__tpy_class_name__, obj);
     return os;
 }
 

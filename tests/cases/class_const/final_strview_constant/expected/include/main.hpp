@@ -25,7 +25,7 @@ struct HttpClient {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HttpClient& obj) {
-    ::tpy::print_object_default(os, "HttpClient", obj);
+    ::tpy::print_object_default(os, HttpClient::__tpy_class_name__, obj);
     return os;
 }
 

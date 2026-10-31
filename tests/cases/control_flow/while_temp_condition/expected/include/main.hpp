@@ -48,7 +48,7 @@ struct Pack {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pack& obj) {
-    ::tpy::print_object_default(os, "Pack", obj);
+    ::tpy::print_object_default(os, Pack::__tpy_class_name__, obj);
     return os;
 }
 

@@ -36,7 +36,7 @@ struct IntBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Holder {
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Holder<V>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<V>::__tpy_class_name__, obj);
     return os;
 }
 

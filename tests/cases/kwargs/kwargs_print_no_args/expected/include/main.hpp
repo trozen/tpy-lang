@@ -44,7 +44,7 @@ struct Emitter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
-    ::tpy::print_object_default(os, "Emitter", obj);
+    ::tpy::print_object_default(os, Emitter::__tpy_class_name__, obj);
     return os;
 }
 

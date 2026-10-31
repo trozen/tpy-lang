@@ -32,6 +32,7 @@ template<> struct tpy::is_dyn_protocol_base<tpyapp::pkg::b::Greeter> : std::true
 template<>
 struct tpy::EnumUtil<::tpyapp::pkg::b::K> {
     static constexpr std::string_view type_name = "K";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::pkg::b::K e);
     static const std::array<::tpyapp::pkg::b::K, 2> members;
     static ::tpyapp::pkg::b::K from_value(int32_t v);
@@ -42,7 +43,7 @@ struct tpy::EnumUtil<::tpyapp::pkg::b::K> {
 namespace tpyapp::pkg::b {
 
 inline std::ostream& operator<<(std::ostream& __os, K __e) {
-    return __os << "K." << ::tpy::EnumUtil<K>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct B;
@@ -71,7 +72,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 

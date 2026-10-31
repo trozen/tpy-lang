@@ -30,7 +30,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct WRef {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WRef& obj) {
-    ::tpy::print_object_default(os, "WRef", obj);
+    ::tpy::print_object_default(os, WRef::__tpy_class_name__, obj);
     return os;
 }
 
@@ -103,9 +103,15 @@ struct Tree {
 
     bool operator==(const Tree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

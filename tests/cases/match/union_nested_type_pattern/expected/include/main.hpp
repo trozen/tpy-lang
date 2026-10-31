@@ -35,7 +35,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T>::__tpy_class_name__, obj);
     return os;
 }
 

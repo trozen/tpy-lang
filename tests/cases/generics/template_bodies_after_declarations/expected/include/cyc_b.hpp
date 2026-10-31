@@ -28,7 +28,7 @@ struct Val {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Val& obj) {
-    ::tpy::print_object_default(os, "Val", obj);
+    ::tpy::print_object_default(os, Val::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::cyc_b
@@ -50,7 +50,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 

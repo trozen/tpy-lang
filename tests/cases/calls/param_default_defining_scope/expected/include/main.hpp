@@ -39,6 +39,7 @@ enum class E : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::E> {
     static constexpr std::string_view type_name = "E";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::E e);
     static const std::array<::tpyapp::main::E, 2> members;
     static ::tpyapp::main::E from_value(int32_t v);
@@ -49,7 +50,7 @@ struct tpy::EnumUtil<::tpyapp::main::E> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, E __e) {
-    return __os << "E." << ::tpy::EnumUtil<E>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct C;
@@ -129,7 +130,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -141,7 +142,7 @@ struct D : ::tpyapp::defs::C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 
@@ -181,7 +182,7 @@ struct CM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
-    ::tpy::print_object_default(os, "CM", obj);
+    ::tpy::print_object_default(os, CM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +201,7 @@ struct Runner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
-    ::tpy::print_object_default(os, "Runner", obj);
+    ::tpy::print_object_default(os, Runner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -342,7 +343,7 @@ inline bool SubRec::__eq__(const SubRec& other) const {
 }
 
 inline std::string SubRec::__repr__() const {
-    return std::format("SubRec(m={})", ::tpy::repr_of(this->m));
+    return std::format("SubRec(m={})", std::string(::tpy::repr_of(this->m)));
 }
 
 // def __enter__(self) -> int32:

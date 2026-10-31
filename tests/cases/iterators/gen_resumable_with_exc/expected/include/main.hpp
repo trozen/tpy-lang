@@ -36,7 +36,7 @@ struct Suppressor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
-    ::tpy::print_object_default(os, "Suppressor", obj);
+    ::tpy::print_object_default(os, Suppressor::__tpy_class_name__, obj);
     return os;
 }
 

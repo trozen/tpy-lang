@@ -65,7 +65,7 @@ struct Stop : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stop& obj) {
-    ::tpy::print_object_default(os, "Stop", obj);
+    ::tpy::print_object_default(os, Stop::__tpy_class_name__, obj);
     return os;
 }
 
@@ -81,7 +81,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -103,7 +103,7 @@ struct Pinned {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
-    ::tpy::print_object_default(os, "Pinned", obj);
+    ::tpy::print_object_default(os, Pinned::__tpy_class_name__, obj);
     return os;
 }
 
@@ -120,7 +120,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +144,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+    ::tpy::print_object_default(os, Container<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct ContainerTwin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ContainerTwin& obj) {
-    ::tpy::print_object_default(os, "ContainerTwin", obj);
+    ::tpy::print_object_default(os, ContainerTwin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -185,7 +185,7 @@ struct CellBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CellBox& obj) {
-    ::tpy::print_object_default(os, "CellBox", obj);
+    ::tpy::print_object_default(os, CellBox::__tpy_class_name__, obj);
     return os;
 }
 

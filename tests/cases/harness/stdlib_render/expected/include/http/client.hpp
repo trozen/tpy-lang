@@ -77,7 +77,7 @@ struct HTTPException : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HTTPException& obj) {
-    ::tpy::print_object_default(os, "HTTPException", obj);
+    ::tpy::print_object_default(os, HTTPException::__tpy_class_name__, obj);
     return os;
 }
 
@@ -162,7 +162,7 @@ struct HTTPResponse {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HTTPResponse& obj) {
-    ::tpy::print_object_default(os, "HTTPResponse", obj);
+    ::tpy::print_object_default(os, HTTPResponse::__tpy_class_name__, obj);
     return os;
 }
 
@@ -205,7 +205,7 @@ struct HTTPConnection : _Connection {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HTTPConnection& obj) {
-    ::tpy::print_object_default(os, "HTTPConnection", obj);
+    ::tpy::print_object_default(os, HTTPConnection::__tpy_class_name__, obj);
     return os;
 }
 
@@ -251,7 +251,7 @@ struct HTTPSConnection : _Connection {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HTTPSConnection& obj) {
-    ::tpy::print_object_default(os, "HTTPSConnection", obj);
+    ::tpy::print_object_default(os, HTTPSConnection::__tpy_class_name__, obj);
     return os;
 }
 
@@ -268,7 +268,7 @@ struct BadStatusLine : HTTPException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadStatusLine& obj) {
-    ::tpy::print_object_default(os, "BadStatusLine", obj);
+    ::tpy::print_object_default(os, BadStatusLine::__tpy_class_name__, obj);
     return os;
 }
 
@@ -285,7 +285,7 @@ struct UnknownProtocol : HTTPException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const UnknownProtocol& obj) {
-    ::tpy::print_object_default(os, "UnknownProtocol", obj);
+    ::tpy::print_object_default(os, UnknownProtocol::__tpy_class_name__, obj);
     return os;
 }
 

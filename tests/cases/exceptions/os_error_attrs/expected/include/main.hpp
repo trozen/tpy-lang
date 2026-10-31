@@ -29,7 +29,7 @@ struct DeviceError : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DeviceError& obj) {
-    ::tpy::print_object_default(os, "DeviceError", obj);
+    ::tpy::print_object_default(os, DeviceError::__tpy_class_name__, obj);
     return os;
 }
 

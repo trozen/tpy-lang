@@ -63,7 +63,7 @@ struct NPt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NPt& obj) {
-    ::tpy::print_object_default(os, "NPt", obj);
+    ::tpy::print_object_default(os, NPt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -79,7 +79,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -118,7 +118,7 @@ struct Driver {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Driver& obj) {
-    ::tpy::print_object_default(os, "Driver", obj);
+    ::tpy::print_object_default(os, Driver::__tpy_class_name__, obj);
     return os;
 }
 
@@ -132,7 +132,7 @@ struct Wrap : Holder<Pt> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap::__tpy_class_name__, obj);
     return os;
 }
 

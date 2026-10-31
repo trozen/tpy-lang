@@ -33,7 +33,7 @@ struct WidePages {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WidePages& obj) {
-    ::tpy::print_object_default(os, "WidePages", obj);
+    ::tpy::print_object_default(os, WidePages::__tpy_class_name__, obj);
     return os;
 }
 

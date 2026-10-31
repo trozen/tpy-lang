@@ -52,7 +52,7 @@ struct SimpleBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
-    ::tpy::print_object_default(os, "SimpleBuffer", obj);
+    ::tpy::print_object_default(os, SimpleBuffer::__tpy_class_name__, obj);
     return os;
 }
 

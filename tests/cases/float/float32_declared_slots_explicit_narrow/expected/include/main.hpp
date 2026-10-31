@@ -52,7 +52,7 @@ struct Sample {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sample& obj) {
-    ::tpy::print_object_default(os, "Sample", obj);
+    ::tpy::print_object_default(os, Sample::__tpy_class_name__, obj);
     return os;
 }
 

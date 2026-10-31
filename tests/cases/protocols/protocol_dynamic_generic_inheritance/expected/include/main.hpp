@@ -72,7 +72,7 @@ struct IntCounter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
-    ::tpy::print_object_default(os, "IntCounter", obj);
+    ::tpy::print_object_default(os, IntCounter::__tpy_class_name__, obj);
     return os;
 }
 

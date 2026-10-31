@@ -40,7 +40,7 @@ struct Config {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    ::tpy::print_object_default(os, "Config", obj);
+    ::tpy::print_object_default(os, Config::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Echo {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Echo& obj) {
-    ::tpy::print_object_default(os, "Echo", obj);
+    ::tpy::print_object_default(os, Echo::__tpy_class_name__, obj);
     return os;
 }
 
@@ -72,7 +72,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +92,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

@@ -53,7 +53,7 @@ struct Opts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
-    ::tpy::print_object_default(os, "Opts", obj);
+    ::tpy::print_object_default(os, Opts::__tpy_class_name__, obj);
     return os;
 }
 

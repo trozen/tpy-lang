@@ -17,6 +17,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 1> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Tick;
@@ -75,7 +76,7 @@ struct Tick {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tick& obj) {
-    ::tpy::print_object_default(os, "Tick", obj);
+    ::tpy::print_object_default(os, Tick::__tpy_class_name__, obj);
     return os;
 }
 
@@ -89,7 +90,7 @@ struct Wrap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +106,7 @@ struct Cell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -155,12 +156,12 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
-    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    ::tpy::print_object_default(os, Outer::Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -177,7 +178,7 @@ struct Scope {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
-    ::tpy::print_object_default(os, "Scope", obj);
+    ::tpy::print_object_default(os, Scope::__tpy_class_name__, obj);
     return os;
 }
 
@@ -196,7 +197,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -205,6 +206,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
     static constexpr std::string_view type_name = "Kind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Outer::Kind e);
     static const std::array<::tpyapp::main::Outer::Kind, 1> members;
     static ::tpyapp::main::Outer::Kind from_value(int32_t v);
@@ -215,7 +217,7 @@ struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
-    return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 // def gen(n: int32) -> Iterator[int32]:
@@ -270,7 +272,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={})", ::tpy::repr_of(this->x));
+    return std::format("Point(x={})", std::string(::tpy::repr_of(this->x)));
 }
 
 // def __init__(self, n: int32 = 0) -> None:

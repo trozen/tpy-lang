@@ -39,7 +39,7 @@ struct Base {
 
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Base<T, U>& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base<T, U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct Middle : Base<T, int32_t> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Middle<T>& obj) {
-    ::tpy::print_object_default(os, "Middle", obj);
+    ::tpy::print_object_default(os, Middle<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct Leaf : Middle<T> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Leaf<T>& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf<T>::__tpy_class_name__, obj);
     return os;
 }
 

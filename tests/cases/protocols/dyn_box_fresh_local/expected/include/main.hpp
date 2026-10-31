@@ -58,7 +58,7 @@ struct HttpConn : Conn {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HttpConn& obj) {
-    ::tpy::print_object_default(os, "HttpConn", obj);
+    ::tpy::print_object_default(os, HttpConn::__tpy_class_name__, obj);
     return os;
 }
 

@@ -147,7 +147,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    ::tpy::print_object_default(os, "Node", obj);
+    ::tpy::print_object_default(os, Node::__tpy_class_name__, obj);
     return os;
 }
 
@@ -166,7 +166,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 
@@ -190,7 +190,7 @@ struct Cur {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cur& obj) {
-    ::tpy::print_object_default(os, "Cur", obj);
+    ::tpy::print_object_default(os, Cur::__tpy_class_name__, obj);
     return os;
 }
 
@@ -216,7 +216,7 @@ struct Acc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
-    ::tpy::print_object_default(os, "Acc", obj);
+    ::tpy::print_object_default(os, Acc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -237,7 +237,7 @@ struct Bag {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -264,7 +264,7 @@ struct Ledger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ledger& obj) {
-    ::tpy::print_object_default(os, "Ledger", obj);
+    ::tpy::print_object_default(os, Ledger::__tpy_class_name__, obj);
     return os;
 }
 
@@ -290,12 +290,12 @@ struct Shelf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
-    ::tpy::print_object_default(os, "Shelf", obj);
+    ::tpy::print_object_default(os, Shelf::__tpy_class_name__, obj);
     return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const Shelf::Box& obj) {
-    ::tpy::print_object_default(os, "Shelf.Box", obj);
+    ::tpy::print_object_default(os, Shelf::Box::__tpy_class_name__, obj);
     return os;
 }
 

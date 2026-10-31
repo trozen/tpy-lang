@@ -127,7 +127,7 @@ void write_basic() {
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"age", "30"}}));
     w.writerows({::tpy::ordered_map<std::string, std::string>({{"name", "Bob"}, {"age", "25"}}), ::tpy::ordered_map<std::string, std::string>({{"name", "Cy"}, {"age", "40"}})});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def write_quoting() -> None:
@@ -141,7 +141,7 @@ void write_quoting() {
     ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"k", "v"}, "", ",", "\"", true, "\r\n");
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"k", "x"}, {"v", "has,comma"}}));
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def write_missing_key() -> None:
@@ -154,7 +154,7 @@ void write_missing_key() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
     ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"}, "", ",", "\"", true, "\r\n");
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}}));
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(out.getvalue())) << "\n" << ::tpy::check_signals;
 }
 
 // def write_extra_key_raises() -> None:

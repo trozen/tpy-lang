@@ -24,10 +24,10 @@ namespace tpyapp::main {
 void main() {
     Dog d = Dog("rex");
     std::cout << d << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(d) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(d)) << "\n" << ::tpy::check_signals;
     Cat c = Cat("whiskers");
     std::cout << c << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(c)) << "\n" << ::tpy::check_signals;
     Echo e = Echo("hello");
     std::cout << e << "\n" << ::tpy::check_signals;
     Pet p = Pet("rover");

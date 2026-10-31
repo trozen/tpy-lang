@@ -31,7 +31,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -49,7 +49,7 @@ struct NoisyHeir : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoisyHeir& obj) {
-    ::tpy::print_object_default(os, "NoisyHeir", obj);
+    ::tpy::print_object_default(os, NoisyHeir::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

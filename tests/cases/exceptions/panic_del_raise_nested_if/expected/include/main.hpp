@@ -33,7 +33,7 @@ struct Maybe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Maybe& obj) {
-    ::tpy::print_object_default(os, "Maybe", obj);
+    ::tpy::print_object_default(os, Maybe::__tpy_class_name__, obj);
     return os;
 }
 

@@ -30,6 +30,7 @@ enum class Role : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Role> {
     static constexpr std::string_view type_name = "Role";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Role e);
     static const std::array<::tpyapp::main::Role, 3> members;
     static ::tpyapp::main::Role from_value(int32_t v);
@@ -40,7 +41,7 @@ struct tpy::EnumUtil<::tpyapp::main::Role> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Role __e) {
-    return __os << "Role." << ::tpy::EnumUtil<Role>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Address;
@@ -181,7 +182,7 @@ inline bool Address::__eq__(const Address& other) const {
 }
 
 inline std::string Address::__repr__() const {
-    return std::format("Address(street={}, city={})", ::tpy::repr_of(this->street), ::tpy::repr_of(this->city));
+    return std::format("Address(street={}, city={})", std::string(::tpy::repr_of(this->street)), std::string(::tpy::repr_of(this->city)));
 }
 
 inline Address Address::from_json(std::string_view __s) {
@@ -288,7 +289,7 @@ inline bool Profile::__eq__(const Profile& other) const {
 }
 
 inline std::string Profile::__repr__() const {
-    return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age), ::tpy::repr_of(this->score), ::tpy::repr_of(this->precision), ::tpy::repr_of(this->active), ::tpy::repr_of(this->big_id), ::tpy::repr_of(this->role), ::tpy::repr_of(this->address), ::tpy::repr_of(this->tags), ::tpy::repr_of(this->scores), ::tpy::repr_of(this->friends), ::tpy::repr_of(this->roles), ::tpy::repr_of(this->metadata), ::tpy::repr_of(this->nested_map), ::tpy::tuple_to_str(this->coord), ::tpy::repr_of(this->backup_role), ::tpy::repr_of(this->alt_address), ::tpy::repr_of(this->email));
+    return std::format("Profile(name={}, age={}, score={}, precision={}, active={}, big_id={}, role={}, address={}, tags={}, scores={}, friends={}, roles={}, metadata={}, nested_map={}, coord={}, backup_role={}, alt_address={}, email={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)), std::string(::tpy::repr_of(this->score)), std::string(::tpy::repr_of(this->precision)), std::string(::tpy::repr_of(this->active)), std::string(::tpy::repr_of(this->big_id)), std::string(::tpy::repr_of(this->role)), std::string(::tpy::repr_of(this->address)), std::string(::tpy::repr_of(this->tags)), std::string(::tpy::repr_of(this->scores)), std::string(::tpy::repr_of(this->friends)), std::string(::tpy::repr_of(this->roles)), std::string(::tpy::repr_of(this->metadata)), std::string(::tpy::repr_of(this->nested_map)), ::tpy::tuple_to_str(this->coord), std::string(::tpy::repr_of(this->backup_role)), std::string(::tpy::repr_of(this->alt_address)), std::string(::tpy::repr_of(this->email)));
 }
 
 inline Profile Profile::from_json(std::string_view __s) {

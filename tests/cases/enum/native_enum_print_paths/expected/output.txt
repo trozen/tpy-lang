@@ -4,4 +4,4 @@ Color.Blue
 Color.Red
 Color.Red
 None
-[Color.Red, Color.Green, Color.Blue]
+[<Color.Red: 10>, <Color.Green: 20>, <Color.Blue: 30>]

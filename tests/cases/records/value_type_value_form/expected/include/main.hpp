@@ -255,7 +255,7 @@ struct Coord {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Coord& obj) {
-    ::tpy::print_object_default(os, "Coord", obj);
+    ::tpy::print_object_default(os, Coord::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -281,7 +281,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T>::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -305,7 +305,7 @@ struct Segment {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
-    ::tpy::print_object_default(os, "Segment", obj);
+    ::tpy::print_object_default(os, Segment::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -329,7 +329,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -361,7 +361,7 @@ struct Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
-    ::tpy::print_object_default(os, "Noisy", obj);
+    ::tpy::print_object_default(os, Noisy::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -389,7 +389,7 @@ struct Calm {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Calm& obj) {
-    ::tpy::print_object_default(os, "Calm", obj);
+    ::tpy::print_object_default(os, Calm::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -412,7 +412,7 @@ struct Cell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell<T>::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -435,7 +435,7 @@ struct Gauge {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Gauge<T>& obj) {
-    ::tpy::print_object_default(os, "Gauge", obj);
+    ::tpy::print_object_default(os, Gauge<T>::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -489,7 +489,7 @@ struct NoArgs {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoArgs& obj) {
-    ::tpy::print_object_default(os, "NoArgs", obj);
+    ::tpy::print_object_default(os, NoArgs::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -513,7 +513,7 @@ struct KW {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KW& obj) {
-    ::tpy::print_object_default(os, "KW", obj);
+    ::tpy::print_object_default(os, KW::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -534,7 +534,7 @@ struct Grid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
-    ::tpy::print_object_default(os, "Grid", obj);
+    ::tpy::print_object_default(os, Grid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -552,7 +552,7 @@ struct Measured {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Measured& obj) {
-    ::tpy::print_object_default(os, "Measured", obj);
+    ::tpy::print_object_default(os, Measured::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -630,7 +630,7 @@ struct Text {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Text& obj) {
-    ::tpy::print_object_default(os, "Text", obj);
+    ::tpy::print_object_default(os, Text::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -649,7 +649,7 @@ struct TagBase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TagBase& obj) {
-    ::tpy::print_object_default(os, "TagBase", obj);
+    ::tpy::print_object_default(os, TagBase::__tpy_class_name__, obj);
     return os;
 }
 
@@ -667,7 +667,7 @@ struct Wrapped {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapped& obj) {
-    ::tpy::print_object_default(os, "Wrapped", obj);
+    ::tpy::print_object_default(os, Wrapped::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -694,7 +694,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -710,7 +710,7 @@ struct Frame {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Frame& obj) {
-    ::tpy::print_object_default(os, "Frame", obj);
+    ::tpy::print_object_default(os, Frame::__tpy_class_name__, obj);
     return os;
 }
 
@@ -736,7 +736,7 @@ struct Walker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
-    ::tpy::print_object_default(os, "Walker", obj);
+    ::tpy::print_object_default(os, Walker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -753,7 +753,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -764,7 +764,7 @@ struct Bad : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
-    ::tpy::print_object_default(os, "Bad", obj);
+    ::tpy::print_object_default(os, Bad::__tpy_class_name__, obj);
     return os;
 }
 
@@ -780,7 +780,7 @@ struct Label {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
-    ::tpy::print_object_default(os, "Label", obj);
+    ::tpy::print_object_default(os, Label::__tpy_class_name__, obj);
     return os;
 }
 
@@ -793,7 +793,7 @@ struct NoisyChild : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoisyChild& obj) {
-    ::tpy::print_object_default(os, "NoisyChild", obj);
+    ::tpy::print_object_default(os, NoisyChild::__tpy_class_name__, obj);
     return os;
 }
 
@@ -805,7 +805,7 @@ struct NoisyHeir : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoisyHeir& obj) {
-    ::tpy::print_object_default(os, "NoisyHeir", obj);
+    ::tpy::print_object_default(os, NoisyHeir::__tpy_class_name__, obj);
     return os;
 }
 
@@ -817,7 +817,7 @@ struct NoisyValueHeir : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoisyValueHeir& obj) {
-    ::tpy::print_object_default(os, "NoisyValueHeir", obj);
+    ::tpy::print_object_default(os, NoisyValueHeir::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -837,7 +837,7 @@ struct RH : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RH& obj) {
-    ::tpy::print_object_default(os, "RH", obj);
+    ::tpy::print_object_default(os, RH::__tpy_class_name__, obj);
     return os;
 }
 
@@ -852,7 +852,7 @@ struct DVH : Noisy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DVH& obj) {
-    ::tpy::print_object_default(os, "DVH", obj);
+    ::tpy::print_object_default(os, DVH::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -874,7 +874,7 @@ struct RVH : Calm {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RVH& obj) {
-    ::tpy::print_object_default(os, "RVH", obj);
+    ::tpy::print_object_default(os, RVH::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -892,7 +892,7 @@ struct IntCell : Cell<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntCell& obj) {
-    ::tpy::print_object_default(os, "IntCell", obj);
+    ::tpy::print_object_default(os, IntCell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -908,7 +908,7 @@ struct TagChild : TagBase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TagChild& obj) {
-    ::tpy::print_object_default(os, "TagChild", obj);
+    ::tpy::print_object_default(os, TagChild::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1582,7 +1582,7 @@ inline bool Outer::__eq__(Outer other) const {
 }
 
 inline std::string Outer::__repr__() const {
-    return std::format("Outer(z={}, k={})", ::tpy::repr_of(this->z), ::tpy::repr_of(this->k));
+    return std::format("Outer(z={}, k={})", std::string(::tpy::repr_of(this->z)), std::string(::tpy::repr_of(this->k)));
 }
 
 // def __init__(self) -> None:
@@ -1626,7 +1626,7 @@ inline bool Settings::__eq__(Settings other) const {
 }
 
 inline std::string Settings::__repr__() const {
-    return std::format("Settings(a={}, b={})", ::tpy::repr_of(this->a), ::tpy::repr_of(this->b));
+    return std::format("Settings(a={}, b={})", std::string(::tpy::repr_of(this->a)), std::string(::tpy::repr_of(this->b)));
 }
 
 inline Crate::Crate(Noisy z) : z(std::move(z)) {}
@@ -1636,7 +1636,7 @@ inline bool Crate::__eq__(const Crate& other) const {
 }
 
 inline std::string Crate::__repr__() const {
-    return std::format("Crate(z={})", ::tpy::repr_of(this->z));
+    return std::format("Crate(z={})", std::string(::tpy::repr_of(this->z)));
 }
 
 // def __init__(self, s: str = "abcdefghijklmnopqrstuvwxyz0123456789") -> None:
@@ -1750,9 +1750,15 @@ struct CalmTree {
 
     bool operator==(const CalmTree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const CalmTree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

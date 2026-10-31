@@ -27,7 +27,7 @@ struct Limits {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {
-    ::tpy::print_object_default(os, "Limits", obj);
+    ::tpy::print_object_default(os, Limits::__tpy_class_name__, obj);
     return os;
 }
 

@@ -43,7 +43,7 @@ struct Widths {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widths& obj) {
-    ::tpy::print_object_default(os, "Widths", obj);
+    ::tpy::print_object_default(os, Widths::__tpy_class_name__, obj);
     return os;
 }
 

@@ -47,7 +47,7 @@ struct IntListIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListIter& obj) {
-    ::tpy::print_object_default(os, "IntListIter", obj);
+    ::tpy::print_object_default(os, IntListIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct IntList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
-    ::tpy::print_object_default(os, "IntList", obj);
+    ::tpy::print_object_default(os, IntList::__tpy_class_name__, obj);
     return os;
 }
 

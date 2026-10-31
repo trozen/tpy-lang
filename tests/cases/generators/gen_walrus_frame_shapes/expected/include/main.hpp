@@ -72,7 +72,7 @@ struct Node {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    ::tpy::print_object_default(os, "Node", obj);
+    ::tpy::print_object_default(os, Node::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +92,7 @@ struct Boom : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
-    ::tpy::print_object_default(os, "Boom", obj);
+    ::tpy::print_object_default(os, Boom::__tpy_class_name__, obj);
     return os;
 }
 
@@ -110,7 +110,7 @@ struct Src {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
-    ::tpy::print_object_default(os, "Src", obj);
+    ::tpy::print_object_default(os, Src::__tpy_class_name__, obj);
     return os;
 }
 

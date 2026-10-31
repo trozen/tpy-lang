@@ -161,7 +161,7 @@ struct Dog : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -177,7 +177,7 @@ struct Cat : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -193,7 +193,7 @@ struct Bird {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
-    ::tpy::print_object_default(os, "Bird", obj);
+    ::tpy::print_object_default(os, Bird::__tpy_class_name__, obj);
     return os;
 }
 
@@ -206,7 +206,7 @@ struct Animal : Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-    ::tpy::print_object_default(os, "Animal", obj);
+    ::tpy::print_object_default(os, Animal::__tpy_class_name__, obj);
     return os;
 }
 
@@ -219,7 +219,7 @@ struct Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
-    ::tpy::print_object_default(os, "Shape", obj);
+    ::tpy::print_object_default(os, Shape::__tpy_class_name__, obj);
     return os;
 }
 
@@ -235,7 +235,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -251,7 +251,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -269,7 +269,7 @@ struct Shelf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
-    ::tpy::print_object_default(os, "Shelf", obj);
+    ::tpy::print_object_default(os, Shelf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -285,7 +285,7 @@ struct Probe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
-    ::tpy::print_object_default(os, "Probe", obj);
+    ::tpy::print_object_default(os, Probe::__tpy_class_name__, obj);
     return os;
 }
 
@@ -304,7 +304,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -315,7 +315,7 @@ struct Missing : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
-    ::tpy::print_object_default(os, "Missing", obj);
+    ::tpy::print_object_default(os, Missing::__tpy_class_name__, obj);
     return os;
 }
 
@@ -338,7 +338,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -355,7 +355,7 @@ struct Hound : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hound& obj) {
-    ::tpy::print_object_default(os, "Hound", obj);
+    ::tpy::print_object_default(os, Hound::__tpy_class_name__, obj);
     return os;
 }
 
@@ -368,7 +368,7 @@ struct Wolf : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wolf& obj) {
-    ::tpy::print_object_default(os, "Wolf", obj);
+    ::tpy::print_object_default(os, Wolf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -381,7 +381,7 @@ struct Square : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-    ::tpy::print_object_default(os, "Square", obj);
+    ::tpy::print_object_default(os, Square::__tpy_class_name__, obj);
     return os;
 }
 
@@ -742,9 +742,15 @@ struct Tree {
 
     bool operator==(const Tree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

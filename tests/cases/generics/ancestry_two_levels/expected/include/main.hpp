@@ -51,7 +51,7 @@ struct G {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const G<T>& obj) {
-    ::tpy::print_object_default(os, "G", obj);
+    ::tpy::print_object_default(os, G<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct Mixin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mixin& obj) {
-    ::tpy::print_object_default(os, "Mixin", obj);
+    ::tpy::print_object_default(os, Mixin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -81,7 +81,7 @@ struct H : G<std::vector<W>> {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const H<W>& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct K : H<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct M : K, Mixin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const M& obj) {
-    ::tpy::print_object_default(os, "M", obj);
+    ::tpy::print_object_default(os, M::__tpy_class_name__, obj);
     return os;
 }
 

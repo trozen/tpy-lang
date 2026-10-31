@@ -87,7 +87,7 @@ struct Worker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
-    ::tpy::print_object_default(os, "Worker", obj);
+    ::tpy::print_object_default(os, Worker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct Gate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
-    ::tpy::print_object_default(os, "Gate", obj);
+    ::tpy::print_object_default(os, Gate::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct MarkerError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MarkerError& obj) {
-    ::tpy::print_object_default(os, "MarkerError", obj);
+    ::tpy::print_object_default(os, MarkerError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -147,7 +147,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 

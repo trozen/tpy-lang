@@ -25,7 +25,7 @@ struct RateLimiter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RateLimiter& obj) {
-    ::tpy::print_object_default(os, "RateLimiter", obj);
+    ::tpy::print_object_default(os, RateLimiter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -38,7 +38,7 @@ struct CacheStats {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CacheStats& obj) {
-    ::tpy::print_object_default(os, "CacheStats", obj);
+    ::tpy::print_object_default(os, CacheStats::__tpy_class_name__, obj);
     return os;
 }
 
@@ -60,7 +60,7 @@ struct Service : RateLimiter, CacheStats {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
-    ::tpy::print_object_default(os, "Service", obj);
+    ::tpy::print_object_default(os, Service::__tpy_class_name__, obj);
     return os;
 }
 

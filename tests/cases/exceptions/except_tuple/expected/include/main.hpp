@@ -42,7 +42,7 @@ struct AErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AErr& obj) {
-    ::tpy::print_object_default(os, "AErr", obj);
+    ::tpy::print_object_default(os, AErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct BErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BErr& obj) {
-    ::tpy::print_object_default(os, "BErr", obj);
+    ::tpy::print_object_default(os, BErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -78,7 +78,7 @@ struct CErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CErr& obj) {
-    ::tpy::print_object_default(os, "CErr", obj);
+    ::tpy::print_object_default(os, CErr::__tpy_class_name__, obj);
     return os;
 }
 

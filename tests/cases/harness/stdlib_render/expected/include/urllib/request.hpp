@@ -53,7 +53,7 @@ struct URLError : ::tpy::OSError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const URLError& obj) {
-    ::tpy::print_object_default(os, "URLError", obj);
+    ::tpy::print_object_default(os, URLError::__tpy_class_name__, obj);
     return os;
 }
 

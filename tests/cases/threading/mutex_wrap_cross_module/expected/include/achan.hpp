@@ -45,7 +45,7 @@ struct Cell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Chan {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Chan<T>& obj) {
-    ::tpy::print_object_default(os, "Chan", obj);
+    ::tpy::print_object_default(os, Chan<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Producer {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Producer<T>& obj) {
-    ::tpy::print_object_default(os, "Producer", obj);
+    ::tpy::print_object_default(os, Producer<T>::__tpy_class_name__, obj);
     return os;
 }
 

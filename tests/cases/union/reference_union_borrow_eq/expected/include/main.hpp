@@ -87,7 +87,7 @@ struct Boom : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
-    ::tpy::print_object_default(os, "Boom", obj);
+    ::tpy::print_object_default(os, Boom::__tpy_class_name__, obj);
     return os;
 }
 
@@ -104,7 +104,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -155,7 +155,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -206,7 +206,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -236,7 +236,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -259,7 +259,7 @@ struct Mark {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mark& obj) {
-    ::tpy::print_object_default(os, "Mark", obj);
+    ::tpy::print_object_default(os, Mark::__tpy_class_name__, obj);
     return os;
 }
 
@@ -282,7 +282,7 @@ struct OnlyNe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OnlyNe& obj) {
-    ::tpy::print_object_default(os, "OnlyNe", obj);
+    ::tpy::print_object_default(os, OnlyNe::__tpy_class_name__, obj);
     return os;
 }
 
@@ -298,7 +298,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -314,7 +314,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 
@@ -343,7 +343,7 @@ struct Locked {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Locked& obj) {
-    ::tpy::print_object_default(os, "Locked", obj);
+    ::tpy::print_object_default(os, Locked::__tpy_class_name__, obj);
     return os;
 }
 
@@ -372,7 +372,7 @@ struct Sealed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sealed& obj) {
-    ::tpy::print_object_default(os, "Sealed", obj);
+    ::tpy::print_object_default(os, Sealed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -397,7 +397,7 @@ struct Shelter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
-    ::tpy::print_object_default(os, "Shelter", obj);
+    ::tpy::print_object_default(os, Shelter::__tpy_class_name__, obj);
     return os;
 }
 

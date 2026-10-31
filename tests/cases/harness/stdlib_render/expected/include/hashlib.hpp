@@ -59,7 +59,7 @@ struct SHA256 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
-    ::tpy::print_object_default(os, "SHA256", obj);
+    ::tpy::print_object_default(os, SHA256::__tpy_class_name__, obj);
     return os;
 }
 

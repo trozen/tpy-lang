@@ -46,7 +46,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -73,7 +73,7 @@ struct _OwnPair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _OwnPair& obj) {
-    ::tpy::print_object_default(os, "_OwnPair", obj);
+    ::tpy::print_object_default(os, _OwnPair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct _ValPair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _ValPair& obj) {
-    ::tpy::print_object_default(os, "_ValPair", obj);
+    ::tpy::print_object_default(os, _ValPair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +121,7 @@ struct _RefPair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _RefPair& obj) {
-    ::tpy::print_object_default(os, "_RefPair", obj);
+    ::tpy::print_object_default(os, _RefPair::__tpy_class_name__, obj);
     return os;
 }
 

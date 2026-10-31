@@ -16,6 +16,7 @@ enum class BadEnum : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::BadEnum> {
     static constexpr std::string_view type_name = "BadEnum";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::BadEnum e);
     static const std::array<::tpyapp::main::BadEnum, 1> members;
     static ::tpyapp::main::BadEnum from_value(int32_t v);
@@ -26,7 +27,7 @@ struct tpy::EnumUtil<::tpyapp::main::BadEnum> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, BadEnum __e) {
-    return __os << "BadEnum." << ::tpy::EnumUtil<BadEnum>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Holder;
@@ -64,7 +65,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +81,7 @@ struct BadDoc : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadDoc& obj) {
-    ::tpy::print_object_default(os, "BadDoc", obj);
+    ::tpy::print_object_default(os, BadDoc::__tpy_class_name__, obj);
     return os;
 }
 

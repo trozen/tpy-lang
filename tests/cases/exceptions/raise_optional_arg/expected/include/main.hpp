@@ -30,7 +30,7 @@ struct MyErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
-    ::tpy::print_object_default(os, "MyErr", obj);
+    ::tpy::print_object_default(os, MyErr::__tpy_class_name__, obj);
     return os;
 }
 

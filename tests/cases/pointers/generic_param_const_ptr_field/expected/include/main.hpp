@@ -38,7 +38,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct RWView {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const RWView<W>& obj) {
-    ::tpy::print_object_default(os, "RWView", obj);
+    ::tpy::print_object_default(os, RWView<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +80,7 @@ struct ROView {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const ROView<W>& obj) {
-    ::tpy::print_object_default(os, "ROView", obj);
+    ::tpy::print_object_default(os, ROView<W>::__tpy_class_name__, obj);
     return os;
 }
 

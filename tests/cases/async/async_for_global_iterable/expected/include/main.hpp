@@ -39,7 +39,7 @@ struct AIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AIter& obj) {
-    ::tpy::print_object_default(os, "AIter", obj);
+    ::tpy::print_object_default(os, AIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct Source {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
-    ::tpy::print_object_default(os, "Source", obj);
+    ::tpy::print_object_default(os, Source::__tpy_class_name__, obj);
     return os;
 }
 

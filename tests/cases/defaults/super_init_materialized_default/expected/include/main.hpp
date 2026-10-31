@@ -29,7 +29,7 @@ struct Fixed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
-    ::tpy::print_object_default(os, "Fixed", obj);
+    ::tpy::print_object_default(os, Fixed::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -51,7 +51,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct Sub : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -79,7 +79,7 @@ struct Passing : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Passing& obj) {
-    ::tpy::print_object_default(os, "Passing", obj);
+    ::tpy::print_object_default(os, Passing::__tpy_class_name__, obj);
     return os;
 }
 

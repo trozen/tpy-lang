@@ -19,7 +19,7 @@ def len(obj: Sized, /) -> int32: ...
 
 @pure
 @readonly
-@cpp_template("::tpy::repr_of({0})")
+@cpp_template("std::string(::tpy::repr_of({0}))")
 def repr(obj: Representable, /) -> str: ...
 
 

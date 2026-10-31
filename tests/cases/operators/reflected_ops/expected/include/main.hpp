@@ -41,7 +41,7 @@ struct Dur {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dur& obj) {
-    ::tpy::print_object_default(os, "Dur", obj);
+    ::tpy::print_object_default(os, Dur::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -70,7 +70,7 @@ struct Flags {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Flags& obj) {
-    ::tpy::print_object_default(os, "Flags", obj);
+    ::tpy::print_object_default(os, Flags::__tpy_class_name__, obj);
     return os;
 }
 

@@ -39,7 +39,7 @@ struct Window {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Window& obj) {
-    ::tpy::print_object_default(os, "Window", obj);
+    ::tpy::print_object_default(os, Window::__tpy_class_name__, obj);
     return os;
 }
 

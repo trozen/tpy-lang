@@ -39,7 +39,7 @@ struct BaseAIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseAIter& obj) {
-    ::tpy::print_object_default(os, "BaseAIter", obj);
+    ::tpy::print_object_default(os, BaseAIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct DerivedAIter : BaseAIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DerivedAIter& obj) {
-    ::tpy::print_object_default(os, "DerivedAIter", obj);
+    ::tpy::print_object_default(os, DerivedAIter::__tpy_class_name__, obj);
     return os;
 }
 

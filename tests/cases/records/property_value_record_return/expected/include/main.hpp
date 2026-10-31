@@ -36,7 +36,7 @@ struct Coord {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Coord& obj) {
-    ::tpy::print_object_default(os, "Coord", obj);
+    ::tpy::print_object_default(os, Coord::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -70,7 +70,7 @@ struct Track {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Track& obj) {
-    ::tpy::print_object_default(os, "Track", obj);
+    ::tpy::print_object_default(os, Track::__tpy_class_name__, obj);
     return os;
 }
 

@@ -46,7 +46,7 @@ struct Gate {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
-    ::tpy::print_object_default(os, "Gate", obj);
+    ::tpy::print_object_default(os, Gate::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct Steps {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Steps& obj) {
-    ::tpy::print_object_default(os, "Steps", obj);
+    ::tpy::print_object_default(os, Steps::__tpy_class_name__, obj);
     return os;
 }
 
@@ -91,7 +91,7 @@ struct Source {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
-    ::tpy::print_object_default(os, "Source", obj);
+    ::tpy::print_object_default(os, Source::__tpy_class_name__, obj);
     return os;
 }
 

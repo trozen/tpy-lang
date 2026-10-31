@@ -58,13 +58,13 @@ void main() {
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-8)));
     std::cout << aware.astimezone(__tmp_6) << "\n" << ::tpy::check_signals;
     std::cout << aware.astimezone() << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(aware.astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(aware.astimezone())) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = ::tpystd::datetime::UTC;
     std::cout << n.astimezone(__tmp_7) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(n.astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(n.astimezone())) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime w = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
-    std::cout << ::tpy::repr_of(w.astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(w.astimezone())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((w.astimezone().timestamp() == w.timestamp())) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ::tpystd::datetime::UTC;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};

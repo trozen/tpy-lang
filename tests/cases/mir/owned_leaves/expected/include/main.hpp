@@ -183,7 +183,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -201,7 +201,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -217,7 +217,7 @@ struct BigP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BigP& obj) {
-    ::tpy::print_object_default(os, "BigP", obj);
+    ::tpy::print_object_default(os, BigP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -233,7 +233,7 @@ struct ViewP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViewP& obj) {
-    ::tpy::print_object_default(os, "ViewP", obj);
+    ::tpy::print_object_default(os, ViewP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -256,7 +256,7 @@ struct Gauge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
-    ::tpy::print_object_default(os, "Gauge", obj);
+    ::tpy::print_object_default(os, Gauge::__tpy_class_name__, obj);
     return os;
 }
 

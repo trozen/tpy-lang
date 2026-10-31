@@ -30,7 +30,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -65,7 +65,7 @@ struct Pool {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Pool<T, N>& obj) {
-    ::tpy::print_object_default(os, "Pool", obj);
+    ::tpy::print_object_default(os, Pool<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -88,7 +88,7 @@ struct Tagged {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    ::tpy::print_object_default(os, Tagged::__tpy_class_name__, obj);
     return os;
 }
 

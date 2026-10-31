@@ -93,7 +93,7 @@ struct _OwnedMatchData {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _OwnedMatchData& obj) {
-    ::tpy::print_object_default(os, "_OwnedMatchData", obj);
+    ::tpy::print_object_default(os, _OwnedMatchData::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct error : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const error& obj) {
-    ::tpy::print_object_default(os, "error", obj);
+    ::tpy::print_object_default(os, error::__tpy_class_name__, obj);
     return os;
 }
 
@@ -141,7 +141,7 @@ struct _OwnedCode {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _OwnedCode& obj) {
-    ::tpy::print_object_default(os, "_OwnedCode", obj);
+    ::tpy::print_object_default(os, _OwnedCode::__tpy_class_name__, obj);
     return os;
 }
 
@@ -169,7 +169,7 @@ struct _OwnedMatchContext {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _OwnedMatchContext& obj) {
-    ::tpy::print_object_default(os, "_OwnedMatchContext", obj);
+    ::tpy::print_object_default(os, _OwnedMatchContext::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +212,7 @@ struct Match {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Match& obj) {
-    ::tpy::print_object_default(os, "Match", obj);
+    ::tpy::print_object_default(os, Match::__tpy_class_name__, obj);
     return os;
 }
 
@@ -266,7 +266,7 @@ struct Pattern {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pattern& obj) {
-    ::tpy::print_object_default(os, "Pattern", obj);
+    ::tpy::print_object_default(os, Pattern::__tpy_class_name__, obj);
     return os;
 }
 

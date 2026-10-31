@@ -24,7 +24,7 @@ struct Far {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Far& obj) {
-    ::tpy::print_object_default(os, "Far", obj);
+    ::tpy::print_object_default(os, Far::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::other

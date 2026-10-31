@@ -20,7 +20,7 @@ struct FrameType {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FrameType& obj) {
-    ::tpy::print_object_default(os, "FrameType", obj);
+    ::tpy::print_object_default(os, FrameType::__tpy_class_name__, obj);
     return os;
 }
 

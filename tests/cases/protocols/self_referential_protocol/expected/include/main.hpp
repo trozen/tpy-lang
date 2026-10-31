@@ -75,7 +75,7 @@ struct Meters {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Meters& obj) {
-    ::tpy::print_object_default(os, "Meters", obj);
+    ::tpy::print_object_default(os, Meters::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -103,7 +103,7 @@ struct Num {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Num& obj) {
-    ::tpy::print_object_default(os, "Num", obj);
+    ::tpy::print_object_default(os, Num::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -125,7 +125,7 @@ struct Ping {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ping& obj) {
-    ::tpy::print_object_default(os, "Ping", obj);
+    ::tpy::print_object_default(os, Ping::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -150,7 +150,7 @@ struct Pong {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pong& obj) {
-    ::tpy::print_object_default(os, "Pong", obj);
+    ::tpy::print_object_default(os, Pong::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

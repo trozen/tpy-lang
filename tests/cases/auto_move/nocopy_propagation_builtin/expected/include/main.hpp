@@ -39,7 +39,7 @@ struct Storage {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
-    ::tpy::print_object_default(os, "Storage", obj);
+    ::tpy::print_object_default(os, Storage::__tpy_class_name__, obj);
     return os;
 }
 

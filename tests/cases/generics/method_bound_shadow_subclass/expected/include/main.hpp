@@ -42,7 +42,7 @@ struct Bag {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T, N>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -54,7 +54,7 @@ struct IntBag : Bag<int32_t, 4> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBag& obj) {
-    ::tpy::print_object_default(os, "IntBag", obj);
+    ::tpy::print_object_default(os, IntBag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct WideBag : Bag<U, 8> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const WideBag<U>& obj) {
-    ::tpy::print_object_default(os, "WideBag", obj);
+    ::tpy::print_object_default(os, WideBag<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +80,7 @@ struct DeepBag : IntBag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DeepBag& obj) {
-    ::tpy::print_object_default(os, "DeepBag", obj);
+    ::tpy::print_object_default(os, DeepBag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct WiderBag : WideBag<std::tuple<V, V>> {
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const WiderBag<V>& obj) {
-    ::tpy::print_object_default(os, "WiderBag", obj);
+    ::tpy::print_object_default(os, WiderBag<V>::__tpy_class_name__, obj);
     return os;
 }
 

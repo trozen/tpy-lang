@@ -33,7 +33,7 @@ struct SimpleIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleIter& obj) {
-    ::tpy::print_object_default(os, "SimpleIter", obj);
+    ::tpy::print_object_default(os, SimpleIter::__tpy_class_name__, obj);
     return os;
 }
 

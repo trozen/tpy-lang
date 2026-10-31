@@ -40,7 +40,7 @@ struct OptPair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptPair& obj) {
-    ::tpy::print_object_default(os, "OptPair", obj);
+    ::tpy::print_object_default(os, OptPair::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -64,7 +64,7 @@ struct Keeper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
-    ::tpy::print_object_default(os, "Keeper", obj);
+    ::tpy::print_object_default(os, Keeper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Slot {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Slot<T>& obj) {
-    ::tpy::print_object_default(os, "Slot", obj);
+    ::tpy::print_object_default(os, Slot<T>::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

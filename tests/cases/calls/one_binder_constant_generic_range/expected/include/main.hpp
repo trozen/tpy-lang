@@ -45,7 +45,7 @@ struct Wide {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Wide<N>& obj) {
-    ::tpy::print_object_default(os, "Wide", obj);
+    ::tpy::print_object_default(os, Wide<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct Wide64 {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Wide64<N>& obj) {
-    ::tpy::print_object_default(os, "Wide64", obj);
+    ::tpy::print_object_default(os, Wide64<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -77,7 +77,7 @@ struct Unsigned {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Unsigned<N>& obj) {
-    ::tpy::print_object_default(os, "Unsigned", obj);
+    ::tpy::print_object_default(os, Unsigned<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -93,7 +93,7 @@ struct Narrow {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Narrow<N>& obj) {
-    ::tpy::print_object_default(os, "Narrow", obj);
+    ::tpy::print_object_default(os, Narrow<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct Sizes {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Sizes<N>& obj) {
-    ::tpy::print_object_default(os, "Sizes", obj);
+    ::tpy::print_object_default(os, Sizes<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct Passes {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Passes<N>& obj) {
-    ::tpy::print_object_default(os, "Passes", obj);
+    ::tpy::print_object_default(os, Passes<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -141,7 +141,7 @@ struct Floats {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Floats<N>& obj) {
-    ::tpy::print_object_default(os, "Floats", obj);
+    ::tpy::print_object_default(os, Floats<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -157,7 +157,7 @@ struct Built {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Built<N>& obj) {
-    ::tpy::print_object_default(os, "Built", obj);
+    ::tpy::print_object_default(os, Built<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -177,7 +177,7 @@ struct Pair {
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<A, B>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -193,7 +193,7 @@ struct Edge {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Edge<N>& obj) {
-    ::tpy::print_object_default(os, "Edge", obj);
+    ::tpy::print_object_default(os, Edge<N>::__tpy_class_name__, obj);
     return os;
 }
 

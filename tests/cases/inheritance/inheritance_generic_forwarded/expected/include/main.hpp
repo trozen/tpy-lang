@@ -30,7 +30,7 @@ struct Container {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+    ::tpy::print_object_default(os, Container<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct Wrapper : Container<T> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper<T>::__tpy_class_name__, obj);
     return os;
 }
 

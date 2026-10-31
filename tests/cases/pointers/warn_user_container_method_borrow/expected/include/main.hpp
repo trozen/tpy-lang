@@ -37,7 +37,7 @@ struct NumberList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
-    ::tpy::print_object_default(os, "NumberList", obj);
+    ::tpy::print_object_default(os, NumberList::__tpy_class_name__, obj);
     return os;
 }
 

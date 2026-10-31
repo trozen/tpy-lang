@@ -64,7 +64,7 @@ struct Loader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Loader& obj) {
-    ::tpy::print_object_default(os, "Loader", obj);
+    ::tpy::print_object_default(os, Loader::__tpy_class_name__, obj);
     return os;
 }
 

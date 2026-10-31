@@ -104,7 +104,7 @@ void main() {
     std::cout << "f32" << " " << ::tpy::float_to_str(static_cast<double>(f)) << " " << std::format("{}", ::tpy::float_to_str(static_cast<double>(f))) << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show<float>(f);
     ::tpyapp::main::show<double>(y);
-    std::cout << "spec" << " " << std::format("{:.3f}", y) << " " << ::tpy::repr_of(y) << "\n" << ::tpy::check_signals;
+    std::cout << "spec" << " " << std::format("{:.3f}", y) << " " << std::string(::tpy::repr_of(y)) << "\n" << ::tpy::check_signals;
 }
 
 // import math

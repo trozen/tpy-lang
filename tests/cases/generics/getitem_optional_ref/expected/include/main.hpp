@@ -31,7 +31,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -87,7 +87,7 @@ struct GenBox {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const GenBox<K, V>& obj) {
-    ::tpy::print_object_default(os, "GenBox", obj);
+    ::tpy::print_object_default(os, GenBox<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -99,7 +99,7 @@ struct SubBox : GenBox<int32_t, Rec> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubBox& obj) {
-    ::tpy::print_object_default(os, "SubBox", obj);
+    ::tpy::print_object_default(os, SubBox::__tpy_class_name__, obj);
     return os;
 }
 

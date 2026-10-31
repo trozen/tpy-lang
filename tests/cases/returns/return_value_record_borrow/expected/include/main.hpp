@@ -91,7 +91,7 @@ struct D {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const D& obj) {
-    ::tpy::print_object_default(os, "D", obj);
+    ::tpy::print_object_default(os, D::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -113,7 +113,7 @@ struct E {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+    ::tpy::print_object_default(os, E::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -139,7 +139,7 @@ inline bool F::__eq__(F other) const {
 }
 
 inline std::string F::__repr__() const {
-    return std::format("F(k={})", ::tpy::repr_of(this->k));
+    return std::format("F(k={})", std::string(::tpy::repr_of(this->k)));
 }
 
 inline uint64_t F::__hash__() const {

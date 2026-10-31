@@ -78,7 +78,7 @@ struct _RcCell : _RcCellBase {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const _RcCell<U>& obj) {
-    ::tpy::print_object_default(os, "_RcCell", obj);
+    ::tpy::print_object_default(os, _RcCell<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -250,7 +250,7 @@ struct Weak {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Weak<T>& obj) {
-    ::tpy::print_object_default(os, "Weak", obj);
+    ::tpy::print_object_default(os, Weak<T>::__tpy_class_name__, obj);
     return os;
 }
 

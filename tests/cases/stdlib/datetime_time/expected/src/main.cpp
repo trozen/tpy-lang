@@ -54,13 +54,13 @@ void main() {
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5));
     std::cout << t.isoformat() << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(t)) << "\n" << ::tpy::check_signals;
     std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::time() << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time()) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::time())) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(9)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(400000)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(3))))) << "\n" << ::tpy::check_signals;

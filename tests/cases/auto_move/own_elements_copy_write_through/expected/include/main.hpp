@@ -70,7 +70,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -104,7 +104,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -126,7 +126,7 @@ struct Each {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Each& obj) {
-    ::tpy::print_object_default(os, "Each", obj);
+    ::tpy::print_object_default(os, Each::__tpy_class_name__, obj);
     return os;
 }
 
@@ -142,7 +142,7 @@ struct GEach {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const GEach<U>& obj) {
-    ::tpy::print_object_default(os, "GEach", obj);
+    ::tpy::print_object_default(os, GEach<U>::__tpy_class_name__, obj);
     return os;
 }
 

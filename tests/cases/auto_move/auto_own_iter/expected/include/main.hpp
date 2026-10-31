@@ -31,7 +31,7 @@ struct Stack {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
-    ::tpy::print_object_default(os, "Stack", obj);
+    ::tpy::print_object_default(os, Stack::__tpy_class_name__, obj);
     return os;
 }
 

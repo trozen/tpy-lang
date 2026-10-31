@@ -71,8 +71,8 @@ std::string label(::ns::E e) {
 //     print(e.value)
 void main() {
     ::ns::E e = ::ns::E::A;
-    std::cout << ::tpy::__repr__(e) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::__repr__(::ns::E::B) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(e) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(::ns::E::B) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::label(e) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::label(::ns::E::B) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::EnumUtil<::ns::E>::name(e) << "\n" << ::tpy::check_signals;

@@ -1987,7 +1987,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.neg",                     # IntEnum `-x` -> `(-static_cast<U>(x))`
     "enum.value",                   # `.value` -> `static_cast<U>(x)`
     "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
-    "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
+    "enum.str_print",               # @native enum print arg -> `::tpy::__str__`
     # F-string per-arg rows (the wrap table; witnessed during local
     # classification and again at lowering -- non-vacuity only needs a
     # nonzero count).

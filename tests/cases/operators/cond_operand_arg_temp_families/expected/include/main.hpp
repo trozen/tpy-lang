@@ -109,9 +109,15 @@ struct Tree {
 
     bool operator==(const Tree&) const requires std::equality_comparable<variant_type> = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 
@@ -130,7 +136,7 @@ struct Circle : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    ::tpy::print_object_default(os, "Circle", obj);
+    ::tpy::print_object_default(os, Circle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -146,7 +152,7 @@ struct Neg {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {
-    ::tpy::print_object_default(os, "Neg", obj);
+    ::tpy::print_object_default(os, Neg::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +170,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -183,7 +189,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -199,7 +205,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -217,7 +223,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -233,7 +239,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -261,7 +267,7 @@ struct Ref {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
-    ::tpy::print_object_default(os, "Ref", obj);
+    ::tpy::print_object_default(os, Ref::__tpy_class_name__, obj);
     return os;
 }
 
@@ -413,9 +419,15 @@ struct Value {
 
     bool operator==(const Value&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Value& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

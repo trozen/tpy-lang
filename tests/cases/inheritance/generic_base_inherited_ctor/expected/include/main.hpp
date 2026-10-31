@@ -32,7 +32,7 @@ struct Base {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Base<N>& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base<N>::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -56,7 +56,7 @@ struct Typed {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Typed<T>& obj) {
-    ::tpy::print_object_default(os, "Typed", obj);
+    ::tpy::print_object_default(os, Typed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct Sub : Base<14> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
-    ::tpy::print_object_default(os, "Sub", obj);
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +80,7 @@ struct TypedI : Typed<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TypedI& obj) {
-    ::tpy::print_object_default(os, "TypedI", obj);
+    ::tpy::print_object_default(os, TypedI::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct TypedM : Typed<M> {
 
 template<typename M>
 inline std::ostream& operator<<(std::ostream& os, const TypedM<M>& obj) {
-    ::tpy::print_object_default(os, "TypedM", obj);
+    ::tpy::print_object_default(os, TypedM<M>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +106,7 @@ struct SubSub : Sub {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubSub& obj) {
-    ::tpy::print_object_default(os, "SubSub", obj);
+    ::tpy::print_object_default(os, SubSub::__tpy_class_name__, obj);
     return os;
 }
 

@@ -30,7 +30,7 @@ struct Bag {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -48,7 +48,7 @@ struct Cell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct Keyed {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Keyed<T>& obj) {
-    ::tpy::print_object_default(os, "Keyed", obj);
+    ::tpy::print_object_default(os, Keyed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -86,7 +86,7 @@ struct Mat {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Mat<T, N>& obj) {
-    ::tpy::print_object_default(os, "Mat", obj);
+    ::tpy::print_object_default(os, Mat<T, N>::__tpy_class_name__, obj);
     return os;
 }
 

@@ -48,7 +48,7 @@ struct Event : Eventful {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Event& obj) {
-    ::tpy::print_object_default(os, "Event", obj);
+    ::tpy::print_object_default(os, Event::__tpy_class_name__, obj);
     return os;
 }
 
@@ -69,7 +69,7 @@ struct ClickEvent : Event {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ClickEvent& obj) {
-    ::tpy::print_object_default(os, "ClickEvent", obj);
+    ::tpy::print_object_default(os, ClickEvent::__tpy_class_name__, obj);
     return os;
 }
 

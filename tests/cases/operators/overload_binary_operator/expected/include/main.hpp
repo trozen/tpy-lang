@@ -34,7 +34,7 @@ struct Delta {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Delta& obj) {
-    ::tpy::print_object_default(os, "Delta", obj);
+    ::tpy::print_object_default(os, Delta::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -81,7 +81,7 @@ struct Day {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Day& obj) {
-    ::tpy::print_object_default(os, "Day", obj);
+    ::tpy::print_object_default(os, Day::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

@@ -62,7 +62,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    ::tpy::print_object_default(os, "Key", obj);
+    ::tpy::print_object_default(os, Key::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -98,7 +98,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -140,7 +140,7 @@ struct Edge {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
-    ::tpy::print_object_default(os, "Edge", obj);
+    ::tpy::print_object_default(os, Edge::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

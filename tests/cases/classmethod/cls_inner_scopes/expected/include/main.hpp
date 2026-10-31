@@ -31,7 +31,7 @@ struct Totals {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Totals& obj) {
-    ::tpy::print_object_default(os, "Totals", obj);
+    ::tpy::print_object_default(os, Totals::__tpy_class_name__, obj);
     return os;
 }
 

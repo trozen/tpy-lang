@@ -38,7 +38,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -59,7 +59,7 @@ struct Adder {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const Adder<W>& obj) {
-    ::tpy::print_object_default(os, "Adder", obj);
+    ::tpy::print_object_default(os, Adder<W>::__tpy_class_name__, obj);
     return os;
 }
 

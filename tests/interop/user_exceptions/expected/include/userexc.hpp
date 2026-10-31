@@ -32,7 +32,7 @@ struct NotFound : ::tpy::KeyError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    ::tpy::print_object_default(os, "NotFound", obj);
+    ::tpy::print_object_default(os, NotFound::__tpy_class_name__, obj);
     return os;
 }
 
@@ -48,7 +48,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -64,7 +64,7 @@ struct FatalError : ::tpy::BaseException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FatalError& obj) {
-    ::tpy::print_object_default(os, "FatalError", obj);
+    ::tpy::print_object_default(os, FatalError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -80,7 +80,7 @@ struct ConfigError : AppError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ConfigError& obj) {
-    ::tpy::print_object_default(os, "ConfigError", obj);
+    ::tpy::print_object_default(os, ConfigError::__tpy_class_name__, obj);
     return os;
 }
 

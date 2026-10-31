@@ -55,7 +55,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -79,7 +79,7 @@ struct Guard {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Guard<T>& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +106,7 @@ struct Counter {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -120,7 +120,7 @@ struct IntBox : Box<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Mid : Box<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const Mid<U>& obj) {
-    ::tpy::print_object_default(os, "Mid", obj);
+    ::tpy::print_object_default(os, Mid<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -150,7 +150,7 @@ struct IntGuard : Guard<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntGuard& obj) {
-    ::tpy::print_object_default(os, "IntGuard", obj);
+    ::tpy::print_object_default(os, IntGuard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -164,7 +164,7 @@ struct IntCounter : Counter<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
-    ::tpy::print_object_default(os, "IntCounter", obj);
+    ::tpy::print_object_default(os, IntCounter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -178,7 +178,7 @@ struct Leaf : Mid<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
-    ::tpy::print_object_default(os, "Leaf", obj);
+    ::tpy::print_object_default(os, Leaf::__tpy_class_name__, obj);
     return os;
 }
 

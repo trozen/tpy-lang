@@ -15,11 +15,11 @@ namespace tpyapp::main {
 //     print(repr(b))
 void main() {
     Foo f = Foo(::tpy::BigInt(1));
-    std::string s = ::tpy::repr_of(f);
+    std::string s = std::string(::tpy::repr_of(f));
     std::cout << ::tpy::print_bool(::tpy::str_startswith(s, "<Foo object at 0x")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::str_endswith(s, ">")) << "\n" << ::tpy::check_signals;
     Bar b = Bar(::tpy::BigInt(42));
-    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

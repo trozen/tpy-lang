@@ -26,7 +26,7 @@ struct Trade {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Trade& obj) {
-    ::tpy::print_object_default(os, "Trade", obj);
+    ::tpy::print_object_default(os, Trade::__tpy_class_name__, obj);
     return os;
 }
 

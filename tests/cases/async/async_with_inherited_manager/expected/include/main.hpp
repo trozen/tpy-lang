@@ -39,7 +39,7 @@ struct BaseCM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseCM& obj) {
-    ::tpy::print_object_default(os, "BaseCM", obj);
+    ::tpy::print_object_default(os, BaseCM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -51,7 +51,7 @@ struct DerivedCM : BaseCM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DerivedCM& obj) {
-    ::tpy::print_object_default(os, "DerivedCM", obj);
+    ::tpy::print_object_default(os, DerivedCM::__tpy_class_name__, obj);
     return os;
 }
 

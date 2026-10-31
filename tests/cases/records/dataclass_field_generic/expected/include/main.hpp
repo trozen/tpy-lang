@@ -37,7 +37,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -77,7 +77,7 @@ inline bool Wrapper::__eq__(const Wrapper& other) const {
 }
 
 inline std::string Wrapper::__repr__() const {
-    return std::format("Wrapper(name={}, pair={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pair));
+    return std::format("Wrapper(name={}, pair={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->pair)));
 }
 
 // def __init__(self, first: T = T(), second: T = T()) -> None:

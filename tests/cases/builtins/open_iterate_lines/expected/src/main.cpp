@@ -267,7 +267,7 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::string_view line = *__beg_0;
-            std::cout << "for:" << " " << ::tpy::repr_of(line) << "\n" << ::tpy::check_signals;
+            std::cout << "for:" << " " << std::string(::tpy::repr_of(line)) << "\n" << ::tpy::check_signals;
         }
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -357,7 +357,7 @@ void main() {
                 const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_4);
                 int32_t i = std::get<0>(__for_tup_0);
                 std::string_view line = std::get<1>(__for_tup_0);
-                std::cout << "enumerate:" << " " << i << " " << ::tpy::repr_of(line) << "\n" << ::tpy::check_signals;
+                std::cout << "enumerate:" << " " << i << " " << std::string(::tpy::repr_of(line)) << "\n" << ::tpy::check_signals;
             }
         }
         goto __with_exit_8;
@@ -441,7 +441,7 @@ void main() {
                 }
             }
         }
-        std::cout << "resume_after_enumerate:" << " " << ::tpy::repr_of(fh->readline()) << "\n" << ::tpy::check_signals;
+        std::cout << "resume_after_enumerate:" << " " << std::string(::tpy::repr_of(fh->readline())) << "\n" << ::tpy::check_signals;
         goto __with_exit_12;
     } catch (::tpy::BaseException& __exc_12) {
         __ctx_12.__exit__({}, &__exc_12, {});
@@ -481,7 +481,7 @@ void main() {
     auto __ctx_14 = ::tpy::builtin_open("t.txt");
     fh = &(__ctx_14.__enter__());
     try {
-        std::cout << "any:" << " " << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_2((*fh)))) << " " << ::tpy::repr_of(fh->readline()) << "\n" << ::tpy::check_signals;
+        std::cout << "any:" << " " << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_2((*fh)))) << " " << std::string(::tpy::repr_of(fh->readline())) << "\n" << ::tpy::check_signals;
         goto __with_exit_14;
     } catch (::tpy::BaseException& __exc_14) {
         __ctx_14.__exit__({}, &__exc_14, {});

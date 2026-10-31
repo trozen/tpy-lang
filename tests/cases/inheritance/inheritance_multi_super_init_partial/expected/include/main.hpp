@@ -34,7 +34,7 @@ struct HasInitA {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasInitA& obj) {
-    ::tpy::print_object_default(os, "HasInitA", obj);
+    ::tpy::print_object_default(os, HasInitA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -50,7 +50,7 @@ struct HasInitB {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasInitB& obj) {
-    ::tpy::print_object_default(os, "HasInitB", obj);
+    ::tpy::print_object_default(os, HasInitB::__tpy_class_name__, obj);
     return os;
 }
 
@@ -66,7 +66,7 @@ struct Root {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
-    ::tpy::print_object_default(os, "Root", obj);
+    ::tpy::print_object_default(os, Root::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Side {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Side& obj) {
-    ::tpy::print_object_default(os, "Side", obj);
+    ::tpy::print_object_default(os, Side::__tpy_class_name__, obj);
     return os;
 }
 
@@ -96,7 +96,7 @@ struct Combined : HasInitA, HasInitB {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
-    ::tpy::print_object_default(os, "Combined", obj);
+    ::tpy::print_object_default(os, Combined::__tpy_class_name__, obj);
     return os;
 }
 
@@ -108,7 +108,7 @@ struct Lane : Root {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lane& obj) {
-    ::tpy::print_object_default(os, "Lane", obj);
+    ::tpy::print_object_default(os, Lane::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +121,7 @@ struct ViaSuper : Lane, Side {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViaSuper& obj) {
-    ::tpy::print_object_default(os, "ViaSuper", obj);
+    ::tpy::print_object_default(os, ViaSuper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct ViaLane : Lane, Side {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViaLane& obj) {
-    ::tpy::print_object_default(os, "ViaLane", obj);
+    ::tpy::print_object_default(os, ViaLane::__tpy_class_name__, obj);
     return os;
 }
 
@@ -147,7 +147,7 @@ struct ViaRoot : Side, Lane {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ViaRoot& obj) {
-    ::tpy::print_object_default(os, "ViaRoot", obj);
+    ::tpy::print_object_default(os, ViaRoot::__tpy_class_name__, obj);
     return os;
 }
 

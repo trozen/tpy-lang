@@ -23,7 +23,7 @@ struct NoInitMixin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoInitMixin& obj) {
-    ::tpy::print_object_default(os, "NoInitMixin", obj);
+    ::tpy::print_object_default(os, NoInitMixin::__tpy_class_name__, obj);
     return os;
 }
 
@@ -39,7 +39,7 @@ struct HasInit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasInit& obj) {
-    ::tpy::print_object_default(os, "HasInit", obj);
+    ::tpy::print_object_default(os, HasInit::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct C : NoInitMixin, HasInit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 

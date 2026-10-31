@@ -34,7 +34,7 @@ struct Vec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec& obj) {
-    ::tpy::print_object_default(os, "Vec", obj);
+    ::tpy::print_object_default(os, Vec::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -59,7 +59,7 @@ struct Circle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    ::tpy::print_object_default(os, "Circle", obj);
+    ::tpy::print_object_default(os, Circle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -79,7 +79,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

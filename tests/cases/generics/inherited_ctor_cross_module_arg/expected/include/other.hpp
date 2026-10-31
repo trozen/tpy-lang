@@ -29,7 +29,7 @@ struct Key {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
-    ::tpy::print_object_default(os, "Key", obj);
+    ::tpy::print_object_default(os, Key::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::other

@@ -31,7 +31,7 @@ struct Combined : ::tpyapp::bases::Counter, ::tpyapp::bases::Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
-    ::tpy::print_object_default(os, "Combined", obj);
+    ::tpy::print_object_default(os, Combined::__tpy_class_name__, obj);
     return os;
 }
 

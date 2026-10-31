@@ -37,7 +37,7 @@ struct State {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const State& obj) {
-    ::tpy::print_object_default(os, "State", obj);
+    ::tpy::print_object_default(os, State::__tpy_class_name__, obj);
     return os;
 }
 
@@ -60,7 +60,7 @@ struct Shared {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shared& obj) {
-    ::tpy::print_object_default(os, "Shared", obj);
+    ::tpy::print_object_default(os, Shared::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ struct Notifier {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
-    ::tpy::print_object_default(os, "Notifier", obj);
+    ::tpy::print_object_default(os, Notifier::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct Task {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
-    ::tpy::print_object_default(os, "Task", obj);
+    ::tpy::print_object_default(os, Task::__tpy_class_name__, obj);
     return os;
 }
 

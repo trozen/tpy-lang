@@ -30,7 +30,7 @@ struct Field {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Field& obj) {
-    ::tpy::print_object_default(os, "Field", obj);
+    ::tpy::print_object_default(os, Field::__tpy_class_name__, obj);
     return os;
 }
 

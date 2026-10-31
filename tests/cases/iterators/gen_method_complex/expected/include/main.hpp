@@ -38,7 +38,7 @@ struct Range {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Range& obj) {
-    ::tpy::print_object_default(os, "Range", obj);
+    ::tpy::print_object_default(os, Range::__tpy_class_name__, obj);
     return os;
 }
 

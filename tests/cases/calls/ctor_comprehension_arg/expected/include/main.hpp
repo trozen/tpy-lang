@@ -74,7 +74,7 @@ struct Flat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
-    ::tpy::print_object_default(os, "Flat", obj);
+    ::tpy::print_object_default(os, Flat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -90,7 +90,7 @@ struct Grow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grow& obj) {
-    ::tpy::print_object_default(os, "Grow", obj);
+    ::tpy::print_object_default(os, Grow::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct Keep {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Keep& obj) {
-    ::tpy::print_object_default(os, "Keep", obj);
+    ::tpy::print_object_default(os, Keep::__tpy_class_name__, obj);
     return os;
 }
 
@@ -125,7 +125,7 @@ struct Tally {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-    ::tpy::print_object_default(os, "Tally", obj);
+    ::tpy::print_object_default(os, Tally::__tpy_class_name__, obj);
     return os;
 }
 
@@ -142,7 +142,7 @@ struct CM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
-    ::tpy::print_object_default(os, "CM", obj);
+    ::tpy::print_object_default(os, CM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct MyErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
-    ::tpy::print_object_default(os, "MyErr", obj);
+    ::tpy::print_object_default(os, MyErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -172,7 +172,7 @@ struct Site {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Site& obj) {
-    ::tpy::print_object_default(os, "Site", obj);
+    ::tpy::print_object_default(os, Site::__tpy_class_name__, obj);
     return os;
 }
 

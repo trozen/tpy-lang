@@ -48,7 +48,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -67,7 +67,7 @@ struct Box {
 
 template<std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Box<N>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -83,7 +83,7 @@ struct Small {
 
 template<std::size_t M>
 inline std::ostream& operator<<(std::ostream& os, const Small<M>& obj) {
-    ::tpy::print_object_default(os, "Small", obj);
+    ::tpy::print_object_default(os, Small<M>::__tpy_class_name__, obj);
     return os;
 }
 

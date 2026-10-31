@@ -39,7 +39,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct PtrHolder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PtrHolder& obj) {
-    ::tpy::print_object_default(os, "PtrHolder", obj);
+    ::tpy::print_object_default(os, PtrHolder::__tpy_class_name__, obj);
     return os;
 }
 

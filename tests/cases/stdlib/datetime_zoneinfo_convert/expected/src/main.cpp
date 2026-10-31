@@ -53,7 +53,7 @@ void main() {
     ::tpystd::datetime::datetime second = datetime::fromtimestamp(1698543000.0, __tmp_2);
     std::cout << first << " " << first.fold() << "\n" << ::tpy::check_signals;
     std::cout << second << " " << second.fold() << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(second) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(second)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(first.timestamp()) << " " << ::tpy::print_float(second.timestamp()) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime nfirst = datetime::fromtimestamp(1698539400.0);
     ::tpystd::datetime::datetime nsecond = datetime::fromtimestamp(1698543000.0);

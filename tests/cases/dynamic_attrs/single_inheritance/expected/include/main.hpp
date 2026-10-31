@@ -30,7 +30,7 @@ struct Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
-    ::tpy::print_object_default(os, "Parent", obj);
+    ::tpy::print_object_default(os, Parent::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct Child : Parent {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 

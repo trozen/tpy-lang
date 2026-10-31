@@ -85,7 +85,7 @@ struct Vec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec& obj) {
-    ::tpy::print_object_default(os, "Vec", obj);
+    ::tpy::print_object_default(os, Vec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct Segment {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
-    ::tpy::print_object_default(os, "Segment", obj);
+    ::tpy::print_object_default(os, Segment::__tpy_class_name__, obj);
     return os;
 }
 

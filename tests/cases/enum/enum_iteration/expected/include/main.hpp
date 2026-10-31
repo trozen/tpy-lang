@@ -24,6 +24,7 @@ enum class Status : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 3> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -34,6 +35,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Status> {
     static constexpr std::string_view type_name = "Status";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Status e);
     static const std::array<::tpyapp::main::Status, 3> members;
     static ::tpyapp::main::Status from_value(int32_t v);
@@ -44,11 +46,11 @@ struct tpy::EnumUtil<::tpyapp::main::Status> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Status __e) {
-    return __os << "Status." << ::tpy::EnumUtil<Status>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

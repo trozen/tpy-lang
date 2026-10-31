@@ -17,6 +17,7 @@ enum class Level : int8_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Level> {
     static constexpr std::string_view type_name = "Level";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Level e);
     static const std::array<::tpyapp::main::Level, 2> members;
     static ::tpyapp::main::Level from_value(int8_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::main::Level> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Level __e) {
-    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Ctx;
@@ -87,7 +88,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 

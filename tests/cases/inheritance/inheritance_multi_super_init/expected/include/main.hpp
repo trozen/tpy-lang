@@ -31,7 +31,7 @@ struct Named {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
-    ::tpy::print_object_default(os, "Counted", obj);
+    ::tpy::print_object_default(os, Counted::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct Widget : Named, Counted {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
-    ::tpy::print_object_default(os, "Widget", obj);
+    ::tpy::print_object_default(os, Widget::__tpy_class_name__, obj);
     return os;
 }
 

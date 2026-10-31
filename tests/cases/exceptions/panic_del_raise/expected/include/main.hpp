@@ -33,7 +33,7 @@ struct Fussy {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fussy& obj) {
-    ::tpy::print_object_default(os, "Fussy", obj);
+    ::tpy::print_object_default(os, Fussy::__tpy_class_name__, obj);
     return os;
 }
 

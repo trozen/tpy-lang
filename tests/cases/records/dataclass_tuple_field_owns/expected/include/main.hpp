@@ -323,7 +323,7 @@ inline bool P::__eq__(const P& other) const {
 }
 
 inline std::string P::__repr__() const {
-    return std::format("P(n={})", ::tpy::repr_of(this->n));
+    return std::format("P(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline H::H(std::tuple<P, P> pair) : pair(std::move(pair)) {}
@@ -412,7 +412,7 @@ inline bool Q::__eq__(const Q& other) const {
 }
 
 inline std::string Q::__repr__() const {
-    return std::format("Q(n={})", ::tpy::repr_of(this->n));
+    return std::format("Q(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline O::O(std::tuple<std::optional<P>, int32_t> pair) : pair(std::move(pair)) {}

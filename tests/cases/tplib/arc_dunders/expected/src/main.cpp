@@ -41,7 +41,7 @@ void main() {
     std::cout << ::tpy::print_bool(((c) > (a))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(c)) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.arc import Arc

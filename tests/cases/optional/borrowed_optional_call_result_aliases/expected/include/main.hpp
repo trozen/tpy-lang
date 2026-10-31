@@ -106,7 +106,7 @@ struct NotFound : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    ::tpy::print_object_default(os, "NotFound", obj);
+    ::tpy::print_object_default(os, NotFound::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +121,7 @@ struct R {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const R& obj) {
-    ::tpy::print_object_default(os, "R", obj);
+    ::tpy::print_object_default(os, R::__tpy_class_name__, obj);
     return os;
 }
 
@@ -137,7 +137,7 @@ struct S {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const S& obj) {
-    ::tpy::print_object_default(os, "S", obj);
+    ::tpy::print_object_default(os, S::__tpy_class_name__, obj);
     return os;
 }
 
@@ -167,7 +167,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -184,7 +184,7 @@ struct K {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const K& obj) {
-    ::tpy::print_object_default(os, "K", obj);
+    ::tpy::print_object_default(os, K::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct C {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C::__tpy_class_name__, obj);
     return os;
 }
 
@@ -217,7 +217,7 @@ struct Cm {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cm& obj) {
-    ::tpy::print_object_default(os, "Cm", obj);
+    ::tpy::print_object_default(os, Cm::__tpy_class_name__, obj);
     return os;
 }
 

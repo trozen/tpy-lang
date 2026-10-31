@@ -26,7 +26,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    ::tpy::print_object_default(os, "Registry", obj);
+    ::tpy::print_object_default(os, Registry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -48,7 +48,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 

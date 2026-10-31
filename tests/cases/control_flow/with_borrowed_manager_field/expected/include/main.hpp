@@ -32,7 +32,7 @@ struct Mgr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mgr& obj) {
-    ::tpy::print_object_default(os, "Mgr", obj);
+    ::tpy::print_object_default(os, Mgr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    ::tpy::print_object_default(os, "Owner", obj);
+    ::tpy::print_object_default(os, Owner::__tpy_class_name__, obj);
     return os;
 }
 

@@ -74,7 +74,7 @@ inline bool M::__eq__(const M& other) const {
 }
 
 inline std::string M::__repr__() const {
-    return std::format("M(n={})", ::tpy::repr_of(this->n));
+    return std::format("M(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline M M::from_json(std::string_view __s) {

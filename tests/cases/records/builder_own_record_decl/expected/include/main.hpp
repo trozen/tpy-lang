@@ -38,7 +38,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -57,7 +57,7 @@ struct Builder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
-    ::tpy::print_object_default(os, "Builder", obj);
+    ::tpy::print_object_default(os, Builder::__tpy_class_name__, obj);
     return os;
 }
 

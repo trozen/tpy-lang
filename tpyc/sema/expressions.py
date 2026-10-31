@@ -69,7 +69,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
     is_basic_slice_type, is_slice_type,
     int_traits_of,
-    is_enum_type, is_int_enum_type, enum_info_of,
+    is_enum_type, is_int_enum_type, enum_info_of, is_value_text_enum_type,
     find_factory_by_simple_name, protocol_info_of,
     type_def_of, is_borrowing_view_type,
 )
@@ -7197,10 +7197,11 @@ class ExpressionAnalyzer:
     @staticmethod
     def _is_formattable(t: TpyType) -> bool:
         """True for the scalars an f-string formats directly, which keep
-        their own format-spec meaning (the rest format their str() text)."""
+        their own format-spec meaning (the rest format their str() text).
+        An IntEnum formats as its int; any other enum formats its str()."""
         return (is_numeric_type(t) or is_char_type(t) or is_any_str_type(t)
                 or isinstance(t, (IntLiteralType, FloatLiteralType))
-                or is_enum_type(t))
+                or is_value_text_enum_type(t))
 
     def _fstring_parts(self, t: TpyType) -> 'list[TpyType] | None':
         """The types an f-string slot of type `t` renders: a union, an
@@ -7253,6 +7254,8 @@ class ExpressionAnalyzer:
             return False  # a Ptr to an open T (`_fstring_parts`)
         if container_to_str_template(t) is not None or isinstance(t, AnyType):
             return True
+        if is_enum_type(t):
+            return True  # the runtime's EnumUtil text, str and repr alike
         if repr_only:
             if self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE):
                 return True
@@ -7345,7 +7348,8 @@ class ExpressionAnalyzer:
                 f"Format spec ':{spec}' cannot apply to text: {reason}"
                 " (only fill, alignment, width, precision and 's' format"
                 " a str() / repr() text)", part.expr)
-        if part.conversion == FSTRING_CONV_NONE:
+        # Enum.__format__ formats the str() text, so TPy's text agrees.
+        if part.conversion == FSTRING_CONV_NONE and not is_enum_type(resolved):
             self.ctx.warning(
                 f"format spec on {shown} pads its str() text; CPython passes"
                 f" it to the value's __format__ (write {{v!s:{spec}}} to"

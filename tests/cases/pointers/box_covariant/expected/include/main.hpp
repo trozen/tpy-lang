@@ -57,7 +57,7 @@ struct Circle : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-    ::tpy::print_object_default(os, "Circle", obj);
+    ::tpy::print_object_default(os, Circle::__tpy_class_name__, obj);
     return os;
 }
 
@@ -76,7 +76,7 @@ struct Square : Shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-    ::tpy::print_object_default(os, "Square", obj);
+    ::tpy::print_object_default(os, Square::__tpy_class_name__, obj);
     return os;
 }
 

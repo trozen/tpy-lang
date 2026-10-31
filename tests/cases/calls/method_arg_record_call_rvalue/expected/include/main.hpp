@@ -40,7 +40,7 @@ struct V3 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const V3& obj) {
-    ::tpy::print_object_default(os, "V3", obj);
+    ::tpy::print_object_default(os, V3::__tpy_class_name__, obj);
     return os;
 }
 

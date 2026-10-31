@@ -824,7 +824,7 @@ std::string datetime::__repr__() const {
     }
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = this->tzinfo();
     if ((!std::holds_alternative<std::monostate>(tz))) {
-        s += std::format(", tzinfo={}", ::tpy::repr_of(tz));
+        s += std::format(", tzinfo={}", std::string(::tpy::repr_of(tz)));
     }
     return (::tpy::str_concat(s, ")"));
 }

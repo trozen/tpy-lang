@@ -199,7 +199,7 @@ struct _SignalScope {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SignalScope& obj) {
-    ::tpy::print_object_default(os, "_SignalScope", obj);
+    ::tpy::print_object_default(os, _SignalScope::__tpy_class_name__, obj);
     return os;
 }
 
@@ -231,7 +231,7 @@ struct _SockRecv {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SockRecv& obj) {
-    ::tpy::print_object_default(os, "_SockRecv", obj);
+    ::tpy::print_object_default(os, _SockRecv::__tpy_class_name__, obj);
     return os;
 }
 
@@ -265,7 +265,7 @@ struct _SockSendAll {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SockSendAll& obj) {
-    ::tpy::print_object_default(os, "_SockSendAll", obj);
+    ::tpy::print_object_default(os, _SockSendAll::__tpy_class_name__, obj);
     return os;
 }
 
@@ -296,7 +296,7 @@ struct _SockAccept {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SockAccept& obj) {
-    ::tpy::print_object_default(os, "_SockAccept", obj);
+    ::tpy::print_object_default(os, _SockAccept::__tpy_class_name__, obj);
     return os;
 }
 
@@ -330,7 +330,7 @@ struct _SockConnect {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _SockConnect& obj) {
-    ::tpy::print_object_default(os, "_SockConnect", obj);
+    ::tpy::print_object_default(os, _SockConnect::__tpy_class_name__, obj);
     return os;
 }
 
@@ -358,7 +358,7 @@ struct SleepFuture {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SleepFuture& obj) {
-    ::tpy::print_object_default(os, "SleepFuture", obj);
+    ::tpy::print_object_default(os, SleepFuture::__tpy_class_name__, obj);
     return os;
 }
 
@@ -400,7 +400,7 @@ struct _WaitForFuture {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _WaitForFuture<T>& obj) {
-    ::tpy::print_object_default(os, "_WaitForFuture", obj);
+    ::tpy::print_object_default(os, _WaitForFuture<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -447,7 +447,7 @@ struct _GatherFuture {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _GatherFuture<T>& obj) {
-    ::tpy::print_object_default(os, "_GatherFuture", obj);
+    ::tpy::print_object_default(os, _GatherFuture<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -472,7 +472,7 @@ struct Settled {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Settled<T>& obj) {
-    ::tpy::print_object_default(os, "Settled", obj);
+    ::tpy::print_object_default(os, Settled<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -516,7 +516,7 @@ struct _GatherSettledFuture {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const _GatherSettledFuture<T>& obj) {
-    ::tpy::print_object_default(os, "_GatherSettledFuture", obj);
+    ::tpy::print_object_default(os, _GatherSettledFuture<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -532,7 +532,7 @@ struct InvalidStateError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const InvalidStateError& obj) {
-    ::tpy::print_object_default(os, "InvalidStateError", obj);
+    ::tpy::print_object_default(os, InvalidStateError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -583,7 +583,7 @@ struct Future {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Future<T>& obj) {
-    ::tpy::print_object_default(os, "Future", obj);
+    ::tpy::print_object_default(os, Future<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -621,7 +621,7 @@ struct Event {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Event& obj) {
-    ::tpy::print_object_default(os, "Event", obj);
+    ::tpy::print_object_default(os, Event::__tpy_class_name__, obj);
     return os;
 }
 
@@ -668,7 +668,7 @@ struct _WaitQueue {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _WaitQueue& obj) {
-    ::tpy::print_object_default(os, "_WaitQueue", obj);
+    ::tpy::print_object_default(os, _WaitQueue::__tpy_class_name__, obj);
     return os;
 }
 
@@ -707,7 +707,7 @@ struct _PrimitiveWait {
 
 template<typename P>
 inline std::ostream& operator<<(std::ostream& os, const _PrimitiveWait<P>& obj) {
-    ::tpy::print_object_default(os, "_PrimitiveWait", obj);
+    ::tpy::print_object_default(os, _PrimitiveWait<P>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -748,7 +748,7 @@ struct Lock {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lock& obj) {
-    ::tpy::print_object_default(os, "Lock", obj);
+    ::tpy::print_object_default(os, Lock::__tpy_class_name__, obj);
     return os;
 }
 
@@ -791,7 +791,7 @@ struct Semaphore {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Semaphore& obj) {
-    ::tpy::print_object_default(os, "Semaphore", obj);
+    ::tpy::print_object_default(os, Semaphore::__tpy_class_name__, obj);
     return os;
 }
 
@@ -807,7 +807,7 @@ struct QueueEmpty : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const QueueEmpty& obj) {
-    ::tpy::print_object_default(os, "QueueEmpty", obj);
+    ::tpy::print_object_default(os, QueueEmpty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -823,7 +823,7 @@ struct QueueFull : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const QueueFull& obj) {
-    ::tpy::print_object_default(os, "QueueFull", obj);
+    ::tpy::print_object_default(os, QueueFull::__tpy_class_name__, obj);
     return os;
 }
 
@@ -886,7 +886,7 @@ struct Queue {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Queue<T>& obj) {
-    ::tpy::print_object_default(os, "Queue", obj);
+    ::tpy::print_object_default(os, Queue<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -913,7 +913,7 @@ struct EventLoop {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const EventLoop& obj) {
-    ::tpy::print_object_default(os, "EventLoop", obj);
+    ::tpy::print_object_default(os, EventLoop::__tpy_class_name__, obj);
     return os;
 }
 
@@ -935,7 +935,7 @@ struct IncompleteReadError : ::tpy::EOFError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IncompleteReadError& obj) {
-    ::tpy::print_object_default(os, "IncompleteReadError", obj);
+    ::tpy::print_object_default(os, IncompleteReadError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -976,7 +976,7 @@ struct StreamReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StreamReader& obj) {
-    ::tpy::print_object_default(os, "StreamReader", obj);
+    ::tpy::print_object_default(os, StreamReader::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1014,7 +1014,7 @@ struct StreamWriter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StreamWriter& obj) {
-    ::tpy::print_object_default(os, "StreamWriter", obj);
+    ::tpy::print_object_default(os, StreamWriter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1047,7 +1047,7 @@ struct _ServerSockets {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _ServerSockets& obj) {
-    ::tpy::print_object_default(os, "_ServerSockets", obj);
+    ::tpy::print_object_default(os, _ServerSockets::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1084,7 +1084,7 @@ struct Server {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Server& obj) {
-    ::tpy::print_object_default(os, "Server", obj);
+    ::tpy::print_object_default(os, Server::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1102,7 +1102,7 @@ struct BoundedSemaphore : Semaphore {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BoundedSemaphore& obj) {
-    ::tpy::print_object_default(os, "BoundedSemaphore", obj);
+    ::tpy::print_object_default(os, BoundedSemaphore::__tpy_class_name__, obj);
     return os;
 }
 

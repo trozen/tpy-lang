@@ -66,7 +66,7 @@ struct ParseError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    ::tpy::print_object_default(os, "ParseError", obj);
+    ::tpy::print_object_default(os, ParseError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Cat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct Dog {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 

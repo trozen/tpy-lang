@@ -55,7 +55,7 @@ struct Carrier : ::tpy::Exception, Shows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Carrier& obj) {
-    ::tpy::print_object_default(os, "Carrier", obj);
+    ::tpy::print_object_default(os, Carrier::__tpy_class_name__, obj);
     return os;
 }
 
@@ -88,13 +88,13 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Outer::Pair<T, U>& obj) {
-    ::tpy::print_object_default(os, "Outer.Pair", obj);
+    ::tpy::print_object_default(os, Outer::Pair<T, U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -122,7 +122,7 @@ struct Pair : Carrier {
 
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T, U>::__tpy_class_name__, obj);
     return os;
 }
 

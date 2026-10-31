@@ -33,7 +33,7 @@ struct ReadyAwaitable {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ReadyAwaitable& obj) {
-    ::tpy::print_object_default(os, "ReadyAwaitable", obj);
+    ::tpy::print_object_default(os, ReadyAwaitable::__tpy_class_name__, obj);
     return os;
 }
 

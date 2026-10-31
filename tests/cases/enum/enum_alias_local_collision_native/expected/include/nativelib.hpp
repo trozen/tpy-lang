@@ -14,6 +14,7 @@ namespace tpyapp::nativelib {
 template<>
 struct tpy::EnumUtil<::lib::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::lib::Color e);
     static const std::array<::lib::Color, 2> members;
     static ::lib::Color from_value(int32_t v);

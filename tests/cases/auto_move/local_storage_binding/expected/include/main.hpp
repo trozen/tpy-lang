@@ -98,7 +98,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct Item {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    ::tpy::print_object_default(os, "Item", obj);
+    ::tpy::print_object_default(os, Item::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct Wrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    ::tpy::print_object_default(os, "Wrapper", obj);
+    ::tpy::print_object_default(os, Wrapper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct MoveWrapper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MoveWrapper& obj) {
-    ::tpy::print_object_default(os, "MoveWrapper", obj);
+    ::tpy::print_object_default(os, MoveWrapper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -169,7 +169,7 @@ struct Manager {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Manager& obj) {
-    ::tpy::print_object_default(os, "Manager", obj);
+    ::tpy::print_object_default(os, Manager::__tpy_class_name__, obj);
     return os;
 }
 
@@ -180,7 +180,7 @@ struct Failure : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Failure& obj) {
-    ::tpy::print_object_default(os, "Failure", obj);
+    ::tpy::print_object_default(os, Failure::__tpy_class_name__, obj);
     return os;
 }
 
@@ -203,7 +203,7 @@ struct Runner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
-    ::tpy::print_object_default(os, "Runner", obj);
+    ::tpy::print_object_default(os, Runner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -224,7 +224,7 @@ struct StoredCell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StoredCell& obj) {
-    ::tpy::print_object_default(os, "StoredCell", obj);
+    ::tpy::print_object_default(os, StoredCell::__tpy_class_name__, obj);
     return os;
 }
 

@@ -36,7 +36,7 @@ struct Push {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Push& obj) {
-    ::tpy::print_object_default(os, "Push", obj);
+    ::tpy::print_object_default(os, Push::__tpy_class_name__, obj);
     return os;
 }
 
@@ -52,7 +52,7 @@ struct Emit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Emit& obj) {
-    ::tpy::print_object_default(os, "Emit", obj);
+    ::tpy::print_object_default(os, Emit::__tpy_class_name__, obj);
     return os;
 }
 

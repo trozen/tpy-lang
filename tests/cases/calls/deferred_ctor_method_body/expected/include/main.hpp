@@ -69,7 +69,7 @@ struct Wipe {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wipe<T>& obj) {
-    ::tpy::print_object_default(os, "Wipe", obj);
+    ::tpy::print_object_default(os, Wipe<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +106,7 @@ struct Clear {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Clear<T>& obj) {
-    ::tpy::print_object_default(os, "Clear", obj);
+    ::tpy::print_object_default(os, Clear<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -129,7 +129,7 @@ struct Self2 {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Self2<T>& obj) {
-    ::tpy::print_object_default(os, "Self2", obj);
+    ::tpy::print_object_default(os, Self2<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +212,7 @@ struct Plain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 

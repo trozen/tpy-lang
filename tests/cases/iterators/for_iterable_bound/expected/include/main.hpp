@@ -37,7 +37,7 @@ struct RangeIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
-    ::tpy::print_object_default(os, "RangeIter", obj);
+    ::tpy::print_object_default(os, RangeIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct MyRange {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
-    ::tpy::print_object_default(os, "MyRange", obj);
+    ::tpy::print_object_default(os, MyRange::__tpy_class_name__, obj);
     return os;
 }
 

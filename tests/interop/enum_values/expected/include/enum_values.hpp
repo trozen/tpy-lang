@@ -28,6 +28,7 @@ enum class Big : uint64_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::enum_values::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::enum_values::Color e);
     static const std::array<::tpyapp::enum_values::Color, 3> members;
     static ::tpyapp::enum_values::Color from_value(int32_t v);
@@ -38,6 +39,7 @@ struct tpy::EnumUtil<::tpyapp::enum_values::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::enum_values::Shape> {
     static constexpr std::string_view type_name = "Shape";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::enum_values::Shape e);
     static const std::array<::tpyapp::enum_values::Shape, 2> members;
     static ::tpyapp::enum_values::Shape from_value(int32_t v);
@@ -48,6 +50,7 @@ struct tpy::EnumUtil<::tpyapp::enum_values::Shape> {
 template<>
 struct tpy::EnumUtil<::tpyapp::enum_values::Big> {
     static constexpr std::string_view type_name = "Big";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::enum_values::Big e);
     static const std::array<::tpyapp::enum_values::Big, 2> members;
     static ::tpyapp::enum_values::Big from_value(uint64_t v);
@@ -58,15 +61,15 @@ struct tpy::EnumUtil<::tpyapp::enum_values::Big> {
 namespace tpyapp::enum_values {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Shape __e) {
-    return __os << "Shape." << ::tpy::EnumUtil<Shape>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Big __e) {
-    return __os << "Big." << ::tpy::EnumUtil<Big>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Toggle;
@@ -90,7 +93,7 @@ struct Toggle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Toggle& obj) {
-    ::tpy::print_object_default(os, "Toggle", obj);
+    ::tpy::print_object_default(os, Toggle::__tpy_class_name__, obj);
     return os;
 }
 

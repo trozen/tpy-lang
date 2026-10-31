@@ -53,7 +53,7 @@ struct Mixed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mixed& obj) {
-    ::tpy::print_object_default(os, "Mixed", obj);
+    ::tpy::print_object_default(os, Mixed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -96,7 +96,7 @@ struct Narrow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Narrow& obj) {
-    ::tpy::print_object_default(os, "Narrow", obj);
+    ::tpy::print_object_default(os, Narrow::__tpy_class_name__, obj);
     return os;
 }
 
@@ -139,7 +139,7 @@ struct NarrowKey {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NarrowKey& obj) {
-    ::tpy::print_object_default(os, "NarrowKey", obj);
+    ::tpy::print_object_default(os, NarrowKey::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct Twins {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Twins& obj) {
-    ::tpy::print_object_default(os, "Twins", obj);
+    ::tpy::print_object_default(os, Twins::__tpy_class_name__, obj);
     return os;
 }
 

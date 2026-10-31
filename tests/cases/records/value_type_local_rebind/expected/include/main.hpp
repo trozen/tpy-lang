@@ -63,7 +63,7 @@ struct Coord {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Coord& obj) {
-    ::tpy::print_object_default(os, "Coord", obj);
+    ::tpy::print_object_default(os, Coord::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -80,7 +80,7 @@ struct Err : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
-    ::tpy::print_object_default(os, "Err", obj);
+    ::tpy::print_object_default(os, Err::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct Walker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
-    ::tpy::print_object_default(os, "Walker", obj);
+    ::tpy::print_object_default(os, Walker::__tpy_class_name__, obj);
     return os;
 }
 
@@ -114,7 +114,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

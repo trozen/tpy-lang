@@ -154,7 +154,7 @@ struct TaskState {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const TaskState<T>& obj) {
-    ::tpy::print_object_default(os, "TaskState", obj);
+    ::tpy::print_object_default(os, TaskState<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -184,7 +184,7 @@ struct TaskStateView {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const TaskStateView<T>& obj) {
-    ::tpy::print_object_default(os, "TaskStateView", obj);
+    ::tpy::print_object_default(os, TaskStateView<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -219,7 +219,7 @@ struct Task {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Task<T>& obj) {
-    ::tpy::print_object_default(os, "Task", obj);
+    ::tpy::print_object_default(os, Task<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -244,7 +244,7 @@ struct TimerEntry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TimerEntry& obj) {
-    ::tpy::print_object_default(os, "TimerEntry", obj);
+    ::tpy::print_object_default(os, TimerEntry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -275,7 +275,7 @@ struct Slot {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
-    ::tpy::print_object_default(os, "Slot", obj);
+    ::tpy::print_object_default(os, Slot::__tpy_class_name__, obj);
     return os;
 }
 
@@ -325,7 +325,7 @@ struct EpollReactor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const EpollReactor& obj) {
-    ::tpy::print_object_default(os, "EpollReactor", obj);
+    ::tpy::print_object_default(os, EpollReactor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -433,7 +433,7 @@ struct Executor : ::tpystd::coro::Awaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Executor& obj) {
-    ::tpy::print_object_default(os, "Executor", obj);
+    ::tpy::print_object_default(os, Executor::__tpy_class_name__, obj);
     return os;
 }
 
@@ -456,7 +456,7 @@ struct _ExecutorScope {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const _ExecutorScope& obj) {
-    ::tpy::print_object_default(os, "_ExecutorScope", obj);
+    ::tpy::print_object_default(os, _ExecutorScope::__tpy_class_name__, obj);
     return os;
 }
 

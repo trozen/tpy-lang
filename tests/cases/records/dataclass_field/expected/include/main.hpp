@@ -107,7 +107,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
+    return std::format("Point(x={}, y={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)));
 }
 
 inline Config::Config(std::string_view name, int32_t value, std::vector<std::string>&& tags, ::tpy::ordered_map<std::string, int32_t>&& lookup)
@@ -121,7 +121,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::repr_of(this->tags), ::tpy::repr_of(this->lookup));
+    return std::format("Config(name={}, value={}, tags={}, lookup={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->value)), std::string(::tpy::repr_of(this->tags)), std::string(::tpy::repr_of(this->lookup)));
 }
 
 inline Canvas::Canvas(std::string_view name, Point&& origin)
@@ -133,7 +133,7 @@ inline bool Canvas::__eq__(const Canvas& other) const {
 }
 
 inline std::string Canvas::__repr__() const {
-    return std::format("Canvas(name={}, origin={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->origin));
+    return std::format("Canvas(name={}, origin={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->origin)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

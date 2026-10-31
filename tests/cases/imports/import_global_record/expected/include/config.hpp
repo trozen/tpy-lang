@@ -29,7 +29,7 @@ struct Settings {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
-    ::tpy::print_object_default(os, "Settings", obj);
+    ::tpy::print_object_default(os, Settings::__tpy_class_name__, obj);
     return os;
 }
 

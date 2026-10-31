@@ -27,7 +27,7 @@ struct Packet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Packet& obj) {
-    ::tpy::print_object_default(os, "Packet", obj);
+    ::tpy::print_object_default(os, Packet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct MultiField {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MultiField& obj) {
-    ::tpy::print_object_default(os, "MultiField", obj);
+    ::tpy::print_object_default(os, MultiField::__tpy_class_name__, obj);
     return os;
 }
 

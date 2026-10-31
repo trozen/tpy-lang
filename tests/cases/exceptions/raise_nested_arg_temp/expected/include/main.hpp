@@ -33,7 +33,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct TagError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TagError& obj) {
-    ::tpy::print_object_default(os, "TagError", obj);
+    ::tpy::print_object_default(os, TagError::__tpy_class_name__, obj);
     return os;
 }
 

@@ -37,7 +37,7 @@ struct TimerEntry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TimerEntry& obj) {
-    ::tpy::print_object_default(os, "TimerEntry", obj);
+    ::tpy::print_object_default(os, TimerEntry::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -61,7 +61,7 @@ struct Owner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
-    ::tpy::print_object_default(os, "Owner", obj);
+    ::tpy::print_object_default(os, Owner::__tpy_class_name__, obj);
     return os;
 }
 

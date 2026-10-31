@@ -95,7 +95,7 @@ struct _Writer {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const _Writer<W>& obj) {
-    ::tpy::print_object_default(os, "_Writer", obj);
+    ::tpy::print_object_default(os, _Writer<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct DictReader {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const DictReader<W>& obj) {
-    ::tpy::print_object_default(os, "DictReader", obj);
+    ::tpy::print_object_default(os, DictReader<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct DictWriter {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const DictWriter<W>& obj) {
-    ::tpy::print_object_default(os, "DictWriter", obj);
+    ::tpy::print_object_default(os, DictWriter<W>::__tpy_class_name__, obj);
     return os;
 }
 

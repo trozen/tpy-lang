@@ -55,7 +55,7 @@ struct MutBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
-    ::tpy::print_object_default(os, "MutBuffer", obj);
+    ::tpy::print_object_default(os, MutBuffer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct ROBuffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ROBuffer& obj) {
-    ::tpy::print_object_default(os, "ROBuffer", obj);
+    ::tpy::print_object_default(os, ROBuffer::__tpy_class_name__, obj);
     return os;
 }
 

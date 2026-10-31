@@ -55,7 +55,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -102,7 +102,7 @@ struct Guard {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Guard<T>& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -122,7 +122,7 @@ struct Ticks {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ticks& obj) {
-    ::tpy::print_object_default(os, "Ticks", obj);
+    ::tpy::print_object_default(os, Ticks::__tpy_class_name__, obj);
     return os;
 }
 
@@ -138,7 +138,7 @@ struct Child : Box<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const Child<U>& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -176,7 +176,7 @@ struct GuardSub : Guard<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const GuardSub<U>& obj) {
-    ::tpy::print_object_default(os, "GuardSub", obj);
+    ::tpy::print_object_default(os, GuardSub<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -188,7 +188,7 @@ struct TicksSub : Ticks {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TicksSub& obj) {
-    ::tpy::print_object_default(os, "TicksSub", obj);
+    ::tpy::print_object_default(os, TicksSub::__tpy_class_name__, obj);
     return os;
 }
 

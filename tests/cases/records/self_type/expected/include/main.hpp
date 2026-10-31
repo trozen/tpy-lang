@@ -48,7 +48,7 @@ struct Builder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
-    ::tpy::print_object_default(os, "Builder", obj);
+    ::tpy::print_object_default(os, Builder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct Stack {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
-    ::tpy::print_object_default(os, "Stack", obj);
+    ::tpy::print_object_default(os, Stack<T>::__tpy_class_name__, obj);
     return os;
 }
 

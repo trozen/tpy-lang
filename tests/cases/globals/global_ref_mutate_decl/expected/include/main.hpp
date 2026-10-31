@@ -25,7 +25,7 @@ struct Writer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
-    ::tpy::print_object_default(os, "Writer", obj);
+    ::tpy::print_object_default(os, Writer::__tpy_class_name__, obj);
     return os;
 }
 

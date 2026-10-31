@@ -62,7 +62,7 @@ inline bool R::__eq__(const R& other) const {
 }
 
 inline std::string R::__repr__() const {
-    return std::format("R(big={}, neg={}, small={}, wide={}, wrapped={})", ::tpy::repr_of(this->big), ::tpy::repr_of(this->neg), ::tpy::repr_of(this->small), ::tpy::repr_of(this->wide), ::tpy::repr_of(this->wrapped));
+    return std::format("R(big={}, neg={}, small={}, wide={}, wrapped={})", std::string(::tpy::repr_of(this->big)), std::string(::tpy::repr_of(this->neg)), std::string(::tpy::repr_of(this->small)), std::string(::tpy::repr_of(this->wide)), std::string(::tpy::repr_of(this->wrapped)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

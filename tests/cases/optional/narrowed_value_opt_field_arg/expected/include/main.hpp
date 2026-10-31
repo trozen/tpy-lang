@@ -35,7 +35,7 @@ struct Conn {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Conn& obj) {
-    ::tpy::print_object_default(os, "Conn", obj);
+    ::tpy::print_object_default(os, Conn::__tpy_class_name__, obj);
     return os;
 }
 

@@ -34,7 +34,7 @@ struct Version {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
-    ::tpy::print_object_default(os, "Version", obj);
+    ::tpy::print_object_default(os, Version::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct Reader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
-    ::tpy::print_object_default(os, "Reader", obj);
+    ::tpy::print_object_default(os, Reader::__tpy_class_name__, obj);
     return os;
 }
 

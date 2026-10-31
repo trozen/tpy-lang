@@ -31,7 +31,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct Handler {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
-    ::tpy::print_object_default(os, "Handler", obj);
+    ::tpy::print_object_default(os, Handler::__tpy_class_name__, obj);
     return os;
 }
 
@@ -82,7 +82,7 @@ struct Pair {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair<T>::__tpy_class_name__, obj);
     return os;
 }
 

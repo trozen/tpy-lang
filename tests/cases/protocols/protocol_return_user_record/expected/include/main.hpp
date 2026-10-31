@@ -39,7 +39,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -53,7 +53,7 @@ struct DefaultFactory {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
-    ::tpy::print_object_default(os, "DefaultFactory", obj);
+    ::tpy::print_object_default(os, DefaultFactory::__tpy_class_name__, obj);
     return os;
 }
 

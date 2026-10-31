@@ -57,7 +57,7 @@ struct ExecutorA : Awaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ExecutorA& obj) {
-    ::tpy::print_object_default(os, "ExecutorA", obj);
+    ::tpy::print_object_default(os, ExecutorA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -81,7 +81,7 @@ struct ExecutorB : Awaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ExecutorB& obj) {
-    ::tpy::print_object_default(os, "ExecutorB", obj);
+    ::tpy::print_object_default(os, ExecutorB::__tpy_class_name__, obj);
     return os;
 }
 
@@ -110,7 +110,7 @@ struct Notifier {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
-    ::tpy::print_object_default(os, "Notifier", obj);
+    ::tpy::print_object_default(os, Notifier::__tpy_class_name__, obj);
     return os;
 }
 

@@ -72,7 +72,7 @@ struct DefaultDict {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const DefaultDict<K, V>& obj) {
-    ::tpy::print_object_default(os, "DefaultDict", obj);
+    ::tpy::print_object_default(os, DefaultDict<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -97,7 +97,7 @@ struct Rows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
-    ::tpy::print_object_default(os, "Rows", obj);
+    ::tpy::print_object_default(os, Rows::__tpy_class_name__, obj);
     return os;
 }
 
@@ -127,7 +127,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -143,7 +143,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct Pts {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pts& obj) {
-    ::tpy::print_object_default(os, "Pts", obj);
+    ::tpy::print_object_default(os, Pts::__tpy_class_name__, obj);
     return os;
 }
 
@@ -189,7 +189,7 @@ struct Grouper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grouper& obj) {
-    ::tpy::print_object_default(os, "Grouper", obj);
+    ::tpy::print_object_default(os, Grouper::__tpy_class_name__, obj);
     return os;
 }
 
@@ -209,7 +209,7 @@ struct Holder {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
     return os;
 }
 

@@ -35,7 +35,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ inline bool K::__eq__(const K& other) const {
 }
 
 inline std::string K::__repr__() const {
-    return std::format("K(v={})", ::tpy::repr_of(this->v));
+    return std::format("K(v={})", std::string(::tpy::repr_of(this->v)));
 }
 
 inline uint64_t K::__hash__() const {

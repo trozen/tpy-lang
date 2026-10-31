@@ -29,7 +29,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    ::tpy::print_object_default(os, "Registry", obj);
+    ::tpy::print_object_default(os, Registry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct NotFound : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    ::tpy::print_object_default(os, "NotFound", obj);
+    ::tpy::print_object_default(os, NotFound::__tpy_class_name__, obj);
     return os;
 }
 

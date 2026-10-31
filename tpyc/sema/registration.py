@@ -1261,6 +1261,7 @@ class TypeRegistrar:
                 underlying_type=underlying,
                 is_int_enum=enum.is_int_enum,
                 module_name=module_name,
+                str_is_value=enum.str_is_value,
                 is_native=enum.is_native,
                 native_name=native_name,
                 cpp_member_names=cpp_member_names,

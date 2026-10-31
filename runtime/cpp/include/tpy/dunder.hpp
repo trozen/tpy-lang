@@ -442,17 +442,14 @@ auto __str__(const T& x) {
     return std::format("{}", x);
 }
 
-// Enum str: same shape as enum __repr__ above. Python prints str(e) and
-// repr(e) identically for enums ("TypeName.MEMBER"), so delegate.
-template<typename T>
-    requires std::is_enum_v<T>
-          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }
+// Enum str: "TypeName.MEMBER", or the value for an IntEnum.
+template<::tpy::detail::util_enum T>
 inline std::string __str__(T x) {
-    return ::tpy::detail::enum_repr_string(x);
+    return ::tpy::detail::enum_str_string(x);
 }
 
 // Fallback for types with operator<< but no __str__/__repr__/formattable.
-// Excludes enums for the same reason as the __repr__ fallback above.
+// Excludes enums so the enum __str__ above is the only candidate for them.
 template<typename T>
     requires (!requires(const T& t) { t.__str__(); })
           && (!requires(const T& t) { t.__repr__(); })
@@ -578,16 +575,12 @@ auto __repr__(const T& x) {
 }
 
 // Enum repr: any enum type with an EnumUtil specialization renders as
-// "TypeName.MEMBER". The operator<<-fallback below explicitly excludes
-// enums via `!std::is_enum_v<T>`, so this template is the only candidate
-// for enum types (partitioning, not partial ordering -- the constraint
-// sets are disjoint, not subsumption-related). For @native enums there
-// is no operator<< at all, so this is the only repr path; for tpy-defined
-// enums it produces the same "TypeName.MEMBER" output that the operator<<
-// body would have generated.
-template<typename T>
-    requires std::is_enum_v<T>
-          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }
+// "<TypeName.MEMBER: value>". The operator<<-fallback below explicitly
+// excludes enums via `!std::is_enum_v<T>`, so this template is the only
+// candidate for enum types (partitioning, not partial ordering -- the
+// constraint sets are disjoint, not subsumption-related). The generated
+// operator<< writes the str() text, which is not the repr.
+template<::tpy::detail::util_enum T>
 inline std::string __repr__(T x) {
     return ::tpy::detail::enum_repr_string(x);
 }

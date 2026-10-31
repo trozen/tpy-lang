@@ -59,7 +59,7 @@ struct Rank {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
-    ::tpy::print_object_default(os, "Rank", obj);
+    ::tpy::print_object_default(os, Rank::__tpy_class_name__, obj);
     return os;
 }
 

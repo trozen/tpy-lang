@@ -125,7 +125,7 @@ inline bool A::__eq__(const A& other) const {
 }
 
 inline std::string A::__repr__() const {
-    return std::format("A(n={})", ::tpy::repr_of(this->n));
+    return std::format("A(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline B::B(const ::tpy::BigInt& n) : n(n) {}
@@ -135,7 +135,7 @@ inline bool B::__eq__(const B& other) const {
 }
 
 inline std::string B::__repr__() const {
-    return std::format("B(n={})", ::tpy::repr_of(this->n));
+    return std::format("B(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline C::C(const ::tpy::BigInt& n) : n(n) {}
@@ -145,7 +145,7 @@ inline bool C::__eq__(const C& other) const {
 }
 
 inline std::string C::__repr__() const {
-    return std::format("C(n={})", ::tpy::repr_of(this->n));
+    return std::format("C(n={})", std::string(::tpy::repr_of(this->n)));
 }
 
 inline D::D(const ::tpy::BigInt& n) : n(n) {}
@@ -155,7 +155,7 @@ inline bool D::__eq__(const D& other) const {
 }
 
 inline std::string D::__repr__() const {
-    return std::format("D(n={})", ::tpy::repr_of(this->n));
+    return std::format("D(n={})", std::string(::tpy::repr_of(this->n)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -47,7 +47,7 @@ struct Appender {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Appender& obj) {
-    ::tpy::print_object_default(os, "Appender", obj);
+    ::tpy::print_object_default(os, Appender::__tpy_class_name__, obj);
     return os;
 }
 

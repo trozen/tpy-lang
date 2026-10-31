@@ -25,6 +25,7 @@ enum class Level : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -35,6 +36,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Level> {
     static constexpr std::string_view type_name = "Level";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Level e);
     static const std::array<::tpyapp::main::Level, 2> members;
     static ::tpyapp::main::Level from_value(int32_t v);
@@ -45,11 +47,11 @@ struct tpy::EnumUtil<::tpyapp::main::Level> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline std::ostream& operator<<(std::ostream& __os, Level __e) {
-    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Bad;
@@ -89,7 +91,7 @@ struct Bad : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
-    ::tpy::print_object_default(os, "Bad", obj);
+    ::tpy::print_object_default(os, Bad::__tpy_class_name__, obj);
     return os;
 }
 
@@ -185,7 +187,7 @@ struct __enum_Color {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __enum_Color& obj) {
-    ::tpy::print_object_default(os, "__enum_Color", obj);
+    ::tpy::print_object_default(os, __enum_Color::__tpy_class_name__, obj);
     return os;
 }
 
@@ -211,7 +213,7 @@ struct __enum_Level {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __enum_Level& obj) {
-    ::tpy::print_object_default(os, "__enum_Level", obj);
+    ::tpy::print_object_default(os, __enum_Level::__tpy_class_name__, obj);
     return os;
 }
 
@@ -232,7 +234,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -249,7 +251,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 

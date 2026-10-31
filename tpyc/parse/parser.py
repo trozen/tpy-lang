@@ -1512,7 +1512,8 @@ class Parser:
                     raise ParseError(
                         "IntEnum must be the only base class", node)
                 # IntEnum without mixin defaults to int32 (not BigInt)
-                return self._parse_enum(node, is_int_enum=True, underlying_type_name="int32")
+                return self._parse_enum(node, is_int_enum=True, underlying_type_name="int32",
+                                        str_is_value=True)
 
             # Check for mixin pattern: class P(int, Enum) or class P(int8, Enum)
             has_enum = any(self._is_enum_base(base) for base in node.bases)
@@ -2120,6 +2121,7 @@ class Parser:
         self, node: ast.ClassDef,
         is_int_enum: bool = False,
         underlying_type_name: str | None = None,
+        str_is_value: bool = False,
     ) -> TpyEnum:
         """Parse an enum class definition."""
         is_native = False
@@ -2296,6 +2298,7 @@ class Parser:
         return TpyEnum(
             name=node.name, members=members,
             is_int_enum=is_int_enum, underlying_type_name=underlying_type_name,
+            str_is_value=str_is_value,
             is_native=is_native, native_name=native_name,
             cpp_member_names=cpp_member_names,
             has_explicit_values=has_explicit,

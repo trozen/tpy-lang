@@ -474,7 +474,7 @@ void printing() {
     std::cout << "print" << " " << d << " " << xs << " " << ss << " " << SBare() << "\n" << ::tpy::check_signals;
     std::cout << "eq" << " " << ::tpy::print_bool((d == e)) << " " << ::tpy::print_bool((::tpy::container_ne(d, p))) << " " << ::tpy::print_bool((p == d)) << " " << ::tpy::print_bool((xs == LBare())) << " " << ::tpy::print_bool((ss == SBare())) << "\n" << ::tpy::check_signals;
     std::cout << "print-nested" << " " << ::tpy::ListPrinter(std::array<DBare, 1>{d}) << " " << ::tpy::TuplePrinter(std::tuple<SBare*, LBare*>{&(ss), &(xs)}) << "\n" << ::tpy::check_signals;
-    std::cout << "print-str" << " " << std::string(::tpy::__str__(d)) << " " << ::tpy::repr_of(ss) << " " << std::format("{}", ::tpy::__str__(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << "print-str" << " " << std::string(::tpy::__str__(d)) << " " << std::string(::tpy::repr_of(ss)) << " " << std::format("{}", ::tpy::__str__(xs)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {2};
     std::cout << "eq-mixed" << " " << ::tpy::print_bool((ys == xs)) << " " << ::tpy::print_bool((::tpy::container_ne(xs, ys))) << " " << ::tpy::print_bool((::tpy::container_ne(ys, xs))) << "\n" << ::tpy::check_signals;
 }
@@ -850,7 +850,7 @@ void iter_override_consumers() {
 void own_repr() {
     NamedL n = NamedL();
     n.push_back(1);
-    std::cout << "own-repr" << " " << n << " " << ::tpy::repr_of(n) << " " << ::tpy::ListPrinter(std::array<NamedL, 1>{n}) << " " << ::tpy::TuplePrinter(std::tuple<NamedL*>(&(n))) << "\n" << ::tpy::check_signals;
+    std::cout << "own-repr" << " " << n << " " << std::string(::tpy::repr_of(n)) << " " << ::tpy::ListPrinter(std::array<NamedL, 1>{n}) << " " << ::tpy::TuplePrinter(std::tuple<NamedL*>(&(n))) << "\n" << ::tpy::check_signals;
 }
 
 // # an Optional subclass is truthy by the dunder its MRO resolves

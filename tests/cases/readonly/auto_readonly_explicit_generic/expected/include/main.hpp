@@ -40,7 +40,7 @@ struct Vec {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Vec<T>& obj) {
-    ::tpy::print_object_default(os, "Vec", obj);
+    ::tpy::print_object_default(os, Vec<T>::__tpy_class_name__, obj);
     return os;
 }
 

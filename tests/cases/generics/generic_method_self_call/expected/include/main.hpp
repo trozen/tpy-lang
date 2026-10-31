@@ -35,7 +35,7 @@ struct Processor {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Processor<T>& obj) {
-    ::tpy::print_object_default(os, "Processor", obj);
+    ::tpy::print_object_default(os, Processor<T>::__tpy_class_name__, obj);
     return os;
 }
 

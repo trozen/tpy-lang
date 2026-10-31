@@ -75,7 +75,7 @@ struct Frac {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Frac& obj) {
-    ::tpy::print_object_default(os, "Frac", obj);
+    ::tpy::print_object_default(os, Frac::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct Ordered {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ordered& obj) {
-    ::tpy::print_object_default(os, "Ordered", obj);
+    ::tpy::print_object_default(os, Ordered::__tpy_class_name__, obj);
     return os;
 }
 

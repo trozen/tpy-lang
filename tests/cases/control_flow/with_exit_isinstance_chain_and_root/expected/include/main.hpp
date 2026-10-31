@@ -27,7 +27,7 @@ struct Suppress {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Suppress& obj) {
-    ::tpy::print_object_default(os, "Suppress", obj);
+    ::tpy::print_object_default(os, Suppress::__tpy_class_name__, obj);
     return os;
 }
 

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 template<>
 struct tpy::EnumUtil<::cfg::Mode> {
     static constexpr std::string_view type_name = "Mode";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::cfg::Mode e);
     static const std::array<::cfg::Mode, 3> members;
     static ::cfg::Mode from_value(int32_t v);

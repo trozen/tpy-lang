@@ -51,7 +51,7 @@ struct Counters {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counters& obj) {
-    ::tpy::print_object_default(os, "Counters", obj);
+    ::tpy::print_object_default(os, Counters::__tpy_class_name__, obj);
     return os;
 }
 

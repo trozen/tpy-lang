@@ -48,7 +48,7 @@ inline bool P::__eq__(const P& other) const {
 }
 
 inline std::string P::__repr__() const {
-    return std::format("P(a={})", ::tpy::repr_of(this->a));
+    return std::format("P(a={})", std::string(::tpy::repr_of(this->a)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

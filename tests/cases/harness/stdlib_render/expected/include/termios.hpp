@@ -68,7 +68,7 @@ struct error : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const error& obj) {
-    ::tpy::print_object_default(os, "error", obj);
+    ::tpy::print_object_default(os, error::__tpy_class_name__, obj);
     return os;
 }
 

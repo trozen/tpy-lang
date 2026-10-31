@@ -64,7 +64,7 @@ inline bool Rect::__eq__(const Rect& other) const {
 }
 
 inline std::string Rect::__repr__() const {
-    return std::format("Rect(w={}, h={}, area={})", ::tpy::repr_of(this->w), ::tpy::repr_of(this->h), ::tpy::repr_of(this->area));
+    return std::format("Rect(w={}, h={}, area={})", std::string(::tpy::repr_of(this->w)), std::string(::tpy::repr_of(this->h)), std::string(::tpy::repr_of(this->area)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

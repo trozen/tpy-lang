@@ -32,7 +32,7 @@ struct Error {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
-    ::tpy::print_object_default(os, "Error", obj);
+    ::tpy::print_object_default(os, Error::__tpy_class_name__, obj);
     return os;
 }
 

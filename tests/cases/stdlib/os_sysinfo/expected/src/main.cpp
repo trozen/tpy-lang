@@ -29,7 +29,7 @@ namespace tpyapp::main {
 //     os.unlink("tpy_os_sysinfo_t")
 //     print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
 void main() {
-    std::cout << ::tpystd::os::name << " " << ::tpystd::os::sep << " " << ::tpystd::os::pathsep << " " << ::tpy::repr_of(::tpystd::os::linesep) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::name << " " << ::tpystd::os::sep << " " << ::tpystd::os::pathsep << " " << std::string(::tpy::repr_of(::tpystd::os::linesep)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::curdir << " " << ::tpystd::os::pardir << " " << ::tpystd::os::extsep << " " << ::tpystd::os::devnull << "\n" << ::tpy::check_signals;
     std::cout << "pid" << " " << ::tpy::print_bool((::tpy::stdlib::os::getpid() > 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getppid() > 0)) << "\n" << ::tpy::check_signals;
     std::cout << "ids" << " " << ::tpy::print_bool((::tpy::stdlib::os::getuid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getgid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::geteuid() == ::tpy::stdlib::os::getuid())) << " " << ::tpy::print_bool((::tpy::stdlib::os::getegid() == ::tpy::stdlib::os::getgid())) << "\n" << ::tpy::check_signals;

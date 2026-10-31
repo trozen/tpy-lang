@@ -39,7 +39,7 @@ struct Meters {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Meters& obj) {
-    ::tpy::print_object_default(os, "Meters", obj);
+    ::tpy::print_object_default(os, Meters::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

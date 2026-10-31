@@ -28,7 +28,7 @@ struct Buffer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
-    ::tpy::print_object_default(os, "Buffer", obj);
+    ::tpy::print_object_default(os, Buffer::__tpy_class_name__, obj);
     return os;
 }
 

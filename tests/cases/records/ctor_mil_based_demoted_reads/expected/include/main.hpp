@@ -27,7 +27,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct Inherited : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inherited& obj) {
-    ::tpy::print_object_default(os, "Inherited", obj);
+    ::tpy::print_object_default(os, Inherited::__tpy_class_name__, obj);
     return os;
 }
 
@@ -63,7 +63,7 @@ struct Defaulted : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Defaulted& obj) {
-    ::tpy::print_object_default(os, "Defaulted", obj);
+    ::tpy::print_object_default(os, Defaulted::__tpy_class_name__, obj);
     return os;
 }
 

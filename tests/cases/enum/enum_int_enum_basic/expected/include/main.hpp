@@ -18,6 +18,7 @@ enum class Priority : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Priority> {
     static constexpr std::string_view type_name = "Priority";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::main::Priority e);
     static const std::array<::tpyapp::main::Priority, 3> members;
     static ::tpyapp::main::Priority from_value(int32_t v);
@@ -28,7 +29,7 @@ struct tpy::EnumUtil<::tpyapp::main::Priority> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Priority __e) {
-    return __os << "Priority." << ::tpy::EnumUtil<Priority>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

@@ -30,7 +30,7 @@ struct WithScalar {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithScalar& obj) {
-    ::tpy::print_object_default(os, "WithScalar", obj);
+    ::tpy::print_object_default(os, WithScalar::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct WithStr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithStr& obj) {
-    ::tpy::print_object_default(os, "WithStr", obj);
+    ::tpy::print_object_default(os, WithStr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct Other {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
-    ::tpy::print_object_default(os, "Other", obj);
+    ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
     return os;
 }
 

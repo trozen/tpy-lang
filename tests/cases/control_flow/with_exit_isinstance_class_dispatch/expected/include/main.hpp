@@ -27,7 +27,7 @@ struct SuppressVE {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SuppressVE& obj) {
-    ::tpy::print_object_default(os, "SuppressVE", obj);
+    ::tpy::print_object_default(os, SuppressVE::__tpy_class_name__, obj);
     return os;
 }
 

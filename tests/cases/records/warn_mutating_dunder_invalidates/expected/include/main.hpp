@@ -66,7 +66,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -106,7 +106,7 @@ struct Grid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
-    ::tpy::print_object_default(os, "Grid", obj);
+    ::tpy::print_object_default(os, Grid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -137,7 +137,7 @@ struct Closer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Closer& obj) {
-    ::tpy::print_object_default(os, "Closer", obj);
+    ::tpy::print_object_default(os, Closer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct Cells {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cells& obj) {
-    ::tpy::print_object_default(os, "Cells", obj);
+    ::tpy::print_object_default(os, Cells::__tpy_class_name__, obj);
     return os;
 }
 
@@ -199,7 +199,7 @@ struct Bag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    ::tpy::print_object_default(os, Bag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -212,7 +212,7 @@ struct SubGrid : Grid {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubGrid& obj) {
-    ::tpy::print_object_default(os, "SubGrid", obj);
+    ::tpy::print_object_default(os, SubGrid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -225,7 +225,7 @@ struct SubCloser : Closer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubCloser& obj) {
-    ::tpy::print_object_default(os, "SubCloser", obj);
+    ::tpy::print_object_default(os, SubCloser::__tpy_class_name__, obj);
     return os;
 }
 

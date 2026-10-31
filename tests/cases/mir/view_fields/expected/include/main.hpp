@@ -98,7 +98,7 @@ struct Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
-    ::tpy::print_object_default(os, "Tok", obj);
+    ::tpy::print_object_default(os, Tok::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct Lit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lit& obj) {
-    ::tpy::print_object_default(os, "Lit", obj);
+    ::tpy::print_object_default(os, Lit::__tpy_class_name__, obj);
     return os;
 }
 
@@ -134,7 +134,7 @@ struct R {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const R& obj) {
-    ::tpy::print_object_default(os, "R", obj);
+    ::tpy::print_object_default(os, R::__tpy_class_name__, obj);
     return os;
 }
 
@@ -150,7 +150,7 @@ struct Buf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
-    ::tpy::print_object_default(os, "Buf", obj);
+    ::tpy::print_object_default(os, Buf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -174,7 +174,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -186,7 +186,7 @@ struct Child : Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 

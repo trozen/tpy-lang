@@ -39,7 +39,7 @@ struct Sector {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sector& obj) {
-    ::tpy::print_object_default(os, "Sector", obj);
+    ::tpy::print_object_default(os, Sector::__tpy_class_name__, obj);
     return os;
 }
 
@@ -55,7 +55,7 @@ struct Seg {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Seg& obj) {
-    ::tpy::print_object_default(os, "Seg", obj);
+    ::tpy::print_object_default(os, Seg::__tpy_class_name__, obj);
     return os;
 }
 
@@ -71,7 +71,7 @@ struct SubSector {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SubSector& obj) {
-    ::tpy::print_object_default(os, "SubSector", obj);
+    ::tpy::print_object_default(os, SubSector::__tpy_class_name__, obj);
     return os;
 }
 
@@ -90,7 +90,7 @@ struct Map {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
-    ::tpy::print_object_default(os, "Map", obj);
+    ::tpy::print_object_default(os, Map::__tpy_class_name__, obj);
     return os;
 }
 

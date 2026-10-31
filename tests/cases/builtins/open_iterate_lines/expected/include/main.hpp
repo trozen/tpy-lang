@@ -41,7 +41,7 @@ struct Log {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Log& obj) {
-    ::tpy::print_object_default(os, "Log", obj);
+    ::tpy::print_object_default(os, Log::__tpy_class_name__, obj);
     return os;
 }
 

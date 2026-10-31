@@ -4259,8 +4259,6 @@ class PrintForm(Enum):
       * `FLOAT32` -- `::tpy::print_float(static_cast<double>(...))` (the float
         overload takes double).
       * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
-      * `REPR`    -- `::tpy::__repr__(...)` (an @native enum: no operator<< is
-        emitted for it, so printing routes through the EnumUtil-backed repr).
       * `VARARGS` -- `::tpy::VarargsPrinter(...)` on a whole `*args` body
         view, which Python prints tuple-style.
       * `VALUE_GENERIC` -- `::tpy::ValuePrinter(...)` on an open type-param
@@ -4282,12 +4280,12 @@ class PrintForm(Enum):
     RAW = auto()
     INT8 = auto()
     STR = auto()  # `::tpy::__str__(...)` -- a union-typed arg (std::variant
-                  # has no operator<<; the per-alternative visitor dispatch)
+                  # has no operator<<; the per-alternative visitor dispatch),
+                  # or an @native enum (no operator<< is emitted for it)
     BOOL = auto()
     FLOAT = auto()
     FLOAT32 = auto()
     BYTES = auto()
-    REPR = auto()
     LIST = auto()
     SET = auto()
     DICT = auto()

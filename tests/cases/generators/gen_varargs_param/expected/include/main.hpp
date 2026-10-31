@@ -95,7 +95,7 @@ struct Point {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
     return os;
 }
 
@@ -112,7 +112,7 @@ struct Trace {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Trace& obj) {
-    ::tpy::print_object_default(os, "Trace", obj);
+    ::tpy::print_object_default(os, Trace::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct Collector {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
-    ::tpy::print_object_default(os, "Collector", obj);
+    ::tpy::print_object_default(os, Collector::__tpy_class_name__, obj);
     return os;
 }
 
@@ -147,7 +147,7 @@ struct Album {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Album& obj) {
-    ::tpy::print_object_default(os, "Album", obj);
+    ::tpy::print_object_default(os, Album::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct Grower {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grower& obj) {
-    ::tpy::print_object_default(os, "Grower", obj);
+    ::tpy::print_object_default(os, Grower::__tpy_class_name__, obj);
     return os;
 }
 

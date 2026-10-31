@@ -38,7 +38,7 @@ struct Summer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Summer& obj) {
-    ::tpy::print_object_default(os, "Summer", obj);
+    ::tpy::print_object_default(os, Summer::__tpy_class_name__, obj);
     return os;
 }
 

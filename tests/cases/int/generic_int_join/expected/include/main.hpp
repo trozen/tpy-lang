@@ -76,7 +76,7 @@ struct Meter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Meter& obj) {
-    ::tpy::print_object_default(os, "Meter", obj);
+    ::tpy::print_object_default(os, Meter::__tpy_class_name__, obj);
     return os;
 }
 

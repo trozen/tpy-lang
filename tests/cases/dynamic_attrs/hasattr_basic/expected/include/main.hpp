@@ -29,7 +29,7 @@ struct Headers {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
-    ::tpy::print_object_default(os, "Headers", obj);
+    ::tpy::print_object_default(os, Headers::__tpy_class_name__, obj);
     return os;
 }
 

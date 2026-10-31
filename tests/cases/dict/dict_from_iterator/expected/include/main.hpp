@@ -34,7 +34,7 @@ struct PairIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
-    ::tpy::print_object_default(os, "PairIter", obj);
+    ::tpy::print_object_default(os, PairIter::__tpy_class_name__, obj);
     return os;
 }
 

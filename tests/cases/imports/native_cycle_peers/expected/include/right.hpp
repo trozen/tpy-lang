@@ -29,7 +29,7 @@ struct Right {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
-    ::tpy::print_object_default(os, "Right", obj);
+    ::tpy::print_object_default(os, Right::__tpy_class_name__, obj);
     return os;
 }
 

@@ -36,7 +36,7 @@ struct Math {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Math& obj) {
-    ::tpy::print_object_default(os, "Math", obj);
+    ::tpy::print_object_default(os, Math::__tpy_class_name__, obj);
     return os;
 }
 

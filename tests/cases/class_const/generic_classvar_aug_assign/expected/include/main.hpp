@@ -27,7 +27,7 @@ struct C {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
-    ::tpy::print_object_default(os, "C", obj);
+    ::tpy::print_object_default(os, C<T>::__tpy_class_name__, obj);
     return os;
 }
 

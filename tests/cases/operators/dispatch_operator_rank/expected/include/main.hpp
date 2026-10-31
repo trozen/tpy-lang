@@ -96,7 +96,7 @@ struct L {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const L& obj) {
-    ::tpy::print_object_default(os, "L", obj);
+    ::tpy::print_object_default(os, L::__tpy_class_name__, obj);
     return os;
 }
 
@@ -211,7 +211,7 @@ struct N {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const N& obj) {
-    ::tpy::print_object_default(os, "N", obj);
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
     return os;
 }
 
@@ -245,7 +245,7 @@ struct W {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
-    ::tpy::print_object_default(os, "W", obj);
+    ::tpy::print_object_default(os, W::__tpy_class_name__, obj);
     return os;
 }
 
@@ -276,7 +276,7 @@ struct Opt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Opt& obj) {
-    ::tpy::print_object_default(os, "Opt", obj);
+    ::tpy::print_object_default(os, Opt::__tpy_class_name__, obj);
     return os;
 }
 
@@ -296,7 +296,7 @@ struct Lit3 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lit3& obj) {
-    ::tpy::print_object_default(os, "Lit3", obj);
+    ::tpy::print_object_default(os, Lit3::__tpy_class_name__, obj);
     return os;
 }
 
@@ -336,7 +336,7 @@ struct LitWidth {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LitWidth& obj) {
-    ::tpy::print_object_default(os, "LitWidth", obj);
+    ::tpy::print_object_default(os, LitWidth::__tpy_class_name__, obj);
     return os;
 }
 
@@ -367,7 +367,7 @@ struct Text {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Text& obj) {
-    ::tpy::print_object_default(os, "Text", obj);
+    ::tpy::print_object_default(os, Text::__tpy_class_name__, obj);
     return os;
 }
 
@@ -408,7 +408,7 @@ struct OptStr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptStr& obj) {
-    ::tpy::print_object_default(os, "OptStr", obj);
+    ::tpy::print_object_default(os, OptStr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -426,7 +426,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 

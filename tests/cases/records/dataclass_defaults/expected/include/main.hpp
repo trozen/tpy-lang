@@ -56,7 +56,7 @@ inline bool Color::__eq__(const Color& other) const {
 }
 
 inline std::string Color::__repr__() const {
-    return std::format("Color(r={}, g={}, b={}, a={})", ::tpy::repr_of(this->r), ::tpy::repr_of(this->g), ::tpy::repr_of(this->b), ::tpy::repr_of(this->a));
+    return std::format("Color(r={}, g={}, b={}, a={})", std::string(::tpy::repr_of(this->r)), std::string(::tpy::repr_of(this->g)), std::string(::tpy::repr_of(this->b)), std::string(::tpy::repr_of(this->a)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

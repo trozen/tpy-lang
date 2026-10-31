@@ -92,7 +92,7 @@ struct Neither {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Neither& obj) {
-    ::tpy::print_object_default(os, "Neither", obj);
+    ::tpy::print_object_default(os, Neither::__tpy_class_name__, obj);
     return os;
 }
 

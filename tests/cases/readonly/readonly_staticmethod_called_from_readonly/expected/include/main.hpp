@@ -27,7 +27,7 @@ struct Ops {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
-    ::tpy::print_object_default(os, "Ops", obj);
+    ::tpy::print_object_default(os, Ops::__tpy_class_name__, obj);
     return os;
 }
 

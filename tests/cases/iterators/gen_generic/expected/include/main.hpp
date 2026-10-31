@@ -76,7 +76,7 @@ struct Bin {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
-    ::tpy::print_object_default(os, "Bin", obj);
+    ::tpy::print_object_default(os, Bin::__tpy_class_name__, obj);
     return os;
 }
 

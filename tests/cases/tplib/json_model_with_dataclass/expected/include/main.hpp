@@ -105,7 +105,7 @@ inline bool Item::__eq__(const Item& other) const {
 }
 
 inline std::string Item::__repr__() const {
-    return std::format("Item(name={}, value={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value));
+    return std::format("Item(name={}, value={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->value)));
 }
 
 inline Item Item::from_json(std::string_view __s) {
@@ -216,7 +216,7 @@ inline bool Container::__eq__(const Container& other) const {
 }
 
 inline std::string Container::__repr__() const {
-    return std::format("Container(label={}, items={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->items));
+    return std::format("Container(label={}, items={})", std::string(::tpy::repr_of(this->label)), std::string(::tpy::repr_of(this->items)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

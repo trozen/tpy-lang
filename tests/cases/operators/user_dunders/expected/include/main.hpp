@@ -125,7 +125,7 @@ struct Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    ::tpy::print_object_default(os, "Vec2", obj);
+    ::tpy::print_object_default(os, Vec2::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -184,7 +184,7 @@ struct Score {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
-    ::tpy::print_object_default(os, "Score", obj);
+    ::tpy::print_object_default(os, Score::__tpy_class_name__, obj);
     return os;
 }
 
@@ -207,7 +207,7 @@ struct Mask {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mask& obj) {
-    ::tpy::print_object_default(os, "Mask", obj);
+    ::tpy::print_object_default(os, Mask::__tpy_class_name__, obj);
     return os;
 }
 
@@ -237,7 +237,7 @@ struct Tag {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, "Tag", obj);
+    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -251,7 +251,7 @@ struct Child : Vec2 {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
     return os;
 }
 

@@ -32,7 +32,7 @@ struct Hazard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hazard& obj) {
-    ::tpy::print_object_default(os, "Hazard", obj);
+    ::tpy::print_object_default(os, Hazard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -54,7 +54,7 @@ struct Safe {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Safe& obj) {
-    ::tpy::print_object_default(os, "Safe", obj);
+    ::tpy::print_object_default(os, Safe::__tpy_class_name__, obj);
     return os;
 }
 

@@ -27,7 +27,7 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(::tpy::BigInt(3), ::tpy::BigInt(7));
     std::cout << std::string(::tpy::__str__(p)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(p) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(p)) << "\n" << ::tpy::check_signals;
     std::cout << p << "\n" << ::tpy::check_signals;
     std::cout << std::format("point = {}", ::tpy::__str__(p)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("debug: {}", ::tpy::repr_of(p)) << "\n" << ::tpy::check_signals;

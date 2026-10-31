@@ -80,7 +80,7 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 inline std::string Point::__repr__() const {
-    return std::format("Point(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+    return std::format("Point(x={}, y={}, z={})", std::string(::tpy::repr_of(this->x)), std::string(::tpy::repr_of(this->y)), std::string(::tpy::repr_of(this->z)));
 }
 
 inline Label::Label(std::string_view text) : text(text) {}
@@ -90,7 +90,7 @@ inline bool Label::__eq__(const Label& other) const {
 }
 
 inline std::string Label::__repr__() const {
-    return std::format("Label(text={})", ::tpy::repr_of(this->text));
+    return std::format("Label(text={})", std::string(::tpy::repr_of(this->text)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

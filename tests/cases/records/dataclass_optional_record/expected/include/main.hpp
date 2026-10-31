@@ -73,7 +73,7 @@ inline bool Inner::__eq__(const Inner& other) const {
 }
 
 inline std::string Inner::__repr__() const {
-    return std::format("Inner(x={})", ::tpy::repr_of(this->x));
+    return std::format("Inner(x={})", std::string(::tpy::repr_of(this->x)));
 }
 
 inline Outer::Outer(std::string_view name, std::optional<Inner>&& inner)
@@ -85,7 +85,7 @@ inline bool Outer::__eq__(const Outer& other) const {
 }
 
 inline std::string Outer::__repr__() const {
-    return std::format("Outer(name={}, inner={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->inner));
+    return std::format("Outer(name={}, inner={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->inner)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

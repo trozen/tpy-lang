@@ -57,7 +57,7 @@ struct Peeker {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Peeker<T>& obj) {
-    ::tpy::print_object_default(os, "Peeker", obj);
+    ::tpy::print_object_default(os, Peeker<T>::__tpy_class_name__, obj);
     return os;
 }
 

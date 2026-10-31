@@ -29,7 +29,7 @@ struct Helper {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
-    ::tpy::print_object_default(os, "Helper", obj);
+    ::tpy::print_object_default(os, Helper::__tpy_class_name__, obj);
     return os;
 }
 

@@ -33,7 +33,7 @@ struct Wrap {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap<T>::__tpy_class_name__, obj);
     return os;
 }
 

@@ -52,7 +52,7 @@ struct Rec {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
-    ::tpy::print_object_default(os, "Rec", obj);
+    ::tpy::print_object_default(os, Rec::__tpy_class_name__, obj);
     return os;
 }
 
@@ -83,7 +83,7 @@ struct Tree {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
-    ::tpy::print_object_default(os, "Tree", obj);
+    ::tpy::print_object_default(os, Tree::__tpy_class_name__, obj);
     return os;
 }
 

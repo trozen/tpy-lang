@@ -59,7 +59,7 @@ struct Seconds {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Seconds& obj) {
-    ::tpy::print_object_default(os, "Seconds", obj);
+    ::tpy::print_object_default(os, Seconds::__tpy_class_name__, obj);
     return os;
 }
 
@@ -190,7 +190,7 @@ inline bool Event::__eq__(const Event& other) const {
 }
 
 inline std::string Event::__repr__() const {
-    return std::format("Event(name={}, when={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->when));
+    return std::format("Event(name={}, when={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->when)));
 }
 
 inline Event Event::from_json(std::string_view __s) {
@@ -302,7 +302,7 @@ inline bool Schedule::__eq__(const Schedule& other) const {
 }
 
 inline std::string Schedule::__repr__() const {
-    return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::repr_of(this->events), ::tpy::repr_of(this->default_duration), ::tpy::repr_of(this->deadline));
+    return std::format("Schedule(events={}, default_duration={}, deadline={})", std::string(::tpy::repr_of(this->events)), std::string(::tpy::repr_of(this->default_duration)), std::string(::tpy::repr_of(this->deadline)));
 }
 
 inline Schedule Schedule::from_json(std::string_view __s) {

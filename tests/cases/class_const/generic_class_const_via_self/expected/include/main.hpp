@@ -30,7 +30,7 @@ struct Bounded {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bounded<T>& obj) {
-    ::tpy::print_object_default(os, "Bounded", obj);
+    ::tpy::print_object_default(os, Bounded<T>::__tpy_class_name__, obj);
     return os;
 }
 

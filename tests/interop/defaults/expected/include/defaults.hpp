@@ -17,6 +17,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::defaults::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::defaults::Color e);
     static const std::array<::tpyapp::defaults::Color, 2> members;
     static ::tpyapp::defaults::Color from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::defaults::Color> {
 namespace tpyapp::defaults {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Counter;
@@ -61,7 +62,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -78,7 +79,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +95,7 @@ struct Pair {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-    ::tpy::print_object_default(os, "Pair", obj);
+    ::tpy::print_object_default(os, Pair::__tpy_class_name__, obj);
     return os;
 }
 
@@ -110,7 +111,7 @@ struct Stride {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stride& obj) {
-    ::tpy::print_object_default(os, "Stride", obj);
+    ::tpy::print_object_default(os, Stride::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +122,7 @@ struct Derived : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
-    ::tpy::print_object_default(os, "Derived", obj);
+    ::tpy::print_object_default(os, Derived::__tpy_class_name__, obj);
     return os;
 }
 

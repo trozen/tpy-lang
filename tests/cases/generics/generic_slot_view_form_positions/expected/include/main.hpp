@@ -87,7 +87,7 @@ struct Boxed {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Boxed<T>& obj) {
-    ::tpy::print_object_default(os, "Boxed", obj);
+    ::tpy::print_object_default(os, Boxed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -108,7 +108,7 @@ struct OwnBoxed {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const OwnBoxed<T>& obj) {
-    ::tpy::print_object_default(os, "OwnBoxed", obj);
+    ::tpy::print_object_default(os, OwnBoxed<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -119,7 +119,7 @@ struct MyErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
-    ::tpy::print_object_default(os, "MyErr", obj);
+    ::tpy::print_object_default(os, MyErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -154,7 +154,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct Labels {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Labels<T>& obj) {
-    ::tpy::print_object_default(os, "Labels", obj);
+    ::tpy::print_object_default(os, Labels<T>::__tpy_class_name__, obj);
     return os;
 }
 

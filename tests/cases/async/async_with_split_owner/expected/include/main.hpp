@@ -38,7 +38,7 @@ struct HasEnter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasEnter& obj) {
-    ::tpy::print_object_default(os, "HasEnter", obj);
+    ::tpy::print_object_default(os, HasEnter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -52,7 +52,7 @@ struct HasBoth : HasEnter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasBoth& obj) {
-    ::tpy::print_object_default(os, "HasBoth", obj);
+    ::tpy::print_object_default(os, HasBoth::__tpy_class_name__, obj);
     return os;
 }
 
@@ -64,7 +64,7 @@ struct Mgr : HasBoth {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Mgr& obj) {
-    ::tpy::print_object_default(os, "Mgr", obj);
+    ::tpy::print_object_default(os, Mgr::__tpy_class_name__, obj);
     return os;
 }
 

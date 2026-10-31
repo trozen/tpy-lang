@@ -30,7 +30,7 @@ struct WithArray {
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
-    ::tpy::print_object_default(os, "WithArray", obj);
+    ::tpy::print_object_default(os, WithArray<T, N>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct WithList {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
-    ::tpy::print_object_default(os, "WithList", obj);
+    ::tpy::print_object_default(os, WithList<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -64,7 +64,7 @@ struct WithDict {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
-    ::tpy::print_object_default(os, "WithDict", obj);
+    ::tpy::print_object_default(os, WithDict<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -93,7 +93,7 @@ struct WithHeapStorage {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithHeapStorage<T>& obj) {
-    ::tpy::print_object_default(os, "WithHeapStorage", obj);
+    ::tpy::print_object_default(os, WithHeapStorage<T>::__tpy_class_name__, obj);
     return os;
 }
 

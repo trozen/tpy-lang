@@ -57,7 +57,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ inline Holder::Holder(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 //     return repr(self.data) + f" {self.data!r} {r}"  # tpyc: ok
 inline std::string Holder::show(int32_t n) const {
     ::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(n);
-    return (::tpy::str_concat(::tpy::repr_of(this->data), std::format(" {} {}", ::tpy::repr_of(this->data), ::tpy::__str__(r))));
+    return (::tpy::str_concat(std::string(::tpy::repr_of(this->data)), std::format(" {} {}", ::tpy::repr_of(this->data), ::tpy::__str__(r))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

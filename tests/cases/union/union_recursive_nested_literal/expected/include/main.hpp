@@ -58,7 +58,7 @@ inline bool Leaf::__eq__(const Leaf& other) const {
 }
 
 inline std::string Leaf::__repr__() const {
-    return std::format("Leaf(value={})", ::tpy::repr_of(this->value));
+    return std::format("Leaf(value={})", std::string(::tpy::repr_of(this->value)));
 }
 struct IntTree {
     using variant_type = ::tpy::Union<::tpy::BigInt, std::vector<IntTree>>;
@@ -71,9 +71,15 @@ struct IntTree {
 
     bool operator==(const IntTree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const IntTree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 struct JsonValue {
@@ -87,9 +93,15 @@ struct JsonValue {
 
     bool operator==(const JsonValue&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const JsonValue& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 struct Tree {
@@ -103,9 +115,15 @@ struct Tree {
 
     bool operator==(const Tree&) const = default;
 
+    std::string __str__() const {
+        return ::tpy::__str__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+    std::string __repr__() const {
+        return ::tpy::__repr__(static_cast<const typename variant_type::base_variant&>(value));
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
+        return os << v.__str__();
     }
 };
 

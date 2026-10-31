@@ -17,6 +17,7 @@ enum class Shade : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::shades::Shade> {
     static constexpr std::string_view type_name = "Shade";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::shades::Shade e);
     static const std::array<::tpyapp::shades::Shade, 2> members;
     static ::tpyapp::shades::Shade from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::shades::Shade> {
 namespace tpyapp::shades {
 
 inline std::ostream& operator<<(std::ostream& __os, Shade __e) {
-    return __os << "Shade." << ::tpy::EnumUtil<Shade>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct __enum_Shade;
@@ -72,7 +73,7 @@ struct __enum_Shade {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const __enum_Shade& obj) {
-    ::tpy::print_object_default(os, "__enum_Shade", obj);
+    ::tpy::print_object_default(os, __enum_Shade::__tpy_class_name__, obj);
     return os;
 }
 

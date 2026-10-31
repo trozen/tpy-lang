@@ -36,7 +36,7 @@ struct Entity {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
-    ::tpy::print_object_default(os, "Entity", obj);
+    ::tpy::print_object_default(os, Entity::__tpy_class_name__, obj);
     return os;
 }
 

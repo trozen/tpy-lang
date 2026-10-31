@@ -41,7 +41,7 @@ struct Pool {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pool<T>& obj) {
-    ::tpy::print_object_default(os, "Pool", obj);
+    ::tpy::print_object_default(os, Pool<T>::__tpy_class_name__, obj);
     return os;
 }
 

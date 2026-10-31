@@ -30,7 +30,7 @@ struct Alpha {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Alpha& obj) {
-    ::tpy::print_object_default(os, "Alpha", obj);
+    ::tpy::print_object_default(os, Alpha::__tpy_class_name__, obj);
     return os;
 }
 
@@ -46,7 +46,7 @@ struct Beta {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Beta& obj) {
-    ::tpy::print_object_default(os, "Beta", obj);
+    ::tpy::print_object_default(os, Beta::__tpy_class_name__, obj);
     return os;
 }
 
@@ -62,7 +62,7 @@ struct Gamma {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Gamma& obj) {
-    ::tpy::print_object_default(os, "Gamma", obj);
+    ::tpy::print_object_default(os, Gamma::__tpy_class_name__, obj);
     return os;
 }
 

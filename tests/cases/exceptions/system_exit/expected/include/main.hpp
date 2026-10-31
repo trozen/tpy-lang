@@ -67,7 +67,7 @@ struct Guard {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
-    ::tpy::print_object_default(os, "Guard", obj);
+    ::tpy::print_object_default(os, Guard::__tpy_class_name__, obj);
     return os;
 }
 
@@ -84,7 +84,7 @@ struct Leave : ::tpy::SystemExit {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Leave& obj) {
-    ::tpy::print_object_default(os, "Leave", obj);
+    ::tpy::print_object_default(os, Leave::__tpy_class_name__, obj);
     return os;
 }
 
@@ -98,7 +98,7 @@ struct Shutdown {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shutdown& obj) {
-    ::tpy::print_object_default(os, "Shutdown", obj);
+    ::tpy::print_object_default(os, Shutdown::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct BadInput : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BadInput& obj) {
-    ::tpy::print_object_default(os, "BadInput", obj);
+    ::tpy::print_object_default(os, BadInput::__tpy_class_name__, obj);
     return os;
 }
 

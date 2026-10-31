@@ -37,13 +37,13 @@ namespace tpyapp::main {
 //         print("caught OverflowError")
 void main() {
     std::cout << ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(25)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(25))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(25)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::timedelta(::tpy::BigInt(1), ::tpy::BigInt(30)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(1), ::tpy::BigInt(30))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::timedelta()) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(1), ::tpy::BigInt(30)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::timedelta())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::timedelta() << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::timedelta(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-1)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
     std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(6))) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(20)))) << "\n" << ::tpy::check_signals;
     std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(1))) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;

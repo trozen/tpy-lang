@@ -46,7 +46,7 @@ struct Drain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Drain& obj) {
-    ::tpy::print_object_default(os, "Drain", obj);
+    ::tpy::print_object_default(os, Drain::__tpy_class_name__, obj);
     return os;
 }
 

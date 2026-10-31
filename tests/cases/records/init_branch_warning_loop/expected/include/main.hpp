@@ -26,7 +26,7 @@ struct Accum {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Accum& obj) {
-    ::tpy::print_object_default(os, "Accum", obj);
+    ::tpy::print_object_default(os, Accum::__tpy_class_name__, obj);
     return os;
 }
 

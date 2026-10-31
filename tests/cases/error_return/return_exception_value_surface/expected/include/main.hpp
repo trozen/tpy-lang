@@ -78,7 +78,7 @@ struct Empty : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
-    ::tpy::print_object_default(os, "Empty", obj);
+    ::tpy::print_object_default(os, Empty::__tpy_class_name__, obj);
     return os;
 }
 
@@ -95,7 +95,7 @@ struct Missing : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
-    ::tpy::print_object_default(os, "Missing", obj);
+    ::tpy::print_object_default(os, Missing::__tpy_class_name__, obj);
     return os;
 }
 
@@ -113,7 +113,7 @@ struct ParseError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    ::tpy::print_object_default(os, "ParseError", obj);
+    ::tpy::print_object_default(os, ParseError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -136,7 +136,7 @@ struct Tracked : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tracked& obj) {
-    ::tpy::print_object_default(os, "Tracked", obj);
+    ::tpy::print_object_default(os, Tracked::__tpy_class_name__, obj);
     return os;
 }
 
@@ -175,7 +175,7 @@ struct Coded : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Coded& obj) {
-    ::tpy::print_object_default(os, "Coded", obj);
+    ::tpy::print_object_default(os, Coded::__tpy_class_name__, obj);
     return os;
 }
 
@@ -193,7 +193,7 @@ struct Named : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, "Named", obj);
+    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
     return os;
 }
 
@@ -211,7 +211,7 @@ struct Reader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
-    ::tpy::print_object_default(os, "Reader", obj);
+    ::tpy::print_object_default(os, Reader::__tpy_class_name__, obj);
     return os;
 }
 

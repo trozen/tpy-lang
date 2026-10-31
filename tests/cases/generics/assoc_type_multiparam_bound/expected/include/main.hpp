@@ -51,7 +51,7 @@ struct IntStr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntStr& obj) {
-    ::tpy::print_object_default(os, "IntStr", obj);
+    ::tpy::print_object_default(os, IntStr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct ListStr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ListStr& obj) {
-    ::tpy::print_object_default(os, "ListStr", obj);
+    ::tpy::print_object_default(os, ListStr::__tpy_class_name__, obj);
     return os;
 }
 

@@ -42,7 +42,7 @@ struct Inner {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-    ::tpy::print_object_default(os, "Inner", obj);
+    ::tpy::print_object_default(os, Inner::__tpy_class_name__, obj);
     return os;
 }
 
@@ -102,7 +102,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
 }
 
@@ -121,7 +121,7 @@ struct FieldIter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FieldIter& obj) {
-    ::tpy::print_object_default(os, "FieldIter", obj);
+    ::tpy::print_object_default(os, FieldIter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -153,7 +153,7 @@ struct Rebound {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rebound& obj) {
-    ::tpy::print_object_default(os, "Rebound", obj);
+    ::tpy::print_object_default(os, Rebound::__tpy_class_name__, obj);
     return os;
 }
 
@@ -178,7 +178,7 @@ struct Flat {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
-    ::tpy::print_object_default(os, "Flat", obj);
+    ::tpy::print_object_default(os, Flat::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main

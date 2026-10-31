@@ -17,6 +17,7 @@ enum class Severity : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::userexcd::Severity> {
     static constexpr std::string_view type_name = "Severity";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::userexcd::Severity e);
     static const std::array<::tpyapp::userexcd::Severity, 2> members;
     static ::tpyapp::userexcd::Severity from_value(int32_t v);
@@ -27,7 +28,7 @@ struct tpy::EnumUtil<::tpyapp::userexcd::Severity> {
 namespace tpyapp::userexcd {
 
 inline std::ostream& operator<<(std::ostream& __os, Severity __e) {
-    return __os << "Severity." << ::tpy::EnumUtil<Severity>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct ParseError;
@@ -52,7 +53,7 @@ struct ParseError : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
-    ::tpy::print_object_default(os, "ParseError", obj);
+    ::tpy::print_object_default(os, ParseError::__tpy_class_name__, obj);
     return os;
 }
 

@@ -29,7 +29,7 @@ struct Payload {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
-    ::tpy::print_object_default(os, "Payload", obj);
+    ::tpy::print_object_default(os, Payload::__tpy_class_name__, obj);
     return os;
 }
 
@@ -47,7 +47,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct WithOptional : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithOptional& obj) {
-    ::tpy::print_object_default(os, "WithOptional", obj);
+    ::tpy::print_object_default(os, WithOptional::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct WithOwn : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const WithOwn& obj) {
-    ::tpy::print_object_default(os, "WithOwn", obj);
+    ::tpy::print_object_default(os, WithOwn::__tpy_class_name__, obj);
     return os;
 }
 

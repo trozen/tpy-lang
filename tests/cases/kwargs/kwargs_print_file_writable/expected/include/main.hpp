@@ -35,7 +35,7 @@ struct Sink {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-    ::tpy::print_object_default(os, "Sink", obj);
+    ::tpy::print_object_default(os, Sink::__tpy_class_name__, obj);
     return os;
 }
 
@@ -52,7 +52,7 @@ struct Closed {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Closed& obj) {
-    ::tpy::print_object_default(os, "Closed", obj);
+    ::tpy::print_object_default(os, Closed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -69,7 +69,7 @@ struct NoFlush {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoFlush& obj) {
-    ::tpy::print_object_default(os, "NoFlush", obj);
+    ::tpy::print_object_default(os, NoFlush::__tpy_class_name__, obj);
     return os;
 }
 

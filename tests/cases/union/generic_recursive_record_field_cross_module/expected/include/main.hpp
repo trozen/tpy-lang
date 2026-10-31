@@ -31,7 +31,7 @@ struct Forest {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Forest& obj) {
-    ::tpy::print_object_default(os, "Forest", obj);
+    ::tpy::print_object_default(os, Forest::__tpy_class_name__, obj);
     return os;
 }
 

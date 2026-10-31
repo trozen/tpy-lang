@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # repr must still quote (the formattable fallback would print it raw)
 //     print("repr", repr(s), str(s), len(s))
 void repr_and_str(const ::tpy::String& s) {
-    std::cout << "repr" << " " << ::tpy::repr_of(s) << " " << std::string(s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << "repr" << " " << std::string(::tpy::repr_of(s)) << " " << std::string(s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def fstring(s: String) -> None:

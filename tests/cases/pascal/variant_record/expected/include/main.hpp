@@ -18,6 +18,7 @@ enum class shapekind : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::shapekind> {
     static constexpr std::string_view type_name = "shapekind";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::shapekind e);
     static const std::array<::tpyapp::main::shapekind, 3> members;
     static ::tpyapp::main::shapekind from_value(int32_t v);
@@ -28,7 +29,7 @@ struct tpy::EnumUtil<::tpyapp::main::shapekind> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, shapekind __e) {
-    return __os << "shapekind." << ::tpy::EnumUtil<shapekind>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct shape;
@@ -63,7 +64,7 @@ struct shape {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const shape& obj) {
-    ::tpy::print_object_default(os, "shape", obj);
+    ::tpy::print_object_default(os, shape::__tpy_class_name__, obj);
     return os;
 }
 

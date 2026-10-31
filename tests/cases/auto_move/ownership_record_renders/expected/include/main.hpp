@@ -152,7 +152,7 @@ struct A {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, "A", obj);
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
     return os;
 }
 
@@ -168,7 +168,7 @@ struct F {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const F& obj) {
-    ::tpy::print_object_default(os, "F", obj);
+    ::tpy::print_object_default(os, F::__tpy_class_name__, obj);
     return os;
 }
 
@@ -184,7 +184,7 @@ struct B {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    ::tpy::print_object_default(os, "B", obj);
+    ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
     return os;
 }
 
@@ -200,7 +200,7 @@ struct Q {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Q& obj) {
-    ::tpy::print_object_default(os, "Q", obj);
+    ::tpy::print_object_default(os, Q::__tpy_class_name__, obj);
     return os;
 }
 
@@ -222,7 +222,7 @@ struct N {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const N& obj) {
-    ::tpy::print_object_default(os, "N", obj);
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
     return os;
 }
 
@@ -233,7 +233,7 @@ struct EE : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const EE& obj) {
-    ::tpy::print_object_default(os, "EE", obj);
+    ::tpy::print_object_default(os, EE::__tpy_class_name__, obj);
     return os;
 }
 
@@ -273,7 +273,7 @@ struct H {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const H& obj) {
-    ::tpy::print_object_default(os, "H", obj);
+    ::tpy::print_object_default(os, H::__tpy_class_name__, obj);
     return os;
 }
 
@@ -294,7 +294,7 @@ struct NBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NBox& obj) {
-    ::tpy::print_object_default(os, "NBox", obj);
+    ::tpy::print_object_default(os, NBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -310,7 +310,7 @@ struct AW {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AW& obj) {
-    ::tpy::print_object_default(os, "AW", obj);
+    ::tpy::print_object_default(os, AW::__tpy_class_name__, obj);
     return os;
 }
 

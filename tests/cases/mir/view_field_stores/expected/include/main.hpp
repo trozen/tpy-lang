@@ -204,7 +204,7 @@ struct Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
-    ::tpy::print_object_default(os, "Tok", obj);
+    ::tpy::print_object_default(os, Tok::__tpy_class_name__, obj);
     return os;
 }
 
@@ -222,7 +222,7 @@ struct Outer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-    ::tpy::print_object_default(os, "Outer", obj);
+    ::tpy::print_object_default(os, Outer::__tpy_class_name__, obj);
     return os;
 }
 
@@ -240,7 +240,7 @@ struct Stamp {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stamp& obj) {
-    ::tpy::print_object_default(os, "Stamp", obj);
+    ::tpy::print_object_default(os, Stamp::__tpy_class_name__, obj);
     return os;
 }
 
@@ -261,7 +261,7 @@ struct R {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const R& obj) {
-    ::tpy::print_object_default(os, "R", obj);
+    ::tpy::print_object_default(os, R::__tpy_class_name__, obj);
     return os;
 }
 
@@ -277,7 +277,7 @@ struct Buf {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
-    ::tpy::print_object_default(os, "Buf", obj);
+    ::tpy::print_object_default(os, Buf::__tpy_class_name__, obj);
     return os;
 }
 
@@ -293,7 +293,7 @@ struct Wrap {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
-    ::tpy::print_object_default(os, "Wrap", obj);
+    ::tpy::print_object_default(os, Wrap::__tpy_class_name__, obj);
     return os;
 }
 
@@ -348,7 +348,7 @@ struct Holder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -364,7 +364,7 @@ struct Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
     return os;
 }
 
@@ -380,7 +380,7 @@ struct Shell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shell& obj) {
-    ::tpy::print_object_default(os, "Shell", obj);
+    ::tpy::print_object_default(os, Shell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -401,7 +401,7 @@ struct Items {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
-    ::tpy::print_object_default(os, "Items", obj);
+    ::tpy::print_object_default(os, Items::__tpy_class_name__, obj);
     return os;
 }
 
@@ -413,7 +413,7 @@ struct Kid : Tok {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Kid& obj) {
-    ::tpy::print_object_default(os, "Kid", obj);
+    ::tpy::print_object_default(os, Kid::__tpy_class_name__, obj);
     return os;
 }
 
@@ -429,7 +429,7 @@ struct Derived : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
-    ::tpy::print_object_default(os, "Derived", obj);
+    ::tpy::print_object_default(os, Derived::__tpy_class_name__, obj);
     return os;
 }
 
@@ -442,7 +442,7 @@ struct Fixed : Base {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
-    ::tpy::print_object_default(os, "Fixed", obj);
+    ::tpy::print_object_default(os, Fixed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -525,7 +525,7 @@ inline bool Frozen::__eq__(const Frozen& other) const {
 }
 
 inline std::string Frozen::__repr__() const {
-    return std::format("Frozen(s={}, n={})", ::tpy::repr_of(this->s), ::tpy::repr_of(this->n));
+    return std::format("Frozen(s={}, n={})", std::string(::tpy::repr_of(this->s)), std::string(::tpy::repr_of(this->n)));
 }
 
 inline uint64_t Frozen::__hash__() const {

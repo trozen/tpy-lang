@@ -30,7 +30,7 @@ struct Box {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-    ::tpy::print_object_default(os, "Box", obj);
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -44,7 +44,7 @@ struct Logger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
-    ::tpy::print_object_default(os, "Logger", obj);
+    ::tpy::print_object_default(os, Logger::__tpy_class_name__, obj);
     return os;
 }
 
@@ -58,7 +58,7 @@ struct IntBox : Box<int32_t>, Logger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-    ::tpy::print_object_default(os, "IntBox", obj);
+    ::tpy::print_object_default(os, IntBox::__tpy_class_name__, obj);
     return os;
 }
 

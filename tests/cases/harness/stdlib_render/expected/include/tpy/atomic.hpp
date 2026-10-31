@@ -12,6 +12,7 @@ namespace tpystd::tpy::atomic {
 template<>
 struct tpy::EnumUtil<::std::memory_order> {
     static constexpr std::string_view type_name = "MemoryOrder";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::std::memory_order e);
     static const std::array<::std::memory_order, 5> members;
     static ::std::memory_order from_value(int32_t v);

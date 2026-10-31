@@ -52,7 +52,7 @@ struct BaseExc : Throwable {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BaseExc& obj) {
-    ::tpy::print_object_default(os, "BaseExc", obj);
+    ::tpy::print_object_default(os, BaseExc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -69,7 +69,7 @@ struct ValErr : BaseExc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ValErr& obj) {
-    ::tpy::print_object_default(os, "ValErr", obj);
+    ::tpy::print_object_default(os, ValErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -86,7 +86,7 @@ struct OsErr : BaseExc {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OsErr& obj) {
-    ::tpy::print_object_default(os, "OsErr", obj);
+    ::tpy::print_object_default(os, OsErr::__tpy_class_name__, obj);
     return os;
 }
 

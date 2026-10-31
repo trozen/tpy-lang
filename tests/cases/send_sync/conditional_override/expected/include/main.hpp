@@ -31,7 +31,7 @@ struct Shared {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Shared<T>& obj) {
-    ::tpy::print_object_default(os, "Shared", obj);
+    ::tpy::print_object_default(os, Shared<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -50,7 +50,7 @@ struct SendCell {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SendCell<T>& obj) {
-    ::tpy::print_object_default(os, "SendCell", obj);
+    ::tpy::print_object_default(os, SendCell<T>::__tpy_class_name__, obj);
     return os;
 }
 

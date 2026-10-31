@@ -41,7 +41,7 @@ struct Entry {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Entry<T>& obj) {
-    ::tpy::print_object_default(os, "Entry", obj);
+    ::tpy::print_object_default(os, Entry<T>::__tpy_class_name__, obj);
     return os;
 }
 

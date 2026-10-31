@@ -32,7 +32,7 @@ struct Repeater {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Repeater& obj) {
-    ::tpy::print_object_default(os, "Repeater", obj);
+    ::tpy::print_object_default(os, Repeater::__tpy_class_name__, obj);
     return os;
 }
 

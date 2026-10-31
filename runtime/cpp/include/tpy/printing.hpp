@@ -89,6 +89,12 @@ void print_element(std::ostream& os, const T& elem) {
     os << ::tpy::repr_of(elem);
 }
 
+// An enum element writes its repr straight into the stream, with no string.
+template <::tpy::detail::util_enum T>
+void print_element(std::ostream& os, const T& elem) {
+    ::tpy::detail::write_enum_repr(os, elem);
+}
+
 // A record whose repr streams (a builtin-base subclass's inherited
 // `__repr__`, generated as `__repr_into__`) writes in place, with no string.
 template <typename T>

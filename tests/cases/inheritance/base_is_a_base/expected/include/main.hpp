@@ -359,7 +359,7 @@ struct Base {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const Base<K, V>& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
+    ::tpy::print_object_default(os, Base<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -447,7 +447,7 @@ struct Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-    ::tpy::print_object_default(os, "Animal", obj);
+    ::tpy::print_object_default(os, Animal::__tpy_class_name__, obj);
     return os;
 }
 
@@ -466,7 +466,7 @@ struct Pet : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
-    ::tpy::print_object_default(os, "Pet", obj);
+    ::tpy::print_object_default(os, Pet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -821,7 +821,7 @@ struct Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, "Pt", obj);
+    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -847,7 +847,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -889,7 +889,7 @@ struct Shelter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
-    ::tpy::print_object_default(os, "Shelter", obj);
+    ::tpy::print_object_default(os, Shelter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -933,7 +933,7 @@ struct HasLen {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HasLen& obj) {
-    ::tpy::print_object_default(os, "HasLen", obj);
+    ::tpy::print_object_default(os, HasLen::__tpy_class_name__, obj);
     return os;
 }
 
@@ -949,7 +949,7 @@ struct P {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, "P", obj);
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1189,7 +1189,7 @@ struct Emp {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Emp& obj) {
-    ::tpy::print_object_default(os, "Emp", obj);
+    ::tpy::print_object_default(os, Emp::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1203,7 +1203,7 @@ struct EmpStr {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const EmpStr& obj) {
-    ::tpy::print_object_default(os, "EmpStr", obj);
+    ::tpy::print_object_default(os, EmpStr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1236,7 +1236,7 @@ struct SpA : Meter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SpA& obj) {
-    ::tpy::print_object_default(os, "SpA", obj);
+    ::tpy::print_object_default(os, SpA::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1280,7 +1280,7 @@ struct Grow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Grow& obj) {
-    ::tpy::print_object_default(os, "Grow", obj);
+    ::tpy::print_object_default(os, Grow::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1422,7 +1422,7 @@ struct SupP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SupP& obj) {
-    ::tpy::print_object_default(os, "SupP", obj);
+    ::tpy::print_object_default(os, SupP::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1443,7 +1443,7 @@ struct SupVBase : SupAddable {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SupVBase& obj) {
-    ::tpy::print_object_default(os, "SupVBase", obj);
+    ::tpy::print_object_default(os, SupVBase::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1540,7 +1540,7 @@ struct SupBox {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SupBox& obj) {
-    ::tpy::print_object_default(os, "SupBox", obj);
+    ::tpy::print_object_default(os, SupBox::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1590,7 +1590,7 @@ struct ChooseBase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ChooseBase& obj) {
-    ::tpy::print_object_default(os, "ChooseBase", obj);
+    ::tpy::print_object_default(os, ChooseBase::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1612,7 +1612,7 @@ struct StaticG {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const StaticG<T>& obj) {
-    ::tpy::print_object_default(os, "StaticG", obj);
+    ::tpy::print_object_default(os, StaticG<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1628,7 +1628,7 @@ struct StaticPlain {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StaticPlain& obj) {
-    ::tpy::print_object_default(os, "StaticPlain", obj);
+    ::tpy::print_object_default(os, StaticPlain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1648,7 +1648,7 @@ struct FutSub : ::tpystd::asyncio::Future<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const FutSub<U>& obj) {
-    ::tpy::print_object_default(os, "FutSub", obj);
+    ::tpy::print_object_default(os, FutSub<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1665,7 +1665,7 @@ struct FutConc : ::tpystd::asyncio::Future<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FutConc& obj) {
-    ::tpy::print_object_default(os, "FutConc", obj);
+    ::tpy::print_object_default(os, FutConc::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1683,7 +1683,7 @@ struct GSub : Base<K, V> {
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const GSub<K, V>& obj) {
-    ::tpy::print_object_default(os, "GSub", obj);
+    ::tpy::print_object_default(os, GSub<K, V>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1696,7 +1696,7 @@ struct CSub : Base<std::string, int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CSub& obj) {
-    ::tpy::print_object_default(os, "CSub", obj);
+    ::tpy::print_object_default(os, CSub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1713,7 +1713,7 @@ struct Dog : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1730,7 +1730,7 @@ struct Quiet : Animal {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Quiet& obj) {
-    ::tpy::print_object_default(os, "Quiet", obj);
+    ::tpy::print_object_default(os, Quiet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1747,7 +1747,7 @@ struct Cat : Pet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1966,7 +1966,7 @@ struct NoPt : Pt {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NoPt& obj) {
-    ::tpy::print_object_default(os, "NoPt", obj);
+    ::tpy::print_object_default(os, NoPt::__tpy_class_name__, obj);
     return os;
 }
 } // namespace tpyapp::main
@@ -1986,7 +1986,7 @@ struct LenSub : HasLen {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LenSub& obj) {
-    ::tpy::print_object_default(os, "LenSub", obj);
+    ::tpy::print_object_default(os, LenSub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2001,7 +2001,7 @@ struct SpB : SpA {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SpB& obj) {
-    ::tpy::print_object_default(os, "SpB", obj);
+    ::tpy::print_object_default(os, SpB::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2013,7 +2013,7 @@ struct GrowSub : Grow {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GrowSub& obj) {
-    ::tpy::print_object_default(os, "GrowSub", obj);
+    ::tpy::print_object_default(os, GrowSub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2057,7 +2057,7 @@ struct SupQ : SupP {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SupQ& obj) {
-    ::tpy::print_object_default(os, "SupQ", obj);
+    ::tpy::print_object_default(os, SupQ::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2080,7 +2080,7 @@ struct SupVChild : SupVBase {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SupVChild& obj) {
-    ::tpy::print_object_default(os, "SupVChild", obj);
+    ::tpy::print_object_default(os, SupVChild::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2093,7 +2093,7 @@ struct ChooseChild : ChooseBase {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const ChooseChild<U>& obj) {
-    ::tpy::print_object_default(os, "ChooseChild", obj);
+    ::tpy::print_object_default(os, ChooseChild<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2106,7 +2106,7 @@ struct StaticConcSub : StaticG<int32_t> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const StaticConcSub<U>& obj) {
-    ::tpy::print_object_default(os, "StaticConcSub", obj);
+    ::tpy::print_object_default(os, StaticConcSub<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2117,7 +2117,7 @@ struct StaticSub : StaticG<int32_t> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StaticSub& obj) {
-    ::tpy::print_object_default(os, "StaticSub", obj);
+    ::tpy::print_object_default(os, StaticSub::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2130,7 +2130,7 @@ struct StaticGS : StaticG<U> {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const StaticGS<U>& obj) {
-    ::tpy::print_object_default(os, "StaticGS", obj);
+    ::tpy::print_object_default(os, StaticGS<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2143,7 +2143,7 @@ struct StaticPlainSub : StaticPlain {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const StaticPlainSub<U>& obj) {
-    ::tpy::print_object_default(os, "StaticPlainSub", obj);
+    ::tpy::print_object_default(os, StaticPlainSub<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -2156,7 +2156,7 @@ struct CSub2 : CSub {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CSub2& obj) {
-    ::tpy::print_object_default(os, "CSub2", obj);
+    ::tpy::print_object_default(os, CSub2::__tpy_class_name__, obj);
     return os;
 }
 

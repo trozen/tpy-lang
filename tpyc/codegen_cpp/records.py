@@ -1379,7 +1379,8 @@ class RecordGenerator:
         elif has_repr:
             out.write(f"{INDENT}os << obj.__repr__();\n")
         else:
-            out.write(f'{INDENT}::tpy::print_object_default(os, "{record.name}", obj);\n')
+            out.write(f'{INDENT}::tpy::print_object_default('
+                      f'os, {name}::__tpy_class_name__, obj);\n')
 
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")

@@ -25,7 +25,7 @@ struct TUser {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TUser& obj) {
-    ::tpy::print_object_default(os, "TUser", obj);
+    ::tpy::print_object_default(os, TUser::__tpy_class_name__, obj);
     return os;
 }
 

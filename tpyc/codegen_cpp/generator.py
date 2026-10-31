@@ -2467,10 +2467,7 @@ class CodeGenerator:
             out.write(f"    {name}(_TpyAliasCtorArg&& v) : value(std::forward<_TpyAliasCtorArg>(v)) {{}}\n\n")
             out.write(f"    bool operator==(const {name}&) const "
                       f"requires std::equality_comparable<variant_type> = default;\n\n")
-            out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
-            out.write(f"        ::tpy::detail::print_element(os, v.value);\n")
-            out.write(f"        return os;\n")
-            out.write(f"    }}\n")
+            self._gen_recursive_alias_text(out, name)
             out.write(f"}};\n")
             return
         out.write(f"struct {name} {{\n")
@@ -2481,11 +2478,27 @@ class CodeGenerator:
         out.write(f"        requires std::constructible_from<variant_type, T&&>\n")
         out.write(f"    {name}(T&& v) : value(std::forward<T>(v)) {{}}\n\n")
         out.write(f"    bool operator==(const {name}&) const = default;\n\n")
-        out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
-        out.write(f"        ::tpy::detail::print_element(os, v.value);\n")
-        out.write(f"        return os;\n")
-        out.write(f"    }}\n")
+        self._gen_recursive_alias_text(out, name)
         out.write(f"}};\n")
+
+    @staticmethod
+    def _gen_recursive_alias_text(out: TextIO, name: str) -> None:
+        """The wrapper's str() and repr() are its held value's, so a top-level
+        str member prints unquoted under str() and print(). The value is
+        passed as its std::variant base: as the Union itself it would bind the
+        generic `__str__(const T&)`, whose operator<< leg reaches this
+        wrapper's own operator<< (ADL through the alternatives, then the
+        converting constructor) and recurses."""
+        base = "const typename variant_type::base_variant&"
+        out.write(f"    std::string __str__() const {{\n"
+                  f"        return ::tpy::__str__(static_cast<{base}>(value));\n"
+                  f"    }}\n")
+        out.write(f"    std::string __repr__() const {{\n"
+                  f"        return ::tpy::__repr__(static_cast<{base}>(value));\n"
+                  f"    }}\n\n")
+        out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
+        out.write(f"        return os << v.__str__();\n")
+        out.write(f"    }}\n")
 
     def _gen_enum_decl(self, out: TextIO, enum) -> None:
         """Generate C++ enum class declaration (no helpers)."""
@@ -2517,13 +2530,16 @@ class CodeGenerator:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
+            einfo = enum_info_of(enum_type)
+            underlying = einfo.underlying_type.to_cpp()
             qualified = enum_cpp_name(enum_type, cur_module, absolute=True)
             short_name = bare_name(enum.name)
             member_count = len(enum.members)
+            str_is_value = "true" if einfo.str_is_value else "false"
             out.write(f"template<>\n")
             out.write(f"struct tpy::EnumUtil<{qualified}> {{\n")
             out.write(f"    static constexpr std::string_view type_name = \"{short_name}\";\n")
+            out.write(f"    static constexpr bool str_is_value = {str_is_value};\n")
             out.write(f"    static std::string_view name({qualified} e);\n")
             out.write(f"    static const std::array<{qualified}, {member_count}> members;\n")
             out.write(f"    static {qualified} from_value({underlying} v);\n")
@@ -2534,10 +2550,8 @@ class CodeGenerator:
     def _gen_enum_operator_ostream(self, out: TextIO, enum) -> None:
         """Generate inline operator<< inside user namespace."""
         cpp_name = enum.name.replace(".", "::")
-        # Use short name for repr to match CPython (Kind.TEXT, not Message.Kind.TEXT)
-        short_name = bare_name(enum.name)
         out.write(f"inline std::ostream& operator<<(std::ostream& __os, {cpp_name} __e) {{\n")
-        out.write(f"    return __os << \"{short_name}.\" << ::tpy::EnumUtil<{cpp_name}>::name(__e);\n")
+        out.write(f"    return ::tpy::detail::write_enum_str(__os, __e);\n")
         out.write(f"}}\n\n")
 
     def _gen_enum_source_defs(self, out: TextIO, module: TpyModule) -> None:

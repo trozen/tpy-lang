@@ -98,7 +98,7 @@ inline bool User::__eq__(const User& other) const {
 }
 
 inline std::string User::__repr__() const {
-    return std::format("User(name={}, age={}, active={}, email={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age), ::tpy::repr_of(this->active), ::tpy::repr_of(this->email));
+    return std::format("User(name={}, age={}, active={}, email={})", std::string(::tpy::repr_of(this->name)), std::string(::tpy::repr_of(this->age)), std::string(::tpy::repr_of(this->active)), std::string(::tpy::repr_of(this->email)));
 }
 
 inline User User::from_json(std::string_view __s) {

@@ -29,6 +29,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 2> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -39,7 +40,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Msg;
@@ -130,7 +131,7 @@ struct Registry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
-    ::tpy::print_object_default(os, "Registry", obj);
+    ::tpy::print_object_default(os, Registry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -144,7 +145,7 @@ inline bool Msg::__eq__(const Msg& other) const {
 }
 
 inline std::string Msg::__repr__() const {
-    return std::format("Msg(color={}, value={})", ::tpy::repr_of(this->color), ::tpy::repr_of(this->value));
+    return std::format("Msg(color={}, value={})", std::string(::tpy::repr_of(this->color)), std::string(::tpy::repr_of(this->value)));
 }
 
 inline Msg Msg::from_json(std::string_view __s) {
@@ -253,7 +254,7 @@ inline bool Item::__eq__(const Item& other) const {
 }
 
 inline std::string Item::__repr__() const {
-    return std::format("Item(color={})", ::tpy::repr_of(this->color));
+    return std::format("Item(color={})", std::string(::tpy::repr_of(this->color)));
 }
 
 // def __init__(self):

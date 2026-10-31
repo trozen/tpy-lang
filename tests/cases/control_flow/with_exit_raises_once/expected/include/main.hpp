@@ -34,7 +34,7 @@ struct Thrower {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Thrower& obj) {
-    ::tpy::print_object_default(os, "Thrower", obj);
+    ::tpy::print_object_default(os, Thrower::__tpy_class_name__, obj);
     return os;
 }
 
@@ -56,7 +56,7 @@ struct Quiet {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Quiet& obj) {
-    ::tpy::print_object_default(os, "Quiet", obj);
+    ::tpy::print_object_default(os, Quiet::__tpy_class_name__, obj);
     return os;
 }
 

@@ -161,7 +161,7 @@ struct StringIO {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const StringIO& obj) {
-    ::tpy::print_object_default(os, "StringIO", obj);
+    ::tpy::print_object_default(os, StringIO::__tpy_class_name__, obj);
     return os;
 }
 
@@ -245,7 +245,7 @@ struct BytesIO {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BytesIO& obj) {
-    ::tpy::print_object_default(os, "BytesIO", obj);
+    ::tpy::print_object_default(os, BytesIO::__tpy_class_name__, obj);
     return os;
 }
 
@@ -327,7 +327,7 @@ struct FileIO {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FileIO& obj) {
-    ::tpy::print_object_default(os, "FileIO", obj);
+    ::tpy::print_object_default(os, FileIO::__tpy_class_name__, obj);
     return os;
 }
 
@@ -401,7 +401,7 @@ struct BufferedReader {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BufferedReader& obj) {
-    ::tpy::print_object_default(os, "BufferedReader", obj);
+    ::tpy::print_object_default(os, BufferedReader::__tpy_class_name__, obj);
     return os;
 }
 
@@ -463,7 +463,7 @@ struct BufferedWriter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BufferedWriter& obj) {
-    ::tpy::print_object_default(os, "BufferedWriter", obj);
+    ::tpy::print_object_default(os, BufferedWriter::__tpy_class_name__, obj);
     return os;
 }
 

@@ -33,7 +33,7 @@ struct Tagger {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagger& obj) {
-    ::tpy::print_object_default(os, "Tagger", obj);
+    ::tpy::print_object_default(os, Tagger::__tpy_class_name__, obj);
     return os;
 }
 

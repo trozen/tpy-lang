@@ -577,7 +577,7 @@ void pointer_args() {
     PtrSink ps = PtrSink(nullptr, ::tpy::Union<A*, UB*>{&__tmp_1});
     std::cout << "opt_method" << " " << ps.opt(&(h.a)) << " " << ps.uni(::tpy::Union<A*, UB*>{&(h.a)}) << " " << h.a.v << "\n" << ::tpy::check_signals;
     std::cout << "ptr_ctor" << " " << PtrSink(&(h.a), ::tpy::Union<A*, UB*>{&(h.a)}).n << " " << h.a.v << "\n" << ::tpy::check_signals;
-    std::cout << "value_union_native" << " " << ::tpy::repr_of(::tpyapp::main::pick_vu(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "value_union_native" << " " << std::string(::tpy::repr_of(::tpyapp::main::pick_vu(true))) << "\n" << ::tpy::check_signals;
     std::cout << "value_union_call" << " " << ::tpy::print_bool(::tpyapp::main::is_str_vu(::tpyapp::main::pick_vu(true))) << " " << ::tpy::print_bool(::tpyapp::main::is_str_vu(::tpyapp::main::pick_vu(false))) << "\n" << ::tpy::check_signals;
     Dog __tmp_2 = ::tpyapp::main::mk_dog();
     std::cout << "opt_subclass_call" << " " << PetProbe().probe(&(__tmp_2)) << "\n" << ::tpy::check_signals;

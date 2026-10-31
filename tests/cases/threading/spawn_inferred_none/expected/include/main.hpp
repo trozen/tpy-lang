@@ -38,7 +38,7 @@ struct Beacon {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Beacon& obj) {
-    ::tpy::print_object_default(os, "Beacon", obj);
+    ::tpy::print_object_default(os, Beacon::__tpy_class_name__, obj);
     return os;
 }
 

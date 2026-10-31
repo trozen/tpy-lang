@@ -60,7 +60,7 @@ struct Loud : Awaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Loud& obj) {
-    ::tpy::print_object_default(os, "Loud", obj);
+    ::tpy::print_object_default(os, Loud::__tpy_class_name__, obj);
     return os;
 }
 
@@ -85,7 +85,7 @@ struct Quiet : Awaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Quiet& obj) {
-    ::tpy::print_object_default(os, "Quiet", obj);
+    ::tpy::print_object_default(os, Quiet::__tpy_class_name__, obj);
     return os;
 }
 

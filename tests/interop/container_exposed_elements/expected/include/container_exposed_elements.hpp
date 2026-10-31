@@ -18,6 +18,7 @@ enum class Color : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::container_exposed_elements::Color> {
     static constexpr std::string_view type_name = "Color";
+    static constexpr bool str_is_value = true;
     static std::string_view name(::tpyapp::container_exposed_elements::Color e);
     static const std::array<::tpyapp::container_exposed_elements::Color, 3> members;
     static ::tpyapp::container_exposed_elements::Color from_value(int32_t v);
@@ -28,7 +29,7 @@ struct tpy::EnumUtil<::tpyapp::container_exposed_elements::Color> {
 namespace tpyapp::container_exposed_elements {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 struct Counter;
@@ -55,7 +56,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 

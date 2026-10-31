@@ -36,7 +36,7 @@ struct Counter {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    ::tpy::print_object_default(os, Counter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -89,7 +89,7 @@ inline bool FrozenCounter::__eq__(const FrozenCounter& other) const {
 }
 
 inline std::string FrozenCounter::__repr__() const {
-    return std::format("FrozenCounter(name={})", ::tpy::repr_of(this->name));
+    return std::format("FrozenCounter(name={})", std::string(::tpy::repr_of(this->name)));
 }
 
 inline uint64_t FrozenCounter::__hash__() const {

@@ -54,7 +54,7 @@ struct Hasher {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Hasher& obj) {
-    ::tpy::print_object_default(os, "Hasher", obj);
+    ::tpy::print_object_default(os, Hasher::__tpy_class_name__, obj);
     return os;
 }
 

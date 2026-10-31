@@ -41,7 +41,7 @@ struct AppError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
-    ::tpy::print_object_default(os, "AppError", obj);
+    ::tpy::print_object_default(os, AppError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -61,7 +61,7 @@ struct OtherError : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
-    ::tpy::print_object_default(os, "OtherError", obj);
+    ::tpy::print_object_default(os, OtherError::__tpy_class_name__, obj);
     return os;
 }
 

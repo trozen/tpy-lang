@@ -25,7 +25,7 @@ struct Shutdown {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shutdown& obj) {
-    ::tpy::print_object_default(os, "Shutdown", obj);
+    ::tpy::print_object_default(os, Shutdown::__tpy_class_name__, obj);
     return os;
 }
 

@@ -92,7 +92,7 @@ struct Roots {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Roots& obj) {
-    ::tpy::print_object_default(os, "Roots", obj);
+    ::tpy::print_object_default(os, Roots::__tpy_class_name__, obj);
     return os;
 }
 
@@ -116,7 +116,7 @@ struct Unwind {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Unwind& obj) {
-    ::tpy::print_object_default(os, "Unwind", obj);
+    ::tpy::print_object_default(os, Unwind::__tpy_class_name__, obj);
     return os;
 }
 
@@ -127,7 +127,7 @@ struct MarkerError : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MarkerError& obj) {
-    ::tpy::print_object_default(os, "MarkerError", obj);
+    ::tpy::print_object_default(os, MarkerError::__tpy_class_name__, obj);
     return os;
 }
 

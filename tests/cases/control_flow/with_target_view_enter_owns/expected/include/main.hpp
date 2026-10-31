@@ -32,7 +32,7 @@ struct Label {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
-    ::tpy::print_object_default(os, "Label", obj);
+    ::tpy::print_object_default(os, Label::__tpy_class_name__, obj);
     return os;
 }
 
@@ -49,7 +49,7 @@ struct Blob {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
-    ::tpy::print_object_default(os, "Blob", obj);
+    ::tpy::print_object_default(os, Blob::__tpy_class_name__, obj);
     return os;
 }
 

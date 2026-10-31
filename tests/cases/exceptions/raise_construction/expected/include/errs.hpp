@@ -48,7 +48,7 @@ struct Carrier : ::tpy::Exception, Shows {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Carrier& obj) {
-    ::tpy::print_object_default(os, "Carrier", obj);
+    ::tpy::print_object_default(os, Carrier::__tpy_class_name__, obj);
     return os;
 }
 
@@ -68,7 +68,7 @@ struct ModErr : ::tpy::Exception {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ModErr& obj) {
-    ::tpy::print_object_default(os, "ModErr", obj);
+    ::tpy::print_object_default(os, ModErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct ModBox : Carrier {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ModBox<T>& obj) {
-    ::tpy::print_object_default(os, "ModBox", obj);
+    ::tpy::print_object_default(os, ModBox<T>::__tpy_class_name__, obj);
     return os;
 }
 

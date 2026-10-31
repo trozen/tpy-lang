@@ -40,7 +40,7 @@ struct Processor {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
-    ::tpy::print_object_default(os, "Processor", obj);
+    ::tpy::print_object_default(os, Processor::__tpy_class_name__, obj);
     return os;
 }
 

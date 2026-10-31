@@ -58,7 +58,7 @@ struct Failed : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
-    ::tpy::print_object_default(os, "Failed", obj);
+    ::tpy::print_object_default(os, Failed::__tpy_class_name__, obj);
     return os;
 }
 
@@ -75,7 +75,7 @@ struct Ctx {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
-    ::tpy::print_object_default(os, "Ctx", obj);
+    ::tpy::print_object_default(os, Ctx::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,7 +94,7 @@ struct Bits {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bits& obj) {
-    ::tpy::print_object_default(os, "Bits", obj);
+    ::tpy::print_object_default(os, Bits::__tpy_class_name__, obj);
     return os;
 }
 

@@ -22,6 +22,7 @@ enum class day : int32_t {
 template<>
 struct tpy::EnumUtil<::tpyapp::main::day> {
     static constexpr std::string_view type_name = "day";
+    static constexpr bool str_is_value = false;
     static std::string_view name(::tpyapp::main::day e);
     static const std::array<::tpyapp::main::day, 7> members;
     static ::tpyapp::main::day from_value(int32_t v);
@@ -32,7 +33,7 @@ struct tpy::EnumUtil<::tpyapp::main::day> {
 namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, day __e) {
-    return __os << "day." << ::tpy::EnumUtil<day>::name(__e);
+    return ::tpy::detail::write_enum_str(__os, __e);
 }
 
 extern day d;

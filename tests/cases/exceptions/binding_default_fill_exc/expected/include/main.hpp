@@ -56,7 +56,7 @@ struct RetErr : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RetErr& obj) {
-    ::tpy::print_object_default(os, "RetErr", obj);
+    ::tpy::print_object_default(os, RetErr::__tpy_class_name__, obj);
     return os;
 }
 
@@ -72,7 +72,7 @@ struct RetErrExplicit : ::tpy::ReturnException {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RetErrExplicit& obj) {
-    ::tpy::print_object_default(os, "RetErrExplicit", obj);
+    ::tpy::print_object_default(os, RetErrExplicit::__tpy_class_name__, obj);
     return os;
 }
 
@@ -89,7 +89,7 @@ struct Thrown : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Thrown& obj) {
-    ::tpy::print_object_default(os, "Thrown", obj);
+    ::tpy::print_object_default(os, Thrown::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +105,7 @@ struct Plain : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
-    ::tpy::print_object_default(os, "Plain", obj);
+    ::tpy::print_object_default(os, Plain::__tpy_class_name__, obj);
     return os;
 }
 
@@ -130,7 +130,7 @@ struct GE : ::tpy::Exception {
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const GE<U>& obj) {
-    ::tpy::print_object_default(os, "GE", obj);
+    ::tpy::print_object_default(os, GE<U>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -152,7 +152,7 @@ struct EB : ::tpy::Exception {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const EB<T>& obj) {
-    ::tpy::print_object_default(os, "EB", obj);
+    ::tpy::print_object_default(os, EB<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -169,7 +169,7 @@ struct CM {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
-    ::tpy::print_object_default(os, "CM", obj);
+    ::tpy::print_object_default(os, CM::__tpy_class_name__, obj);
     return os;
 }
 
@@ -187,7 +187,7 @@ struct HE : GE<std::vector<W>> {
 
 template<typename W>
 inline std::ostream& operator<<(std::ostream& os, const HE<W>& obj) {
-    ::tpy::print_object_default(os, "HE", obj);
+    ::tpy::print_object_default(os, HE<W>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -205,7 +205,7 @@ struct ME : HE<std::tuple<T, T>> {
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ME<T>& obj) {
-    ::tpy::print_object_default(os, "ME", obj);
+    ::tpy::print_object_default(os, ME<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -227,7 +227,7 @@ struct LE : ME<::tpy::BigInt> {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LE& obj) {
-    ::tpy::print_object_default(os, "LE", obj);
+    ::tpy::print_object_default(os, LE::__tpy_class_name__, obj);
     return os;
 }
 
@@ -354,7 +354,7 @@ inline CM& CM::__enter__() {
 //     return False
 inline bool CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
     if ((ev != nullptr)) {
-        std::cout << "generatorexit-abandoned" << " " << ::tpy::repr_of(std::string(::tpy::__str__((*ev)))) << "\n" << ::tpy::check_signals;
+        std::cout << "generatorexit-abandoned" << " " << std::string(::tpy::repr_of(std::string(::tpy::__str__((*ev))))) << "\n" << ::tpy::check_signals;
     }
     return false;
 }

@@ -27,7 +27,7 @@ struct Entry {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entry& obj) {
-    ::tpy::print_object_default(os, "Entry", obj);
+    ::tpy::print_object_default(os, Entry::__tpy_class_name__, obj);
     return os;
 }
 
@@ -45,7 +45,7 @@ struct Cell {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
-    ::tpy::print_object_default(os, "Cell", obj);
+    ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
 
@@ -74,7 +74,7 @@ struct Vault {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vault& obj) {
-    ::tpy::print_object_default(os, "Vault", obj);
+    ::tpy::print_object_default(os, Vault::__tpy_class_name__, obj);
     return os;
 }
 
@@ -92,7 +92,7 @@ struct OpError : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OpError& obj) {
-    ::tpy::print_object_default(os, "OpError", obj);
+    ::tpy::print_object_default(os, OpError::__tpy_class_name__, obj);
     return os;
 }
 
@@ -109,7 +109,7 @@ struct SilentError : ::tpy::ValueError {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SilentError& obj) {
-    ::tpy::print_object_default(os, "SilentError", obj);
+    ::tpy::print_object_default(os, SilentError::__tpy_class_name__, obj);
     return os;
 }
 

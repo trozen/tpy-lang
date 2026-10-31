@@ -51,7 +51,7 @@ struct Dog : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-    ::tpy::print_object_default(os, "Dog", obj);
+    ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
     return os;
 }
 
@@ -70,7 +70,7 @@ struct Cat : Speaker {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-    ::tpy::print_object_default(os, "Cat", obj);
+    ::tpy::print_object_default(os, Cat::__tpy_class_name__, obj);
     return os;
 }
 
@@ -86,7 +86,7 @@ struct Recorder {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
-    ::tpy::print_object_default(os, "Recorder", obj);
+    ::tpy::print_object_default(os, Recorder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -105,7 +105,7 @@ struct Announcer {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {
-    ::tpy::print_object_default(os, "Announcer", obj);
+    ::tpy::print_object_default(os, Announcer::__tpy_class_name__, obj);
     return os;
 }
 

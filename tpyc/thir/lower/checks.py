@@ -115,7 +115,7 @@ from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
     is_varargs,
     type_def_of,
-    enum_info_of,
+    enum_info_of, is_value_text_enum_type,
     int_traits_of,
     is_array,
     is_big_int_type,
@@ -13443,12 +13443,12 @@ def _print_arg_form(t: TpyType) -> PrintForm:
         return PrintForm.BYTES
     if is_enum_type(t):
         # @native enums have no emitted operator<< (it would conflict with a
-        # user-provided one) -- the print emit routes them through `::tpy::__repr__`;
+        # user-provided one) -- the print emit routes them through `::tpy::__str__`;
         # tpy-defined enums stream raw via their emitted operator<<.
         einfo = enum_info_of(t)
         if einfo is not None and einfo.is_native:
-            _witness("enum.repr_print")
-            return PrintForm.REPR
+            _witness("enum.str_print")
+            return PrintForm.STR
         return PrintForm.RAW
     tr = int_traits_of(t)
     if tr is not None and tr.bits == 8:
@@ -14224,7 +14224,7 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             return _witness("print.record_subscript")
     return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
              # A tpy-defined enum streams via its emitted operator<< (RAW);
-             # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).
+             # an @native enum takes `::tpy::__str__` (PrintForm.STR).
              or _eligible_enum(at, analyzer) is not None
              or _resolved_str_value(at, analyzer) is not None
              or _resolved_bytes_value(at, analyzer) is not None  # BytesPrinter
@@ -14261,13 +14261,13 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
     (Python str/repr of a container coincide). A direct scalar keeps its own
     row: a format spec flips the bool row to `static_cast<int>` and the float
     rows to bare (std::format handles the spec on double/float directly); the
-    8-bit-int and enum casts apply spec-or-not; bool is checked before the
-    8-bit-int row (bool carries 8-bit int traits but must format as
-    True/False). An int constant takes no row: it lowers to a literal, and
+    8-bit-int and IntEnum casts apply spec-or-not;
+    bool is checked before the 8-bit-int row (bool carries 8-bit int traits
+    but must format as True/False). An int constant takes no row: it lowers to a literal, and
     the f-string lowering adds `.to_string()` when that literal renders as
     BigInt; a runtime BigInt takes the `.to_string()` row (a spec'd int/BigInt
     arg is a sema error). Every other operand sema admitted (Optional, Ptr,
-    union, record, bytes, range, a type parameter) renders its
+    union, record, enum, bytes, range, a type parameter) renders its
     `::tpy::__str__` text.
 
     The conversion row comes after: `!r` is `repr_of`; `!s` keeps the type
@@ -14322,10 +14322,13 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
         elif _runtime_bigint(bigint_key, analyzer) and not numeric_spec:
             # A runtime BigInt formats via `.to_string()`, keyed on the
             # DECLARED type (`is_runtime_bigint`). Placed ahead of the
-            # 8-bit-int and enum casts.
+            # 8-bit-int and IntEnum casts.
             _witness("narrow.fstring_arg")
             row = _FSTRING_BIGINT_WRAP
-        elif _eligible_enum(t, analyzer) is not None:
+        elif (_eligible_enum(t, analyzer) is not None
+              and is_value_text_enum_type(tu)):
+            # An IntEnum is an int: its text and a spec are its value's. Any
+            # other enum operand takes the `__str__` text row below.
             row = "static_cast<int>({0})"
             text = False
         elif is_fixed_int_type(rt):
@@ -14340,8 +14343,8 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
             row = None
         else:
             # Sema admitted the operand as Stringable: an Optional, a Ptr, a
-            # union, a record, a type parameter, bytes / range, an Any under
-            # a spec. Its __str__ text, None for an empty Optional or a null
+            # union, a record, an enum, a type parameter, bytes / range, an
+            # Any under a spec. Its __str__ text, None for an empty Optional or a null
             # pointer.
             _witness("fstr.str_arg")
             row = "::tpy::__str__({0})"

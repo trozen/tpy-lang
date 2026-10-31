@@ -54,7 +54,7 @@ void main() {
     ::tpystd::datetime::date d = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5));
     std::cout << d.isoformat() << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(d)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::repr_of(d) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(d)) << "\n" << ::tpy::check_signals;
     std::cout << d.year() << " " << d.month() << " " << d.day() << "\n" << ::tpy::check_signals;
     std::cout << d.weekday() << "\n" << ::tpy::check_signals;
     std::cout << d.isoweekday() << "\n" << ::tpy::check_signals;
