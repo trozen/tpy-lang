@@ -30,6 +30,7 @@ from ..codegen_cpp.context import (
 from ..codegen_cpp import emit_prims
 from ..codegen_cpp.forms import LocalBinding, LoopBinding, is_plain_nonvalue
 from ..type_def_registry import (
+    has_view_param_form,
     is_array, is_big_int_type, is_bytes_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
@@ -1281,6 +1282,10 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if isinstance(t, UnionType):
             helper = "to_const_ptr_variant" if e.is_const else "to_ptr_variant"
             return f"::tpy::{helper}({inner})"
+        # An owned str / bytes buffer -> its family's view (the parameter
+        # form a concrete str / bytes parameter takes).
+        if has_view_param_form(t):
+            return f"{t.to_cpp_param_type()}({inner})"
         # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
         if is_plain_nonvalue(t):
             return f"&({inner})"

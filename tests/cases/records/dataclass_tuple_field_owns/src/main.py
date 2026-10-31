@@ -58,8 +58,8 @@ class KH:
 class R:
     p: Ptr[P]
 
-    # Written out: the generated repr does not take a Ptr field
-    # (BUGS.md#fstring-optional-ptr-rejects).
+    # Written out: the generated __eq__ does not take a Ptr field
+    # (BUGS.md#dataclass-ptr-field-eq-rejects).
     def __eq__(self, other: "R") -> bool:
         return True
 

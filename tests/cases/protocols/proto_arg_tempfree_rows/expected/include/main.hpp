@@ -88,7 +88,7 @@ inline int32_t Sink::take_str(std::string s) const {
 // def take_union(self, u: int32 | str) -> int32:
 //     return len(str(u))
 inline int32_t Sink::take_union(const ::tpy::Union<int32_t, std::string>& u) const {
-    return ::tpy::__len__(::tpy::__str__(u));
+    return ::tpy::__len__(std::string(::tpy::__str__(u)));
 }
 
 // def take_ro_list(self, xs: readonly[list[int32]]) -> int32:

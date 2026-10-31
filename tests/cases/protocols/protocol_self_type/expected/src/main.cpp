@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int32_t a = 21;
     int32_t b = 21;
-    ::tpyapp::main::add_values(a, b);
+    ::tpyapp::main::add_values(auto(a), auto(b));
 }
 
 // main()

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@15:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@15:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::Bar.__repr__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Foo.__init__@5:4: covered (storage: no_proof_required), summary: known
 main::Bar.__init__@10:4: covered (storage: no_proof_required), summary: known

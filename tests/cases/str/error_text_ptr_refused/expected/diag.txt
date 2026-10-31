@@ -1,0 +1,1 @@
+main.py:12: error: Type Ptr[char] does not conform to protocol Stringable in argument 'v'

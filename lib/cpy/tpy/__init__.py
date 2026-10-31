@@ -614,6 +614,10 @@ else:
         def __iter__(self):
             return iter(self._data)
 
+        # A span's text is the list of its elements, as TPy renders it.
+        def __repr__(self) -> str:
+            return repr(list(self._data))
+
         def __copy__(self):
             new_span = object.__new__(type(self))
             new_span._data = self._data

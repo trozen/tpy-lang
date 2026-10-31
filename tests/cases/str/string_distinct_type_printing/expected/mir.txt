@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::repr_and_str@12:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::repr_and_str@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::fstring@17:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::container_element@22:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::show@28:0: uncovered (generic body)

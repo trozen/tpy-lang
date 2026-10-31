@@ -84,6 +84,7 @@ from ...typesys import (
     LiteralType,
     NominalType,
     NONE,
+    NoneType,
     OptionalType,
     OwnType,
     PendingListType,
@@ -203,6 +204,7 @@ from ..param_contract import (Adapts, ParamContract, arg_retention, const_ref_sl
                               protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
 from ...sema.own_copy import contains_reference_type
+from ...sema.type_join import user_type_name
 from ...sema.local_deduction import (leaf_is_temporary,
                                      view_slot_source_is_temporary,
                                      view_source_is_temporary)
@@ -307,6 +309,7 @@ from ..nodes import (
 )
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
+from ..frame import FrameCaptureKind
 from . import binding_shadow
 from . import bindings
 from .bindings import (_value_opt_kind, form_of, project_held,
@@ -15597,8 +15600,6 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             or _tuple_param(ptype)):
         return None
     inst = instantiated if isinstance(instantiated, TpyType) else ptype
-    if _tuple_param(inst):
-        return None
     if (declared_ptype is None and callee_fi is not None
             and 0 <= arg_index < len(callee_fi.root.params)):
         declared_ptype = callee_fi.root.params[arg_index].type
@@ -15619,15 +15620,31 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                 call=call, arg=a, recv=recv)
     if site_retention is not None:
         contract = replace(contract, retention=site_retention[0])
-    structural = _structural_record_slot(a, ptype, contract, callee_fi, lc)
+    structural = _structural_protocol_slot(a, ptype, contract, callee_fi, lc,
+                                           declared)
+    if contract.frame_captured and contract.adapts is Adapts.STRUCTURAL:
+        structural = _frame_protocol_slot(a, ptype, structural, callee_fi,
+                                          arg_index, lc)
+    # The protocol is a template parameter C++ deduces from the argument:
+    # the slot holds the argument's own type, under the callee's contract,
+    # as a generic call holds its instantiation -- handed so the callee
+    # holds what the type's concrete twin holds there: at a TPy callee its
+    # own copy (`auto(b.n)`), its view or the object itself (the callee may
+    # write the storage it was read from through another parameter); a
+    # runtime binding reads within the call.
+    twin_cls = None
     if structural is not None:
-        # The protocol is a template parameter C++ deduces from the
-        # argument: the slot holds the argument's own record, under the
-        # callee's contract, as a generic call holds its instantiation.
         inst = structural
+        if not (contract.frame_captured or contract.declared_only):
+            twin = param_contract(callee_fi, arg_index, structural,
+                                  call=call, type_of=lc.analyzer.get_expr_type,
+                                  arg=a, recv=recv)
+            twin_cls = param_slot_class(structural, twin)
+    elif _tuple_param(inst):
+        return None
     keep = contract.retention
     cls = param_slot_class(ptype, contract)
-    if (cls is ParamSlotClass.REFERENCE
+    if (cls is ParamSlotClass.REFERENCE and structural is None
             and not _reference_object_slot(inst, lc.analyzer)):
         return None
     if (cls is ParamSlotClass.POINTER
@@ -15675,14 +15692,31 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return pinned
         slot = param_slot(ptype, contract, lc.analyzer,
                           placement=lc.placement, instantiated=inst)
-        return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
-                            temps=temps, reason=reason, note=note,
-                            frame_kept=frame_kept, cls=cls,
-                            holds_fresh=holds_fresh, callee_fi=callee_fi,
-                            declared_ptype=declared_ptype,
-                            written_value=written_value,
-                            ranked_note=(cls is ParamSlotClass.REFERENCE
-                                         and reference_note is not None))
+        bound = _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
+                             temps=temps, reason=reason, note=note,
+                             frame_kept=frame_kept, cls=cls,
+                             holds_fresh=holds_fresh, callee_fi=callee_fi,
+                             declared_ptype=declared_ptype,
+                             written_value=written_value,
+                             ranked_note=(cls is ParamSlotClass.REFERENCE
+                                          and reference_note is not None),
+                             structural=structural is not None)
+        if twin_cls not in (ParamSlotClass.VALUE, ParamSlotClass.VIEW):
+            return bound
+        if twin_cls is ParamSlotClass.VIEW:
+            if (isinstance(structural, OptionalType)
+                    or not has_view_param_form(structural)):
+                # A `str | None` keeps its held form.
+                return bound
+            if bound.form is Form.BORROW:
+                return bound
+            _witness("arg.protocol_view")
+            return THIRFormConvert(result_type=bound.result_type, value=bound,
+                                   form=Form.BORROW,
+                                   loc=getattr(a, "loc", None))
+        _witness("arg.protocol_value_copy")
+        return THIRDecayCopy(result_type=bound.result_type, value=bound,
+                             loc=getattr(a, "loc", None))
 
     return _frame_temp_arg(
         a, inst, lc, lc.analyzer,
@@ -15698,20 +15732,71 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             reason=reason, family_note=family_note))
 
 
-def _structural_record_slot(a: TpyExpr, ptype: TpyType,
-                            contract: ParamContract,
-                            callee_fi: 'FunctionInfo | None',
-                            lc: '_LowerCtx') -> 'TpyType | None':
-    """The record a structural, non-generic protocol parameter of a callee
-    with a lowered body binds at argument `a`: the argument's own record
-    type (a place or a fresh record). None where the argument's rows
-    decide: a callee whose declaration is what the argument meets (a
-    binding, an inline template), a generic protocol, and any argument but
-    a reference-type record -- a value-type record is copied, as at its
-    concrete parameter, since the storage holding it may be replaced
-    while the callee reads it."""
+def _frame_protocol_slot(a: TpyExpr, ptype: TpyType,
+                         structural: 'TpyType | None',
+                         callee_fi: 'FunctionInfo | None', arg_index: int,
+                         lc: '_LowerCtx') -> 'TpyType | None':
+    """The record a generator / coroutine factory's structural protocol
+    parameter binds at argument `a` (`structural`, its effective type), as
+    a reference-type record binds any protocol slot; None where the
+    argument's rows decide. A non-generic protocol takes only an argument
+    its concrete twin's frame holds by reference: the deduced `T_x&&`
+    frame member holds an lvalue argument by reference, where the twin's
+    frame copies a value, an owned view or a borrow form."""
+    proto = protocol_slot(ptype)
+    at = lc.analyzer.get_expr_type(a)
+    if (proto is None or proto.type_args or callee_fi is None
+            or not isinstance(at, TpyType)):
+        return structural
+    at = peel_binding(at)
+    if isinstance(at, LiteralType):
+        at = at.base_type
+    # `lower.frame` imports this module.
+    from .frame import classify_param_kind
+    # A literal argument binds no structural slot: its own type decides.
+    held = structural if structural is not None else at
+    # An open `T`, a protocol and Any conform by their bound.
+    if (not (isinstance(held, TypeParamRef) or is_protocol_type(held)
+             or isinstance(held, AnyType))
+            and classify_param_kind(held, lambda _: False)
+            is not FrameCaptureKind.REF):
+        # Refused until convert materializes a deduced destination
+        # (BUGS.md#frame-protocol-value-arg).
+        root = callee_fi.root
+        kind = "async" if root.is_async else "generator"
+        pname = root.params[arg_index].name
+        raise ThirUnsupported(
+            "expr.call:frame_protocol_value_arg", loc=getattr(a, "loc", None),
+            message=(f"a '{user_type_name(held)}' argument to the {kind} "
+                     f"parameter '{pname}: {proto.name}' is not supported "
+                     f"yet; declare the parameter with the argument's type"))
+    if (structural is not None and record_like(at, lc.analyzer)
+            and not at.is_value_type()):
+        return at
+    return None
+
+
+def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
+                              contract: ParamContract,
+                              callee_fi: 'FunctionInfo | None',
+                              lc: '_LowerCtx',
+                              declared: dict[str, TpyType]) -> 'TpyType | None':
+    """The type a structural, non-generic protocol parameter binds at
+    argument `a`: the argument's own effective type -- a narrowed read's
+    payload, else the type its storage holds (a record, an Optional, a
+    union, a `Ptr`, None, a scalar), which the C++ template parameter
+    deduces and binds as it is held. A native callee (`str`, `repr`,
+    `len`, `hash`) binds it as a TPy-bodied one does. None where the
+    argument's rows decide: a generic protocol, a container, a protocol
+    or frame value, and a value at a parameter the callee may write -- its
+    storage may be replaced while the callee reads it, so it is copied
+    there, as at its concrete parameter."""
     if (contract.adapts is not Adapts.STRUCTURAL or callee_fi is None
-            or contract.declared_only or contract.instantiation_storage):
+            # A declared callee binding no runtime symbol (a method called
+            # through a protocol receiver, an @overload stub) keeps the
+            # rows (BUGS.md#protocol-param-structural-protocol-concept).
+            or (contract.declared_only
+                and not binds_runtime_symbol(callee_fi))):
         return None
     proto = protocol_slot(ptype)
     if proto is None or proto.type_args:
@@ -15720,11 +15805,39 @@ def _structural_record_slot(a: TpyExpr, ptype: TpyType,
     if not isinstance(at, TpyType):
         return None
     u = peel_binding(at)
-    if (not record_like(u, lc.analyzer) or u.is_value_type()
-            or _f1_container_ref(u) or isinstance(u, ConcreteFrameType)
-            or is_protocol_type(u)):
+    an = lc.analyzer
+    if (isinstance(u, TupleType) and is_rvalue_source(an, a)
+            and binds_runtime_symbol(callee_fi)):
+        # A fresh tuple at a runtime template spells its own element
+        # captures (its rows).
         return None
-    return u
+    rec = binding_of(a, lc, declared)
+    if rec is not None:
+        if rec.storage_opt and not isinstance(u, OptionalType):
+            # A narrowed storage-Optional target has no payload read: its
+            # row passes the whole Optional.
+            return None
+        if (rec.name not in lc.inline_narrowed
+                and _union_binding_divergent(a, declared, an)):
+            # A narrowing that installs no alias leaves the name holding the
+            # whole union, whatever member(s) its read is typed as.
+            u = peel_binding(declared[rec.name])
+    if not (record_like(u, an)
+            or isinstance(u, (OptionalType, UnionType, PtrType, NoneType,
+                              TupleType, RecursiveAliasInstanceType,
+                              TypeParamRef))
+            or _eligible_scalar(u) or _eligible_char(u)
+            or _eligible_enum(u, an) is not None
+            or _resolved_str_value(u, an) is not None
+            or _resolved_bytes_value(u, an) is not None):
+        # An iterator or a view (`d.values()`) keeps its iterable rows.
+        return None
+    if (_f1_container_ref(u) or isinstance(u, ConcreteFrameType)
+            or is_protocol_type(u)
+            or (u.is_value_type() and not contract.const)):
+        return None
+    # A str local's binding type is still pending; its storage is decided.
+    return _resolve_pending_view(u, an) or u
 
 
 def _reference_object_slot(t: TpyType, analyzer) -> bool:
@@ -15776,8 +15889,12 @@ def _holds_fresh_arg(a: TpyExpr, read: THIRExpr, holds: 'HoldsFresh | None',
     if _names_reference(bare, lc) or isinstance(node, THIRValueSelect):
         # An `and` / `or` select holds its operand already: it names it.
         return False
-    readonly = isinstance(unwrap_ref_type(unwrap_send_sync(declared_ptype)),
-                          ReadonlyType)
+    # A declared signature that keeps nothing of a const parameter (a
+    # `@pure` stub's) reads it within the call, as a `readonly` one does.
+    readonly = (isinstance(unwrap_ref_type(unwrap_send_sync(declared_ptype)),
+                           ReadonlyType)
+                or (contract.declared_only and contract.const
+                    and contract.retention is None))
     if (readonly and not contract.frame_captured
             and _empty_container_rvalue(bare, node)):
         # An empty one has no elements to run ahead of the other arguments.
@@ -15961,9 +16078,12 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                  holds_fresh: 'HoldsFresh', callee_fi: 'FunctionInfo | None',
                  declared_ptype: 'TpyType | None',
                  written_value: bool = False,
-                 ranked_note: bool = False) -> THIRExpr:
+                 ranked_note: bool = False,
+                 structural: bool = False) -> THIRExpr:
     """`a` read as it is (a literal built at `slot`), converted at `slot`;
-    storage the conversion asks for held for the statement."""
+    storage the conversion asks for held for the statement. A protocol
+    slot (`structural`) takes any argument whole, so a refused source is
+    refused as itself, never ranked by the slot."""
     keep = contract.retention
     reference = cls is ParamSlotClass.REFERENCE
     if reference:
@@ -15985,6 +16105,8 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
             else:
                 read = stamped(read, lc, record_of=a)
         except ThirUnsupported as exc:
+            if structural:
+                raise
             if ranked_note:
                 # A native callee ranks a refused source by its slot's shape.
                 replace_detail(note)
@@ -16232,7 +16354,8 @@ def _arg_read(a: TpyExpr, slot: Slot, ptype: TpyType, lc: '_LowerCtx',
             isinstance(st, OptionalType)
             and (whole or isinstance(storage_type(
                 named_type_of(a, lc, declared)), OptionalType))),
-        allow_union_divergent=isinstance(slot_u, UnionType))
+        allow_union_divergent=(isinstance(slot_u, UnionType)
+                               or isinstance(st, UnionType)))
 
 
 def _call_arg_result(a: TpyExpr, lc: '_LowerCtx') -> _ExprResultUse:
@@ -16246,7 +16369,10 @@ def _call_arg_result(a: TpyExpr, lc: '_LowerCtx') -> _ExprResultUse:
         if ((record_like(at, lc.analyzer) and not bare.is_value_type())
                 # A borrow-form Optional / union is its pointer.
                 or (isinstance(bare, (OptionalType, UnionType))
-                    and bare.uses_pointer_repr())):
+                    and bare.uses_pointer_repr())
+                # A stored tuple is read as the object it is.
+                or (isinstance(bare, TupleType)
+                    and not is_rvalue_source(lc.analyzer, a))):
             return _ExprResultUse.BORROW_BIND
         return _ExprResultUse.VALUE
     if isinstance(a, TpyCall) and a.call_type is not None:

@@ -110,6 +110,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.subscript_recv",         # subscript receiver: std::get<0>(t).f
     "field.storage_opt_recv",       # narrowed storage-opt local receiver
                                     # derefs at the access -- (*item).field
+    "arg.protocol_value_copy",      # by-value type at a TPy body's protocol
+                                    # slot: auto(b.n), as its twin copies
+    "arg.protocol_view",            # str / bytes at a TPy body's protocol
+                                    # slot: the view its twin takes
     "arg.storage_opt_whole",        # narrowed storage-opt local at a
                                     # protocol slot passes the whole optional
     "field.opt_check_storage_name", # unproven access off a storage-opt name
@@ -120,13 +124,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # at a storage sink: bare
     "move.opt_own_ptr_lift",        # ptr-repr Optional name lifts owning
                                     # storage via ptr_to_optional_move
-    "arg.native_protocol_value",    # scalar/char/str value at a native
-                                    # protocol slot -> bare render (__hash__)
-    "arg.native_protocol_open_call",  # open-T CALL rvalue at the same slot
-                                    # -> bare (hash(self.get()) in a [T] body)
-    "arg.native_union_name",        # union-typed name at a native protocol
-                                    # slot -> bare (repr(a) over a variant)
-                                    # -> inline typed rvalue (const-ref bind)
     "arg.ru_wrapper_elem_literal",  # scalar literal at a wrapper-union
                                     # element slot (`__arr.push_back(4)`)
     "arg.ru_wrapper_borrow_call",   # borrow-returning wrapper call binds the
@@ -619,9 +616,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A borrow-declared call's container result at a nested-container
     # element store copies (`__setitem__(d, "k", std::vector<T>(get(..)))`).
     "setitem.declared_call_copy",
-    # A ptr-repr Optional[F1-record] name at a native protocol slot:
-    # bare T* un-narrowed, the (*name) deref when proven.
-    "arg.native_protocol_optptr",
     # A None literal at a value-opt slot of a NESTED ctor arg
     # (`describe(Dog(None))` -> `std::nullopt`, temp-free).
     # A ternary of borrow-returning calls at a pointer reseat
@@ -2339,8 +2333,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.type_ctor_tparam",         # TYPE-param-typed arg at that same slot
                                     # (`int32(x)` under `[T: AnyFixedInt]`):
                                     # the bare monomorphized name
-    "arg.native_value_tuple_field",  # value-tuple field passed whole at a
-                                    # native tuple slot (tuple_to_str(f))
     "arg.native_slice_subscript",   # list/Span slice subscript inline at a
                                     # native slot (__len__(list_slice(..)))
     "field.value_tuple",            # value-tuple field read consumed whole:

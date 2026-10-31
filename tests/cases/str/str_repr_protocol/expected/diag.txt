@@ -1,0 +1,4 @@
+main.py:470: warning: Mutation of 'ys' while borrowed ('append' may invalidate references)
+main.py:476: warning: Passing borrowed container 'li' to non-readonly parameter 'iterator' (function may invalidate references)
+main.py:481: warning: Passing borrowed container 'si' to non-readonly parameter 'iterator' (function may invalidate references)
+main.py:481: warning: Passing borrowed container 'si' to non-readonly parameter 'iterator' (function may invalidate references)

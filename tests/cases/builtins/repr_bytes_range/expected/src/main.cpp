@@ -25,10 +25,10 @@ std::string repr_param(::tpy::BytesView b) {
 void section_bytes() {
     ::tpy::BytesView b = ::tpy::bytes_literal("a\x03", 2);
     std::cout << "bytes:" << " " << std::string(::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
-    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal_owned("it's", 4))) << "\n" << ::tpy::check_signals;
-    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal_owned("say \"hi\"", 8))) << "\n" << ::tpy::check_signals;
-    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal_owned("it's \"both\"", 11))) << "\n" << ::tpy::check_signals;
-    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal_owned("\t\n\\\xff", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal("it's", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal("say \"hi\"", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal("it's \"both\"", 11))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_literal("\t\n\\\xff", 4))) << "\n" << ::tpy::check_signals;
     std::cout << "bytes:" << " " << std::string(::tpy::repr_of(::tpy::bytes_from_int_iterable(std::array<int32_t, 3>{0, 65, 127}))) << "\n" << ::tpy::check_signals;
     std::cout << "bytes:" << " " << ::tpyapp::main::repr_param(::tpy::bytes_literal("p", 1)) << "\n" << ::tpy::check_signals;
 }

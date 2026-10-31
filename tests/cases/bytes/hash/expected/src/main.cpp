@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(h1 == h2)
 //     print(h1 != h3)
 void test_hash_basic() {
-    uint64_t h1 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    uint64_t h3 = ::tpy::__hash__(::tpy::bytes_literal_owned("world", 5));
+    uint64_t h1 = ::tpy::__hash__(::tpy::bytes_literal("hello", 5));
+    uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal("hello", 5));
+    uint64_t h3 = ::tpy::__hash__(::tpy::bytes_literal("world", 5));
     std::cout << ::tpy::print_bool((h1 == h2)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((h1 != h3)) << "\n" << ::tpy::check_signals;
 }
@@ -48,7 +48,7 @@ void test_bytes_view_hash() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
     ::tpy::Bytes v = ::tpy::__getitem__(items, 0);
     uint64_t h1 = ::tpy::__hash__(v);
-    uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
+    uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal("hello", 5));
     std::cout << ::tpy::print_bool((h1 == h2)) << "\n" << ::tpy::check_signals;
 }
 

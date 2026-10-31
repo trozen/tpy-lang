@@ -6,7 +6,7 @@ Protocol conformance checking and method/field lookups.
 
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 
 import re
 import dataclasses
@@ -19,7 +19,7 @@ from ..typesys import (
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
-    is_dynamic_dispatch_inner,
+    is_dynamic_dispatch_inner, ptr_text_pointee,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -195,37 +195,78 @@ def _alias_body(t: RecursiveAliasInstanceType) -> tuple[TpyType, ...] | None:
     return None if body is t else (body,)
 
 
+def _ptr_text_parts(t: PtrType) -> tuple[TpyType, ...] | None:
+    pointee = ptr_text_pointee(t)
+    return None if pointee is None else (pointee,)
+
+
+_TEXT = frozenset({qnames.STRINGABLE, qnames.REPRESENTABLE})
+STRINGABLE_PROTOCOL = NominalType("Stringable", is_protocol=True)
+REPRESENTABLE_PROTOCOL = NominalType("Representable", is_protocol=True)
+_TEXT_PROTOCOLS = {qnames.STRINGABLE: STRINGABLE_PROTOCOL, qnames.REPRESENTABLE: REPRESENTABLE_PROTOCOL}
+
+
 # Composite types whose conformance to a protocol is their parts'
-# conformance: (kind, protocol qnames, parts). This is the bound's question
-# (and a ValueType field's); the copy gates still ask is_value_type(), so a
+# conformance: (kind, protocol qnames, parts, the protocol the parts are
+# asked -- None for the same one). This is the bound's question (and a
+# ValueType field's); the copy gates still ask is_value_type(), so a
 # union of reference tuples copies unwarned there
 # (BUGS.md#union-of-reference-tuples-copy-silent).
 _PART_WISE: tuple[tuple[type, frozenset[str],
-                        Callable[[Any], tuple[TpyType, ...] | None]], ...] = (
+                        Callable[[Any], tuple[TpyType, ...] | None],
+                        str | None], ...] = (
     # std::tuple's hash, `<`, `==` and copy are elementwise.
     (TupleType, frozenset({qnames.HASHABLE, qnames.COMPARABLE,
                            qnames.EQUATABLE, qnames.VALUE_TYPE}),
-     lambda t: t.element_types),
+     lambda t: t.element_types, None),
+    # A tuple's text, str() and repr() alike, is its elements' repr().
+    (TupleType, _TEXT, lambda t: t.element_types, qnames.REPRESENTABLE),
     # Copying a union or Optional copies the alternative it holds, and
     # comparing two compares the alternatives they hold (by value across
     # alternatives, `::tpy::Union`'s rule; None equals only None); Hashable /
-    # Comparable over one keep the answer of the arms below.
-    (UnionType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}),
-     lambda t: t.members),
-    (OptionalType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}),
-     lambda t: (t.inner,)),
+    # Comparable over one keep the answer of the arms below. Their text is
+    # the held alternative's (`::tpy::__str__` / `repr_of` visit it).
+    (UnionType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}) | _TEXT,
+     lambda t: t.members, None),
+    (OptionalType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}) | _TEXT,
+     lambda t: (t.inner,), None),
     # A generic recursive alias holds its body under the instance's arguments.
     (RecursiveAliasInstanceType,
-     frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}), _alias_body),
+     frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}) | _TEXT, _alias_body,
+     None),
+    # A Ptr renders its pointee (None when null); one with no pointee to
+    # render is no part-wise composite and conforms by its own methods,
+    # which have no text.
+    (PtrType, _TEXT, _ptr_text_parts, None),
 )
 
 
 def _part_wise_parts(actual: TpyType, protocol_qname: str | None,
-                     ) -> tuple[TpyType, ...] | None:
-    for kind, protocol_qnames, parts in _PART_WISE:
+                     ) -> tuple[tuple[TpyType, ...], str] | None:
+    """The parts `actual` conforms to `protocol_qname` through, with the
+    protocol each part is asked; None when it is no part-wise composite of
+    that protocol."""
+    for kind, protocol_qnames, parts, part_protocol in _PART_WISE:
         if isinstance(actual, kind) and protocol_qname in protocol_qnames:
-            return parts(actual)
+            found = parts(actual)
+            if found is None:
+                return None
+            return found, part_protocol or protocol_qname
     return None
+
+
+def text_leaves(t: TpyType) -> Iterator[TpyType]:
+    """The types whose own text a value of type `t` renders as: what a
+    union, an Optional, a recursive alias or a Ptr holds (None renders
+    "None"), `t` itself for anything else -- a tuple's text is its own,
+    built of its elements' repr()."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    part_wise = _part_wise_parts(t, qnames.STRINGABLE)
+    if part_wise is None or part_wise[1] != qnames.STRINGABLE:
+        yield t
+        return
+    for part in part_wise[0]:
+        yield from text_leaves(part)
 
 
 class ProtocolConformanceKind(Enum):
@@ -444,9 +485,10 @@ class ProtocolChecker:
                     and protocol.type_args and len(protocol.type_args) == 1):
                 return ProtocolConformanceKind.EXPLICIT
             return self.classify_protocol_conformance(make_list(actual.element_type), protocol)
-        # None equals only None; a recursive alias's self-reference compares
-        # as its body does (the in-progress guard answers the cycle).
-        if protocol.qualified_name() == qnames.EQUATABLE:
+        # None equals only None and renders "None"; a recursive alias's
+        # self-reference compares and renders as its body does (the
+        # in-progress guard answers the cycle).
+        if protocol.qualified_name() == qnames.EQUATABLE or protocol.qualified_name() in _TEXT:
             if isinstance(actual, NoneType):
                 return ProtocolConformanceKind.EXPLICIT
             if isinstance(actual, AliasRef):
@@ -481,9 +523,11 @@ class ProtocolChecker:
                 return ProtocolConformanceKind.EXPLICIT
             return None
 
-        # Enum/IntEnum: hashable, comparable, and equatable at C++ level
+        # Enum/IntEnum: hashable, comparable, and equatable at C++ level, and
+        # rendered by the runtime's EnumUtil text.
         if is_enum_type(actual):
-            if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
+            if (protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE)
+                    or protocol.qualified_name() in _TEXT):
                 return ProtocolConformanceKind.EXPLICIT
 
         # Any: satisfies Hashable / Equatable / Stringable / Representable at
@@ -508,9 +552,12 @@ class ProtocolChecker:
         # cycle guard.
         part_wise = _part_wise_parts(actual, protocol.qualified_name())
         if part_wise is not None:
+            parts, part_qname = part_wise
+            part_protocol = (protocol if part_qname == protocol.qualified_name()
+                             else _TEXT_PROTOCOLS[part_qname])
             kind = ProtocolConformanceKind.EXPLICIT
-            for part in part_wise:
-                part_kind = self.classify_protocol_conformance(part, protocol)
+            for part in parts:
+                part_kind = self.classify_protocol_conformance(part, part_protocol)
                 if part_kind is None:
                     return None
                 if part_kind is ProtocolConformanceKind.STRUCTURAL:
@@ -536,17 +583,20 @@ class ProtocolChecker:
             # def m[T: Copyable]).
             return None
 
-        # Stringable: Python semantics dictate every type has __str__ via the
-        # object.__str__ default that falls back to __repr__. The C++ runtime
-        # (tpy::__str__ in runtime/cpp/include/tpy/dunder.hpp) implements this
-        # chain, so sema admits any type with either __str__ or __repr__ as
-        # conforming. This collapses the historical str.__init__(Stringable)
-        # vs str.__init__(Representable) overload pair into a single overload
-        # whose codegen template handles both branches via the runtime.
-        if protocol.qualified_name() == qnames.STRINGABLE:
+        # Every object has CPython's object.__str__ / __repr__: str() falls
+        # back to __repr__, and a TPy record with neither renders the default
+        # `<module.Class object at 0x...>` its generated `operator<<` writes
+        # (`::tpy::__str__` / `repr_of` in runtime/cpp/include/tpy/dunder.hpp
+        # implement the chain). A @native or builtin record has that text
+        # only through a `__str__` / `__repr__` its C++ answers, or the text
+        # protocol its stub declares (a scalar's, which the runtime's
+        # `__str__` / `__repr__` overloads render).
+        if protocol.qualified_name() in _TEXT and not is_protocol_type(actual):
             record_info = self.ctx.registry.get_record_for_type(actual)
-            if (record_info is not None
-                    and self.ctx.registry.answers_str_or_repr(record_info)):
+            if record_info is not None and (
+                    not (record_info.is_native or record_info.builtin_type_key)
+                    or self.ctx.registry.answers_str_or_repr(record_info)
+                    or self._check_record_extends(actual, protocol)):
                 return ProtocolConformanceKind.EXPLICIT
 
         # Unified lookup - all protocols (builtin and user) are in the registry

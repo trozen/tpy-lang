@@ -241,7 +241,7 @@ class Poll[T]:
 
 @builtin_type("tpy.float32")
 @native("float")
-class float32(Comparable, Equatable):
+class float32(Comparable, Equatable, Stringable, Representable):
     # Constructors
     @dispatch
     @cpp_template("0.0f")
@@ -515,7 +515,7 @@ class float32(Comparable, Equatable):
 
 @builtin_type("tpy.int8")
 @native("int8_t")
-class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
+class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -648,7 +648,7 @@ class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 
 @builtin_type("tpy.int16")
 @native("int16_t")
-class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
+class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -781,7 +781,7 @@ class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 
 @builtin_type("tpy.int32")
 @native("int32_t")
-class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
+class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -914,7 +914,7 @@ class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 
 @builtin_type("tpy.int64")
 @native("int64_t")
-class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
+class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -1047,7 +1047,7 @@ class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 
 @builtin_type("tpy.uint8")
 @native("uint8_t")
-class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
+class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -1180,7 +1180,7 @@ class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 
 @builtin_type("tpy.uint16")
 @native("uint16_t")
-class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
+class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -1313,7 +1313,7 @@ class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 
 @builtin_type("tpy.uint32")
 @native("uint32_t")
-class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
+class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -1444,7 +1444,7 @@ class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 
 @builtin_type("tpy.uint64")
 @native("uint64_t")
-class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
+class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
     @cpp_template("0")
     @pure
@@ -1575,7 +1575,7 @@ class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 
 @builtin_type("tpy.char")
 @native("char")
-class char(Sized, Equatable):
+class char(Sized, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("'\\0'")
     @pure
@@ -1647,7 +1647,7 @@ class char(Sized, Equatable):
 
 @builtin_type("tpy.String")
 @native("::tpy::String")
-class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
+class String(NativeIterable[char], Iterable[char], Comparable, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("::tpy::String()")
     @pure
@@ -1943,7 +1943,7 @@ class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
 
 @builtin_type("tpy.StrView")
 @native("std::string_view", borrowing_view=True)
-class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable):
+class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("std::string_view()")
     @pure

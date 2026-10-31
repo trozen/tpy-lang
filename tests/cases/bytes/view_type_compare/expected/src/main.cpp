@@ -56,7 +56,7 @@ void sort_bytes(std::vector<::tpy::Bytes>& xs) {
 //     print("hash", hash(v) == hash(a), hash(b"") == hash(bytes()), b"" == a[len(a):])  # tpyc: ok
 void hashes(::tpy::BytesView a) {
     ::tpy::BytesView v = ::tpy::bytes_slice(a, ::tpy::BasicSlice{0, std::nullopt});
-    std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(v) == ::tpy::__hash__(a))) << " " << ::tpy::print_bool((::tpy::__hash__(::tpy::Bytes{}) == ::tpy::__hash__(::tpy::Bytes()))) << " " << ::tpy::print_bool((::tpy::BytesView{} == ::tpy::bytes_slice(a, ::tpy::BasicSlice{::tpy::__len__(a), std::nullopt}))) << "\n" << ::tpy::check_signals;
+    std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(v) == ::tpy::__hash__(a))) << " " << ::tpy::print_bool((::tpy::__hash__(::tpy::BytesView{}) == ::tpy::__hash__(::tpy::Bytes()))) << " " << ::tpy::print_bool((::tpy::BytesView{} == ::tpy::bytes_slice(a, ::tpy::BasicSlice{::tpy::__len__(a), std::nullopt}))) << "\n" << ::tpy::check_signals;
 }
 
 

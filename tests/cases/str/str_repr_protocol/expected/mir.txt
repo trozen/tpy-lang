@@ -1,0 +1,63 @@
+main::__tpy_init: uncovered (module initialization)
+main::text@66:0: uncovered (unsupported parameter type)
+main::rtext@70:0: uncovered (unsupported parameter type)
+main::gtext@74:0: uncovered (generic body)
+main::bump_it@105:0: uncovered (unsupported parameter type)
+main::replaced_read@136:0: uncovered (unsupported parameter type)
+main::text_after@142:0: uncovered (unsupported parameter type)
+main::text_after_elem@148:0: uncovered (unsupported parameter type)
+main::opt_text@153:0: uncovered (unsupported parameter type)
+main::pick@160:0: uncovered (no body to lower)
+main::pick@165:0: uncovered (no body to lower)
+main::pick2@170:0: uncovered (no body to lower)
+main::pick2@175:0: uncovered (no body to lower)
+main::free_fn@179:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mk@226:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@232:0: uncovered (by-value capture of a borrowed parameter)
+main::coro@240:0: uncovered (async body)
+main::er@252:0: uncovered (error-return body)
+main::positions@259:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::mutation@289:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::pointer_form@309:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::overload_pick@319:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::ptr_after@342:0: uncovered (unsupported parameter type)
+main::enum_after@348:0: uncovered (unsupported parameter type)
+main::opt_after@353:0: uncovered (unsupported parameter type)
+main::gen_text@358:0: uncovered (unsupported parameter type)
+main::coro_text@362:0: uncovered (async body)
+main::n_after@367:0: uncovered (unsupported parameter type)
+main::grown_after@372:0: uncovered (unsupported parameter type)
+main::conditionals@378:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::mk_n@401:0: covered (storage: no_proof_required), summary: known
+main::mk_m@405:0: covered (storage: no_proof_required), summary: known
+main::siblings@409:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::gen_sub@427:0: uncovered (unsupported parameter type)
+main::gen_len@431:0: uncovered (unsupported parameter type)
+main::gen_iter@435:0: uncovered (unsupported parameter type)
+main::forward@440:0: uncovered (unsupported parameter type)
+main::frames_async@445:0: uncovered (async body)
+main::frames@453:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::scalars_generic@485:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@493:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::A.__repr__@17:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::S.__str__@25:4: covered (storage: no_proof_required), summary: known
+main::Holder.get_a@58:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Holder.__repr__@61:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Box.bump@88:4: covered (storage: no_proof_required), summary: known
+main::Box.__repr__@91:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Shelf.get_box@101:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cell.touch@119:4: uncovered (missing receiver fact)
+main::Cell.__repr__@122:4: uncovered (unsupported owned-leaf expression)
+main::CellBox.replace@132:4: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::Shower.show@213:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::A.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::S.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@52:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@85:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@98:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@116:4: uncovered (missing record layout)
+main::CellBox.__init__@129:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
+main::Shower.__init__@210:4: covered (storage: no_proof_required), summary: known
+main::Built.__init__@221:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sib.__init__@334:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

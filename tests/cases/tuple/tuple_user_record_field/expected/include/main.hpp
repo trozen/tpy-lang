@@ -85,7 +85,7 @@ inline bool PairHolder::__eq__(const PairHolder& other) const {
 }
 
 inline std::string PairHolder::__repr__() const {
-    return std::format("PairHolder(pair={})", ::tpy::tuple_to_str(std::tuple<const Point*, const Point*>{&(std::get<0>(this->pair)), &(std::get<1>(this->pair))}));
+    return std::format("PairHolder(pair={})", std::string(::tpy::repr_of(this->pair)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

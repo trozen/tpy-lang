@@ -19,7 +19,7 @@ void main() {
     std::cout << std::string(::tpy::__str__(pts)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::list_to_str(pts)) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<Point, ::tpy::BigInt>{Point(::tpy::BigInt(5), ::tpy::BigInt(6)), ::tpy::BigInt(7)};
-    std::cout << ::tpy::tuple_to_str(std::tuple<Point*, ::tpy::BigInt>{&(std::get<0>(t)), std::get<1>(t)}) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"origin", Point(::tpy::BigInt(0), ::tpy::BigInt(0))}});
     std::cout << std::string(::tpy::__str__(d)) << "\n" << ::tpy::check_signals;
 }

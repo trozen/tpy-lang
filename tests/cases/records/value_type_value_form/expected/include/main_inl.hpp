@@ -397,7 +397,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_union_rebinds::__n
         __state = S_DONE;  // until a yield sets where to resume
         u.emplace(3);
         __state = S_RESUME_0;
-        return ::tpy::__str__((*u));
+        return std::string(::tpy::__str__((*u)));
     }
     case S_RESUME_0: {  // after: yield str(u)
         u.emplace(Label("abcdefghijklmnopqrstuvwxyz0123456789"));

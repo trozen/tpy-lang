@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(str(s))
 //     print(f"span={s}")
 void show_span(std::span<int32_t> s) {
-    std::cout << ::tpy::list_to_str(s) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(s)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("span={}", ::tpy::list_to_str(s)) << "\n" << ::tpy::check_signals;
 }
 

@@ -333,7 +333,7 @@ inline bool H::__eq__(const H& other) const {
 }
 
 inline std::string H::__repr__() const {
-    return std::format("H(pair={})", ::tpy::tuple_to_str(std::tuple<const P*, const P*>{&(std::get<0>(this->pair)), &(std::get<1>(this->pair))}));
+    return std::format("H(pair={})", std::string(::tpy::repr_of(this->pair)));
 }
 
 inline D::D(std::tuple<std::tuple<P, int32_t>, int32_t> v) : v(std::move(v)) {}
@@ -360,7 +360,7 @@ inline bool V::__eq__(const V& other) const {
 }
 
 inline std::string V::__repr__() const {
-    return std::format("V(t={})", ::tpy::tuple_to_str(this->t));
+    return std::format("V(t={})", std::string(::tpy::repr_of(this->t)));
 }
 
 // def __init__(self, n: int32) -> None:
@@ -386,13 +386,13 @@ inline bool KH::__eq__(const KH& other) const {
 }
 
 inline std::string KH::__repr__() const {
-    return std::format("KH(pair={})", ::tpy::tuple_to_str(std::tuple<const K*, int32_t>{&(std::get<0>(this->pair)), std::get<1>(this->pair)}));
+    return std::format("KH(pair={})", std::string(::tpy::repr_of(this->pair)));
 }
 
 inline R::R(P* p) : p(p) {}
 
-// # Written out: the generated repr does not take a Ptr field
-// # (BUGS.md#fstring-optional-ptr-rejects).
+// # Written out: the generated __eq__ does not take a Ptr field
+// # (BUGS.md#dataclass-ptr-field-eq-rejects).
 // def __eq__(self, other: "R") -> bool:
 //     return True
 inline bool R::__eq__(const R& other) const {
@@ -422,7 +422,7 @@ inline bool O::__eq__(const O& other) const {
 }
 
 inline std::string O::__repr__() const {
-    return std::format("O(pair={})", ::tpy::tuple_to_str(std::tuple<const P*, int32_t>{::tpy::optional_to_ptr(std::get<0>(this->pair)), std::get<1>(this->pair)}));
+    return std::format("O(pair={})", std::string(::tpy::repr_of(this->pair)));
 }
 
 inline UQ::UQ(std::tuple<::tpy::Union<P, Q>, int32_t> pair) : pair(std::move(pair)) {}

@@ -975,6 +975,8 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     # whatever its receiver -- off a temporary it is a borrow of DYING
     # storage (`lends_from_dying_source`), never a fresh value to own.
     if isinstance(expr, TpyFieldAccess):
+        if expr.enum_member_of is not None:
+            return True  # an enum member is a constant, no storage
         hidden = expr.hidden_call
         if hidden is not None:
             return not call_returns_cpp_ref(analyzer,

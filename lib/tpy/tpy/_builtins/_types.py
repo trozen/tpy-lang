@@ -11,7 +11,7 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 
 @builtin_type("builtins.bool")
 @native("bool")
-class bool(Equatable):
+class bool(Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("false")
     @pure
@@ -65,7 +65,7 @@ class bool(Equatable):
 
 @builtin_type("builtins.int")
 @native("::tpy::BigInt")
-class int(Comparable, Equatable):
+class int(Comparable, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("::tpy::BigInt()")
     @pure
@@ -205,7 +205,7 @@ class int(Comparable, Equatable):
 
 @builtin_type("builtins.float")
 @native("double")
-class float(Comparable, Equatable):
+class float(Comparable, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("0.0")
     @pure
@@ -414,7 +414,7 @@ class float(Comparable, Equatable):
     def as_integer_ratio(self) -> tuple[int, int]: ...
 @builtin_type("builtins.str")
 @native("std::string")
-class str(NativeIterable[char], Iterable[char], Comparable, Equatable):
+class str(NativeIterable[char], Iterable[char], Comparable, Equatable, Stringable, Representable):
     @dispatch
     @cpp_template("std::string()")
     @pure
@@ -423,6 +423,16 @@ class str(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @cpp_template("std::string({0})")
     @pure
     def __init__(self, object: str) -> None: ...
+    @dispatch
+    @cpp_template("std::string({0})")
+    @readonly
+    @pure
+    def __init__(self, object: StrView) -> None: ...
+    @dispatch
+    @cpp_template("std::string({0})")
+    @readonly
+    @pure
+    def __init__(self, object: String) -> None: ...
     @dispatch
     @cpp_template("std::string(::tpy::bool_to_str({0}))")
     @pure

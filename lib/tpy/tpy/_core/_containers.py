@@ -30,6 +30,11 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __len__(self) -> int32: ...
 
+    @native("tpy::__repr__", function=True)
+    @pure
+    @readonly
+    def __repr__(self) -> str: ...
+
     @cpp_template("{self}[static_cast<std::size_t>({0})]")
     @pure
     @auto_readonly

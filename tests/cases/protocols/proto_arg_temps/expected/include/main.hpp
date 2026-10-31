@@ -432,7 +432,7 @@ inline int32_t Impl::take_str(std::string p) {
 // def take_union(self, u: int32 | str) -> int32:
 //     return len(str(u))
 inline int32_t Impl::take_union(const ::tpy::Union<int32_t, std::string>& u) {
-    return ::tpy::__len__(::tpy::__str__(u));
+    return ::tpy::__len__(std::string(::tpy::__str__(u)));
 }
 
 // def take_ru(self, p: readonly[R | Other]) -> int32:

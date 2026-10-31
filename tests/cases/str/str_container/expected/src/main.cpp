@@ -39,13 +39,13 @@ namespace tpyapp::main {
 //     print(f"nums={nums}")
 void main() {
     std::tuple<::tpy::BigInt, std::string> t = std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "hello"};
-    std::cout << ::tpy::tuple_to_str(t) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::tuple_to_str(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(t)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::BigInt> t1 = std::tuple<::tpy::BigInt>(::tpy::BigInt(42));
-    std::cout << ::tpy::tuple_to_str(t1) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(t1)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> xs = {1, 2, 3};
     std::cout << std::string(::tpy::__str__(xs)) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::repr_of(xs)) << "\n" << ::tpy::check_signals;

@@ -4104,13 +4104,18 @@ def is_void_like_type(t: 'TpyType | None') -> bool:
     return isinstance(t, (NoneType, VoidType))
 
 
-def ptr_text_pointee(t: 'PtrType') -> 'TpyType | None':
+def ptr_text_pointee(t: 'PtrType', *, derefs: bool = False) -> 'TpyType | None':
     """The pointee a `Ptr` renders as text (its `None` when null), or None
     when it has none: an opaque pointer has no pointee, and C++ cannot tell
-    a pointer to one char from a C string."""
+    a pointer to one char from a C string -- nor, through the pointer's
+    own text, a pointer to an open `T` from one, since `T` may be char. A
+    reader that `derefs` the pointer before rendering it takes an open
+    pointee."""
     from .type_def_registry import is_char_type
     pointee = t.inner_pointee
     if is_void_like_type(pointee) or is_char_type(pointee):
+        return None
+    if not derefs and isinstance(unwrap_readonly(pointee), TypeParamRef):
         return None
     return pointee
 

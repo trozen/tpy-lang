@@ -5,7 +5,6 @@ predictively traverse a body or expression before lowering.
 """
 
 from __future__ import annotations
-import math
 from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
@@ -4361,22 +4360,18 @@ def _native_iterable_iterator_call_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer) -> bool:
-    """A field-access arg at a native/template callee's protocol slot whose
-    bare member read the slot binds directly. TWO regimes, checked in this
-    order: an OPEN type-param field at a still-UNSUBSTITUTED protocol slot
+    """A field-access arg at a native/template callee's slot whose bare
+    member read the slot binds directly. TWO regimes, checked in this
+    order: a field at a still-PROTOCOL slot -- an OPEN type-param field
     (form-neutral, so the bare read is whatever monomorphization resolves
-    it to), and -- the rest of this docstring -- a SUBSTITUTED slot keyed on
-    an exact type match
-    (`repr(self.label)` -> `::tpy::repr_of(this->label)`): a value-repr
-    Optional field passed WHOLE (repr_of/std::format take the optional
-    directly), an Optional[F1-record] field (storage-form
-    `std::optional<T>`), or an F1-record field (the ADL overload binds
-    the record). The slot arrives SUBSTITUTED (Representable ->
-    Optional[str]), so the protocol-ness is gone -- key on the slot
-    matching the arg's analyzed type exactly. Value-typed fields already
-    ride `_native_protocol_value_arg`; a NARROWED optional field's
-    analyzed type is its inner, so it takes those value rows' deref
-    render, not this bare-optional one."""
+    it to) or an F1-record field -- and a slot SUBSTITUTED to the
+    argument's own type by a stub generic over it (`deref(self.pet)`),
+    keyed on an exact type match: a value-repr Optional field passed WHOLE,
+    an Optional[F1-record] field (storage-form `std::optional<T>`), a
+    value-element container field, or an F1-record field. A text protocol
+    slot (`str`, `repr`, `len`, `hash`) takes its field argument through
+    `converted_arg` first (`_structural_protocol_slot`); what reaches here
+    is a call site that does not (a match subject)."""
     if not isinstance(a, TpyFieldAccess):
         return False
     at = analyzer.get_expr_type(a)
@@ -4420,14 +4415,6 @@ def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
             _eligible_scalar(unwrap_readonly(x))
             or _owned_str_slot(unwrap_readonly(x), analyzer) is not None
             for x in args if isinstance(x, TpyType))
-    if isinstance(t, TupleType):
-        # A VALUE-tuple field passed WHOLE (`repr(self.pair)` at
-        # `tuple[int32, str]` -> `::tpy::tuple_to_str(this->pair)`): borrow
-        # and storage forms coincide, so the bare member read binds the slot
-        # directly. The pointer-repr (F3) sibling lifts via the
-        # borrow-tuple FIELD row above instead.
-        return bool(_value_tuple(t, analyzer) is not None
-                    and _witness("arg.native_value_tuple_field"))
     return _f1_record(t, analyzer)
 
 
@@ -4554,113 +4541,6 @@ def _proto_tuple_elem_borrow(a: 'TpyTupleLiteral', slot: 'TupleType',
         return None
     return bool(lvalues)
 
-
-def _native_optptr_name_arg(a: TpyExpr, ptype: 'TpyType | None',
-                            analyzer) -> bool:
-    """A ptr-repr Optional[F1-record] NAME passed WHOLE at the native
-    callee's SAME-optional slot (`repr(opt_none)` at `ReprOnly | None` ->
-    the bare `T*`; the runtime overload prints None). Slot-equality-keyed:
-    the callee's resolved param IS the arg's own optional type (repr is
-    generic over the arg), so a mismatched slot has no constructible
-    witness. Narrowed reads are retyped by sema and ride the record rows
-    with the `(*name)` deref; no runtime-check marker exists on a bare
-    NAME node, so there is nothing further to guard."""
-    if not isinstance(a, TpyName) or not isinstance(ptype, TpyType):
-        return False
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(a))))
-    no = _optional_ptr_borrow(at, analyzer)
-    if no is None or not record_like(unwrap_readonly(no.inner), analyzer):
-        return False
-    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    return slot == at and bool(_witness("arg.native_protocol_optptr"))
-
-def _native_protocol_value_arg(a: TpyExpr, ptype: 'TpyType | None',
-                               analyzer) -> bool:
-    """The value-typed slice of a native callee's protocol slot: the arg's
-    resolved type is an eligible scalar / char / str value, whose bare
-    render is position-independent (the ordinary lowering tail carries it).
-    Gate row only -- an arg SHAPE the tail cannot route still falls the
-    body back."""
-    proto = protocol_slot(ptype)
-    if proto is None or is_dyn_protocol(proto):
-        return False
-    # Unresolved scalar literals render their bare token (`__hash__(42)`,
-    # `__hash__(3.14)`) -- the `_ru_elem_ok` leaf bounds (strict on both
-    # ends BY DESIGN: INT32_MIN itself rejects, like _ru_elem_ok).
-    if isinstance(a, TpyIntLiteral):
-        return (-(2 ** 31) < a.value < 2 ** 31
-                and _witness("arg.native_protocol_value"))
-    if isinstance(a, TpyFloatLiteral):
-        return bool(math.isfinite(a.value)
-                    and _witness("arg.native_protocol_value"))
-    at = analyzer.get_expr_type(a)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    return bool(atu is not None
-                and (_eligible_scalar(atu) or _eligible_char(atu)
-                     # An enum member renders bare (`__hash__(Color::Red)`)
-                     # -- the enum-member arm carries the spelling.
-                     or _eligible_enum(atu, analyzer) is not None
-                     or _resolved_str_value(atu, analyzer) is not None
-                     # The bytes family rides the same bare render
-                     # (`__hash__(bytes_literal_owned(..))` for a literal,
-                     # the bare view for a BytesView name).
-                     or _resolved_bytes_value(atu, analyzer) is not None)
-                and _witness("arg.native_protocol_value"))
-
-
-def _native_protocol_open_call_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                   analyzer) -> bool:
-    """A CALL rvalue whose result is a BARE TYPE PARAM at a native callee's
-    protocol slot (`hash(self.get())` -> `::tpy::__hash__(this->get())`).
-
-    An open-T result renders by name, so the slot
-    monomorphizes to T and the call binds it inline -- no adapter wrap and
-    no temp, the call-shaped sibling of the bare-name conformer row. Form is
-    immaterial for the same reason: `T` has no borrow/storage duality until
-    it binds, so a borrow- and a value-returning callee render alike here.
-    The inner call's own lowering re-validates callee and args."""
-    proto = protocol_slot(ptype)
-    if proto is None or is_dyn_protocol(proto):
-        return False
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
-        return False
-    return bool(_tparam_value(analyzer.get_expr_type(a))
-                and _witness("arg.native_protocol_open_call"))
-
-
-def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
-                           locals_: dict[str, TpyType], analyzer) -> bool:
-    """A union-typed NAME at a native/template callee's SAME-union slot
-    (`repr(a)` -> `::tpy::repr_of(a)` -- the generic Representable slot
-    substitutes to the arg's own union): renders bare, the runtime
-    variant overloads visit the active alternative whatever the flavor
-    (value or pointer variant; wide member class). A narrowed occurrence
-    reads its member alias identically (the name arm's
-    rename), so no narrow exclusion is needed."""
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not isinstance(pt, UnionType) or not isinstance(a, TpyName):
-        return False
-    dt = locals_.get(a.name)
-    if dt is None:
-        return False
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-    if u != pt:
-        # A UNION-fact narrowed occurrence (`repr(tz)` under `tz is not
-        # None` on a 3-member union): the slot substitutes to the SMALLER
-        # occurrence union, but the C++ binding is the full variant and
-        # the render is the same bare name -- a union fact installs no
-        # alias. Members must nest, declared stays the
-        # render-eligibility key.
-        if not (isinstance(u, UnionType)
-                and all(any(m == dm for dm in u.members)
-                        for m in pt.members)):
-            return False
-    return bool((_eligible_value_union(u) is not None
-                 or _eligible_ptr_union_wide(u, analyzer) is not None)
-                and _witness("arg.native_union_name"))
 
 def _declared_call_at_owning_elem(e: TpyExpr, analyzer) -> bool:
     """A reference-type result (record or container) of a call sema stamped
@@ -10772,25 +10652,9 @@ def _r_protocol_slot(req: _ArgReq) -> bool:
                               temps_ok=req.temps_ok)
 
 
-def _r_native_protocol_value(req: _ArgReq) -> bool:
-    return _native_protocol_value_arg(req.a, req.ptype, req.analyzer)
-
-
-def _r_native_optptr_name(req: _ArgReq) -> bool:
-    return _native_optptr_name_arg(req.a, req.ptype, req.analyzer)
-
-
-def _r_native_union_name(req: _ArgReq) -> bool:
-    return _native_union_name_arg(req.a, req.ptype, req.locals_, req.analyzer)
-
-
 def _r_native_protocol_tuple_literal(req: _ArgReq) -> bool:
     return _native_protocol_tuple_literal_arg(
         req.a, req.ptype, req.analyzer) is not None
-
-
-def _r_native_protocol_open_call(req: _ArgReq) -> bool:
-    return _native_protocol_open_call_arg(req.a, req.ptype, req.analyzer)
 
 
 def _r_native_protocol_field(req: _ArgReq) -> bool:
@@ -11670,19 +11534,6 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         # adapter wrap, so only the no-temp bare row admits here -- the
         # family threads temps_ok=False, so the row reads it and gets it.
         _ArgRow("protocol_slot", _r_protocol_slot),
-        # A value-typed arg (scalar / char / str family) at a native
-        # protocol slot (`hash("hello")` -> `::tpy::__hash__("hello")`):
-        # the native loop renders the value bare, position-independent.
-        _ArgRow("native_protocol_value", _r_native_protocol_value),
-        # ... and the OPEN-T CALL rvalue at the same slot
-        # (`hash(self.get())` inside a `[T: Hashable]` body): the slot
-        # monomorphizes to T, so the call binds inline exactly as the
-        # value rows above bind their concrete results.
-        _ArgRow("native_protocol_open_call", _r_native_protocol_open_call),
-        _ArgRow("native_optptr_name", _r_native_optptr_name),
-        # A union-typed NAME at the same slot (`repr(a)` over a
-        # variant binding): bare, the runtime variant overload visits.
-        _ArgRow("native_union_name", _r_native_union_name),
         _ArgRow("native_protocol_tuple_literal",
                 _r_native_protocol_tuple_literal),
         _ArgRow("native_protocol_field", _r_native_protocol_field),
@@ -14097,7 +13948,7 @@ def _print_ptr(a: TpyExpr, analyzer) -> 'PtrType | None':
     t = analyzer.get_expr_type(a)
     tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
           if t is not None else None)
-    if not isinstance(tb, PtrType) or ptr_text_pointee(tb) is None:
+    if not isinstance(tb, PtrType) or ptr_text_pointee(tb, derefs=True) is None:
         return None
     return tb
 

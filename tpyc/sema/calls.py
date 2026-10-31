@@ -25,12 +25,12 @@ from ..typesys import (
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
     ConcreteCoroType,
-    is_any_str_type, container_to_str_template, error_return_matches,
+    is_any_str_type, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
-    is_integer_type, is_any_int_type,
+    is_any_int_type,
     is_callable_type, is_float_type, is_any_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     PendingContainerType,
     unwrap_send_sync,
@@ -133,7 +133,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_bool_type, is_char_type,
     is_str_type, is_big_int_type,
     int_traits_of,
-    is_enum_type, enum_info_of, protocol_info_of,
+    enum_info_of, protocol_info_of,
     TypeDef, find_factory_by_simple_name,
 )
 
@@ -752,40 +752,6 @@ _MARKER_NOUNS = {
     qnames.VALUE_TYPE: "a value type",
     qnames.REFERENCE_TYPE: "a reference type",
 }
-
-
-_REPR_TEMPLATE = "std::string(::tpy::repr_of({0}))"
-
-
-def _repr_fallback_template(typ: TpyType) -> str | None:
-    """Return a C++ template for repr() on types without Representable,
-    or None if the type has no known repr path.
-
-    Covers: bool, fixed ints, float, BigInt, strings, optionals,
-    enums, user records (which always have operator<<), and unions
-    of types that each have their own repr path. Union dispatch lives
-    in runtime/cpp/include/tpy/dunder.hpp as a `std::variant` overload.
-    """
-    if is_bool_type(typ):
-        return _REPR_TEMPLATE
-    if is_integer_type(typ):
-        return _REPR_TEMPLATE
-    if is_float_type(typ):
-        return _REPR_TEMPLATE
-    if is_any_str_type(typ):
-        return _REPR_TEMPLATE
-    if is_char_type(typ):
-        return _REPR_TEMPLATE
-    if is_enum_type(typ):
-        return _REPR_TEMPLATE
-    if isinstance(typ, OptionalType):
-        return _REPR_TEMPLATE
-    if isinstance(typ, NominalType) and typ.is_user_record:
-        return _REPR_TEMPLATE
-    if isinstance(typ, UnionType):
-        if all(_repr_fallback_template(m) is not None for m in typ.members):
-            return _REPR_TEMPLATE
-    return None
 
 
 def _is_genexpr_frame(fi: FunctionInfo) -> bool:
@@ -4646,29 +4612,6 @@ class CallAnalyzer:
                             expr, expr.resolved_function_info, {}, written)
                     return BOOL
 
-        # str(container) fallback: containers have runtime to_str helpers.
-        # The union arm is gated on every member being renderable -- same
-        # all-members policy as the repr() fallback below -- so a non-renderable
-        # member yields a sema diagnostic rather than a downstream C++ error.
-        if record.builtin_type_key == qnames.STR and len(arg_types) == 1:
-            arg0 = unwrap_readonly(arg_types[0])
-            tmpl = container_to_str_template(arg0)
-            if (tmpl is None and isinstance(arg0, UnionType)
-                    and all(_repr_fallback_template(m) is not None for m in arg0.members)):
-                tmpl = "::tpy::__str__({0})"
-            if tmpl is not None:
-                expr.resolved_function_info = FunctionInfo(
-                    name="str",
-                    params=[ParamInfo(pname, arg_types[0])],
-                    return_type=STR,
-                    cpp_template=tmpl,
-                    is_readonly=True,
-                )
-                if keyed:
-                    self.fill_positional_call(
-                        expr, expr.resolved_function_info, {}, written)
-                return STR
-
         # No matching overload found
         type_name = expr.func_name
         if not init_overloads:
@@ -6297,25 +6240,6 @@ class CallAnalyzer:
         # _resolve_call_overloads).
         if result.contextual_callable_used and result.first_contextual_error is not None:
             raise result.first_contextual_error
-
-        # repr() fallback for types without Representable protocol but with
-        # known C++ __repr__ overloads (containers, primitives, optionals,
-        # user records with operator<<)
-        if expr.func_name == "repr" and len(arg_types) == 1:
-            inner = unwrap_readonly(arg_types[0])
-            tmpl = container_to_str_template(inner)
-            if tmpl is None:
-                tmpl = _repr_fallback_template(inner)
-            if tmpl is not None:
-                expr.resolved_function_info = FunctionInfo(
-                    name="repr",
-                    params=[ParamInfo("x", arg_types[0])],
-                    return_type=STR,
-                    cpp_template=tmpl,
-                    is_readonly=True,
-                    is_builtin_function=True,
-                )
-                return STR
 
         # abs() fallback: a user type with __abs__ (the native abs overloads
         # only cover numerics). Mirrors CPython's abs() -> x.__abs__() dispatch.

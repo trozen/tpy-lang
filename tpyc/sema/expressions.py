@@ -31,7 +31,7 @@ from ..typesys import (
     PendingDictType, PendingSetType, DictLiteralInfo, SetLiteralInfo,
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
-    is_protocol_type, container_to_str_template, contains_type_param, ptr_text_pointee,
+    is_protocol_type, contains_type_param,
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
@@ -131,6 +131,7 @@ from .nonlocal_binding import enclosing_scope_facts
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
                          register_iteration_loans)
 from .loop_frames import comp_live_region, decide_copies_var, worth_const_ref
+from .protocols import REPRESENTABLE_PROTOCOL, STRINGABLE_PROTOCOL, text_leaves
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
@@ -7191,9 +7192,6 @@ class ExpressionAnalyzer:
                 "a borrow into the receiver, which is freed at the end of this "
                 "expression -- bind the receiver to a local first", expr)
 
-    _STRINGABLE = NominalType("Stringable", is_protocol=True)
-    _REPRESENTABLE = NominalType("Representable", is_protocol=True)
-
     @staticmethod
     def _is_formattable(t: TpyType) -> bool:
         """True for the scalars an f-string formats directly, which keep
@@ -7203,71 +7201,11 @@ class ExpressionAnalyzer:
                 or isinstance(t, (IntLiteralType, FloatLiteralType))
                 or is_value_text_enum_type(t))
 
-    def _fstring_parts(self, t: TpyType) -> 'list[TpyType] | None':
-        """The types an f-string slot of type `t` renders: a union, an
-        Optional, a Ptr and a recursive alias render the part they hold (the
-        runtime's __str__ / repr_of visit it), None the text "None"; None when
-        a part has no text rendering."""
-        # Per-kind recursion: part-wise Stringable / Representable
-        # conformance waits on protocol parameter slots in the call-argument
-        # conversion.
-        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-        if isinstance(t, NoneType):
-            return []
-        if isinstance(t, UnionType):
-            parts: list[TpyType] = []
-            for m in t.members:
-                sub = self._fstring_parts(m)
-                if sub is None:
-                    return None
-                parts.extend(sub)
-            return parts
-        if isinstance(t, OptionalType):
-            return self._fstring_parts(t.inner)
-        if isinstance(t, PtrType):
-            pointee = ptr_text_pointee(t)
-            # The f-string renders a pointer through `__str__`, whose `char*`
-            # overload reads a C string, so an open pointee instantiated at
-            # char would read past it (BUGS.md#list-ptr-char-prints-garbage).
-            # print is unaffected: `_opt_pointee_wide` admits an open pointee
-            # and routes it to `print_optional`, which dereferences first.
-            if pointee is None:
-                return None
-            if isinstance(pointee, TypeParamRef):
-                return [t]
-            return self._fstring_parts(pointee)
-        if isinstance(t, RecursiveAliasInstanceType):
-            body = t.substituted_body()
-            if body is not t:
-                return self._fstring_parts(body)
-        return [t]
-
     def _is_fstring_renderable(self, t: TpyType, repr_only: bool = False) -> bool:
-        """True if t can appear in an f-string slot (and is __repr__-able when
-        repr_only)."""
-        parts = self._fstring_parts(t)
-        return parts is not None and all(
-            self._renders_as_text(part, repr_only) for part in parts)
-
-    def _renders_as_text(self, t: TpyType, repr_only: bool) -> bool:
-        if isinstance(t, PtrType):
-            return False  # a Ptr to an open T (`_fstring_parts`)
-        if container_to_str_template(t) is not None or isinstance(t, AnyType):
-            return True
-        if is_enum_type(t):
-            return True  # the runtime's EnumUtil text, str and repr alike
-        if repr_only:
-            if self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE):
-                return True
-            # Built-in primitives have runtime __repr__ overloads but no
-            # method-level Representable conformance; treat formattable
-            # types as repr-able too.
-            return self._is_formattable(t)
-        if self._is_formattable(t):
-            return True
-        if self.protocols.type_conforms_to_protocol(t, self._STRINGABLE):
-            return True
-        return self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE)
+        """True if t can appear in an f-string slot: it has the text
+        (`!r`: the repr) str() / repr() would give it."""
+        return self.protocols.type_conforms_to_protocol(
+            t, REPRESENTABLE_PROTOCOL if repr_only else STRINGABLE_PROTOCOL)
 
     def _analyze_fstring(self, expr: TpyFString) -> TpyType:
         """Analyze f-string parts and return STR (owned string)."""
@@ -7285,8 +7223,15 @@ class ExpressionAnalyzer:
                 conv = part.conversion
                 shown = self._user_type_name(unwrap_readonly(
                     unwrap_ref_type(unwrap_send_sync(resolved))))
-                open_ptr = next((p for p in self._fstring_parts(resolved) or []
-                                 if isinstance(p, PtrType)), None)
+                # The f-string renders a pointer through `__str__`, whose
+                # `char*` overload reads a C string, so an open pointee
+                # instantiated at char would read past it
+                # (BUGS.md#list-ptr-char-prints-garbage). print is
+                # unaffected: it dereferences first.
+                open_ptr = next((p for p in text_leaves(resolved)
+                                 if isinstance(p, PtrType)
+                                 and isinstance(p.inner_pointee, TypeParamRef)),
+                                None)
                 if open_ptr is not None:
                     raise self.ctx.error(
                         f"{self._user_type_name(open_ptr)} with a generic pointee"
@@ -7325,7 +7270,7 @@ class ExpressionAnalyzer:
                   and self._is_formattable(resolved))
         if fields is None:
             if part.conversion == FSTRING_CONV_NONE and not direct:
-                for held in self._fstring_parts(resolved) or []:
+                for held in text_leaves(resolved):
                     if self._has_format(held):
                         self.ctx.warning(
                             f"{self._user_type_name(held)} has __format__,"

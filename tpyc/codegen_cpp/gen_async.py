@@ -423,8 +423,10 @@ class AsyncCoroCodegen:
                 # Static-protocol param (e.g. `Own[Awaitable[T]]`): the
                 # concrete operand type is deduced as an extra template
                 # arg `T_<pname>` with a concept constraint, declared in
-                # `_emit_template_header`. Field stores by value;
-                # ctor/factory forward via T_<pname>&&.
+                # `_emit_template_header`. The field holds the deduced
+                # `T_<pname>`: the caller's object for an lvalue argument,
+                # the value itself for a prvalue. ctor/factory forward via
+                # T_<pname>&&.
                 #
                 # `T_{pname}` (raw, not escaped) keeps the template-arg
                 # name aligned with `_protocol_template_parts` (which

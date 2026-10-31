@@ -270,7 +270,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | Item | Status | Notes |
 |---|---|---|
 | `isinstance` | Done | Some CPython cases missing -- see TODO.md entries on protocol/union isinstance in ternary expressions and `@runtime_checkable` |
-| `repr` | Done | User-type fallback partial. `repr`/`str`/`print`/f-string of unions all work via the variant visitor. `bytes`, `bytearray` and `range` repr as CPython does (`b'a\x03'`, `bytearray(b'z')`, `range(0, 3)`). Rejected: `repr(None)` (BUGS.md#repr-none-not-representable) and a literal argument such as `repr(3)` (BUGS.md#repr-pending-literal-arg) |
+| `repr` | Done | User-type fallback partial. `repr`/`str`/`print`/f-string of unions all work via the variant visitor. `bytes`, `bytearray` and `range` repr as CPython does (`b'a\x03'`, `bytearray(b'z')`, `range(0, 3)`). Rejected: a literal argument such as `repr(3)` (BUGS.md#repr-pending-literal-arg) |
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
 | `getattr`, `setattr`, `delattr` (literal-name dynamic-fallback) | Done (D16 v1) | 2-arg literal-name form routes to `__getattr__` / `__setattr__` / `__delattr__`. Declared-member names rejected (use direct attribute access). See `docs/DYNAMIC_ATTRS_DESIGN.md` |

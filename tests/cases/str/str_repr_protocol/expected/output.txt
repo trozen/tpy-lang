@@ -1,0 +1,76 @@
+free str 2 A(1) A(1) 3 (A(4), 5) [1, 2] ['a', ['b']]
+free repr 2 A(1) A(1) 3 (A(4), 5) ['a', ['b']]
+free fstr 2 A(1) A(1) 3 (A(4), 5) [1, 2] ['a', ['b']] A(1) 3
+free proto 2 A(1) A(1) 3 (A(4), 5) A(1)
+free generic 3 Color.RED A(2)
+free fresh (1, 'a') A(5) (1, 'a')
+free field A(5) 6 (A(7), 8) A(5) 6
+free call A(9) A(9) A(9)
+free scalars sv st c 'c' 3 sv
+free enum Color.RED <Color.RED: 1> 1 1 Color.RED <Color.RED: 1>
+free record A(1) S! True S! True True True True
+free none None None True None
+free span [4, 5] [4, 5] [4, 5]
+free narrowed 2 2 2
+free narrowed A(1) A(1)
+free str None None A(1) u (A(4), 5) [] j
+free repr None None A(1) 'u' (A(4), 5) 'j'
+free fstr None None A(1) u (A(4), 5) [] j None 'u'
+free proto None None A(1) u (A(4), 5) None
+free generic 3 Color.RED A(2)
+free fresh (1, 'a') A(5) (1, 'a')
+free field A(5) 6 (A(7), 8) A(5) 6
+free call A(9) A(9) A(9)
+free scalars   d 'd' 3 
+free enum Color.RED <Color.RED: 1> 1 1 Color.RED <Color.RED: 1>
+free record A(1) S! True S! True True True True
+free none None None True None
+free span [4, 5] [4, 5] [4, 5]
+holder Holder((A(7), 8), A(5), 6, 6)
+method A(1) 3 A(1) A(1)
+ctor A(1) 3 A(1)
+gen ['A(1)', '2 A(1)']
+async A(1) 3 3 A(1)
+comp ['A(1)', 'A(1)'] ['2'] ['3']
+closure A(1) 3
+try A(1) 2
+finally 3
+match other 3 A(1)
+error_return A(1) 2
+method None 's' None None
+ctor None 's' None
+gen ['None', 'None None']
+async None 's' s None
+comp ['None', 'None'] ['None'] ["'s'"]
+closure None s
+try None None
+finally s
+match str 's' None
+error_return raised
+mutation Box(2) Box(3) Box(2) Box(3)
+replaced 1 Cell(9)
+replaced scalar 1 9
+replaced element 1 9
+pointer form A(3) None A(3)/None None/A(3)
+pointer form aliased A(4) A(4)
+pick proto 3 pick proto s
+pick2 int64 3
+sibling ptr A(1)
+sibling enum <Color.RED: 1>
+sibling opt 1
+sibling bytes b'r\x02' b'ab\x01'
+conditional value 3
+conditional view first-original-long-string-beyond-the-small-buffer
+conditional call 5
+max 3
+min 3
+conditional calls 5
+str local abc abc
+frame record ['A(7)']
+frame subprotocol record ['A(8)']
+frame sized list [3]
+frame list iter 1 2 [3, 4]
+frame spaniter 10 20 30 40
+async record A(7)
+float bool 1.5 True True
+generic tuple ptr (1, 'a') A(3)

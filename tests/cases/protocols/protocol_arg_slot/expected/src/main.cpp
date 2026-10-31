@@ -213,10 +213,9 @@ bool s_cond(bool b) {
 //     print("span", sum_span(ys))  # tpyc: ok
 void s_kept() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    auto __tmp_1 = "hello";
-    auto __tmp_2 = std::array<int32_t, 2>{1, 2};
-    auto __tmp_3 = ::tpy::dict_keys(d);
-    std::cout << "kept" << " " << ::tpyapp::main::m_len(__tmp_1) << " " << Lens().m_len(__tmp_2) << " " << ::tpyapp::main::m_len(__tmp_3) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = std::array<int32_t, 2>{1, 2};
+    auto __tmp_2 = ::tpy::dict_keys(d);
+    std::cout << "kept" << " " << ::tpyapp::main::m_len(std::string_view("hello")) << " " << Lens().m_len(__tmp_1) << " " << ::tpyapp::main::m_len(__tmp_2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> ys = {1, 2, 3};
     std::cout << "span" << " " << ::tpyapp::main::sum_span(ys) << "\n" << ::tpy::check_signals;
 }

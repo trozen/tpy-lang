@@ -9,13 +9,11 @@ namespace tpyapp::main {
 //     chain(Num(8))
 //     bounce(Ping())
 void main() {
-    auto __tmp_1 = Meters(::tpy::BigInt(30));
-    auto __tmp_2 = Meters(::tpy::BigInt(12));
-    ::tpyapp::main::combine(__tmp_1, __tmp_2);
-    auto __tmp_3 = Num(::tpy::BigInt(8));
-    ::tpyapp::main::chain(__tmp_3);
-    auto __tmp_4 = Ping();
-    ::tpyapp::main::bounce(__tmp_4);
+    ::tpyapp::main::combine(auto(Meters(::tpy::BigInt(30))), auto(Meters(::tpy::BigInt(12))));
+    auto __tmp_1 = Num(::tpy::BigInt(8));
+    ::tpyapp::main::chain(__tmp_1);
+    auto __tmp_2 = Ping();
+    ::tpyapp::main::bounce(__tmp_2);
 }
 
 // main()

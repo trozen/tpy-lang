@@ -1,0 +1,1 @@
+main.py:19: error: in function 'main': a 'tuple[int32, str]' argument to the generator parameter 'v: Text' is not supported yet; declare the parameter with the argument's type
