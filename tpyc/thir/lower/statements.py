@@ -204,6 +204,7 @@ from ..scalar_leaves import (
     storage_leaf,
 )
 from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
+    builds_assigned_record,
     THIROptionalRead, THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
     THIRBytesLiteral, THIRCall, THIRCoerce, THIRNoneCheck,
@@ -213,7 +214,7 @@ from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoiste
     THIRConsumingIter, THIRBorrowedRecord, THIRForEach, THIRNativeIteration,
     THIRForIterProto, THIRForRange, THIRFormConvert, THIRIf, THIRIfExpr,
     THIRIsinstance, THIRDynIsinstance, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
-    THIRModuleVar, THIRMove, THIRCopy, THIRName, THIRDynNarrowAlias,
+    THIRModuleVar, THIRMove, THIRName, THIRDynNarrowAlias,
     THIRNarrowAlias, THIRNestedDef, THIRConceptTest, THIRFoldedBlock,
     THIRFoldedIfChain, THIRFrameNestedDef, THIRFrameSlotWrite,
     THIRCoroHandleMove, THIRMatch, THIRImportInit, THIRNoOpStmt,
@@ -359,7 +360,7 @@ from .convert import (
     ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
     layout_tuple, spelled, to_local)
 from .expressions import (
-    _lower_into_dyn,
+    _lower_into_dyn, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
     _select_result, _operand_use_of,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
@@ -9729,15 +9730,19 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
             stmt.init, target_t, lc, declared, loc,
             use=(_LOCAL_MOVE_USE if move else
                  _rebind_rvalue_use(stmt.init, target_t)), move=move)
+        # A subclass object hands over its base part, taken from the read
+        # itself -- moved, copied or fresh: the optional built from the
+        # subclass would run a user `__init__` taking it.
+        value = as_base_of_read(value, target_t, lc) or value
         return THIRAssign(
             target=THIRName(result_type=target_t, name=stmt.name,
                             loc=loc),
             value=value,
-            optional_record_assignment=(borrowed_record(target_t, False, analyzer)
-                                        if isinstance(value, THIRCtorCall) or (
-                                            isinstance(value, (THIRCopy, THIRMove))
-                                            and unwrap_readonly(unwrap_ref_type(value.result_type)) == target_t)
-                                        else None),
+            optional_record_assignment=(
+                borrowed_record(target_t, False, analyzer)
+                if builds_assigned_record(value) and unwrap_readonly(
+                    unwrap_ref_type(value.result_type)) == target_t
+                else None),
             rebuild=frame_object_slot(target_t),
             loc=loc)
     # A None reseat of a wide-opt POINTER binding nulls the pointer

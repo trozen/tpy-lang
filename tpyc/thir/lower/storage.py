@@ -173,18 +173,23 @@ def alias_binding(source: THIRExpr, typ: TpyType, readonly: bool,
     return THIRAliasBinding(source.name if isinstance(source, THIRName) else "self", reference)
 
 
+def record_chain(info, registry) -> tuple:
+    """A record and its ancestors: a subclass's implicit special members run
+    its bases' custom ones, so a special-member fact holds for the chain."""
+    return (info, *registry.iter_field_ancestors(info))
+
+
 def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayout | None:
     reference = borrowed_record(typ, False, analyzer)
     if reference is None:
         return None
     registry = analyzer.registry
     info = registry.get_record_for_type(reference.type)
-    ancestors = list(registry.iter_field_ancestors(info))
-    chain = (info, *ancestors)
+    chain = record_chain(info, registry)
+    ancestors = chain[1:]
     # Every field is keyed by its declaring owner, in the one identity spelling.
     fields = tuple(THIRFieldIdentity(record_owner(r), f.name, f.type)
                    for r, f in registry.construction_order_fields(info))
-    # A subclass's implicit special members run its bases' custom ones.
     return THIRRecordLayout(
         reference.type, fields,
         info.has_init and len(info.get_method_overloads("__init__")) == 1,

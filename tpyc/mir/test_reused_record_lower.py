@@ -394,7 +394,7 @@ def escaped(source: Cell, n: int32) -> int32:
 
 
 @pytest.mark.parametrize("move", [False, True])
-def test_derived_to_base_hoist_compiles_without_a_same_record_fact(move: bool) -> None:
+def test_derived_to_base_hoist_assigns_the_base_part(move: bool) -> None:
     source = CELL_SOURCE + '''
 class Derived(Cell):
     other: int32
@@ -415,10 +415,12 @@ def example(flag: bool) -> int32:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "example")
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign)
-                   and isinstance(n.value, th.THIRMove if move else th.THIRCopy))
-    assert assignment.optional_record_assignment is None
-    assert assignment.value.result_type != assignment.target.result_type
-    assert ("target = std::move(original);" if move else "target = Derived(original);") in cpp
+                   and isinstance(n.value, th.THIRFormConvert))
+    assert assignment.value.base_copy and assignment.value.move is move
+    assert assignment.optional_record_assignment is not None
+    assert assignment.value.result_type == assignment.target.result_type
+    assert ("target = static_cast<Cell&&>(std::move(original));" if move
+            else "target = static_cast<const Cell&>(original);") in cpp
     result = lower_function(function, MIRBodyId("reused", "derived"),
                             definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered), result

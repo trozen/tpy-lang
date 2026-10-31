@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_sinks@25:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::loop_elem@61:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::gen@70:0: uncovered (unsupported hoisted value)
+main::co@78:0: uncovered (async body)
+main::aliasing@87:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::later_use@97:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::views@106:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::union_view@125:0: uncovered (view local), summary: opaque (view local)
+main::nocopy_later@132:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::own_param_addr@140:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::union_base@178:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::main@184:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.fill@53:4: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::NC.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@43:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::HPtr.__init__@152:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Base.__init__@160:4: covered (storage: no_proof_required), summary: known
+main::Der.__init__@165:4: covered (storage: no_proof_required), summary: known
+main::HU.__init__@174:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

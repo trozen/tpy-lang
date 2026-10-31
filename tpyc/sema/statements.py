@@ -18,7 +18,7 @@ from ..typesys import (drop_own_marker, pointer_repr_optional, pointer_variant_u
                        BASIC_SLICE, SLICE)
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType, make_readonly,
-    is_indirection_type,
+    is_indirection_type, lands_in_indirection,
     FinalType,
     PendingListType, PendingDictType, PendingContainerType, make_list, PendingNumType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, ContainerLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
@@ -7966,9 +7966,14 @@ class StatementAnalyzer:
                         # warning above names every reference element).
                         self.compat.claim_name_move(
                             stmt.value, OwnType(tgt_tuple))
-            # Own[T] param stored in a field/container — mark as consumed
+            # Own[T] param stored in a field/container -- mark as consumed,
+            # unless the slot only refers to it (a `Ptr`, a view).
+            consumes = (target_type is None
+                        or not lands_in_indirection(target_type,
+                                                    stripped_value))
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
-                self.ctx.mark_own_param_consumed(stmt.value.name)
+                if consumes:
+                    self.ctx.mark_own_param_consumed(stmt.value.name)
                 # Address-escape tracking: storing a param into a mutable Ptr[T]
                 # takes its address. Suppress the perf-default `const T&` param
                 # emission so the `&param -> T*` store type-checks.
@@ -7977,7 +7982,7 @@ class StatementAnalyzer:
                         and isinstance(tgt_inner, PtrType)
                         and not tgt_inner.is_readonly):
                     self.ctx.func.current_addr_escape_param_names.add(stmt.value.name)
-            elif isinstance(stmt.value, TpyName):
+            elif isinstance(stmt.value, TpyName) and consumes:
                 # A local holding what an Own param moved in, stored.
                 self.ctx.mark_own_param_consumed(stmt.value.name)
         if isinstance(stmt.target, TpyName):

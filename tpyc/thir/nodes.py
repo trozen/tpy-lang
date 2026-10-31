@@ -2862,6 +2862,13 @@ class THIRAssign(THIRStmt):
         return self.slot_cpp
 
 
+def builds_assigned_record(value: THIRExpr) -> bool:
+    """Whether `value` builds the record an `optional_record_assignment`
+    writes: a construct, a copy, a move, or a subclass's base part."""
+    return (isinstance(value, (THIRCtorCall, THIRCopy, THIRMove))
+            or (isinstance(value, THIRFormConvert) and value.base_copy))
+
+
 @dataclass(frozen=True)
 class THIRSetItem(THIRStmt):
     """A container subscript write `c[k] = v`. `target` is the lowered

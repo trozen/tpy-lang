@@ -73,11 +73,11 @@ from .scalar_leaves import (
 )
 from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
-    THIRCopy, THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
+    THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRErrorReturnUnwrap, THIRExprStmt,
     THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRBinOp, THIRExpr,
     THIRForIterProto, THIRFunction, THIRIf, THIRIfExpr, THIRMethodCall,
-    declared_param_type, effective_params, THIRNode, THIRName,
+    builds_assigned_record, declared_param_type, effective_params, THIRNode, THIRName,
     THIRParam, THIRWhile, THIRModuleVar, THIRWalrus,
     THIRGlobalBinding, THIRPrint, THIRRaise, THIRReturn, THIRSetItem,
     THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
@@ -738,13 +738,11 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         if isinstance(node, THIRAssign) and node.optional_record_assignment is not None:
             fact = node.optional_record_assignment
-            match node.value:
-                case THIRCtorCall() | THIRCopy():
-                    valid_form = node.value.form is Form.STORAGE
-                case THIRMove(value=source):
-                    valid_form = node.value.form is source.form
-                case _:
-                    valid_form = False
+            # A move is transparent: it keeps its source's form.
+            valid_form = builds_assigned_record(node.value) and (
+                node.value.form is node.value.value.form
+                if isinstance(node.value, THIRMove)
+                else node.value.form is Form.STORAGE)
             if (not isinstance(fact, THIRBorrowedRecord) or fact.readonly is not False
                     or not isinstance(node.target, THIRName)
                     or node.target.result_type != fact.type

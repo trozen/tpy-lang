@@ -13,7 +13,7 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
-    make_readonly, substitute_cpp_ret, bound_as_spelled,
+    lands_in_indirection, make_readonly, substitute_cpp_ret, bound_as_spelled,
     declares_no_writes, param_may_be_written,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
@@ -3713,6 +3713,10 @@ class CallAnalyzer:
             # -- both decided by the member check above).
             passed.elem_capture = [TupleElemCapture.VALUE] * len(passed.elements)
             self._warn_unnecessary_copy(arg)
+            return
+        if lands_in_indirection(own_ptype, arg_type):
+            # The parameter only refers to the argument (a `Ptr`, a view):
+            # nothing is consumed, so a later use or a @nocopy type is fine.
             return
         # Unwrap OwnType from name lookup (implicit owned local) for the check.
         # Explicit OwnType (from function return, not a name) means ownership

@@ -1,0 +1,23 @@
+main.py:29: warning: 'IDer.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'IBase' part instead
+main.py:47: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:140: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:147: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:73: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:84: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:94: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:104: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:112: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:119: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:127: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:157: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:168: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:177: warning: upcast narrows 'IDer' to 'IBase' -- only 'IBase' fields and methods will be accessible; keep the concrete type or make 'IBase' a @dynamic protocol
+main.py:187: warning: upcast narrows 'IDer' to 'IBase' -- only 'IBase' fields and methods will be accessible; keep the concrete type or make 'IBase' a @dynamic protocol
+main.py:197: warning: upcast narrows 'IDer' to 'IBase' -- only 'IBase' fields and methods will be accessible; keep the concrete type or make 'IBase' a @dynamic protocol
+main.py:207: warning: upcast narrows 'IDer' to 'IBase' -- only 'IBase' fields and methods will be accessible; keep the concrete type or make 'IBase' a @dynamic protocol
+main.py:216: warning: upcast narrows 'HDer' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:219: warning: upcast narrows 'HDer' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:229: warning: upcast narrows 'GDer[int32]' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:249: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:268: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:270: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

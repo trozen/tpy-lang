@@ -1,0 +1,26 @@
+if 1
+elif 2
+try 3 3
+while 4
+for 5
+with 6
+match 7
+ctor 9
+method 8
+closure 10
+error_return 11
+call 12
+moved 13
+copy 14 14
+tuple_copy 20 21
+copy hook
+hook_tuple 122 22
+copy hook
+hook_hoist 122 22
+generic copy hook
+generic_hook 125 25
+append_copy 23 24
+alias 16 16
+same 17
+two_arm 18
+two_arm 19

@@ -1,0 +1,3 @@
+main.py:152: warning: Own[P] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:175: warning: upcast narrows 'Der' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:140: warning: Own[P] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

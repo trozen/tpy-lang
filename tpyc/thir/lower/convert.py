@@ -38,6 +38,7 @@ from ...typesys import (
     IntLiteralType,
     is_dyn_protocol,
     is_open_type_param_return,
+    lands_in_indirection,
     lands_in_view_member,
     LiteralType,
     NoneType,
@@ -1349,7 +1350,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return _to_pointer(expr, s, OptionalType(st_u.pointee),
                                storage_type(expr.result_type), types)
         if (not explicit_copy and under.movable
-                and not holds_borrowing_view(st)
+                and not lands_in_indirection(st, value_t)
                 and (direct or (slot.construct is SlotConstruct.RETURN
                                 and not implicit)
                      or (slot.construct is SlotConstruct.ASSIGN
@@ -1366,8 +1367,10 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             # out explicitly. An assignment moves a value that is no name (an
             # element its read owns), an argument held as its
             # own storage (an owned tuple parameter's element) what it is
-            # handed. A view slot owns nothing to move into. A conversion
-            # builds its result already: what it converts is what moves.
+            # handed. A slot whose member only refers to the source (a
+            # `Ptr`, a view) takes its address and consumes nothing. A
+            # conversion builds its result already: what it converts is
+            # what moves.
             if expr.uncoerced is not expr:
                 return Plan(expr.moved_under_coercions(), Effect.MOVE)
             return Plan(THIRMove(value=expr, result_type=st,

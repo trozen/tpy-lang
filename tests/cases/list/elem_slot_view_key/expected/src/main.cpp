@@ -41,9 +41,9 @@ void remove_stripped(std::vector<std::string>& xs, std::string_view src) {
 // def remove_view_elem(vs: list[StrView], k: StrView) -> None:
 //     # A VIEW-typed element: the lookup key and the element are the same C++
 //     # type here.
-//     # Never called: building a `list[StrView]` local is not lowered yet
-//     # (a literal rejects at `expr.container_literal`, an append at
-//     # `method.arg_shape`), so this leg is pinned by its emitted C++ alone.
+//     # Never called: this leg is pinned by its emitted C++ alone (a
+//     # `list[StrView]` local does lower -- an empty literal plus `append` --
+//     # but no section here builds one).
 //     vs.remove(k)  # tpyc: ok
 void remove_view_elem(std::vector<std::string_view>& vs, std::string_view k) {
     ::tpy::list_remove(vs, k);

@@ -12,7 +12,7 @@ from enum import Enum, auto
 from .callables import (CallSignature, callable_signature, call_signature,
                         method_callees, method_signature,
                         resolved_callee, stub_callee, with_method_callees)
-from .storage import borrowed_record, direct_field, field_identity, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
+from .storage import borrowed_record, record_chain, direct_field, field_identity, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ..scalar_leaves import record_owner
 from ... import qnames
@@ -12703,6 +12703,36 @@ def _ptr_opt_lift(a: TpyExpr, po_opt: 'OptionalType | None',
         form=Form.STORAGE, move=True, loc=getattr(a, "loc", None))
 
 
+def as_base_of_read(expr: THIRExpr, member: TpyType,
+                    lc: '_LowerCtx') -> 'THIRExpr | None':
+    """`as_base` of a value a storage lowering already moved or copied: the
+    base part is taken from the read under the `THIRMove` / `THIRCopy`, so
+    the subclass is never built whole (a copy of it first, or a base built
+    from it by a user `__init__`). A copy that runs a user `__copy__`
+    stays: the base part is taken from its result, as CPython's `copy()`
+    calls the hook on the whole object."""
+    types = lc.analyzer
+    if isinstance(expr, THIRMove) or (isinstance(expr, THIRCopy)
+                                      and not _copy_runs_hook(expr, types)):
+        return as_base(expr.value, member, types,
+                       moved=isinstance(expr, THIRMove))
+    if isinstance(expr, THIRCopy):
+        # A storage lowering builds the copy without its source.
+        expr = stamped(expr, lc)
+    return as_base(expr, member, types)
+
+
+def _copy_runs_hook(expr: THIRCopy, analyzer) -> bool:
+    # The chain itself, not `record_layout` (which leaves out generic
+    # records); an unknown record keeps its copy.
+    registry = analyzer.registry
+    info = registry.get_record_for_type(
+        unwrap_readonly(unwrap_ref_type(expr.result_type)))
+    if info is None:
+        return True
+    return any(r.has_copy for r in record_chain(info, registry))
+
+
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType],
                           **kwargs) -> THIRExpr:
@@ -12723,9 +12753,7 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     st = storage_type(slot)
     if st is None:
         return el
-    if isinstance(el, THIRMove):
-        return as_base(el.value, st, lc.analyzer, moved=True) or el
-    return as_base(el, st, lc.analyzer) or el
+    return as_base_of_read(el, st, lc) or el
 
 
 def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,

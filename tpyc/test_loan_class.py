@@ -13,7 +13,8 @@ from tpyc.typesys import (
     STRING, STRVIEW,
     FloatLiteralType, FunctionInfo, IntLiteralType, Loan, LoanClass, NominalType, OptionalType, OwnType,
     PtrType, ReadonlyType, RefType, Representation, TupleType, TypeParamRef, UnionType,
-    certified_primitive_comparison, certified_primitive_op, is_inert_leaf, is_owned_leaf, loan_class,
+    certified_primitive_comparison, certified_primitive_op, is_inert_leaf, is_owned_leaf, lands_in_indirection,
+    loan_class,
     passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
     BYTES_FAMILY, STR_FAMILY, view_family_of, view_owned_leaf,
 )
@@ -645,3 +646,39 @@ def test_a_loop_variable_binds_the_element_or_views_it(container_types):
         assert binds_element(INT32, INT32) and binds_element(ReadonlyType(types["point"]), types["point"])
         assert binds_element(STRVIEW, STR) and binds_element(STR, STR)
         assert not binds_element(STRVIEW, INT32) and not binds_element(INT64, INT32)
+
+
+_UPCAST_RECORDS = """\
+from tpy import int32
+
+class Base:
+    n: int32
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+class Der(Base):
+    def __init__(self, n: int32) -> None:
+        super().__init__(n)
+
+def use(base: Base, der: Der) -> None:
+    print(base.n, der.n)
+
+use(Base(1), Der(2))
+"""
+
+
+def test_only_an_owner_a_handle_member_refers_to_is_not_consumed():
+    # A conversion consumes nothing only where the member the value lands in
+    # refers to it: a Ptr over an owner, a view over the str it borrows. A
+    # value that is or holds a handle itself is moved in.
+    compiler, modules = _compile(_UPCAST_RECORDS)
+    use = _entry(modules).analyzer.registry.get_function("use")[-1]
+    base, der = (unwrap_readonly(unwrap_ref_type(p.type)) for p in use.params)
+    with activate_compiler(compiler):
+        assert lands_in_indirection(PtrType(der), der)
+        assert not lands_in_indirection(PtrType(der), PtrType(der))
+        assert lands_in_indirection(STRVIEW, STR)
+        held_view = UnionType((der, STRVIEW))
+        assert not lands_in_indirection(held_view, held_view)
+        assert not lands_in_indirection(UnionType((base, STRVIEW)), der)
+        assert not lands_in_indirection(UnionType((PtrType(der), INT32)), der)

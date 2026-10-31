@@ -38,9 +38,9 @@ def remove_stripped(xs: list[str], src: str) -> None:
 def remove_view_elem(vs: list[StrView], k: StrView) -> None:
     # A VIEW-typed element: the lookup key and the element are the same C++
     # type here.
-    # Never called: building a `list[StrView]` local is not lowered yet
-    # (a literal rejects at `expr.container_literal`, an append at
-    # `method.arg_shape`), so this leg is pinned by its emitted C++ alone.
+    # Never called: this leg is pinned by its emitted C++ alone (a
+    # `list[StrView]` local does lower -- an empty literal plus `append` --
+    # but no section here builds one).
     vs.remove(k)  # tpyc: ok
 
 

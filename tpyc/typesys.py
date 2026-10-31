@@ -7233,6 +7233,39 @@ def lands_in_view_member(slot: 'TpyType', value_type: 'TpyType | None') -> bool:
     return (holds_borrowing_view(v) or is_any_str_type(v)
             or is_any_bytes_type(v))
 
+
+def lands_in_indirection(slot: 'TpyType', value_type: 'TpyType | None') -> bool:
+    """Whether a value of `value_type` converted into `slot` lands in a
+    member that only refers to it, so the conversion takes the source's
+    address and consumes nothing: a `Ptr` slot over a value that is not
+    itself a handle, or a view member (`lands_in_view_member`), through
+    `Own` and an Optional's inner. A union with a `Ptr` member and no view
+    consumes (BUGS.md#ptr-union-member-record-store) -- its member is
+    picked by sema's union coercion, not by this predicate."""
+    if value_type is None:
+        return False
+    s = _bare_slot_part(slot)
+    if isinstance(s, OptionalType):
+        s = _bare_slot_part(s.inner)
+    if isinstance(s, PtrType):
+        v = _bare_slot_part(value_type)
+        if isinstance(v, OptionalType):
+            v = _bare_slot_part(v.inner)
+        return not is_indirection_type(v)
+    if holds_borrowing_view(s):
+        # Only an owner the view member borrows is referred to; a value
+        # that is or holds a view moves in like any other value.
+        return (lands_in_view_member(s, value_type)
+                and not holds_borrowing_view(value_type))
+    return False
+
+
+def _bare_slot_part(t: 'TpyType') -> 'TpyType':
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return t
+
 STR_FAMILY = ViewTypeFamily(
     owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
     is_any_member=is_any_str_type,

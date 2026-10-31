@@ -13,7 +13,7 @@ from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
 from ..type_def_registry import has_view_param_form
-from ..typesys import (peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
+from ..typesys import (lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type)
 from ..typesys import (
     is_value_type_bound,
@@ -2133,10 +2133,13 @@ class TypeCompatibility:
             ew = expected.wrapped
             if self.ctx.slot_step_commits():
                 binding = self.ctx.comp_var_reads.get(source_expr)
+                # A slot whose member only refers to the source (a `Ptr`, a
+                # view) takes its address: nothing is moved or consumed.
+                refers = lands_in_indirection(expected, actual)
                 if is_return:
                     is_auto_moved = False
                     self.retract_hidden_borrowed_last_use(source_expr)
-                elif binding is not None:
+                elif binding is not None or refers:
                     # A comprehension variable's move is its clause's
                     # (`comp_moves`, the record's); sema claims none, and the
                     # name-keyed ownership fact belongs to an outer local.
@@ -2144,10 +2147,12 @@ class TypeCompatibility:
                 else:
                     is_auto_moved = self.claim_name_move(
                         source_expr, expected, context)
-                self.check_own_consumption(source_expr)
+                if not refers:
+                    self.check_own_consumption(source_expr)
                 # A loop variable moved out makes its loop consuming; a
                 # comprehension variable is not the enclosing `for` variable.
                 if (isinstance(source_expr, TpyName) and binding is None
+                        and not refers
                         and self.claim_loop_var_move(source_expr)):
                     self.ctx.mark_loop_var_consumed(source_expr.name)
                 # A value-tuple with pointer-repr (reference) members copies each
