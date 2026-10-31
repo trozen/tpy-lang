@@ -40,6 +40,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type,
     param_has_mutable_borrow_surface,
 )
+from ..type_def_registry import ParamPassing
 from .forms import is_ptr_variant_union as _forms_is_ptr_variant_union
 
 
@@ -143,6 +144,12 @@ def declared_param_consts(types: 'tuple[TpyType, ...]', *, is_pure: bool,
     as "mutates no argument" (on a method it is a receiver fact only)."""
     whole = is_pure or (is_readonly and not is_method)
     return tuple(whole or isinstance(unwrap_ref_type(t), ReadonlyType) for t in types)
+
+
+def signature_passings(types: tuple[TpyType, ...], consts: tuple[bool, ...]) -> tuple[ParamPassing, ...]:
+    """How each parameter is passed at its const verdict -- the fact a
+    definition's `THIRParam.passing` publishes, asked of the same types."""
+    return tuple(t.param_passing(const) for t, const in zip(types, consts, strict=True))
 
 
 def populate_const_borrow_params(fi: FunctionInfo) -> None:

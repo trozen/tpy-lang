@@ -92,12 +92,6 @@ class ParamContract:
 # --- passing
 
 
-def signature_passings(types: tuple[TpyType, ...], consts: tuple[bool, ...]) -> tuple[ParamPassing, ...]:
-    """How each parameter is passed at its const verdict -- the fact a
-    definition's `THIRParam.passing` publishes, asked of the same types."""
-    return tuple(t.param_passing(const) for t, const in zip(types, consts, strict=True))
-
-
 def stub_param_consts(fi: FunctionInfo) -> tuple[bool, ...]:
     """The const verdict a body-less stub declares per parameter: a
     `readonly[...]` parameter, or a whole-callable promise -- `@pure`, or

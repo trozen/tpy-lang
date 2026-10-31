@@ -47,7 +47,7 @@ from ..parse.nodes import (
 )
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, forward_param, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
 from . import emit_prims
-from .param_const import decide_param_const, declared_param_consts, ParamConstDecision
+from .param_const import decide_param_const, declared_param_consts, ParamConstDecision, signature_passings
 from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
@@ -689,8 +689,7 @@ class FunctionGenerator:
             consts = declared_param_consts(
                 types, is_pure=func.is_pure, is_readonly=func.is_readonly,
                 is_method=func.is_method)
-            return {n: t.param_passing(c)
-                    for (n, _), t, c in zip(func.params, types, consts)}
+            return dict(zip((n for n, _ in func.params), signature_passings(types, consts), strict=True))
         return {n: p.passing for (n, _), p in zip(func.params, lowered.params)}
 
     def shim_return_cpp(self, method: TpyFunction) -> str:

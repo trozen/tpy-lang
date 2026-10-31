@@ -19,7 +19,8 @@ from ..nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRExpr, THIRFunctionIdentity, THIRMethodCall, THIRResolvedCallee,
     THIRStubCallee, THIRStubContract, THIRStubIdentity, declared_param_type, receiver_param,
 )
-from ..param_contract import method_stub_param_consts, published_passing, signature_passings, stub_param_consts
+from ...codegen_cpp.param_const import signature_passings
+from ..param_contract import method_stub_param_consts, published_passing, stub_param_consts
 from ..scalar_leaves import native_container_subject, record_owner
 from .predicates import param_passing
 from .storage import borrowed_record
