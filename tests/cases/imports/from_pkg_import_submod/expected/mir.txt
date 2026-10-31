@@ -1,7 +1,7 @@
 _bindings::__tpy_init: uncovered (module initialization)
 _bindings.pcre2::__tpy_init: uncovered (module initialization)
-_bindings.pcre2::compile_pattern@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+_bindings.pcre2::compile_pattern@11:0: covered (storage: no_proof_required), summary: known
 _bindings.pcre2::Code.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::use@11:0: covered (storage: no_proof_required), summary: known
-main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@15:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)

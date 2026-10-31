@@ -1,7 +1,7 @@
 a::__tpy_init: uncovered (module initialization)
-a::aye@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+a::aye@4:0: covered (storage: no_proof_required), summary: known
 b::__tpy_init: uncovered (module initialization)
-b::bee_uses_a@5:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+b::bee_uses_a@5:0: covered (storage: no_proof_required), summary: known
 c::__tpy_init: uncovered (module initialization)
-c::cee@3:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+c::cee@3:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)

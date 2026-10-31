@@ -1,4 +1,4 @@
 lib::__tpy_init: uncovered (module initialization)
-lib::Public.__init__@5:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-lib::Hidden.__init__@10:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+lib::Public.__init__@5:4: covered (storage: no_proof_required), summary: known
+lib::Hidden.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)

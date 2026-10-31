@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::update@18:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-main::main@21:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@21:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Holder.__repr__@15:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
 main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@13:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

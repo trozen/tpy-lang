@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::free_fn@41:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::free_fn@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::gen@60:0: uncovered (loop across a suspension)
 main::async_fn@66:0: uncovered (async body)
 main::comp@73:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
@@ -12,7 +12,7 @@ main::aug_local@121:0: covered (storage: no_proof_required), summary: opaque (su
 main::pending@130:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::negative@141:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::wrap@156:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
-main::main@160:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@160:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Ctx.__enter__@17:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::Ctx.__exit__@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Bits.take@33:4: covered (storage: no_proof_required), summary: known

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@36:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@36:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Named.describe@13:4: covered (storage: no_proof_required), summary: known
 main::Counted.inc@23:4: covered (storage: no_proof_required), summary: known
 main::Named.__init__@10:4: covered (storage: no_proof_required), summary: known

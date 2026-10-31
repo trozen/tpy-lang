@@ -5,7 +5,7 @@ main::rebind_in_loop@69:0: certified, summary: opaque (summary output effect)
 main::borrow_call_rebind@80:0: certified, summary: opaque (summary output effect)
 main::none_reassign@90:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::scalar_deep@171:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
-main::self_view@181:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::self_view@181:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::with_scalar@189:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::constructor_escape@198:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::setter_escape@208:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
@@ -29,15 +29,15 @@ main::block_er_nested@469:0: uncovered (error-return body)
 main::lend_counter@482:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::block_unpack_borrow@489:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::block_borrow_first@502:0: certified, summary: opaque (summary output effect)
-main::block_alias_rebind@529:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::block_alias_rebind@529:0: certified, summary: opaque (summary output effect)
 main::arm_alias_rebind_try@544:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::arm_alias_rebind_match@560:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::arm_alias_rebind_else@577:0: certified, summary: opaque (summary output effect)
 main::arm_alias_rebind_optional@593:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
 main::make_tagged_pair@606:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::block_unpack_own@612:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::block_unpack_own@612:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::view_drops@645:0: uncovered (unsupported stub result type), summary: opaque (unsupported stub result type)
-main::slot_drop_plain@651:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::slot_drop_plain@651:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::slot_drop_gen@660:0: uncovered (unsupported hoisted value)
 main::slot_drop_async@670:0: uncovered (async body)
 main::slot_drop_async_main@680:0: uncovered (async body)
@@ -49,7 +49,7 @@ main::slot_drop_walrus_gen@713:0: uncovered (unsupported hoisted value)
 main::slot_drop_view_before@723:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::slot_drop_view_after@732:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::lend_viewer@742:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::slot_drop_borrow_unpack@746:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::slot_drop_borrow_unpack@746:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::slot_drop_borrow_unpack_main@755:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::main@770:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Counter.bump@53:4: covered (storage: no_proof_required), summary: known
@@ -65,13 +65,13 @@ main::Viewer.__del__@640:4: uncovered (unsupported metadata: is_arrow)
 main::Counter.__init__@50:4: covered (storage: no_proof_required), summary: known
 main::Inner.__init__@100:4: covered (storage: no_proof_required), summary: known
 main::Deep.__init__@107:4: covered (storage: no_proof_required), summary: known
-main::Viewing.__init__@115:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Viewing.__init__@115:4: covered (storage: no_proof_required), summary: known
 main::Managed.__init__@123:4: covered (storage: no_proof_required), summary: known
 main::Keeper.__init__@136:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Escaping.__init__@147:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::A.__init__@233:4: covered (storage: no_proof_required), summary: known
 main::HA.__init__@240:4: covered (storage: no_proof_required), summary: known
 main::Looper.__init__@342:4: covered (storage: no_proof_required), summary: known
-main::Tagged.__init__@518:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Src.__init__@630:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Tagged.__init__@518:4: covered (storage: no_proof_required), summary: known
+main::Src.__init__@630:4: covered (storage: no_proof_required), summary: known
 main::Viewer.__init__@637:4: uncovered (custom record special member), summary: opaque (custom record special member)

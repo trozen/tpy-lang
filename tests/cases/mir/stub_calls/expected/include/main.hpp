@@ -11,6 +11,8 @@
 namespace tpyapp::main {
 
 struct Rec;
+struct Point;
+struct Box;
 
 extern std::string G;
 inline constexpr std::string_view __name__ = "__main__";
@@ -39,6 +41,30 @@ int32_t both(std::string_view s, const ::tpy::BigInt& a, const ::tpy::BigInt& b)
 int32_t dict_get_value(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k);
 // def record_len(r: Rec) -> int32:  # tpyc: mir(uncovered /^stub protocol argument is not a builtin leaf$/)
 int32_t record_len(const Rec& r);
+// def builtin_ctors(n: int32, b: bytes, s: str) -> None:  # tpyc: mir(covered)
+void builtin_ctors(int32_t n, ::tpy::BytesView b, std::string_view s);
+// def append_while_iterating() -> None:  # tpyc: mir(conflict /replacement/)
+void append_while_iterating();
+// def mutate_and_read(r: Box, s: str) -> int32:
+int32_t mutate_and_read(Box& r, std::string_view s);
+// def clear_and_len(r: Box, data: bytes) -> int32:
+int32_t clear_and_len(Box& r, ::tpy::BytesView data);
+// def fresh_str(r: Box) -> int32:  # tpyc: mir(covered)
+int32_t fresh_str(Box& r);
+// def fresh_bytes(r: Box) -> int32:  # tpyc: mir(covered)
+int32_t fresh_bytes(Box& r);
+// def set_and_read(r: Box, k: int) -> int:
+::tpy::BigInt set_and_read(Box& r, const ::tpy::BigInt& k);
+// def identity_argument(r: Box) -> int:
+::tpy::BigInt identity_argument(Box& r);
+// def float32_from_int() -> None:
+void float32_from_int();
+// def str_key_aug(d: dict[str, int32], sv: StrView) -> None:
+void str_key_aug(::tpy::ordered_map<std::string, int32_t>& d, std::string_view sv);
+// def grow(ba: bytearray) -> int32:
+int32_t grow(::tpy::ByteArray& ba);
+// def held_len_key(ys: list[int32], s: bytearray) -> None:
+void held_len_key(std::vector<int32_t>& ys, ::tpy::ByteArray& s);
 // def main() -> None:
 void main();
 
@@ -66,6 +92,42 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
     return os;
 }
 
+// class Point:
+struct Point {
+    // self.x = x
+    int32_t x;
+    // self.y = y
+    int32_t y;
+
+    // def __init__(self, x: int32, y: int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Box:
+struct Box {
+    // self.n = n
+    ::tpy::BigInt n;
+    // self.b = b
+    ::tpy::Bytes b;
+
+    // def __init__(self, n: int, b: bytes) -> None:
+    Box() = default;
+    explicit Box(const ::tpy::BigInt& n, ::tpy::BytesView b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
+    return os;
+}
+
 
 // # constructor: a scalar field write
 // def __init__(self, n: int32):  # tpyc: mir(covered)
@@ -90,5 +152,19 @@ inline size_t Rec::size() const {
     if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
     return static_cast<size_t>(len);
 }
+
+// def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
+
+// def __init__(self, n: int, b: bytes) -> None:
+//     self.n = n
+//     self.b = b
+inline Box::Box(const ::tpy::BigInt& n, ::tpy::BytesView b)
+    : n(n),
+      b(::tpy::Bytes(b)) {}
 void __tpy_init();
 } // namespace tpyapp::main

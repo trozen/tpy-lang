@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@23:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Child.as_pair@19:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Child.as_pair@19:4: covered (storage: no_proof_required), summary: known
 main::Child.__init__@15:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

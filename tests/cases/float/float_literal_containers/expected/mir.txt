@@ -3,5 +3,5 @@ main::test_list_inferred@4:0: uncovered (print argument needs a scalar leaf), su
 main::test_list_annotated_float32@9:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_dict_inferred@13:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_set_inferred@17:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::test_ternary_float_literal@21:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_ternary_float_literal@21:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_annotated_float64@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::main@5:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::test_nocopy_hash@42:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::test_hash_delegation@76:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::Key.__hash__@36:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Key.__hash__@36:4: covered (storage: no_proof_required), summary: known
 main::Key.__eq__@39:4: covered (storage: no_proof_required)
 main::Point.__hash__@55:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::Point.__eq__@58:4: covered (storage: no_proof_required)

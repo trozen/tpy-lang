@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::bump@6:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bump@6:0: covered (storage: no_proof_required), summary: opaque (summary global access)

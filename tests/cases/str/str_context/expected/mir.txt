@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::greet@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::get_name@7:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::greet@4:0: covered (storage: no_proof_required), summary: known
+main::get_name@7:0: covered (storage: no_proof_required), summary: known
+main::main@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Person.__init__@13:4: covered (storage: no_proof_required), summary: known

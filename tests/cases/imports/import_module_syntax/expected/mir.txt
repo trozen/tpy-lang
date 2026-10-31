@@ -1,4 +1,4 @@
 helper::__tpy_init: uncovered (module initialization)
-helper::get_value@3:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+helper::get_value@3:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

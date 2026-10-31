@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Base.__init__@9:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Derived.__init__@17:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@24:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Base.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Derived.__init__@17:4: covered (storage: no_proof_required), summary: known

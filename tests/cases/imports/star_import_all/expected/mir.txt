@@ -1,6 +1,6 @@
 helpers::__tpy_init: uncovered (module initialization)
 helpers::public_add@5:0: covered (storage: no_proof_required), summary: known
-helpers::not_exported@8:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+helpers::not_exported@8:0: covered (storage: no_proof_required), summary: known
 helpers::Pair.__init__@15:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

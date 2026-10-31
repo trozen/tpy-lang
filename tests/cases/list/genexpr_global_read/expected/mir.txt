@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::bump@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bump@9:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::<genexpr>@14:14: uncovered (generator expression)

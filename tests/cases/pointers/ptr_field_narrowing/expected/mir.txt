@@ -6,7 +6,7 @@ main::read_after_early_return@78:0: uncovered (unsupported field type or form), 
 main::read_after_field_pass@84:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
 main::mutate_container@91:0: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::read_after_container_pass@94:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-main::main@100:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@100:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Node.get_value@8:4: covered (storage: no_proof_required), summary: known
 main::Container.read_if_present@16:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
 main::Container.call_if_present@21:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)

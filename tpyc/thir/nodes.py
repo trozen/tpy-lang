@@ -1112,7 +1112,10 @@ class THIRStubCallee:
     `bound_arguments` are the type arguments the method's protocol-bounded
     type parameters bind (`sort[T: Comparable]` on `list[int32]` binds
     int32): the stub's runtime code dispatches the bound's operations on
-    them."""
+    them.
+    `constructs_result` says the call builds its result (a builtin type's
+    initializer), so an owned result shares no storage with the arguments.
+    Never set on a method stub."""
     identity: THIRStubIdentity
     signature: THIRCallableSignature
     contract: THIRStubContract | None
@@ -1120,6 +1123,7 @@ class THIRStubCallee:
     mutates_elements: bool = False
     receiver: bool = False
     bound_arguments: tuple[TpyType, ...] = ()
+    constructs_result: bool = False
 
 
 @dataclass(frozen=True)

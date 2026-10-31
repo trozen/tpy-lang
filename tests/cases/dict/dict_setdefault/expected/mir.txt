@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@8:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@8:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)

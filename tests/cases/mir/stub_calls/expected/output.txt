@@ -11,3 +11,10 @@ twice: 1.527180
 both: 2
 dict_get_value: 6
 record_len: 4
+builtin_ctors: 7 5 5.0 2 x! x x
+append_while_iterating: 1 5
+fresh_argument: 1 2 99 0
+identity_argument: 99 99
+float32_from_int: 3.0 16777216.0
+str_key_aug: {'k': 2}
+held_len_key: [0, 0, 10]

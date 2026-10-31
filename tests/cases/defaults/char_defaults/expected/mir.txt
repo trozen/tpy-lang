@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
 main::greet@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::bracket@7:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bracket@7:0: covered (storage: no_proof_required), summary: known
 main::main@10:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

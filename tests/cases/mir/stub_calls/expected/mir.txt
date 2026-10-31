@@ -11,7 +11,21 @@ main::twice@68:0: covered (storage: no_proof_required), summary: known
 main::both@74:0: covered (storage: no_proof_required), summary: known
 main::dict_get_value@81:0: covered (storage: no_proof_required), summary: known
 main::record_len@87:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::main@91:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::builtin_ctors@98:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::append_while_iterating@112:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::mutate_and_read@127:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::clear_and_len@132:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::fresh_str@138:0: covered (storage: no_proof_required), summary: known
+main::fresh_bytes@143:0: covered (storage: no_proof_required), summary: known
+main::set_and_read@147:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::identity_argument@154:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::float32_from_int@159:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::str_key_aug@166:0: covered (storage: no_proof_required), summary: known
+main::grow@170:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::held_len_key@176:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@180:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
 main::Rec.__len__@17:4: covered (storage: no_proof_required), summary: known
 main::Rec.label_len@21:4: covered (storage: no_proof_required), summary: known
 main::Rec.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@92:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@122:4: covered (storage: no_proof_required), summary: known

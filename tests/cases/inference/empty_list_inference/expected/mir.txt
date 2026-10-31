@@ -3,7 +3,7 @@ main::test_append@4:0: uncovered (print argument needs a scalar leaf), summary: 
 main::test_list_ctor@9:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::test_insert@14:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_multiple_append@19:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::test_numeric_widen@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_numeric_widen@26:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_return_context@34:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::takes_list@39:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::test_param_context@43:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

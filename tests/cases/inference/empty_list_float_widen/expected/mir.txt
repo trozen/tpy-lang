@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::test@3:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test@3:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

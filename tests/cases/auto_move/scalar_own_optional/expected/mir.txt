@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::take@29:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::make@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::passthrough@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::borrow@48:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::borrow@48:0: covered (storage: no_proof_required), summary: known
 main::forward_borrow@54:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::reassign_pointer@61:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::first_decl@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_array_overload@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_overload@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_array_overload@4:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_list_overload@9:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::test_str_overload@14:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::test_store_and_load@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_store_and_load@19:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)

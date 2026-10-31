@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
 main::pick@17:0: certified, summary: known
-main::main@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@24:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Box.get_value@12:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@8:4: covered (storage: no_proof_required), summary: known

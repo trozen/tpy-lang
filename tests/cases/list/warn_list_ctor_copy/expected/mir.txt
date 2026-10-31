@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::make_nodes@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_ctor_ref_type_warns@12:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_ctor_value_type_no_warn@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_ctor_copy_no_warn@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_ctor_last_use_no_warn@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::make_nodes@9:0: covered (storage: no_proof_required), summary: known
+main::test_list_ctor_ref_type_warns@12:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::test_list_ctor_value_type_no_warn@18:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::test_list_ctor_copy_no_warn@24:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::test_list_ctor_last_use_no_warn@30:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::test_list_ctor_rvalue_no_warn@36:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::test_list_ctor_generic_warns@42:0: uncovered (generic body)
 main::Node.__init__@6:4: covered (storage: no_proof_required), summary: known

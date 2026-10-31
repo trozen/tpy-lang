@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::read_buf@19:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
-main::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@26:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
 main::Buffer.copy_into@13:4: uncovered (unsupported range bound)
 main::Buffer.copy_into@13:4#2: uncovered (unsupported range bound)
-main::Buffer.__init__@9:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Buffer.__init__@9:4: covered (storage: no_proof_required), summary: known

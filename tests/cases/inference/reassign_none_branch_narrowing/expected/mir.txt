@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::make_box@10:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::make_box@10:0: covered (storage: no_proof_required), summary: known
 main::test_if_branch@13:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::test_elif_branch@20:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known

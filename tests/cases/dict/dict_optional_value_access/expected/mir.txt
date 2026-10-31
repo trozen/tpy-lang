@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::borrow@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::borrow@13:0: covered (storage: no_proof_required), summary: known
 main::main@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::popped@33:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::mutate_point@45:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::mutate_point@45:0: covered (storage: no_proof_required), summary: known
 main::read_point@48:0: covered (storage: no_proof_required), summary: known
-main::test_read_only_loop@51:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_read_only_loop@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_non_readonly_method_loop@59:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_field_mutate_loop@66:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_field_mutate_loop@66:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_nested_field_mutate_loop@73:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_nested_loop_mutate@80:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_nested_loop_read@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -28,13 +28,13 @@ main::bump_in_try@297:0: uncovered (unsupported statement), summary: opaque (uns
 main::bump_in_match@308:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::bump_in_closure@317:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::test_chain_source_loops@324:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_assign_to_local_loop@363:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_assign_to_local_loop@363:0: certified, summary: opaque (summary output effect)
 main::find_point@371:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::test_pass_to_mutating_func@378:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_pass_to_readonly_func@385:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_ptr_from_loop_var@393:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_value_type_loop@401:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_sequential_loops_same_var@409:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pass_to_mutating_func@378:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_pass_to_readonly_func@385:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_ptr_from_loop_var@393:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_value_type_loop@401:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_sequential_loops_same_var@409:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_bigint_const_ref@419:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::test_bigint_mutated@427:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::Point.value@25:4: covered (storage: no_proof_required), summary: known
@@ -43,7 +43,7 @@ main::Shelf.bump_row@186:4: uncovered (container source needs a place), summary:
 main::Depot.bump_deep@196:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::Depot.bump_flat@208:4: certified, summary: opaque (summary record: member definition: unsupported native container element)
 main::Point.__init__@20:4: covered (storage: no_proof_required), summary: known
-main::Container.__init__@30:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Container.__init__@30:4: covered (storage: no_proof_required), summary: known
 main::Grid.__init__@35:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Shelf.__init__@182:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Depot.__init__@193:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)

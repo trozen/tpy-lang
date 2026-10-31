@@ -5,7 +5,7 @@ main::protocol_own_dyn@67:0: uncovered (missing alias binding), summary: opaque 
 main::ptr_opt_lift@101:0: uncovered (unsupported optional field value), summary: opaque (unsupported optional field value)
 main::main@110:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Sheep.replicate@59:4: uncovered (unsupported return type)
-main::Sheep.label@63:4: uncovered (stub declares no contract)
+main::Sheep.label@63:4: covered (storage: no_proof_required)
 main::Store.find@88:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Dog.__init__@15:4: covered (storage: no_proof_required), summary: known
 main::Cat.__init__@22:4: covered (storage: no_proof_required), summary: known

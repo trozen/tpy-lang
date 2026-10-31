@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
 main::mk@33:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::take@38:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::take2@42:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::take@38:0: covered (storage: no_proof_required), summary: known
+main::take2@42:0: covered (storage: no_proof_required), summary: known
 main::take_opt@46:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::main@54:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@54:0: uncovered (unsupported metadata: spelled), summary: opaque (unsupported metadata: spelled)
 main::Fixed.__eq__: uncovered (unsupported reference parameter passing)
 main::Fixed.__repr__: uncovered (unsupported owned-leaf expression)
 main::Fixed.__hash__: uncovered (missing receiver fact)

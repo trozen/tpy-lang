@@ -84,6 +84,18 @@ def construct(x: float) -> int:
     # A pure initializer lends nothing, so its BigInt result is fresh.
     return int(x)
 
+def fixed(x: float) -> int32:
+    # A fixed-width initializer: a known summary from its `@pure`.
+    return int32(x)
+
+def text(a: int) -> str:
+    # `str(a)` lends the BigInt, yet builds a new string that borrows nothing.
+    return str(a)
+
+def same_int(a: int) -> int:
+    # `int(a)` over an int renders its argument unchanged: the result is `a`.
+    return int(a)
+
 def smaller(a: int, b: int) -> int:
     # `min` binds `std::min`: the result may borrow either argument, so the local copies it.
     x = min(a, b)
@@ -271,6 +283,35 @@ def test_pure_constructor_result_is_fresh(active) -> None:
     result = fn.slots[stmt.target.root.index]
     assert result.shape.is_storage and result.type == BIGINT
     assert "%2 = call stub builtins.int.__init__[float](%1) [pure, reader, may-raise] [initialize]" in _lines(fn)
+
+
+def test_fixed_width_initializer_has_a_known_summary(active) -> None:
+    fn = active.bodies["fixed"]
+    stmt, = _call_statements(fn)
+    summary = stmt.value.summary
+    assert summary.callee.identity.qualified_name == "tpy.int32.__init__"
+    assert summary.callee.constructs_result and summary.callee.contract is th.THIRStubContract.PURE
+    assert summary_problem(summary, no_layouts()) is None and summary == stub_summary(summary.callee)
+    assert active.summaries["fixed"].state is MIRSummaryState.KNOWN
+
+
+def test_a_constructed_owned_result_borrows_no_lent_argument(active) -> None:
+    callee = _thir_calls(active.thir["text"])[0].stub_callee
+    assert callee.identity.qualified_name == "builtins.str.__init__" and callee.readonly == (True,)
+    built = stub_summary(callee)
+    assert isinstance(built, MIRCallSummary) and built.returns == frozenset()
+    # The same declaration without the fact keeps the `min(a, b)` rule.
+    kept = stub_summary(replace(callee, constructs_result=False))
+    assert isinstance(kept, MIRCallSummary) and kept.returns == frozenset({MIRReturnOrigin(0)})
+    assert stub_summary(replace(callee, constructs_result=1)) == "invalid stub callee"
+
+
+def test_an_identity_template_initializer_constructs_nothing(active) -> None:
+    callee = _thir_calls(active.thir["same_int"])[0].stub_callee
+    assert callee.identity == th.THIRStubIdentity("builtins.int.__init__", (BIGINT,))
+    assert not callee.constructs_result
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset({MIRReturnOrigin(0)})
 
 
 def test_stub_result_may_borrow_every_lent_argument(active) -> None:

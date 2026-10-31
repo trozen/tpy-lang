@@ -70,7 +70,7 @@ main::concat_mixed@415:0: uncovered (uncertified binary operation), summary: opa
 main::no_init@420:0: uncovered (owned-leaf declaration needs an initializer), summary: opaque (owned-leaf declaration needs an initializer)
 main::string_as_str@430:0: covered (storage: no_proof_required), summary: known
 main::countdown@436:0: uncovered (unsupported hoisted value)
-main::main@443:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@443:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Rec.positive_x@23:4: covered (storage: no_proof_required), summary: known
 main::Gauge.bump@329:4: covered (storage: no_proof_required), summary: known
 main::Gauge.read@334:4: covered (storage: no_proof_required), summary: known

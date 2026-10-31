@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_basic@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_multi_target@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_del_then_insert@17:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_basic@4:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::test_multi_target@11:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_del_then_insert@17:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

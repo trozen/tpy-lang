@@ -39,7 +39,7 @@ main::ctor_from_view@263:0: covered (storage: no_proof_required), summary: known
 main::ctor_from_string@270:0: covered (storage: no_proof_required), summary: known
 main::method_write@276:0: covered (storage: no_proof_required), summary: known
 main::lit_then_write@281:0: covered (storage: no_proof_required), summary: known
-main::main@287:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@287:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Rec.name_len@167:4: covered (storage: no_proof_required), summary: known
 main::Rec.name_view@171:4: covered (storage: no_proof_required), summary: known
 main::Rec.rename_m@175:4: covered (storage: no_proof_required), summary: known

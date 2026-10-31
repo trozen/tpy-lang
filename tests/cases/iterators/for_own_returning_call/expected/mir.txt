@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::make_batch@18:0: covered (storage: no_proof_required), summary: known
 main::make_pairs@25:0: covered (storage: no_proof_required), summary: known
-main::make_uniques@29:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::make_uniques@29:0: covered (storage: no_proof_required), summary: known
 main::main@33:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::Maker.make@11:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

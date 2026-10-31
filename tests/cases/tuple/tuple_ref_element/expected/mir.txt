@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Point.__repr__@10:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@13:0: uncovered (unsupported metadata: deref), summary: opaque (unsupported metadata: deref)
+main::Point.__repr__@10:4: covered (storage: no_proof_required), summary: known
 main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

@@ -1,14 +1,14 @@
 main::__tpy_init: uncovered (module initialization)
 main::mutate_point@14:0: covered (storage: no_proof_required), summary: known
 main::read_only_point@18:0: covered (storage: no_proof_required), summary: known
-main::read_elem_ref@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::read_via_alias@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::read_via_deep_alias@37:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::read_via_read_only_call@45:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::write_elem_ref@53:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::write_via_mutating_call@59:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::write_via_alias@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::read_elem_ref@24:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::read_via_alias@30:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::read_via_deep_alias@37:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::read_via_read_only_call@45:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::write_elem_ref@53:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::write_via_mutating_call@59:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::write_via_alias@65:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::read_nested@74:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::write_nested@80:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@86:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@86:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

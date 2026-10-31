@@ -282,9 +282,19 @@ def test_validator_rejects_a_method_stub_on_a_free_call(lowered) -> None:
     fn = lowered["facts"]
     call = next(c for c in nodes(fn, th.THIRCall) if c.stub_callee is not None)
     for damaged in (replace(call.stub_callee, receiver=True), replace(call.stub_callee, mutates_elements=True),
-                    replace(call.stub_callee, bound_arguments=(INT32,))):
+                    replace(call.stub_callee, bound_arguments=(INT32,)),
+                    replace(call.stub_callee, constructs_result=1)):
         with pytest.raises(THIRValidationError, match="invalid stub callee"):
             validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
+
+
+def test_validator_rejects_a_constructed_result_on_a_method_stub(lowered) -> None:
+    # Only an initializer builds its result; a method stub's result is its own.
+    fn = lowered["methods"]
+    call = next(c for c in nodes(fn, th.THIRMethodCall) if c.stub_callee is not None)
+    damaged = replace(call.stub_callee, constructs_result=True)
+    with pytest.raises(THIRValidationError, match="invalid stub callee"):
+        validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
 
 
 def test_validator_rejects_inconsistent_container_facts(lowered) -> None:

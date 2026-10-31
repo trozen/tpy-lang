@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::read_through@22:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
-main::main@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@25:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Container.read_value@19:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::Data.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Container.__init__@15:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

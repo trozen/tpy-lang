@@ -3,4 +3,4 @@ main::main@10:0: uncovered (unsupported metadata: cpp), summary: opaque (unsuppo
 pkg::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
 pkg.inner::__tpy_init: uncovered (THIR not attempted: an earlier reject ended emission)
 pkg.inner.leaf::__tpy_init: uncovered (module initialization)
-pkg.inner.leaf::_seed@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.inner.leaf::_seed@4:0: covered (storage: no_proof_required), summary: known

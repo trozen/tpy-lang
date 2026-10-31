@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::use_callable@20:0: uncovered (unsupported parameter type)
 main::use_one_arg@23:0: uncovered (unsupported parameter type)
-main::main@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@26:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::Impl.call@15:4: covered (storage: no_proof_required), summary: known
 main::Impl.process@17:4: covered (storage: no_proof_required), summary: known
 main::Impl.__init__@13:4: covered (storage: no_proof_required), summary: known

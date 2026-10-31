@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_non_last_use@14:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_last_use@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_container_non_last_use@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_container_last_use@31:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_non_last_use@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_last_use@20:0: covered (storage: no_proof_required), summary: known
+main::test_container_non_last_use@25:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::test_container_last_use@31:0: covered (storage: no_proof_required), summary: known
 main::Item.__init__@6:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@11:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Holder.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_pop@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_clear@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_update@14:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_setdefault@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_del@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_conditional_mutation@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_no_warn_after_loop@36:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_read_only_ok@43:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_pop@4:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_clear@9:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_update@14:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_setdefault@20:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_del@25:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_conditional_mutation@30:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::test_no_warn_after_loop@36:0: covered (storage: no_proof_required), summary: known
+main::test_read_only_ok@43:0: covered (storage: no_proof_required), summary: known

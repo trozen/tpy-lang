@@ -1,3 +1,14 @@
+main.py:16: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 15; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:21: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 20; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:26: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 25; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:31: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 30; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:36: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 35; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:47: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 46; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:52: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 51; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:57: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 56; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:64: warning: this call may move the elements of 'inner', but the iteration over 'inner' still walks them and continues on line 63; iterate over a copy ('copy(inner)'), or make the changes after the loop
+main.py:65: warning: this call may move the elements of 'outer', but the iteration over 'outer' still walks them and continues on line 62; iterate over a copy ('copy(outer)'), or make the changes after the loop
+main.py:71: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 69; iterate over a copy ('copy(items)'), or make the changes after the loop
 main.py:89: warning: Mutation of 'self.rows[...]' while iterating over it ('append' invalidates the iterator)
 main.py:16: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
 main.py:21: warning: Mutation of 'items' while iterating over it ('pop' invalidates the iterator)

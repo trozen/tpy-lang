@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::read_box@15:0: covered (storage: no_proof_required), summary: known
-main::sum_list@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::main@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::sum_list@19:0: covered (storage: no_proof_required), summary: known
+main::main@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Box.get_value@11:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known

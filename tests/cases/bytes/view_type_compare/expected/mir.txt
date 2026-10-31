@@ -3,7 +3,7 @@ main::compare_pairs@51:0: uncovered (unsupported parameter type), summary: opaqu
 main::membership@59:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::view_local@67:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::sort_bytes@73:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::hashes@79:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::hashes@79:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::matching@85:0: uncovered (loop across a suspension)
 main::first_is@93:0: uncovered (generic body)
 main::filtered@98:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

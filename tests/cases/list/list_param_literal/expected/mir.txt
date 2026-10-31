@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
 main::takes_list@3:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
-main::takes_list_int32@7:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::takes_list_int32@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::takes_array@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

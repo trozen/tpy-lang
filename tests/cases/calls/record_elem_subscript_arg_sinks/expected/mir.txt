@@ -10,7 +10,7 @@ main::Bag.take@59:4: covered (storage: no_proof_required), summary: known
 main::Bag.peek@64:4: covered (storage: no_proof_required)
 main::Map.fill@82:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Map.reseat@87:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Thing.__init__@23:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Thing.__init__@23:4: covered (storage: no_proof_required), summary: known
 main::Player.__init__@33:4: covered (storage: no_proof_required), summary: known
 main::Bump.__init__@41:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::Wrap.__init__@49:4: covered (storage: no_proof_required), summary: known

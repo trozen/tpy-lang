@@ -100,6 +100,135 @@ int32_t record_len(const Rec& r) {
     return ::tpy::__len__(r);
 }
 
+// # free function: builtin-type initializers declare @pure, so a body calling them lowers
+// def builtin_ctors(n: int32, b: bytes, s: str) -> None:  # tpyc: mir(covered)
+//     items = [Point(int32(1), int32(2))]
+//     t = str(n)
+//     f = float(n)
+//     c = bytes(b)
+//     w = String(s)
+//     ch = char(s)
+//     # The constructed values own their storage: writing them leaves the sources alone.
+//     items[0].x = 7
+//     w += "!"
+//     print("builtin_ctors:", items[0].x, t, f, len(c), w, s, ch)
+void builtin_ctors(int32_t n, ::tpy::BytesView b, std::string_view s) {
+    std::array<Point, 1> items = {Point(1, 2)};
+    std::string t = ::tpy::fixed_to_str<int32_t>(n);
+    double f = static_cast<double>(n);
+    ::tpy::Bytes c = ::tpy::Bytes(b);
+    ::tpy::String w = ::tpy::String(s);
+    char ch = ::tpy::char_from_str(s);
+    ::tpy::__getitem__(items, 0).x = 7;
+    w += "!";
+    std::cout << "builtin_ctors:" << " " << ::tpy::__getitem__(items, 0).x << " " << t << " " << ::tpy::print_float(f) << " " << ::tpy::__len__(c) << " " << w << " " << s << " " << ch << "\n" << ::tpy::check_signals;
+}
+
+// # free function: an int32-built element appended while iterating -- MIR's iteration warning
+// def append_while_iterating() -> None:  # tpyc: mir(conflict /replacement/)
+//     items = [Point(int32(1), int32(2))]
+//     for p in items:
+//         if p.x > 100:
+//             items.append(Point(int32(3), p.y))  # tpyc: warning(/Mutation of 'items' while iterating/) warning(/may move the elements of 'items'/)
+//     items[0].y = 5
+//     print("append_while_iterating:", len(items), items[0].y)
+void append_while_iterating() {
+    std::vector<Point> items = {Point(1, 2)};
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        if ((p.x > 100)) {
+            items.push_back(Point(3, p.y));
+        }
+    }
+    ::tpy::__getitem__(items, 0).y = 5;
+    std::cout << "append_while_iterating:" << " " << ::tpy::__len__(items) << " " << ::tpy::__getitem__(items, 0).y << "\n" << ::tpy::check_signals;
+}
+
+// def mutate_and_read(r: Box, s: str) -> int32:
+//     r.n = 99
+//     return len(s)
+int32_t mutate_and_read(Box& r, std::string_view s) {
+    r.n = ::tpy::BigInt(99);
+    return ::tpy::__len__(s);
+}
+
+// def clear_and_len(r: Box, data: bytes) -> int32:
+//     r.b = b""
+//     return len(data)
+int32_t clear_and_len(Box& r, ::tpy::BytesView data) {
+    r.b = ::tpy::Bytes{};
+    return ::tpy::__len__(data);
+}
+
+// # free function: `str(r.n)` builds a new string, so the callee mutating `r` cannot reach it
+// def fresh_str(r: Box) -> int32:  # tpyc: mir(covered)
+//     return mutate_and_read(r, str(r.n))
+int32_t fresh_str(Box& r) {
+    return ::tpyapp::main::mutate_and_read(r, (r.n).to_string());
+}
+
+// # free function: `bytes(r.b)` is a defensive copy the callee clearing `r.b` cannot reach
+// def fresh_bytes(r: Box) -> int32:  # tpyc: mir(covered)
+//     return clear_and_len(r, bytes(r.b))
+int32_t fresh_bytes(Box& r) {
+    return ::tpyapp::main::clear_and_len(r, ::tpy::Bytes(r.b));
+}
+
+// def set_and_read(r: Box, k: int) -> int:
+//     r.n = 99
+//     return k
+::tpy::BigInt set_and_read(Box& r, const ::tpy::BigInt& k) {
+    r.n = ::tpy::BigInt(99);
+    return k;
+}
+
+// # free function: `int(r.n)` renders as `r.n` itself, so the callee's write to `r` reaches `k`
+// # (the run writes the value `r.n` already holds, so its output matches CPython)
+// def identity_argument(r: Box) -> int:
+//     return set_and_read(r, int(r.n))  # tpyc: warning(/the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'/)
+::tpy::BigInt identity_argument(Box& r) {
+    return ::tpyapp::main::set_and_read(r, r.n);
+}
+
+// # free function: float32 from an int rounds through binary64, as CPython's float32 does
+// def float32_from_int() -> None:
+//     n = int(3)
+//     big = int(16777217)
+//     print("float32_from_int:", float32(n), float32(big))
+void float32_from_int() {
+    ::tpy::BigInt n = ::tpy::BigInt(3);
+    ::tpy::BigInt big = ::tpy::BigInt(16777217);
+    std::cout << "float32_from_int:" << " " << ::tpy::print_float(static_cast<double>(static_cast<float>(static_cast<double>(n)))) << " " << ::tpy::print_float(static_cast<double>(static_cast<float>(static_cast<double>(big)))) << "\n" << ::tpy::check_signals;
+}
+
+// # free function: a `str(sv)` key is evaluated twice, harmless over an immutable source
+// def str_key_aug(d: dict[str, int32], sv: StrView) -> None:
+//     d[str(sv)] += 1
+void str_key_aug(::tpy::ordered_map<std::string, int32_t>& d, std::string_view sv) {
+    ::tpy::__setitem__(d, std::string(sv), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, std::string(sv)), 1));
+}
+
+// def grow(ba: bytearray) -> int32:
+//     ba.append(120)
+//     return 10
+int32_t grow(::tpy::ByteArray& ba) {
+    ::tpy::bytearray_append(ba, 120);
+    return 10;
+}
+
+// # free function: `bytes(ba)` is not @pure, so the key `len(bytes(s))` is held before `grow` writes `s`
+// def held_len_key(ys: list[int32], s: bytearray) -> None:
+//     ys[len(bytes(s))] += grow(s)
+void held_len_key(std::vector<int32_t>& ys, ::tpy::ByteArray& s) {
+    {
+        auto __tmp_1 = ::tpy::__len__(::tpy::Bytes(s));
+        ::tpy::__setitem__(ys, __tmp_1, ::tpy::add_check<int32_t>(::tpy::__getitem__(ys, __tmp_1), ::tpyapp::main::grow(s)));
+    }
+}
+
 // def main() -> None:
 //     print("label_len:", Rec(0).label_len("four"))
 //     print("lent_len:", lent_len("abc"))
@@ -114,6 +243,19 @@ int32_t record_len(const Rec& r) {
 //     print("both:", both("hi", 12, 40))
 //     print("dict_get_value:", dict_get_value({"a": 1}, "z"))
 //     print("record_len:", record_len(Rec(4)))
+//     builtin_ctors(5, b"ab", "x")
+//     append_while_iterating()
+//     r = Box(1, b"xy")
+//     print("fresh_argument:", fresh_str(r), fresh_bytes(r), r.n, len(r.b))
+//     q = Box(99, b"")
+//     print("identity_argument:", identity_argument(q), q.n)
+//     float32_from_int()
+//     d = {"k": int32(1)}
+//     str_key_aug(d, StrView("k"))
+//     print("str_key_aug:", d)
+//     ys = [int32(0), 0, 0]
+//     held_len_key(ys, bytearray(b"ab"))
+//     print("held_len_key:", ys)
 void main() {
     std::cout << "label_len:" << " " << Rec(0).label_len("four") << "\n" << ::tpy::check_signals;
     std::cout << "lent_len:" << " " << ::tpyapp::main::lent_len("abc") << "\n" << ::tpy::check_signals;
@@ -130,6 +272,20 @@ void main() {
     std::cout << "dict_get_value:" << " " << ::tpyapp::main::dict_get_value(__tmp_1, "z") << "\n" << ::tpy::check_signals;
     Rec __tmp_2 = Rec(4);
     std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_2) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::builtin_ctors(5, ::tpy::bytes_literal("ab", 2), "x");
+    ::tpyapp::main::append_while_iterating();
+    Box r = Box(::tpy::BigInt(1), ::tpy::bytes_literal("xy", 2));
+    std::cout << "fresh_argument:" << " " << ::tpyapp::main::fresh_str(r) << " " << ::tpyapp::main::fresh_bytes(r) << " " << r.n << " " << ::tpy::__len__(r.b) << "\n" << ::tpy::check_signals;
+    Box q = Box(::tpy::BigInt(99), ::tpy::BytesView{});
+    std::cout << "identity_argument:" << " " << ::tpyapp::main::identity_argument(q) << " " << q.n << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::float32_from_int();
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
+    ::tpyapp::main::str_key_aug(d, "k");
+    std::cout << "str_key_aug:" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> ys = {0, 0, 0};
+    ::tpy::ByteArray __tmp_3 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
+    ::tpyapp::main::held_len_key(ys, __tmp_3);
+    std::cout << "held_len_key:" << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
 }
 
 // # MIR verdicts for calls to stdlib stubs: a declared contract (@pure / transient=True)

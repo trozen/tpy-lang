@@ -1,3 +1,3 @@
 main::__tpy_init: uncovered (module initialization)
 main::get_span@3:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
-main::main@6:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@6:0: uncovered (unsupported view source), summary: opaque (unsupported view source)

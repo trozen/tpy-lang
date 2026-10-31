@@ -2,28 +2,28 @@ main::__tpy_init: uncovered (module initialization)
 main::test_basic@15:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_setter@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_eq@27:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-main::test_describe@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::test_reset@40:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_describe@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_reset@40:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_static@46:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
-main::test_quote_expr@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::test_shared_body@58:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_quote_expr@52:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_shared_body@58:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Point.__eq__: covered (storage: no_proof_required)
 main::Point.set_x@1:0: covered (storage: no_proof_required), summary: known
 main::Point.set_y@1:0: covered (storage: no_proof_required), summary: known
-main::Point.describe@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Point.reset: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Point.default_first: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.describe@1:0: covered (storage: no_proof_required), summary: known
+main::Point.reset: covered (storage: no_proof_required), summary: known
+main::Point.default_first: covered (storage: no_proof_required), summary: known
 main::Point.field_count@1:0: covered (storage: no_proof_required)
-main::Point.show_int@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Point.show_str@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.show_int@1:0: covered (storage: no_proof_required), summary: known
+main::Point.show_str@1:0: covered (storage: no_proof_required), summary: known
 main::Person.__eq__: covered (storage: no_proof_required)
 main::Person.set_name@1:0: covered (storage: no_proof_required), summary: known
 main::Person.set_age@1:0: covered (storage: no_proof_required), summary: known
-main::Person.describe@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Person.reset: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Person.default_first: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Person.describe@1:0: covered (storage: no_proof_required), summary: known
+main::Person.reset: covered (storage: no_proof_required), summary: known
+main::Person.default_first: covered (storage: no_proof_required), summary: known
 main::Person.field_count@1:0: covered (storage: no_proof_required)
-main::Person.show_int@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Person.show_str@1:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Person.show_int@1:0: covered (storage: no_proof_required), summary: known
+main::Person.show_str@1:0: covered (storage: no_proof_required), summary: known
 main::Point.__init__: covered (storage: no_proof_required), summary: known
 main::Person.__init__: covered (storage: no_proof_required), summary: known

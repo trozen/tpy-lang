@@ -4,4 +4,4 @@ main::test_and@8:0: uncovered (missing alias binding), summary: opaque (missing 
 main::test_ternary@12:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_literal_or@16:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::test_literal_ternary@20:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::test_ternary_alias@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_ternary_alias@24:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

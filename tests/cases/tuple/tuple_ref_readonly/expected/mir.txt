@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Container.__repr__@8:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@20:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+main::Container.__repr__@8:4: covered (storage: no_proof_required), summary: known
 main::Wrapper.get_pair@17:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Container.__init__@6:4: covered (storage: no_proof_required), summary: known
 main::Wrapper.__init__@13:4: covered (storage: no_proof_required), summary: known

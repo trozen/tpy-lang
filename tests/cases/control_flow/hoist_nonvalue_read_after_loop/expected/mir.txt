@@ -49,7 +49,7 @@ main::two_loop_str_view_then_owned@627:0: uncovered (missing or inconsistent hoi
 main::two_loop_bytes_view_then_owned@635:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::flat_bytes_owned_from_view@647:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::two_loop_int_widths@658:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
-main::two_loop_int_widen@669:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::two_loop_int_widen@669:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::two_loop_empty_list@680:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::flat_empty_list@695:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
 main::arm_empty_list@703:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)

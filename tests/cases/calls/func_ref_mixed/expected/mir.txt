@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::to_str@5:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::to_str@5:0: covered (storage: no_proof_required), summary: known
 main::double@8:0: covered (storage: no_proof_required), summary: known
 main::apply_fn@11:0: uncovered (unsupported parameter type)
 main::apply_callable@14:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

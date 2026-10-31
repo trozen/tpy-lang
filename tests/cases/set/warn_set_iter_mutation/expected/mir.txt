@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_add@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_remove@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_discard@14:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_pop@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_clear@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_update@29:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_no_warn_after_loop@35:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_read_only_ok@42:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_add@4:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_remove@9:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_discard@14:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_pop@19:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_clear@24:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_update@29:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::test_no_warn_after_loop@35:0: covered (storage: no_proof_required), summary: known
+main::test_read_only_ok@42:0: covered (storage: no_proof_required), summary: known

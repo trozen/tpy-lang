@@ -5,7 +5,7 @@ main::hold8@17:0: covered (storage: no_proof_required), summary: known
 main::w64@21:0: covered (storage: no_proof_required), summary: known
 main::show@25:0: covered (storage: no_proof_required), summary: known
 main::neg@29:0: covered (storage: no_proof_required), summary: known
-main::flag@33:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::flag@33:0: covered (storage: no_proof_required), summary: known
 main::take_any@37:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::grow@41:0: uncovered (unsupported native container element)
 main::pair_sum@46:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

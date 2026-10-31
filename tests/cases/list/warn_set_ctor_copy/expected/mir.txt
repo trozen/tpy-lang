@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::make_nodes@14:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_set_ctor_ref_type_warns@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_set_ctor_value_type_no_warn@23:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_set_ctor_value_type_no_warn@23:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::test_set_ctor_copy_no_warn@29:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_set_ctor_last_use_no_warn@35:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_set_ctor_rvalue_no_warn@41:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

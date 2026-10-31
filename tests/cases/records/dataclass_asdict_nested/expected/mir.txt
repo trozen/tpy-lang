@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@15:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Point.__eq__: covered (storage: no_proof_required)
 main::Point.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Line.__eq__: uncovered (uncertified binary operation)

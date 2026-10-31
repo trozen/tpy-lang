@@ -10,7 +10,7 @@ main::strings@234:0: uncovered (unsupported expression), summary: opaque (unsupp
 main::method_field@245:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::comprehension@251:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::optional_slot@259:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::owned_str@272:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::owned_str@272:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::bigint_needle@280:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::record_needle@289:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
 main::optional_check@299:0: covered (storage: no_proof_required), summary: known

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@15:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Counter.__eq__: covered (storage: no_proof_required)
 main::Counter.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Counter.__init__: covered (storage: no_proof_required), summary: known

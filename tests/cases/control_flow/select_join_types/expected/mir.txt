@@ -12,7 +12,7 @@ main::int_widen_or@116:0: uncovered (unsupported metadata: lhs_cast), summary: o
 main::int_literal_pair@129:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::float_literal_elem@138:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
 main::float_or@146:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
-main::int_float_select@152:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::int_float_select@152:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
 main::half_ternary@182:0: covered (storage: no_proof_required), summary: known
 main::half_or@187:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
 main::declared_containers@192:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

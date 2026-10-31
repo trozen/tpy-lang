@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_ptr_borrow_field_write@11:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_ptr_borrow_append@18:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_ptr_borrow_subscript_assign@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_ptr_reassign_clears@32:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_ptr_borrow_field_write@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_borrow_append@18:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_borrow_subscript_assign@25:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::test_ptr_reassign_clears@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

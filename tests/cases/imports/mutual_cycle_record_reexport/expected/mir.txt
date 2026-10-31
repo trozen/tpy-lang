@@ -1,6 +1,6 @@
 a::__tpy_init: uncovered (module initialization)
-a::AType.make_b@5:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+a::AType.make_b@5:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 b::__tpy_init: uncovered (module initialization)
 b::BType.use_a@8:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
-b::BType.__init__@6:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+b::BType.__init__@6:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)

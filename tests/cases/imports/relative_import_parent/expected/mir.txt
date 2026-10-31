@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@4:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 outer::__tpy_init: uncovered (module initialization)
 outer.inner::__tpy_init: uncovered (module initialization)
 outer.inner.consumer::__tpy_init: uncovered (module initialization)
-outer.inner.consumer::compute@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+outer.inner.consumer::compute@4:0: covered (storage: no_proof_required), summary: known
 outer.utils::__tpy_init: uncovered (module initialization)
 outer.utils::add@3:0: covered (storage: no_proof_required), summary: known

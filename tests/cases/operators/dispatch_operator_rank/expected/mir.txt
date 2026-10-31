@@ -13,7 +13,7 @@ main::spellings@241:0: uncovered (uncertified binary operation), summary: opaque
 main::aug_fallback@262:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::optional_pin@270:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::timedelta_ops@279:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
-main::builtin_rows@289:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::builtin_rows@289:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::literal_values@303:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::lit3@313:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::literal_param@317:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)

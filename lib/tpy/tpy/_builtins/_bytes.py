@@ -12,6 +12,7 @@ from tpy import BytesView
 class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::Bytes()")
+    @pure
     def __init__(self) -> None: ...
     # The owned type constructs from its own family's view, so the copy IS the
     # constructor -- no helper beside it. A `bytes`/`BytesView` argument arrives
@@ -20,15 +21,18 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     # span's user-defined conversion), so neither needs a spelling at the site.
     @dispatch
     @cpp_template("::tpy::Bytes({0})")
+    @pure
     def __init__(self, source: bytes) -> None: ...
     @dispatch
     @cpp_template("::tpy::Bytes({0})")
     def __init__(self, source: bytearray) -> None: ...
     @dispatch
     @cpp_template("::tpy::Bytes({0})")
+    @pure
     def __init__(self, source: BytesView) -> None: ...
     @dispatch
     @native("tpy::bytes_from_size", function=True)
+    @pure
     def __init__(self, source: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::construct<::tpy::Bytes>({0})")
@@ -222,19 +226,23 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
 class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::ByteArray()")
+    @pure
     def __init__(self) -> None: ...
     # Concrete overloads first, same rationale as in `bytes` above.
     @dispatch
     @cpp_template("::tpy::ByteArray({0})")
+    @pure
     def __init__(self, source: bytes) -> None: ...
     @dispatch
     @cpp_template("::tpy::ByteArray({0})")
+    @pure
     def __init__(self, source: BytesView) -> None: ...
     @dispatch
     @cpp_template("::tpy::ByteArray({0})")
     def __init__(self, source: bytearray) -> None: ...
     @dispatch
     @native("tpy::bytearray_from_size", function=True)
+    @pure
     def __init__(self, source: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::construct<::tpy::ByteArray>({0})")

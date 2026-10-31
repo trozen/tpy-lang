@@ -10,8 +10,8 @@ main::count@117:0: uncovered (no body to lower)
 main::count@125:0: uncovered (no body to lower)
 main::protocol_section@129:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::main@136:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Dog.name@20:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Cat.name@51:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Dog.name@20:4: covered (storage: no_proof_required), summary: known
+main::Cat.name@51:4: covered (storage: no_proof_required), summary: known
 main::Horse.walk@76:4: covered (storage: no_proof_required), summary: known
 main::Fish.swim@85:4: covered (storage: no_proof_required), summary: known
 main::Dog.__init__@16:4: covered (storage: no_proof_required), summary: known

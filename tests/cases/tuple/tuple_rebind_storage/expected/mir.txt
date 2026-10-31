@@ -145,7 +145,7 @@ main::HB.__init__@499:4: uncovered (unsupported record fields), summary: opaque 
 main::HM.__init__@1243:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::HCtor.__init__@1323:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::TwoHop.__init__@1350:4: covered (storage: no_proof_required), summary: known
-main::Named.__init__@1358:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Named.__init__@1358:4: covered (storage: no_proof_required), summary: known
 main::Lab.__init__@1366:4: uncovered (missing record layout)
 main::Labelled.__init__@1374:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
 main::Keeper.__init__@1382:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

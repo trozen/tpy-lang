@@ -16,7 +16,7 @@ main::narrowed@167:0: uncovered (unsupported parameter type), summary: opaque (u
 main::g@195:0: uncovered (no body to lower)
 main::g@200:0: uncovered (no body to lower)
 main::eat@220:0: covered (storage: no_proof_required), summary: known
-main::feed@224:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::feed@224:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::eat_a@262:0: covered (storage: no_proof_required), summary: known
 main::mk_list@291:0: covered (storage: no_proof_required), summary: known
 main::keep@329:0: covered (storage: no_proof_required), summary: known

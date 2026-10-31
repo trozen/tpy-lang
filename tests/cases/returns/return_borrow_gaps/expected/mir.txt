@@ -5,7 +5,7 @@ main::test_reassign_then_mutate_warns@24:0: uncovered (call needs finalized know
 main::test_reassign_no_mutation_ok@33:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_reassign_overwrite_clears_borrow@41:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_for_call_iterable_warns@54:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_for_call_iterable_readonly_ok@63:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_for_call_iterable_readonly_ok@63:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::get_first_wrapper@74:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_transitive_return_warns@79:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_transitive_return_no_mutation_ok@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

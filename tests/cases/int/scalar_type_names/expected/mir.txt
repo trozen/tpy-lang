@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::widths@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::widths@20:0: covered (storage: no_proof_required), summary: known
 main::same@31:0: uncovered (generic body)
 main::bytes_of@36:0: uncovered (loop across a suspension)
 main::shadowed@42:0: covered (storage: no_proof_required), summary: known
@@ -15,6 +15,6 @@ main::shadowed_lambda@112:0: uncovered (unsupported local type or form), summary
 main::shadowed_match@118:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::alias_free@127:0: covered (storage: no_proof_required), summary: known
 main::alias_shadow@133:0: covered (storage: no_proof_required), summary: known
-main::main@138:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@138:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Ctx.__enter__@74:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Ctx.__exit__@77:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

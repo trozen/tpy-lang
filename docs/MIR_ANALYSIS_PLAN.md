@@ -2239,9 +2239,26 @@ as the corpus grows).
   TypeDef is `loan_inert` or `owned_leaf` (no user dunder can run). A stub
   result of owned-leaf type MAY BORROW every lent argument (`min(a, b)` is
   `@pure` and binds `std::min`, a reference to an argument); it is fresh
-  only when no argument is lent. An unmarked stub stays opaque. Audited for
+  only when no argument is lent, or when the call constructs it
+  (`THIRStubCallee.constructs_result`, a builtin type's initializer:
+  `str(b.n)`, `String(s)`, `bytes(b)` build a new value). An unmarked stub
+  stays opaque. Audited for
   the acceptance program: `len` (`@pure`), `time.time` (`transient=True`),
   `math.log` and `int(x: float)` (`@pure`).
+- **Coverage, "stub declares no contract".** Closed for the builtin
+  scalar, `str` and `bytes` family constructors: every builtin-type
+  `__init__` stub declares `@pure` (`int32(...)`, `float(...)`,
+  `str(...)`, `String(...)`, `bytes(...)`, `char(...)`, ...), except the
+  `bytes` / `bytearray` overloads over an `Iterable`, whose iteration can
+  run user code or advance an iterator, and the two over a `bytearray`,
+  whose key in an augmented assignment would be evaluated twice
+  (BUGS.md#aug-inert-key-reread-after-rhs). Remaining: free stubs without a
+  contract (`math.*`, `os.*`, `time.*`, `ord`, `abs`, `unsafe_*`,
+  `list.extend`), exception classes' and raw `@native` records'
+  initializers, and constructor paths that attach no stub callee
+  (`Span` / `SpanIter` / `Ptr`, one-argument `StrView`, the
+  `float("inf")` fold, the `bool(obj)` / `str(container)` fallbacks,
+  `intN.wrap`) -- TODO.md "Stub contracts: free stubs".
 - **Views rule.** A view is a readonly pointer holder typed by its
   family's view type (`StrView`, `BytesView`) whose referents are a
   conservative set of POSSIBLE origins, never "exactly": the owned-leaf

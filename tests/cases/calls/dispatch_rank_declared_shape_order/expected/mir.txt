@@ -133,7 +133,7 @@ main::lit_cross@1131:0: uncovered (no body to lower)
 main::operators@1135:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::lit3@1168:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::operators_literal@1172:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::operators_builtin@1181:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::operators_builtin@1181:0: uncovered (unsupported literal value), summary: opaque (unsupported literal value)
 main::membership@1230:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::main@1242:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Animal.name@22:4: covered (storage: no_proof_required), summary: known

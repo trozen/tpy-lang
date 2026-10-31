@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::free_eat@37:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::free_eat@37:0: covered (storage: no_proof_required), summary: known
 main::mk@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::main@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Fixed.__eq__: uncovered (unsupported reference parameter passing)
@@ -8,7 +8,7 @@ main::Fixed.__hash__: uncovered (missing receiver fact)
 main::Zone.__eq__: uncovered (unsupported reference parameter passing)
 main::Zone.__repr__: uncovered (unsupported owned-leaf expression)
 main::Zone.__hash__: uncovered (missing receiver fact)
-main::Box.eat@33:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Box.eat@33:4: covered (storage: no_proof_required), summary: known
 main::Fixed.__init__: uncovered (missing record layout)
 main::Zone.__init__: uncovered (missing record layout)
 main::Box.__init__@25:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

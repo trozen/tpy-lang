@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::mkld@83:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::grow@87:0: covered (storage: no_proof_required), summary: known
 main::keep_l@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::mka@222:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::mka@222:0: covered (storage: no_proof_required), summary: known
 main::mkh@226:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::mkc@230:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::eat_a@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -74,7 +74,7 @@ main::task_path@666:0: uncovered (async body)
 main::task_name@674:0: uncovered (async body)
 main::named_generator@682:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::named_generator_whole@690:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::named_with@698:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::named_with@698:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::same_call_borrower@705:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::coroutine_loan@712:0: uncovered (async body)
 main::run_async@721:0: uncovered (async body)
@@ -98,7 +98,7 @@ main::Pair.take@213:4: uncovered (reference needs local name)
 main::NB.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::M.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@21:4: covered (storage: no_proof_required), summary: known
-main::A.__init__@28:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::A.__init__@28:4: covered (storage: no_proof_required), summary: known
 main::H.__init__@38:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::HC.__init__@53:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::LD.__init__@75:4: uncovered (custom record special member), summary: opaque (custom record special member)
@@ -114,6 +114,6 @@ main::SB.__init__@160:4: covered (storage: no_proof_required), summary: known
 main::KL.__init__@168:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::HM.__init__@178:4: covered (storage: no_proof_required), summary: known
 main::Slot.__init__@185:4: covered (storage: no_proof_required), summary: known
-main::Slot2.__init__@197:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Slot2.__init__@197:4: covered (storage: no_proof_required), summary: known
 main::Keeper.__init__@202:4: covered (storage: no_proof_required), summary: known
 main::Pair.__init__@210:4: covered (storage: no_proof_required), summary: known

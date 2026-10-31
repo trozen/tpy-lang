@@ -63,7 +63,7 @@ main::Box.__getitem__@60:4: uncovered (no body to lower)
 main::Box.__getitem__@60:4#2: uncovered (no body to lower)
 main::Box.__getitem__@64:4: uncovered (no body to lower)
 main::Box.__getitem__@64:4#2: uncovered (no body to lower)
-main::Sink.__setitem__@74:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Sink.__setitem__@74:4: covered (storage: no_proof_required), summary: known
 main::Wide.__getitem__@83:4: uncovered (no body to lower)
 main::Wide.__getitem__@87:4: uncovered (no body to lower)
 main::Rows.__getitem__@98:4: uncovered (no body to lower)

@@ -1,5 +1,5 @@
 bases::__tpy_init: uncovered (module initialization)
 main::__tpy_init: uncovered (module initialization)
 main::main@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Combined.summary@14:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Combined.summary@14:4: covered (storage: no_proof_required), summary: known
 main::Combined.__init__@10:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

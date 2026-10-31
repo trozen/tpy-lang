@@ -2,6 +2,6 @@ main::__tpy_init: uncovered (module initialization)
 main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Writer.write@11:4: covered (storage: no_proof_required), summary: known
 main::Writer.result@14:4: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
-main::Point.encode@25:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Point.encode@25:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Writer.__init__@8:4: covered (storage: no_proof_required), summary: known
 main::Point.__init__@21:4: covered (storage: no_proof_required), summary: known

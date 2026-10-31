@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::test_list_aug_assign@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_list_method_still_warns@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_list_method_still_warns@19:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
 main::test_value_type_no_warn@28:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::test_iter_borrow_aug_assign@35:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::test_reassign_borrower_clears@42:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

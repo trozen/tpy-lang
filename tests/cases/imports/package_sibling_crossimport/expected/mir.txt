@@ -1,16 +1,16 @@
 main::__tpy_init: uncovered (module initialization)
 main::cap@19:0: covered (storage: no_proof_required), summary: known
 main::takes_greeter@23:0: uncovered (unsupported parameter type)
-main::main@27:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@27:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 pkg::__tpy_init: uncovered (module initialization)
 pkg.a::__tpy_init: uncovered (module initialization)
-pkg.a::f@28:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.a::f@28:0: covered (storage: no_proof_required), summary: known
 pkg.a::A.value@11:4: covered (storage: no_proof_required), summary: known
 pkg.a::Container.get@24:4: uncovered (generic body)
-pkg.a::A.__init__@8:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pkg.a::A.__init__@8:4: covered (storage: no_proof_required), summary: known
 pkg.a::Container.__init__@21:4: uncovered (generic constructor)
 pkg.b::__tpy_init: uncovered (module initialization)
-pkg.b::g@36:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.b::g@36:0: covered (storage: no_proof_required), summary: known
 pkg.b::B.greet@28:4: covered (storage: no_proof_required), summary: known
 pkg.b::B.value@32:4: covered (storage: no_proof_required), summary: known
-pkg.b::B.__init__@25:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.b::B.__init__@25:4: covered (storage: no_proof_required), summary: known

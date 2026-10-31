@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::describe@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::pick@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::borrow_union@41:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::borrow_union@41:0: covered (storage: no_proof_required), summary: known
 main::forward_to_borrow@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::test_body_isinstance_narrowing@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_return_into_pointer_variant_receiver@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

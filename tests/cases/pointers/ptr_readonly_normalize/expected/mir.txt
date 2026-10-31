@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
 main::read_via_ptr@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::main@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@13:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Data.__init__@7:4: covered (storage: no_proof_required), summary: known

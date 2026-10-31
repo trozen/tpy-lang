@@ -612,7 +612,9 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     reader. So the stub reads every parameter, writes, invalidates and
     retains nothing, reads no global and may raise. An owned-leaf result is
     not fresh by declaration -- `min(a, b)` binds `std::min`, a reference to
-    an argument -- so it may borrow every argument the call lends."""
+    an argument -- so it may borrow every argument the call lends. A
+    constructed result (`constructs_result`, an initializer) is the
+    exception: the call builds a new value, so it borrows no argument."""
     if (not isinstance(callee, THIRStubCallee) or not isinstance(callee.identity, THIRStubIdentity)
             or not isinstance(callee.signature, THIRCallableSignature)):
         return "invalid stub callee"
@@ -622,6 +624,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
             or not isinstance(callee.readonly, tuple) or len(callee.readonly) != len(signature.param_types)
             or any(type(r) is not bool for r in callee.readonly)
             or type(callee.mutates_elements) is not bool or type(callee.receiver) is not bool
+            or type(callee.constructs_result) is not bool or callee.constructs_result and callee.receiver
             or not isinstance(callee.bound_arguments, tuple)
             or not callee.receiver and (callee.mutates_elements or callee.bound_arguments)
             or callee.mutates_elements and (not callee.readonly or callee.readonly[0]
@@ -659,7 +662,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     if not (isinstance(result, VoidType) or storage_leaf(result, representation)
             or owned_result is not None and representation is Representation.STORAGE):
         return "unsupported stub result type"
-    returns = lent if owned_result is not None else frozenset()
+    returns = lent if owned_result is not None and not callee.constructs_result else frozenset()
     return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
                           returns, frozenset(), False, frozenset())
 

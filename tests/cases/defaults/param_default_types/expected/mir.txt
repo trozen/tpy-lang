@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::widen@20:0: covered (storage: no_proof_required), summary: known
 main::as_float@24:0: covered (storage: no_proof_required), summary: known
 main::negative@32:0: covered (storage: no_proof_required), summary: known
-main::bracket@36:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::bracket@36:0: covered (storage: no_proof_required), summary: known
 main::raw@40:0: covered (storage: no_proof_required), summary: known
 main::view@44:0: covered (storage: no_proof_required), summary: known
 main::flagged@48:0: covered (storage: no_proof_required), summary: known
@@ -12,5 +12,5 @@ main::shade@60:0: uncovered (uncertified binary operation), summary: opaque (unc
 main::wrapped@64:0: covered (storage: no_proof_required), summary: known
 main::main@85:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::Box.scale@75:4: covered (storage: no_proof_required), summary: known
-main::Box.stepped@78:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Box.stepped@78:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@72:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

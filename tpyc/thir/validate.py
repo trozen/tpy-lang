@@ -375,6 +375,7 @@ def _stub_callee_problem(fact: THIRStubCallee) -> bool:
             or not isinstance(fact.readonly, tuple) or len(fact.readonly) != len(fact.signature.param_types)
             or not all(type(r) is bool for r in fact.readonly)
             or type(fact.mutates_elements) is not bool or type(fact.receiver) is not bool
+            or type(fact.constructs_result) is not bool or fact.constructs_result and fact.receiver
             # A declared element write on a method that declares no write.
             or fact.mutates_elements and (not fact.readonly or fact.readonly[0]
                                           or fact.contract is THIRStubContract.PURE)

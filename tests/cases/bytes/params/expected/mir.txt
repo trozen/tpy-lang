@@ -2,5 +2,5 @@ main::__tpy_init: uncovered (module initialization)
 main::byte_len@2:0: covered (storage: no_proof_required), summary: known
 main::first_byte@5:0: covered (storage: no_proof_required), summary: known
 main::is_empty@8:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-main::copy_bytes@13:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::copy_bytes@13:0: covered (storage: no_proof_required), summary: known
 main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

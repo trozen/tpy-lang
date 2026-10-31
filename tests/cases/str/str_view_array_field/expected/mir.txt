@@ -1,15 +1,15 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_array_subscript_view@19:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_array_subscript_mutated@25:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_record_field_view@32:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_record_field_mutated@38:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_record_reassigned@45:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_record_method_mutates@52:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_readonly_method_preserves_view@59:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_field_aug_assign_mutates@67:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_array_passed_to_func@74:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::mutate_array@80:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_multiple_views_one_source@83:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_array_subscript_view@19:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_array_subscript_mutated@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_record_field_view@32:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_record_field_mutated@38:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_record_reassigned@45:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_record_method_mutates@52:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_readonly_method_preserves_view@59:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_field_aug_assign_mutates@67:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_array_passed_to_func@74:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::mutate_array@80:0: covered (storage: no_proof_required), summary: known
+main::test_multiple_views_one_source@83:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Person.rename@12:4: covered (storage: no_proof_required), summary: known
 main::Person.greeting@16:4: covered (storage: no_proof_required), summary: known
 main::Person.__init__@8:4: covered (storage: no_proof_required), summary: known

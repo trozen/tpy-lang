@@ -5,7 +5,7 @@ helpers::add_point_wrapper@22:0: uncovered (call needs finalized known summary),
 helpers::read_wrapper@26:0: covered (storage: no_proof_required), summary: known
 helpers::Point.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::test_imported_read_no_warn@8:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_imported_mutate_warns@17:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_imported_transitive_mutation_warns@26:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_imported_transitive_read_no_warn@35:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_imported_read_no_warn@8:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::test_imported_mutate_warns@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_imported_transitive_mutation_warns@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::test_imported_transitive_read_no_warn@35:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)

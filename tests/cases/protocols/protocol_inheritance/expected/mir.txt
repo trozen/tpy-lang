@@ -3,7 +3,7 @@ main::top@45:0: uncovered (generic body)
 main::size_of@53:0: uncovered (generic body)
 main::main@57:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Message.to_str@19:4: covered (storage: no_proof_required), summary: known
-main::Message.__len__@22:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Message.__len__@22:4: covered (storage: no_proof_required), summary: known
 main::Container.describe@32:4: uncovered (generic body)
 main::Message.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::Container.__init__@29:4: uncovered (generic constructor)

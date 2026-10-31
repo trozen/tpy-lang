@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable
 
 from ...compilation_context import get_current_compiler
 from ...parse.nodes import SubscriptDunder, TpyExpr, TpyFunction, TpySubscript
+from ...sema.int_narrowing import renders_its_argument
 from ...symbol_binding import SymbolKind
 from ...type_def_registry import ParamPassing, get_type_def
 from ...typesys import (
@@ -366,9 +367,11 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, analyzer: 'Semant
     if not name or any(_open_stub_type(t) for t in (*types, ret)):
         return None
     consts = stub_param_consts(fi)
+    # An identity template hands back its argument, so the result is the argument.
+    constructs = initializer and not renders_its_argument(fi.cpp_template)
     return THIRStubCallee(THIRStubIdentity(name, types),
                           callable_signature(types, ret, None, signature_passings(types, consts), analyzer),
-                          _stub_contract(fi), consts)
+                          _stub_contract(fi), consts, constructs_result=constructs)
 
 
 def _stub_contract(fi: FunctionInfo) -> THIRStubContract | None:

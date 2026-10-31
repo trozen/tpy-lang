@@ -12,7 +12,7 @@ main::narrow@71:0: uncovered (no body to lower)
 main::stub@76:0: uncovered (no body to lower)
 main::stub@78:0: uncovered (no body to lower)
 main::stub@79:0: uncovered (overloaded callable)
-main::take32@227:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::take32@227:0: covered (storage: no_proof_required), summary: known
 main::p@232:0: uncovered (no body to lower)
 main::p@237:0: uncovered (no body to lower)
 main::spec@242:0: uncovered (no body to lower)

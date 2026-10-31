@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@4:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@4:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

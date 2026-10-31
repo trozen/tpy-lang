@@ -3,5 +3,5 @@ main::main@32:0: uncovered (call needs finalized known summary), summary: opaque
 main::Counter.get_n@13:4: covered (storage: no_proof_required), summary: known
 main::Greeter.greet@19:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Both.describe@28:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
-main::Counter.__init__@9:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Counter.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Both.__init__@24:4: uncovered (base definition: missing constructor definition), summary: opaque (base definition: missing constructor definition)

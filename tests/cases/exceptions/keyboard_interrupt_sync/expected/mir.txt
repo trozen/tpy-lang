@@ -10,7 +10,7 @@ main::closure@98:0: uncovered (unsupported statement), summary: opaque (unsuppor
 main::not_an_exception@113:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::reraise@124:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::quiet@135:0: uncovered (async body)
-main::after_async_run@141:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::after_async_run@141:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::message@152:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@161:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Guard.__enter__@39:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

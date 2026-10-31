@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_warn_non_last_use@9:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_no_warn_last_use@15:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_no_warn_literal@20:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::test_no_warn_explicit_copy@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_warn_non_last_use@9:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_no_warn_last_use@15:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_no_warn_literal@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::test_no_warn_explicit_copy@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Node.__init__@6:4: covered (storage: no_proof_required), summary: known

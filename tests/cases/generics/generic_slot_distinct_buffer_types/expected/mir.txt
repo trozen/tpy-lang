@@ -10,7 +10,7 @@ main::store_str@58:0: covered (storage: no_proof_required), summary: known
 main::store_bytes@62:0: covered (storage: no_proof_required), summary: known
 main::str_family@77:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::bytes_family@87:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::u8_list@112:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::u8_list@112:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::storing@124:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::readonly_method@138:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::main@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

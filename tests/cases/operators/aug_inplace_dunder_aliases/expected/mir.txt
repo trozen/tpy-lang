@@ -4,7 +4,7 @@ main::list_iadd@33:0: uncovered (stub declares no contract), summary: opaque (st
 main::bytearray_iadd@41:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::int_iadd@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::str_iadd@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::string_iadd@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::string_iadd@65:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::valuetype_add@73:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::operand_gen@133:0: uncovered (unsupported hoisted value)
 main::yield_then_iadd@145:0: uncovered (reference yield)

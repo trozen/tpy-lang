@@ -2,5 +2,5 @@ main::__tpy_init: uncovered (module initialization)
 main::read_items@19:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::main@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Container.items@12:4: covered (storage: no_proof_required), summary: known
-main::Container.count@16:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::Container.__init__@8:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::Container.count@16:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::Container.__init__@8:4: covered (storage: no_proof_required), summary: known

@@ -12,10 +12,12 @@ from ._types import int32, Comparable, Equatable, Deref, Spannable, NativeIterab
 class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @dispatch
     @cpp_template("{cpp}({0}, static_cast<size_t>({1}))")
+    @pure
     def __init__(self, ptr: Ptr[T], length: int32, /) -> None: ...
 
     @dispatch
     @cpp_template("{cpp}({0})")
+    @pure
     def __init__(self, source: Span[T], /) -> None: ...
 
     @native("tpy::__iter__", function=True)
@@ -186,6 +188,7 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
 @native("{T}*")
 class Ptr[T](Deref[T]):
     @cpp_template("nullptr")
+    @pure
     def __init__(self) -> None: ...
 
     @cpp_template("::tpy::deref_check({self})")
@@ -202,6 +205,7 @@ class Ptr[T](Deref[T]):
 @nocopy
 class SpanIter[T](NativeIterable[T], Iterable[T], Iterator[T]):
     @cpp_template("{cpp}({0})")
+    @pure
     def __init__(self, source: Span[T], /) -> None: ...
 
     @cpp_template("{self}.__next__()")

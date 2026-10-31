@@ -4,7 +4,7 @@ main::test_warn_update_not_last_use@16:0: uncovered (unsupported native containe
 main::test_no_warn_update_last_use@24:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_no_warn_update_explicit_copy@32:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_no_warn_update_rvalue@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_no_warn_update_value_types@48:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_no_warn_update_value_types@48:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::test_warn_ior_not_last_use@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_no_warn_ior_last_use@64:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::test_warn_update_generic@72:0: uncovered (generic body)

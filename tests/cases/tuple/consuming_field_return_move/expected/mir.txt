@@ -49,7 +49,7 @@ main::H.walrus_in_return@288:4: uncovered (call needs finalized known summary)
 main::H.property_in_return@292:4: uncovered (call needs finalized known summary)
 main::H.nonscalar_param_in_return@297:4: uncovered (call needs finalized known summary)
 main::H.module_var_in_return@302:4: uncovered (call needs finalized known summary)
-main::H.scalar_kinds_ok@307:4: uncovered (stub declares no contract)
+main::H.scalar_kinds_ok@307:4: uncovered (unsupported expression)
 main::H.scalar_field_twice_ok@315:4: uncovered (call needs finalized known summary)
 main::H.local_generator@320:4: uncovered (unsupported local type or form)
 main::H.local_list_in_scope@328:4: uncovered (call needs finalized known summary)
@@ -95,7 +95,7 @@ main::P.__init__@20:4: covered (storage: no_proof_required), summary: known
 main::O.__init__@30:4: covered (storage: no_proof_required), summary: known
 main::Held.__init__@45:4: covered (storage: no_proof_required), summary: known
 main::Guard.__init__@113:4: uncovered (custom record special member), summary: opaque (custom record special member)
-main::H.__init__@130:4: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::H.__init__@130:4: covered (storage: no_proof_required), summary: known
 main::HT.__init__@480:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::HPtr.__init__@525:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Base.__init__@541:4: covered (storage: no_proof_required), summary: known

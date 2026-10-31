@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::sum_copied@27:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::consume@34:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::sum_copied@27:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::consume@34:0: uncovered (unsupported metadata: consuming), summary: opaque (unsupported metadata: consuming)
 main::main@42:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Holder.dup@20:4: uncovered (generic body)
 main::Holder.dup_via_module@23:4: uncovered (generic body)

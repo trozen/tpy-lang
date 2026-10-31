@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
 pkg::__tpy_init: uncovered (module initialization)
 pkg.amod::__tpy_init: uncovered (module initialization)
-pkg.amod::a_first@6:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.amod::a_first@6:0: covered (storage: no_proof_required), summary: known
 pkg.bmod::__tpy_init: uncovered (module initialization)
-pkg.bmod::b_first@6:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+pkg.bmod::b_first@6:0: covered (storage: no_proof_required), summary: known
 pkg.consumer::__tpy_init: uncovered (module initialization)
-pkg.consumer::check@6:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pkg.consumer::check@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

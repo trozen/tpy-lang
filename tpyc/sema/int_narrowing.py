@@ -57,6 +57,15 @@ def proven_cast(ctx: 'SemanticContext', node: TpyExpr, ctor: FunctionInfo,
                       canonical_fi=ctor.root)
 
 
+IDENTITY_TEMPLATE = "{0}"
+
+
+def renders_its_argument(cpp_template: str | None) -> bool:
+    """Whether a constructor's template renders its one argument unchanged,
+    so the call's result is that argument, not a new value."""
+    return cpp_template == IDENTITY_TEMPLATE
+
+
 def same_type_conversion(ctor: FunctionInfo,
                          target: TpyType | None) -> FunctionInfo:
     """`ctor`, a conversion instantiated at its parameter type, as the value
@@ -65,4 +74,4 @@ def same_type_conversion(ctor: FunctionInfo,
     if (target is None or not ctor.cpp_template or len(ctor.params) != 1
             or unwrap_readonly(unwrap_ref_type(ctor.params[0].type)) != target):
         return ctor
-    return dc_replace(ctor, cpp_template="{0}", canonical_fi=ctor.root)
+    return dc_replace(ctor, cpp_template=IDENTITY_TEMPLATE, canonical_fi=ctor.root)

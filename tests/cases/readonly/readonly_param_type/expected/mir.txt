@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::observe@16:0: covered (storage: no_proof_required), summary: known
 main::call_readonly_method@19:0: covered (storage: no_proof_required), summary: known
-main::main@22:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::main@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Point.magnitude_sq@13:4: covered (storage: no_proof_required), summary: known
 main::Point.__init__@8:4: covered (storage: no_proof_required), summary: known

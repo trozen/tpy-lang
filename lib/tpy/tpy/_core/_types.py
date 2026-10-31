@@ -245,45 +245,59 @@ class float32(Comparable, Equatable):
     # Constructors
     @dispatch
     @cpp_template("0.0f")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
-    @cpp_template("static_cast<float>({0})")
+    @cpp_template("static_cast<float>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     @dispatch
     @native("tpy::float32_from_str", function=True)
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: int8, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: int16, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: int64, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: uint8, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: uint16, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: uint32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<float>({0})")
+    @pure
     def __init__(self, x: uint64, /) -> None: ...
 
     # Binary operators: float32 op T -> result
@@ -504,24 +518,31 @@ class float32(Comparable, Equatable):
 class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is int8(x)).
     @dispatch
@@ -630,24 +651,31 @@ class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is int16(x)).
     @dispatch
@@ -756,24 +784,31 @@ class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is int32(x)).
     @dispatch
@@ -882,24 +917,31 @@ class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is int64(x)).
     @dispatch
@@ -1008,24 +1050,31 @@ class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
 class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is uint8(x)).
     @dispatch
@@ -1134,24 +1183,31 @@ class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is uint16(x)).
     @dispatch
@@ -1260,24 +1316,31 @@ class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is uint32(x)).
     @dispatch
@@ -1384,24 +1447,31 @@ class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     @dispatch
     @cpp_template("0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::int_cast_check<{cpp}>({0})")
+    @pure
     def __init__[T: AnyFixedInt](self, x: T, /) -> None: ...
     @dispatch
     @cpp_template("({0}).to_fixed_check<{cpp}>()")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_float_check<{cpp}>(static_cast<double>({0}))")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::from_str_check<{cpp}>({0})")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<{cpp}>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     # x modulo 2**bits into the range (the checked twin is uint64(x)).
     @dispatch
@@ -1508,21 +1578,27 @@ class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
 class char(Sized, Equatable):
     @dispatch
     @cpp_template("'\\0'")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("static_cast<char>({0})")
+    @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<char>(({0}).to_fixed_check<int32_t>())")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @native("tpy::char_from_str", function=True)
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @native("tpy::char_from_str", function=True)
+    @pure
     def __init__(self, x: String, /) -> None: ...
     @dispatch
     @native("tpy::char_from_str", function=True)
+    @pure
     def __init__(self, x: StrView, /) -> None: ...
 
     @cpp_template("::tpy::__hash__({self})")
@@ -1574,54 +1650,71 @@ class char(Sized, Equatable):
 class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::String()")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("::tpy::String({0})")
+    @pure
     def __init__(self, object: str) -> None: ...
     @dispatch
     @cpp_template("::tpy::String({0})")
+    @pure
     def __init__(self, object: String) -> None: ...
     @dispatch
     @cpp_template("::tpy::String({0})")
+    @pure
     def __init__(self, object: StrView) -> None: ...
     @dispatch
     @cpp_template("::tpy::String(::tpy::bool_to_str({0}))")
+    @pure
     def __init__(self, object: bool) -> None: ...
     @dispatch
     @cpp_template("::tpy::String(::tpy::char_to_str({0}))")
+    @pure
     def __init__(self, object: char) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int8_t>({0})")
+    @pure
     def __init__(self, object: int8) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int16_t>({0})")
+    @pure
     def __init__(self, object: int16) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int32_t>({0})")
+    @pure
     def __init__(self, object: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int64_t>({0})")
+    @pure
     def __init__(self, object: int64) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint8_t>({0})")
+    @pure
     def __init__(self, object: uint8) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint16_t>({0})")
+    @pure
     def __init__(self, object: uint16) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint32_t>({0})")
+    @pure
     def __init__(self, object: uint32) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint64_t>({0})")
+    @pure
     def __init__(self, object: uint64) -> None: ...
     @dispatch
     @cpp_template("::tpy::String(({0}).to_string())")
+    @pure
     def __init__(self, object: int) -> None: ...
     @dispatch
     @native("tpy::float_to_str", function=True)
+    @pure
     def __init__(self, object: float) -> None: ...
     @dispatch
     @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")
+    @pure
     def __init__(self, object: float32) -> None: ...
 
     @cpp_template("::tpy::__iter__({self})")
@@ -1853,15 +1946,19 @@ class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
 class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @dispatch
     @cpp_template("std::string_view()")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, object: str) -> None: ...
     @dispatch
     @cpp_template("std::string_view({0})")
+    @pure
     def __init__(self, object: String) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, object: StrView) -> None: ...
 
     @cpp_template("::tpy::__iter__({self})")

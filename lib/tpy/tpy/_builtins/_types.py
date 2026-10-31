@@ -14,24 +14,31 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 class bool(Equatable):
     @dispatch
     @cpp_template("false")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     @dispatch
     @cpp_template("({0} != 0)")
+    @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
     @cpp_template("({0} != 0)")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("({0} != 0.0)")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("({0} != 0.0f)")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("(std::string_view({0}).size() != 0)")
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @native("tpy::__bool__", function=True)
@@ -61,33 +68,43 @@ class bool(Equatable):
 class int(Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::BigInt()")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
+    @pure
     def __init__(self, x: int8, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
+    @pure
     def __init__(self, x: int16, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
+    @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
+    @pure
     def __init__(self, x: int64, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
+    @pure
     def __init__(self, x: uint8, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
+    @pure
     def __init__(self, x: uint16, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
+    @pure
     def __init__(self, x: uint32, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
+    @pure
     def __init__(self, x: uint64, /) -> None: ...
     # from_float raises on NaN / infinity and touches no TPy state.
     @pure
@@ -96,12 +113,15 @@ class int(Comparable, Equatable):
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @native("tpy::BigInt::from_str", function=True)
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int32_t>({0}))")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int32_t>({0}))")
+    @pure
     def __init__(self, x: char, /) -> None: ...
     @cpp_template("({self}) + ({0})")
     def __add__(self, other: int) -> int: ...
@@ -188,45 +208,59 @@ class int(Comparable, Equatable):
 class float(Comparable, Equatable):
     @dispatch
     @cpp_template("0.0")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("{0}")
+    @pure
     def __init__(self, x: float, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: bool, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: float32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: int8, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: int16, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: int64, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: uint8, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: uint16, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: uint32, /) -> None: ...
     @dispatch
     @cpp_template("static_cast<double>({0})")
+    @pure
     def __init__(self, x: uint64, /) -> None: ...
     @dispatch
     @native("tpy::float_from_str", function=True)
+    @pure
     def __init__(self, x: str, /) -> None: ...
     @dispatch
     @cpp_template("({self}) + ({0})")
@@ -383,48 +417,63 @@ class float(Comparable, Equatable):
 class str(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @dispatch
     @cpp_template("std::string()")
+    @pure
     def __init__(self) -> None: ...
     @dispatch
     @cpp_template("std::string({0})")
+    @pure
     def __init__(self, object: str) -> None: ...
     @dispatch
     @cpp_template("std::string(::tpy::bool_to_str({0}))")
+    @pure
     def __init__(self, object: bool) -> None: ...
     @dispatch
     @cpp_template("std::string(::tpy::char_to_str({0}))")
+    @pure
     def __init__(self, object: char) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int8_t>({0})")
+    @pure
     def __init__(self, object: int8) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int16_t>({0})")
+    @pure
     def __init__(self, object: int16) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int32_t>({0})")
+    @pure
     def __init__(self, object: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int64_t>({0})")
+    @pure
     def __init__(self, object: int64) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint8_t>({0})")
+    @pure
     def __init__(self, object: uint8) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint16_t>({0})")
+    @pure
     def __init__(self, object: uint16) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint32_t>({0})")
+    @pure
     def __init__(self, object: uint32) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<uint64_t>({0})")
+    @pure
     def __init__(self, object: uint64) -> None: ...
     @dispatch
     @cpp_template("({0}).to_string()")
+    @pure
     def __init__(self, object: int) -> None: ...
     @dispatch
     @native("tpy::float_to_str", function=True)
+    @pure
     def __init__(self, object: float) -> None: ...
     @dispatch
     @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")
+    @pure
     def __init__(self, object: float32) -> None: ...
     @dispatch
     @cpp_template("std::string(::tpy::__str__({0}))")

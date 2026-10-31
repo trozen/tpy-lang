@@ -1,6 +1,11 @@
 main.py:7: warning: Mutation of 's' while iterating over it ('add' invalidates the iterator)
+main.py:7: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 6; iterate over a copy ('copy(s)'), or make the changes after the loop
 main.py:12: warning: Mutation of 's' while iterating over it ('remove' invalidates the iterator)
+main.py:12: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 11; iterate over a copy ('copy(s)'), or make the changes after the loop
 main.py:17: warning: Mutation of 's' while iterating over it ('discard' invalidates the iterator)
+main.py:17: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 16; iterate over a copy ('copy(s)'), or make the changes after the loop
 main.py:22: warning: Mutation of 's' while iterating over it ('pop' invalidates the iterator)
+main.py:22: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 21; iterate over a copy ('copy(s)'), or make the changes after the loop
 main.py:27: warning: Mutation of 's' while iterating over it ('clear' invalidates the iterator)
+main.py:27: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 26; iterate over a copy ('copy(s)'), or make the changes after the loop
 main.py:33: warning: Mutation of 's' while iterating over it ('update' invalidates the iterator)

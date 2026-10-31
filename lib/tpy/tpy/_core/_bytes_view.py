@@ -12,6 +12,7 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::BytesView()")
+    @pure
     def __init__(self) -> None: ...
 
     @native("tpy::__iter__", function=True)

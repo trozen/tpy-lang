@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_builder@30:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::test_builder@30:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::test_generic@65:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Builder.set_name@13:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Builder.set_value@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
