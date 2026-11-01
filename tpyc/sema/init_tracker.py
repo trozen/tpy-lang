@@ -15,6 +15,7 @@ from functools import reduce
 
 from .flow_facts import (
     FlowFacts, GuardFacts, merge_borrow_triples, merge_binding_provenance,
+    narrowed_dict,
 )
 from .value_range import ValueRange
 from ..typesys import is_any_int_type, unwrap_qualifiers
@@ -60,7 +61,7 @@ class InitTracker:
         # A pending post-access pointer fact is the current statement's
         # (flushed at its end); it never crosses a snapshot.
         self.ctx.func.pending_non_null_ptr_vars.clear()
-        self.ctx.func.narrowed_types = dict(state.narrowed_types)
+        self.ctx.func.narrowed_types = narrowed_dict(state.narrowed_types)
         self.ctx.func.consumed_vars = set(state.consumed_vars)
         self.ctx.func.binding_provenance = dict(state.binding_provenance)
         self.ctx.func.borrow_tracker.restore_from_frozen(state.borrows)
@@ -220,7 +221,7 @@ class InitTracker:
         self.ctx.func.init_terminated = False
         self.ctx.func.rvalue_vars = set(before.rvalue_vars)
         self.ctx.func.non_null_ptr_vars = set(before.non_null_ptr_vars)
-        self.ctx.func.narrowed_types = dict(before.narrowed_types)
+        self.ctx.func.narrowed_types = narrowed_dict(before.narrowed_types)
         self.ctx.func.consumed_vars = set(before.consumed_vars)
         self.ctx.func.binding_provenance = dict(before.binding_provenance)
         self.ctx.func.borrow_tracker.restore_from_frozen(before.borrows)
@@ -261,7 +262,7 @@ class InitTracker:
         value ranges) of the current state with those of `other`."""
         merged = FlowFacts.merge(self.save(), other)
         f = self.ctx.func
-        f.narrowed_types = dict(merged.narrowed_types)
+        f.narrowed_types = narrowed_dict(merged.narrowed_types)
         f.non_null_ptr_vars = set(merged.non_null_ptr_vars)
         f.value_ranges = dict(merged.value_ranges)
 
@@ -299,7 +300,7 @@ class InitTracker:
             # FALSE path, analyzed in the loop-entry state, which already
             # holds for every pass.
             self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
-            self.ctx.func.narrowed_types = dict(
+            self.ctx.func.narrowed_types = narrowed_dict(
                 body_end_narrowed & before.narrowed_types)
         self._merge_loop_body_loans(before, body_end_borrows)
         # Same lattice as a both-arms-live branch join: MUST facts (return

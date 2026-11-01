@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     # collapse it so output.txt matches under either --mbedtls mode.
 //     return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
 std::string tls_ver(std::string_view v) {
-    return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? ("TLSv1.2+") : (v)));
+    return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? (std::string_view("TLSv1.2+")) : (v)));
 }
 
 // def write_fixtures() -> None:

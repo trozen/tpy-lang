@@ -48,7 +48,9 @@ template<typename T_items>
     } else if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
         return ::tpy::BigInt(::tpy::__len__(items));
     }
-    return ::tpy::BigInt(0);
+    if constexpr (::tpystd::typing::Sequence<std::remove_cvref_t<T_items>, ::tpy::BigInt>) {
+        return ::tpy::BigInt(0);
+    }
 }
 
 void __tpy_init();

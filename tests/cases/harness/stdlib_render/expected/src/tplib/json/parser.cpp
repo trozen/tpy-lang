@@ -162,7 +162,7 @@ std::string JsonError::describe(std::string_view data) const {
     if ((::tpy::__len__(msg) == 0)) {
         msg = "error";
     }
-    std::string_view gap = (((::tpy::__len__(after) > 0)) ? (" ") : (""));
+    std::string_view gap = (((::tpy::__len__(after) > 0)) ? (std::string_view(" ")) : (std::string_view("")));
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(prefix, before)), "^---<")), msg)), ">")), gap)), after)), suffix));
 }
 

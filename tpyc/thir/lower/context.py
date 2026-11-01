@@ -2130,11 +2130,11 @@ class _LowerCtx:
         # Identity for analyzer-only callers, whose value-scalar fixtures
         # never carry a Pending type.
         self.render_resolve = render_resolve or (lambda t: t)
-        # The codegen concept renderer for `if constexpr` conditions
-        # (protocol-isinstance): a (var_name, check_type, declared_type) ->
-        # cpp callable built at the driver seam from the codegen concept
-        # helpers. None for analyzer-only callers -- the constexpr
-        # arm rejects without it.
+        # The codegen renderer of "the template argument of a protocol
+        # param is one of these alternatives" (`concept_test_cpp`): a
+        # (var_name, alternatives, declared_type, negated) -> cpp callable
+        # bound at the driver seam. None for analyzer-only callers -- the
+        # constexpr arms reject without it.
         self.render_concept = render_concept
         # The receiver name (`self`) when `func` is an instance method, else
         # None: it lowers to a THIRSelf and, unlike a pointer binding, is not

@@ -121,9 +121,16 @@ concept any_str_capable = requires(const T& t) {
 // ADL into a user record's namespace still picks up per-record default
 // overrides.
 template <typename T>
-concept any_repr_capable = requires(const T& t) {
+concept any_repr_direct = requires(const T& t) {
     { ::tpy::__repr__(t) } -> std::convertible_to<std::string>;
 };
+// A pointer's repr lives on `repr_of` (its pointee's, `None` when null), not
+// on a `__repr__` overload: the constraint that overload carries answers for
+// it (a pointer would convert to bool and pass `any_repr_direct`).
+template <typename T>
+concept any_repr_capable =
+    (object_pointer<T> && detail::pointee_caps<T>::repr)
+    || (!object_pointer<T> && any_repr_direct<T>);
 
 template <typename T>
 concept any_eq_capable = requires(const T& a, const T& b) {

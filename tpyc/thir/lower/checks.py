@@ -182,6 +182,7 @@ from ..nodes import (
     THIRTupleLayout,
 )
 from .predicates import (
+    structural_protocol,
     _method_member_cpp,
     _deref_member_call_ok,
     _expr_is_const_source,
@@ -13811,10 +13812,16 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         # fans out to ~10 forms, and a blanket peel would newly admit
         # Own[list] / Own[bytearray] / Own[tuple] against unwitnessed renders.
         u = unwrap_readonly(u.wrapped)
-    if isinstance(u, TypeParamRef):
+    proto = structural_protocol(u)
+    if isinstance(u, TypeParamRef) or (proto is not None
+                                       and not proto.type_args):
         # An open type-param value streams via ValuePrinter, which dispatches
         # the formatting at runtime -- a `bool` T must print True/False, not
         # 1/0, which a raw `<<` would give (the print emit's TypeParamRef arm).
+        # A structural protocol parameter is the same open `T_v` in C++. A
+        # generic one is not yet: a str literal passed to it is still held
+        # as a `const char*` temp (TODO.md "drop `__iter__(const char*)`"),
+        # which ValuePrinter would print as one char.
         return PrintForm.VALUE_GENERIC
     if is_varargs(u):
         # A whole `*args` body view is a tuple in Python, so it streams via
@@ -13948,7 +13955,7 @@ def _print_ptr(a: TpyExpr, analyzer) -> 'PtrType | None':
     t = analyzer.get_expr_type(a)
     tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
           if t is not None else None)
-    if not isinstance(tb, PtrType) or ptr_text_pointee(tb, derefs=True) is None:
+    if not isinstance(tb, PtrType) or ptr_text_pointee(tb) is None:
         return None
     return tb
 

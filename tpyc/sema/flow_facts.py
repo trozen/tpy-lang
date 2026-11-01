@@ -9,7 +9,7 @@ non-null status, type narrowing, and consumed-variable tracking.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
@@ -90,6 +90,13 @@ def _merge_sets(
     if policy is _MergePolicy.INTERSECT:
         return then_set & else_set
     return then_set | else_set
+
+
+def narrowed_dict(items: Iterable[tuple[str, TpyType]]
+                  ) -> dict[str, TpyType]:
+    """A narrowing snapshot as the flow state's dict, in name order: the
+    snapshot is a set, and its hash order must not reach the output."""
+    return dict(sorted(items, key=lambda kv: kv[0]))
 
 
 def _merge_narrowed(
@@ -376,4 +383,5 @@ class Branch(NamedTuple):
         condition ran (the lowering's extraction facts)."""
         state, keys = ((self.on_true, self.true_keys) if on_true
                        else (self.on_false, self.false_keys))
-        return {k: v for k, v in state.narrowed_types if k in keys}
+        return narrowed_dict(kv for kv in state.narrowed_types
+                             if kv[0] in keys)

@@ -63,7 +63,7 @@ std::string_view conditional_literal_or_param(bool flag, std::string_view p) {
 //     sv: StrView = p if flag else "empty"
 //     return sv
 std::string_view ternary_literal_branch(bool flag, std::string_view p) {
-    std::string_view sv = ((flag) ? (p) : ("empty"));
+    std::string_view sv = ((flag) ? (p) : (std::string_view("empty")));
     return sv;
 }
 

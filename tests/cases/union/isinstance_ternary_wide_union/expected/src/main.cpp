@@ -22,7 +22,7 @@ int32_t then_reads(::tpy::Union<const A*, const B*, const C*> x) {
 // def label(x: A | B | C) -> str:
 //     return "a" if isinstance(x, A) else "other"  # tpyc: ok
 std::string label(::tpy::Union<const A*, const B*, const C*> x) {
-    return std::string(((std::holds_alternative<const A*>(x)) ? ("a") : ("other")));
+    return std::string(((std::holds_alternative<const A*>(x)) ? (std::string_view("a")) : (std::string_view("other"))));
 }
 
 // # free function: the TWO-member control, whose else arm keeps its complement

@@ -169,7 +169,7 @@ inline Owner::Owner(std::string_view name, ::tpy::BytesView data)
 //     self.from_field = o.name  # tpyc: ok
 inline void Tags::reset(std::string_view a, const ::tpy::BigInt& x, const Owner& o) {
     this->fmt = std::format("{}+{}", a, (x).to_string());
-    this->pick = (((x > 0)) ? (a) : ("z"));
+    this->pick = (((x > 0)) ? (a) : (std::string_view("z")));
     this->from_field = o.name;
 }
 

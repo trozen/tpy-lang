@@ -42,7 +42,7 @@ int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
 //     h.u = a if first else "lit"  # tpyc: ok
 //     h.o = a or "lit"  # tpyc: ok
 void put_free(StrStore& h, std::string_view a, bool first) {
-    h.u = std::string(((first) ? (a) : ("lit")));
+    h.u = std::string(((first) ? (a) : (std::string_view("lit"))));
     h.o = std::string(((!a.empty()) ? a : std::string_view("lit")));
 }
 

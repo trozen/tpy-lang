@@ -1,6 +1,20 @@
 # isinstance() on Optional[Protocol] -- narrows away None at compile time
-from typing import Sized
+from typing import Protocol, Sized
 from tpy import int32, Spannable, Span, Array
+
+
+class HasN(Protocol):
+    def n(self) -> int32: ...
+
+
+class A:
+    v: int32
+
+    def __init__(self) -> None:
+        self.v = 4
+
+    def n(self) -> int32:
+        return self.v
 
 
 def count_if_sized(items: Sized | None = None) -> int32:
@@ -24,6 +38,13 @@ def check_not(items: Sized | None = None) -> int32:
     return len(items)
 
 
+# a method call after the early return (a user protocol: no CPython isinstance)
+def method_tail(x: HasN | None = None) -> int32:
+    if not isinstance(x, HasN):  # tpyc: ok
+        return -1
+    return x.n()
+
+
 def main() -> None:
     arr: Array[int32, 3] = [10, 20, 30]
     s: Span[int32] = arr
@@ -40,6 +61,10 @@ def main() -> None:
     # not isinstance
     print(check_not(nums))
     print(check_not())
+
+    # method call after the early return
+    a = A()
+    print("method_tail", method_tail(a), method_tail())
 
 
 main()

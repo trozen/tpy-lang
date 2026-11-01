@@ -136,7 +136,7 @@ __coro_pending_slot pending_slot(std::string_view tag) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::string __tpy_async_ret = std::string((((tag.has_value())) ? ((*tag)) : ("fallback")));
+        std::string __tpy_async_ret = std::string((((tag.has_value())) ? ((*tag)) : (std::string_view("fallback"))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

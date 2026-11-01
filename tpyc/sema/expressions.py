@@ -7223,20 +7223,6 @@ class ExpressionAnalyzer:
                 conv = part.conversion
                 shown = self._user_type_name(unwrap_readonly(
                     unwrap_ref_type(unwrap_send_sync(resolved))))
-                # The f-string renders a pointer through `__str__`, whose
-                # `char*` overload reads a C string, so an open pointee
-                # instantiated at char would read past it
-                # (BUGS.md#list-ptr-char-prints-garbage). print is
-                # unaffected: it dereferences first.
-                open_ptr = next((p for p in text_leaves(resolved)
-                                 if isinstance(p, PtrType)
-                                 and isinstance(p.inner_pointee, TypeParamRef)),
-                                None)
-                if open_ptr is not None:
-                    raise self.ctx.error(
-                        f"{self._user_type_name(open_ptr)} with a generic pointee"
-                        " cannot be used in an f-string yet; print it or"
-                        " dereference it first", part.expr)
 
                 if conv == FSTRING_CONV_REPR:
                     if not self._is_fstring_renderable(resolved, repr_only=True):

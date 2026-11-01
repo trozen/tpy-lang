@@ -140,7 +140,7 @@ void carriers() {
     std::cout << "walrus-target:" << " " << y << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     b = &*(__slot_4 = B(6));
-    std::cout << "select-cond:" << " " << ::tpyapp::main::f__str((((std::move(*b).take().v > 0)) ? ("a") : ("b"))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-cond:" << " " << ::tpyapp::main::f__str((((std::move(*b).take().v > 0)) ? (std::string_view("a")) : (std::string_view("b")))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_5;
     b = &*(__slot_5 = B(7));
     std::cout << "select-arm:" << " " << ::tpyapp::main::f__str(((flag) ? (std::format("{}", std::move(*b).take().v)) : ("none"))) << "\n" << ::tpy::check_signals;

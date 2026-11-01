@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::user_guard@35:0: uncovered (unsupported parameter type)
+main::user_assert@42:0: uncovered (unsupported parameter type)
+main::eq_guard@48:0: uncovered (unsupported parameter type)
+main::eq_assert@55:0: uncovered (unsupported parameter type)
+main::main@60:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Tag.__eq__@25:4: covered (storage: no_proof_required)
+main::OnlyB.b@30:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Tag.__init__@22:4: covered (storage: no_proof_required), summary: known

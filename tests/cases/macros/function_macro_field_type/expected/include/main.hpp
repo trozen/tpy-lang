@@ -67,7 +67,7 @@ inline Gate::Gate(bool flag)
 // def describe(self) -> str:
 //     return "on" if self.flag else "off"
 inline std::string Gate::describe() const {
-    return std::string(((this->flag) ? ("on") : ("off")));
+    return std::string(((this->flag) ? (std::string_view("on")) : (std::string_view("off"))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

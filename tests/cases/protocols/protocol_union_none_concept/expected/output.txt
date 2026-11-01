@@ -1,0 +1,5 @@
+user_guard -1 9
+user_assert 9
+user_assert: raised
+eq_guard -1 1
+eq_assert: raised

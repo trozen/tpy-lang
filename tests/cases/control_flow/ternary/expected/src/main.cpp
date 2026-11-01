@@ -26,14 +26,14 @@ int32_t clamp(int32_t x, int32_t lo, int32_t hi) {
 // def greet(formal: bool) -> str:
 //     return "Good day" if formal else "Hey"
 std::string greet(bool formal) {
-    return std::string(((formal) ? ("Good day") : ("Hey")));
+    return std::string(((formal) ? (std::string_view("Good day")) : (std::string_view("Hey"))));
 }
 
 // def describe(x: int32) -> str:
 //     label: str = "positive" if x > 0 else "non-positive"
 //     return label
 std::string describe(int32_t x) {
-    std::string_view label = (((x > 0)) ? ("positive") : ("non-positive"));
+    std::string_view label = (((x > 0)) ? (std::string_view("positive")) : (std::string_view("non-positive")));
     return std::string(label);
 }
 

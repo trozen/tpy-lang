@@ -223,7 +223,7 @@ void except_handler() {
     {
         try {
             ::tpy::BigInt n = ::tpy::BigInt::from_str("not-a-number");
-            a = (((n > 0)) ? ("parsed") : ("negative"));
+            a = (((n > 0)) ? (std::string_view("parsed")) : (std::string_view("negative")));
         } catch (const ::tpy::ValueError&) {
             std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(2));
             a = std::get<0>(t);

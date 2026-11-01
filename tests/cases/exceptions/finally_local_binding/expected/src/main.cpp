@@ -55,11 +55,11 @@ void throw_tier(bool trigger) {
                 std::cout << "caught" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
+            note = (::tpy::str_concat("done", ((trigger) ? (std::string_view("!")) : (std::string_view(".")))));
             std::cout << note << "\n" << ::tpy::check_signals;
             throw;
         }
-        note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
+        note = (::tpy::str_concat("done", ((trigger) ? (std::string_view("!")) : (std::string_view(".")))));
         std::cout << note << "\n" << ::tpy::check_signals;
     }
     std::cout << note << "\n" << ::tpy::check_signals;

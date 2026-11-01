@@ -208,7 +208,7 @@ void free_function() {
     std::cout << "free: value" << " " << ::tpy::print_bool(v) << "\n" << ::tpy::check_signals;
     bool n = (!(std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(2)))));
     std::cout << "free: not" << " " << ::tpy::print_bool(n) << "\n" << ::tpy::check_signals;
-    std::string_view s = ((std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(4)))) ? ("a") : ("b"));
+    std::string_view s = ((std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(4)))) ? (std::string_view("a")) : (std::string_view("b")));
     std::cout << "free: ternary" << " " << s << "\n" << ::tpy::check_signals;
     bool both = (std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(1))) && std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(3))));
     std::cout << "free: and" << " " << ::tpy::print_bool(both) << "\n" << ::tpy::check_signals;
@@ -271,7 +271,7 @@ void temp_owner() {
     std::cout << "temp: property" << " " << ::tpy::print_bool(p) << "\n" << ::tpy::check_signals;
     bool both = (::tpy::isinstance_any_of<const Dog>(::tpyapp::main::make_box("temp:").get()) && std::holds_alternative<B>(::tpyapp::main::make_holder("temp:").u));
     either = (::tpy::isinstance_any_of<const Cat>(::tpyapp::main::make_box("temp:").get()) || std::holds_alternative<A>(::tpyapp::main::make_holder("temp:").item()));
-    std::string_view t = ((::tpy::isinstance_any_of<const Cat>(::tpyapp::main::make_box("temp:").get())) ? ("cat") : ("dog"));
+    std::string_view t = ((::tpy::isinstance_any_of<const Cat>(::tpyapp::main::make_box("temp:").get())) ? (std::string_view("cat")) : (std::string_view("dog")));
     std::cout << "temp: logic" << " " << ::tpy::print_bool(both) << " " << ::tpy::print_bool(either) << " " << t << "\n" << ::tpy::check_signals;
 }
 

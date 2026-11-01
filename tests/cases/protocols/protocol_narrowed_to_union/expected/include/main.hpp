@@ -69,7 +69,9 @@ int32_t maybe_total(const T_items* items) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         return ::tpyapp::main::total((*items));
     }
-    return -1;
+    if constexpr (std::same_as<T_items, std::nullptr_t>) {
+        return -1;
+    }
 }
 
 void __tpy_init();

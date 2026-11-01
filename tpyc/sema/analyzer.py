@@ -131,7 +131,7 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     protocol_info_of,
 )
-from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType, ProtocolInfo
+from ..typesys import RefType, ProtocolInfo, protocol_param_alternatives
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -147,26 +147,10 @@ from ..symbol_binding import (
 
 
 def _is_static_protocol_type(typ: TpyType) -> bool:
-    """Sema-side mirror of codegen's `is_static_protocol_param`.
-
-    Types are already alias-resolved at this point, so no codegen-style
-    resolve step is needed. Covers a bare static protocol, an Optional of one,
-    and a protocol union; excludes @dynamic protocols (which have a concrete
-    Adapter backing and so are not the rejected hoisted-local case).
-    """
-    unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(typ)))
-    if isinstance(unwrapped, OptionalType):
-        inner = unwrapped.inner
-        if is_protocol_type(inner):
-            info = protocol_info_of(inner)
-            return not (info and info.is_dynamic)
-        return False
-    if isinstance(unwrapped, UnionType):
-        return is_protocol_union(unwrapped)
-    if is_protocol_type(unwrapped):
-        info = protocol_info_of(unwrapped)
-        return not (info and info.is_dynamic)
-    return False
+    """A static-protocol template parameter type
+    (`protocol_param_alternatives`); types are alias-resolved here, so no
+    codegen-style resolve step is needed."""
+    return protocol_param_alternatives(typ) is not None
 
 
 def _bare_name_source(expr: TpyExpr) -> 'TpyName | None':
@@ -451,6 +435,8 @@ class SemanticAnalyzer:
 
         # Branch-declared vars that need pre-declaration before if-statements
         self.if_branch_decls: IdentityMap = IdentityMap()
+        # The narrowing each statement leaves for the rest of its list
+        self.post_stmt_facts: IdentityMap = IdentityMap()
         # Branch-declared vars each arm of an if declares itself (the if is
         # the whole else body of another if), with the one joined type
         self.arm_branch_decls: IdentityMap = IdentityMap()
@@ -2071,6 +2057,7 @@ class SemanticAnalyzer:
         if self.ctx.func.global_declarations:
             self.function_global_decls[func] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+        self.post_stmt_facts.update(self.ctx.post_stmt_facts)
         self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
         self.function_escape_hoisted_vars.update(

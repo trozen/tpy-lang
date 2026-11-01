@@ -54,16 +54,27 @@ inline constexpr bool is_std_optional<std::optional<X>> = true;
 
 }  // namespace detail
 
+// The characters of a char array -- a string literal -- up to its first NUL
+// and never past its end, so an unterminated array cannot be over-read.
+template<std::size_t N>
+constexpr std::string_view literal_view(const char (&x)[N]) noexcept {
+    const char* nul = std::char_traits<char>::find(x, N, '\0');
+    return std::string_view(x, nul != nullptr ? static_cast<std::size_t>(nul - x) : N);
+}
+
 // A bare string literal (`const char[N]`, the form a member call's literal
-// argument arrives in) or a `const char*`. Read as NUL-terminated, which is
-// also how `std::string`'s `operator==(const char*)` reads it, so hash and
-// equality agree on the same characters. A literal holding an embedded NUL
-// never arrives here: the compiler spells that one `std::string_view{"...",
-// N}` (`cpp_string_literal_expr`), so the terminated reading is the whole
+// argument arrives in) -- never a `char*`, which is a pointer to one char.
+// Read through `literal_view`, up to the first NUL as `std::string`'s
+// `operator==(const char*)` reads it, so hash and equality agree on the same
+// characters. A literal holding an embedded NUL never arrives here: the
+// compiler spells that one `std::string_view{"...", N}`
+// (`cpp_string_literal_expr`), so the terminated reading is the whole
 // literal.
 template<typename X>
 concept c_string_key =
-    std::same_as<std::decay_t<X>, const char*> || std::same_as<std::decay_t<X>, char*>;
+    std::is_array_v<std::remove_reference_t<X>>
+    && std::same_as<std::remove_cv_t<std::remove_extent_t<std::remove_reference_t<X>>>,
+                    char>;
 
 // A standard integer type: the domain of std::cmp_equal / std::in_range,
 // which exclude bool and the character types.
@@ -92,6 +103,9 @@ constexpr bool key_eq(const T& stored, const U& key) {
     } else if constexpr (detail::is_std_optional<U>
                          && !std::same_as<T, std::nullopt_t>) {
         return key.has_value() && key_eq(stored, *key);
+    } else if constexpr (c_string_key<U>
+                         && requires { { stored == literal_view(key) } -> std::convertible_to<bool>; }) {
+        return stored == literal_view(key);
     } else if constexpr (std_integer<T> && std_integer<U>) {
         // By value: `==`'s usual arithmetic conversions would make
         // uint32_t(4294967295) equal int32_t(-1).
@@ -139,7 +153,11 @@ std::size_t key_hash_value(const U& v) noexcept(key_hash_nothrow<U>()) {
                          || c_string_key<U>) {
         // [basic.string.hash] guarantees a string and its view hash alike, so
         // spelling all three through the view is the same value, not a choice.
-        return std::hash<std::string_view>{}(std::string_view(v));
+        if constexpr (c_string_key<U>) {
+            return std::hash<std::string_view>{}(literal_view(v));
+        } else {
+            return std::hash<std::string_view>{}(std::string_view(v));
+        }
     } else if constexpr (detail::is_std_tuple<std::remove_cvref_t<U>>) {
         return static_cast<std::size_t>(__hash__(v));
     } else {
@@ -188,7 +206,8 @@ concept lookup_key_for =
 // absorbed by the reference), so that is the form the pin must hold for.
 static_assert(lookup_key_for<std::string, char[2]>);
 static_assert(lookup_key_for<std::string, const char(&)[2]>);
-static_assert(lookup_key_for<std::string, const char*>);
+static_assert(!lookup_key_for<std::string, const char*>,
+              "a char* is a pointer to one char, not a C-string key");
 static_assert(lookup_key_for<std::string, std::string_view>);
 static_assert(!lookup_key_for<std::string, std::string>,
               "the stored form is not a key spelling -- it is the element");

@@ -813,11 +813,11 @@ TPY_ALWAYS_INLINE T none_item(std::optional<T>&& o) {
 
 // Operands in source order: `none_operand(n, "+", "int")` checks a left
 // operand, `none_operand("int", "+", n)` a right one, `none_operand("-", n)`
-// a unary one. A `const char*` is never a checked pointer here, so the
-// string-literal arguments cannot select a pointer overload.
-template <typename T>
-    requires (!std::same_as<std::remove_cv_t<T>, char>)
-TPY_ALWAYS_INLINE T& none_operand(T* p, std::string_view op, std::string_view other) {
+// a unary one. The pointer is taken as `const P&`, so a string-literal
+// argument (a `const char[N]` array) never deduces as the checked pointer.
+template <typename P>
+    requires object_pointer<P>
+TPY_ALWAYS_INLINE std::remove_pointer_t<P>& none_operand(const P& p, std::string_view op, std::string_view other) {
     if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
     return *p;
 }
@@ -836,9 +836,9 @@ TPY_ALWAYS_INLINE T none_operand(std::optional<T>&& o, std::string_view op, std:
     if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
     return std::move(*o);
 }
-template <typename T>
-    requires (!std::same_as<std::remove_cv_t<T>, char>)
-TPY_ALWAYS_INLINE T& none_operand(std::string_view other, std::string_view op, T* p) {
+template <typename P>
+    requires object_pointer<P>
+TPY_ALWAYS_INLINE std::remove_pointer_t<P>& none_operand(std::string_view other, std::string_view op, const P& p) {
     if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
     return *p;
 }
@@ -857,9 +857,9 @@ TPY_ALWAYS_INLINE T none_operand(std::string_view other, std::string_view op, st
     if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
     return std::move(*o);
 }
-template <typename T>
-    requires (!std::same_as<std::remove_cv_t<T>, char>)
-TPY_ALWAYS_INLINE T& none_operand(std::string_view op, T* p) {
+template <typename P>
+    requires object_pointer<P>
+TPY_ALWAYS_INLINE std::remove_pointer_t<P>& none_operand(std::string_view op, const P& p) {
     if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::unary, op);
     return *p;
 }

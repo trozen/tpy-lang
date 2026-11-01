@@ -442,10 +442,9 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         # erases to its inner type in C++) so a Send[Own[T]] param is
         # classified by its Own/pointer/optional shape, not treated as opaque.
         actual = unwrap_readonly(unwrap_send_sync(ptype))
-        if protocols.is_static_protocol_param(ptype):
-            # Static protocol params: check if nullable (uses pointer repr)
-            infos = protocols.get_all_protocol_params([(pname, ptype)])
-            if infos and infos[0].has_none:
+        if infos := protocols.get_all_protocol_params([(pname, ptype)]):
+            # A nullable static protocol param is the pointer repr.
+            if infos[0].has_none:
                 ctx.pointer_locals.add(pname)
                 ctx.const_indirect_locals.add(pname)
         elif pointer_repr_optional(actual) is not None:

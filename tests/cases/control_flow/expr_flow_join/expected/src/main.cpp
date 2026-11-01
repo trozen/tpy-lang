@@ -180,7 +180,7 @@ void comp_target_shadow() {
 // def message(ok: bool) -> str:
 //     return "bad" if ok else "worse"
 std::string message(bool ok) {
-    return std::string(((ok) ? ("bad") : ("worse")));
+    return std::string(((ok) ? (std::string_view("bad")) : (std::string_view("worse"))));
 }
 
 // # assert: the message runs only on the failing path, so its walrus neither

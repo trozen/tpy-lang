@@ -1,0 +1,61 @@
+free x 'x' x 'x'
+free x
+free-null None None None None
+free-null None
+spec [  x  ]
+spec-s [  x  ]
+spec-s [None ]
+method x 'x' x 'x'
+method x
+method None None None None
+method None
+gen x 'x' x 'x'
+gen x
+gen-null None None None None
+gen-null None
+gen-ptr x 'x'
+gen-ptr x 'x'
+gen-int 5 5 5 5
+gen-int 5
+list ['x', None] ['x', None]
+stringable x None
+stringable-print x
+stringable-print-null None
+stringable-int 5
+stringable-bool True
+stringable-list [1, 2]
+stringable-bytes b'ab'
+stringable-bytearray bytearray(b'ab')
+stringable-range range(0, 3)
+stringable-int8 65
+stringable-str hi
+stringable-float 1.5
+stringable-char x
+stringable-record Named(n)
+gen-print-bytes b'ab'
+gen-print-bytearray bytearray(b'ab')
+gen-print-range range(0, 3)
+gen-print-int8 65
+iter-chars hello 5
+any 'x' ['x'] None [None]
+any-hash True True
+gen-key 7
+any-record stored
+uptr h 'h' h
+uptr-list 4 4
+uptr-cast h 'h' e
+tern 'a'
+tern 'a'
+tern 'aa'
+tern 'ab'
+tern 'a\x00b'
+tern 'bc'
+tern 'bcd'
+tern 'b'
+tern 'cd'
+tern 'x'
+tern 'bc'
+tern 'ef'
+tern 'aa'
+tern 'cd'
+tern 'x'

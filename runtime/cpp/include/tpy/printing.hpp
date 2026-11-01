@@ -106,24 +106,12 @@ void print_element(std::ostream& os, const T& elem) {
 // A `T*` element is a tuple / Optional borrow slot, not a raw address to
 // print: borrow-form tuple members and pointer-repr Optionals both spell `T*`,
 // and value-level ops (print / repr) want the referent. A null slot is a
-// pointer-repr Optional's None. (char* is excluded so C-string-shaped elements,
-// if any, keep the string overload path.) Both `T*` and `const T*` are needed:
-// a `T*` element binds to the generic `const T&` (T=`U*`) by identity, which
-// would out-rank a `const T*` qualification conversion -- so the non-const
-// pointer overload must exist to win for non-const borrow slots.
-template <typename T>
-    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
-void print_element(std::ostream& os, T* elem) {
-    if (elem == nullptr) {
-        os << "None";
-    } else {
-        print_element(os, *elem);
-    }
-}
-
-template <typename T>
-    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
-void print_element(std::ostream& os, const T* elem) {
+// pointer-repr Optional's None. A `char*` is a pointer to one char like any
+// other. Taken as `const P&` so `T*` and `const T*` both match exactly and a
+// literal array never deduces as a pointer.
+template <typename P>
+    requires object_pointer<P>
+void print_element(std::ostream& os, const P& elem) {
     if (elem == nullptr) {
         os << "None";
     } else {
@@ -328,17 +316,26 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
     // String types are ranges but should print as strings, not char lists
     if constexpr (std::is_same_v<T, std::string_view> ||
                   std::is_same_v<T, std::string> ||
-                  std::is_same_v<T, String> ||
-                  std::is_same_v<T, const char*>) {
+                  std::is_same_v<T, String>) {
         return os << p.value;
-    } else if constexpr (std::is_same_v<T, bool>) {
-        return os << (p.value ? "True" : "False");
-    } else if constexpr (std::floating_point<T>) {
-        return os << format_float(static_cast<double>(p.value));
-    } else if constexpr (std::ranges::range<T>) {
+    } else if constexpr (std::is_array_v<T>
+                         && std::is_same_v<std::remove_cv_t<std::remove_extent_t<T>>,
+                                           char>) {
+        // A string literal: its characters, not a list of chars.
+        return os << literal_view(p.value);
+    } else if constexpr (object_pointer<T>) {
+        // A `Ptr[T]` / pointer-repr Optional at a type parameter prints its
+        // pointee (None when null), as the non-generic print does.
+        if (p.value == nullptr) return os << "None";
+        return os << ValuePrinter<std::remove_cv_t<std::remove_pointer_t<T>>>(*p.value);
+    } else if constexpr (std::ranges::range<T>
+                         && !requires(std::ostream& o, const T& v) { o << v; }) {
+        // A range with no text of its own prints as a list; one that writes
+        // itself (`range(0, 3)`, `b'ab'`) is not a list in Python.
         return os << ListPrinter(p.value);
     } else {
-        return os << p.value;
+        detail::write_python_value(os, p.value);
+        return os;
     }
 }
 

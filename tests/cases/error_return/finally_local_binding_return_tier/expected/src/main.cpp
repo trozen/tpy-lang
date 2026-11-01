@@ -43,11 +43,11 @@ void run(int32_t x) {
             std::cout << "err" << "\n" << ::tpy::check_signals;
             __after_try_1:;
         } catch (...) {
-            note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
+            note = (::tpy::str_concat("done", (((x < 0)) ? (std::string_view("!")) : (std::string_view(".")))));
             std::cout << note << "\n" << ::tpy::check_signals;
             throw;
         }
-        note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
+        note = (::tpy::str_concat("done", (((x < 0)) ? (std::string_view("!")) : (std::string_view(".")))));
         std::cout << note << "\n" << ::tpy::check_signals;
     }
     std::cout << note << "\n" << ::tpy::check_signals;

@@ -23,7 +23,7 @@ std::string describe(const P& p) {
         return "hi";
     } else if (__match_subject_1.x == 7) {
         auto& v = __match_subject_1.x;
-        return std::string((((v.has_value())) ? ("seven") : ("unreachable")));
+        return std::string((((v.has_value())) ? (std::string_view("seven")) : (std::string_view("unreachable"))));
     } else {
         return "other";
     }

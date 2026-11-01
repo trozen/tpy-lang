@@ -1,1 +1,1 @@
-main.py:12: error: Type Ptr[char] does not conform to protocol Stringable in argument 'v'
+main.py:12: error: Type Ptr[None] does not conform to protocol Stringable in argument 'v'

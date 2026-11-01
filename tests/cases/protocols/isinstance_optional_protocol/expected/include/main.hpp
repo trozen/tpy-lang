@@ -7,6 +7,14 @@
 
 namespace tpyapp::main {
 
+// class HasN(Protocol):
+template<typename T>
+concept HasN = requires(T& t) {
+    { t.n() } -> std::convertible_to<int32_t>;
+};
+
+struct A;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def count_if_sized(items: Sized | None = None) -> int32:
@@ -21,9 +29,41 @@ int32_t sum_span(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items = nullptr);
+// def method_tail(x: HasN | None = None) -> int32:
+template<typename T_x = std::nullptr_t>
+  requires (std::same_as<T_x, std::nullptr_t> || HasN<T_x>)
+int32_t method_tail(const T_x* x = nullptr);
 // def main() -> None:
 void main();
 
+// class A:
+struct A {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self) -> None:
+    A();
+
+    // def n(self) -> int32:
+    int32_t n() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const A& obj) {
+    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+//     self.v = 4
+inline A::A() : v(4) {}
+
+// def n(self) -> int32:
+//     return self.v
+inline int32_t A::n() const {
+    return this->v;
+}
 // def count_if_sized(items: Sized | None = None) -> int32:
 //     if isinstance(items, Sized):
 //         return len(items)
@@ -69,7 +109,24 @@ int32_t check_not(const T_items* items) {
     if constexpr (std::same_as<T_items, std::nullptr_t>) {
         return -1;
     }
-    return ::tpy::__len__((*items));
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        return ::tpy::__len__((*items));
+    }
+}
+// # a method call after the early return (a user protocol: no CPython isinstance)
+// def method_tail(x: HasN | None = None) -> int32:
+//     if not isinstance(x, HasN):  # tpyc: ok
+//         return -1
+//     return x.n()
+template<typename T_x>
+  requires (std::same_as<T_x, std::nullptr_t> || HasN<T_x>)
+int32_t method_tail(const T_x* x) {
+    if constexpr (std::same_as<T_x, std::nullptr_t>) {
+        return -1;
+    }
+    if constexpr (!std::same_as<T_x, std::nullptr_t>) {
+        return x->n();
+    }
 }
 
 void __tpy_init();

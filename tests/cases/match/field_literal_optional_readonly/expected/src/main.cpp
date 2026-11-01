@@ -19,7 +19,7 @@ std::string describe(const R& r) {
         return "hi";
     } else if (__match_subject_1.inner == "bye") {
         auto& v = __match_subject_1.inner;
-        return std::string((((v.has_value())) ? ("bye") : ("unreachable")));
+        return std::string((((v.has_value())) ? (std::string_view("bye")) : (std::string_view("unreachable"))));
     } else {
         return "other";
     }

@@ -85,7 +85,7 @@ void none_reassign(bool flag) {
     if (flag) {
         c = nullptr;
     }
-    std::cout << (((c == nullptr)) ? ("none:") : ("some:")) << " " << (((c == nullptr)) ? (0) : (c->n)) << "\n" << ::tpy::check_signals;
+    std::cout << (((c == nullptr)) ? (std::string_view("none:")) : (std::string_view("some:"))) << " " << (((c == nullptr)) ? (0) : (c->n)) << "\n" << ::tpy::check_signals;
 }
 
 // # Each rebind below keeps the old object in a slot of its own; what still

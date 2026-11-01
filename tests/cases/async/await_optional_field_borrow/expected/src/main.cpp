@@ -122,7 +122,7 @@ __coro_make make(bool present) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         e = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << (((e == nullptr)) ? ("none") : ("?")) << "\n" << ::tpy::check_signals;
+        std::cout << (((e == nullptr)) ? (std::string_view("none")) : (std::string_view("?"))) << "\n" << ::tpy::check_signals;
         __sub_2.emplace(true);
         __state = S_RESUME_2;
         continue;

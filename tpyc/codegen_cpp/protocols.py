@@ -12,11 +12,11 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
-    OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
-    unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
-    protocol_union_has_none, unwrap_ref_type, shadowed_local_cpp_name,
-    ConcreteCoroType, ConcreteFrameType, is_dyn_protocol, unwrap_send_sync,
+    OwnType, MethodSignature, is_protocol_type,
+    unwrap_readonly, unwrap_ref_type, shadowed_local_cpp_name,
+    ConcreteCoroType, is_dyn_protocol, unwrap_send_sync,
     is_fn_type, unwrap_qualifiers, error_return_uses_borrow_slot,
+    protocol_param_alternatives, NONE,
 )
 from ..parse import TpyCall, TpyFunction, TpyMethodCall, TpyProtocol, TpyRecord
 from ..parse.nodes import DEL_HOOK, INIT_METHOD, MOVE_HOOK
@@ -64,6 +64,16 @@ def protocol_param_template_name(pname: str) -> str:
     sites are independent of the resumable frame.)
     """
     return f"T_{pname}"
+
+
+def concept_subject_cpp(pname: str) -> str:
+    """The subject of a CONCEPT term over a static-protocol param: every
+    `Concept<T_x...>` test spells its template argument here. A forwarding
+    parameter deduces `R&` for an lvalue argument, and a marker concept
+    (`Copyable`, `Default`) answers differently for the reference, so the
+    test is on the referred type. The None test
+    `std::same_as<T_x, std::nullptr_t>` deliberately does not come here."""
+    return f"std::remove_cvref_t<{protocol_param_template_name(pname)}>"
 
 
 def fn_param_template_name(pname: str) -> str:
@@ -249,36 +259,10 @@ def static_protocol_params(
     the import-cycle gate can ask it before any body is analyzed."""
     result: list[ProtocolParamInfo] = []
     for pname, ptype in params:
-        unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(ptype)))
-
-        # Optional[Protocol] -- single protocol, nullable
-        if isinstance(unwrapped, OptionalType):
-            resolved = resolve_protocol_type(unwrapped.inner)
-            if is_protocol_type(resolved) and isinstance(resolved, NominalType):
-                protocol_info = protocol_info_of(resolved)
-                if protocol_info and protocol_info.is_dynamic:
-                    continue
-                result.append(ProtocolParamInfo(pname, [resolved], True))
-            continue
-
-        # Protocol union (2+ protocols, optionally with None)
-        if isinstance(unwrapped, UnionType):
-            resolved_members = tuple(resolve_protocol_type(m) for m in unwrapped.members)
-            resolved_union = UnionType(resolved_members)
-            if is_protocol_union(resolved_union):
-                protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NominalType)]
-                has_none = protocol_union_has_none(resolved_union)
-                result.append(ProtocolParamInfo(pname, protos, has_none))
-            continue
-
-        # Single bare protocol
-        resolved = resolve_protocol_type(unwrapped)
-        if is_protocol_type(resolved) and isinstance(resolved, NominalType):
-            protocol_info = protocol_info_of(resolved)
-            if protocol_info and protocol_info.is_dynamic:
-                continue
-            result.append(ProtocolParamInfo(pname, [resolved], False))
-
+        alts = protocol_param_alternatives(ptype, resolve_protocol_type)
+        if alts is not None:
+            result.append(ProtocolParamInfo(
+                pname, [a for a in alts if a is not NONE], NONE in alts))
     return result
 
 
@@ -602,41 +586,11 @@ class ProtocolGenerator:
         return resolve_protocol_type(typ)
 
     def is_static_protocol_param(self, typ: TpyType) -> bool:
-        """Check if a type is a static protocol parameter (single or union, optional or not).
-
-        Returns True for:
-        - NominalType that is a static protocol
-        - OptionalType(static protocol)
-        - UnionType of 2+ static protocols (optionally with None)
-        Excludes @dynamic protocols.
-        """
-        unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(typ)))
-        # A bound generator / coroutine object is one concrete frame struct,
-        # not a template slot deduced per argument.
-        if isinstance(unwrapped, ConcreteFrameType):
-            return False
-        # Optional[Protocol]
-        if isinstance(unwrapped, OptionalType):
-            resolved = self.resolve_type_for_codegen(unwrapped.inner)
-            if is_protocol_type(resolved):
-                protocol_info = protocol_info_of(resolved)
-                if protocol_info and protocol_info.is_dynamic:
-                    return False
-                return True
-            return False
-        # Protocol union (2+ protocols, optionally with None)
-        if isinstance(unwrapped, UnionType):
-            resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
-            resolved_union = UnionType(resolved_members)
-            return is_protocol_union(resolved_union)
-        # Single bare protocol
-        resolved = self.resolve_type_for_codegen(unwrapped)
-        if is_protocol_type(resolved):
-            protocol_info = protocol_info_of(resolved)
-            if protocol_info and protocol_info.is_dynamic:
-                return False
-            return True
-        return False
+        """A static-protocol template parameter (`protocol_param_alternatives`
+        with the codegen resolution): a bare protocol, `P | None` or a
+        protocol union; never @dynamic, never a concrete frame struct."""
+        return protocol_param_alternatives(
+            typ, self.resolve_type_for_codegen) is not None
 
     def get_all_protocol_params(
         self, params: list[tuple[str, TpyType]]
@@ -783,27 +737,55 @@ class ProtocolGenerator:
             return f"{concept_name}<{subject}, {type_args_cpp}>"
         return f"{concept_name}<{subject}>"
 
-    def concept_test_cpp(self, var_name: str, check_type: NominalType,
+    def concept_test_cpp(self, var_name: str,
+                         alternatives: 'tuple[TpyType, ...]',
                          declared_type: 'TpyType | None',
                          negated: bool) -> str:
-        """The compile-time protocol-isinstance test spelling, both
-        polarities. An Optional[Protocol] param (single protocol + None)
-        uses the nullptr_t same_as guard instead of the concept -- some
-        concepts (e.g. Sized) accidentally match nullptr_t via char*
-        conversion -- and `not` flips the same_as polarity DIRECTLY (no
-        `(!(...))` wrap); protocol unions with None keep concept checks to
-        differentiate members, wrapped `(!(C))` under negation."""
-        if declared_type is not None:
-            infos = self.get_all_protocol_params([(var_name, declared_type)])
-            if infos and infos[0].has_none and len(infos[0].protocols) == 1:
-                pol = "" if negated else "!"
-                return f"{pol}std::same_as<T_{var_name}, std::nullptr_t>"
-        # A forwarding parameter deduces `R&` for an lvalue argument; the
-        # test is about the argument's type, which a marker concept
-        # (`Copyable`, `Default`) answers differently for the reference.
-        cpp = self._concept_constraint(
-            f"std::remove_cvref_t<T_{var_name}>", check_type)
-        return f"(!({cpp}))" if negated else cpp
+        """The one compile-time test "the template argument of `var_name`
+        is one of `alternatives`" (protocols and None, from the declared
+        parameter type's alternatives or a protocol isinstance checks),
+        either polarity: the isinstance guard, `assert isinstance`, the
+        `is None` guard and the post-statement wrap all render it.
+
+        On a nullable parameter `std::nullptr_t` stands for None, and a
+        concept may accept it (Sized, Iterable through `const char*`), so a
+        protocol term there is `(!same_as<T_x, nullptr_t> && Concept<T_x>)`.
+        Only None, or every protocol and no None, is the None / not-None
+        test, whose negation flips the `same_as` directly. Every term with
+        an operator and every multi-term result is parenthesized, so a
+        caller may join results with `&&` or prefix `!`.
+
+        Invariant: code reached inside a wrap implies the wrap's test, and
+        a terminating guard and the wrap after it keep at least one of the
+        two per instantiation, never neither (an argument satisfying both
+        keeps both; the wrap is then dead after the guard's exit)."""
+        param_alts = (protocol_param_alternatives(declared_type,
+                                                  resolve_protocol_type)
+                      if declared_type is not None else None) or ()
+        nullable = NONE in param_alts
+        chosen = [a if a is NONE else resolve_protocol_type(a)
+                  for a in alternatives]
+        protocols = [a for a in chosen if a is not NONE]
+        null = (f"std::same_as<{protocol_param_template_name(var_name)}, "
+                f"std::nullptr_t>")
+        param_protocols = [a for a in param_alts if a is not NONE]
+        if nullable and (not protocols or (
+                NONE not in chosen
+                and all(any(a == b for b in param_protocols)
+                        for a in protocols)
+                and all(any(a == b for b in protocols)
+                        for a in param_protocols))):
+            return null if bool(protocols) == negated else f"!{null}"
+        terms = [self._concept_constraint(concept_subject_cpp(var_name), a)
+                 for a in protocols]
+        if nullable:
+            terms = [f"(!{null} && {t})" for t in terms]
+        if NONE in chosen:
+            terms.insert(0, null)
+        test = terms[0] if len(terms) == 1 else f"({' || '.join(terms)})"
+        if not negated:
+            return test
+        return f"(!{test})" if test.startswith("(") else f"(!({test}))"
 
     def gen_combined_template_header(
         self,
@@ -866,7 +848,8 @@ class ProtocolGenerator:
                 template_parts.append(f"typename T_{pname}{default_part}")
                 constraints = []
                 if info.has_none:
-                    constraints.append(f"std::same_as<T_{pname}, std::nullptr_t>")
+                    constraints.append(self.concept_test_cpp(
+                        pname, (NONE,), None, False))
                 for proto in info.protocols:
                     constraints.append(self._concept_constraint(f"T_{pname}", proto))
                 requires_parts.append(f"({' || '.join(constraints)})")

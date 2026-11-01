@@ -1,0 +1,1 @@
+main.py:276: warning: lambda at line 276 may keep its own copy of 'x'; changes made after it is created may not be seen

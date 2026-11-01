@@ -748,7 +748,7 @@ void truthiness() {
     LBare x = LBare();
     LenSub r = LenSub();
     DBare d = DBare();
-    std::cout << "truth" << " " << ::tpy::print_bool((!((::tpy::__len__(x) != 0)))) << " " << ::tpy::print_bool((::tpy::__len__(x) != 0)) << " " << ::tpy::print_bool((!((::tpy::__len__(r) != 0)))) << " " << ::tpy::print_bool((::tpy::__len__(r) != 0)) << " " << ::tpy::print_bool((!((::tpy::__len__(d) != 0)))) << " " << (((::tpy::__len__(x) != 0)) ? ("y") : ("n")) << "\n" << ::tpy::check_signals;
+    std::cout << "truth" << " " << ::tpy::print_bool((!((::tpy::__len__(x) != 0)))) << " " << ::tpy::print_bool((::tpy::__len__(x) != 0)) << " " << ::tpy::print_bool((!((::tpy::__len__(r) != 0)))) << " " << ::tpy::print_bool((::tpy::__len__(r) != 0)) << " " << ::tpy::print_bool((!((::tpy::__len__(d) != 0)))) << " " << (((::tpy::__len__(x) != 0)) ? (std::string_view("y")) : (std::string_view("n"))) << "\n" << ::tpy::check_signals;
     x.push_back(1);
     while ((::tpy::__len__(x) != 0)) {
         std::cout << "truth-while" << " " << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
@@ -857,7 +857,7 @@ void own_repr() {
 // def opt_truth(o: LBare | None, h: HasLen | None, s: LenSub | None) -> None:
 //     print("opt-truth", "y" if o else "n", "y" if h else "n", "y" if s else "n", not o, not s)  # tpyc: ok
 void opt_truth(const LBare* o, const HasLen* h, const LenSub* s) {
-    std::cout << "opt-truth" << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(o)) ? ("y") : ("n")) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(h)) ? ("y") : ("n")) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(s)) ? ("y") : ("n")) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(o)))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(s)))) << "\n" << ::tpy::check_signals;
+    std::cout << "opt-truth" << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(o)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(h)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(s)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(o)))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(s)))) << "\n" << ::tpy::check_signals;
 }
 
 // # super().__init__ through a class inheriting the builtin's constructor
@@ -903,7 +903,7 @@ void seeded_kinds() {
 // def opt_truth_kinds(s: SBare | None, d: DBare | None) -> None:
 //     print("opt-kinds", "y" if s else "n", "y" if d else "n", not s, not d)  # tpyc: ok
 void opt_truth_kinds(const SBare* s, const DBare* d) {
-    std::cout << "opt-kinds" << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(s)) ? ("y") : ("n")) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(d)) ? ("y") : ("n")) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(s)))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(d)))) << "\n" << ::tpy::check_signals;
+    std::cout << "opt-kinds" << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(s)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::ptr_truthy<::tpy::truthy_by_len>(d)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(s)))) << " " << ::tpy::print_bool((!(::tpy::ptr_truthy<::tpy::truthy_by_len>(d)))) << "\n" << ::tpy::check_signals;
 }
 
 // # a readonly dict / set compares by its base's `==` / `!=`
@@ -962,7 +962,7 @@ void cross_needle() {
 void empty_method() {
     std::array<Emp, 1> es = {Emp()};
     ::tpy::Any a = ::tpy::make_any(EmpStr());
-    std::cout << "empty-method" << " " << ::tpy::__len__(::tpy::construct<std::vector<Emp>>(::tpy::builtin_filter_truthy(es))) << " " << (((static_cast<void>(Emp()), true)) ? ("y") : ("n")) << " " << ((::tpy::to_bool(a)) ? ("y") : ("n")) << "\n" << ::tpy::check_signals;
+    std::cout << "empty-method" << " " << ::tpy::__len__(::tpy::construct<std::vector<Emp>>(::tpy::builtin_filter_truthy(es))) << " " << (((static_cast<void>(Emp()), true)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::to_bool(a)) ? (std::string_view("y")) : (std::string_view("n"))) << "\n" << ::tpy::check_signals;
 }
 
 // # the explicit `__contains__` call on a generic list subclass compares, as `in` does

@@ -158,7 +158,7 @@ Json wrapper_local(int32_t n) {
 // def opt_str_select(a: str, c: bool) -> Optional[str]:
 //     return a if c else "lit"  # tpyc: ok
 std::optional<std::string> opt_str_select(std::string_view a, bool c) {
-    return std::string(((c) ? (a) : ("lit")));
+    return std::string(((c) ? (a) : (std::string_view("lit"))));
 }
 
 // # cross_width: a narrowed `int8 | None` parameter widens into the result's

@@ -637,6 +637,7 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_SELECT_PRVALUE,
                       _ONLY_SELECT_FRESH_PRVALUE, _ONLY_SELECT_SLOT,
+                      _ONLY_SELF_TYPED,
                       _ONLY_TUPLE_SOURCE, _RecordCtorUse, CallArgKind,
                       SinkForm, SinkPos, Slot, SlotHolds, SlotPlacement,
                       SlotPosition, result_cpp, slot_for,
@@ -18879,6 +18880,18 @@ def _str_ternary_form(str_rt: TpyType, then_view: bool,
             else Form.STORAGE)
 
 
+def _str_select_form(rtype: 'TpyType | None', e: TpyIfExpr,
+                     lc: '_LowerCtx') -> 'Form | None':
+    """A str-family ternary's `_str_ternary_form` (None for any other
+    result), decided before its arms lower so a VIEW select's literal arm
+    can take the self-typed view render."""
+    str_rt = _resolved_str_value(rtype, lc.analyzer)
+    if str_rt is None:
+        return None
+    return _str_ternary_form(str_rt, _str_view_arm(e.then_expr, lc),
+                             _str_view_arm(e.else_expr, lc))
+
+
 def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     """Whether an admitted ternary arm spells std::string_view at C++
     runtime: a str literal and a `str`-declared PARAM are runtime
@@ -19271,19 +19284,25 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
     cond = _lower_isinstance_cond((var, u, (then_m,), False), e.condition,
                                   lc, declared)
 
+    str_form = _str_select_form(rbare, e, lc)
+    arm_use = (_ExprUse(forms=_ONLY_SELF_TYPED)
+               if str_form is Form.BORROW else _ExprUse())
+
     def _arm(arm_expr, member):
         if member is None:
             # No inline fact for this arm (the complement is a union): a
             # subject read here takes its ordinary un-narrowed path.
             return _slot_literal_retype(
-                _lower_char_targeted(arm_expr, slot, lc, declared), slot, lc)
+                _lower_char_targeted(arm_expr, slot, lc, declared,
+                                     use=arm_use), slot, lc)
         saved = dict(lc.inline_narrowed)
         arm_declared = dict(declared)
         arm_declared[var] = member
         try:
             lc.inline_narrowed[var] = _inline_union_member(var, member, u, lc)
             return _slot_literal_retype(
-                _lower_char_targeted(arm_expr, slot, lc, arm_declared),
+                _lower_char_targeted(arm_expr, slot, lc, arm_declared,
+                                     use=arm_use),
                 slot, lc)
         finally:
             lc.inline_narrowed = saved
@@ -19291,15 +19310,12 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
     then = _arm(e.then_expr, then_m)
     orelse = _arm(e.else_expr, else_m)
     form = Form.VALUE
-    str_rt = _resolved_str_value(rbare, analyzer)
-    if str_rt is not None:
-        tv = _str_view_arm(e.then_expr, lc)
-        ev = _str_view_arm(e.else_expr, lc)
-        if tv != ev:
+    if str_form is not None:
+        if _str_view_arm(e.then_expr, lc) != _str_view_arm(e.else_expr, lc):
             # A MIXED view/owned arm pair needs the general select's per-arm
             # materialization, which has no narrowed witness.
             raise ThirUnsupported("ifexpr.narrow_str_mixed", detail=True)
-        form = _str_ternary_form(str_rt, tv, ev)
+        form = str_form
         _witness("ifexpr.isin_narrow_str")
     _witness("ifexpr.isin_narrow")
     return THIRIfExpr(result_type=result_t, cond=cond, then=then,
@@ -19854,6 +19870,12 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # expression that built it.
     # A nested select arm is consumed exactly as this select is.
     _arm_forms = _ONLY_SELECT_SLOT if slot_ok else _NO_FORMS
+    str_form = _str_select_form(rtype, e, lc)
+    if str_form is Form.BORROW:
+        # A view select spells its C++ type off its arms, so a literal arm
+        # renders the view of its static storage: a bare `"a"` beside
+        # `"bc"` decays both to `const char*`.
+        _arm_forms = _arm_forms | _ONLY_SELF_TYPED
     _arm_use = _ExprUse(allow_temps=cond_temps_ok,
                         pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms)
     _cont_slot = _ifexpr_container(slot, analyzer)
@@ -19899,7 +19921,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 orelse = THIRFormConvert(result_type=str_rt, value=orelse,
                                          form=Form.STORAGE, loc=loc)
             _witness("ifexpr.str_mixed")
-        form = _str_ternary_form(str_rt, tv, ev)
+        form = str_form
         _witness("ifexpr.str")
     elif _is_string_owned(rtype):
         # A String result (both arms concat results): an owned rvalue.

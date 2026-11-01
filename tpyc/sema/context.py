@@ -1882,6 +1882,10 @@ class FunctionTrackingState:
     # The function or method whose emitted body the code under analysis lands
     # in: itself, or the one a nested def or a genexpr is written in.
     body_root: TpyFunction | None = None
+    # Whether a parameter is a static-protocol template one
+    # (`protocol_param_alternatives`), the only reader of the per-statement
+    # post-narrowing facts; None until asked.
+    has_protocol_template_param: bool | None = None
     current_ns: Namespace | None = None
     loop_depth: int = 0
     # One entry per loop whose body is open, innermost last; `break` and
@@ -3309,6 +3313,10 @@ class SemanticContext:
 
     # --- Branch-declared variable tracking ---
     if_branch_decls: IdentityMap = field(default_factory=IdentityMap)
+    # Per statement: the codegen-relevant narrowing facts (same filter as
+    # an `if`'s branch facts) that hold after it and did not hold before
+    # it -- what the rest of its list may assume.
+    post_stmt_facts: IdentityMap = field(default_factory=IdentityMap)
     # The same snapshot for an `if` that is the whole `else` body of another
     # `if`: each arm declares these names at its own binding, all with the
     # one type recorded here.

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
+from ..typesys import protocol_param_alternatives
 from ..typesys import (drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
@@ -2441,8 +2442,16 @@ class StatementAnalyzer:
         enclosing_genexprs = self.ctx.stmt_genexprs
         self.ctx.stmt_genexprs = []
         analyzed = False
+        narrowed_before = (dict(self.ctx.func.narrowed_types)
+                           if self._records_post_facts() else None)
         try:
             self._analyze_stmt_dispatch(stmt)
+            if narrowed_before is not None:
+                facts = self._post_stmt_facts(narrowed_before)
+                if facts:
+                    self.ctx.post_stmt_facts[stmt] = facts
+                else:
+                    self.ctx.post_stmt_facts.pop(stmt, None)
             # Stopgap until MIR models the step loan
             # (BUGS.md#next-step-reference-outlived-by-advance).
             twice = iterator_advanced_twice(self.ctx, stmt.exprs())
@@ -3213,6 +3222,32 @@ class StatementAnalyzer:
                 return
             # range(n) -- unknown bound, but still non-negative
             self.ctx.func.value_ranges[stmt.var] = ValueRange.for_range_index()
+
+    def _records_post_facts(self) -> bool:
+        """The post-statement facts are read only for a static-protocol
+        template parameter with alternatives to narrow, so a signature
+        without one skips them."""
+        func = self.ctx.func
+        if func.has_protocol_template_param is None:
+            # A nested def's body lands in its root's, whose parameters it
+            # reads as captures.
+            func.has_protocol_template_param = any(
+                len(protocol_param_alternatives(t) or ()) > 1
+                for fn in (func.current_function, func.body_root)
+                for _n, t in getattr(fn, "params", None) or ())
+        return func.has_protocol_template_param
+
+    def _post_stmt_facts(self, before: dict[str, TpyType]
+                         ) -> 'dict[str, TpyType] | None':
+        """The narrowing the flow state holds after the statement just
+        analyzed that it did not hold before, through the codegen filter;
+        None when the statement narrows nothing new or never completes."""
+        func = self.ctx.func
+        if func.init_terminated or not func.narrowed_types:
+            return None
+        new = {k: t for k, t in func.narrowed_types.items()
+               if "." not in k and before.get(k) != t}
+        return (self._filter_union_codegen_facts(new) or None) if new else None
 
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],

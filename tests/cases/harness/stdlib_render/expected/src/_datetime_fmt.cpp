@@ -155,7 +155,7 @@ std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, in
         } else if ((c == 'M')) {
             out += std::format("{:02d}", mm);
         } else if ((c == 'p')) {
-            out += (((hh < 12)) ? ("AM") : ("PM"));
+            out += (((hh < 12)) ? (std::string_view("AM")) : (std::string_view("PM")));
         } else if ((c == 'S')) {
             out += std::format("{:02d}", ss);
         } else if ((c == 'u')) {
@@ -260,7 +260,7 @@ std::string _format_time(int32_t hh, int32_t mm, int32_t ss, int32_t us, std::st
 //             out = out + f".{us:06d}"
 //     return out
 std::string _offset_str(const ::tpy::BigInt& off_us, std::string_view sep) {
-    std::string_view sign = (((off_us >= 0)) ? ("+") : ("-"));
+    std::string_view sign = (((off_us >= 0)) ? (std::string_view("+")) : (std::string_view("-")));
     int64_t a = ((((off_us >= 0)) ? (off_us) : (-(off_us)))).to_fixed_check<int64_t>();
     auto __tup_1 = ::tpy::divmod_fixed<int64_t>(a, 1000000);
     int64_t total_s = std::get<0>(__tup_1);

@@ -64,6 +64,7 @@ from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
+from ...typesys import NONE, protocol_param_alternatives
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -3312,35 +3313,16 @@ def _protocol_union_arg(arg: TpyExpr, ptype: 'TpyType | None',
 
 
 def _nullable_static_protocol_param(t: 'TpyType | None') -> 'NominalType | None':
-    """The STRUCTURAL protocol of a nullable static-protocol param
-    (`items: Sized | None`), or None. The C++ binding is the monomorphized
-    `const T_x*` (default `std::nullptr_t`), so the param joins the
-    pointer set: narrowed reads deref `(*x)` and the None test swaps to
-    the `std::same_as<T_x, std::nullptr_t>` constexpr guard. @dynamic
-    inners stay with the wide accessor's dyn class (nullable `Base*`).
-    Covers both the Optional spelling and the nullable all-static
-    protocol UNION (2+ protocols + None, mirroring is_protocol_union's
-    arity; a 1-protocol union normalizes to Optional upstream)."""
-    if not isinstance(t, TpyType):
+    """The first STRUCTURAL protocol of a nullable static-protocol param
+    (`items: Sized | None`, `Sized | Sequence[T] | None`), or None. The C++
+    binding is the monomorphized `const T_x*` (default `std::nullptr_t`),
+    so the param joins the pointer set: narrowed reads deref `(*x)` and the
+    None test is the constexpr guard. @dynamic inners stay with the wide
+    accessor's dyn class (nullable `Base*`)."""
+    alts = protocol_param_alternatives(t)
+    if alts is None or NONE not in alts:
         return None
-    u = _unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
-    if isinstance(u, OptionalType):
-        inner = unwrap_readonly(u.inner)
-        if (isinstance(inner, NominalType) and is_protocol_type(inner)
-                and not is_dyn_protocol(inner)):
-            return inner
-        return None
-    # The nullable protocol-UNION flavor (`Sized | Sequence[T] | None`):
-    # the same monomorphized `const T_x*` binding, one template param
-    # bounded by the disjunction.
-    if isinstance(u, UnionType):
-        others = [unwrap_readonly(m) for m in u.members
-                  if not is_void_like_type(m)]
-        if (len(others) >= 2 and len(others) < len(u.members)
-                and all(isinstance(m, NominalType) and is_protocol_type(m)
-                        and not is_dyn_protocol(m) for m in others)):
-            return others[0]
-    return None
+    return next(a for a in alts if a is not NONE)
 
 
 def _static_protocol_union_binding(t: 'TpyType | None') -> bool:

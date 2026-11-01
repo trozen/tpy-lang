@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_text@35:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::free_spec@43:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::free_spec_s@48:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen_text@53:0: uncovered (generic body)
+main::gen_ptr@59:0: uncovered (generic body)
+main::gen_print@65:0: uncovered (generic body)
+main::gen_key@70:0: uncovered (generic body)
+main::stext@77:0: uncovered (unsupported parameter type)
+main::sprint@81:0: uncovered (unsupported parameter type)
+main::iprint_chars@87:0: uncovered (unsupported parameter type)
+main::ternaries@94:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@104:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Named.__str__@20:4: covered (storage: no_proof_required), summary: known
+main::Holder.show@29:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@25:4: covered (storage: no_proof_required), summary: known

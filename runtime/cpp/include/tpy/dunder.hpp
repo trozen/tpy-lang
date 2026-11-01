@@ -90,9 +90,11 @@ inline int32_t __len__(const ByteArray& x) {
     return static_cast<int32_t>(x.size());
 }
 
-// Overload: const char* (string literals)
-inline int32_t __len__(const char* x) {
-    return static_cast<int32_t>(std::string_view(x).size());
+// Overload: a string literal. A `char*` is a pointer to one char, never a
+// C string (see `object_pointer`).
+template<std::size_t N>
+inline int32_t __len__(const char (&x)[N]) {
+    return static_cast<int32_t>(literal_view(x).size());
 }
 
 // Overload: char (char type -- always length 1)
@@ -376,22 +378,29 @@ inline bool ptr_truthy(const T* p) {
 // tpy::__str__
 // =============================================
 
-// A pointer whose pointee renders as text: an object, never one char (C++
-// cannot tell it from a C string) and never an opaque `void`.
-template<typename T>
-concept text_pointee = !std::is_same_v<std::remove_cv_t<T>, char>
-                       && !std::is_void_v<T>;
-
-// A pointer the generic fallbacks below must not render: as an address.
-template<typename T>
-concept object_pointer = std::is_pointer_v<T>
-                         && text_pointee<std::remove_pointer_t<T>>;
+namespace detail {
+// What a pointer's pointee can do: render as str, as repr, hash. Defined in
+// tpy.hpp after every overload, so a pointer overload is viable exactly when
+// the call it forwards to the pointee is, and an `Any` holding a pointer to a
+// type with no text falls back as that type itself does.
+template<typename P> struct pointee_caps;
+}  // namespace detail
 
 // None or the payload's text. Declared here, defined in tpy.hpp after every
 // container overload, so a payload of any kind (a list, a union) is reached
 // from the templates below that call through them.
 template<typename T> std::string __str__(const std::optional<T>& x);
-template<typename T> requires text_pointee<T> std::string __str__(T* p);
+// Taken as `const P&`, not `T*`: a `T*` template ties with the literal-array
+// overload below for a `const char[N]` argument (both exact matches, neither
+// more specialized), while `const P&` never deduces an array as a pointer.
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::str
+std::string __str__(const P& p);
+// A pointer to a type with no text has none: without this it would convert to
+// bool and print `True`.
+template<typename P>
+    requires object_pointer<P> && (!detail::pointee_caps<P>::str)
+std::string __str__(const P& p) = delete;
 template<typename... Ts> std::string __str__(const std::variant<Ts...>& v);
 
 // Builtin type overloads (needed for generic T contexts)
@@ -415,6 +424,10 @@ inline std::string __str__(const std::string& x) { return x; }
 // `__repr__`; the answer is the same either way today, and this keeps it so.
 inline std::string __str__(const String& x) { return x; }
 inline std::string __str__(std::string_view x) { return std::string(x); }
+// A string literal. The only C-string text overload: every `char*` is a
+// pointer to one char and renders through the pointer overload above.
+template<std::size_t N>
+inline std::string __str__(const char (&x)[N]) { return std::string(literal_view(x)); }
 inline std::string __str__(const BigInt& x) { return x.to_string(); }
 
 // Default template: user types that define __str__() method
@@ -475,7 +488,13 @@ std::string __str__(const T& x) {
 // name visible at parse time, so the forward declaration precedes those
 // template bodies.
 template<typename T> auto repr_of(const T& x);
-template<typename T> requires text_pointee<T> std::string repr_of(T* p);
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::repr
+std::string repr_of(const P& p);
+// As for __str__: the generic repr_of would reach `__repr__(bool)`.
+template<typename P>
+    requires object_pointer<P> && (!detail::pointee_caps<P>::repr)
+std::string repr_of(const P& p) = delete;
 template<typename... Ts> std::string __repr__(const std::variant<Ts...>& v);
 
 // Default template: user types that define __repr__() method
@@ -516,7 +535,7 @@ inline std::string_view __repr__(std::monostate) {
 }
 
 // Strings: Python repr quotes and escapes control chars / quote / backslash.
-// The const char* overload steals string-literal calls before the templated
+// The literal-array overload steals string-literal calls before the templated
 // formattable fallback (which would otherwise emit raw bytes via std::format).
 inline std::string __repr__(const std::string& x) {
     return repr_quote_string(x);
@@ -524,8 +543,9 @@ inline std::string __repr__(const std::string& x) {
 inline std::string __repr__(std::string_view x) {
     return repr_quote_string(x);
 }
-inline std::string __repr__(const char* x) {
-    return repr_quote_string(std::string_view(x));
+template<std::size_t N>
+inline std::string __repr__(const char (&x)[N]) {
+    return repr_quote_string(literal_view(x));
 }
 // A `String` is an exact match for the formattable fallback below, which would
 // out-rank `const std::string&`'s derived-to-base conversion and print the
@@ -652,8 +672,9 @@ inline uint64_t __hash__(const std::string& x) {
 inline uint64_t __hash__(std::string_view x) {
     return static_cast<uint64_t>(std::hash<std::string_view>{}(x));
 }
-inline uint64_t __hash__(const char* x) {
-    return static_cast<uint64_t>(std::hash<std::string_view>{}(std::string_view(x)));
+template<std::size_t N>
+inline uint64_t __hash__(const char (&x)[N]) {
+    return static_cast<uint64_t>(std::hash<std::string_view>{}(literal_view(x)));
 }
 
 // The bytes family hashes as one (buffer_types.hpp), so `hash(b)` on a view
@@ -689,14 +710,16 @@ uint64_t __hash__(const T& x) {
 }
 
 // A `T*` value is a tuple / Optional borrow slot, not a raw address: hash the
-// referent (a null pointer-repr Optional slot hashes as None). char* keeps its
-// dedicated overload above. Defined after the user-type __hash__ templates so
-// the dependent `__hash__(*x)` call resolves to them at instantiation.
-template<typename T>
-    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
-uint64_t __hash__(const T* x) {
-    return x == nullptr ? __hash__(std::monostate{}) : __hash__(*x);
-}
+// referent (a null pointer-repr Optional slot hashes as None), a `char*`
+// included. Taken as `const P&` so a literal array never deduces as a
+// pointer. Only a hashable pointee makes the pointer hashable
+// (`pointee_caps`), so an `Any` holding a pointer to a list stays unhashable
+// instead of failing to build. Declared here, defined in tpy.hpp next to
+// `pointee_caps`, as `__str__` / `repr_of` are, so the trait and the call
+// see one overload set.
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::hash
+uint64_t __hash__(const P& x);
 
 // =============================================
 // tpy::hash_combine -- Boost-style hash combining for dataclass __hash__
@@ -848,7 +871,10 @@ inline auto __iter__(std::string_view x) {
     return native_iterator<std::string_view::const_iterator, char>{x.begin(), x.end()};
 }
 
-// Overload: const char* (string literals)
+// Overload: const char*, kept only for the str literal a structural protocol
+// parameter still holds as an `auto` temp (`auto __tmp = "hello";`); every
+// other C-string overload takes a literal array. TODO.md "drop
+// `__iter__(const char*)`".
 inline auto __iter__(const char* x) {
     return __iter__(std::string_view(x));
 }

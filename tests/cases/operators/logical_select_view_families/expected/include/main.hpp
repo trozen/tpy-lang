@@ -99,7 +99,7 @@ inline void Store::put_either(::tpy::BytesView a, ::tpy::BytesView b, bool first
 //     self.u = a if first else "lit"  # tpyc: ok
 //     self.o = a or "lit"  # tpyc: ok
 inline StrStore::StrStore(std::string_view a, bool first)
-    : u(std::string(((first) ? (a) : ("lit")))),
+    : u(std::string(((first) ? (a) : (std::string_view("lit"))))),
       o(std::string(((!a.empty()) ? a : std::string_view("lit")))) {}
 
 // def put(self, a: str, first: bool) -> None:
@@ -107,8 +107,8 @@ inline StrStore::StrStore(std::string_view a, bool first)
 //     self.u = a if first else "lit"  # tpyc: ok
 //     self.o = a if first else "lit"  # tpyc: ok
 inline void StrStore::put(std::string_view a, bool first) {
-    this->u = std::string(((first) ? (a) : ("lit")));
-    this->o = std::string(((first) ? (a) : ("lit")));
+    this->u = std::string(((first) ? (a) : (std::string_view("lit"))));
+    this->o = std::string(((first) ? (a) : (std::string_view("lit"))));
 }
 
 // def put_or(self, a: str) -> None:

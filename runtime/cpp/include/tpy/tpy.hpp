@@ -152,15 +152,46 @@ inline auto repr_of(const T& x) {
     return __repr__(x);
 }
 
+namespace detail {
+namespace pointee_lookup {
+// The lookups the pointer overloads forward to: repr_of's and __hash__'s own
+// (unqualified, so ADL reaches a record's namespace).
+using ::tpy::__repr__;
+using ::tpy::__hash__;
+template<typename T>
+concept has_repr = requires(const T& t) { __repr__(t); };
+template<typename T>
+concept has_hash = requires(const T& t) { __hash__(t); };
+}  // namespace pointee_lookup
+
+template<typename P>
+struct pointee_caps {
+    using T = std::remove_cv_t<std::remove_pointer_t<P>>;
+    static constexpr bool str = requires(const T& t) { ::tpy::__str__(t); };
+    // A pointer pointee answers through its own pointee: it converts to bool,
+    // whose __repr__ would answer for any pointer.
+    static constexpr bool repr = [] {
+        if constexpr (object_pointer<T>) return pointee_caps<T>::repr;
+        else return pointee_lookup::has_repr<T>;
+    }();
+    static constexpr bool hash = pointee_lookup::has_hash<T>;
+};
+}  // namespace detail
+
 // A nullable pointer -- a pointer-repr Optional (`A | None` lowers to
 // `A*`), a `Ptr[T]`, a union's pointer alternative: "None" for null,
-// otherwise the pointee's repr. A char pointer is a C string and keeps its
-// own __repr__.
-template<typename T>
-    requires text_pointee<T>
-inline std::string repr_of(T* p) {
+// otherwise the pointee's repr (a `char*` included: one char, quoted).
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::repr
+inline std::string repr_of(const P& p) {
     if (!p) return "None";
     return std::string(::tpy::repr_of(*p));
+}
+
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::hash
+uint64_t __hash__(const P& x) {
+    return x == nullptr ? __hash__(std::monostate{}) : __hash__(*x);
 }
 
 // The text overloads dunder.hpp declares, defined after every header that
@@ -172,9 +203,9 @@ std::string __str__(const std::optional<T>& x) {
     return std::string(::tpy::__str__(*x));
 }
 
-template<typename T>
-    requires text_pointee<T>
-std::string __str__(T* p) {
+template<typename P>
+    requires object_pointer<P> && detail::pointee_caps<P>::str
+std::string __str__(const P& p) {
     if (!p) return "None";
     return std::string(::tpy::__str__(*p));
 }

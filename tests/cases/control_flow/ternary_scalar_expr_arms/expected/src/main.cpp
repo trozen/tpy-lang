@@ -39,7 +39,7 @@ int32_t maybe_call(int32_t k, bool c) {
 // def tag(u: A | B) -> str:
 //     return "a" if isinstance(u, A) else "b"    # tpyc: ok -- a str result
 std::string tag(::tpy::Union<const A*, const B*> u) {
-    return std::string(((std::holds_alternative<const A*>(u)) ? ("a") : ("b")));
+    return std::string(((std::holds_alternative<const A*>(u)) ? (std::string_view("a")) : (std::string_view("b"))));
 }
 
 // def main() -> None:

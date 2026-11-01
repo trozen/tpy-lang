@@ -6,7 +6,7 @@ the C++ pointer arithmetic that the compiler generates.
 """
 
 from __future__ import annotations
-from tpy import Ptr, _ConstPtr, take_ptr
+from tpy import Ptr, _ConstPtr, _Ptr, take_ptr
 
 
 def _target(p):
@@ -143,15 +143,48 @@ class _HeapArrayView:
 # Pointer operations
 # ---------------------------------------------------------------------------
 
+class _FirstElementText:
+    """The text of a pointer to a container's first element: TPy's
+    `unsafe_ptr` points at element 0, so it prints that element, while the
+    pointer keeps the whole container for unsafe_load / unsafe_store."""
+
+    def _first(self):
+        obj = object.__getattribute__(self, '_obj')
+        return None if obj is None else obj[0]
+
+    def __str__(self):
+        return str(self._first())
+
+    def __repr__(self):
+        return repr(self._first())
+
+    def __format__(self, spec):
+        return format(self._first(), spec)
+
+    def __copy__(self):
+        return type(self)(self._obj)
+
+    def __deepcopy__(self, memo):
+        return type(self)(self._obj)
+
+
+class _FirstElementPtr(_FirstElementText, _Ptr):
+    pass
+
+
+class _FirstElementConstPtr(_FirstElementText, _ConstPtr):
+    pass
+
+
 def unsafe_ptr(container):
     """Get a raw pointer from a container or string."""
     if isinstance(container, str):
-        return _ConstPtr(container)
+        return _FirstElementConstPtr(container)
     if isinstance(container, list):
-        return take_ptr(container)
+        return _FirstElementPtr(container)
     if hasattr(container, '_data'):
-        return take_ptr(container._data)
-    return take_ptr(container)
+        return _FirstElementPtr(container._data)
+    return _FirstElementPtr(container)
 
 
 def unsafe_load(p, offset: int):
@@ -177,6 +210,8 @@ def unsafe_copy_n(dest, src, count: int) -> None:
 def unsafe_const_cast(p):
     """Remove const from a pointer (Ptr[readonly[T]] -> Ptr[T])."""
     obj = _target(p)
+    if isinstance(p, _FirstElementText):
+        return _FirstElementPtr(obj)
     return take_ptr(obj)
 
 

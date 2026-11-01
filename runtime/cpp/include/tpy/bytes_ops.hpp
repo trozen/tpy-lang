@@ -120,6 +120,22 @@ inline std::ostream& operator<<(std::ostream& os, const ByteArrayPrinter& bp) {
     return os;
 }
 
+// A bytes / bytes view / bytearray value writes its own text, as the concrete print does,
+// so an open `T` or a protocol parameter holding one does not print it as a
+// list. Exact types only: a `list[uint8]` vector and a subclass record keep
+// their own text.
+template <typename B>
+    requires (std::same_as<B, Bytes> || std::same_as<B, BytesView>)
+std::ostream& operator<<(std::ostream& os, const B& b) {
+    return os << BytesPrinter(BytesView{b});
+}
+
+template <typename B>
+    requires std::same_as<B, ByteArray>
+std::ostream& operator<<(std::ostream& os, const B& b) {
+    return os << ByteArrayPrinter(BytesView{b});
+}
+
 // A bytearray subclass's repr names the subclass: `Sub(b'xy')`.
 inline std::ostream& print_as_base(std::ostream& os, std::string_view class_name,
                                    const ByteArray& base) {

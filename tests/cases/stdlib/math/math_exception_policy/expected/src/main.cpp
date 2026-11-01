@@ -125,10 +125,10 @@ std::string category(double x) {
         return "nan";
     }
     if (::std::isinf(x)) {
-        return std::string((((x < 0.0)) ? ("-inf") : ("+inf")));
+        return std::string((((x < 0.0)) ? (std::string_view("-inf")) : (std::string_view("+inf"))));
     }
     if ((x == 0.0)) {
-        return std::string((((::std::copysign(1.0, x) < 0.0)) ? ("-zero") : ("+zero")));
+        return std::string((((::std::copysign(1.0, x) < 0.0)) ? (std::string_view("-zero")) : (std::string_view("+zero"))));
     }
     return "finite";
 }

@@ -28,6 +28,15 @@ namespace tpy {
 // Forward declaration for BigInt specialization
 class BigInt;
 
+// A pointer to one object, which every runtime overload reads through: its
+// pointee's text, hash or length, `None` when null -- never its address. A
+// `char*` included: a string literal reaches the runtime as a `const
+// char[N]` array (or the compiler's `std::string_view`), never as a bare
+// pointer. Never an opaque `void*`.
+template<typename T>
+concept object_pointer = std::is_pointer_v<T>
+                         && !std::is_void_v<std::remove_pointer_t<T>>;
+
 // --- Type trait for value vs reference semantics ---
 
 /**

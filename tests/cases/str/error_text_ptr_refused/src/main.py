@@ -1,20 +1,20 @@
-# A Ptr[char] has no text rendering, so a user Stringable parameter refuses it
-# with a diagnostic naming only Python types (one representative refusal:
-# Ptr[None], an open Ptr[T] and slice refuse the same way).
-from tpy import Ptr, Stringable, char, take_ptr
+# An opaque Ptr[None] has no pointee to render, so a user Stringable parameter
+# refuses it with a diagnostic naming only Python types (one representative
+# refusal: slice refuses the same way).
+from tpy import Ptr, Stringable
 
 
 def text(v: Stringable) -> str:
     return str(v)
 
 
-def show(p: Ptr[char]) -> str:
-    return text(p)  # tpyc: error(/Type Ptr\[char\] does not conform to protocol Stringable in argument 'v'/)
+def show(p: Ptr[None]) -> str:
+    return text(p)  # tpyc: error(/Type Ptr\[None\] does not conform to protocol Stringable in argument 'v'/)
 
 
 def main() -> None:
-    c: char = "x"
-    print(show(take_ptr(c)))
+    p: Ptr[None] = None
+    print(show(p))
 
 
 main()

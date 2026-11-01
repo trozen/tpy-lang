@@ -504,7 +504,7 @@ __coro_async_receiver async_receiver(C& a, bool c) {
 //     # a receiver.
 //     print("str_recv", (s or "dflt").upper(), (s if c else "zz").startswith("z"))  # tpyc: ok
 void str_receivers(std::string_view s, bool c) {
-    std::cout << "str_recv" << " " << ::tpy::str_upper(((!s.empty()) ? s : std::string_view("dflt"))) << " " << ::tpy::print_bool(::tpy::str_startswith(((c) ? (s) : ("zz")), "z")) << "\n" << ::tpy::check_signals;
+    std::cout << "str_recv" << " " << ::tpy::str_upper(((!s.empty()) ? s : std::string_view("dflt"))) << " " << ::tpy::print_bool(::tpy::str_startswith(((c) ? (s) : (std::string_view("zz"))), "z")) << "\n" << ::tpy::check_signals;
 }
 
 // def first_list(xs: list[list[int32]]) -> list[int32]:

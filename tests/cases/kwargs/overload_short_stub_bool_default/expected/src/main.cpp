@@ -17,14 +17,14 @@ namespace tpyapp::main {
 // def greet(a: Dog) -> str: ...
 std::string greet__Dog(const Dog& a) {
     bool loud = false;
-    std::string_view suffix = ((loud) ? ("!") : ("."));
+    std::string_view suffix = ((loud) ? (std::string_view("!")) : (std::string_view(".")));
     return (::tpy::str_concat(a.name, suffix));
 }
 
 // @overload
 // def greet(a: Cat, loud: bool) -> str: ...
 std::string greet__Cat__bool(const Cat& a, bool loud) {
-    std::string_view suffix = ((loud) ? ("!") : ("."));
+    std::string_view suffix = ((loud) ? (std::string_view("!")) : (std::string_view(".")));
     return (::tpy::str_concat((a.lives).to_string(), suffix));
 }
 

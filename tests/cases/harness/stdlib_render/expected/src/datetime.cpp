@@ -287,7 +287,7 @@ std::string timedelta::__str__() const {
     mm = std::get<1>(__tup_2);
     std::string s = std::format("{}:{:02d}:{:02d}", hh, mm, ss);
     if ((this->days != 0)) {
-        std::string_view plural = ((((this->days != 1) && (this->days != -1))) ? ("s") : (""));
+        std::string_view plural = ((((this->days != 1) && (this->days != -1))) ? (std::string_view("s")) : (std::string_view("")));
         s = (::tpy::str_concat(std::format("{} day{}, ", this->days, plural), s));
     }
     if ((this->microseconds != 0)) {

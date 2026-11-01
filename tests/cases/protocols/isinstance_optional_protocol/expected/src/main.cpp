@@ -20,6 +20,10 @@ namespace tpyapp::main {
 //     # not isinstance
 //     print(check_not(nums))
 //     print(check_not())
+//
+//     # method call after the early return
+//     a = A()
+//     print("method_tail", method_tail(a), method_tail())
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
@@ -30,6 +34,8 @@ void main() {
     std::cout << ::tpyapp::main::sum_span() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_not(&(nums)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_not() << "\n" << ::tpy::check_signals;
+    A a = A();
+    std::cout << "method_tail" << " " << ::tpyapp::main::method_tail(&(a)) << " " << ::tpyapp::main::method_tail() << "\n" << ::tpy::check_signals;
 }
 
 // main()

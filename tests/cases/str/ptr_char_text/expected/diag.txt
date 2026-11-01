@@ -1,0 +1,1 @@
+main.py:44: warning: format spec on Ptr[char] pads its str() text; CPython passes it to the value's __format__ (write {v!s:^5} to state that)

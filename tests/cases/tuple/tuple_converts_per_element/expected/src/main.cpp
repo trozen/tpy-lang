@@ -719,7 +719,7 @@ __gen_lend_union lend_union() {
 // def make_s(n: int32) -> str:
 //     return "ab" if n > 0 else ""
 std::string make_s(int32_t n) {
-    return std::string((((n > 0)) ? ("ab") : ("")));
+    return std::string((((n > 0)) ? (std::string_view("ab")) : (std::string_view(""))));
 }
 
 

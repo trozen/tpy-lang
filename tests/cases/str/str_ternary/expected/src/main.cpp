@@ -23,7 +23,7 @@ void test_ternary(std::string_view a, std::string_view b) {
     std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view y = ((false) ? (a) : (b));
     std::cout << y << "\n" << ::tpy::check_signals;
-    std::string_view z = ((true) ? ("literal_a") : ("literal_b"));
+    std::string_view z = ((true) ? (std::string_view("literal_a")) : (std::string_view("literal_b")));
     std::cout << z << "\n" << ::tpy::check_signals;
     std::string w = ((true) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
     std::cout << w << "\n" << ::tpy::check_signals;

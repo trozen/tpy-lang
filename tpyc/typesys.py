@@ -4105,18 +4105,11 @@ def is_void_like_type(t: 'TpyType | None') -> bool:
     return isinstance(t, (NoneType, VoidType))
 
 
-def ptr_text_pointee(t: 'PtrType', *, derefs: bool = False) -> 'TpyType | None':
+def ptr_text_pointee(t: 'PtrType') -> 'TpyType | None':
     """The pointee a `Ptr` renders as text (its `None` when null), or None
-    when it has none: an opaque pointer has no pointee, and C++ cannot tell
-    a pointer to one char from a C string -- nor, through the pointer's
-    own text, a pointer to an open `T` from one, since `T` may be char. A
-    reader that `derefs` the pointer before rendering it takes an open
-    pointee."""
-    from .type_def_registry import is_char_type
+    when it has none: an opaque pointer has no pointee."""
     pointee = t.inner_pointee
-    if is_void_like_type(pointee) or is_char_type(pointee):
-        return None
-    if not derefs and isinstance(unwrap_readonly(pointee), TypeParamRef):
+    if is_void_like_type(pointee):
         return None
     return pointee
 
@@ -7612,6 +7605,49 @@ def is_protocol_union(typ: TpyType) -> bool:
         return False
     non_none = [m for m in typ.members if not is_void_like_type(m)]
     return len(non_none) >= 2 and all(is_protocol_type(m) for m in non_none)
+
+
+def type_alternatives(typ: TpyType) -> 'tuple[TpyType, ...]':
+    """The alternatives of a type: an Optional's or a union's members,
+    flattened, readonly peeled, None spelled `NONE`; any other type is its
+    own one alternative."""
+    t = unwrap_readonly(typ)
+    if isinstance(t, OptionalType):
+        return (*type_alternatives(t.inner), NONE)
+    if isinstance(t, UnionType):
+        return tuple(a for m in t.members for a in type_alternatives(m))
+    return (NONE,) if is_void_like_type(t) else (t,)
+
+
+def protocol_param_alternatives(
+        typ: 'TpyType | None',
+        resolve: 'Callable[[TpyType], TpyType] | None' = None,
+) -> 'tuple[TpyType, ...] | None':
+    """The one classifier of a static-protocol template parameter: the
+    alternatives of a bare protocol `P`, `P | None` or a union of static
+    protocols with or without None, else None (`resolve` maps each
+    alternative first, codegen's pre-sema protocol resolution). A bound
+    generator / coroutine object is one concrete frame struct, not a
+    template slot. A fact naming a strict subset of them is a compile-time
+    test the template argument passes wherever the rest can run
+    (alternatives may overlap: a list is both Sized and Iterable)."""
+    if not isinstance(typ, TpyType):
+        return None
+    alts = type_alternatives(
+        unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(typ)))))
+    if resolve is not None:
+        alts = tuple(a if a is NONE else resolve(a) for a in alts)
+    protocols = [a for a in alts if a is not NONE]
+    if not protocols:
+        return None
+    for a in protocols:
+        if not (isinstance(a, NominalType) and is_protocol_type(a)
+                and not isinstance(a, ConcreteFrameType)):
+            return None
+        info = _protocol_info_of(a)
+        if is_dyn_protocol(a) or (info is not None and info.is_dynamic):
+            return None
+    return alts
 
 
 def protocol_union_protocols(typ: UnionType) -> list[TpyType]:

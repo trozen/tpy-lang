@@ -42,7 +42,7 @@ void main() {
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << (((!e.code.has_value())) ? ("code none") : ("code set")) << "\n" << ::tpy::check_signals;
+            std::cout << (((!e.code.has_value())) ? (std::string_view("code none")) : (std::string_view("code set"))) << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }

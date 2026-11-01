@@ -499,8 +499,6 @@ class AsyncCoroCodegen:
         """
         parts: list[str] = []
         for pname, ptype in func.params:
-            if not self.functions.protocols.is_static_protocol_param(ptype):
-                continue
             infos = self.functions.protocols.get_all_protocol_params(
                 [(pname, ptype)])
             if not infos:

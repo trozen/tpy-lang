@@ -158,7 +158,6 @@ from ...codegen_cpp.forms import (
 from ...codegen_cpp.protocols import (
     dynamic_base_name,
     dyn_slot_cpp,
-    protocol_param_template_name,
 )
 from ...coercions import CoercionContext
 from ...sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_binding_owns,
@@ -171,6 +170,7 @@ from ...prescan import (
     match_is_none,
     scope_bound_names,
 )
+from ...typesys import NONE, protocol_param_alternatives, type_alternatives
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
@@ -5391,9 +5391,10 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
     # the enclosing top_level loop, where a reachable post-compound tail would
     # then be wrongly truncated. Save on entry / restore on exit scopes it.
     saved_overload_terminated = lc.overload_terminated
-    for s in body:
+    for i, s in enumerate(body):
         if top_level and lc.overload_terminated:
             break
+        narrows = _protocol_param_post_facts(s, lc, declared)
         node = _lower_stmt(s, lc, declared, in_branch=in_branch,
                            branch_decls_ok=branch_decls_ok,
                            loop_depth=loop_depth)
@@ -5402,11 +5403,61 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
         # visible at it.
         with _bindings.at(lc, s):
             _append_post_narrow(s, out, lc, declared)
+        if narrows and i + 1 < len(body):
+            # The rest of the list runs only where sema's narrowing holds,
+            # so it is instantiated only there (never at the None
+            # default's `T_x = std::nullptr_t`).
+            rest_declared = dict(declared)
+            rest_declared.update(narrows)
+            rest = _lower_stmts(body[i + 1:], lc, rest_declared,
+                                in_branch=in_branch,
+                                branch_decls_ok=branch_decls_ok,
+                                loop_depth=loop_depth, top_level=top_level)
+            out.append(THIRIf(
+                condition=THIRConceptTest(
+                    result_type=BOOL,
+                    cpp=" && ".join(_protocol_param_concept(v, t, lc)
+                                    for v, t in narrows.items()),
+                    loc=getattr(body[i + 1], "loc", None)),
+                then_body=rest, else_body=(), is_constexpr=True,
+                loc=getattr(body[i + 1], "loc", None)))
+            break
     if function_body:
         lc.storage_slots.anchor(out)
     if not top_level:
         lc.overload_terminated = saved_overload_terminated
     return tuple(out)
+
+
+def _protocol_param_post_facts(s: TpyStmt, lc: _LowerCtx,
+                               declared: dict[str, TpyType]
+                               ) -> dict[str, TpyType]:
+    """Sema's post-statement facts that narrow a protocol template
+    parameter to a strict subset of the alternatives it still has here."""
+    facts = lc.analyzer.post_stmt_facts.get(s)
+    if not facts or lc.render_concept is None:
+        return {}
+    out: dict[str, TpyType] = {}
+    # Parameter order, so the wrap's test is the same on every run.
+    for var, param_ty in lc.params:
+        fact = facts.get(var)
+        if fact is None:
+            continue
+        live = protocol_param_alternatives(declared.get(var))
+        if protocol_param_alternatives(param_ty) is None or live is None:
+            continue
+        narrowed = type_alternatives(fact)
+        if (len(narrowed) < len(live)
+                and all(any(a == b for b in live) for a in narrowed)):
+            out[var] = fact
+    return out
+
+
+def _protocol_param_concept(var: str, fact: TpyType, lc: _LowerCtx) -> str:
+    """The compile-time test that the template argument of `var` is one
+    of `fact`'s alternatives, against the DECLARED parameter's."""
+    param_ty = next((t for n, t in lc.params if n == var), None)
+    return lc.render_concept(var, type_alternatives(fact), param_ty, False)
 
 
 def _append_post_narrow(s: TpyStmt, out: list[THIRStmt], lc: _LowerCtx,
@@ -8095,6 +8146,9 @@ def _lower_nullproto_guard_if(stmt: TpyIf, var: str, lc: _LowerCtx,
     is `_lower_constexpr_if`'s -- no extraction, the guarded var
     DECLARED-retyped to its branch fact (reads deref through the pointer
     set); the shape guards mirror it too."""
+    if lc.render_concept is None:
+        note_detail("if.nullproto_no_renderer")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
     if lc.analyzer.if_branch_decls.get(stmt):
         note_detail("if.nullproto_hoist")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -8103,10 +8157,12 @@ def _lower_nullproto_guard_if(stmt: TpyIf, var: str, lc: _LowerCtx,
             or any(k != var for k in stmt.else_type_facts)):
         note_detail("if.nullproto_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    param_ty = next((t for n, t in lc.params if n == var), None)
     cond = THIRConceptTest(
         result_type=BOOL,
-        cpp=(f"!std::same_as<{protocol_param_template_name(var)}, "
-             f"std::nullptr_t>"),
+        cpp=lc.render_concept(
+            var, tuple(a for a in protocol_param_alternatives(param_ty) or ()
+                       if a is not NONE), param_ty, False),
         loc=getattr(stmt.condition, "loc", None))
     then_body, else_body = _lower_constexpr_branches(
         stmt, var, lc, declared, loop_depth=loop_depth)
@@ -8139,7 +8195,7 @@ def _lower_constexpr_if(stmt: TpyIf, info, lc: _LowerCtx,
     # The nullptr_t special keys the RAW param type, never the
     # branch-retyped binding.
     param_ty = next((t for n, t in lc.params if n == var), None)
-    cpp = lc.render_concept(var, check_type, param_ty, negated)
+    cpp = lc.render_concept(var, (check_type,), param_ty, negated)
     cond = THIRConceptTest(result_type=BOOL, cpp=cpp,
                            loc=getattr(stmt.condition, "loc", None))
     then_body, else_body = _lower_constexpr_branches(
@@ -13252,15 +13308,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     or any(k != cxa_var for k in stmt.then_type_facts)):
                 raise ThirUnsupported("stmt.assert")
             _witness("assert.protocol_concept")
-            cond = THIRConceptTest(
+            # The failing test, compile-time like the concept: in its own
+            # `if constexpr` the raise is all a failing instantiation keeps,
+            # so g++ sees no path off the end of a non-void function there.
+            fails = THIRConceptTest(
                 result_type=BOOL,
                 cpp=lc.render_concept(
-                    cxa_var, cxa_type,
+                    cxa_var, (cxa_type,),
                     next((t for n, t in lc.params if n == cxa_var), None),
-                    cxa_neg),
+                    not cxa_neg),
                 loc=getattr(stmt.condition, "loc", None))
             if cxa_var in stmt.then_type_facts:
                 declared[cxa_var] = stmt.then_type_facts[cxa_var]
+            raise_ = THIRAssert(
+                condition=THIRLiteral(result_type=BOOL, value=False,
+                                      loc=fails.loc),
+                message=msg, fold_constant=True, loc=loc)
+            return THIRIf(condition=fails, then_body=(raise_,),
+                          else_body=(), is_constexpr=True, loc=loc)
         else:
             if (stmt.then_type_facts
                     and not _optional_narrow_facts_ok(

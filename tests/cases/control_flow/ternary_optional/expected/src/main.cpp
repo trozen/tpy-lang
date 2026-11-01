@@ -29,14 +29,14 @@ std::optional<std::string> none_or_value(bool flag) {
 //     # Common pattern: provide a default for Optional
 //     return val if val is not None else "default"
 std::string with_default(std::optional<std::string_view> val) {
-    return std::string((((val.has_value())) ? ((*val)) : ("default")));
+    return std::string((((val.has_value())) ? ((*val)) : (std::string_view("default"))));
 }
 
 // def truthy_narrowing(s: Optional[str]) -> str:
 //     # Truthy condition narrows Optional[str] to str in then-branch
 //     return s if s else "empty"
 std::string truthy_narrowing(std::optional<std::string_view> s) {
-    return std::string(((::tpy::is_truthy(s)) ? ((*s)) : ("empty")));
+    return std::string(((::tpy::is_truthy(s)) ? ((*s)) : (std::string_view("empty"))));
 }
 
 // def main() -> None:

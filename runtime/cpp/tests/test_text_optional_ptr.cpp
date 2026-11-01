@@ -6,10 +6,12 @@
  * its pointee, never its address; a union's null pointer alternative is
  * None; an optional or pointer whose payload is a container reaches the
  * container's own overload, declared after the optional / pointer ones
- * (late dispatch); a char pointer is a C string and no `__str__(T*)`
- * candidate; print_optional over a pointer streams through the Formatter it
- * is given, so an 8-bit int prints as a number, and with none (a generic
- * `T`) it still prints a bool, a float or an 8-bit int as Python does.
+ * (late dispatch); a char pointer is a pointer to one char -- its text,
+ * repr, hash and print read the pointee only -- and a string literal (a
+ * `const char[N]` array) is the only C string; print_optional over a
+ * pointer streams through the Formatter it is given, so an 8-bit int prints
+ * as a number, and with none (a generic `T`) it still prints a bool, a float
+ * or an 8-bit int as Python does.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -73,8 +75,36 @@ int main() {
     int32_t i = 7;
     check(::tpy::__str__(&i) == "7", "__str__(int*) is the number, not the address");
 
-    // A char pointer is a C string, never a one-char pointee.
-    check(::tpy::__str__(static_cast<const char*>("ab")) == "ab", "__str__(const char*) is the C string");
+    // A char pointer is a one-char pointee; only a literal array is a C string.
+    char ch = 'x';
+    char* chp = &ch;
+    char* cnull = nullptr;
+    check(::tpy::__str__(chp) == "x", "__str__(char*) is the pointee");
+    check(::tpy::repr_of(chp) == "'x'", "repr_of(char*) is the pointee's repr");
+    check(::tpy::__str__(cnull) == "None", "__str__(char*) null is None");
+    check(::tpy::__str__(static_cast<const char*>("ab")) == "a", "__str__(const char*) is one char");
+    check(::tpy::__str__("ab") == "ab", "__str__ of a literal is the string");
+    check(::tpy::repr_of("ab") == "'ab'", "repr_of of a literal is quoted");
+    check(::tpy::__len__("ab") == 2, "__len__ of a literal is its length");
+
+    // A char followed by non-NUL bytes: a C-string reading would run on
+    // into the tail, a pointee reading stops at the one char.
+    struct {
+        char c;
+        char tail[7];
+    } run{'x', {'y', 'y', 'y', 'y', 'y', 'y', 'y'}};
+    char* runp = &run.c;
+    check(::tpy::__str__(runp) == "x", "__str__(char*) reads one char");
+    check(::tpy::__hash__(runp) == ::tpy::__hash__('x'), "__hash__(char*) hashes the pointee");
+    check(::tpy::__hash__(cnull) == ::tpy::__hash__(std::monostate{}), "__hash__(null char*) is None's");
+    check(streamed(::tpy::ValuePrinter<char*>(runp)) == "x", "ValuePrinter(char*) prints the pointee");
+    check(streamed(::tpy::ValuePrinter<char*>(cnull)) == "None", "ValuePrinter(null char*) is None");
+    std::vector<char*> cps{runp, cnull};
+    check(streamed(::tpy::ListPrinter(cps)) == "['x', None]", "a char* element prints its pointee's repr");
+    static_assert(!::tpy::lookup_key_for<std::string, char*>, "a char* is no C-string key");
+    // An unterminated char array reads to its end, never past it.
+    const char unterminated[2] = {'a', 'b'};
+    check(::tpy::literal_view(unterminated) == "ab", "literal_view stops at the array's end");
 
     // Late dispatch: a container payload reaches the container overload.
     std::vector<int32_t> xs{1, 2};
