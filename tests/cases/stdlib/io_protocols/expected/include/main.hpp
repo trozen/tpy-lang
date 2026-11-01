@@ -12,22 +12,22 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def emit_text(fp: Writable, items: list[str]) -> None:
 template<::tpystd::tpy::Writable T_fp>
-void emit_text(T_fp& fp, const std::vector<std::string>& items);
+void emit_text(T_fp&& fp, const std::vector<std::string>& items);
 // def consume_text(fp: Readable) -> str:
 template<::tpystd::tpy::Readable T_fp>
-std::string consume_text(T_fp& fp);
+std::string consume_text(T_fp&& fp);
 // def emit_bytes(fp: BinaryWritable, chunks: list[bytes]) -> None:
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, const std::vector<::tpy::Bytes>& chunks);
+void emit_bytes(T_fp&& fp, const std::vector<::tpy::Bytes>& chunks);
 // def consume_bytes(fp: BinaryReadable) -> bytes:
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::Bytes consume_bytes(T_fp& fp);
+::tpy::Bytes consume_bytes(T_fp&& fp);
 // def rewind_and_close(fp: Seekable) -> int32:
 template<::tpystd::tpy::Seekable T_fp>
-int32_t rewind_and_close(T_fp& fp);
+int32_t rewind_and_close(T_fp&& fp);
 // def closer(fp: Closable) -> None:
 template<::tpystd::tpy::Closable T_fp>
-void closer(T_fp& fp);
+void closer(T_fp&& fp);
 // def main() -> None:
 void main();
 
@@ -36,7 +36,7 @@ void main();
 //         fp.write(s)
 //         fp.write("\n")
 template<::tpystd::tpy::Writable T_fp>
-void emit_text(T_fp& fp, const std::vector<std::string>& items) {
+void emit_text(T_fp&& fp, const std::vector<std::string>& items) {
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -49,14 +49,14 @@ void emit_text(T_fp& fp, const std::vector<std::string>& items) {
 // def consume_text(fp: Readable) -> str:
 //     return fp.read()
 template<::tpystd::tpy::Readable T_fp>
-std::string consume_text(T_fp& fp) {
+std::string consume_text(T_fp&& fp) {
     return fp.read();
 }
 // def emit_bytes(fp: BinaryWritable, chunks: list[bytes]) -> None:
 //     for b in chunks:
 //         fp.write(b)
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, const std::vector<::tpy::Bytes>& chunks) {
+void emit_bytes(T_fp&& fp, const std::vector<::tpy::Bytes>& chunks) {
     auto& __obj_0 = chunks;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -68,7 +68,7 @@ void emit_bytes(T_fp& fp, const std::vector<::tpy::Bytes>& chunks) {
 // def consume_bytes(fp: BinaryReadable) -> bytes:
 //     return fp.read()
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::Bytes consume_bytes(T_fp& fp) {
+::tpy::Bytes consume_bytes(T_fp&& fp) {
     return fp.read();
 }
 // def rewind_and_close(fp: Seekable) -> int32:
@@ -76,7 +76,7 @@ template<::tpystd::tpy::BinaryReadable T_fp>
 //     fp.seek(int32(0))  # Defaults declared in the protocol method propagate.
 //     return pos_before
 template<::tpystd::tpy::Seekable T_fp>
-int32_t rewind_and_close(T_fp& fp) {
+int32_t rewind_and_close(T_fp&& fp) {
     int32_t pos_before = fp.tell();
     fp.seek(0);
     return pos_before;
@@ -84,7 +84,7 @@ int32_t rewind_and_close(T_fp& fp) {
 // def closer(fp: Closable) -> None:
 //     fp.close()
 template<::tpystd::tpy::Closable T_fp>
-void closer(T_fp& fp) {
+void closer(T_fp&& fp) {
     fp.close();
 }
 

@@ -126,7 +126,7 @@ void free_fn(std::optional<int32_t> x, const A* o, A* p, const ::tpy::Union<int3
     std::cout << "free generic" << " " << ::tpyapp::main::gtext<int32_t>(3) << " " << ::tpyapp::main::gtext<Color>(Color::RED) << " " << ::tpyapp::main::gtext<A>(__tmp_1) << "\n" << ::tpy::check_signals;
     A __tmp_2 = A(5);
     std::cout << "free fresh" << " " << ::tpyapp::main::text(std::tuple<int32_t, std::string>{1, "a"}) << " " << ::tpyapp::main::text(__tmp_2) << " " << std::string(::tpy::__str__(std::tuple<int32_t, std::string>{1, "a"})) << "\n" << ::tpy::check_signals;
-    std::cout << "free field" << " " << std::string(::tpy::__str__(h.o)) << " " << std::string(::tpy::__str__(h.x)) << " " << std::string(::tpy::repr_of(h.pair)) << " " << ::tpyapp::main::text(h.o) << " " << ::tpyapp::main::text(auto(h.x)) << "\n" << ::tpy::check_signals;
+    std::cout << "free field" << " " << std::string(::tpy::__str__(h.o)) << " " << std::string(::tpy::__str__(h.x)) << " " << std::string(::tpy::repr_of(h.pair)) << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(h.o)) << " " << ::tpyapp::main::text(auto(h.x)) << "\n" << ::tpy::check_signals;
     std::cout << "free call" << " " << std::string(::tpy::__str__(h.get_a())) << " " << std::string(::tpy::repr_of(h.get_a())) << " " << ::tpyapp::main::text(h.get_a()) << "\n" << ::tpy::check_signals;
     std::cout << "free scalars" << " " << std::string(sv) << " " << std::string(s) << " " << std::string(::tpy::char_to_str(c)) << " " << std::string(::tpy::repr_of(c)) << " " << ::tpyapp::main::text(auto(3)) << " " << ::tpyapp::main::text(auto(sv)) << "\n" << ::tpy::check_signals;
     std::cout << "free enum" << " " << std::string(::tpy::__str__(Color::RED)) << " " << std::string(::tpy::repr_of(Color::RED)) << " " << std::string(::tpy::__str__(Num::ONE)) << " " << ::tpyapp::main::text(auto(Num::ONE)) << " " << std::format("{}", ::tpy::__str__(Color::RED)) << " " << ::tpyapp::main::rtext(auto(Color::RED)) << "\n" << ::tpy::check_signals;
@@ -320,8 +320,7 @@ void mutation() {
     ::tpyapp::main::bump_it(sh.get_box());
     std::cout << "mutation" << " " << b << " " << sh.box << " " << std::string(::tpy::repr_of(b)) << " " << ::tpyapp::main::text(sh.box) << "\n" << ::tpy::check_signals;
     CellBox cb = CellBox();
-    auto __tmp_1 = cb.cell;
-    std::cout << "replaced" << " " << ::tpyapp::main::replaced_read(__tmp_1, cb) << " " << cb.cell << "\n" << ::tpy::check_signals;
+    std::cout << "replaced" << " " << ::tpyapp::main::replaced_read(auto(cb.cell), cb) << " " << cb.cell << "\n" << ::tpy::check_signals;
     Box b2 = Box(1);
     std::cout << "replaced scalar" << " " << ::tpyapp::main::text_after(auto(b2.n), b2) << " " << b2.n << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {1};

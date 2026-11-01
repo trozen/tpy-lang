@@ -1258,23 +1258,21 @@ def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
                    materializer=contract.materializes)
 
 
-def deduced_slot(ptype: TpyType, contract: 'ParamContract', twin: TpyType,
+def deduced_slot(contract: 'ParamContract', twin: TpyType,
                  twin_contract: 'ParamContract', analyzer, *,
                  placement: SlotPlacement = SlotPlacement.STATEMENT) -> Slot:
-    """The slot a deduced protocol parameter `ptype` (`Materializer.DEDUCED`)
-    takes its argument at, as its concrete twin -- a parameter of type
-    `twin` under `twin_contract` -- takes it: at a generator or coroutine
-    factory what the twin's frame holds (`frame_member_slot`); at a call
-    the protocol's slot at the twin's type, represented as the twin's
-    parameter is (a value, a view or a reference)."""
+    """The slot a deduced protocol parameter under `contract`
+    (`Materializer.DEDUCED`) takes its argument at, as its concrete twin --
+    a parameter of type `twin` under `twin_contract` -- takes it: at a
+    generator or coroutine factory what the twin's frame holds
+    (`frame_member_slot`); at a call the twin's parameter slot (a value, a view, a reference, or the borrow
+    pointer of an Optional / a union of records)."""
     if contract.frame_captured:
         return frame_member_slot(twin, twin_contract, analyzer,
                                  placement=placement)
-    return replace(
-        param_slot(ptype, contract, analyzer, placement=placement,
-                   instantiated=twin),
-        representation=param_slot(twin, twin_contract, analyzer,
-                                  placement=placement).representation)
+    return replace(param_slot(twin, twin_contract, analyzer,
+                              placement=placement),
+                   materializer=Materializer.DEDUCED)
 
 
 def frame_member_slot(twin: TpyType, contract: 'ParamContract', analyzer, *,

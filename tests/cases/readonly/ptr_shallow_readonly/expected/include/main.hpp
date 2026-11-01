@@ -118,7 +118,7 @@ int32_t value_total(const ::tpy::ordered_map<int32_t, int32_t>& d);
 __coro_value_await value_await(GV<int32_t>& g);
 // def value_proto(p: Getter[int32]) -> int32:
 template<Getter<int32_t> T_p>
-int32_t value_proto(T_p& p);
+int32_t value_proto(T_p&& p);
 // def value_dyn(p: DGetter[int32]) -> int32:
 int32_t value_dyn(DGetter<int32_t>& p);
 // def poke_ro(v: readonly[V]) -> None:
@@ -1500,7 +1500,7 @@ inline RBox<T>::RBox(::tpy::readonly_form_t<T> v) : val(v) {}
 //     y = p.get()
 //     return x + y  # tpyc: ok
 template<Getter<int32_t> T_p>
-int32_t value_proto(T_p& p) {
+int32_t value_proto(T_p&& p) {
     int32_t x = p.get();
     int32_t y = p.get();
     return (::tpy::add_check<int32_t>(x, y));

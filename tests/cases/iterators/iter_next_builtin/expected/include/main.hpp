@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def consume_two(it: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-void consume_two(T_it& it);
+void consume_two(T_it&& it);
 // def main() -> None:
 void main();
 
@@ -80,7 +80,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
 //     except StopIteration:
 //         print("stopped early")
 template<::tpystd::typing::Iterator<int32_t> T_it>
-void consume_two(T_it& it) {
+void consume_two(T_it&& it) {
     int32_t a;
     int32_t b;
     {

@@ -20,7 +20,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
-void use_calc(T_c& c);
+void use_calc(T_c&& c);
 // def main() -> None:
 void main();
 
@@ -70,7 +70,7 @@ inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
 //     result2 = c.multiply(6, 7)
 //     print(result2)
 template<Calculator T_c>
-void use_calc(T_c& c) {
+void use_calc(T_c&& c) {
     int32_t result1 = c.add(10);
     std::cout << result1 << "\n" << ::tpy::check_signals;
     int32_t result2 = c.multiply(6, 7);

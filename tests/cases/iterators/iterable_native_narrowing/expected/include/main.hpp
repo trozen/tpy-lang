@@ -12,15 +12,15 @@ inline constexpr std::string_view __name__ = "__main__";
 // def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_fast(T_it& it);
+int32_t sum_fast(T_it&& it);
 // def sum_nested(it: Iterable[int32] | NativeIterable[int32], flag: bool) -> int32:
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_nested(T_it& it, bool flag);
+int32_t sum_nested(T_it&& it, bool flag);
 // def sum_elif(kind: int32, it: Iterable[int32] | NativeIterable[int32]) -> int32:
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_elif(int32_t kind, T_it& it);
+int32_t sum_elif(int32_t kind, T_it&& it);
 // def main() -> None:
 void main();
 
@@ -37,9 +37,9 @@ void main();
 //     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_fast(T_it& it) {
+int32_t sum_fast(T_it&& it) {
     int32_t total = 0;
-    if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
+    if constexpr (::tpy::NativeIterable<std::remove_cvref_t<T_it>, int32_t>) {
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -78,9 +78,9 @@ int32_t sum_fast(T_it& it) {
 //     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_nested(T_it& it, bool flag) {
+int32_t sum_nested(T_it&& it, bool flag) {
     int32_t total = 0;
-    if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
+    if constexpr (::tpy::NativeIterable<std::remove_cvref_t<T_it>, int32_t>) {
         if (flag) {
             auto& __obj_0 = it;
             auto __beg_0 = __obj_0.begin();
@@ -126,11 +126,11 @@ int32_t sum_nested(T_it& it, bool flag) {
 //     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_elif(int32_t kind, T_it& it) {
+int32_t sum_elif(int32_t kind, T_it&& it) {
     int32_t total = 0;
     if ((kind == 0)) {
         total = 1;
-    } else if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
+    } else if constexpr (::tpy::NativeIterable<std::remove_cvref_t<T_it>, int32_t>) {
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t maybe_add(std::optional<int32_t> x, int32_t y);
 // def show(item: Printable) -> None:
 template<Printable T_item>
-void show(T_item& item);
+void show(T_item&& item);
 // def main():
 void main();
 
@@ -57,7 +57,7 @@ inline int32_t Wrapper::get_val() const {
 // def show(item: Printable) -> None:
 //     print(item.get_val())
 template<Printable T_item>
-void show(T_item& item) {
+void show(T_item&& item) {
     std::cout << item.get_val() << "\n" << ::tpy::check_signals;
 }
 

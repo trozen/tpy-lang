@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def consume(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void consume(T_items& items);
+void consume(T_items&& items);
 // def test_lazy_variable_count() -> None:
 void test_lazy_variable_count();
 // def test_lazy_for_loop() -> None:
@@ -27,7 +27,7 @@ void test_print_lazy_repeat();
 //         total += v
 //     print(total)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void consume(T_items& items) {
+void consume(T_items&& items) {
     int32_t total = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

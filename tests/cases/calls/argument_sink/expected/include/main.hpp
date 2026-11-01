@@ -280,7 +280,7 @@ __gen_gen_args gen_args(H& h, std::string_view s);
 __coro_async_args async_args(H& h);
 // def measure(s: Shape) -> int32:
 template<Shape T_s>
-int32_t measure(T_s& s);
+int32_t measure(T_s&& s);
 // def measure_dyn(s: DynShape) -> int32:
 int32_t measure_dyn(DynShape& s);
 // def apply_fn(f: Callable[[A], int32], a: A) -> int32:
@@ -1993,7 +1993,7 @@ bool wrap(std::vector<T>& xs) {
 // def measure(s: Shape) -> int32:
 //     return s.area()
 template<Shape T_s>
-int32_t measure(T_s& s) {
+int32_t measure(T_s&& s) {
     return s.area();
 }
 

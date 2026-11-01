@@ -25,7 +25,7 @@ void main();
 //         print("not sized")
 template<::tpystd::typing::Sized T_items>
 void describe(const T_items& items) {
-    if constexpr (::tpystd::typing::Sized<T_items>) {
+    if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "not sized" << "\n" << ::tpy::check_signals;
@@ -38,7 +38,7 @@ void describe(const T_items& items) {
 //         print("sized:", len(items))
 template<::tpystd::typing::Sized T_items>
 void check_not(const T_items& items) {
-    if constexpr ((!(::tpystd::typing::Sized<T_items>))) {
+    if constexpr ((!(::tpystd::typing::Sized<std::remove_cvref_t<T_items>>))) {
         std::cout << "not sized" << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;

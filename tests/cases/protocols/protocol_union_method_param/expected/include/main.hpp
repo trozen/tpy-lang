@@ -39,7 +39,7 @@ struct Processor {
     // def process(self, items: Measurable | Walkable) -> None:
     template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
-    void process(T_items& items);
+    void process(T_items&& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
@@ -100,10 +100,10 @@ inline ::tpy::BigInt Walker::walk() const {
 //         self.count = items.walk()
 template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
-inline void Processor::process(T_items& items) {
-    if constexpr (Measurable<T_items>) {
+inline void Processor::process(T_items&& items) {
+    if constexpr (Measurable<std::remove_cvref_t<T_items>>) {
         this->count = items.measure();
-    } else if constexpr (Walkable<T_items>) {
+    } else if constexpr (Walkable<std::remove_cvref_t<T_items>>) {
         this->count = items.walk();
     }
 }

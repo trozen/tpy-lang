@@ -44,7 +44,7 @@ std::string describe__Dog(const Dog& x);
 // @dispatch
 // def describe(x: Animal) -> str:
 template<Animal T_x>
-std::string describe__Animal(T_x& x);
+std::string describe__Animal(T_x&& x);
 // def concrete_section() -> None:
 void concrete_section();
 // def protocol_only_section() -> None:
@@ -52,17 +52,17 @@ void protocol_only_section();
 // @dispatch
 // def move(x: Walker) -> str:
 template<Walker T_x>
-std::string move__Walker(T_x& x);
+std::string move__Walker(T_x&& x);
 // @dispatch
 // def move(x: Swimmer) -> str:
 template<Swimmer T_x>
-std::string move__Swimmer(T_x& x);
+std::string move__Swimmer(T_x&& x);
 // def two_protocols_section() -> None:
 void two_protocols_section();
 // @dispatch
 // def count(v: Iterable[int]) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_v>
-std::string count__Iterable_int(T_v& v);
+std::string count__Iterable_int(T_v&& v);
 // @dispatch
 // def count(v: HasLen) -> str:
 template<HasLen T_v>
@@ -200,21 +200,21 @@ inline ::tpy::BigInt Fish::swim() const {
 // def describe(x: Animal) -> str:
 //     return "animal " + x.name()
 template<Animal T_x>
-std::string describe__Animal(T_x& x) {
+std::string describe__Animal(T_x&& x) {
     return (::tpy::str_concat("animal ", x.name()));
 }
 // @dispatch
 // def move(x: Walker) -> str:
 //     return "walks on " + str(x.walk())
 template<Walker T_x>
-std::string move__Walker(T_x& x) {
+std::string move__Walker(T_x&& x) {
     return (::tpy::str_concat("walks on ", (x.walk()).to_string()));
 }
 // @dispatch
 // def move(x: Swimmer) -> str:
 //     return "swims with " + str(x.swim())
 template<Swimmer T_x>
-std::string move__Swimmer(T_x& x) {
+std::string move__Swimmer(T_x&& x) {
     return (::tpy::str_concat("swims with ", (x.swim()).to_string()));
 }
 // @dispatch
@@ -224,7 +224,7 @@ std::string move__Swimmer(T_x& x) {
 //         n += 1
 //     return "iterable " + str(n)
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_v>
-std::string count__Iterable_int(T_v& v) {
+std::string count__Iterable_int(T_v&& v) {
     int32_t n = 0;
     auto& __src_0 = v;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

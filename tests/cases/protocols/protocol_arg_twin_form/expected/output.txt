@@ -1,0 +1,35 @@
+written local 1 1
+written global 1 9
+written field 1
+written fresh 3
+written callee method 2
+written ctor 1 1
+written method 1
+written gen 4
+written earlier print 9 9
+written callback 1 9
+written while 2
+written lambda [1, 2, 3]
+written guard 1
+written fstr 1
+written and True 1
+field A(1)
+field none None
+method A(1)
+loop opt A(3)
+loop opt None
+loop union A(4)
+loop union B(5)
+fresh plain A(5) None B(6)
+fresh gen opt A(5)
+fresh gen union B(6)
+async field A(1)
+async fresh A(5) B(6)
+written async 1 2
+concrete gen A(5)
+reseat None
+touch A(7)
+module field A(1)
+module loop A(30)
+module loop None
+module written 9

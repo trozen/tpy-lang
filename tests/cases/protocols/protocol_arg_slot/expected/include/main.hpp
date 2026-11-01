@@ -69,19 +69,19 @@ struct __coro_async_grow;
 
 // def f_area(x: HasArea) -> int32:
 template<HasArea T_x>
-int32_t f_area(T_x& x);
+int32_t f_area(T_x&& x);
 // def f_grow(x: Growable) -> None:
 template<Growable T_x>
-void f_grow(T_x& x);
+void f_grow(T_x&& x);
 // def outer_grow(x: Growable) -> None:
 template<Growable T_x>
-void outer_grow(T_x& x);
+void outer_grow(T_x&& x);
 // def sum_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c);
 // def replaced_read(x: HasArea, b: NumBox) -> int32:
 template<HasArea T_x>
-int32_t replaced_read(T_x& x, NumBox& b);
+int32_t replaced_read(T_x&& x, NumBox& b);
 // def gen_grow(x: Growable) -> Iterator[int32]:
 template <Growable T_x>
 __gen_gen_grow<T_x> gen_grow(T_x&& x);
@@ -91,26 +91,26 @@ __coro_async_grow<T_x> async_grow(T_x&& x);
 // @overload
 // def ov_grow(x: Growable) -> int32: ...
 template<Growable T_x>
-int32_t ov_grow__Growable(T_x& x);
+int32_t ov_grow__Growable(T_x&& x);
 // @overload
 // def ov_grow(x: Growable, n: int32) -> int32: ...
 template<Growable T_x>
-int32_t ov_grow__Growable__int32(T_x& x, int32_t n);
+int32_t ov_grow__Growable__int32(T_x&& x, int32_t n);
 // def through_writes(x: WritesW) -> int32:
 template<WritesW T_x>
-int32_t through_writes(T_x& x);
+int32_t through_writes(T_x&& x);
 // def through_sees(x: SeesW) -> int32:
 template<SeesW T_x>
 int32_t through_sees(const T_x& x);
 // def bump_span(xs: Spannable[Cell]) -> None:
 template<::tpystd::tpy::Spannable<Cell> T_xs>
-void bump_span(T_xs& xs);
+void bump_span(T_xs&& xs);
 // def read_span(xs: Spannable[Cell]) -> int32:
 template<::tpystd::tpy::Spannable<Cell> T_xs>
 int32_t read_span(const T_xs& xs);
 // def first[T: AnyFixedInt](xs: Spannable[T]) -> T:
 template<::tpy::AnyFixedInt T, ::tpystd::tpy::Spannable<T> T_xs>
-::tpy::val_or_ref_t<T> first(T_xs& xs);
+::tpy::val_or_ref_t<T> first(T_xs&& xs);
 // @overload
 // @readonly
 // def ro_area(x: HasArea) -> int32: ...
@@ -286,16 +286,16 @@ struct Meter {
 
     // def area_of(self, x: HasArea) -> int32:
     template<HasArea T_x>
-    int32_t area_of(T_x& x) const;
+    int32_t area_of(T_x&& x) const;
 
     // def grow_it(self, x: Growable) -> None:
     template<Growable T_x>
-    void grow_it(T_x& x) const;
+    void grow_it(T_x&& x) const;
 
     // @staticmethod
     // def s_grow(x: Growable) -> None:
     template<Growable T_x>
-    static void s_grow(T_x& x);
+    static void s_grow(T_x&& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Meter";
 };
 
@@ -312,7 +312,7 @@ struct Grower {
     // def __init__(self, x: Growable) -> None:
     Grower() = default;
     template<Growable T_x>
-    explicit Grower(T_x& x);
+    explicit Grower(T_x&& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grower";
 };
 
@@ -332,7 +332,7 @@ struct Tagged {
 
     // def grow_with(self, x: Growable) -> int32:
     template<Growable T_x>
-    int32_t grow_with(T_x& x) const;
+    int32_t grow_with(T_x&& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -351,16 +351,16 @@ struct OvMeter {
     // @overload
     // def area_of(self, x: HasArea) -> int32: ...
     template<HasArea T_x>
-    int32_t area_of__HasArea(T_x& x);
+    int32_t area_of__HasArea(T_x&& x);
     template<HasArea T_x>
-    int32_t area_of(T_x& x);
+    int32_t area_of(T_x&& x);
 
     // @overload
     // def area_of(self, x: HasArea, n: int32) -> int32: ...
     template<HasArea T_x>
-    int32_t area_of__HasArea__int32(T_x& x, int32_t n);
+    int32_t area_of__HasArea__int32(T_x&& x, int32_t n);
     template<HasArea T_x>
-    int32_t area_of(T_x& x, int32_t n);
+    int32_t area_of(T_x&& x, int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.OvMeter";
 };
 
@@ -714,7 +714,7 @@ inline int32_t Loud::area() const {
 // def area_of(self, x: HasArea) -> int32:
 //     return x.area()
 template<HasArea T_x>
-inline int32_t Meter::area_of(T_x& x) const {
+inline int32_t Meter::area_of(T_x&& x) const {
     return x.area();
 }
 
@@ -723,7 +723,7 @@ inline int32_t Meter::area_of(T_x& x) const {
 //     # parameter is not.
 //     x.grow()
 template<Growable T_x>
-inline void Meter::grow_it(T_x& x) const {
+inline void Meter::grow_it(T_x&& x) const {
     x.grow();
 }
 
@@ -731,7 +731,7 @@ inline void Meter::grow_it(T_x& x) const {
 // def s_grow(x: Growable) -> None:
 //     x.grow()
 template<Growable T_x>
-inline void Meter::s_grow(T_x& x) {
+inline void Meter::s_grow(T_x&& x) {
     x.grow();
 }
 
@@ -740,7 +740,7 @@ inline void Meter::s_grow(T_x& x) {
 //     x.grow()
 //     self.grown = 1
 template<Growable T_x>
-inline Grower::Grower(T_x& x) {
+inline Grower::Grower(T_x&& x) {
     x.grow();
     this->grown = 1;
 }
@@ -755,7 +755,7 @@ inline Tagged<T>::Tagged() : items(std::vector<T>{}) {}
 //     return len(self.items)
 template<typename T>
 template<Growable T_x>
-inline int32_t Tagged<T>::grow_with(T_x& x) const {
+inline int32_t Tagged<T>::grow_with(T_x&& x) const {
     x.grow();
     return ::tpy::__len__(this->items);
 }
@@ -763,25 +763,25 @@ inline int32_t Tagged<T>::grow_with(T_x& x) const {
 // @overload
 // def area_of(self, x: HasArea) -> int32: ...
 template<HasArea T_x>
-inline int32_t OvMeter::area_of__HasArea(T_x& x) {
+inline int32_t OvMeter::area_of__HasArea(T_x&& x) {
     int32_t n = 0;
     return (::tpy::add_check<int32_t>(x.area(), n));
 }
 
 template<HasArea T_x>
-inline int32_t OvMeter::area_of(T_x& x) {
+inline int32_t OvMeter::area_of(T_x&& x) {
     return this->area_of__HasArea(x);
 }
 
 // @overload
 // def area_of(self, x: HasArea, n: int32) -> int32: ...
 template<HasArea T_x>
-inline int32_t OvMeter::area_of__HasArea__int32(T_x& x, int32_t n) {
+inline int32_t OvMeter::area_of__HasArea__int32(T_x&& x, int32_t n) {
     return (::tpy::add_check<int32_t>(x.area(), n));
 }
 
 template<HasArea T_x>
-inline int32_t OvMeter::area_of(T_x& x, int32_t n) {
+inline int32_t OvMeter::area_of(T_x&& x, int32_t n) {
     return this->area_of__HasArea__int32(x, n);
 }
 
@@ -822,20 +822,20 @@ inline int32_t Lens::m_len(const T_x& x) const {
 // def f_area(x: HasArea) -> int32:
 //     return x.area()
 template<HasArea T_x>
-int32_t f_area(T_x& x) {
+int32_t f_area(T_x&& x) {
     return x.area();
 }
 // def f_grow(x: Growable) -> None:
 //     x.grow()
 template<Growable T_x>
-void f_grow(T_x& x) {
+void f_grow(T_x&& x) {
     x.grow();
 }
 // def outer_grow(x: Growable) -> None:
 //     # Nested callee: the parameter is handed on to another protocol slot.
 //     f_grow(x)
 template<Growable T_x>
-void outer_grow(T_x& x) {
+void outer_grow(T_x&& x) {
     ::tpyapp::main::f_grow(x);
 }
 // def sum_span(c: Spannable[int32]) -> int32:
@@ -861,14 +861,14 @@ int32_t sum_span(const T_c& c) {
 //     b.replace()
 //     return x.area()
 template<HasArea T_x>
-int32_t replaced_read(T_x& x, NumBox& b) {
+int32_t replaced_read(T_x&& x, NumBox& b) {
     b.replace();
     return x.area();
 }
 // @overload
 // def ov_grow(x: Growable) -> int32: ...
 template<Growable T_x>
-int32_t ov_grow__Growable(T_x& x) {
+int32_t ov_grow__Growable(T_x&& x) {
     int32_t n = 1;
     x.grow();
     return n;
@@ -877,7 +877,7 @@ int32_t ov_grow__Growable(T_x& x) {
 // @overload
 // def ov_grow(x: Growable, n: int32) -> int32: ...
 template<Growable T_x>
-int32_t ov_grow__Growable__int32(T_x& x, int32_t n) {
+int32_t ov_grow__Growable__int32(T_x&& x, int32_t n) {
     x.grow();
     return n;
 }
@@ -885,7 +885,7 @@ int32_t ov_grow__Growable__int32(T_x& x, int32_t n) {
 // def through_writes(x: WritesW) -> int32:
 //     return x.width()
 template<WritesW T_x>
-int32_t through_writes(T_x& x) {
+int32_t through_writes(T_x&& x) {
     return x.width();
 }
 // def through_sees(x: SeesW) -> int32:
@@ -900,7 +900,7 @@ int32_t through_sees(const T_x& x) {
 //     for q in xs:
 //         q.w += 1
 template<::tpystd::tpy::Spannable<Cell> T_xs>
-void bump_span(T_xs& xs) {
+void bump_span(T_xs&& xs) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -933,7 +933,7 @@ int32_t read_span(const T_xs& xs) {
 //         return q
 //     raise ValueError("empty")
 template<::tpy::AnyFixedInt T, ::tpystd::tpy::Spannable<T> T_xs>
-::tpy::val_or_ref_t<T> first(T_xs& xs) {
+::tpy::val_or_ref_t<T> first(T_xs&& xs) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

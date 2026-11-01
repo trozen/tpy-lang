@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_items(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_items(T_items& items);
+int32_t sum_items(T_items&& items);
 // def main() -> None:
 void main();
 
@@ -21,7 +21,7 @@ void main();
 //         total += x
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_items(T_items& items) {
+int32_t sum_items(T_items&& items) {
     int32_t total = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

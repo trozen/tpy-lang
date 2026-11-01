@@ -44,13 +44,13 @@ template<::tpystd::typing::Iterable<std::string> T_xs>
 void show(const T_xs& xs);
 // def proto_comp(xs: Iterable[int32]) -> Own[list[int32]]:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::vector<int32_t> proto_comp(T_xs& xs);
+std::vector<int32_t> proto_comp(T_xs&& xs);
 // def ups(xs: Iterable[str]) -> Own[list[str]]:
 template<::tpystd::typing::Iterable<std::string> T_xs>
-std::vector<std::string> ups(T_xs& xs);
+std::vector<std::string> ups(T_xs&& xs);
 // def drain(it: Iterator[str]) -> Own[list[str]]:
 template<::tpystd::typing::Iterator<std::string> T_it>
-std::vector<std::string> drain(T_it& it);
+std::vector<std::string> drain(T_it&& it);
 // def param_comp(rb: RBag) -> Own[list[int32]]:
 std::vector<int32_t> param_comp(RBag& rb);
 // def ro_comp(b: readonly[Bag]) -> Own[list[str]]:
@@ -796,7 +796,7 @@ void show(const T_xs& xs) {
 //     # an Iterable param handed a stored-iterator record: the member advances
 //     return [x for x in xs]  # tpyc: ok
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::vector<int32_t> proto_comp(T_xs& xs) {
+std::vector<int32_t> proto_comp(T_xs&& xs) {
     return ({
         std::vector<int32_t> __result;
         auto& __src_0 = xs;
@@ -814,7 +814,7 @@ std::vector<int32_t> proto_comp(T_xs& xs) {
 //     # an Iterable param as a comprehension source
 //     return [s.upper() for s in xs]  # tpyc: ok
 template<::tpystd::typing::Iterable<std::string> T_xs>
-std::vector<std::string> ups(T_xs& xs) {
+std::vector<std::string> ups(T_xs&& xs) {
     return ({
         std::vector<std::string> __result;
         auto& __src_0 = xs;
@@ -832,7 +832,7 @@ std::vector<std::string> ups(T_xs& xs) {
 //     # an Iterator param as a comprehension source
 //     return [s for s in it]  # tpyc: ok
 template<::tpystd::typing::Iterator<std::string> T_it>
-std::vector<std::string> drain(T_it& it) {
+std::vector<std::string> drain(T_it&& it) {
     return ({
         std::vector<std::string> __result;
         auto& __src_0 = it;

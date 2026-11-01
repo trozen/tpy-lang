@@ -44,7 +44,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def use_user_comparable(x: Comparable) -> int32:
 template<Comparable T_x>
-int32_t use_user_comparable(T_x& x);
+int32_t use_user_comparable(T_x&& x);
 // def main() -> None:
 void main();
 
@@ -80,7 +80,7 @@ inline int32_t Widget::compare_to() const {
 // def use_user_comparable(x: Comparable) -> int32:
 //     return x.compare_to()
 template<Comparable T_x>
-int32_t use_user_comparable(T_x& x) {
+int32_t use_user_comparable(T_x&& x) {
     return x.compare_to();
 }
 

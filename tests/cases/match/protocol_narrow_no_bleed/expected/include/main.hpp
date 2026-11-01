@@ -11,11 +11,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def iter_sum(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t iter_sum(T_items& items);
+int32_t iter_sum(T_items&& items);
 // def process(items: Spannable[int32] | Iterable[int32], tag: str) -> int32:
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t process(T_items& items, std::string_view tag);
+int32_t process(T_items&& items, std::string_view tag);
 // def main() -> None:
 void main();
 
@@ -25,7 +25,7 @@ void main();
 //         total += y
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t iter_sum(T_items& items) {
+int32_t iter_sum(T_items&& items) {
     int32_t total = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -60,10 +60,10 @@ int32_t iter_sum(T_items& items) {
 //             return -2
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t process(T_items& items, std::string_view tag) {
+int32_t process(T_items&& items, std::string_view tag) {
     auto& __match_subject_1 = tag;
     if (__match_subject_1 == "span_path") {
-        if (!(::tpystd::tpy::Spannable<T_items, int32_t>)) ::tpy::raise_assertion_error();
+        if (!(::tpystd::tpy::Spannable<std::remove_cvref_t<T_items>, int32_t>)) ::tpy::raise_assertion_error();
         std::span<const int32_t> s = ::tpy::as_span(items);
         int32_t total = 0;
         auto& __obj_0 = s;
@@ -75,7 +75,7 @@ int32_t process(T_items& items, std::string_view tag) {
         }
         return total;
     } else if (__match_subject_1 == "iter_path") {
-        if constexpr (::tpystd::typing::Iterable<T_items, int32_t>) {
+        if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, int32_t>) {
             return ::tpyapp::main::iter_sum(items);
         }
         return -1;

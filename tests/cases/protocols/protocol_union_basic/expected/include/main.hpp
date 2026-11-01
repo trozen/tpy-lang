@@ -28,9 +28,9 @@ void main();
 template<typename T_items>
   requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 void describe(const T_items& items) {
-    if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
+    if constexpr (::tpystd::typing::Sequence<std::remove_cvref_t<T_items>, ::tpy::BigInt>) {
         std::cout << ::tpy::__getitem__(items, 0) << "\n" << ::tpy::check_signals;
-    } else if constexpr (::tpystd::typing::Sized<T_items>) {
+    } else if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
         std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     }
 }
@@ -43,9 +43,9 @@ void describe(const T_items& items) {
 template<typename T_items>
   requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt get_value(const T_items& items) {
-    if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
+    if constexpr (::tpystd::typing::Sequence<std::remove_cvref_t<T_items>, ::tpy::BigInt>) {
         return ::tpy::__getitem__(items, 0);
-    } else if constexpr (::tpystd::typing::Sized<T_items>) {
+    } else if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
         return ::tpy::BigInt(::tpy::__len__(items));
     }
     return ::tpy::BigInt(0);

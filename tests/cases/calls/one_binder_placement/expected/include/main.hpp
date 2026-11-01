@@ -107,10 +107,10 @@ std::string half__float(double x);
 std::string half__str(std::string_view x);
 // def keyed(p: Keyed) -> int32:
 template<Keyed T_p>
-int32_t keyed(T_p& p);
+int32_t keyed(T_p&& p);
 // def keyed_at(p: KeyedInt) -> int32:
 template<KeyedInt T_p>
-int32_t keyed_at(T_p& p);
+int32_t keyed_at(T_p&& p);
 // def free_function() -> None:
 void free_function();
 // def method() -> None:
@@ -509,13 +509,13 @@ std::string choose__T(::tpy::param_val_or_ref_t<T> x) {
 // def keyed(p: Keyed) -> int32:
 //     return p.m(k=1)
 template<Keyed T_p>
-int32_t keyed(T_p& p) {
+int32_t keyed(T_p&& p) {
     return p.m(1);
 }
 // def keyed_at(p: KeyedInt) -> int32:
 //     return p.m(k=2)
 template<KeyedInt T_p>
-int32_t keyed_at(T_p& p) {
+int32_t keyed_at(T_p&& p) {
     return p.m(2);
 }
 // # Type section: a nested def naming its enclosing function's type parameter.

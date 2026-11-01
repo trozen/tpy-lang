@@ -115,10 +115,10 @@ template<::tpystd::tpy::Stringable T>
 std::string gtext(::tpy::param_val_or_ref_t<T> v);
 // def bump_it(b: Bumpable) -> None:
 template<Bumpable T_b>
-void bump_it(T_b& b);
+void bump_it(T_b&& b);
 // def replaced_read(c: Touchable, b: CellBox) -> int32:
 template<Touchable T_c>
-int32_t replaced_read(T_c& c, CellBox& b);
+int32_t replaced_read(T_c&& c, CellBox& b);
 // def text_after(v: Stringable, b: Box) -> str:
 template<::tpystd::tpy::Stringable T_v>
 std::string text_after(const T_v& v, Box& b);
@@ -1026,7 +1026,7 @@ std::string gtext(::tpy::param_val_or_ref_t<T> v) {
 // def bump_it(b: Bumpable) -> None:
 //     b.bump()
 template<Bumpable T_b>
-void bump_it(T_b& b) {
+void bump_it(T_b&& b) {
     b.bump();
 }
 // def replaced_read(c: Touchable, b: CellBox) -> int32:
@@ -1034,7 +1034,7 @@ void bump_it(T_b& b) {
 //     b.replace()
 //     return c.touch()
 template<Touchable T_c>
-int32_t replaced_read(T_c& c, CellBox& b) {
+int32_t replaced_read(T_c&& c, CellBox& b) {
     b.replace();
     return c.touch();
 }

@@ -77,7 +77,7 @@ template<typename T>
 void keep_rebound(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> z);
 // def keep_next[T](it: Iterator[T], xs: list[T]) -> None:
 template<typename T, ::tpystd::typing::Iterator<T> T_it>
-void keep_next(T_it& it, std::vector<T>& xs);
+void keep_next(T_it&& it, std::vector<T>& xs);
 // def mixed_literal(b: A) -> None:
 void mixed_literal(A& b);
 // def lift_one(a: A) -> Own[list[tuple[A, int32]]]:
@@ -459,7 +459,7 @@ void keep_rebound(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::par
 //     except StopIteration:
 //         pass
 template<typename T, ::tpystd::typing::Iterator<T> T_it>
-void keep_next(T_it& it, std::vector<T>& xs) {
+void keep_next(T_it&& it, std::vector<T>& xs) {
     std::optional<T> r;
     {
         {

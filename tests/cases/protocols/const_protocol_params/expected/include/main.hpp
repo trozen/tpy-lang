@@ -49,10 +49,10 @@ template<Measurable T_p>
 int32_t get_measure(const T_p& p);
 // def double_resize(p: Resizable) -> int32:
 template<Resizable T_p>
-int32_t double_resize(T_p& p);
+int32_t double_resize(T_p&& p);
 // def copy_measure(src: Resizable, dst: Resizable) -> None:
 template<Resizable T_src, Resizable T_dst>
-void copy_measure(const T_src& src, T_dst& dst);
+void copy_measure(const T_src& src, T_dst&& dst);
 // def print_area(s: Shape) -> None:
 void print_area(const Shape& s);
 // def main() -> None:
@@ -165,7 +165,7 @@ int32_t get_measure(const T_p& p) {
 //     p.resize(p.measure() * 2)
 //     return p.measure()
 template<Resizable T_p>
-int32_t double_resize(T_p& p) {
+int32_t double_resize(T_p&& p) {
     p.resize((::tpy::mul_check<int32_t>(p.measure(), 2)));
     return p.measure();
 }
@@ -173,7 +173,7 @@ int32_t double_resize(T_p& p) {
 // def copy_measure(src: Resizable, dst: Resizable) -> None:
 //     dst.resize(src.measure())
 template<Resizable T_src, Resizable T_dst>
-void copy_measure(const T_src& src, T_dst& dst) {
+void copy_measure(const T_src& src, T_dst&& dst) {
     dst.resize(src.measure());
 }
 

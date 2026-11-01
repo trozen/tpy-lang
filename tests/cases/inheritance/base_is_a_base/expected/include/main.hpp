@@ -229,7 +229,7 @@ int32_t dict_size(const ::tpy::ordered_map<std::string, int32_t>& m);
 void dispatch();
 // def total(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t total(T_it& it);
+int32_t total(T_it&& it);
 // def membership() -> None:
 void membership();
 // def iteration() -> None:
@@ -3139,7 +3139,7 @@ int32_t bounded_dict(::tpy::param_val_or_ref_t<T> m) {
 //         n += x
 //     return n
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t total(T_it& it) {
+int32_t total(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

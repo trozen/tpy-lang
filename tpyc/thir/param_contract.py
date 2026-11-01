@@ -231,9 +231,10 @@ def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
     expansion binds an lvalue of a plain value type itself (a `str` / `bytes`
     buffer it may move from is the caller's copy). A TPy body's structural
     protocol parameter is DEDUCED at an argument `arg` it holds as that
-    argument's concrete twin (`protocol_twin_slot`, a value at a call only
-    where the callee does not write the parameter: `written`); a declared
-    callee's (a runtime binding's) reads its argument within the call."""
+    argument's concrete twin (`protocol_twin_slot`, a builtin value at a
+    call only where the callee does not write the parameter: `written`); a
+    declared callee's (a runtime binding's) reads its argument within the
+    call."""
     if (not declared_only(fi)
             # Whether there is a twin does not depend on the declared type a
             # name's twin is asked at.

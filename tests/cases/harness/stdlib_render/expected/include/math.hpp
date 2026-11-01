@@ -53,18 +53,18 @@ bool isclose(double a, double b, double rel_tol = 1e-09, double abs_tol = 0.0);
 // @dispatch
 // def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
-int32_t prod__Iterable_int32__int32(T_iterable& iterable, int32_t start = 1);
+int32_t prod__Iterable_int32__int32(T_iterable&& iterable, int32_t start = 1);
 // @dispatch
 // def prod(iterable: Iterable[int], *, start: int = 1) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
-::tpy::BigInt prod__Iterable_int__int(T_iterable& iterable, const ::tpy::BigInt& start = ::tpy::BigInt(1));
+::tpy::BigInt prod__Iterable_int__int(T_iterable&& iterable, const ::tpy::BigInt& start = ::tpy::BigInt(1));
 // @dispatch
 // def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
-double prod__Iterable_float__float(T_iterable& iterable, double start = 1.0);
+double prod__Iterable_float__float(T_iterable&& iterable, double start = 1.0);
 // def fsum(iterable: Iterable[float]) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
-double fsum(T_iterable& iterable);
+double fsum(T_iterable&& iterable);
 // def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double sumprod(const T_p& p, const T_q& q);
@@ -79,7 +79,7 @@ double dist(const T_p& p, const T_q& q);
 //         result = result * x
 //     return result
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
-int32_t prod__Iterable_int32__int32(T_iterable& iterable, int32_t start) {
+int32_t prod__Iterable_int32__int32(T_iterable&& iterable, int32_t start) {
     int32_t result = start;
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -98,7 +98,7 @@ int32_t prod__Iterable_int32__int32(T_iterable& iterable, int32_t start) {
 //         result = result * x
 //     return result
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
-::tpy::BigInt prod__Iterable_int__int(T_iterable& iterable, const ::tpy::BigInt& start) {
+::tpy::BigInt prod__Iterable_int__int(T_iterable&& iterable, const ::tpy::BigInt& start) {
     ::tpy::BigInt result = start;
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -117,7 +117,7 @@ template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
 //         result = result * x
 //     return result
 template<::tpystd::typing::Iterable<double> T_iterable>
-double prod__Iterable_float__float(T_iterable& iterable, double start) {
+double prod__Iterable_float__float(T_iterable&& iterable, double start) {
     double result = start;
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -142,7 +142,7 @@ double prod__Iterable_float__float(T_iterable& iterable, double start) {
 //         s = t
 //     return s + c
 template<::tpystd::typing::Iterable<double> T_iterable>
-double fsum(T_iterable& iterable) {
+double fsum(T_iterable&& iterable) {
     double s = 0.0;
     double c = 0.0;
     auto& __src_0 = iterable;

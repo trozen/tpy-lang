@@ -15,7 +15,7 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial);
+::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial);
 // @dispatch
 // def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
 template<typename T, typename __F0>
@@ -34,7 +34,7 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial) {
+::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial) {
     U __slot_1 = U(initial);
     U* acc = &__slot_1;
     std::optional<U> __slot_2;

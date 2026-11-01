@@ -28,7 +28,7 @@ struct __coro_async_body;
 
 // def plain(v: Value) -> int32:
 template<Value T_v>
-int32_t plain(T_v& v);
+int32_t plain(T_v&& v);
 // def twin_r(v: R) -> int32:
 int32_t twin_r(const R& v);
 // def opt_param(v: R | None) -> int32:
@@ -295,7 +295,7 @@ inline void Holder::walk() {
 // def plain(v: Value) -> int32:
 //     return v.val()
 template<Value T_v>
-int32_t plain(T_v& v) {
+int32_t plain(T_v&& v) {
     return v.val();
 }
 // # Owned optional step.

@@ -25,7 +25,7 @@ struct Bag {
 
     // def add_all(self, items: Iterable[T]) -> None:
     template<::tpystd::typing::Iterable<T> T_items>
-    void add_all(T_items& items);
+    void add_all(T_items&& items);
 
     // def __getitem__(self, key: T) -> int:
     ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const;
@@ -57,7 +57,7 @@ inline Bag<T>::Bag() : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {}
 //         self._data[x] = self._data.get(x, 0) + 1  # tpyc: ok
 template<::tpystd::tpy::Hashable T>
 template<::tpystd::typing::Iterable<T> T_items>
-inline void Bag<T>::add_all(T_items& items) {
+inline void Bag<T>::add_all(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

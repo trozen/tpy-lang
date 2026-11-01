@@ -60,7 +60,7 @@ int32_t element_alias(std::vector<Counts>& cs, std::string_view k);
 int32_t optional_result(Slots& s);
 // def protocol_param(p: Lookup, i: int32) -> int32:
 template<Lookup T_p>
-int32_t protocol_param(T_p& p, int32_t i);
+int32_t protocol_param(T_p&& p, int32_t i);
 // def int_key(t: readonly[Two]) -> int32:
 int32_t int_key(const Two& t);
 // def mono_key(c: readonly[KeyMono], k: int64) -> int32:
@@ -763,7 +763,7 @@ inline KeyGen<U>::KeyGen() : KeyBase<U>() {}
 //     # Protocol param whose `__getitem__` is declared mutating.
 //     return p[i]  # tpyc: ok
 template<Lookup T_p>
-int32_t protocol_param(T_p& p, int32_t i) {
+int32_t protocol_param(T_p&& p, int32_t i) {
     return ::tpy::__getitem__(p, i);
 }
 

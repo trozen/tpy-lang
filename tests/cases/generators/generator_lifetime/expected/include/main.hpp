@@ -63,7 +63,7 @@ __gen_holding holding(const std::vector<int32_t>& xs);
 __gen_watched watched(const std::vector<int32_t>& xs, std::vector<int32_t>& done);
 // def first(g: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g);
+int32_t first(T_g&& g);
 // def cell_items(xs: list[Cell], log: list[int32]) -> Iterator[int32]:
 __gen_cell_items cell_items(const std::vector<Cell>& xs, std::vector<int32_t>& log);
 // def plain_branch(c: bool, xs: list[int32]) -> None:
@@ -126,10 +126,10 @@ __coro_async_loop async_loop(const std::vector<std::vector<int32_t>>& rows);
 __coro_async_gen_refill async_gen_refill(const std::vector<std::vector<int32_t>>& rows);
 // def drive(tag: str, g: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void drive(std::string_view tag, T_g& g);
+void drive(std::string_view tag, T_g&& g);
 // def abandon(tag: str, g: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void abandon(std::string_view tag, T_g& g);
+void abandon(std::string_view tag, T_g&& g);
 // def run_gen_branch() -> None:
 void run_gen_branch();
 // def abandon_gen_branch() -> None:
@@ -1321,7 +1321,7 @@ inline Rows::Rows()
 //         return v
 //     return -1
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g) {
+int32_t first(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -1336,7 +1336,7 @@ int32_t first(T_g& g) {
 //     for v in g:
 //         print(tag, v)
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void drive(std::string_view tag, T_g& g) {
+void drive(std::string_view tag, T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -1350,7 +1350,7 @@ void drive(std::string_view tag, T_g& g) {
 //     v = first(g)
 //     print(tag, "abandoned at", v)
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void abandon(std::string_view tag, T_g& g) {
+void abandon(std::string_view tag, T_g&& g) {
     int32_t v = ::tpyapp::main::first(g);
     std::cout << tag << " " << "abandoned at" << " " << v << "\n" << ::tpy::check_signals;
 }

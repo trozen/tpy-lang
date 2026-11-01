@@ -1872,8 +1872,9 @@ class SelfType(TpyType):
     """
 
     def to_cpp(self) -> str:
-        # Template parameter in concepts - the implementing type
-        return "T"
+        # The implementing type a concept checks: a forwarding parameter
+        # deduces `T` as a reference for an lvalue argument.
+        return "std::remove_cvref_t<T>"
 
     def __str__(self) -> str:
         return "Self"

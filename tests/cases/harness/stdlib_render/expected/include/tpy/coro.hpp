@@ -68,10 +68,10 @@ template<typename T>
 ::tpystd::tpy::Poll<std::monostate> poll_ready_none();
 // def poll_once[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpystd::tpy::Poll<T> poll_once(T_aw& aw);
+::tpystd::tpy::Poll<T> poll_once(T_aw&& aw);
 // def task_poll_cancelled[T](aw: Awaitable[T]) -> bool:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-bool task_poll_cancelled(T_aw& aw);
+bool task_poll_cancelled(T_aw&& aw);
 
 // @builtin_type("tpy.coro.Waker")
 // class Waker(ValueType):
@@ -194,7 +194,7 @@ template<typename T>
 // def poll_once[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 //     return aw.__poll__(Waker())
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpystd::tpy::Poll<T> poll_once(T_aw& aw) {
+::tpystd::tpy::Poll<T> poll_once(T_aw&& aw) {
     return aw.__poll__(::tpystd::coro::Waker());
 }
 // # Poll an awaitable once and report whether it raised CancelledError.
@@ -207,7 +207,7 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 //     except CancelledError:
 //         return True
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-bool task_poll_cancelled(T_aw& aw) {
+bool task_poll_cancelled(T_aw&& aw) {
     {
         try {
             aw.__poll__(::tpystd::coro::Waker());

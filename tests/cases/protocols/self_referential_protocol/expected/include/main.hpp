@@ -46,10 +46,10 @@ template<Addable T_a, Addable T_b>
 void combine(const T_a& a, const T_b& b);
 // def chain(c: Chainable) -> None:
 template<Chainable T_c>
-void chain(T_c& c);
+void chain(T_c&& c);
 // def bounce(a: AProto) -> None:
 template<AProto T_a>
-void bounce(T_a& a);
+void bounce(T_a&& a);
 // def main() -> None:
 void main();
 
@@ -231,13 +231,13 @@ void combine(const T_a& a, const T_b& b) {
 // def chain(c: Chainable) -> None:
 //     print(c.half().value())
 template<Chainable T_c>
-void chain(T_c& c) {
+void chain(T_c&& c) {
     std::cout << c.half().value() << "\n" << ::tpy::check_signals;
 }
 // def bounce(a: AProto) -> None:
 //     print(a.to_b().tag())
 template<AProto T_a>
-void bounce(T_a& a) {
+void bounce(T_a&& a) {
     std::cout << a.to_b().tag() << "\n" << ::tpy::check_signals;
 }
 

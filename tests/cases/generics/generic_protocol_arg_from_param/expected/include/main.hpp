@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpystd::tpy::Poll<T> drive_implicit(T_aw& aw);
+::tpystd::tpy::Poll<T> drive_implicit(T_aw&& aw);
 // def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
 template<typename T>
 ::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t);
@@ -54,7 +54,7 @@ inline ::tpystd::tpy::Poll<T> MyTask<T>::__poll__(::tpystd::coro::Waker w) const
 // def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 //     return poll_once(aw)
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpystd::tpy::Poll<T> drive_implicit(T_aw& aw) {
+::tpystd::tpy::Poll<T> drive_implicit(T_aw&& aw) {
     return ::tpystd::coro::poll_once<T>(aw);
 }
 // def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:

@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def proto_hits(xs: Iterable[str]) -> int:
 template<::tpystd::typing::Iterable<std::string> T_xs>
-::tpy::BigInt proto_hits(T_xs& xs);
+::tpy::BigInt proto_hits(T_xs&& xs);
 // def narrow_list_hits(xs: list[str] | None) -> int:
 ::tpy::BigInt narrow_list_hits(const std::vector<std::string>* xs);
 // def narrow_set_hits(xs: set[str] | None) -> int:
@@ -29,7 +29,7 @@ void main();
 //             hits += 1
 //     return hits
 template<::tpystd::typing::Iterable<std::string> T_xs>
-::tpy::BigInt proto_hits(T_xs& xs) {
+::tpy::BigInt proto_hits(T_xs&& xs) {
     int32_t hits = 0;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

@@ -54,7 +54,7 @@ template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 inline Holder::Holder(const T_items* items) : count(::tpy::BigInt(0)) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        if constexpr (::tpystd::typing::Sized<T_items>) {
+        if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
             this->count = ::tpy::BigInt(::tpy::__len__((*items)));
         } else {
             this->count = ::tpy::BigInt(-1);
@@ -73,9 +73,9 @@ template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt process(const T_items* items) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
+        if constexpr (::tpystd::typing::Sequence<std::remove_cvref_t<T_items>, ::tpy::BigInt>) {
             return ::tpy::__getitem__((*items), 0);
-        } else if constexpr (::tpystd::typing::Sized<T_items>) {
+        } else if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
             return ::tpy::BigInt(::tpy::__len__((*items)));
         }
     }
@@ -94,9 +94,9 @@ template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt with_else(const T_items* items) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
+        if constexpr (::tpystd::typing::Sequence<std::remove_cvref_t<T_items>, ::tpy::BigInt>) {
             return ::tpy::__getitem__((*items), 0);
-        } else if constexpr (::tpystd::typing::Sized<T_items>) {
+        } else if constexpr (::tpystd::typing::Sized<std::remove_cvref_t<T_items>>) {
             return ::tpy::BigInt(::tpy::__len__((*items)));
         }
     } else {

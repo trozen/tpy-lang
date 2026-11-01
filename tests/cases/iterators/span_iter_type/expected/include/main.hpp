@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_iterable(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t sum_iterable(T_it& it);
+int32_t sum_iterable(T_it&& it);
 // def sum_readonly(rs: Span[readonly[int32]]) -> int32:
 int32_t sum_readonly(std::span<const int32_t> rs);
 // def main() -> None:
@@ -23,7 +23,7 @@ void main();
 //         total += x
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t sum_iterable(T_it& it) {
+int32_t sum_iterable(T_it&& it) {
     int32_t total = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

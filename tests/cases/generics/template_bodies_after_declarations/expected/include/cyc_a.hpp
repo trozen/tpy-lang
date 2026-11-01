@@ -357,9 +357,9 @@ struct Disp {
     // @dispatch
     // def g(self, x: Iterable[int32]) -> int32:
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t g__Iterable_int32(T_x& x) const;
+    int32_t g__Iterable_int32(T_x&& x) const;
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t g(T_x& x) const;
+    int32_t g(T_x&& x) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Disp";
 };
 
@@ -415,16 +415,16 @@ struct Box {
     // @overload
     // def f(self, x: Iterable[int32]) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f__Iterable_int32(T_x& x);
+    int32_t f__Iterable_int32(T_x&& x);
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f(T_x& x);
+    int32_t f(T_x&& x);
 
     // @overload
     // def f(self, x: Iterable[int32], y: int32) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f__Iterable_int32__int32(T_x& x, int32_t y);
+    int32_t f__Iterable_int32__int32(T_x&& x, int32_t y);
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f(T_x& x, int32_t y);
+    int32_t f(T_x&& x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Box";
 };
 
@@ -488,7 +488,7 @@ __genexpr___iter___1_frame<F_x> __genexpr___iter___1(const std::vector<int32_t>&
 //         n += v
 //     return n
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Disp::g__Iterable_int32(T_x& x) const {
+inline int32_t Disp::g__Iterable_int32(T_x&& x) const {
     int32_t n = this->k;
     auto& __src_0 = x;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -502,14 +502,14 @@ inline int32_t Disp::g__Iterable_int32(T_x& x) const {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Disp::g(T_x& x) const {
+inline int32_t Disp::g(T_x&& x) const {
     return this->g__Iterable_int32(x);
 }
 
 // @overload
 // def f(self, x: Iterable[int32]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f__Iterable_int32(T_x& x) {
+inline int32_t Box::f__Iterable_int32(T_x&& x) {
     int32_t y = 0;
     int32_t t = y;
     auto& __src_0 = x;
@@ -524,14 +524,14 @@ inline int32_t Box::f__Iterable_int32(T_x& x) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f(T_x& x) {
+inline int32_t Box::f(T_x&& x) {
     return this->f__Iterable_int32(x);
 }
 
 // @overload
 // def f(self, x: Iterable[int32], y: int32) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f__Iterable_int32__int32(T_x& x, int32_t y) {
+inline int32_t Box::f__Iterable_int32__int32(T_x&& x, int32_t y) {
     int32_t t = y;
     auto& __src_0 = x;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -545,7 +545,7 @@ inline int32_t Box::f__Iterable_int32__int32(T_x& x, int32_t y) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f(T_x& x, int32_t y) {
+inline int32_t Box::f(T_x&& x, int32_t y) {
     return this->f__Iterable_int32__int32(x, y);
 }
 

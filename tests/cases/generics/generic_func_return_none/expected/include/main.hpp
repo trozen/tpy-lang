@@ -19,7 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def drain[T](aw: Awaitable[T]) -> T:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpy::val_or_ref_t<T> drain(T_aw& aw);
+::tpy::val_or_ref_t<T> drain(T_aw&& aw);
 // def main() -> None:
 void main();
 
@@ -66,7 +66,7 @@ inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpystd::coro::Wak
 // def drain[T](aw: Awaitable[T]) -> T:
 //     return poll_once(aw).value()
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpy::val_or_ref_t<T> drain(T_aw& aw) {
+::tpy::val_or_ref_t<T> drain(T_aw&& aw) {
     return ::tpystd::coro::poll_once<T>(aw).value();
 }
 

@@ -55,7 +55,7 @@ void big(std::vector<int64_t>& v);
 void maybe(std::vector<int64_t>* v);
 // def total(v: Iterable[int64]) -> int64:
 template<::tpystd::typing::Iterable<int64_t> T_v>
-int64_t total(T_v& v);
+int64_t total(T_v&& v);
 // def free_fn() -> None:
 void free_fn();
 // def gen_pos() -> Iterator[int64]:
@@ -298,7 +298,7 @@ inline void Holder::run() const {
 //         t += x
 //     return t
 template<::tpystd::typing::Iterable<int64_t> T_v>
-int64_t total(T_v& v) {
+int64_t total(T_v&& v) {
     int64_t t = 0;
     auto& __src_0 = v;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

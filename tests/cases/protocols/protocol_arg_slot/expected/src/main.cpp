@@ -52,14 +52,11 @@ void s_free() {
 //     print("value replaced", replaced_read(b.n, b), b.n.v)  # tpyc: ok
 void s_value() {
     Num n = Num(3);
-    auto __tmp_1 = Num(8);
-    std::cout << "value" << " " << ::tpyapp::main::f_area(__tmp_1) << " " << ::tpyapp::main::f_area(n) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::f_grow(n);
-    auto __tmp_2 = Num(1);
-    ::tpyapp::main::f_grow(__tmp_2);
+    std::cout << "value" << " " << ::tpyapp::main::f_area(auto(Num(8))) << " " << ::tpyapp::main::f_area(auto(n)) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::f_grow(auto(n));
+    ::tpyapp::main::f_grow(auto(Num(1)));
     NumBox b = NumBox();
-    auto __tmp_3 = b.n;
-    std::cout << "value replaced" << " " << ::tpyapp::main::replaced_read(__tmp_3, b) << " " << b.n.v << "\n" << ::tpy::check_signals;
+    std::cout << "value replaced" << " " << ::tpyapp::main::replaced_read(auto(b.n), b) << " " << b.n.v << "\n" << ::tpy::check_signals;
 }
 
 // def s_resumable() -> None:

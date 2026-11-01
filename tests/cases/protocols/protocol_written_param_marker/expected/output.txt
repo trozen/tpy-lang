@@ -1,0 +1,4 @@
+not copyable 2
+copyable 2
+default 3
+after 2 3

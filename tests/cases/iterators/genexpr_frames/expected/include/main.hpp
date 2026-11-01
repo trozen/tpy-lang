@@ -54,7 +54,7 @@ struct __genexpr_aio_24_frame;
 __gen_gen gen(int32_t n);
 // def total(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t total(T_it& it);
+int32_t total(T_it&& it);
 // def relay(it: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __gen_relay<T_it> relay(T_it&& it);
@@ -911,7 +911,7 @@ inline int32_t Bag<T>::count() const {
 //         s += v
 //     return s
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t total(T_it& it) {
+int32_t total(T_it&& it) {
     int32_t s = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

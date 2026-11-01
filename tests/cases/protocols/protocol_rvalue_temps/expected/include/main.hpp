@@ -20,7 +20,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def show(h: HasValue) -> None:
 template<HasValue T_h>
-void show(T_h& h);
+void show(T_h&& h);
 // def main() -> None:
 void main();
 
@@ -109,7 +109,7 @@ inline IntBox& BoxContainer::operator[](int32_t i) {
 // def show(h: HasValue) -> None:
 //     print(h.get())
 template<HasValue T_h>
-void show(T_h& h) {
+void show(T_h&& h) {
     std::cout << h.get() << "\n" << ::tpy::check_signals;
 }
 

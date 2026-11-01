@@ -11,25 +11,25 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_items(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_items(T_items& items);
+int32_t sum_items(T_items&& items);
 // def count_chars(items: Iterable[char]) -> int32:
 template<::tpystd::typing::Iterable<char> T_items>
-int32_t count_chars(T_items& items);
+int32_t count_chars(T_items&& items);
 // def sum_strs(items: Iterable[str]) -> str:
 template<::tpystd::typing::Iterable<std::string> T_items>
-std::string sum_strs(T_items& items);
+std::string sum_strs(T_items&& items);
 // def test_iterable_params() -> None:
 void test_iterable_params();
 // def test_manual_iter() -> None:
 void test_manual_iter();
 // def test_iter_on_protocol(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void test_iter_on_protocol(T_items& items);
+void test_iter_on_protocol(T_items&& items);
 // def test_iter_builtin() -> None:
 void test_iter_builtin();
 // def sum_bigints(items: Iterable[int]) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_items>
-::tpy::BigInt sum_bigints(T_items& items);
+::tpy::BigInt sum_bigints(T_items&& items);
 // def main() -> None:
 void main();
 
@@ -39,7 +39,7 @@ void main();
 //         total += x
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_items(T_items& items) {
+int32_t sum_items(T_items&& items) {
     int32_t total = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,7 +57,7 @@ int32_t sum_items(T_items& items) {
 //         n += 1
 //     return n
 template<::tpystd::typing::Iterable<char> T_items>
-int32_t count_chars(T_items& items) {
+int32_t count_chars(T_items&& items) {
     int32_t n = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -75,7 +75,7 @@ int32_t count_chars(T_items& items) {
 //         result = result + s + " "
 //     return result
 template<::tpystd::typing::Iterable<std::string> T_items>
-std::string sum_strs(T_items& items) {
+std::string sum_strs(T_items&& items) {
     std::string result = "";
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -95,7 +95,7 @@ std::string sum_strs(T_items& items) {
 //         total += x
 //     print(total)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void test_iter_on_protocol(T_items& items) {
+void test_iter_on_protocol(T_items&& items) {
     auto it = ::tpy::__iter__(items);
     int32_t total = 0;
     auto& __src_0 = it;
@@ -115,7 +115,7 @@ void test_iter_on_protocol(T_items& items) {
 //         total = total + x
 //     return total
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_items>
-::tpy::BigInt sum_bigints(T_items& items) {
+::tpy::BigInt sum_bigints(T_items&& items) {
     ::tpy::BigInt total = ::tpy::BigInt(0);
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

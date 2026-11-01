@@ -98,7 +98,7 @@ template<::tpystd::typing::Sized T_v>
 int32_t plain_len(const T_v& v);
 // def show(tag: str, it: Iterator[str]) -> None:
 template<::tpystd::typing::Iterator<std::string> T_it>
-void show(std::string_view tag, T_it& it);
+void show(std::string_view tag, T_it&& it);
 // def values() -> None:
 void values();
 // def refs() -> None:
@@ -755,7 +755,7 @@ int32_t plain_len(const T_v& v) {
 //     for s in it:
 //         print(tag, s)
 template<::tpystd::typing::Iterator<std::string> T_it>
-void show(std::string_view tag, T_it& it) {
+void show(std::string_view tag, T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

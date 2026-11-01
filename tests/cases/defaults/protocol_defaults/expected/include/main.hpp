@@ -25,10 +25,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def use_callable(c: Callable) -> None:
 template<Callable T_c>
-void use_callable(T_c& c);
+void use_callable(T_c&& c);
 // def use_one_arg(p: OneArg) -> None:
 template<OneArg T_p>
-void use_one_arg(T_p& p);
+void use_one_arg(T_p&& p);
 // def main() -> None:
 void main();
 
@@ -73,13 +73,13 @@ inline int32_t Impl::process(int32_t x, int32_t scale) const {
 // def use_callable(c: Callable) -> None:
 //     print(c.call())
 template<Callable T_c>
-void use_callable(T_c& c) {
+void use_callable(T_c&& c) {
     std::cout << c.call() << "\n" << ::tpy::check_signals;
 }
 // def use_one_arg(p: OneArg) -> None:
 //     print(p.process(int32(10)))
 template<OneArg T_p>
-void use_one_arg(T_p& p) {
+void use_one_arg(T_p&& p) {
     std::cout << p.process(10) << "\n" << ::tpy::check_signals;
 }
 

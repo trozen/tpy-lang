@@ -29,7 +29,7 @@ void grow(std::vector<int32_t>& ys);
 std::vector<int32_t> take(std::vector<int32_t>&& ys);
 // def drain(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t drain(T_it& it);
+int32_t drain(T_it&& it);
 // def free_fn(xs: list[int32], big: bool) -> int32:
 int32_t free_fn(std::vector<int32_t>& xs, bool big);
 // def through_callee(xs: list[int32], big: bool) -> int32:
@@ -296,7 +296,7 @@ inline int32_t Bag::run(bool big) {
 //         n += 1
 //     return n
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t drain(T_it& it) {
+int32_t drain(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

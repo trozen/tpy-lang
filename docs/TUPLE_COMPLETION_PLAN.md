@@ -721,7 +721,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
   snapshot churn, and it needs the loan a view inside a tuple takes on its
   source, which is not tracked today. Do it ON U5, not before it: alone it is
   a third per-site form rule. Also closes the `str`-view printed-tuple extra
-  copy. Size: 1-2 weeks. It is the tuple part of the one view rule
+  copy. And the fresh tuple at a runtime binding: `hash((self.a, self.b))`
+  renders `__hash__(std::tuple<int32_t, std::string>{this->a, this->b})`, a
+  string copy per call, on its own row (`native_protocol_tuple_literal`); with
+  view elements it takes the twin path the TPy callee does (survey
+  `/tmp/agents/u3b/D/`, 2026-11-01). Size: 1-2 weeks. It is the tuple part of the one view rule
   (decided 2026-10-01, branch `str-bytes-view-rule`: a view only from
   static storage, a parameter, or a name the function binds -- a tuple
   NAME's element is such a source for both families, an rvalue tuple's

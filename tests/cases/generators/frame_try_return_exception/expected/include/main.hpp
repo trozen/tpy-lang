@@ -36,14 +36,14 @@ struct __coro_a_main;
 std::vector<Node> fresh();
 // def total(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t total(T_it& it);
+int32_t total(T_it&& it);
 // @error_return(StopIteration)
 // def first_two(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-std::expected<int32_t, ::tpy::StopIteration> first_two(T_it& it);
+std::expected<int32_t, ::tpy::StopIteration> first_two(T_it&& it);
 // def pull(it: Iterator[int32]) -> int32 | None:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-std::optional<int32_t> pull(T_it& it);
+std::optional<int32_t> pull(T_it&& it);
 // def walk(items: list[Node]) -> Iterator[Node]:
 __gen_walk walk(std::vector<Node>& items);
 // def head(items: list[Node], it: Iterator[int32]) -> Iterator[Node]:
@@ -616,7 +616,7 @@ inline Counter::Counter(int32_t limit) : limit(limit) {}
 //         acc += i
 //     return acc
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t total(T_it& it) {
+int32_t total(T_it&& it) {
     int32_t acc = 0;
     while (true) {
         int32_t i;
@@ -646,7 +646,7 @@ int32_t total(T_it& it) {
 //         return a
 //     return a + b
 template<::tpystd::typing::Iterator<int32_t> T_it>
-std::expected<int32_t, ::tpy::StopIteration> first_two(T_it& it) {
+std::expected<int32_t, ::tpy::StopIteration> first_two(T_it&& it) {
     int32_t a;
     {
         auto __try_tmp_9 = ::tpy::next(it);
@@ -676,7 +676,7 @@ std::expected<int32_t, ::tpy::StopIteration> first_two(T_it& it) {
 //     except StopIteration:
 //         return None
 template<::tpystd::typing::Iterator<int32_t> T_it>
-std::optional<int32_t> pull(T_it& it) {
+std::optional<int32_t> pull(T_it&& it) {
     {
         return ({ auto __er_13 = ::tpy::next(it); if (!__er_13.has_value()) goto __except_12; ::tpy::unwrap_ref_move(*__er_13); });
         goto __after_try_12;

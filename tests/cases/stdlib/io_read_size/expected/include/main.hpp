@@ -16,10 +16,10 @@ void stringio_read_size();
 void bytesio_read_size();
 // def via_protocol(fp: Readable) -> str:
 template<::tpystd::tpy::Readable T_fp>
-std::string via_protocol(T_fp& fp);
+std::string via_protocol(T_fp&& fp);
 // def via_binary_protocol(fp: BinaryReadable) -> bytes:
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::Bytes via_binary_protocol(T_fp& fp);
+::tpy::Bytes via_binary_protocol(T_fp&& fp);
 // def protocol_params() -> None:
 void protocol_params();
 // def file_read_size() -> None:
@@ -34,7 +34,7 @@ void main();
 //     rest = fp.read()
 //     return head + "|" + rest
 template<::tpystd::tpy::Readable T_fp>
-std::string via_protocol(T_fp& fp) {
+std::string via_protocol(T_fp&& fp) {
     std::string head = fp.read(4);
     std::string rest = fp.read();
     return (::tpy::str_concat((::tpy::str_concat(head, "|")), rest));
@@ -42,7 +42,7 @@ std::string via_protocol(T_fp& fp) {
 // def via_binary_protocol(fp: BinaryReadable) -> bytes:
 //     return fp.read(2)
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::Bytes via_binary_protocol(T_fp& fp) {
+::tpy::Bytes via_binary_protocol(T_fp&& fp) {
     return fp.read(2);
 }
 

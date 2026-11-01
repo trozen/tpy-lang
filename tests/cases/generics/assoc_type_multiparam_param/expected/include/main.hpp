@@ -20,10 +20,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def show_v[K, V](x: Pair[K, V]) -> V:    # tpyc: ok
 template<typename K, typename V, Pair<K, V> T_x>
-::tpy::val_or_ref_t<V> show_v(T_x& x);
+::tpy::val_or_ref_t<V> show_v(T_x&& x);
 // def show_k[K, V](x: Pair[K, V]) -> K:    # tpyc: ok
 template<typename K, typename V, Pair<K, V> T_x>
-::tpy::val_or_ref_t<K> show_k(T_x& x);
+::tpy::val_or_ref_t<K> show_k(T_x&& x);
 // def main() -> None:
 void main();
 
@@ -73,13 +73,13 @@ inline std::string IntStr::second() const {
 // def show_v[K, V](x: Pair[K, V]) -> V:    # tpyc: ok
 //     return x.second()
 template<typename K, typename V, Pair<K, V> T_x>
-::tpy::val_or_ref_t<V> show_v(T_x& x) {
+::tpy::val_or_ref_t<V> show_v(T_x&& x) {
     return x.second();
 }
 // def show_k[K, V](x: Pair[K, V]) -> K:    # tpyc: ok
 //     return x.first()
 template<typename K, typename V, Pair<K, V> T_x>
-::tpy::val_or_ref_t<K> show_k(T_x& x) {
+::tpy::val_or_ref_t<K> show_k(T_x&& x) {
     return x.first();
 }
 

@@ -19,7 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def bump(c: Counter) -> int32:
 template<Counter T_c>
-int32_t bump(T_c& c);
+int32_t bump(T_c&& c);
 // def main() -> None:
 void main();
 
@@ -62,7 +62,7 @@ inline int32_t Tally::step(int32_t n, int32_t start) {
 //     cc = c.step(int32(2), int32(10))
 //     return a + b + cc
 template<Counter T_c>
-int32_t bump(T_c& c) {
+int32_t bump(T_c&& c) {
     int32_t a = c.step();
     int32_t b = c.step(5);
     int32_t cc = c.step(2, 10);

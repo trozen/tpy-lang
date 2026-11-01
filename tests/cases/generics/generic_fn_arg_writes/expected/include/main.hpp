@@ -49,7 +49,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_it, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       __fn(__a0);
   }
-void on_iter(__F0&& f, T_it& it);
+void on_iter(__F0&& f, T_it&& it);
 // def gen[T](f: Fn[[T], None], xs: list[T]) -> Iterator[int32]:
 template <typename T, typename F_f>
 __gen_gen<T, F_f> gen(F_f&& f, std::vector<T>& xs);
@@ -322,7 +322,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_it, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       __fn(__a0);
   }
-void on_iter(__F0&& f, T_it& it) {
+void on_iter(__F0&& f, T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

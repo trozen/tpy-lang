@@ -23,7 +23,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t depth(const Expr& e);
 // def run(s: Sink, e: Expr) -> int32:
 template<Sink T_s>
-int32_t run(T_s& s, Expr& e);
+int32_t run(T_s&& s, Expr& e);
 // def main() -> None:
 void main();
 
@@ -73,7 +73,7 @@ struct Expr {
 // def run(s: Sink, e: Expr) -> int32:
 //     return s.take(e)
 template<Sink T_s>
-int32_t run(T_s& s, Expr& e) {
+int32_t run(T_s&& s, Expr& e) {
     return s.take(e);
 }
 

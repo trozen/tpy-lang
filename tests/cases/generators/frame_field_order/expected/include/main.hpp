@@ -43,7 +43,7 @@ __gen_exc_outer exc_outer(const std::vector<int32_t>& xs);
 __coro_async_rows async_rows(const std::vector<std::vector<int32_t>>& rows);
 // def first_of(tag: str, g: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void first_of(std::string_view tag, T_g& g);
+void first_of(std::string_view tag, T_g&& g);
 // def abandon_loopvar(rows: list[list[int32]]) -> None:
 void abandon_loopvar(const std::vector<std::vector<int32_t>>& rows);
 // def abandon_global() -> None:
@@ -472,7 +472,7 @@ inline Holder::Holder() : rows(std::vector<std::vector<int32_t>>{{40, 41}, {42, 
 //         print(tag, "first", v)
 //         break
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void first_of(std::string_view tag, T_g& g) {
+void first_of(std::string_view tag, T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

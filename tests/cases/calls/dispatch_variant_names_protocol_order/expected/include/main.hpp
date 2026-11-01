@@ -26,7 +26,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // @dispatch
 // def describe(x: Animal) -> str:
 template<Animal T_x>
-std::string describe__Animal(T_x& x);
+std::string describe__Animal(T_x&& x);
 // @dispatch
 // def describe(x: Dog) -> str:
 std::string describe__Dog(const Dog& x);
@@ -39,7 +39,7 @@ std::string count__HasLen(const T_v& v);
 // @dispatch
 // def count(v: Iterable[int]) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_v>
-std::string count__Iterable_int(T_v& v);
+std::string count__Iterable_int(T_v&& v);
 // def protocol_section() -> None:
 void protocol_section();
 // def main() -> None:
@@ -81,7 +81,7 @@ inline ::tpy::String Dog::name() const {
 // def describe(x: Animal) -> str:
 //     return "animal " + x.name()
 template<Animal T_x>
-std::string describe__Animal(T_x& x) {
+std::string describe__Animal(T_x&& x) {
     return (::tpy::str_concat("animal ", x.name()));
 }
 // @dispatch
@@ -98,7 +98,7 @@ std::string count__HasLen(const T_v& v) {
 //         n += 1
 //     return "iterable " + str(n)
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_v>
-std::string count__Iterable_int(T_v& v) {
+std::string count__Iterable_int(T_v&& v) {
     int32_t n = 0;
     auto& __src_0 = v;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

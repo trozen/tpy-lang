@@ -11,16 +11,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_iter(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_iter(T_items& items);
+int32_t sum_iter(T_items&& items);
 // def print_all(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void print_all(T_items& items);
+void print_all(T_items&& items);
 // def process_and_sum(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t process_and_sum(T_items& items);
+int32_t process_and_sum(T_items&& items);
 // def nested_iteration(outer: Iterable[int32], inner: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_outer, ::tpystd::typing::Iterable<int32_t> T_inner>
-int32_t nested_iteration(T_outer& outer, T_inner& inner);
+int32_t nested_iteration(T_outer&& outer, T_inner&& inner);
 // def contains_value(items: Iterable[int32], target: int32) -> bool:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target);
@@ -33,7 +33,7 @@ void main();
 //         total += x
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t sum_iter(T_items& items) {
+int32_t sum_iter(T_items&& items) {
     int32_t total = 0;
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -49,7 +49,7 @@ int32_t sum_iter(T_items& items) {
 //     for x in items:
 //         print(x)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void print_all(T_items& items) {
+void print_all(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -64,7 +64,7 @@ void print_all(T_items& items) {
 //     print_all(items)
 //     return sum_iter(items)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-int32_t process_and_sum(T_items& items) {
+int32_t process_and_sum(T_items&& items) {
     ::tpyapp::main::print_all(items);
     return ::tpyapp::main::sum_iter(items);
 }
@@ -76,7 +76,7 @@ int32_t process_and_sum(T_items& items) {
 //             total += x * y
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_outer, ::tpystd::typing::Iterable<int32_t> T_inner>
-int32_t nested_iteration(T_outer& outer, T_inner& inner) {
+int32_t nested_iteration(T_outer&& outer, T_inner&& inner) {
     int32_t total = 0;
     auto& __src_0 = outer;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

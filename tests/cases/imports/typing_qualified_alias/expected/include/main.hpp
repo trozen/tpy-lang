@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t safe_inc(std::optional<int32_t> x);
 // def hello(g: Greetable) -> None:
 template<Greetable T_g>
-void hello(T_g& g);
+void hello(T_g&& g);
 // def main():
 void main();
 
@@ -57,7 +57,7 @@ inline std::string Person::greet() const {
 // def hello(g: Greetable) -> None:
 //     print(g.greet())
 template<Greetable T_g>
-void hello(T_g& g) {
+void hello(T_g&& g) {
     std::cout << g.greet() << "\n" << ::tpy::check_signals;
 }
 

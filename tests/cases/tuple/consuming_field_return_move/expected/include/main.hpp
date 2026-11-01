@@ -75,7 +75,7 @@ __gen_gen_of gen_of(const P& p);
 int32_t run_twice(const std::function<int32_t()>& f);
 // def step(g: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void step(T_g& g);
+void step(T_g&& g);
 // def take_self(t: Own[tuple[H, int32]]) -> int32:
 int32_t take_self(std::tuple<H, int32_t> t);
 // def keep_sub(s: Own[Sub]) -> int32:
@@ -1751,7 +1751,7 @@ inline SubBox::SubBox(Sub&& s) : s(std::move(s)) {}
 //     except StopIteration:
 //         pass
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void step(T_g& g) {
+void step(T_g&& g) {
     {
         {
             auto __try_tmp_3 = ::tpy::next(g);

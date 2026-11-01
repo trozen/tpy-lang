@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def extend_from(target: list[int32], items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void extend_from(std::vector<int32_t>& target, T_items& items);
+void extend_from(std::vector<int32_t>& target, T_items&& items);
 // def join_from(sep: str, items: Iterable[str]) -> str:
 template<::tpystd::typing::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, const T_items& items);
@@ -24,7 +24,7 @@ void main();
 // def extend_from(target: list[int32], items: Iterable[int32]) -> None:
 //     target.extend(items)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void extend_from(std::vector<int32_t>& target, T_items& items) {
+void extend_from(std::vector<int32_t>& target, T_items&& items) {
     ::tpy::list_extend(target, items);
 }
 // def join_from(sep: str, items: Iterable[str]) -> str:

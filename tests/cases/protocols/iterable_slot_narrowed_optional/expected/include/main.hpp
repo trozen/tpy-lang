@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def total(c: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_c>
-int32_t total(T_c& c);
+int32_t total(T_c&& c);
 // def bump(c: list[int32]) -> None:
 void bump(std::vector<int32_t>& c);
 // def local_name() -> int32:
@@ -68,7 +68,7 @@ inline int32_t Reader::sum_of(std::vector<int32_t>* maybe) const {
 //         n += v
 //     return n
 template<::tpystd::typing::Iterable<int32_t> T_c>
-int32_t total(T_c& c) {
+int32_t total(T_c&& c) {
     int32_t n = 0;
     auto& __src_0 = c;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

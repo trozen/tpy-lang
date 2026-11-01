@@ -68,7 +68,7 @@ bool big(int32_t v);
 int32_t triple(int32_t v);
 // def drain(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t drain(T_it& it);
+int32_t drain(T_it&& it);
 // def byte_sum(data: bytes) -> int32:
 int32_t byte_sum(::tpy::BytesView data);
 // def closure_pos(d: dict[int32, int32], k: int32) -> int32:
@@ -751,7 +751,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 //         t += v
 //     return t
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t drain(T_it& it) {
+int32_t drain(T_it&& it) {
     int32_t t = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

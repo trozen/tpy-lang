@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_native(xs: NativeIterable[int32]) -> int32:
 template<::tpy::NativeIterable<int32_t> T_xs>
-int32_t sum_native(T_xs& xs);
+int32_t sum_native(T_xs&& xs);
 // def maybe_sum(xs: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-int32_t maybe_sum(T_xs& xs);
+int32_t maybe_sum(T_xs&& xs);
 // def main() -> None:
 void main();
 
@@ -24,7 +24,7 @@ void main();
 //         total += x
 //     return total
 template<::tpy::NativeIterable<int32_t> T_xs>
-int32_t sum_native(T_xs& xs) {
+int32_t sum_native(T_xs&& xs) {
     int32_t total = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -40,8 +40,8 @@ int32_t sum_native(T_xs& xs) {
 //         return sum_native(xs)
 //     return -1
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-int32_t maybe_sum(T_xs& xs) {
-    if constexpr (::tpy::NativeIterable<T_xs, int32_t>) {
+int32_t maybe_sum(T_xs&& xs) {
+    if constexpr (::tpy::NativeIterable<std::remove_cvref_t<T_xs>, int32_t>) {
         return ::tpyapp::main::sum_native(xs);
     }
     return -1;

@@ -11,13 +11,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def collect_items(items: Iterable[str]) -> None:
 template<::tpystd::typing::Iterable<std::string> T_items>
-void collect_items(T_items& items);
+void collect_items(T_items&& items);
 // def collect_ints(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void collect_ints(T_items& items);
+void collect_ints(T_items&& items);
 // def collect_pairs(items: Iterable[tuple[str, int32]]) -> None:
 template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
-void collect_pairs(T_items& items);
+void collect_pairs(T_items&& items);
 // def main() -> None:
 void main();
 
@@ -25,7 +25,7 @@ void main();
 //     for x in items:
 //         print(x)
 template<::tpystd::typing::Iterable<std::string> T_items>
-void collect_items(T_items& items) {
+void collect_items(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -39,7 +39,7 @@ void collect_items(T_items& items) {
 //     for x in items:
 //         print(x)
 template<::tpystd::typing::Iterable<int32_t> T_items>
-void collect_ints(T_items& items) {
+void collect_ints(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -54,7 +54,7 @@ void collect_ints(T_items& items) {
 //         k, v = pair
 //         print(k, v)
 template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
-void collect_pairs(T_items& items) {
+void collect_pairs(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

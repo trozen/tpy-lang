@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def consume(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t consume(T_it& it);
+int32_t consume(T_it&& it);
 // def main() -> None:
 void main();
 
@@ -113,7 +113,7 @@ inline GrandChild::GrandChild(int32_t limit) : DoubleCounter(limit) {}
 //         total += x
 //     return total
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t consume(T_it& it) {
+int32_t consume(T_it&& it) {
     int32_t total = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

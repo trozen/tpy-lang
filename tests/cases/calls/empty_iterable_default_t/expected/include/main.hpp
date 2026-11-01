@@ -15,7 +15,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string tag(const T_xs& xs);
 // def pick_or[T](xs: Iterable[T], fallback: T) -> T:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-::tpy::val_or_ref_t<T> pick_or(T_xs& xs, ::tpy::param_val_or_ref_t<T> fallback);
+::tpy::val_or_ref_t<T> pick_or(T_xs&& xs, ::tpy::param_val_or_ref_t<T> fallback);
 // def pair[T](xs: Iterable[T], ys: Iterable[T]) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs, ::tpystd::typing::Iterable<T> T_ys>
 std::string pair(const T_xs& xs, const T_ys& ys);
@@ -37,7 +37,7 @@ std::string tag(const T_xs& xs) {
 //         return x
 //     return fallback
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-::tpy::val_or_ref_t<T> pick_or(T_xs& xs, ::tpy::param_val_or_ref_t<T> fallback) {
+::tpy::val_or_ref_t<T> pick_or(T_xs&& xs, ::tpy::param_val_or_ref_t<T> fallback) {
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

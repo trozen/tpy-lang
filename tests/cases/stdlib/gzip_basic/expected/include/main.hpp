@@ -34,7 +34,7 @@ void in_memory_errors();
 __gen_lines_of lines_of(std::string_view path);
 // def count_newlines(fp: BinaryReadable) -> int:
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::BigInt count_newlines(T_fp& fp);
+::tpy::BigInt count_newlines(T_fp&& fp);
 // def files() -> None:
 void files();
 // def file_errors() -> None:
@@ -142,7 +142,7 @@ inline ::tpy::Bytes Loader::line() {
 //             return n
 //         n += 1
 template<::tpystd::tpy::BinaryReadable T_fp>
-::tpy::BigInt count_newlines(T_fp& fp) {
+::tpy::BigInt count_newlines(T_fp&& fp) {
     int32_t n = 0;
     while (true) {
         ::tpy::Bytes line = fp.readline();

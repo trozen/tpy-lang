@@ -50,7 +50,7 @@ struct __coro_coro;
 
 // def through(p: P) -> int32:
 template<P T_p>
-int32_t through(T_p& p);
+int32_t through(T_p&& p);
 // def tpy_def(x: int32, y: int32 = 5) -> int32:
 int32_t tpy_def(int32_t x, int32_t y = 5);
 // def gen(q: Q) -> Iterator[int32]:
@@ -202,7 +202,7 @@ extern "C" int32_t ec(int32_t a, int32_t b);
 //     # Inverse: a protocol call takes its TPy conformer's own default.
 //     return p.step()  # tpyc: ok
 template<P T_p>
-int32_t through(T_p& p) {
+int32_t through(T_p&& p) {
     return p.step();
 }
 

@@ -140,7 +140,7 @@ struct ArrayList {
     // def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
     template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
-    void extend(T_items& items);
+    void extend(T_items&& items);
 
     // def clear(self) -> None:
     void clear();
@@ -612,14 +612,14 @@ inline ::tpy::SpanIter<const T> ArrayList<T, N>::__iter__() const {
 template<typename T, std::size_t N>
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
-inline void ArrayList<T, N>::extend(T_items& items) {
-    if constexpr (::tpystd::tpy::Spannable<T_items, T>) {
+inline void ArrayList<T, N>::extend(T_items&& items) {
+    if constexpr (::tpystd::tpy::Spannable<std::remove_cvref_t<T_items>, T>) {
         std::span<const T> items_span = ::tpy::as_span(items);
         uint32_t u_size = static_cast<uint32_t>(::tpy::__len__(items_span));
         if (!(((::tpy::add_check<uint32_t>(this->_size, u_size)) <= this->_storage.capacity()))) ::tpy::raise_assertion_error();
         this->_storage.init_from_span(this->_size, items_span);
         this->_size = ::tpy::add_check<uint32_t>(this->_size, u_size);
-    } else if constexpr (::tpystd::typing::Iterable<T_items, T>) {
+    } else if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, T>) {
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {

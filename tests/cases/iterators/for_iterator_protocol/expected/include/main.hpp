@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_iter(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t sum_iter(T_it& it);
+int32_t sum_iter(T_it&& it);
 // def main() -> None:
 void main();
 
@@ -75,7 +75,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
 //         total += x
 //     return total
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t sum_iter(T_it& it) {
+int32_t sum_iter(T_it&& it) {
     int32_t total = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

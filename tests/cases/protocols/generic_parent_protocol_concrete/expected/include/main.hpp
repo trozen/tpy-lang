@@ -21,10 +21,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def length_of(c: IntCounted) -> int32:
 template<IntCounted T_c>
-int32_t length_of(T_c& c);
+int32_t length_of(T_c&& c);
 // def total(c: IntCounted) -> int32:
 template<IntCounted T_c>
-int32_t total(T_c& c);
+int32_t total(T_c&& c);
 // def main() -> None:
 void main();
 
@@ -122,7 +122,7 @@ inline IntListIter IntList::__iter__() const {
 // def length_of(c: IntCounted) -> int32:
 //     return c.length()
 template<IntCounted T_c>
-int32_t length_of(T_c& c) {
+int32_t length_of(T_c&& c) {
     return c.length();
 }
 // def total(c: IntCounted) -> int32:
@@ -134,7 +134,7 @@ int32_t length_of(T_c& c) {
 //         s += x
 //     return s
 template<IntCounted T_c>
-int32_t total(T_c& c) {
+int32_t total(T_c&& c) {
     int32_t s = 0;
     auto& __src_0 = c;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

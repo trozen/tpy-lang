@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Duplicable(Protocol):
 template<typename T>
 concept Duplicable = requires(T& t) {
-    { t.duplicate() } -> std::convertible_to<T>;
+    { t.duplicate() } -> std::convertible_to<std::remove_cvref_t<T>>;
 };
 
 struct Value;
@@ -19,7 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
-void double_it(T_d& d);
+void double_it(T_d&& d);
 // def main() -> None:
 void main();
 
@@ -55,7 +55,7 @@ inline Value Value::duplicate() const {
 // def double_it(d: Duplicable) -> None:
 //     result = d.duplicate()
 template<Duplicable T_d>
-void double_it(T_d& d) {
+void double_it(T_d&& d) {
     auto result = d.duplicate();
 }
 

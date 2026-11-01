@@ -83,12 +83,12 @@ __gen_stale_exit_raises stale_exit_raises();
 __gen_noisy_items noisy_items();
 // def drain(g: Iterator[Noisy]) -> None:
 template<::tpystd::typing::Iterator<Noisy> T_g>
-void drain(T_g& g);
+void drain(T_g&& g);
 // def lent_after_finish() -> None:
 void lent_after_finish();
 // def show(tag: str, g: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void show(std::string_view tag, T_g& g);
+void show(std::string_view tag, T_g&& g);
 // def main() -> None:
 void main();
 
@@ -1194,7 +1194,7 @@ inline Noisy::~Noisy() {
 //     for _ in g:
 //         pass
 template<::tpystd::typing::Iterator<Noisy> T_g>
-void drain(T_g& g) {
+void drain(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -1210,7 +1210,7 @@ void drain(T_g& g) {
 //         got.append(v)
 //     print(tag, "got", got)
 template<::tpystd::typing::Iterator<int32_t> T_g>
-void show(std::string_view tag, T_g& g) {
+void show(std::string_view tag, T_g&& g) {
     std::vector<int32_t> got = std::vector<int32_t>{};
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

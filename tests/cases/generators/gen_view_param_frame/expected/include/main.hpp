@@ -74,10 +74,10 @@ __coro_async_head async_head(std::string_view t);
 __coro_run_head run_head();
 // def count_view(it: Iterator[str]) -> int32:
 template<::tpystd::typing::Iterator<std::string> T_it>
-int32_t count_view(T_it& it);
+int32_t count_view(T_it&& it);
 // def total(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t total(T_it& it);
+int32_t total(T_it&& it);
 // def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
 __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b);
 // async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
@@ -1095,7 +1095,7 @@ inline Outer::Outer(std::string_view prefix) : prefix(prefix) {}
 //         n += len(v)
 //     return n
 template<::tpystd::typing::Iterator<std::string> T_it>
-int32_t count_view(T_it& it) {
+int32_t count_view(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1113,7 +1113,7 @@ int32_t count_view(T_it& it) {
 //         n += v
 //     return n
 template<::tpystd::typing::Iterator<int32_t> T_it>
-int32_t total(T_it& it) {
+int32_t total(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

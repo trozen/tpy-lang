@@ -50,7 +50,7 @@ std::string gp__T(::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def gp(x: Named) -> str:
 template<Named T_x>
-std::string gp__Named(T_x& x);
+std::string gp__Named(T_x&& x);
 // @dispatch
 // def gb[T](x: T) -> str:
 template<typename T>
@@ -61,7 +61,7 @@ std::string gb__Animal(Animal& x);
 // @dispatch
 // def bp(x: Named) -> str:
 template<Named T_x>
-std::string bp__Named(T_x& x);
+std::string bp__Named(T_x&& x);
 // @dispatch
 // def bp(x: Animal) -> str:
 std::string bp__Animal(Animal& x);
@@ -74,7 +74,7 @@ std::string nb__Dog(Dog& x);
 // @dispatch
 // def sp(x: Named) -> str:
 template<Named T_x>
-std::string sp__Named(T_x& x);
+std::string sp__Named(T_x&& x);
 // @dispatch
 // def sp(x: Dog) -> str:
 std::string sp__Dog(Dog& x);
@@ -107,7 +107,7 @@ std::string gr__readonly_T(::tpy::readonly_form_t<T> x);
 // @dispatch
 // def gr(x: Named) -> str:
 template<Named T_x>
-std::string gr__Named(T_x& x);
+std::string gr__Named(T_x&& x);
 // @dispatch
 // def mb(x: MB) -> str:
 std::string mb__MB(MB& x);
@@ -211,13 +211,13 @@ std::string cbp__Animal__int64(Animal& x, int64_t n);
 // @dispatch
 // def cbp(x: Named, n: int64) -> str:
 template<Named T_x>
-std::string cbp__Named__int64(T_x& x, int64_t n);
+std::string cbp__Named__int64(T_x&& x, int64_t n);
 // def cbp_via(d: Dog, n: int8) -> str:
 std::string cbp_via(Dog& d, int8_t n);
 // @dispatch
 // def cbf(x: Named, y: float32) -> str:
 template<Named T_x>
-std::string cbf__Named__float32(T_x& x, float y);
+std::string cbf__Named__float32(T_x&& x, float y);
 // @dispatch
 // def cbf(x: Animal, y: float32) -> str:
 std::string cbf__Animal__float32(Animal& x, float y);
@@ -286,7 +286,7 @@ std::string cpt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
 // @dispatch
 // def cpt(x: Named, n: int64) -> str:
 template<Named T_x>
-std::string cpt__Named__int64(T_x& x, int64_t n);
+std::string cpt__Named__int64(T_x&& x, int64_t n);
 // def cpt_via(d: Dog, n: int8) -> str:
 std::string cpt_via(Dog& d, int8_t n);
 // @dispatch
@@ -316,7 +316,7 @@ std::string csf__list_T__float32(std::vector<T>& x, float y);
 // @dispatch
 // def csp(x: Named, n: int64) -> str:
 template<Named T_x>
-std::string csp__Named__int64(T_x& x, int64_t n);
+std::string csp__Named__int64(T_x&& x, int64_t n);
 // @dispatch
 // def csp(x: Dog, n: int64) -> str:
 std::string csp__Dog__int64(Dog& x, int64_t n);
@@ -347,7 +347,7 @@ std::string ccw__list_int64__int64__int64(const std::vector<int64_t>& xs, int64_
 // @dispatch
 // def cfn(g: Callable[[int32], int32], x: Named, n: int64) -> str:
 template<Named T_x>
-std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x& x, int64_t n);
+std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x&& x, int64_t n);
 // @dispatch
 // def cfn(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
 std::string cfn__Callable_int32_int32__Animal__int64(const std::function<int32_t(int32_t)>& g, Animal& x, int64_t n);
@@ -1807,7 +1807,7 @@ std::string gp__T(::tpy::param_val_or_ref_t<T> x) {
 //     x.bump(1)
 //     return "proto"
 template<Named T_x>
-std::string gp__Named(T_x& x) {
+std::string gp__Named(T_x&& x) {
     x.bump(1);
     return "proto";
 }
@@ -1823,7 +1823,7 @@ std::string gb__T(::tpy::param_val_or_ref_t<T> x) {
 //     x.bump(1)
 //     return "proto"
 template<Named T_x>
-std::string bp__Named(T_x& x) {
+std::string bp__Named(T_x&& x) {
     x.bump(1);
     return "proto";
 }
@@ -1832,7 +1832,7 @@ std::string bp__Named(T_x& x) {
 //     x.bump(1)
 //     return "proto"
 template<Named T_x>
-std::string sp__Named(T_x& x) {
+std::string sp__Named(T_x&& x) {
     x.bump(1);
     return "proto";
 }
@@ -1878,7 +1878,7 @@ std::string gr__readonly_T(::tpy::readonly_form_t<T> x) {
 //     x.bump(1)
 //     return "proto"
 template<Named T_x>
-std::string gr__Named(T_x& x) {
+std::string gr__Named(T_x&& x) {
     x.bump(1);
     return "proto";
 }
@@ -1929,7 +1929,7 @@ std::string oq__T(::tpy::param_val_or_ref_t<T> x) {
 //     x.bump(10)
 //     return "proto"
 template<Named T_x>
-std::string cbp__Named__int64(T_x& x, int64_t n) {
+std::string cbp__Named__int64(T_x&& x, int64_t n) {
     x.bump(10);
     return "proto";
 }
@@ -1938,7 +1938,7 @@ std::string cbp__Named__int64(T_x& x, int64_t n) {
 //     x.bump(10)
 //     return "proto"
 template<Named T_x>
-std::string cbf__Named__float32(T_x& x, float y) {
+std::string cbf__Named__float32(T_x&& x, float y) {
     x.bump(10);
     return "proto";
 }
@@ -2012,7 +2012,7 @@ std::string cpt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
 //     x.bump(1)
 //     return "proto"
 template<Named T_x>
-std::string cpt__Named__int64(T_x& x, int64_t n) {
+std::string cpt__Named__int64(T_x&& x, int64_t n) {
     x.bump(1);
     return "proto";
 }
@@ -2069,7 +2069,7 @@ std::string csf__list_T__float32(std::vector<T>& x, float y) {
 //     x.bump(10)
 //     return "proto"
 template<Named T_x>
-std::string csp__Named__int64(T_x& x, int64_t n) {
+std::string csp__Named__int64(T_x&& x, int64_t n) {
     x.bump(10);
     return "proto";
 }
@@ -2078,7 +2078,7 @@ std::string csp__Named__int64(T_x& x, int64_t n) {
 //     x.bump(g(10))
 //     return "proto"
 template<Named T_x>
-std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x& x, int64_t n) {
+std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x&& x, int64_t n) {
     x.bump(g(10));
     return "proto";
 }

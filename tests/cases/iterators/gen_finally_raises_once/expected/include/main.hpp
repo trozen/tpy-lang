@@ -39,7 +39,7 @@ __gen_break_exit break_exit();
 __gen_continue_exit continue_exit();
 // def run(tag: str, g: Iterator[int]) -> None:
 template<::tpystd::typing::Iterator<::tpy::BigInt> T_g>
-void run(std::string_view tag, T_g& g);
+void run(std::string_view tag, T_g&& g);
 // def main() -> None:
 void main();
 
@@ -386,7 +386,7 @@ inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev,
 //     except Err as e:
 //         print(f"caught code={e.code}")
 template<::tpystd::typing::Iterator<::tpy::BigInt> T_g>
-void run(std::string_view tag, T_g& g) {
+void run(std::string_view tag, T_g&& g) {
     _code = 0;
     std::cout << std::format("-- {} --", tag) << "\n" << ::tpy::check_signals;
     {

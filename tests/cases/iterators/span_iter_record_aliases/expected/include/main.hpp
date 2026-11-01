@@ -29,7 +29,7 @@ struct __coro_co;
 void bump_param(::tpystd::tplib::array_list::ArrayList<A, 4>& al);
 // def bump_iterable(it: Iterable[A]) -> None:
 template<::tpystd::typing::Iterable<A> T_it>
-void bump_iterable(T_it& it);
+void bump_iterable(T_it&& it);
 // def total(al: readonly[ArrayList[A, 4]]) -> int32:
 int32_t total(const ::tpystd::tplib::array_list::ArrayList<A, 4>& al);
 // def gen(al: ArrayList[A, 4]) -> Iterator[int32]:
@@ -170,7 +170,7 @@ inline void Bag::bump_mine() {
 //     for x in it:
 //         x.n += 1  # tpyc: ok
 template<::tpystd::typing::Iterable<A> T_it>
-void bump_iterable(T_it& it) {
+void bump_iterable(T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

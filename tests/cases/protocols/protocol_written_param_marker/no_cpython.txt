@@ -1,0 +1,2 @@
+Tests TPy-only marker protocols (Copyable, Default): CPython cannot run
+isinstance against them because they are not runtime-checkable.

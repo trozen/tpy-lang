@@ -16,10 +16,10 @@ struct __gen_gen_double_x;
 
 // def mutate_via_iterable(items: Iterable[Point]) -> None:
 template<::tpystd::typing::Iterable<Point> T_items>
-void mutate_via_iterable(T_items& items);
+void mutate_via_iterable(T_items&& items);
 // def mutate_via_iterator(it: Iterator[Point]) -> None:
 template<::tpystd::typing::Iterator<Point> T_it>
-void mutate_via_iterator(T_it& it);
+void mutate_via_iterator(T_it&& it);
 // def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
 template <::tpystd::typing::Iterable<Point> T_items>
 __gen_gen_double_x<T_items> gen_double_x(T_items&& items);
@@ -120,7 +120,7 @@ inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 //     for p in items:
 //         p.x += 100
 template<::tpystd::typing::Iterable<Point> T_items>
-void mutate_via_iterable(T_items& items) {
+void mutate_via_iterable(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -134,7 +134,7 @@ void mutate_via_iterable(T_items& items) {
 //     for p in it:
 //         p.y += 200
 template<::tpystd::typing::Iterator<Point> T_it>
-void mutate_via_iterator(T_it& it) {
+void mutate_via_iterator(T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

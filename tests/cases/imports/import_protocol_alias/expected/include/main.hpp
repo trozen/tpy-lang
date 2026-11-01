@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def show(p: P) -> None:
 template<::tpyapp::traits::Printable T_p>
-void show(T_p& p);
+void show(T_p&& p);
 // def main() -> int32:
 int32_t main();
 
@@ -50,7 +50,7 @@ inline std::string Message::to_string() const {
 // def show(p: P) -> None:
 //     print(p.to_string())
 template<::tpyapp::traits::Printable T_p>
-void show(T_p& p) {
+void show(T_p&& p) {
     std::cout << p.to_string() << "\n" << ::tpy::check_signals;
 }
 

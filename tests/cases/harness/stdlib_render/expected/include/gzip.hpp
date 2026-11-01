@@ -57,13 +57,13 @@ int32_t _u16le(::tpy::BytesView b, int32_t off);
 uint32_t _u32le(::tpy::BytesView b, int32_t off);
 // def _read_exact(fp: _ByteSource, n: int32) -> bytes:
 template<::tpystd::gzip::_ByteSource T_fp>
-::tpy::Bytes _read_exact(T_fp& fp, int32_t n);
+::tpy::Bytes _read_exact(T_fp&& fp, int32_t n);
 // def _skip_cstring(fp: _ByteSource) -> None:
 template<::tpystd::gzip::_ByteSource T_fp>
-void _skip_cstring(T_fp& fp);
+void _skip_cstring(T_fp&& fp);
 // def _read_gzip_header(fp: _ByteSource) -> bool:
 template<::tpystd::gzip::_ByteSource T_fp>
-bool _read_gzip_header(T_fp& fp);
+bool _read_gzip_header(T_fp&& fp);
 // def _raw_decompressor() -> Own[zlib._Decompress]:
 ::tpystd::zlib::_Decompress _raw_decompressor();
 // def _open_for_read(filename: str) -> int64:
@@ -442,7 +442,7 @@ inline void GzipFile::__exit__(std::monostate exc_type, const ::tpy::BaseExcepti
 //         data = data + more
 //     return data
 template<::tpystd::gzip::_ByteSource T_fp>
-::tpy::Bytes _read_exact(T_fp& fp, int32_t n) {
+::tpy::Bytes _read_exact(T_fp&& fp, int32_t n) {
     ::tpy::Bytes data = fp.read(n);
     while ((::tpy::__len__(data) < n)) {
         ::tpy::Bytes more = fp.read((::tpy::sub_check<int32_t>(n, ::tpy::__len__(data))));
@@ -459,7 +459,7 @@ template<::tpystd::gzip::_ByteSource T_fp>
 //         if len(s) == 0 or s[0] == 0:
 //             return
 template<::tpystd::gzip::_ByteSource T_fp>
-void _skip_cstring(T_fp& fp) {
+void _skip_cstring(T_fp&& fp) {
     while (true) {
         ::tpy::Bytes s = fp.read(1);
         if (((::tpy::__len__(s) == 0) || (::tpy::bytes_getitem(s, 0) == 0))) {
@@ -490,7 +490,7 @@ void _skip_cstring(T_fp& fp) {
 //         _read_exact(fp, 2)
 //     return True
 template<::tpystd::gzip::_ByteSource T_fp>
-bool _read_gzip_header(T_fp& fp) {
+bool _read_gzip_header(T_fp&& fp) {
     ::tpy::Bytes magic = fp.read(2);
     if ((::tpy::__len__(magic) == 0)) {
         return false;

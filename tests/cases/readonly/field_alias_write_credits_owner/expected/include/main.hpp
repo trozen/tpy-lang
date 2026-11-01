@@ -141,7 +141,7 @@ void fn_readonly_method(const P& p, Cell& c);
 int32_t fn_gen_method(P& p);
 // def consume(g: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t consume(T_g& g);
+int32_t consume(T_g&& g);
 // def fn_gen_handed(p: P) -> int32:
 int32_t fn_gen_handed(P& p);
 // def inv_ptr_getter(h: H) -> None:
@@ -812,7 +812,7 @@ void accept(::tpy::param_val_or_ref_t<T> x) {
 //         return v
 //     return -1
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t consume(T_g& g) {
+int32_t consume(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

@@ -67,7 +67,7 @@ int32_t chain(Holder& h, bool read);
 __gen_items items(const std::vector<int32_t>& xs);
 // def first(g: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g);
+int32_t first(T_g&& g);
 // def walrus_rows(rows: list[list[int32]]) -> Iterator[int32]:
 __gen_walrus_rows walrus_rows(const std::vector<std::vector<int32_t>>& rows);
 // def view_of(h: Named) -> StrView:
@@ -768,7 +768,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> Ticker::__next__() {
 //         return v
 //     return -1
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g) {
+int32_t first(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

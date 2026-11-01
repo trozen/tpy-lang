@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def total(items: Spannable[int32] | Iterable[int32]) -> int32:
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t total(T_items& items);
+int32_t total(T_items&& items);
 // def maybe_total(items: Spannable[int32] | Iterable[int32] | None) -> int32:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
@@ -34,8 +34,8 @@ void main();
 //         return result2
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t total(T_items& items) {
-    if constexpr (::tpystd::tpy::Spannable<T_items, int32_t>) {
+int32_t total(T_items&& items) {
+    if constexpr (::tpystd::tpy::Spannable<std::remove_cvref_t<T_items>, int32_t>) {
         std::span<const int32_t> s = ::tpy::as_span(items);
         int32_t result = 0;
         auto& __obj_0 = s;

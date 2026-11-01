@@ -25,7 +25,7 @@ template<Mixed T_m>
 int32_t safe_read(const T_m& m);
 // def use_both(m: Mixed) -> int32:
 template<Mixed T_m>
-int32_t use_both(T_m& m);
+int32_t use_both(T_m&& m);
 
 // class Impl:
 struct Impl {
@@ -78,7 +78,7 @@ int32_t safe_read(const T_m& m) {
 //     m.write(10)
 //     return m.read()
 template<Mixed T_m>
-int32_t use_both(T_m& m) {
+int32_t use_both(T_m&& m) {
     m.write(10);
     return m.read();
 }

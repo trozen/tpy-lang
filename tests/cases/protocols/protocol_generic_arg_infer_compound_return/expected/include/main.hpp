@@ -20,10 +20,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def second_of[T](s: HasPair[T]) -> int32:
 template<typename T, HasPair<T> T_s>
-int32_t second_of(T_s& s);
+int32_t second_of(T_s&& s);
 // def use_consume[T](s: HasPair[T], v: T) -> int32:
 template<typename T, HasPair<T> T_s>
-int32_t use_consume(T_s& s, ::tpy::param_val_or_ref_t<T> v);
+int32_t use_consume(T_s&& s, ::tpy::param_val_or_ref_t<T> v);
 // def main() -> None:
 void main();
 
@@ -76,7 +76,7 @@ inline int32_t Cell<T>::consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_
 //     p = s.pair()
 //     return p[1]
 template<typename T, HasPair<T> T_s>
-int32_t second_of(T_s& s) {
+int32_t second_of(T_s&& s) {
     auto p = s.pair();
     return std::get<1>(p);
 }
@@ -84,7 +84,7 @@ int32_t second_of(T_s& s) {
 // def use_consume[T](s: HasPair[T], v: T) -> int32:
 //     return s.consume((v, int32(2)))
 template<typename T, HasPair<T> T_s>
-int32_t use_consume(T_s& s, ::tpy::param_val_or_ref_t<T> v) {
+int32_t use_consume(T_s&& s, ::tpy::param_val_or_ref_t<T> v) {
     return s.consume(std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(v), 2});
 }
 

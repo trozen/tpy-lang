@@ -13,7 +13,7 @@ struct __genexpr_proto_1_frame;
 
 // def proto(it: Iterable[int32], xs: list[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t proto(T_it& it, const std::vector<int32_t>& xs);
+int32_t proto(T_it&& it, const std::vector<int32_t>& xs);
 // def main() -> None:
 void main();
 // t = sum(x * 2 for x in xs)  # tpyc: ok
@@ -54,7 +54,7 @@ struct __genexpr_proto_1_frame : public ::tpy::next_iter_mixin<__genexpr_proto_1
 //         t += v
 //     return t
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t proto(T_it& it, const std::vector<int32_t>& xs) {
+int32_t proto(T_it&& it, const std::vector<int32_t>& xs) {
     int32_t t = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_proto_1(xs));
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

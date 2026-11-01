@@ -166,7 +166,7 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
 __coro_async_genexpr async_genexpr(const std::vector<int32_t>& xs);
 // def drain(it: Iterator[str]) -> None:
 template<::tpystd::typing::Iterator<std::string> T_it>
-void drain(T_it& it);
+void drain(T_it&& it);
 // def main() -> None:
 void main();
 // for v in (x * 2 for x in xs):  # tpyc: ok
@@ -1905,7 +1905,7 @@ inline Row::Row(int32_t a, int32_t b) : cells(std::vector<Cell>{Cell(a), Cell(b)
 //     for s in it:
 //         print(s)
 template<::tpystd::typing::Iterator<std::string> T_it>
-void drain(T_it& it) {
+void drain(T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

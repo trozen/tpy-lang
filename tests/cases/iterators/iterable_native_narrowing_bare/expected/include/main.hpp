@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sum_fast(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t sum_fast(T_it& it);
+int32_t sum_fast(T_it&& it);
 // def main() -> None:
 void main();
 
@@ -27,9 +27,9 @@ void main();
 //             total += x
 //     return total
 template<::tpystd::typing::Iterable<int32_t> T_it>
-int32_t sum_fast(T_it& it) {
+int32_t sum_fast(T_it&& it) {
     int32_t total = 0;
-    if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
+    if constexpr (::tpy::NativeIterable<std::remove_cvref_t<T_it>, int32_t>) {
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

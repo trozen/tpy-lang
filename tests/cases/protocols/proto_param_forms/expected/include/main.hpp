@@ -53,19 +53,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def free_bump(s: Shapes, r: Rec) -> int32:
 template<Shapes T_s>
-int32_t free_bump(T_s& s, Rec& r);
+int32_t free_bump(T_s&& s, Rec& r);
 // def free_grow(s: Shapes, xs: list[int32]) -> int32:
 template<Shapes T_s>
-int32_t free_grow(T_s& s, std::vector<int32_t>& xs);
+int32_t free_grow(T_s&& s, std::vector<int32_t>& xs);
 // def free_total(s: Shapes, xs: readonly[list[int32]]) -> int32:
 template<Shapes T_s>
-int32_t free_total(T_s& s, const std::vector<int32_t>& xs);
+int32_t free_total(T_s&& s, const std::vector<int32_t>& xs);
 // def free_opt(s: Shapes, r: Optional[Rec]) -> int32:
 template<Shapes T_s>
-int32_t free_opt(T_s& s, Rec* r);
+int32_t free_opt(T_s&& s, Rec* r);
 // def free_uni(s: Shapes, u: Rec | Other) -> int32:
 template<Shapes T_s>
-int32_t free_uni(T_s& s, ::tpy::Union<Other*, Rec*> u);
+int32_t free_uni(T_s&& s, ::tpy::Union<Other*, Rec*> u);
 // def main() -> None:
 void main();
 
@@ -180,7 +180,7 @@ struct Caller {
 
     // def drive(self, s: Shapes, r: Rec) -> None:
     template<Shapes T_s>
-    void drive(T_s& s, Rec& r);
+    void drive(T_s&& s, Rec& r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Caller";
 };
 
@@ -321,38 +321,38 @@ inline Caller::Caller() : seen(0) {}
 // def drive(self, s: Shapes, r: Rec) -> None:
 //     self.seen = s.bump(r)
 template<Shapes T_s>
-inline void Caller::drive(T_s& s, Rec& r) {
+inline void Caller::drive(T_s&& s, Rec& r) {
     this->seen = s.bump(r);
 }
 
 // def free_bump(s: Shapes, r: Rec) -> int32:
 //     return s.bump(r)
 template<Shapes T_s>
-int32_t free_bump(T_s& s, Rec& r) {
+int32_t free_bump(T_s&& s, Rec& r) {
     return s.bump(r);
 }
 // def free_grow(s: Shapes, xs: list[int32]) -> int32:
 //     return s.grow(xs)
 template<Shapes T_s>
-int32_t free_grow(T_s& s, std::vector<int32_t>& xs) {
+int32_t free_grow(T_s&& s, std::vector<int32_t>& xs) {
     return s.grow(xs);
 }
 // def free_total(s: Shapes, xs: readonly[list[int32]]) -> int32:
 //     return s.total(xs)
 template<Shapes T_s>
-int32_t free_total(T_s& s, const std::vector<int32_t>& xs) {
+int32_t free_total(T_s&& s, const std::vector<int32_t>& xs) {
     return s.total(xs);
 }
 // def free_opt(s: Shapes, r: Optional[Rec]) -> int32:
 //     return s.opt_bump(r)
 template<Shapes T_s>
-int32_t free_opt(T_s& s, Rec* r) {
+int32_t free_opt(T_s&& s, Rec* r) {
     return s.opt_bump(r);
 }
 // def free_uni(s: Shapes, u: Rec | Other) -> int32:
 //     return s.uni_bump(u)
 template<Shapes T_s>
-int32_t free_uni(T_s& s, ::tpy::Union<Other*, Rec*> u) {
+int32_t free_uni(T_s&& s, ::tpy::Union<Other*, Rec*> u) {
     return s.uni_bump(u);
 }
 

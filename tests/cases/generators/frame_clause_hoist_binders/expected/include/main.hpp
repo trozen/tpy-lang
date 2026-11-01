@@ -141,7 +141,7 @@ __gen_gen_prebound gen_prebound();
 __gen_gen_toplevel gen_toplevel();
 // def show(name: str, g: Iterator[str]) -> None:
 template<::tpystd::typing::Iterator<std::string> T_g>
-void show(std::string_view name, T_g& g);
+void show(std::string_view name, T_g&& g);
 // def main() -> None:
 void main();
 
@@ -1049,7 +1049,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 //     for v in g:
 //         print(f"{name}: {v}")
 template<::tpystd::typing::Iterator<std::string> T_g>
-void show(std::string_view name, T_g& g) {
+void show(std::string_view name, T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

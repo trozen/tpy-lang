@@ -74,7 +74,7 @@ template <typename T>
 __gen_pairs<T> pairs(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def first(g: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g);
+int32_t first(T_g&& g);
 // @error_return(ParseError)
 // def er_body(n: int32) -> int32:
 std::expected<int32_t, ParseError> er_body(int32_t n);
@@ -136,7 +136,7 @@ __gen_reading_fin reading_fin(const std::vector<std::string>& xs);
 __gen_frame_order frame_order(bool c);
 // def first_str(g: Iterator[str]) -> str:
 template<::tpystd::typing::Iterator<std::string> T_g>
-std::string first_str(T_g& g);
+std::string first_str(T_g&& g);
 // def closure() -> None:
 void closure();
 // def method_generator() -> None:
@@ -1160,7 +1160,7 @@ inline int32_t Bag<T>::count() {
 //         return v
 //     return -1
 template<::tpystd::typing::Iterator<int32_t> T_g>
-int32_t first(T_g& g) {
+int32_t first(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -1176,7 +1176,7 @@ int32_t first(T_g& g) {
 //         return v
 //     return ""
 template<::tpystd::typing::Iterator<std::string> T_g>
-std::string first_str(T_g& g) {
+std::string first_str(T_g&& g) {
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

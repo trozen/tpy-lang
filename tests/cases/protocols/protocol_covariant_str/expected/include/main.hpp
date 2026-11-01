@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def greet(x: Named) -> None:
 template<Named T_x>
-void greet(T_x& x);
+void greet(T_x&& x);
 // def main():
 void main();
 
@@ -115,7 +115,7 @@ inline ::tpy::String Bird::name() const {
 // def greet(x: Named) -> None:
 //     print(x.name())
 template<Named T_x>
-void greet(T_x& x) {
+void greet(T_x&& x) {
     std::cout << x.name() << "\n" << ::tpy::check_signals;
 }
 

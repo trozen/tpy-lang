@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def consume(it: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_it>
-void consume(T_it& it);
+void consume(T_it&& it);
 // def main() -> None:
 void main();
 
@@ -19,7 +19,7 @@ void main();
 //     for x in it:
 //         print(x)
 template<::tpystd::typing::Iterator<int32_t> T_it>
-void consume(T_it& it) {
+void consume(T_it&& it) {
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

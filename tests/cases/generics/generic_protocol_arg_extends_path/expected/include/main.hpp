@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def length[T](xs: Iterable[T]) -> int32:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-int32_t length(T_xs& xs);
+int32_t length(T_xs&& xs);
 // def total_of[T](xs: MyList[T]) -> int32:
 template<typename T>
 int32_t total_of(MyList<T>& xs);
@@ -119,7 +119,7 @@ inline MyIter<T> MyList<T>::__iter__() const {
 //         n += 1
 //     return n
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-int32_t length(T_xs& xs) {
+int32_t length(T_xs&& xs) {
     int32_t n = 0;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

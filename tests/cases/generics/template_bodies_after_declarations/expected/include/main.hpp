@@ -204,7 +204,7 @@ struct Plain {
 
     // def p(self, h: HasN) -> Own[Later]:
     template<HasN T_h>
-    Later p(T_h& h) const;
+    Later p(T_h&& h) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Plain";
 };
 
@@ -1028,7 +1028,7 @@ inline Later Plain::m(::tpy::readonly_form_t<U> x) const {
 // def p(self, h: HasN) -> Own[Later]:
 //     return Later(h.n())  # tpyc: ok
 template<HasN T_h>
-inline Later Plain::p(T_h& h) const {
+inline Later Plain::p(T_h&& h) const {
     return Later(h.n());
 }
 

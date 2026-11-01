@@ -616,11 +616,16 @@ class FunctionGenerator:
                                and any(isinstance(a, OwnType) for a in unwrapped.type_args))
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
-                elif is_own_protocol or has_own_arg:
+                elif (is_own_protocol or has_own_arg
+                      or not _const_ref(passings[pname])):
+                    # A deduced parameter the callee writes binds what its
+                    # concrete twin is handed -- the twin's own copy, or the
+                    # caller's object for a reference twin -- as a frame
+                    # factory's deduced parameter does: a `T&` binds no
+                    # prvalue.
                     part = f"T_{pname}&& {cpp_pname}"
                 else:
-                    const_kw = "const " if _const_ref(passings[pname]) else ""
-                    part = f"{const_kw}T_{pname}& {cpp_pname}"
+                    part = f"const T_{pname}& {cpp_pname}"
             else:
                 # Check for @dynamic protocol
                 inner_unwrapped = unwrapped.inner if isinstance(unwrapped, OptionalType) else unwrapped

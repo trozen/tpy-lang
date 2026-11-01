@@ -110,7 +110,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def via_proto(tag: str, sk: Sink, pv: list[int32],
 //               opt: Optional[list[int32]]) -> None:
 template<Sink T_sk>
-void via_proto(std::string_view tag, T_sk& sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt);
+void via_proto(std::string_view tag, T_sk&& sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt);
 // def via_dyn(tag: str, sk: DSink, pv: list[int32],
 //             opt: Optional[list[int32]]) -> None:
 void via_dyn(std::string_view tag, DSink& sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt);
@@ -123,17 +123,17 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
 std::unique_ptr<DSink> via_own(std::string_view tag, std::unique_ptr<DSink> sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt);
 // def via_opt(sk: Opt) -> None:
 template<Opt T_sk>
-void via_opt(T_sk& sk);
+void via_opt(T_sk&& sk);
 // def via_generic(sink: GSink[str], xs: list[str]) -> None:
 template<GSink<std::string> T_sink>
-void via_generic(T_sink& sink, const std::vector<std::string>& xs);
+void via_generic(T_sink&& sink, const std::vector<std::string>& xs);
 // def via_dyn_param(sk: Taker) -> None:
 void via_dyn_param(Taker& sk);
 // def via_opt_dyn(o: Optional[DSink], xs: list[str]) -> None:
 void via_opt_dyn(DSink* o, const std::vector<std::string>& xs);
 // def take_free(p: Pinger) -> int32:
 template<Pinger T_p>
-int32_t take_free(T_p& p);
+int32_t take_free(T_p&& p);
 // def via_elem(r: ElemReader, d: dict[str, Elem]) -> None:
 void via_elem(const ElemReader& r, ::tpy::ordered_map<std::string, Elem>& d);
 // def main() -> None:
@@ -317,7 +317,7 @@ struct ElemReader {
 
     // def take(self, p: Pinger) -> int32:
     template<Pinger T_p>
-    int32_t take(T_p& p) const;
+    int32_t take(T_p&& p) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ElemReader";
 };
 
@@ -532,7 +532,7 @@ inline void Bag<T>::put(::tpy::own_param_t<T> v) {
 // def take(self, p: Pinger) -> int32:
 //     return p.ping()
 template<Pinger T_p>
-inline int32_t ElemReader::take(T_p& p) const {
+inline int32_t ElemReader::take(T_p&& p) const {
     return p.ping();
 }
 
@@ -556,7 +556,7 @@ inline int32_t ElemReader::take(T_p& p) const {
 //     print(tag, "union subscript", sk.take_union(xs[1]))  # tpyc: ok
 //     print(tag, "union ctor", sk.take_ru(R(6)))  # tpyc: ok
 template<Sink T_sk>
-void via_proto(std::string_view tag, T_sk& sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt) {
+void via_proto(std::string_view tag, T_sk&& sk, const std::vector<int32_t>& pv, const std::vector<int32_t>* opt) {
     R r0 = R(1);
     R __tmp_1 = r0;
     std::cout << tag << " " << "rec_own local" << " " << sk.take_rec(std::move(__tmp_1)) << " " << r0.x << "\n" << ::tpy::check_signals;
@@ -650,7 +650,7 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
 //     print("optptr list literal", sk.take_ol([1, 2]))  # tpyc: ok
 //     print("opt scalar", sk.take_oi(n + 1))  # tpyc: ok
 template<Opt T_sk>
-void via_opt(T_sk& sk) {
+void via_opt(T_sk&& sk) {
     int32_t n = 4;
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2};
     std::cout << "optptr list literal" << " " << sk.take_ol(&(__tmp_1)) << "\n" << ::tpy::check_signals;
@@ -662,7 +662,7 @@ void via_opt(T_sk& sk) {
 //     sink.put(s)  # tpyc: ok
 //     print("generic own_str", s)
 template<GSink<std::string> T_sink>
-void via_generic(T_sink& sink, const std::vector<std::string>& xs) {
+void via_generic(T_sink&& sink, const std::vector<std::string>& xs) {
     ::tpy::String s = (::tpy::str_concat(::tpy::__getitem__(xs, 0), "x"));
     std::string __tmp_1{s};
     sink.put(std::move(__tmp_1));
@@ -671,7 +671,7 @@ void via_generic(T_sink& sink, const std::vector<std::string>& xs) {
 // def take_free(p: Pinger) -> int32:
 //     return p.ping()
 template<Pinger T_p>
-int32_t take_free(T_p& p) {
+int32_t take_free(T_p&& p) {
     return p.ping();
 }
 

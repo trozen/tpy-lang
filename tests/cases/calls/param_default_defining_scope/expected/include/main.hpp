@@ -79,7 +79,7 @@ struct __gen_source;
 int32_t lf(int32_t a, int32_t b = ::tpyapp::main::LOCAL, int32_t c = 0);
 // def through_protocol(p: defs.P) -> int32:
 template<::tpyapp::defs::P T_p>
-int32_t through_protocol(T_p& p);
+int32_t through_protocol(T_p&& p);
 // def param(K: int32) -> int32:
 int32_t param(int32_t K);
 // def ctor_param(int64: int32) -> None:
@@ -373,7 +373,7 @@ inline int32_t Runner::run(int32_t K) const {
 // def through_protocol(p: defs.P) -> int32:
 //     return p.step(y=9)  # tpyc: ok
 template<::tpyapp::defs::P T_p>
-int32_t through_protocol(T_p& p) {
+int32_t through_protocol(T_p&& p) {
     return p.step(::tpyapp::defs::K, 9);
 }
 // def static_temp_generic[T](v: T) -> StrView:

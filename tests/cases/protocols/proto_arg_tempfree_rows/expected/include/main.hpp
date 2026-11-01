@@ -23,7 +23,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def drive(pp: Reader) -> None:
 template<Reader T_pp>
-void drive(T_pp& pp);
+void drive(T_pp&& pp);
 // def main() -> None:
 void main();
 
@@ -119,7 +119,7 @@ inline int32_t Sink::take_opt(std::optional<std::string_view> s) const {
 //     # `None` at a value-repr Optional slot
 //     print("opt_none", pp.take_opt(None))  # tpyc: ok
 template<Reader T_pp>
-void drive(T_pp& pp) {
+void drive(T_pp&& pp) {
     W w = W();
     std::string_view s0 = "hello";
     std::cout << "str_local" << " " << pp.take_str(std::string(s0)) << "\n" << ::tpy::check_signals;

@@ -23,7 +23,7 @@ concept MultiMethod = requires(T& t) {
 // class Clonable(Protocol):
 template<typename T>
 concept Clonable = requires(T& t) {
-    { t.clone() } -> std::convertible_to<T>;
+    { t.clone() } -> std::convertible_to<std::remove_cvref_t<T>>;
 };
 
 template<Stringable T> struct Printer;

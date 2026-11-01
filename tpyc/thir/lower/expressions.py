@@ -15117,7 +15117,7 @@ def _already_hoisted(e: THIRExpr) -> bool:
         e = e.expr
     if isinstance(e, THIRUnionArgLift):
         return e.temp_cpp is not None or _already_hoisted_opt(e.value)
-    if isinstance(e, THIROptionalPtrArg):
+    if isinstance(e, (THIROptionalPtrArg, THIRFormConvert)):
         return _already_hoisted_opt(e.value)
     return isinstance(e, (THIRArgTemp, THIRVarargPack))
 
@@ -15631,10 +15631,11 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # the slot holds the argument's own type, under the callee's contract,
     # as a generic call holds its instantiation -- handed, where the
     # contract says so (`Materializer.DEDUCED`), as the type's concrete twin
-    # holds it: at a call its own copy (`auto(b.n)`), its view or the object
-    # itself (the callee may write the storage it was read from through
-    # another parameter), at a frame what the twin's frame member holds; a
-    # runtime binding reads within the call.
+    # holds it: at a call its own copy (`auto(b.n)`, which a written
+    # parameter's `T_p&&` binds as a frame factory's does), its view or the
+    # object itself (the callee may write the storage it was read from
+    # through another parameter), at a frame what the twin's frame member
+    # holds; a runtime binding reads within the call.
     twin = None
     if structural is not None:
         inst = structural
@@ -15655,14 +15656,17 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     elif _tuple_param(inst):
         return None
     keep = contract.retention
-    cls = param_slot_class(ptype, contract)
+    # A deduced protocol parameter is classified as its twin's.
+    cls = (param_slot_class(ptype, contract) if twin is None
+           else param_slot_class(structural, twin))
     if (cls is ParamSlotClass.REFERENCE and structural is None
             and not _reference_object_slot(inst, lc.analyzer)):
         return None
     if (cls is ParamSlotClass.POINTER
             and (not _pointer_object_slot(inst, lc.analyzer)
-                 # A protocol parameter adapts its argument (its own slice).
-                 or (declared_ptype is not None
+                 # A protocol parameter adapts its argument (its own slice)
+                 # unless it is deduced at its twin.
+                 or (twin is None and declared_ptype is not None
                      and _protocol_binding(declared_ptype) is not None)
                  # A template's open parameter takes the instantiation's
                  # storage, not its borrow pointer.
@@ -15712,7 +15716,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 "DEDUCED contract without a protocol twin at line "
                 f"{getattr(a, 'line', '?')}")
         else:
-            slot = deduced_slot(ptype, contract, structural, twin,
+            slot = deduced_slot(contract, structural, twin,
                                 lc.analyzer, placement=lc.placement)
         return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
                              temps=temps, reason=reason, note=note,

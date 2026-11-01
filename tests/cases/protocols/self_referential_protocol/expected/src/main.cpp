@@ -10,10 +10,8 @@ namespace tpyapp::main {
 //     bounce(Ping())
 void main() {
     ::tpyapp::main::combine(auto(Meters(::tpy::BigInt(30))), auto(Meters(::tpy::BigInt(12))));
-    auto __tmp_1 = Num(::tpy::BigInt(8));
-    ::tpyapp::main::chain(__tmp_1);
-    auto __tmp_2 = Ping();
-    ::tpyapp::main::bounce(__tmp_2);
+    ::tpyapp::main::chain(auto(Num(::tpy::BigInt(8))));
+    ::tpyapp::main::bounce(auto(Ping()));
 }
 
 // main()

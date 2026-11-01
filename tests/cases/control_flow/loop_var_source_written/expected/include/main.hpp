@@ -144,7 +144,7 @@ void generic_touch(std::vector<T>& a, const std::function<void(::tpy::param_val_
 void keep_pure(const std::vector<::tpy::BigInt>& a);
 // def keep_generic_prod(xs: Iterable[int], start: int) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-::tpy::BigInt keep_generic_prod(T_xs& xs, const ::tpy::BigInt& start);
+::tpy::BigInt keep_generic_prod(T_xs&& xs, const ::tpy::BigInt& start);
 // def hash_display(w: W) -> None:
 void hash_display(const W& w);
 // def dict_key(d: dict[W, int], w: W) -> None:
@@ -1037,7 +1037,7 @@ void generic_touch(std::vector<T>& a, const std::function<void(::tpy::param_val_
 //         r = r * x  # inverse: a rebind of an int holds no storage
 //     return r
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-::tpy::BigInt keep_generic_prod(T_xs& xs, const ::tpy::BigInt& start) {
+::tpy::BigInt keep_generic_prod(T_xs&& xs, const ::tpy::BigInt& start) {
     ::tpy::BigInt r = start;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

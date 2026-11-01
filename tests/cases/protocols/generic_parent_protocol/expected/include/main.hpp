@@ -21,10 +21,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def length_of(c: Counted[int32]) -> int32:
 template<Counted<int32_t> T_c>
-int32_t length_of(T_c& c);
+int32_t length_of(T_c&& c);
 // def total(c: Counted[int32]) -> int32:
 template<Counted<int32_t> T_c>
-int32_t total(T_c& c);
+int32_t total(T_c&& c);
 // def main() -> None:
 void main();
 
@@ -123,7 +123,7 @@ inline IntListIter IntList::__iter__() const {
 //     # Direct method on the protocol.
 //     return c.length()
 template<Counted<int32_t> T_c>
-int32_t length_of(T_c& c) {
+int32_t length_of(T_c&& c) {
     return c.length();
 }
 // def total(c: Counted[int32]) -> int32:
@@ -134,7 +134,7 @@ int32_t length_of(T_c& c) {
 //         s += x
 //     return s
 template<Counted<int32_t> T_c>
-int32_t total(T_c& c) {
+int32_t total(T_c&& c) {
     int32_t s = 0;
     auto& __src_0 = c;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

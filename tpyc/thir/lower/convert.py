@@ -1525,13 +1525,6 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     if holds is SlotHolds.BORROWS:
         # A reference binds storage the caller can still reach: an object
         # of the slot's type, read as it is.
-        if _ptr_opt(st) and (s.pointer_held or s.held is Held.FRESH
-                             or not _binds(st, rt_whole, types)):
-            # A getter's storage reference fed anything but the field it
-            # names still takes the pointer conversions, which its signature
-            # does not spell: the C++ build refuses them
-            # (BUGS.md#property-getter-pointer-optional-return).
-            return _to_pointer(expr, s, st, rt_whole, types, const=slot.const)
         if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
                 and isinstance(unwrap_readonly(st), UnionType)
                 and not _same_type(rt_whole, st, types)

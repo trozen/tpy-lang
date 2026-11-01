@@ -1524,10 +1524,13 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
     conforms by its bound rather than by a type of its own (a protocol,
     `Any`, a callable's template parameter) and, at a generator or
     coroutine factory (`frame`), an open `T`, which the frame holds through
-    its own trait; an iterable (`_bound_by_iteration`); and a value at a
-    call whose callee writes the parameter (`writes`, `param_written`),
-    whose storage may be replaced while the callee reads it, so its rows
-    copy it -- a frame member is its twin's whatever the callee writes.
+    its own trait; an iterable (`_bound_by_iteration`); and, at a call
+    whose callee writes the parameter (`writes`, `param_written`), a value
+    of a builtin type (`str`, `StrView`, a number): its C++ type spells
+    none of the protocol's methods, so its rows keep it, refusing what
+    they cannot bind. A record value the callee writes takes its twin's
+    copy, as an unwritten one does, bound by the parameter's `T_p&&` as a
+    frame factory's deduced parameter binds it.
 
     The one answer sema's loans, the frame hoist and the lowering's slot
     read: the lowering only refines it with the facts it alone has (a
@@ -1553,8 +1556,11 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
     if not isinstance(at, TpyType):
         return slot
     at = _held_type(at)
-    if not _has_twin(at, frame) or (writes and not frame
-                                     and at.is_value_type()):
+    if not _has_twin(at, frame) or (
+            writes and not frame and at.is_value_type()
+            # No TypeDef fact says a type's C++ spells its methods as
+            # members; a user record's class is the one that does.
+            and not (isinstance(at, NominalType) and at.is_user_record)):
         return slot
     name = peel_coerce(arg)
     if declared_of is not None and isinstance(name, TpyName):

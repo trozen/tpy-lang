@@ -772,16 +772,16 @@ class ProtocolGenerator:
         args = self.record_template_args(record_name)
         return f"{q}<{', '.join(args)}>" if args else q
 
-    def _concept_constraint(self, pname: str, ptype: NominalType) -> str:
-        """Build the concept constraint expression for a protocol template param.
+    def _concept_constraint(self, subject: str, ptype: NominalType) -> str:
+        """Build the concept constraint expression over the C++ type `subject`.
 
         Returns e.g. '::tpy::Sized<T_items>' or '::tpy::Sequence<T_items, int32_t>'.
         """
         concept_name = self.get_concept_name(ptype)
         if ptype.type_args:
             type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
-            return f"{concept_name}<T_{pname}, {type_args_cpp}>"
-        return f"{concept_name}<T_{pname}>"
+            return f"{concept_name}<{subject}, {type_args_cpp}>"
+        return f"{concept_name}<{subject}>"
 
     def concept_test_cpp(self, var_name: str, check_type: NominalType,
                          declared_type: 'TpyType | None',
@@ -798,7 +798,11 @@ class ProtocolGenerator:
             if infos and infos[0].has_none and len(infos[0].protocols) == 1:
                 pol = "" if negated else "!"
                 return f"{pol}std::same_as<T_{var_name}, std::nullptr_t>"
-        cpp = self._concept_constraint(var_name, check_type)
+        # A forwarding parameter deduces `R&` for an lvalue argument; the
+        # test is about the argument's type, which a marker concept
+        # (`Copyable`, `Default`) answers differently for the reference.
+        cpp = self._concept_constraint(
+            f"std::remove_cvref_t<T_{var_name}>", check_type)
         return f"(!({cpp}))" if negated else cpp
 
     def gen_combined_template_header(
@@ -864,7 +868,7 @@ class ProtocolGenerator:
                 if info.has_none:
                     constraints.append(f"std::same_as<T_{pname}, std::nullptr_t>")
                 for proto in info.protocols:
-                    constraints.append(self._concept_constraint(pname, proto))
+                    constraints.append(self._concept_constraint(f"T_{pname}", proto))
                 requires_parts.append(f"({' || '.join(constraints)})")
 
         if not template_parts:
@@ -883,8 +887,9 @@ class ProtocolGenerator:
     def gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
         """Generate a C++20 concept for a user-defined protocol.
 
-        SelfType in method signatures is rendered as 'T' (the template parameter).
-        This allows the concept to check that e.g., T + T -> T.
+        SelfType in method signatures is rendered as the template parameter
+        with its reference stripped (`std::remove_cvref_t<T>`), so a forwarding
+        parameter's deduced `X&` checks `X + X -> X`.
 
         For generic protocols like Container[T], we generate:
         - template<typename T, typename _T0> where T is the checked type and _T0 is the protocol's T
@@ -981,7 +986,7 @@ class ProtocolGenerator:
 
         for method_sig in all_methods:
             # Generate requirement for each method.
-            # SelfType.to_cpp() returns "T", so this handles Self -> T substitution.
+            # SelfType.to_cpp() spells the checked type, so Self needs no substitution.
             # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
             ret_cpp = concept_type_cpp(method_sig.return_type)
             # Skip return type check when the C++ return doesn't match the
