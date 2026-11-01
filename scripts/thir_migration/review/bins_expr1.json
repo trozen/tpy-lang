@@ -301,18 +301,6 @@
  },
  {
   "file": "tpyc/thir/lower/expressions.py",
-  "line": 5174,
-  "func": "_lower_expr_impl",
-  "reason": "\"name.storage_opt_narrow\"",
-  "bin": "UNSURE",
-  "confidence": "medium",
-  "evidence": "A storage-optional loop var (`for v in xs` over list[Rec | None]) narrowed by `if v is not None` / a ternary ROUTES (the narrowing alias arm precedes this check); the comprehension and genexpr unpack shapes reject earlier at comprehensions.py:979 / 1262. No shape reached this site within budget.",
-  "probe": null,
-  "plain_raise": false,
-  "known_shape": null
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
   "line": 5344,
   "func": "_lower_expr_impl",
   "reason": "\"field.enum_member\"",

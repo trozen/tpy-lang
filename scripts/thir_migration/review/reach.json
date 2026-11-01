@@ -1064,13 +1064,6 @@
    "func": "_lower_expr_impl",
    "reason_src": "'name.union_binding_divergent'"
   },
-  "tpyc/thir/lower/expressions.py:5174": {
-   "arm": "name.global_seeded",
-   "depth": 3,
-   "file": "tpyc/thir/lower/expressions.py",
-   "func": "_lower_expr_impl",
-   "reason_src": "'name.storage_opt_narrow'"
-  },
   "tpyc/thir/lower/expressions.py:5344": {
    "arm": "name.storage_opt_whole",
    "depth": 4,

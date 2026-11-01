@@ -3316,11 +3316,14 @@ def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
         if whole is not None:
             return whole
         # The operand is bound by address, so it is read as a borrow, and an
-        # Optional one whole: a None operand is the null pointer.
+        # Optional one whole: a None operand is the null pointer. A narrowed
+        # one is its payload, whose address the slot takes.
+        t = lc.analyzer.get_expr_type(operand)
         return _lower_expr(
             operand, lc, declared,
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND, dest=slot),
-            allow_whole_optional=True)
+            allow_whole_optional=(t is None or isinstance(repr_shape(t),
+                                                          OptionalType)))
 
     def side(operand: TpyExpr, pointee: TpyType) -> THIRExpr:
         # The property and temporary guards below decide what the POINTER
@@ -5157,12 +5160,18 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
                     raise ThirUnsupported("name.scalar_ptr_opt_unwired",
                                           detail=True)
                 return True
+    rec = lc.binding(name)
+    if (rec.nullable_storage and not whole_optional
+            and not analyzed_optional
+            and not (rec.pointer and use.receiver)):
+        # A narrowed read of a storage that may be empty is its payload
+        # lvalue, whatever the position; a pointer record's receiver
+        # reaches it through the `->` its member arms spell.
+        return True
     if use.admits(SinkForm.INDIRECT_READ) and _ptr_read_derefs(name, lc):
         return True
-    if (lc.binding(name).frame_slot
-            or walrus_owned_slot(lc.binding(name))):
+    if rec.frame_slot or walrus_owned_slot(rec):
         return True
-    rec = lc.binding(name)
     if (rec.owned_slot_object
             and use.admits(SinkForm.PTR_OPT_PASSTHROUGH)):
         # An owned slot engaged wherever it is read, at a pointer sink, is
@@ -5553,7 +5562,7 @@ def _method_fi_reject_detail(e: TpyMethodCall, fi, use: _ExprUse) -> str:
     pos = use.pos
     if pos is SinkPos.PRINT_ARG:
         return "print.arg.storage_ref_getter"
-    if pos is SinkPos.RECEIVER or use.result is _ExprResultUse.RECEIVER:
+    if use.receiver:
         return "method.recv.storage_ref_getter"
     # The FALLBACK for any other position. Nothing reaches it today: every
     # other position either renders (a decl, a call argument, a container
@@ -6815,17 +6824,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
                             form=name_form(rtype, _vot_narrowed),
                             deref=_vot_narrowed, loc=loc)
-        if rec.storage_opt:
-            # A storage-optional comp/genexpr unpack target (`auto& p =
-            # std::get<0>(t);` -- the storage_form_optional_locals mirror):
-            # an UN-narrowed read is the bare storage optional its `T*`-slot
-            # consumers lift via optional_to_ptr; a NARROWED occurrence is
-            # not lowered yet -- it rejects rather than deref-render.
-            if not isinstance(unwrap_readonly(rtype), OptionalType):
-                raise ThirUnsupported("name.storage_opt_narrow", detail=True)
-            _witness("name.storage_opt_whole")
-            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
-                            form=name_form(rtype, False), loc=loc)
         if (rec.value_opt is ValueOptKind.RECORD
                 or _value_opt_record(binding_type) is not None):
             # An owned-optional RECORD local (`std::optional<Rc<T>>`,
@@ -6916,20 +6914,20 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # local bound from one) is the borrow form whatever its stripped
         # type says -- at a generic instantiation the type alone cannot
         # tell.
-        form = name_form(rtype, False)
         # The indirection verdict (frame slots' `(*name)` slot reads, the F2d
         # rebound-container value deref, pointer-slot globals, the
-        # indirect_read positions) lives in _name_read_deref -- one resolver
-        # for every consumer, so a position cannot re-derive it differently.
-        return THIRName(result_type=rtype, name=e.name, cpp=gcpp, form=form,
-                        deref=_name_read_deref(
-                            e.name, binding_type, lc, use,
-                            whole_optional=allow_whole_optional,
-                            analyzed_optional=isinstance(
-                                unwrap_readonly(unwrap_ref_type(
-                                    unwrap_send_sync(rtype))), OptionalType)
-                            if rtype is not None else True),
-                        loc=loc)
+        # indirect_read positions, a narrowed nullable storage's payload)
+        # lives in _name_read_deref -- one resolver for every consumer, so a
+        # position cannot re-derive it differently.
+        deref = _name_read_deref(
+            e.name, binding_type, lc, use,
+            whole_optional=allow_whole_optional,
+            analyzed_optional=isinstance(
+                unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(rtype))), OptionalType)
+            if rtype is not None else True)
+        return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                        form=name_form(rtype, deref), deref=deref, loc=loc)
     if isinstance(e, TpyFieldAccess):
         if e.dyn_getattr_call is not None:
             return _lower_dyn_getattr_call(e, rtype, lc, declared)
@@ -7313,26 +7311,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     is_ptr_variant=is_ptr, form=Form.BORROW, loc=loc),
                 field_cpp=_field_cpp(e),
                 is_arrow=False,
-                narrowed_deref=narrowed_opt,
-                form=_member_read_form(rtype, fa_str),
-                loc=loc,
-            )
-        if (isinstance(e.obj, TpyName) and lc.binding(e.obj.name).storage_opt
-                and not isinstance(
-                    unwrap_readonly(analyzer.get_expr_type(e.obj)),
-                    OptionalType)):
-            # `.field` off a NARROWED storage-opt local (`item.x` under
-            # `item is not None` in a comp): the `std::optional` receiver
-            # derefs at the ACCESS site -- `(*item).x` --
-            # while bare value positions (repr/print args) pass the whole
-            # optional (the runtime overloads take it directly).
-            _witness("field.storage_opt_recv")
-            return THIRFieldAccess(
-                result_type=rtype,
-                receiver=THIRName(
-                    result_type=analyzer.get_expr_type(e.obj),
-                    name=e.obj.name, form=Form.BORROW, deref=True, loc=loc),
-                field_cpp=_field_cpp(e),
                 narrowed_deref=narrowed_opt,
                 form=_member_read_form(rtype, fa_str),
                 loc=loc,
@@ -13702,7 +13680,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     # argument's (`optptr.storage_name_lift`).
                     node = THIROptionalPtrArg(
                         result_type=et_bare, form=Form.BORROW,
-                        value=_lower_expr(elem, lc, declared),
+                        value=_lower_expr(elem, lc, declared,
+                                          allow_whole_optional=True),
                         lift=True, loc=getattr(elem, "loc", None))
                 elif (isinstance(elem, TpyName) and elem.name in declared
                       and elem.name not in lc.narrow.narrowed
@@ -15729,15 +15708,9 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if twin is None:
             slot = param_slot(ptype, contract, lc.analyzer,
                               placement=lc.placement, instantiated=inst)
-            if slot.materializer is Materializer.DEDUCED:
-                # A narrowed storage-Optional name, a binding fact the
-                # contract cannot see, passes the whole Optional in place;
-                # any other disagreement would hand a non-twin form.
-                assert _holds_whole_storage_optional(_peel_coerce(a), lc,
-                                                     declared), (
-                    "DEDUCED contract without a protocol twin at line "
-                    f"{getattr(a, 'line', '?')}")
-                slot = replace(slot, materializer=None)
+            assert slot.materializer is not Materializer.DEDUCED, (
+                "DEDUCED contract without a protocol twin at line "
+                f"{getattr(a, 'line', '?')}")
         else:
             slot = deduced_slot(ptype, contract, structural, twin,
                                 lc.analyzer, placement=lc.placement)
@@ -15774,16 +15747,14 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
     argument `a`: its concrete twin (`protocol_twin_slot`, the one answer
     sema's loans and the frame hoist read), refined by the binding facts
     only the lowering has -- a narrowed read binds its payload unless the
-    name holds the whole Optional or union there (a narrowed storage
-    Optional, a union narrowing that installs no member alias), and a
-    number literal holds the default int. The C++ template parameter
-    deduces it and binds it as it is held. A native callee (`str`, `repr`,
-    `len`, `hash`) binds it as a TPy-bodied one does. None where the
-    argument has no twin, at a callee binding no template to deduce at (a
-    method called through a protocol receiver, an `@overload` stub), for
-    a fresh tuple at a runtime binding's template, which spells its own
-    element captures (its rows), and for a narrowed storage-Optional
-    name."""
+    name holds the whole union there (a union narrowing that installs no
+    member alias), and a number literal holds the default int. The C++
+    template parameter deduces it and binds it as it is held. A native
+    callee (`str`, `repr`, `len`, `hash`) binds it as a TPy-bodied one
+    does. None where the argument has no twin, at a callee binding no
+    template to deduce at (a method called through a protocol receiver, an
+    `@overload` stub), and for a fresh tuple at a runtime binding's
+    template, which spells its own element captures (its rows)."""
     if (contract.adapts is not Adapts.STRUCTURAL or callee_fi is None
             # A declared callee binding no runtime symbol (a method called
             # through a protocol receiver, an @overload stub) keeps the
@@ -15807,23 +15778,11 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
     rec = binding_of(src, lc, declared)
     if rec is not None and isinstance(twin, (OptionalType, UnionType)):
         # The twin is the name's declared Optional / union.
-        if _holds_whole_storage_optional(src, lc, declared):
-            return None
         read = peel_binding(an.get_expr_type(src))
         if not (rec.name not in lc.inline_narrowed
                 and _union_binding_divergent(src, declared, an)):
             twin = read
     return resolve_int_literals(twin, an.ctx.default_int_for_literal)
-
-
-def _holds_whole_storage_optional(src: TpyExpr, lc: '_LowerCtx',
-                                  declared: dict[str, TpyType]) -> bool:
-    """Whether `src` names a narrowed storage-Optional target: it has no
-    payload read, so its row passes the whole Optional in place."""
-    rec = binding_of(src, lc, declared)
-    return (rec is not None and rec.storage_opt
-            and not isinstance(peel_binding(lc.analyzer.get_expr_type(src)),
-                               OptionalType))
 
 
 def _reference_object_slot(t: TpyType, analyzer) -> bool:
@@ -17824,18 +17783,6 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                            use=replace(_arg_position,
                                        record_ctor=_RecordCtorUse.NESTED_ARG,
                                        result=_ExprResultUse.ITERABLE))
-    if (isinstance(a, TpyName) and lc.binding(a.name).storage_opt
-            and isinstance(slot_u, NominalType) and slot_u.is_protocol
-            and not isinstance(
-                unwrap_readonly(lc.analyzer.get_expr_type(a)),
-                OptionalType)):
-        # A NARROWED storage-opt local at a protocol slot (`repr(item)`
-        # under `item is not None`): the WHOLE `std::optional` passes
-        # bare -- the runtime overload takes it directly
-        # (the same whole-optional pass the field-arg row above spells).
-        _witness("arg.storage_opt_whole")
-        return THIRName(result_type=declared.get(a.name), name=a.name,
-                        form=Form.STORAGE, loc=getattr(a, "loc", None))
     # An owned str-family field read passed bare into a value slot (`repr(
     # self.name)` -> `::tpy::repr_of(this->name)`) admits as STORAGE, matching
     # the fstring arg's own owned-str field read; admission already validated

@@ -1,0 +1,35 @@
+free plain 1
+free twin 1
+free alias 9 True
+free text R(9) R(9) R(9)
+free opt_param 9
+free tuple 11 0
+free match 11
+free append copy 4
+free len 1
+free len alias 2
+method plain 2
+method alias 7
+comp plain [3, 4]
+comp twin [3, 4]
+comp kept copy 30 2
+owned plain 8
+owned alias 50
+async plain 10
+async alias 60
+async suspend 60
+try plain 5
+try alias 70
+try finally
+try finally
+frame 6
+frame 9
+coro 12
+coro after 13
+readonly alias 14 True
+unpack plain [21]
+unpack whole [22, 1]
+own field 16
+own alias 20 20
+own is False False False True
+own kept 20

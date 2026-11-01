@@ -10184,9 +10184,12 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
         # An OPTIONAL_STORAGE source sits in `pointers` for its deref
         # reads, but it is `std::optional<T>`, not a `T*`: the pointer
         # local lifts off it (`alias = ::tpy::optional_to_ptr(p);`),
-        # the F1 storage-optional read, never the bare pointer copy.
+        # the F1 storage-optional read, never the bare pointer copy. A
+        # storage that may be empty (a storage-Optional loop variable)
+        # lifts the same way.
         if (isinstance(stmt.init, TpyName)
-                and lc.binding(stmt.init.name).optional_storage
+                and (lc.binding(stmt.init.name).optional_storage
+                     or lc.binding(stmt.init.name).nullable_storage)
                 and stmt.init.name not in lc.narrow.narrowed):
             src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[stmt.init.name])))

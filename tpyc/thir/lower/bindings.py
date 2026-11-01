@@ -431,15 +431,14 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
         name = rec.name
     bt = rec.type if rec is not None else None
     kind = _value_opt_kind(rec, analyzer)
-    if ((rec is not None and rec.optional_borrow_tuple)
+    if ((rec is not None and (rec.optional_borrow_tuple
+                              or rec.nullable_storage))
             or _value_opt_tuple(bt, analyzer) is not None
             or kind is ValueOptKind.RECORD
             or _value_opt_record(bt) is not None):
         # The whole optional is its storage; the narrowed unwrap reads
         # through it.
         return Held.BORROWED if deref else Held.STORAGE
-    if rec is not None and rec.storage_opt:
-        return Held.STORAGE
     if rec is not None and rec.ptr_tuple is not None:
         # Every element a pointer, whatever `Own` the declared type carries.
         return Held.BORROWED

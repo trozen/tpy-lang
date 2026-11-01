@@ -108,14 +108,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # receiver derefs -- (*r).field
     "field.slice_recv",             # slice-object name: index.start bare
     "field.subscript_recv",         # subscript receiver: std::get<0>(t).f
-    "field.storage_opt_recv",       # narrowed storage-opt local receiver
-                                    # derefs at the access -- (*item).field
     "arg.protocol_value_copy",      # a value at a deduced protocol slot:
                                     # auto(b.n), as its twin copies
     "arg.protocol_view",            # an owned str / bytes at a deduced
                                     # protocol call slot: the twin's view
-    "arg.storage_opt_whole",        # narrowed storage-opt local at a
-                                    # protocol slot passes the whole optional
     "field.opt_check_storage_name", # unproven access off a storage-opt name
                                     # -- none_attr(item, "field").field
     "call.storage_opt_ret",         # Own-optional call result lands bare
@@ -1965,8 +1961,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.storage_opt_tuple_arm",  # ... a value-tuple-literal arm
     "print.opt_ternary_tuple_arg",   # printed tuple literal with one
                                     # of those ternaries as an element
-    "name.storage_opt_whole",       # storage-optional unpack target read
-                                    # whole (bare std::optional lvalue)
     "name.opt_btuple_whole",        # nullable borrow-tuple local: the bare
                                     # optional binding (None test)
     "name.opt_btuple_deref",        # ... and the narrowed `(*t)` deref read

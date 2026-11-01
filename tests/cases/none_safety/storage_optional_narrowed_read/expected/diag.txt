@@ -1,0 +1,2 @@
+main.py:69: warning: copies R into owned storage; use copy() to make this explicit
+main.py:106: warning: copies R into owned storage; use copy() to make this explicit

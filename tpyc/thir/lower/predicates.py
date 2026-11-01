@@ -7859,8 +7859,10 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     if rec.form is BindingForm.DYN and rec.const:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
-    # the tuple set; a borrow tuple's element const is its record's.
-    if const_locals and (rec.const or rec.const_storage_tuple):
+    # the tuple set; a borrow tuple's element const is its record's, a
+    # storage Optional's payload its loop variable's.
+    if const_locals and (rec.const or rec.const_storage_tuple
+                         or rec.const_storage_opt):
         return True
     # A parameter's or the receiver's verdicts, on the record of the
     # function that declares it (a nested scope reads the enclosing one's).

@@ -844,6 +844,13 @@ class _ExprUse:
         forms = self.forms
         return form in (_POS_FORMS[self.pos] if forms is None else forms)
 
+    @property
+    def receiver(self) -> bool:
+        """The object a member is taken of: a member call's receiver
+        position names it by its sink, a field read by its result use."""
+        return (self.pos is SinkPos.RECEIVER
+                or self.result is _ExprResultUse.RECEIVER)
+
 
 def opt_callable_slot(t: 'TpyType | None') -> bool:
     """An `Optional[Callable]` slot (`std::optional<std::function>` by

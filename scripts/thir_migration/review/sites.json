@@ -781,12 +781,6 @@
  },
  {
   "file": "tpyc/thir/lower/expressions.py",
-  "line": 5174,
-  "func": "_lower_expr_impl",
-  "reason": "\"name.storage_opt_narrow\""
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
   "line": 5796,
   "func": "_lower_expr_impl",
   "reason": "\"subscript.typed_dict_recv\""

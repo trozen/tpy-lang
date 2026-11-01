@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::plain@28:0: uncovered (unsupported parameter type)
+main::twin_r@32:0: covered (storage: no_proof_required), summary: known
+main::opt_param@36:0: covered (storage: no_proof_required), summary: known
+main::gen@40:0: uncovered (unsupported parameter type)
+main::coro@45:0: uncovered (async body)
+main::free_loop@50:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comprehension@101:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::owned_step@112:0: uncovered (unsupported parameter type)
+main::async_body@122:0: uncovered (async body)
+main::try_body@136:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::frame_callee@150:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::coro_from_loop@160:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::readonly_loop@170:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::own_param@178:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::comp_unpack@190:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@196:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::R.val@14:4: covered (storage: no_proof_required), summary: known
+main::R.bump@17:4: covered (storage: no_proof_required), summary: known
+main::R.__repr__@20:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Holder.walk@91:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::R.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@88:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
