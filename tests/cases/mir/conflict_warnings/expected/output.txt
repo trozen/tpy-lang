@@ -8,7 +8,21 @@ temp_view_bound False
 fill_static lit
 overwritten safe b
 restore lit
-other_element 1
+other_element 101 101 9
+loop_var_overwrite 110
+link [[1, 2], [0], [0]]
+other_row [[1, 2, 3], [2, 3]]
+str_view a
+str_loop a
+str_loop y1
+names ['a', 'y1']
+scale [4, 8, 12]
+dict_scale {1: 2, 2: 4}
+inner_ref 11 11 1
+tok_view a
+callee_loop 110
+kept_calls 5 5 1
+row_calls 11 11 1
 through_param 3
 dict_insert 2
 kept_view k

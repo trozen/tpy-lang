@@ -20,7 +20,7 @@ def f(outer: list[list[list[int32]]], j: int32) -> None:
     for x in mid[0]:
         mid = outer[1]
         # the merged loan has no index, so the wording may not claim the hit
-        outer[j] = []  # tpyc: warning(/may hit the element being iterated \(element assignment may invalidate the iterator\)/)
+        outer[j] = []  # tpyc: warning(/may hit the element being iterated \(element assignment may invalidate the iterator\)/) warning(/this assignment may free the element the iteration over/)
         print(x)
 
 def main() -> None:

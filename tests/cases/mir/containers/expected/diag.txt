@@ -7,11 +7,12 @@ main.py:132: warning: this call may move the elements of 'xs', but the iteration
 main.py:149: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
 main.py:149: warning: this call may move the elements of 'ps', but 'p' still refers to them and is used on line 150; look it up again after this call, or copy what 'p' refers to first
 main.py:158: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
-main.py:226: warning: this call may move the elements of 'xs', but the iteration over 'ys' still walks them and continues on line 224; iterate over a copy ('copy(ys)'), or make the changes after the loop
-main.py:251: warning: this call may move the elements of 'r.items', but the iteration over 'r.items' still walks them and continues on line 250; iterate over a copy ('copy(r.items)'), or make the changes after the loop
-main.py:463: warning: Mutation of 'r.items' while borrowed (field assignment may invalidate references)
-main.py:463: warning: this assignment frees the old value of 'r.items', but 'p' still refers to it and is used on line 464; copy what 'p' refers to first, or use 'p' before this assignment
-main.py:471: warning: Mutation of 'r.rec' while borrowed (field assignment may invalidate references)
-main.py:471: warning: this assignment overwrites 'r.rec' in place, but 'p' still refers to it and sees the new value on line 472; copy what 'p' refers to first, or use 'p' before this assignment
-main.py:593: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
-main.py:605: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:166: warning: this assignment may overwrite what 'p' refers to in place, and 'p' would see the new value on line 167; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:225: warning: this call may move the elements of 'xs', but the iteration over 'ys' still walks them and continues on line 223; iterate over a copy ('copy(ys)'), or make the changes after the loop
+main.py:250: warning: this call may move the elements of 'r.items', but the iteration over 'r.items' still walks them and continues on line 249; iterate over a copy ('copy(r.items)'), or make the changes after the loop
+main.py:462: warning: Mutation of 'r.items' while borrowed (field assignment may invalidate references)
+main.py:462: warning: this assignment frees the old value of 'r.items', but 'p' still refers to it and is used on line 463; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:470: warning: Mutation of 'r.rec' while borrowed (field assignment may invalidate references)
+main.py:470: warning: this assignment overwrites 'r.rec' in place, but 'p' still refers to it and sees the new value on line 471; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:592: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:604: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)

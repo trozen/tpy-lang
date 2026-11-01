@@ -1,1 +1,2 @@
 main.py:23: warning: Mutation of 'outer[...]' may hit the element being iterated (element assignment may invalidate the iterator)
+main.py:23: warning: this assignment may free the element the iteration over 'mid[0]' still walks, and the loop continues on line 20; iterate over a copy ('copy(mid[0])'), or make the changes after the loop

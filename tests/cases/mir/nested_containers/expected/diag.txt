@@ -1,9 +1,19 @@
+main.py:61: warning: this call may move the element the iteration over 'r' still walks, and the loop continues on line 60; iterate over a copy ('copy(r)'), or make the changes after the loop
+main.py:69: warning: this assignment may free the element the iteration over 'b0.items' still walks, and the loop continues on line 68; iterate over a copy ('copy(b0.items)'), or make the changes after the loop
+main.py:77: warning: this call may move the element the iteration over 'r' still walks, and the loop continues on line 76; iterate over a copy ('copy(r)'), or make the changes after the loop
 main.py:83: warning: this call may move the elements of 'rows', but the iteration over 'rows[0]' still walks them and continues on line 82; iterate over a copy ('copy(rows[0])'), or make the changes after the loop
+main.py:89: warning: this call may move the element the iteration over 't["a"]' still walks, and the loop continues on line 88; iterate over a copy ('copy(t["a"])'), or make the changes after the loop
+main.py:95: warning: this assignment may free the element the iteration over 'rows[0]' still walks, and the loop continues on line 94; iterate over a copy ('copy(rows[0])'), or make the changes after the loop
+main.py:101: warning: this assignment may free the element the iteration over 't["a"]' still walks, and the loop continues on line 100; iterate over a copy ('copy(t["a"])'), or make the changes after the loop
 main.py:117: warning: argument 'rows[0]' points into 'rows', which 'grow_outer' modifies through parameter 'rows' while it still uses 'row'; pass a copy ('copy(rows[0])') or restructure so the call does not hand over both
-main.py:260: warning: copies list[list[int32]] into field; use copy() to make this explicit
+main.py:130: warning: this call may move the element the iteration over 'row' still walks, and the loop continues on line 129; iterate over a copy ('copy(row)'), or make the changes after the loop
+main.py:139: warning: this call may move the element the iteration over 't["a"]' still walks, and the loop continues on line 138; iterate over a copy ('copy(t["a"])'), or make the changes after the loop
+main.py:146: warning: this call may move the element the iteration over 'rows[0]' still walks, and the loop continues on line 145; iterate over a copy ('copy(rows[0])'), or make the changes after the loop
+main.py:222: warning: this call may move the element the iteration over 'row' still walks, and the loop continues on line 220; iterate over a copy ('copy(row)'), or make the changes after the loop
+main.py:272: warning: copies list[list[int32]] into field; use copy() to make this explicit
 main.py:83: warning: Mutation of 'rows' while iterating over it ('append' invalidates the iterator)
 main.py:89: warning: Mutation of 't[...]' while iterating over it ('append' invalidates the iterator)
 main.py:95: warning: Mutation of 'rows[...]' while iterating over it (element assignment invalidates the iterator)
 main.py:101: warning: Mutation of 't[...]' while iterating over it (element assignment invalidates the iterator)
 main.py:130: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)
-main.py:231: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)
+main.py:243: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)

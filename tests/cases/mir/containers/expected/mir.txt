@@ -9,48 +9,48 @@ main::iterate_and_grow@128:0: covered (storage: no_proof_required), conflicts: r
 main::iterate_then_grow@138:0: covered (storage: no_proof_required), summary: known
 main::forwarded@147:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
 main::forwarded_after_use@155:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
-main::replace_elem@164:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
-main::replace_after_use@172:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
-main::str_elem_aug@182:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::str_elem_aug_after_use@188:0: covered (storage: no_proof_required), summary: known
-main::int_elem_aug@195:0: covered (storage: no_proof_required), summary: known
-main::dict_write_in_loop@201:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::dict_write_after_loop@211:0: covered (storage: no_proof_required), summary: known
-main::alias_iter_grow@221:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::alias_iter_then_grow@232:0: covered (storage: no_proof_required), summary: known
-main::grow_ints@241:0: covered (storage: no_proof_required), summary: known
-main::field_iter_callee@248:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::field_callee_after_iter@257:0: covered (storage: no_proof_required), summary: known
-main::copy_into@268:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::copy_count@274:0: covered (storage: no_proof_required), summary: known
-main::last_row@284:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::last_row_read_first@294:0: covered (storage: no_proof_required), summary: known
-main::own@304:0: covered (storage: no_proof_required), summary: known
-main::tail@312:0: covered (storage: no_proof_required), summary: known
-main::span_first@317:0: covered (storage: no_proof_required), summary: known
-main::span_sum@322:0: covered (storage: no_proof_required), summary: known
-main::span_pass@330:0: covered (storage: no_proof_required), summary: known
-main::span_write@337:0: covered (storage: no_proof_required), summary: known
-main::span_write_in_loop@347:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::arr_write@359:0: covered (storage: no_proof_required), summary: known
-main::make@365:0: covered (storage: no_proof_required), summary: known
-main::items_of@372:0: covered (storage: no_proof_required), summary: known
-main::count_keys@377:0: covered (storage: no_proof_required), summary: known
-main::keys_view@386:0: covered (storage: no_proof_required), summary: known
-main::values_len@394:0: covered (storage: no_proof_required), summary: known
-main::items_len@399:0: covered (storage: no_proof_required), summary: known
-main::items_iter@405:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
-main::set_total@413:0: covered (storage: no_proof_required), summary: known
-main::arr_first@421:0: covered (storage: no_proof_required), summary: known
-main::holds@427:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
-main::comp@432:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::extend_it@437:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::nested@442:0: covered (storage: no_proof_required), summary: known
-main::rack_items@459:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
-main::rack_rec@467:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::touch_all@496:0: covered (storage: no_proof_required), summary: known
-main::touch_caller@503:0: covered (storage: no_proof_required), summary: known
-main::main@511:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
+main::replace_elem@163:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::replace_after_use@171:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::str_elem_aug@181:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::str_elem_aug_after_use@187:0: covered (storage: no_proof_required), summary: known
+main::int_elem_aug@194:0: covered (storage: no_proof_required), summary: known
+main::dict_write_in_loop@200:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::dict_write_after_loop@210:0: covered (storage: no_proof_required), summary: known
+main::alias_iter_grow@220:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::alias_iter_then_grow@231:0: covered (storage: no_proof_required), summary: known
+main::grow_ints@240:0: covered (storage: no_proof_required), summary: known
+main::field_iter_callee@247:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::field_callee_after_iter@256:0: covered (storage: no_proof_required), summary: known
+main::copy_into@267:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::copy_count@273:0: covered (storage: no_proof_required), summary: known
+main::last_row@283:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::last_row_read_first@293:0: covered (storage: no_proof_required), summary: known
+main::own@303:0: covered (storage: no_proof_required), summary: known
+main::tail@311:0: covered (storage: no_proof_required), summary: known
+main::span_first@316:0: covered (storage: no_proof_required), summary: known
+main::span_sum@321:0: covered (storage: no_proof_required), summary: known
+main::span_pass@329:0: covered (storage: no_proof_required), summary: known
+main::span_write@336:0: covered (storage: no_proof_required), summary: known
+main::span_write_in_loop@346:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::arr_write@358:0: covered (storage: no_proof_required), summary: known
+main::make@364:0: covered (storage: no_proof_required), summary: known
+main::items_of@371:0: covered (storage: no_proof_required), summary: known
+main::count_keys@376:0: covered (storage: no_proof_required), summary: known
+main::keys_view@385:0: covered (storage: no_proof_required), summary: known
+main::values_len@393:0: covered (storage: no_proof_required), summary: known
+main::items_len@398:0: covered (storage: no_proof_required), summary: known
+main::items_iter@404:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+main::set_total@412:0: covered (storage: no_proof_required), summary: known
+main::arr_first@420:0: covered (storage: no_proof_required), summary: known
+main::holds@426:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::comp@431:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::extend_it@436:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::nested@441:0: covered (storage: no_proof_required), summary: known
+main::rack_items@458:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::rack_rec@466:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::touch_all@495:0: covered (storage: no_proof_required), summary: known
+main::touch_caller@502:0: covered (storage: no_proof_required), summary: known
+main::main@510:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
 main::Bag.push@24:4: covered (storage: no_proof_required), summary: known
 main::Bag.total@28:4: covered (storage: no_proof_required), summary: known
 main::Bag.plus_span@35:4: covered (storage: no_proof_required), summary: known
@@ -58,11 +58,11 @@ main::Bag.view_items@43:4: covered (storage: no_proof_required), summary: known
 main::Index.bump@55:4: covered (storage: no_proof_required), summary: known
 main::Pts.alias_grow@68:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
 main::Pts.alias_grow_after_use@77:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
-main::Shelf.refill@483:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Shelf.refill@482:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Point.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@20:4: covered (storage: no_proof_required), summary: known
 main::Index.__init__@51:4: covered (storage: no_proof_required), summary: known
 main::Pts.__init__@63:4: covered (storage: no_proof_required), summary: known
-main::Rack.__init__@454:4: covered (storage: no_proof_required), summary: known
-main::Shelf.__init__@480:4: covered (storage: no_proof_required), summary: known
-main::Tag.__init__@491:4: covered (storage: no_proof_required), summary: known
+main::Rack.__init__@453:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@479:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@490:4: covered (storage: no_proof_required), summary: known

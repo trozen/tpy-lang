@@ -97,6 +97,44 @@ void overwritten(bool flag);
 void restore(Tok& t);
 // def other_element(ps: list[P], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t other_element(std::vector<P>& ps, int32_t i, int32_t j);
+// def loop_var_overwrite(ps: list[P], j: int32, flag: bool) -> int32:
+int32_t loop_var_overwrite(std::vector<P>& ps, int32_t j, bool flag);
+// def link(adj: list[list[int32]], u: int32) -> None:
+void link(std::vector<std::vector<int32_t>>& adj, int32_t u);
+// def other_row(rows: list[list[int32]]) -> None:
+void other_row(std::vector<std::vector<int32_t>>& rows);
+// def str_view(names: list[str], i: int32) -> None:
+void str_view(std::vector<std::string>& names, int32_t i);
+// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(uncovered /native target binding/)
+void str_loop(std::vector<std::string>& names, int32_t i);
+// def scale(xs: list[int32]) -> None:
+void scale(std::vector<int32_t>& xs);
+// def span_scale(s: Span[int32]) -> None:
+void span_scale(std::span<int32_t> s);
+// def dict_scale(d: dict[int32, int32]) -> None:
+void dict_scale(::tpy::ordered_map<int32_t, int32_t>& d);
+// def inner_ref(rows: list[list[P]], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t inner_ref(std::vector<std::vector<P>>& rows, int32_t i, int32_t j);
+// def tok_view(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
+void tok_view(std::vector<std::string>& names, int32_t i);
+// def clob(ps: list[P]) -> None:
+void clob(std::vector<P>& ps);
+// def callee_loop(ps: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t callee_loop(std::vector<P>& ps, bool flag);
+// def store_then_grow(xs: list[P]) -> None:
+void store_then_grow(std::vector<P>& xs);
+// def grow_then_store(xs: list[P]) -> None:
+void grow_then_store(std::vector<P>& xs);
+// def kept_store_then_grow(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t kept_store_then_grow(std::vector<P>& xs, bool flag);
+// def kept_grow_then_store(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t kept_grow_then_store(std::vector<P>& xs, bool flag);
+// def row_store_then_grow(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t row_store_then_grow(std::vector<std::vector<P>>& rows, int32_t i, bool flag);
+// def row_grow_then_store(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t row_grow_then_store(std::vector<std::vector<P>>& rows, int32_t i, bool flag);
+// def which_element() -> None:
+void which_element();
 // def through_param(t: Tok, xs: list[str]) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t through_param(const Tok& t, std::vector<std::string>& xs);
 // def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(conflict /replacement/)

@@ -5,12 +5,12 @@
 namespace tpyapp::main {
 
 
-// # conflict, free function: an alias of an element is walked while the element grows (sema is silent)
+// # conflict, free function: an alias of an element is walked while the element grows (sema is silent);
+// # MIR warns "may": indices carry no identity
 // def silent_alias(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     r = rows[0]
 //     for v in r:
-//         # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-//         rows[0].append(v)  # tpyc: ok
+//         rows[0].append(v)  # tpyc: warning(/this call may move the element the iteration over 'r' still walks/)
 void silent_alias(std::vector<std::vector<int32_t>>& rows) {
     std::vector<int32_t>& r = ::tpy::__getitem__(rows, 0);
     auto& __obj_0 = r;
@@ -22,12 +22,12 @@ void silent_alias(std::vector<std::vector<int32_t>>& rows) {
     }
 }
 
-// # conflict, free function: a record element is replaced while its list is walked (sema is silent)
+// # conflict, free function: a record element is replaced while its list is walked (sema is silent);
+// # MIR warns "may"
 // def silent_bag(bags: list[Bag]) -> None:  # tpyc: mir(conflict /replacement/)
 //     b0 = bags[0]
 //     for v in b0.items:
-//         # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-//         bags[0] = Bag()  # tpyc: ok
+//         bags[0] = Bag()  # tpyc: warning(/this assignment may free the element the iteration over 'b0.items' still walks/)
 void silent_bag(std::vector<Bag>& bags) {
     Bag& b0 = ::tpy::__getitem__(bags, 0);
     auto& __obj_0 = b0.items;
@@ -39,12 +39,12 @@ void silent_bag(std::vector<Bag>& bags) {
     }
 }
 
-// # conflict, free function: an inner loop walks an element another element's growth may be (sema is silent)
+// # conflict, free function: an inner loop walks an element another element's growth may be (sema is
+// # silent); MIR warns "may"
 // def silent_nest(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for r in rows:
 //         for v in r:
-//             # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-//             rows[0].append(v)  # tpyc: ok
+//             rows[0].append(v)  # tpyc: warning(/this call may move the element the iteration over 'r' still walks/)
 void silent_nest(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = rows;
     auto __beg_0 = __obj_0.begin();
@@ -78,7 +78,7 @@ void outer_grow(std::vector<std::vector<int32_t>>& rows) {
 // # conflict, free function: a dict value grows under its own walk
 // def dict_rows(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for v in t["a"]:
-//         t["a"].append(v)  # tpyc: warning(/Mutation of 't\[...\]' while iterating/)
+//         t["a"].append(v)  # tpyc: warning(/Mutation of 't\[...\]' while iterating/) warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 void dict_rows(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     auto& __obj_0 = ::tpy::__getitem__(t, "a");
     auto __beg_0 = __obj_0.begin();
@@ -92,7 +92,7 @@ void dict_rows(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
 // # conflict, element store: storing a new list into the walked element replaces its storage
 // def store_elem(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for v in rows[0]:
-//         rows[0] = [v]  # tpyc: warning(/Mutation of 'rows\[...\]' while iterating/)
+//         rows[0] = [v]  # tpyc: warning(/Mutation of 'rows\[...\]' while iterating/) warning(/this assignment may free the element the iteration over 'rows\[0\]' still walks/)
 void store_elem(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = ::tpy::__getitem__(rows, 0);
     auto __beg_0 = __obj_0.begin();
@@ -106,7 +106,7 @@ void store_elem(std::vector<std::vector<int32_t>>& rows) {
 // # conflict, dict element store: storing a new list under the walked key replaces its storage
 // def store_value(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for v in t["a"]:
-//         t["a"] = [v]  # tpyc: warning(/Mutation of 't\[...\]' while iterating/)
+//         t["a"] = [v]  # tpyc: warning(/Mutation of 't\[...\]' while iterating/) warning(/this assignment may free the element the iteration over 't\["a"\]' still walks/)
 void store_value(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     auto& __obj_0 = ::tpy::__getitem__(t, "a");
     auto __beg_0 = __obj_0.begin();
@@ -159,7 +159,7 @@ void grow_rows(std::vector<std::vector<int32_t>>& rows) {
 //     n = 0
 //     for row in rows:
 //         for x in row:
-//             grow_rows(rows)  # tpyc: warning(/Passing borrowed container 'rows'/)
+//             grow_rows(rows)  # tpyc: warning(/Passing borrowed container 'rows'/) warning(/this call may move the element the iteration over 'row' still walks/)
 //             n += x
 //     return n
 int32_t caller_inner(std::vector<std::vector<int32_t>>& rows) {
@@ -182,10 +182,10 @@ int32_t caller_inner(std::vector<std::vector<int32_t>>& rows) {
 }
 
 // # conservative, free function: distinct keys conflict, since an element place carries no key;
-// # MIR records the conflict as evidence only and prints nothing
+// # MIR warns "may" (accepted false warning)
 // def distinct_keys(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for v in t["a"]:
-//         t["b"].append(v)  # tpyc: ok
+//         t["b"].append(v)  # tpyc: warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 void distinct_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     auto& __obj_0 = ::tpy::__getitem__(t, "a");
     auto __beg_0 = __obj_0.begin();
@@ -197,10 +197,10 @@ void distinct_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
 }
 
 // # conservative, free function: distinct rows conflict, since an element place carries no index;
-// # MIR records the conflict as evidence only and prints nothing
+// # MIR warns "may" (accepted false warning)
 // def distinct_rows(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
 //     for v in rows[0]:
-//         rows[1].append(v)  # tpyc: ok
+//         rows[1].append(v)  # tpyc: warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 void distinct_rows(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = ::tpy::__getitem__(rows, 0);
     auto __beg_0 = __obj_0.begin();
@@ -361,6 +361,37 @@ int32_t span_rows(std::span<std::vector<int32_t>> s) {
     return n;
 }
 
+// # conflict, dict-values walk: a value grown while an inner loop walks a value, which may be the same
+// # one (sema is silent); MIR warns "may"
+// def dict_values(t: dict[str, list[int32]], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     n = 0
+//     for row in t.values():
+//         for v in row:
+//             if flag:
+//                 t["a"].append(v)  # tpyc: warning(/this call may move the element the iteration over 'row' still walks/)
+//             n += v
+//     return n
+int32_t dict_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& t, bool flag) {
+    int32_t n = 0;
+    auto __obj_0 = ::tpy::dict_values(t);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& row = *__beg_0;
+        auto& __obj_1 = row;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            int32_t v = *__beg_1;
+            if (flag) {
+                ::tpy::__getitem__(t, "a").push_back(v);
+            }
+            n = ::tpy::add_check<int32_t>(n, v);
+        }
+    }
+    return n;
+}
+
 // def value_rows(d: dict[str, list[int32]]) -> int32:  # tpyc: mir(covered)
 //     n = 0
 //     for row in d.values():
@@ -451,7 +482,7 @@ std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows) {
 // # conflict, summary caller: an inner list returned by a callee is freed by the element store
 // def picked(rows: list[list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
 //     row = pick(rows)
-//     # evidence only, so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
+//     # evidence only (the read is a call), so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
 //     rows[0] = [8, 9]  # tpyc: ok
 //     return len(row)
 int32_t picked(std::vector<std::vector<int32_t>>& rows) {
@@ -480,7 +511,7 @@ Bag& first(std::vector<Bag>& bags) {
 // # conflict, summary caller: a record element returned by a callee is freed by the element store
 // def first_kept(bags: list[Bag]) -> int32:  # tpyc: mir(conflict /replacement/)
 //     b = first(bags)
-//     # evidence only, so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
+//     # evidence only (the read is a call), so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
 //     bags[0] = Bag()  # tpyc: ok
 //     return len(b.items)
 int32_t first_kept(std::vector<Bag>& bags) {
@@ -517,7 +548,7 @@ std::vector<int32_t>& value_of(::tpy::ordered_map<std::string, std::vector<int32
 // # conflict, summary caller: a dict value returned by a callee is freed by the store under its key
 // def value_kept(t: dict[str, list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
 //     row = value_of(t)
-//     # evidence only, so nothing warns: BUGS.md#mir-element-alias-hazard-evidence-only
+//     # evidence only (the read is a call), so nothing warns: BUGS.md#mir-element-alias-hazard-evidence-only
 //     t["a"] = [8, 9]  # tpyc: ok
 //     return len(row)
 int32_t value_kept(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
@@ -533,6 +564,7 @@ int32_t value_kept(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
 //     distinct_keys(t)
 //     distinct_rows(rows)
 //     print("conservative", rows, t)
+//     print("dict_values", dict_values(t, False))
 //     clean_outer(rows)
 //     clean_keys(t)
 //     set_inner(rows)
@@ -564,6 +596,7 @@ void main() {
     ::tpyapp::main::distinct_keys(t);
     ::tpyapp::main::distinct_rows(rows);
     std::cout << "conservative" << " " << ::tpy::ListPrinter(rows) << " " << ::tpy::DictPrinter(t) << "\n" << ::tpy::check_signals;
+    std::cout << "dict_values" << " " << ::tpyapp::main::dict_values(t, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::clean_outer(rows);
     ::tpyapp::main::clean_keys(t);
     ::tpyapp::main::set_inner(rows);

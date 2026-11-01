@@ -159,12 +159,11 @@ def forwarded_after_use(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(cove
     return v
 
 
-# free function: an element replacement under a live element borrow -- sema says ok
-# (BUGS.md#setitem-write-under-live-element-borrow)
+# free function: an element replacement under a live element borrow -- sema says ok, MIR warns "may"
 def replace_elem(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     p = ps[0]
     if flag:
-        ps[0] = Point(3)  # tpyc: mir_write(ps[elements])
+        ps[0] = Point(3)  # tpyc: mir_write(ps[elements]) warning(/this assignment may overwrite what 'p' refers to in place/)
     return p.x
 
 

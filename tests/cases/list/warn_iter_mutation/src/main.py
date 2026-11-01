@@ -86,12 +86,12 @@ class Grid:
     # container clobbers what the loop points into
     def bump(self, i: int32) -> None:
         for v in self.rows[i]:
-            self.rows[i].append(v)  # tpyc: warning(/Mutation of 'self.rows\[\.\.\.\]'.*'append'/)
+            self.rows[i].append(v)  # tpyc: warning(/Mutation of 'self.rows\[\.\.\.\]'.*'append'/) warning(/this call may move the element the iteration over 'self.rows\[i\]' still walks/)
 
 def test_element_source_method_mutation(rows: list[list[int32]], i: int32) -> None:
     """Iterating rows[i] and appending to rows[i] invalidates the iteration."""
     for v in rows[i]:
-        rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+        rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/) warning(/this call may move the element the iteration over 'rows\[i\]' still walks/)
 
 def test_element_source_sibling_index(rows: list[list[int32]], i: int32,
                                       j: int32) -> None:
@@ -100,14 +100,15 @@ def test_element_source_sibling_index(rows: list[list[int32]], i: int32,
         rows[j].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
 
 def test_element_source_distinct_literals(rows: list[list[int32]]) -> None:
-    """Valid Python: two int literals that differ cannot name one element."""
+    """Valid Python: two int literals that differ cannot name one element.
+    Sema is silent; MIR gives indices no identity and warns "may" (accepted false warning)."""
     for v in rows[0]:
-        rows[1].append(v)  # tpyc: ok
+        rows[1].append(v)  # tpyc: warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 
 def test_element_source_same_literal(rows: list[list[int32]]) -> None:
     """The same literal twice is the everyday bug the warning exists for."""
     for v in rows[0]:
-        rows[0].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+        rows[0].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/) warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 
 def test_element_source_name_then_literal(rows: list[list[int32]],
                                           i: int32) -> None:
@@ -127,14 +128,16 @@ def test_element_source_negative_literal(rows: list[list[int32]]) -> None:
         rows[-1].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
 
 def test_element_source_distinct_literal_setitem(rows: list[list[int32]]) -> None:
-    """Element assignment takes the same index rule as a mutating method."""
+    """Element assignment takes the same index rule as a mutating method.
+    Sema is silent; MIR warns "may" (accepted false warning)."""
     for v in rows[0]:
-        rows[1] = [v]  # tpyc: ok
+        rows[1] = [v]  # tpyc: warning(/this assignment may free the element the iteration over 'rows\[0\]' still walks/)
 
 def test_element_source_dict_distinct_keys(t: dict[str, list[int32]]) -> None:
-    """Str keys that differ are distinct elements too."""
+    """Str keys that differ are distinct elements too.
+    Sema is silent; MIR warns "may" (accepted false warning)."""
     for v in t["a"]:
-        t["b"].append(v)  # tpyc: ok
+        t["b"].append(v)  # tpyc: warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 
 def test_element_source_dict_same_key(t: dict[str, list[int32]]) -> None:
     for v in t["a"]:

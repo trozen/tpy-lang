@@ -33,8 +33,7 @@ from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
     MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call, statement_target, view_member,
 )
-from .mir.reach import referent_walk
-from .mir.witness import MIRHazard, MIRHazardKind, MIRWitness
+from .mir.witness import MIREffect, MIRHazardKind, MIRVerdict, MIRWitness, holder_views
 from .typesys import unwrap_readonly, view_owned_leaf
 from .mir.value import MIRValidationError
 from .mir.definitions import MIRDefinitions, body_calls, constructor_record_qname
@@ -404,7 +403,7 @@ def body_alias_warnings(fn: MIRFunction, analyses: MIRAnalyses, program: MIRProg
 # --- lifetime hazards ---------------------------------------------------------------
 
 class MIRUnspellable(Exception):
-    """A definite hazard whose storage no source name or expression reaches:
+    """A warned hazard whose storage no source name or expression reaches:
     a defect of the naming, which a strict (test) run surfaces."""
 
 
@@ -431,11 +430,7 @@ class _Words:
             return f"the iteration over {spoken.quoted}", "walks"
         if spoken.origin == "fallback":
             return spoken.name, "refers to"
-        if view_member(place) is not None:
-            views = True
-        else:
-            slot = next(s for s in self.fn.slots if s.id == place.root)
-            views = not place.projections and slot.shape.cls in (MIRClass.VIEW, MIRClass.CONTAINER_VIEW)
+        views = holder_views(place, self.names.slots)
         return spoken.quoted, "views" if views else "refers to"
 
     def storage(self, place: MIRPlace) -> str:
@@ -488,6 +483,7 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
     target = words.place(hazard.target)
     holder, verb = words.holder(hazard.holder)
     line = _first_read(fn, witness.reads)
+    overwrites = witness.effect is MIREffect.OVERWRITES
     action = "assignment" if statement_target(stmt) == hazard.target else (
         "call" if statement_call(stmt) is not None else "statement")
     use = "continues" if verb == "walks" else "is read" if verb == "views" else "is used"
@@ -495,10 +491,15 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         owned = f", or {owned}"
     else:
         owned = ""
-    if target.region != "structure" and not _frees(fn, hazard, verb == "views"):
+    # Element identity is not tracked: a MAY names what the holder keeps, not the written element.
+    may = witness.verdict is MIRVerdict.MAY
+    if overwrites:
+        fix = f"copy what {holder} refers to first, or use {holder} before this {action}"
+        if may:
+            return (f"this {action} may overwrite what {holder} refers to in place, and {holder} would see the new "
+                    f"value on line {line}; {fix}{owned}", stmt.loc)
         what = (f"this {action} overwrites {'an element of ' if target.region == 'elements' else ''}"
                 f"{target.quoted} in place")
-        fix = f"copy what {holder} refers to first, or use {holder} before this {action}"
         return (f"{what}, but {holder} still refers to it and sees the new value on line {line}; {fix}{owned}",
                 stmt.loc)
     if target.region == "structure":
@@ -519,33 +520,13 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         fix = "give the new value its own name"
     else:
         fix = f"copy what {holder} {verb} first, or use {holder} before this {action}"
+    if may:
+        moves = witness.effect is MIREffect.MOVES
+        later = "the loop continues" if verb == "walks" else f"{holder} {use}"
+        return (f"this {action} may {'move' if moves else 'free'} the element {holder} still {verb}, and {later} "
+                f"on line {line}; {fix}{owned}", stmt.loc)
     return (f"{what}, but {holder} still {verb} {kept} and {use} on line {line}; {fix}{owned}",
             stmt.loc)
-
-
-def _frees(fn: MIRFunction, hazard: MIRHazard, views: bool) -> bool:
-    """Whether the replacement frees what the holder keeps, rather than
-    rewriting it where it lies: below the replaced place the holder's
-    referent takes a container region step (a list's elements or shape), or
-    ends at an owned buffer (a `str` / `bytes`) that a view holder views. A
-    record field, an Optional record payload or a whole list / dict field
-    object is overwritten in place, and the holder sees the new value."""
-    slots = {s.id: s for s in fn.slots}
-    for retained in hazard.retained:
-        for r in retained:
-            for w in hazard.written:
-                if r.held or r.static or not r.place.lies_under(w.place):
-                    continue
-                if any(isinstance(step, REGION_STEPS) for step in r.place.projections[len(w.place.projections):]):
-                    return True
-                if views:
-                    try:
-                        end = referent_walk(r.place, slots, fn.record_layouts).end
-                    except MIRValidationError:
-                        return True
-                    if end.cls is MIRClass.OWNED_LEAF:
-                        return True
-    return False
 
 
 def _scope_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation | None]:
@@ -629,26 +610,34 @@ _TEXTS = {
 }
 
 
-def definite_hazards(analyses: MIRAnalyses) -> tuple[MIRWitness, ...]:
-    """The body's definite hazards (`MIRAnalyses.witnesses`), one per
-    collapse key -- the kill, the affected storage's root, the holder -- in
-    body order."""
+def warned_hazards(analyses: MIRAnalyses) -> tuple[MIRWitness, ...]:
+    """The body's hazards that warn (`MIRAnalyses.witnesses`, a DEFINITE or
+    MAY verdict), one per collapse key -- the kill, the affected storage's
+    root, the holder -- in body order. A key keeps its most severe hazard:
+    the strongest verdict, then a free or move over an in-place overwrite
+    (`MIRWitness.effect`) -- one call may write an element and the shape of
+    one list, and the shape write is what the warning says."""
+    def severity(w: MIRWitness) -> tuple[int, bool]:
+        return w.verdict.strength, w.effect is not MIREffect.OVERWRITES
+
     found: dict[tuple[object, ...], MIRWitness] = {}
     for witness in analyses.witnesses:
-        if not witness.definite:
+        if not witness.warns:
             continue
         hazard = witness.hazard
         key = (hazard.kind, hazard.site, hazard.target.root, hazard.holder)
-        found.setdefault(key, witness)
+        kept = found.get(key)
+        if kept is None or severity(witness) > severity(kept):
+            found[key] = witness
     return tuple(found.values())
 
 
 def hazard_warnings(fn: MIRFunction, analyses: MIRAnalyses, sites: 'CallSites', *,
                     strict: bool = False) -> list[Diagnostic]:
-    """One analyzed body's lifetime warnings: each definite hazard
-    (`definite_hazards`) at its kill, in Python terms, naming its read or
-    its return."""
-    witnesses = definite_hazards(analyses)
+    """One analyzed body's lifetime warnings: each hazard that warns
+    (`warned_hazards`, definite or "may") at its kill, in Python terms,
+    naming its read or its return."""
+    witnesses = warned_hazards(analyses)
     if not witnesses:
         return []
     words = _Words(fn, MIRStorageNames(fn), sites.source_text, strict)
@@ -662,5 +651,5 @@ def hazard_warnings(fn: MIRFunction, analyses: MIRAnalyses, sites: 'CallSites', 
 def body_warnings(fn: MIRFunction, analyses: MIRAnalyses, program: MIRProgram, sites: 'CallSites', *,
                   strict: bool = False) -> list[Diagnostic]:
     """Every MIR warning of one analyzed body: its argument aliases and its
-    definite lifetime hazards."""
+    lifetime hazards that warn."""
     return body_alias_warnings(fn, analyses, program, sites) + hazard_warnings(fn, analyses, sites, strict=strict)

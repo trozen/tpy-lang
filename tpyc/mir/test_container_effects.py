@@ -359,15 +359,15 @@ def test_a_view_of_a_view_is_the_same_region() -> None:
     state = deps.referents[MIRPoint(bid(0), 3)]
     # `u = t[...]` holds exactly what `t` holds, never `xs[elements][elements]`.
     assert state[place(1)] == state[place(2)] == {ref(0, ELEMENTS)}
-    # A cursor over a view depends on the view's region only.
-    assert state[place(3)] == {ref(0, ELEMENTS)}
+    # A cursor over a view depends on the shape and elements of the storage it views.
+    assert state[place(3)] == {ref(0, STRUCTURE), ref(0, ELEMENTS)}
 
 
 def test_a_span_parameter_names_the_elements_region_it_views() -> None:
     fn = span_body(source_param=True)
     deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 0)][place(0)] == {ref(0, ELEMENTS)}
-    assert deps.referents[MIRPoint(bid(0), 2)][place(3)] == {ref(0, ELEMENTS)}
+    assert deps.referents[MIRPoint(bid(0), 2)][place(3)] == {ref(0, STRUCTURE), ref(0, ELEMENTS)}
 
 
 def test_a_cursor_over_a_view_needs_the_same_has_next_proof() -> None:

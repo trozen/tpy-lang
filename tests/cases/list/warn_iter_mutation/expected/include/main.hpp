@@ -106,7 +106,7 @@ inline Grid::Grid() : rows(std::vector<std::vector<int32_t>>{{1, 2}}) {}
 // # container clobbers what the loop points into
 // def bump(self, i: int32) -> None:
 //     for v in self.rows[i]:
-//         self.rows[i].append(v)  # tpyc: warning(/Mutation of 'self.rows\[\.\.\.\]'.*'append'/)
+//         self.rows[i].append(v)  # tpyc: warning(/Mutation of 'self.rows\[\.\.\.\]'.*'append'/) warning(/this call may move the element the iteration over 'self.rows\[i\]' still walks/)
 inline void Grid::bump(int32_t i) {
     auto& __obj_0 = ::tpy::__getitem__(this->rows, i);
     auto __beg_0 = __obj_0.begin();

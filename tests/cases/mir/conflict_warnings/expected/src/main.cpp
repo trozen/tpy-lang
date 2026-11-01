@@ -469,16 +469,339 @@ void restore(Tok& t) {
     t.s = old;
 }
 
-// # which element: an element write under another element's reference -- silent by decision, filed:
-// # BUGS.md#setitem-write-under-live-element-borrow
+// # which element: an element write under another element's reference -- indices carry no identity,
+// # so `ps[j]` may be `ps[i]` and the write may overwrite what `p` refers to (a "may" warning)
 // def other_element(ps: list[P], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
 //     p = ps[i]
-//     ps[j] = P(9)
+//     ps[j] = P(9)  # tpyc: warning(/this assignment may overwrite what 'p' refers to in place, and 'p' would see the new value on line 402/)
+//     p.x += 100
 //     return p.x
 int32_t other_element(std::vector<P>& ps, int32_t i, int32_t j) {
     P& p = ::tpy::__getitem__(ps, i);
     ::tpy::__setitem__(ps, j, P(9));
+    p.x = ::tpy::add_check<int32_t>(p.x, 100);
     return p.x;
+}
+
+// # which element, loop variable: an element write while the loop variable refers to an element
+// def loop_var_overwrite(ps: list[P], j: int32, flag: bool) -> int32:
+//     t = 0
+//     for p in ps:
+//         if flag:
+//             ps[j] = P(9)  # tpyc: warning(/this assignment may overwrite what 'p' refers to in place/)
+//         t += p.x
+//     return t
+int32_t loop_var_overwrite(std::vector<P>& ps, int32_t j, bool flag) {
+    int32_t t = 0;
+    auto& __obj_0 = ps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        if (flag) {
+            ::tpy::__setitem__(ps, j, P(9));
+        }
+        t = ::tpy::add_check<int32_t>(t, p.x);
+    }
+    return t;
+}
+
+// # which element, adjacency: appending to one row while walking another, which may be the same row
+// def link(adj: list[list[int32]], u: int32) -> None:
+//     for v in adj[u]:
+//         adj[v].append(u)  # tpyc: warning(/this call may move the element the iteration over 'adj\[u\]' still walks, and the loop continues on line 418; iterate over a copy \('copy\(adj\[u\]\)'\)/)
+void link(std::vector<std::vector<int32_t>>& adj, int32_t u) {
+    auto& __obj_0 = ::tpy::__getitem__(adj, u);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(adj, v).push_back(u);
+    }
+}
+
+// # which element, temporary borrow: `rows[0]` and `rows[1]` are distinct constants, warned all the
+// # same (accepted false warning: indices carry no identity)
+// def other_row(rows: list[list[int32]]) -> None:
+//     for v in rows[1]:
+//         rows[0].append(v)  # tpyc: warning(/this call may move the element the iteration over 'rows\[1\]' still walks/)
+void other_row(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 1);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, 0).push_back(v);
+    }
+}
+
+// # which element, str element: replacing an element may free the buffer a view of another one views
+// def str_view(names: list[str], i: int32) -> None:
+//     v: StrView = names[0]
+//     names[i] = "x" + str(i)  # tpyc: warning(/this assignment may free the element 'v' still views, and 'v' is read on line 433/)
+//     print("str_view", v)
+void str_view(std::vector<std::string>& names, int32_t i) {
+    std::string_view v = ::tpy::__getitem__(names, 0);
+    ::tpy::__setitem__(names, i, (::tpy::str_concat("x", ::tpy::fixed_to_str<int32_t>(i))));
+    std::cout << "str_view" << " " << v << "\n" << ::tpy::check_signals;
+}
+
+// # which element, str loop twin: the loop variable is an owned copy here, so nothing is freed under it;
+// # MIR does not cover the body (owned loop variable), BUGS.md#str-loop-var-copied-when-list-written
+// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(uncovered /native target binding/)
+//     for s in names:
+//         names[i] = "y" + str(i)  # tpyc: ok
+//         print("str_loop", s)
+void str_loop(std::vector<std::string>& names, int32_t i) {
+    auto& __obj_0 = names;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string s = *__beg_0;
+        ::tpy::__setitem__(names, i, (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(i))));
+        std::cout << "str_loop" << " " << s << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # which element, safe sibling: an element write in place of the one the loop just read
+// def scale(xs: list[int32]) -> None:
+//     i = 0
+//     for x in xs:
+//         xs[i] = x * 2  # tpyc: ok
+//         i += 1
+void scale(std::vector<int32_t>& xs) {
+    int32_t i = 0;
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        ::tpy::__setitem__(xs, i, (::tpy::mul_check<int32_t>(x, 2)));
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+}
+
+// # which element, safe sibling: the same through a Span parameter
+// def span_scale(s: Span[int32]) -> None:
+//     i = 0
+//     for x in s:
+//         s[i] = x * 2  # tpyc: ok
+//         i += 1
+void span_scale(std::span<int32_t> s) {
+    int32_t i = 0;
+    auto& __obj_0 = s;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        ::tpy::__setitem__(s, i, (::tpy::mul_check<int32_t>(x, 2)));
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+}
+
+// # which element, safe sibling: a dict update of the key being visited
+// def dict_scale(d: dict[int32, int32]) -> None:
+//     for k in d:
+//         d[k] = d[k] * 2  # tpyc: ok
+void dict_scale(::tpy::ordered_map<int32_t, int32_t>& d) {
+    auto& __obj_0 = d;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t k = *__beg_0;
+        ::tpy::__setitem__(d, k, (::tpy::mul_check<int32_t>(::tpy::__getitem__(d, k), 2)));
+    }
+}
+
+// # which element, plain holder: a row store may free the row holding the element `p` refers to
+// def inner_ref(rows: list[list[P]], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = rows[i][0]
+//     rows[j] = [P(1)]  # tpyc: warning(/this assignment may free the element 'p' still refers to, and 'p' is used/)
+//     p.x += 10
+//     return p.x
+int32_t inner_ref(std::vector<std::vector<P>>& rows, int32_t i, int32_t j) {
+    P& p = ::tpy::__getitem__(::tpy::__getitem__(rows, i), 0);
+    ::tpy::__setitem__(rows, j, std::vector<P>{P(1)});
+    p.x = ::tpy::add_check<int32_t>(p.x, 10);
+    return p.x;
+}
+
+// # which element, view field: an element store may free the buffer a record's view member views
+// def tok_view(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
+//     t = Tok(names[0], 1)
+//     names[i] = "y" + str(i)  # tpyc: warning(/this assignment may free the element 't.s' still views.*or make 'Tok.s' an owned 'str'/)
+//     print("tok_view", t.s)
+void tok_view(std::vector<std::string>& names, int32_t i) {
+    Tok t = Tok(::tpy::__getitem__(names, 0), 1);
+    ::tpy::__setitem__(names, i, (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(i))));
+    std::cout << "tok_view" << " " << t.s << "\n" << ::tpy::check_signals;
+}
+
+// def clob(ps: list[P]) -> None:
+//     ps[0] = P(100)
+void clob(std::vector<P>& ps) {
+    ::tpy::__setitem__(ps, 0, P(100));
+}
+
+// # which element, callee: a callee's element store under the loop variable
+// def callee_loop(ps: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     t = 0
+//     for p in ps:
+//         if flag:
+//             clob(ps)  # tpyc: warning(/this call may overwrite what 'p' refers to in place/)
+//         t += p.x
+//     return t
+int32_t callee_loop(std::vector<P>& ps, bool flag) {
+    int32_t t = 0;
+    auto& __obj_0 = ps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        if (flag) {
+            ::tpyapp::main::clob(ps);
+        }
+        t = ::tpy::add_check<int32_t>(t, p.x);
+    }
+    return t;
+}
+
+// def store_then_grow(xs: list[P]) -> None:
+//     xs[0] = P(1)
+//     xs.append(P(2))
+void store_then_grow(std::vector<P>& xs) {
+    ::tpy::__setitem__(xs, 0, P(1));
+    xs.push_back(P(2));
+}
+
+// def grow_then_store(xs: list[P]) -> None:
+//     xs.append(P(2))
+//     xs[0] = P(1)
+void grow_then_store(std::vector<P>& xs) {
+    xs.push_back(P(2));
+    ::tpy::__setitem__(xs, 0, P(1));
+}
+
+// # which element, one call writing an element and the shape: the definite shape write is what warns
+// def kept_store_then_grow(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = xs[0]
+//     if flag:
+//         store_then_grow(xs)  # tpyc: warning(/this call may move the elements of 'xs', but 'p' still refers to them/)
+//     return p.x
+int32_t kept_store_then_grow(std::vector<P>& xs, bool flag) {
+    P& p = ::tpy::__getitem__(xs, 0);
+    if (flag) {
+        ::tpyapp::main::store_then_grow(xs);
+    }
+    return p.x;
+}
+
+// # the same with the callee's writes the other way round
+// def kept_grow_then_store(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = xs[0]
+//     if flag:
+//         grow_then_store(xs)  # tpyc: warning(/this call may move the elements of 'xs', but 'p' still refers to them/)
+//     return p.x
+int32_t kept_grow_then_store(std::vector<P>& xs, bool flag) {
+    P& p = ::tpy::__getitem__(xs, 0);
+    if (flag) {
+        ::tpyapp::main::grow_then_store(xs);
+    }
+    return p.x;
+}
+
+// # which element, one call writing an inner element and growing that inner list: both are "may"
+// # hazards, and the move is what warns, not the in-place overwrite
+// def row_store_then_grow(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = rows[i][0]
+//     if flag:
+//         store_then_grow(rows[0])  # tpyc: warning(/this call may move the element 'p' still refers to, and 'p' is used/)
+//     return p.x
+int32_t row_store_then_grow(std::vector<std::vector<P>>& rows, int32_t i, bool flag) {
+    P& p = ::tpy::__getitem__(::tpy::__getitem__(rows, i), 0);
+    if (flag) {
+        ::tpyapp::main::store_then_grow(::tpy::__getitem__(rows, 0));
+    }
+    return p.x;
+}
+
+// # the same with the callee's writes the other way round
+// def row_grow_then_store(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = rows[i][0]
+//     if flag:
+//         grow_then_store(rows[0])  # tpyc: warning(/this call may move the element 'p' still refers to, and 'p' is used/)
+//     return p.x
+int32_t row_grow_then_store(std::vector<std::vector<P>>& rows, int32_t i, bool flag) {
+    P& p = ::tpy::__getitem__(::tpy::__getitem__(rows, i), 0);
+    if (flag) {
+        ::tpyapp::main::grow_then_store(::tpy::__getitem__(rows, 0));
+    }
+    return p.x;
+}
+
+// def which_element() -> None:
+//     ps = [P(1), P(2)]
+//     n = other_element(ps, 0, 1)
+//     # `p` is ps[0]: the write through it shows in the list
+//     print("other_element", n, ps[0].x, ps[1].x)
+//     print("loop_var_overwrite", loop_var_overwrite(ps, 1, False))
+//     adj = [[1], [0], [0]]
+//     link(adj, 2)
+//     print("link", adj)
+//     rows = [[1], [2, 3]]
+//     other_row(rows)
+//     print("other_row", rows)
+//     names = ["a", "b"]
+//     str_view(names, 1)
+//     str_loop(names, 1)
+//     print("names", names)
+//     xs = [1, 2, 3]
+//     scale(xs)
+//     span_scale(xs)
+//     print("scale", xs)
+//     d = {1: 1, 2: 2}
+//     dict_scale(d)
+//     print("dict_scale", d)
+//     grid = [[P(1)], [P(2)]]
+//     m = inner_ref(grid, 0, 1)
+//     # `p` is grid[0][0]: the write through it shows in the list
+//     print("inner_ref", m, grid[0][0].x, grid[1][0].x)
+//     tok_view(["a", "b"], 1)
+//     print("callee_loop", callee_loop(ps, False))
+//     qs = [P(5)]
+//     print("kept_calls", kept_store_then_grow(qs, False), kept_grow_then_store(qs, False), len(qs))
+//     print("row_calls", row_store_then_grow(grid, 0, False), row_grow_then_store(grid, 0, False), len(grid[0]))
+void which_element() {
+    std::vector<P> ps = {P(1), P(2)};
+    int32_t n = ::tpyapp::main::other_element(ps, 0, 1);
+    std::cout << "other_element" << " " << n << " " << ::tpy::__getitem__(ps, 0).x << " " << ::tpy::__getitem__(ps, 1).x << "\n" << ::tpy::check_signals;
+    std::cout << "loop_var_overwrite" << " " << ::tpyapp::main::loop_var_overwrite(ps, 1, false) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<int32_t>> adj = {{1}, {0}, {0}};
+    ::tpyapp::main::link(adj, 2);
+    std::cout << "link" << " " << ::tpy::ListPrinter(adj) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<int32_t>> rows = {{1}, {2, 3}};
+    ::tpyapp::main::other_row(rows);
+    std::cout << "other_row" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+    std::vector<std::string> names = {"a", "b"};
+    ::tpyapp::main::str_view(names, 1);
+    ::tpyapp::main::str_loop(names, 1);
+    std::cout << "names" << " " << ::tpy::ListPrinter(names) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> xs = {1, 2, 3};
+    ::tpyapp::main::scale(xs);
+    ::tpyapp::main::span_scale(::tpy::as_mut_span(xs));
+    std::cout << "scale" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
+    ::tpyapp::main::dict_scale(d);
+    std::cout << "dict_scale" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<P>> grid = {{P(1)}, {P(2)}};
+    int32_t m = ::tpyapp::main::inner_ref(grid, 0, 1);
+    std::cout << "inner_ref" << " " << m << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).x << "\n" << ::tpy::check_signals;
+    std::vector<std::string> __tmp_1 = {"a", "b"};
+    ::tpyapp::main::tok_view(__tmp_1, 1);
+    std::cout << "callee_loop" << " " << ::tpyapp::main::callee_loop(ps, false) << "\n" << ::tpy::check_signals;
+    std::vector<P> qs = {P(5)};
+    std::cout << "kept_calls" << " " << ::tpyapp::main::kept_store_then_grow(qs, false) << " " << ::tpyapp::main::kept_grow_then_store(qs, false) << " " << ::tpy::__len__(qs) << "\n" << ::tpy::check_signals;
+    std::cout << "row_calls" << " " << ::tpyapp::main::row_store_then_grow(grid, 0, false) << " " << ::tpyapp::main::row_grow_then_store(grid, 0, false) << " " << ::tpy::__len__(::tpy::__getitem__(grid, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // # what the caller passes: a parameter's view member may view the list the body writes -- silent by
@@ -630,7 +953,7 @@ void summary_inverse_call() {
 //     overwritten(True)
 //     restore(t)
 //     print("restore", t.s)
-//     print("other_element", other_element([P(1), P(2)], 0, 1))
+//     which_element()
 //     print("through_param", through_param(Tok("ab", 1), ["c"]))
 //     print("dict_insert", dict_insert({1: 1, 2: 2}))
 //     print("kept_view", kept_view("k"))
@@ -670,13 +993,12 @@ void main() {
     ::tpyapp::main::overwritten(true);
     ::tpyapp::main::restore(t);
     std::cout << "restore" << " " << t.s << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_2 = {P(1), P(2)};
-    std::cout << "other_element" << " " << ::tpyapp::main::other_element(__tmp_2, 0, 1) << "\n" << ::tpy::check_signals;
-    Tok __tmp_3 = Tok("ab", 1);
-    std::vector<std::string> __tmp_4 = {"c"};
-    std::cout << "through_param" << " " << ::tpyapp::main::through_param(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<int32_t, int32_t> __tmp_5 = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
-    std::cout << "dict_insert" << " " << ::tpyapp::main::dict_insert(__tmp_5) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::which_element();
+    Tok __tmp_2 = Tok("ab", 1);
+    std::vector<std::string> __tmp_3 = {"c"};
+    std::cout << "through_param" << " " << ::tpyapp::main::through_param(__tmp_2, __tmp_3) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<int32_t, int32_t> __tmp_4 = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
+    std::cout << "dict_insert" << " " << ::tpyapp::main::dict_insert(__tmp_4) << "\n" << ::tpy::check_signals;
     std::cout << "kept_view" << " " << ::tpyapp::main::kept_view("k") << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     int32_t n = h.twin(false);
@@ -703,8 +1025,8 @@ void main() {
             std::cout << "after_raise raised" << "\n" << ::tpy::check_signals;
         }
     }
-    NamedLine __tmp_6 = NamedLine(Named(1, "a"));
-    std::cout << "record_alias" << " " << ::tpyapp::main::record_alias(__tmp_6, false) << "\n" << ::tpy::check_signals;
+    NamedLine __tmp_5 = NamedLine(Named(1, "a"));
+    std::cout << "record_alias" << " " << ::tpyapp::main::record_alias(__tmp_5, false) << "\n" << ::tpy::check_signals;
     Frame fr = Frame();
     std::cout << "record_objects" << " " << ::tpyapp::main::record_list_object(fr, false) << " " << ::tpyapp::main::record_field(fr, false) << " " << ::tpyapp::main::lent_list_object(fr, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_arm(1, false);

@@ -65,6 +65,8 @@ int32_t bag_grow(std::vector<Bag>& bags);
 int32_t twin_grow(std::vector<Twin>& ts);
 // def span_rows(s: Span[list[int32]]) -> int32:  # tpyc: mir(covered)
 int32_t span_rows(std::span<std::vector<int32_t>> s);
+// def dict_values(t: dict[str, list[int32]], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t dict_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& t, bool flag);
 // def value_rows(d: dict[str, list[int32]]) -> int32:  # tpyc: mir(covered)
 int32_t value_rows(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
 // def toks(ts: list[list[Tok]]) -> int32:  # tpyc: mir(covered)

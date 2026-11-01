@@ -2030,7 +2030,16 @@ form facts, never on lists of accepted kinds.
   `mir_diagnostics.hazard_warnings`). Not-definite classes -- a read on
   some paths, element identity, caller-dependent aliasing, raise-path
   escapes, joined writes into a parameter's object -- are precision items
-  (TODO.md), each a later promotion. A hazard sema also warns is reported
+  (TODO.md), each a later promotion. **May hazards (2026-11-01).** The
+  verdict is three-state (`witness.MIRVerdict`: EVIDENCE, MAY, DEFINITE):
+  when every pair reaches and some pair has both places in a container's
+  elements region (`validate.reaches_element`), rule 1 gives MAY, since
+  element places carry no index or key; a MAY passes rules 2 and 3 like a
+  definite hazard and warns with a "may" text
+  (`mir_diagnostics._replacement_text`). Distinct constants
+  (`rows[0]` vs `rows[1]`) warn too, by decision. A Span cursor depends on
+  its backing storage's `[structure]` and `[elements]`, like a list cursor,
+  so an in-place element write under it stays evidence. A hazard sema also warns is reported
   by both (decided 2026-10-28): no code matches one analysis's warnings
   against the other's, and B6 removes the duplicate per family when it
   hands that family to MIR; this split still decides nothing
@@ -2602,16 +2611,15 @@ as the corpus grows).
   a readonly holder reaches readonly members at every depth; a region write
   spares a whole-container parameter only when the written container's
   members cannot hold that parameter's type. Element places carry no index
-  or key, so `for v in t["a"]: t["b"].append(v)` conflicts, as evidence
-  only: with an element region on both sides no nested-element conflict
-  warns (TODO "Promote evidence-only conflict classes to warnings", item
-  (2), element identity). `tests/cases/mir/nested_containers`.
+  or key, so `for v in t["a"]: t["b"].append(v)` conflicts; with an
+  element region on both sides it warns as a "may" hazard since
+  2026-11-01 (TODO "Promote evidence-only conflict classes to warnings",
+  item (2), element identity). `tests/cases/mir/nested_containers`.
 - **Conflict naming.** No container-specific kind: sema's
   `iter_invalidation`, `borrow_invalidation` and `borrowed_container_arg`
   families are all `replacement`. `p = ps[0]; ps[0] = Point(..)` is a
-  `replacement` where sema says ok
-  (`BUGS.md#setitem-write-under-live-element-borrow`: C++ `p` reads the new
-  point where CPython keeps the old). `tests/cases/mir/containers` pins
+  `replacement` where sema says ok, warned by MIR as a "may" hazard since
+  2026-11-01 (C++ `p` reads the new point where CPython keeps the old). `tests/cases/mir/containers` pins
   each conflict beside a safe sibling whose holder is dead at the write.
 - **Deferred (not covered), second half or later.** A view-holding record
   as a container element ("container holds a borrow"; the rest of what a

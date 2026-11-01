@@ -18,7 +18,6 @@ from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRUnionPayload, MIRWalk, Projection,
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
-from .validate import reaches_element
 from .value import (
     AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
     member_types,
@@ -133,11 +132,18 @@ def reaches(written: MIRReferent, target: MIRReferent, distinct_external: Distin
         return True
     if written.external and _origin(written.place) != _origin(target.place):
         return distinct_external(written, target)
-    if written.place.root != target.place.root:
-        return False
-    path, inclusive = replacement_reach(written.place.projections) or (written.place.projections, True)
-    held = target.place.projections
-    return held[:len(path)] == path and (inclusive or len(held) > len(path))
+    return written.place.root == target.place.root and replaced_below(written.place, target.place) is not None
+
+
+def replaced_below(written: MIRPlace, held: MIRPlace) -> tuple[Projection, ...] | None:
+    """The steps `held` takes below the path a write at `written` replaces
+    (`replacement_reach`; a whole write replaces everything under its
+    place), None when the write does not reach it; the caller compares roots."""
+    path, inclusive = replacement_reach(written.projections) or (written.projections, True)
+    steps = held.projections
+    if steps[:len(path)] != path or not inclusive and len(steps) == len(path):
+        return None
+    return steps[len(path):]
 
 
 def no_distinct_alias(written: MIRReferent, target: MIRReferent) -> bool:
@@ -148,10 +154,11 @@ def no_distinct_alias(written: MIRReferent, target: MIRReferent) -> bool:
 
 def reaches_definitely(written: MIRReferent, target: MIRReferent) -> bool:
     """`reaches` with nothing left to the caller: neither side a stored loan
-    of the caller's (`held`, storage of no known place), no step between
-    two distinct external origins (`no_distinct_alias`), and not both in a
-    container's elements region, where element identity is not tracked."""
-    if written.held or target.held or reaches_element(written.place) and reaches_element(target.place):
+    of the caller's (`held`, storage of no known place) and no step between
+    two distinct external origins (`no_distinct_alias`). Two element regions
+    reach as one: element identity is not tracked, so the witness weighs
+    such a pair as a MAY."""
+    if written.held or target.held:
         return False
     return reaches(written, target, no_distinct_alias)
 

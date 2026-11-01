@@ -294,6 +294,14 @@ def _project(refs: frozenset[MIRReferent],
                      for r in refs for projection in projections)
 
 
+def _backing(ref: MIRReferent) -> MIRReferent:
+    """The storage a view referent's elements region lies in."""
+    projections = ref.place.projections
+    if projections and isinstance(projections[-1], MIRContainerElements):
+        return MIRReferent(MIRPlace(ref.place.root, projections[:-1]), ref.external)
+    return ref
+
+
 def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRPlace:
     """An external referent's place under an Optional record field's
     payload, published as the whole field: a summary path selects no
@@ -717,10 +725,14 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
                     result[target] = returns or empty
             case MIRIteratorInit(source=source):
                 refs = resolve_referents(MIRPlace(source), state, slots, layouts)
-                # A cursor over a view depends on the region the view holds;
-                # over a container, on its shape and its elements.
-                result[target] = (refs if slots[source].shape.container_view_holder
-                                  else _project(refs, MIRContainerStructure(), MIRContainerElements()))
+                if slots[source].shape.container_view_holder:
+                    refs = frozenset(_backing(r) for r in refs)
+                # A cursor depends on its container's shape and its elements; over
+                # a view, on those of the storage the view's elements region lies in.
+                # The [structure] sibling keeps an element write from reaching every
+                # referent of the cursor (an in-place `s[i] = x` stays evidence); for
+                # a Span parameter it lies on the view root, which nothing in-body writes.
+                result[target] = _project(refs, MIRContainerStructure(), MIRContainerElements())
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):

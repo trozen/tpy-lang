@@ -204,7 +204,7 @@ void test_subscript_assign_ok() {
 // def test_element_source_method_mutation(rows: list[list[int32]], i: int32) -> None:
 //     """Iterating rows[i] and appending to rows[i] invalidates the iteration."""
 //     for v in rows[i]:
-//         rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+//         rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/) warning(/this call may move the element the iteration over 'rows\[i\]' still walks/)
 void test_element_source_method_mutation(std::vector<std::vector<int32_t>>& rows, int32_t i) {
     auto& __obj_0 = ::tpy::__getitem__(rows, i);
     auto __beg_0 = __obj_0.begin();
@@ -231,9 +231,10 @@ void test_element_source_sibling_index(std::vector<std::vector<int32_t>>& rows, 
 }
 
 // def test_element_source_distinct_literals(rows: list[list[int32]]) -> None:
-//     """Valid Python: two int literals that differ cannot name one element."""
+//     """Valid Python: two int literals that differ cannot name one element.
+//     Sema is silent; MIR gives indices no identity and warns "may" (accepted false warning)."""
 //     for v in rows[0]:
-//         rows[1].append(v)  # tpyc: ok
+//         rows[1].append(v)  # tpyc: warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 void test_element_source_distinct_literals(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = ::tpy::__getitem__(rows, 0);
     auto __beg_0 = __obj_0.begin();
@@ -247,7 +248,7 @@ void test_element_source_distinct_literals(std::vector<std::vector<int32_t>>& ro
 // def test_element_source_same_literal(rows: list[list[int32]]) -> None:
 //     """The same literal twice is the everyday bug the warning exists for."""
 //     for v in rows[0]:
-//         rows[0].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+//         rows[0].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/) warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 void test_element_source_same_literal(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = ::tpy::__getitem__(rows, 0);
     auto __beg_0 = __obj_0.begin();
@@ -303,9 +304,10 @@ void test_element_source_negative_literal(std::vector<std::vector<int32_t>>& row
 }
 
 // def test_element_source_distinct_literal_setitem(rows: list[list[int32]]) -> None:
-//     """Element assignment takes the same index rule as a mutating method."""
+//     """Element assignment takes the same index rule as a mutating method.
+//     Sema is silent; MIR warns "may" (accepted false warning)."""
 //     for v in rows[0]:
-//         rows[1] = [v]  # tpyc: ok
+//         rows[1] = [v]  # tpyc: warning(/this assignment may free the element the iteration over 'rows\[0\]' still walks/)
 void test_element_source_distinct_literal_setitem(std::vector<std::vector<int32_t>>& rows) {
     auto& __obj_0 = ::tpy::__getitem__(rows, 0);
     auto __beg_0 = __obj_0.begin();
@@ -317,9 +319,10 @@ void test_element_source_distinct_literal_setitem(std::vector<std::vector<int32_
 }
 
 // def test_element_source_dict_distinct_keys(t: dict[str, list[int32]]) -> None:
-//     """Str keys that differ are distinct elements too."""
+//     """Str keys that differ are distinct elements too.
+//     Sema is silent; MIR warns "may" (accepted false warning)."""
 //     for v in t["a"]:
-//         t["b"].append(v)  # tpyc: ok
+//         t["b"].append(v)  # tpyc: warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 void test_element_source_dict_distinct_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     auto& __obj_0 = ::tpy::__getitem__(t, "a");
     auto __beg_0 = __obj_0.begin();

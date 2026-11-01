@@ -1,5 +1,6 @@
-"""Which MIR conflicts are definite: the hazard record every conflict-finding
-analysis emits beside its conflicts, and the one witness that decides it.
+"""Which MIR conflicts warn, as definite or "may" hazards: the hazard record
+every conflict-finding analysis emits beside its conflicts, and the one
+witness that decides it.
 
 A conflict is evidence: MIR's analyses over-approximate (referents join
 over paths, external places may alias, element identity is not tracked,
@@ -8,9 +9,11 @@ only when MIR proves it on the hazard's own facts:
 
 1. strict reach over the full sets: every place the write may land on
    reaches every referent the holder may retain, with no caller-seeded
-   loan, no may-alias step between two external origins and no element
-   region on both sides (`reach.reaches_definitely`); a payload's end needs
-   its selection proven, a return escape exactly one body origin;
+   loan and no may-alias step between two external origins
+   (`reach.reaches_definitely`); a payload's end needs its selection
+   proven, a return escape exactly one body origin. Element identity is
+   not tracked, so a pair with an element region on both sides reaches
+   only maybe: the hazard warns as a MAY;
 2. the use is reached (replacement, scope end, payload end): every feasible
    path from the kill reads the holder's member (a non-call operand, a
    branch condition or a returned value at the holder or under it,
@@ -24,7 +27,8 @@ only when MIR proves it on the hazard's own facts:
    escape when the body neither returns nor hands on that object.
 
 Anything else stays evidence; a witness that exceeds its node cap does too,
-and says so (`capped`)."""
+and says so (`capped`). A hazard that passes is DEFINITE, or MAY when rule 1
+reached it only through two element regions."""
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
@@ -35,13 +39,37 @@ from .dependencies import MIRCallerStore, MIRReferents, resolve_referents
 from .nodes import (
     MIRAlias, MIRAssign, MIRBorrow, MIRBranch, MIREdge, MIRFunction, MIRIsAlternative, MIRIteratorInit, MIRMove,
     MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRWrap, statement_call,
-    statement_target, transfer_member,
+    statement_target, transfer_member, view_member,
 )
 from .prepare import MIRPrepared
-from .reach import MIRReferent, reaches_definitely, storage_events
+from ..thir.scalar_leaves import MIRClass
+from .reach import MIRReferent, reaches_definitely, referent_walk, replaced_below, storage_events
 from .region_flow import outgoing_edges
-from .shapes import MIRDeref, MIRUnionPayload
-from .validate import statement_read_places
+from .shapes import REGION_STEPS, MIRContainerStructure, MIRDeref, MIRUnionPayload
+from .validate import reaches_element, statement_read_places
+from .value import MIRRecords, MIRValidationError
+
+
+class MIRVerdict(Enum):
+    """A hazard's verdict; `strength` orders them, weakest first."""
+    EVIDENCE = 0
+    MAY = 1
+    DEFINITE = 2
+
+    @property
+    def strength(self) -> int:
+        return self.value
+
+
+class MIREffect(Enum):
+    """What a warned replacement does to what its holder keeps: frees it
+    (an element's or a whole value's storage), moves it (a container's shape
+    write), or overwrites it where it lies (a record field, a record
+    payload, a whole container field object), so the holder sees the new
+    value."""
+    FREES = auto()
+    MOVES = auto()
+    OVERWRITES = auto()
 
 
 class MIRHazardKind(Enum):
@@ -75,15 +103,21 @@ class MIRHazard:
 
 @dataclass(frozen=True)
 class MIRWitness:
-    """A hazard's verdict: definite or evidence only, and its witness --
-    the points of the reads every path reaches (rule 2), or the storing
-    statements and the returns (rule 3). `capped`: the witness gave up at
-    its node cap, so the hazard stays evidence."""
+    """A hazard's verdict (`MIRVerdict`), and its witness -- the points of
+    the reads every path reaches (rule 2), or the storing statements and the
+    returns (rule 3). `capped`: the witness gave up at its node cap, so the
+    hazard stays evidence."""
     hazard: MIRHazard
-    definite: bool
+    verdict: MIRVerdict
     reads: tuple[MIRPoint, ...] = ()
     stores: tuple[MIRPoint, ...] = ()
     capped: bool = False
+    # A warned replacement's effect (`replacement_effect`); None otherwise.
+    effect: MIREffect | None = None
+
+    @property
+    def warns(self) -> bool:
+        return self.verdict is not MIRVerdict.EVIDENCE
 
 
 # Graph nodes a witness may explore before it gives up.
@@ -332,17 +366,30 @@ def _escape_reached(body: _Body, key: MIRPlace, origin: MIRReferent,
 
 # --- the rules --------------------------------------------------------------------
 
-def _all_pairs(written: Iterable[MIRReferent], retained: Iterable[MIRReferent]) -> bool:
+def _all_pairs(written: Iterable[MIRReferent], retained: Iterable[MIRReferent]) -> MIRVerdict:
+    """Every pair reaches: DEFINITE, or MAY when some pair has both places
+    in an element region (an index may name another element)."""
     written, retained = frozenset(written), frozenset(retained)
-    return bool(written) and bool(retained) and all(
-        reaches_definitely(w, r) for w in written for r in retained)
+    if not written or not retained or not all(reaches_definitely(w, r) for w in written for r in retained):
+        return MIRVerdict.EVIDENCE
+    if any(reaches_element(w.place) and reaches_element(r.place) for w in written for r in retained):
+        return MIRVerdict.MAY
+    return MIRVerdict.DEFINITE
 
 
-def _strict_reach(body: _Body, hazard: MIRHazard) -> bool:
+def _weakest(verdicts: Iterable[MIRVerdict]) -> MIRVerdict:
+    return min(verdicts, key=lambda v: v.strength, default=MIRVerdict.DEFINITE)
+
+
+def _strongest(verdicts: Iterable[MIRVerdict]) -> MIRVerdict:
+    return max(verdicts, key=lambda v: v.strength, default=MIRVerdict.EVIDENCE)
+
+
+def _strict_reach(body: _Body, hazard: MIRHazard) -> MIRVerdict:
     """Rule 1 on the hazard's full sets."""
     match hazard.kind:
         case MIRHazardKind.REPLACEMENT:
-            return any(_all_pairs(hazard.written, retained) for retained in hazard.retained)
+            return _strongest(_all_pairs(hazard.written, retained) for retained in hazard.retained)
         case MIRHazardKind.SCOPE_END:
             ended = hazard.target
             if ended.projections:
@@ -350,8 +397,8 @@ def _strict_reach(body: _Body, hazard: MIRHazard) -> bool:
                 wrapper = MIRPlace(ended.root)
                 selected = dict(body.presence.edges[hazard.site]).get(wrapper, body.presence.domains[wrapper])
                 if len(selected) != 1:
-                    return False
-            return all(_all_pairs(hazard.written, retained) for retained in hazard.retained)
+                    return MIRVerdict.EVIDENCE
+            return _weakest(_all_pairs(hazard.written, retained) for retained in hazard.retained)
         case MIRHazardKind.PAYLOAD_END:
             assert isinstance(hazard.site, MIRPoint)
             payload = hazard.target
@@ -359,12 +406,16 @@ def _strict_reach(body: _Body, hazard: MIRHazard) -> bool:
             alternative = payload.projections[-1]
             assert isinstance(alternative, MIRUnionPayload)
             if facts.get(MIRPlace(payload.root, payload.projections[:-1])) != frozenset({alternative.alternative}):
-                return False
-            return all(bool(retained) and all(r.place == payload and not r.external for r in retained)
-                       for retained in hazard.retained)
+                return MIRVerdict.EVIDENCE
+            return _proven(all(bool(retained) and all(r.place == payload and not r.external for r in retained)
+                               for retained in hazard.retained))
         case MIRHazardKind.RETURN_ESCAPE:
-            return len(hazard.written) == 1 and not next(iter(hazard.written)).external
-    return True
+            return _proven(len(hazard.written) == 1 and not next(iter(hazard.written)).external)
+    return MIRVerdict.DEFINITE
+
+
+def _proven(proven: bool) -> MIRVerdict:
+    return MIRVerdict.DEFINITE if proven else MIRVerdict.EVIDENCE
 
 
 def _own_handed_on(body: _Body, root: MIRSlotId) -> bool:
@@ -448,8 +499,8 @@ def _store_reached(body: _Body, hazard: MIRHazard, reached: Reached) -> MIRWitne
     if (slot.kind is MIRSlotKind.PARAMETER and slot.shape.owns_storage
             and not any(store.result for store in hazard.stores)):
         if not _own_handed_on(body, key.root):
-            return MIRWitness(hazard, False)
-    return MIRWitness(hazard, bool(found), tuple(sorted(set(returns), key=lambda p: (p.block.index, p.index))),
+            return MIRWitness(hazard, MIRVerdict.EVIDENCE)
+    return MIRWitness(hazard, _proven(bool(found)), tuple(sorted(set(returns), key=lambda p: (p.block.index, p.index))),
                       tuple(sorted(set(found), key=lambda p: (p.block.index, p.index))))
 
 
@@ -462,14 +513,15 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
     reached: Reached = {}
     found: list[MIRWitness] = []
     for hazard in hazards:
-        if not _strict_reach(body, hazard):
-            found.append(MIRWitness(hazard, False))
+        reach = _strict_reach(body, hazard)
+        if reach is MIRVerdict.EVIDENCE:
+            found.append(MIRWitness(hazard, reach))
             continue
         match hazard.kind:
             case MIRHazardKind.RETURN_ESCAPE:
                 assert isinstance(hazard.site, MIREdge)
                 block = body.blocks[hazard.site.source]
-                found.append(MIRWitness(hazard, True, (MIRPoint(block.id, len(block.statements)),)))
+                found.append(MIRWitness(hazard, reach, (MIRPoint(block.id, len(block.statements)),)))
                 continue
             case MIRHazardKind.STORE_ESCAPE:
                 found.append(_store_reached(body, hazard, reached))
@@ -479,8 +531,57 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
         if key not in uses:
             uses[key] = _use_reached(body, start, hazard.holder)
         verdict, reads = uses[key]
-        found.append(MIRWitness(hazard, bool(verdict), reads if verdict else (), capped=verdict is None))
+        effect = (replacement_effect(hazard, body.slots, body.fn.record_layouts)
+                  if verdict and hazard.kind is MIRHazardKind.REPLACEMENT else None)
+        found.append(MIRWitness(hazard, reach if verdict else MIRVerdict.EVIDENCE, reads if verdict else (),
+                                capped=verdict is None, effect=effect))
     return tuple(_escape_decides(found))
+
+
+def holder_views(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
+    """Whether a holder views what it keeps rather than referring to an
+    object: a record's view member, or a view slot itself."""
+    if view_member(place) is not None:
+        return True
+    return not place.projections and slots[place.root].shape.cls in (MIRClass.VIEW, MIRClass.CONTAINER_VIEW)
+
+
+def _shape_write(place: MIRPlace) -> bool:
+    steps = [p for p in place.projections if not isinstance(p, MIRDeref)]
+    return bool(steps) and isinstance(steps[-1], MIRContainerStructure)
+
+
+def replacement_effect(hazard: MIRHazard, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIREffect:
+    """A replacement overwrites what the holder keeps where it lies only when
+    that is shown: a referent the holder keeps lies under the path the write
+    replaces (`reach.replaced_below`) with no container region step below
+    it, and is no owned buffer (a `str` / `bytes`) a view holder views -- a
+    record field, an Optional record payload, a whole container field
+    object. Otherwise it frees what the holder keeps, or moves it when
+    every write is a container's shape write; a free or move shown for any
+    referent wins over an overwrite shown for another."""
+    views = holder_views(hazard.holder, slots)
+    moves = all(_shape_write(x.place) for x in hazard.written)
+    overwrites = False
+    for retained in hazard.retained:
+        for r in retained:
+            for w in hazard.written:
+                below = (None if r.held or r.static or r.place.root != w.place.root
+                         else replaced_below(w.place, r.place))
+                if below is None:
+                    continue
+                frees = any(isinstance(step, REGION_STEPS) for step in below)
+                if not frees and views:
+                    try:
+                        frees = referent_walk(r.place, slots, records).end.cls is MIRClass.OWNED_LEAF
+                    except MIRValidationError:
+                        frees = True
+                if frees:
+                    return MIREffect.MOVES if moves else MIREffect.FREES
+                overwrites = True
+    if overwrites:
+        return MIREffect.OVERWRITES
+    return MIREffect.MOVES if moves else MIREffect.FREES
 
 
 def _escape_decides(found: list[MIRWitness]) -> list[MIRWitness]:
@@ -488,8 +589,8 @@ def _escape_decides(found: list[MIRWitness]) -> list[MIRWitness]:
     body is that escape's hazard, warned once there; any other scope end is
     decided on its own."""
     escaping = [(w.hazard.holder, w.hazard.target) for w in found
-                if w.definite and w.hazard.kind is MIRHazardKind.STORE_ESCAPE]
-    return [MIRWitness(w.hazard, False) if w.definite and w.hazard.kind is MIRHazardKind.SCOPE_END and any(
+                if w.warns and w.hazard.kind is MIRHazardKind.STORE_ESCAPE]
+    return [MIRWitness(w.hazard, MIRVerdict.EVIDENCE) if w.warns and w.hazard.kind is MIRHazardKind.SCOPE_END and any(
                 holder == w.hazard.holder and origin.lies_under(w.hazard.target) for holder, origin in escaping)
             else w for w in found]
 

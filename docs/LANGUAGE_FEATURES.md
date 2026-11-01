@@ -10672,18 +10672,26 @@ def reassigned(s: str) -> StrView:
 p = ln.a                   # a record field: replacing it rewrites the record where it lies
 ln.a = Point(9, "new")     # warning: this assignment overwrites 'ln.a' in place, but 'p' still refers to it
                            #   and sees the new value on line 3; copy what 'p' refers to first, or use 'p' before ...
+
+p = xs[i]                  # an element against an element: indices carry no identity, so a "may" warning
+xs[j] = P(9)               # warning: this assignment may overwrite what 'p' refers to in place, and 'p' would
+                           #   see the new value on line 3; copy what 'p' refers to first, or use 'p' before ...
+
+for v in adj[u]:
+    adj[v].append(u)       # warning: this call may move the element the iteration over 'adj[u]' still walks,
+                           #   and the loop continues on line 1; iterate over a copy ('copy(adj[u])'), or ...
 ```
 
 What is warned -- a hazard MIR proves on its own facts:
 
-- **the storage reaches what the holder keeps, for certain**: every place the write (or the end of storage) may land on reaches everything the holder may keep there -- not a loan the caller passed in, not two parameters that might be one object, not "some element" of a list against "some element" of it; a returned borrow comes from exactly one object of the body;
+- **the storage reaches what the holder keeps, for certain**: every place the write (or the end of storage) may land on reaches everything the holder may keep there -- not a loan the caller passed in, not two parameters that might be one object; a returned borrow comes from exactly one object of the body. "Some element" of a container against "some element" of it reaches only maybe, since MIR gives indices and keys no identity: such a hazard warns with a "may" text ("may overwrite what 'p' refers to", "may move the element ... walks", "may free the element 'v' still views"), and two distinct constants (`for v in rows[0]: rows[1].append(v)`) warn too -- a known false warning (TODO.md "element identity"). An in-place element write in a loop over the same list or Span (`for x in xs: xs[i] = x * 2`) or a dict update of the visited key stays silent: the walk holds no element;
 - **the use is reached** (a replacement, the end of a block or of a temporary): every path from the statement reads the affected member (`t.s`, not `t.n`) before the holder is rebound or the function returns; a read is a plain use in the body -- passing the holder to a call is not one. "Read on line N" holds on every path where the calls in between return normally: a call that always raises does not yet cut the path, a known false warning (`BUGS.md#mir-warning-after-always-raising-call`, TODO.md "calls with no normal return");
 - **the escape is reached** (a store into the caller's object): every path from the store reaches a normal return with nothing rewriting the stored member, and the escaping loan is the only one it holds there. A store into an `Own[R]` parameter's object warns only when the body returns or hands on that object.
 
 What stays silent -- MIR keeps each as evidence in its verdict (`--dump-mir`, `# tpyc: mir(conflict ...)`) without proving it, and silence is not a safety claim (each known bug keeps its BUGS.md entry):
 
 - a read only on some paths (`if c: buf = mk("b")` then `if not c: return len(v)`), a read only through a call (`size(t)`), a read through an alias whose referents a branch join widened;
-- which element (`p = xs[i]; xs[j] = P(1)`, `BUGS.md#setitem-write-under-live-element-borrow`), a dict store under its own iteration (`BUGS.md#dict-grows-during-own-iteration`);
+- a dict store under its own iteration or its `.values()` / `.items()` walk (`BUGS.md#dict-grows-during-own-iteration`), an element hazard MIR does not lower (an Optional or tuple element, an `ArrayList`: `BUGS.md#setitem-write-under-live-element-borrow`; a generic body: TODO.md "generic bodies", item (2d) of "Promote evidence-only conflict classes to warnings");
 - what the caller passes (`def f(t: Tok, xs: list[str]): xs[0] = ...; print(t.s)`, `BUGS.md#borrowed-arg-into-mutated-storage`), escapes only on a raise path, writes into a parameter's object that MIR joins rather than replaces;
 - a store escape on only some paths (a returned record that keeps a dead local's view on one branch only: `if flag: return t` ... `return u`);
 - and, safe: `t.s = tmp; t.s = "safe"`, `old = t.s; t.s = tmp; t.s = old`, a callee that resets the view before the read, `len(v)` of a stale view.

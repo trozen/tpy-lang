@@ -53,28 +53,28 @@ class Tok:
         self.n = n
 
 
-# conflict, free function: an alias of an element is walked while the element grows (sema is silent)
+# conflict, free function: an alias of an element is walked while the element grows (sema is silent);
+# MIR warns "may": indices carry no identity
 def silent_alias(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     r = rows[0]
     for v in r:
-        # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-        rows[0].append(v)  # tpyc: ok
+        rows[0].append(v)  # tpyc: warning(/this call may move the element the iteration over 'r' still walks/)
 
 
-# conflict, free function: a record element is replaced while its list is walked (sema is silent)
+# conflict, free function: a record element is replaced while its list is walked (sema is silent);
+# MIR warns "may"
 def silent_bag(bags: list[Bag]) -> None:  # tpyc: mir(conflict /replacement/)
     b0 = bags[0]
     for v in b0.items:
-        # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-        bags[0] = Bag()  # tpyc: ok
+        bags[0] = Bag()  # tpyc: warning(/this assignment may free the element the iteration over 'b0.items' still walks/)
 
 
-# conflict, free function: an inner loop walks an element another element's growth may be (sema is silent)
+# conflict, free function: an inner loop walks an element another element's growth may be (sema is
+# silent); MIR warns "may"
 def silent_nest(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for r in rows:
         for v in r:
-            # MIR's conflict is evidence only (BUGS.md#mir-element-alias-hazard-evidence-only): no warning
-            rows[0].append(v)  # tpyc: ok
+            rows[0].append(v)  # tpyc: warning(/this call may move the element the iteration over 'r' still walks/)
 
 
 # conflict, free function: the outer list grows under a walk of its element
@@ -86,19 +86,19 @@ def outer_grow(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacem
 # conflict, free function: a dict value grows under its own walk
 def dict_rows(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for v in t["a"]:
-        t["a"].append(v)  # tpyc: warning(/Mutation of 't\[...\]' while iterating/)
+        t["a"].append(v)  # tpyc: warning(/Mutation of 't\[...\]' while iterating/) warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 
 
 # conflict, element store: storing a new list into the walked element replaces its storage
 def store_elem(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for v in rows[0]:
-        rows[0] = [v]  # tpyc: warning(/Mutation of 'rows\[...\]' while iterating/)
+        rows[0] = [v]  # tpyc: warning(/Mutation of 'rows\[...\]' while iterating/) warning(/this assignment may free the element the iteration over 'rows\[0\]' still walks/)
 
 
 # conflict, dict element store: storing a new list under the walked key replaces its storage
 def store_value(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for v in t["a"]:
-        t["a"] = [v]  # tpyc: warning(/Mutation of 't\[...\]' while iterating/)
+        t["a"] = [v]  # tpyc: warning(/Mutation of 't\[...\]' while iterating/) warning(/this assignment may free the element the iteration over 't\["a"\]' still walks/)
 
 
 def grow_outer(rows: list[list[int32]], row: list[int32]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
@@ -127,23 +127,23 @@ def caller_inner(rows: list[list[int32]]) -> int32:  # tpyc: mir(conflict /repla
     n = 0
     for row in rows:
         for x in row:
-            grow_rows(rows)  # tpyc: warning(/Passing borrowed container 'rows'/)
+            grow_rows(rows)  # tpyc: warning(/Passing borrowed container 'rows'/) warning(/this call may move the element the iteration over 'row' still walks/)
             n += x
     return n
 
 
 # conservative, free function: distinct keys conflict, since an element place carries no key;
-# MIR records the conflict as evidence only and prints nothing
+# MIR warns "may" (accepted false warning)
 def distinct_keys(t: dict[str, list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for v in t["a"]:
-        t["b"].append(v)  # tpyc: ok
+        t["b"].append(v)  # tpyc: warning(/this call may move the element the iteration over 't\["a"\]' still walks/)
 
 
 # conservative, free function: distinct rows conflict, since an element place carries no index;
-# MIR records the conflict as evidence only and prints nothing
+# MIR warns "may" (accepted false warning)
 def distinct_rows(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
     for v in rows[0]:
-        rows[1].append(v)  # tpyc: ok
+        rows[1].append(v)  # tpyc: warning(/this call may move the element the iteration over 'rows\[0\]' still walks/)
 
 
 # clean, free function: growing an element leaves the outer walk alone
@@ -209,6 +209,18 @@ def span_rows(s: Span[list[int32]]) -> int32:  # tpyc: mir(covered)
     n = 0
     for row in s:
         n += len(row)
+    return n
+
+
+# conflict, dict-values walk: a value grown while an inner loop walks a value, which may be the same
+# one (sema is silent); MIR warns "may"
+def dict_values(t: dict[str, list[int32]], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+    n = 0
+    for row in t.values():
+        for v in row:
+            if flag:
+                t["a"].append(v)  # tpyc: warning(/this call may move the element the iteration over 'row' still walks/)
+            n += v
     return n
 
 
@@ -283,7 +295,7 @@ def pick(rows: list[list[int32]]) -> list[int32]:  # tpyc: mir(covered) mir_summ
 # conflict, summary caller: an inner list returned by a callee is freed by the element store
 def picked(rows: list[list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
     row = pick(rows)
-    # evidence only, so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
+    # evidence only (the read is a call), so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
     rows[0] = [8, 9]  # tpyc: ok
     return len(row)
 
@@ -302,7 +314,7 @@ def first(bags: list[Bag]) -> Bag:  # tpyc: mir(covered) mir_summary(known)
 # conflict, summary caller: a record element returned by a callee is freed by the element store
 def first_kept(bags: list[Bag]) -> int32:  # tpyc: mir(conflict /replacement/)
     b = first(bags)
-    # evidence only, so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
+    # evidence only (the read is a call), so nothing warns: BUGS.md#element-alias-sees-element-assignment, BUGS.md#mir-element-alias-hazard-evidence-only
     bags[0] = Bag()  # tpyc: ok
     return len(b.items)
 
@@ -326,7 +338,7 @@ def value_of(t: dict[str, list[int32]]) -> list[int32]:  # tpyc: mir(covered) mi
 # conflict, summary caller: a dict value returned by a callee is freed by the store under its key
 def value_kept(t: dict[str, list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
     row = value_of(t)
-    # evidence only, so nothing warns: BUGS.md#mir-element-alias-hazard-evidence-only
+    # evidence only (the read is a call), so nothing warns: BUGS.md#mir-element-alias-hazard-evidence-only
     t["a"] = [8, 9]  # tpyc: ok
     return len(row)
 
@@ -338,6 +350,7 @@ def main() -> None:
     distinct_keys(t)
     distinct_rows(rows)
     print("conservative", rows, t)
+    print("dict_values", dict_values(t, False))
     clean_outer(rows)
     clean_keys(t)
     set_inner(rows)

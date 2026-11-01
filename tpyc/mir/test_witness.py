@@ -17,7 +17,7 @@ from .nodes import MIRBodyId, MIRPlace, MIRSlotId
 from .place_text import MIRStorageNames, spoken_place
 from .reach import reaches, reaches_definitely
 from .shapes import MIRContainerElements, MIRContainerStructure
-from .witness import MIRHazardKind, decide
+from .witness import MIREffect, MIRHazardKind, MIRVerdict, decide
 
 SOURCE = '''\
 from tpy import StrView, copy, int32
@@ -220,14 +220,63 @@ def test_a_replacement_read_on_every_path_is_definite_once_per_holder(warnings) 
 def test_a_replacement_without_a_read_on_every_path_stays_evidence(bodies, name) -> None:
     verdicts = _verdicts(bodies, name)
     assert verdicts and all(w.hazard.kind is MIRHazardKind.REPLACEMENT for w in verdicts)
-    assert not any(w.definite for w in verdicts)
+    assert not any(w.warns for w in verdicts)
 
 
-@pytest.mark.parametrize("name", ["other_element", "through_param"])
-def test_strict_reach_refuses_element_regions_and_caller_seeded_loans(bodies, name) -> None:
-    fn, analyses = bodies[name]
+def test_strict_reach_refuses_caller_seeded_loans(bodies) -> None:
+    fn, analyses = bodies["through_param"]
     assert analyses.hazards, "the conflict is evidence"
-    assert not any(w.definite for w in decide(analyses.prepared, analyses.hazards))
+    assert not any(w.warns for w in decide(analyses.prepared, analyses.hazards))
+
+
+def test_an_element_write_under_an_element_borrow_is_a_may(bodies, warnings) -> None:
+    # Indices carry no identity: `ps[j]` may be `ps[i]`.
+    verdicts = _verdicts(bodies, "other_element")
+    assert [w.verdict for w in verdicts if w.warns] == [MIRVerdict.MAY]
+    assert (73, "this assignment may overwrite what 'p' refers to in place, and 'p' would see the new value on "
+                "line 74; copy what 'p' refers to first, or use 'p' before this assignment") in warnings
+
+
+@pytest.mark.parametrize(("name", "effect"), [
+    ("replaced", MIREffect.FREES),      # a view's buffer replaced whole
+    ("grows", MIREffect.MOVES),         # the list grows under its own walk
+    ("other_element", MIREffect.OVERWRITES),  # an element rewritten where a reference to it lies
+])
+def test_a_warned_replacement_carries_its_effect(bodies, name, effect) -> None:
+    warned = [w for w in _verdicts(bodies, name) if w.warns]
+    assert warned and {w.effect for w in warned} == {effect}
+
+
+def test_an_overwrite_is_shown_never_the_fallback(bodies) -> None:
+    fn, analyses = bodies["grows"]
+    hazard = next(h for h in analyses.hazards if h.kind is MIRHazardKind.REPLACEMENT)
+    slots = {s.id: s for s in fn.slots}
+    xs = next(iter(hazard.written)).place.root
+    other = MIRSlotId(xs.body, xs.index + 100)
+
+    def effect(written, retained):
+        return witness_module.replacement_effect(
+            replace(hazard, written=frozenset(written), retained=(frozenset(retained),)), slots, fn.record_layouts)
+
+    structure = MIRReferent(MIRPlace(xs, (MIRContainerStructure(),)))
+    # A shape write whose kept referent shows no in-place overwrite: another root, or a caller's loan.
+    assert effect({structure}, {MIRReferent(MIRPlace(other, (MIRContainerElements(),)))}) is MIREffect.MOVES
+    assert effect({structure}, {MIRReferent(MIRPlace(other), external=True, held=True)}) is MIREffect.MOVES
+    # An element store under a holder of something inside that element (`rows[0] = [...]`): freed.
+    element = MIRReferent(MIRPlace(xs, (MIRContainerElements(),)))
+    inner = MIRReferent(MIRPlace(xs, (MIRContainerElements(), MIRContainerElements())))
+    assert effect({element}, {inner}) is MIREffect.FREES
+    # The same element held itself, by a holder that does not view it: overwritten in place.
+    assert effect({element}, {element}) is MIREffect.OVERWRITES
+
+
+def test_only_a_warned_replacement_has_an_effect(bodies) -> None:
+    assert all(w.effect is None for name in ("block_view", "fill", "reassigned", "through_param")
+               for w in _verdicts(bodies, name))
+
+
+def test_a_whole_write_stays_definite(bodies) -> None:
+    assert {w.verdict for w in _verdicts(bodies, "replaced") if w.warns} == {MIRVerdict.DEFINITE}
 
 
 def test_the_reach_oracle_drops_every_step_left_to_the_caller() -> None:
@@ -236,12 +285,28 @@ def test_the_reach_oracle_drops_every_step_left_to_the_caller() -> None:
     structure = MIRReferent(MIRPlace(xs, (MIRContainerStructure(),)))
     elements = MIRReferent(MIRPlace(xs, (MIRContainerElements(),)))
     assert reaches_definitely(structure, elements)
-    assert not reaches_definitely(elements, elements)
+    # Two element regions reach as one; the witness weighs the pair a MAY.
+    assert reaches_definitely(elements, elements)
     held = MIRReferent(MIRPlace(ys), external=True, held=True)
     external = MIRReferent(MIRPlace(xs), external=True)
     assert reaches(external, held, lambda w, t: True) and not reaches_definitely(external, held)
     other = MIRReferent(MIRPlace(ys), external=True)
     assert reaches(external, other, lambda w, t: True) and not reaches_definitely(external, other)
+
+
+def test_rule_one_is_a_may_when_some_pair_is_element_on_both_sides() -> None:
+    body = MIRBodyId("m", "f")
+    xs = MIRSlotId(body, 0)
+    structure = MIRReferent(MIRPlace(xs, (MIRContainerStructure(),)))
+    elements = MIRReferent(MIRPlace(xs, (MIRContainerElements(),)))
+    inner_shape = MIRReferent(MIRPlace(xs, (MIRContainerElements(), MIRContainerStructure())))
+    assert witness_module._all_pairs({structure}, {elements}) is MIRVerdict.DEFINITE
+    assert witness_module._all_pairs({elements}, {elements}) is MIRVerdict.MAY
+    # An inner container's shape write passes through the outer elements region.
+    assert witness_module._all_pairs({inner_shape}, {inner_shape}) is MIRVerdict.MAY
+    # A pair that does not reach leaves the whole set evidence.
+    assert witness_module._all_pairs({elements}, {elements, structure}) is MIRVerdict.EVIDENCE
+    assert witness_module._all_pairs((), {elements}) is MIRVerdict.EVIDENCE
 
 
 def test_a_loop_over_a_list_it_grows_warns_with_the_iteration(warnings) -> None:
@@ -254,7 +319,7 @@ def test_a_block_end_warns_at_the_blocks_last_statement(warnings, bodies) -> Non
                 "create 'buf' before the block") in warnings
     # Read through a borrow whose referents the join widened: evidence only.
     verdicts = _verdicts(bodies, "block_view_chained")
-    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.SCOPE_END] and not verdicts[0].definite
+    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.SCOPE_END] and not verdicts[0].warns
 
 
 def test_a_temporary_is_spelled_by_its_expression(warnings) -> None:
@@ -267,14 +332,14 @@ def test_a_store_escape_warns_at_the_storing_statement_unless_rewritten(warnings
     assert (118, "'buf' is freed when 'fill' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned "
                  "'str'") in warnings
     verdicts = _verdicts(bodies, "fill_reset")
-    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.STORE_ESCAPE] and not verdicts[0].definite
+    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.STORE_ESCAPE] and not verdicts[0].warns
 
 
 def test_a_return_escape_needs_exactly_one_body_origin(warnings, bodies) -> None:
     assert (129, "the return type 'StrView' lends the result, but 's' is created inside 'reassigned' and freed "
                  "when it returns; return an owned 'str' instead") in warnings
     verdicts = _verdicts(bodies, "either")
-    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.RETURN_ESCAPE] and not verdicts[0].definite
+    assert [w.hazard.kind for w in verdicts] == [MIRHazardKind.RETURN_ESCAPE] and not verdicts[0].warns
 
 
 def test_each_analysis_emits_its_hazards(bodies) -> None:
@@ -287,13 +352,13 @@ def test_each_analysis_emits_its_hazards(bodies) -> None:
 
 
 def test_no_other_body_warns(warnings) -> None:
-    assert _lines(warnings) == [33, 33, 86, 95, 108, 118, 129]
+    assert _lines(warnings) == [33, 33, 73, 86, 95, 108, 118, 129]
 
 
 def test_the_node_cap_leaves_a_hazard_evidence(bodies, monkeypatch) -> None:
     monkeypatch.setattr(witness_module, "NODE_CAP", 0)
     verdicts = _verdicts(bodies, "replaced")
-    assert verdicts and all(w.capped and not w.definite for w in verdicts)
+    assert verdicts and all(w.capped and not w.warns for w in verdicts)
 
 
 def test_the_python_renderer_names_storage_by_its_source(bodies) -> None:
