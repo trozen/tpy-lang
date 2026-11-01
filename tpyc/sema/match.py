@@ -811,7 +811,9 @@ class MatchAnalyzer:
             # into: its recorded borrow sources stand for the subject.
             call = peel_coerce(subject)
             if isinstance(call, (TpyCall, TpyMethodCall)):
-                for src in borrow_declared_sources(call) or ():
+                for src in borrow_declared_sources(
+                        call, self.ctx.get_expr_type,
+                        self.ctx.declared_type) or ():
                     self._warn_arm_subject_mutation(case, src.expr)
             return
         offender, deferred_calls = self._find_subject_mutation(

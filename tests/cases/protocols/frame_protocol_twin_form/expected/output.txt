@@ -1,0 +1,49 @@
+int32 5
+bigint 7
+literal 3
+char x
+enum Color.RED
+valuetype P(1)
+field 4
+select 4
+max 4
+range range(0, 3)
+record call R(11)
+record field R(12)
+record select R(13)
+str 3
+str owned 3
+str literal 4
+str call 4
+bytes 2
+tuple (1, 'a')
+tuple record (1, R(7))
+tuple literal (1, R(3))
+subprotocol tuple (1, 'a')
+optional value 4
+optional record R(9)
+union R(8)
+optional view abc
+record R(9)
+container 2
+plain span 3
+plain args 3
+relay first
+relay 5
+relay 3
+async int32 5
+async str 3
+async str literal 2
+async str call 4
+async field 4
+async tuple (1, 'a')
+async tuple record (1, R(7))
+async optional record R(9)
+async union R(8)
+async record R(9)
+async select 4
+async int32 kept 5 9
+async bytes b'xy' 3
+async max 4
+async record call R(11)
+async range range(0, 3)

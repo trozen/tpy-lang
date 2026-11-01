@@ -571,10 +571,10 @@ def test_frame_names_a_method_frame_s_receiver_where_may_does_not(
     # MAY lends nothing at a method frame call: the frame's receiver loan
     # is BUGS.md#generator-method-receiver-borrow-unrepresented.
     assert call_loans(method, MayLend(ctx)) == []
-    assert [str(k) for k in frame_operand_keys(method)] == ["c"]
+    assert [str(k) for k in frame_operand_keys(method, ctx.get_expr_type, None)] == ["c"]
     # The free twin's argument is named by both.
     assert [str(lo.key) for lo in call_loans(free, MayLend(ctx))] == ["c"]
-    assert [str(k) for k in frame_operand_keys(free)] == ["c"]
+    assert [str(k) for k in frame_operand_keys(free, ctx.get_expr_type, None)] == ["c"]
 
 
 def test_view_answers_recorded_sources_else_every_buffer_operand(
@@ -750,7 +750,7 @@ def test_frame_selects_the_receiver_only_of_a_method_on_an_object(
     ctx, _, inits = frame_view_case
 
     def names(name: str) -> list[str] | None:
-        ops = frame_operands(inits[name])
+        ops = frame_operands(inits[name], ctx.get_expr_type, None)
         return None if ops is None else [peel_coerce(o).name for o in ops]
 
     assert names("g_method") == ["c"]
@@ -784,7 +784,8 @@ def test_frame_names_no_module_qualifier(tmp_path) -> None:
     init = peel_coerce(fn.body[0].init)
     assert init.user_module_call
     with activate_compiler(compiler):
-        ops = frame_operands(init)
+        # No protocol parameter: no operand needs typing.
+        ops = frame_operands(init, lambda _e: None, None)
     assert ops is not None and [peel_coerce(o).name for o in ops] == ["xs"]
 
 

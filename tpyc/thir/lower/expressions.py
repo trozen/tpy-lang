@@ -84,7 +84,6 @@ from ...typesys import (
     LiteralType,
     NominalType,
     NONE,
-    NoneType,
     OptionalType,
     OwnType,
     PendingListType,
@@ -191,7 +190,7 @@ from ...value_category import (
     call_hands_back_value, call_result_is_reference,
     call_result_live_in_statement, call_returns_cpp_ref,
     handed_over_iter, is_rvalue_source, lends_pointer_form_result,
-    may_hold_pointer,
+    may_hold_pointer, protocol_twin_slot,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
                       expr_kind_tag, replace_detail,
@@ -199,12 +198,11 @@ from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
 from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import numeric_literal_truth
-from ..param_contract import (Adapts, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
+from ..param_contract import (Adapts, Materializer, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
                               instantiation_storage, pack_element_contract, param_const, param_contract,
                               protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
 from ...sema.own_copy import contains_reference_type
-from ...sema.type_join import user_type_name
 from ...sema.local_deduction import (leaf_is_temporary,
                                      view_slot_source_is_temporary,
                                      view_source_is_temporary)
@@ -309,7 +307,6 @@ from ..nodes import (
 )
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
-from ..frame import FrameCaptureKind
 from . import binding_shadow
 from . import bindings
 from .bindings import (_value_opt_kind, form_of, project_held,
@@ -629,7 +626,8 @@ from .predicates import (
 )
 from .convert import (converted, layout_tuple,
                       param_tuple_slot, store_slot, to_local)
-from .context import ParamSlotClass, Slot, SlotHolds, param_slot, param_slot_class
+from .context import (ParamSlotClass, Slot, SlotHolds, deduced_slot,
+                      param_slot, param_slot_class)
 from .context import (FrameLocalClass, _call_arg_forms,
                       _ExprResultUse, _ExprUse, _LowerCtx, _LowerScope,
                       SlotConstruct,
@@ -15650,24 +15648,31 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         contract = replace(contract, retention=site_retention[0])
     structural = _structural_protocol_slot(a, ptype, contract, callee_fi, lc,
                                            declared)
-    if contract.frame_captured and contract.adapts is Adapts.STRUCTURAL:
-        structural = _frame_protocol_slot(a, ptype, structural, callee_fi,
-                                          arg_index, lc)
     # The protocol is a template parameter C++ deduces from the argument:
     # the slot holds the argument's own type, under the callee's contract,
-    # as a generic call holds its instantiation -- handed so the callee
-    # holds what the type's concrete twin holds there: at a TPy callee its
-    # own copy (`auto(b.n)`), its view or the object itself (the callee may
-    # write the storage it was read from through another parameter); a
+    # as a generic call holds its instantiation -- handed, where the
+    # contract says so (`Materializer.DEDUCED`), as the type's concrete twin
+    # holds it: at a call its own copy (`auto(b.n)`), its view or the object
+    # itself (the callee may write the storage it was read from through
+    # another parameter), at a frame what the twin's frame member holds; a
     # runtime binding reads within the call.
-    twin_cls = None
+    twin = None
     if structural is not None:
         inst = structural
-        if not (contract.frame_captured or contract.declared_only):
+        if contract.materializes is Materializer.DEDUCED:
             twin = param_contract(callee_fi, arg_index, structural,
                                   call=call, type_of=lc.analyzer.get_expr_type,
                                   arg=a, recv=recv)
-            twin_cls = param_slot_class(structural, twin)
+            if (isinstance(_peel_coerce(a), TpyTupleLiteral)
+                    and _tuple_param(structural)):
+                # A tuple literal is built as at its concrete twin's tuple
+                # parameter, by the rows that build one there (a frame's
+                # temporary elements seated on named locals).
+                return _lower_call_arg_at(
+                    a, structural, lc, declared, temp_args=temps,
+                    readonly_target=twin.const,
+                    frame_capturing=contract.frame_captured,
+                    retention=contract.retention, lifetime_checked=True)
     elif _tuple_param(inst):
         return None
     keep = contract.retention
@@ -15710,17 +15715,33 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # seats the sources it can own; any other one is refused).
     # An open `T`'s frame member is a value at a value-typed instantiation
     # (`val_or_ref_t<T>`) and the caller's object at a reference one.
+    # A deduced protocol parameter asks its hoist of the declared protocol,
+    # which answers at the argument's concrete twin (`frame_temp_arg_source`).
+    hoist_t = ptype if twin is not None else inst
     frame_kept = (contract.frame_captured
                   and cls is not ParamSlotClass.TRAIT
-                  and frame_temp_arg_slot(a, inst, lc.analyzer) is None)
+                  and frame_temp_arg_slot(a, hoist_t, lc.analyzer) is None)
 
     def lower() -> THIRExpr:
         pinned = _pinned_literal_arg(a, inst, callee_fi, lc, declared)
         if pinned is not None:
             return pinned
-        slot = param_slot(ptype, contract, lc.analyzer,
-                          placement=lc.placement, instantiated=inst)
-        bound = _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
+        if twin is None:
+            slot = param_slot(ptype, contract, lc.analyzer,
+                              placement=lc.placement, instantiated=inst)
+            if slot.materializer is Materializer.DEDUCED:
+                # A narrowed storage-Optional name, a binding fact the
+                # contract cannot see, passes the whole Optional in place;
+                # any other disagreement would hand a non-twin form.
+                assert _holds_whole_storage_optional(_peel_coerce(a), lc,
+                                                     declared), (
+                    "DEDUCED contract without a protocol twin at line "
+                    f"{getattr(a, 'line', '?')}")
+                slot = replace(slot, materializer=None)
+        else:
+            slot = deduced_slot(ptype, contract, structural, twin,
+                                lc.analyzer, placement=lc.placement)
+        return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
                              temps=temps, reason=reason, note=note,
                              frame_kept=frame_kept, cls=cls,
                              holds_fresh=holds_fresh, callee_fi=callee_fi,
@@ -15729,25 +15750,9 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                              ranked_note=(cls is ParamSlotClass.REFERENCE
                                           and reference_note is not None),
                              structural=structural is not None)
-        if twin_cls not in (ParamSlotClass.VALUE, ParamSlotClass.VIEW):
-            return bound
-        if twin_cls is ParamSlotClass.VIEW:
-            if (isinstance(structural, OptionalType)
-                    or not has_view_param_form(structural)):
-                # A `str | None` keeps its held form.
-                return bound
-            if bound.form is Form.BORROW:
-                return bound
-            _witness("arg.protocol_view")
-            return THIRFormConvert(result_type=bound.result_type, value=bound,
-                                   form=Form.BORROW,
-                                   loc=getattr(a, "loc", None))
-        _witness("arg.protocol_value_copy")
-        return THIRDecayCopy(result_type=bound.result_type, value=bound,
-                             loc=getattr(a, "loc", None))
 
     return _frame_temp_arg(
-        a, inst, lc, lc.analyzer,
+        a, hoist_t, lc, lc.analyzer,
         active=(contract.frame_captured
                 and cls is not ParamSlotClass.TRAIT),
         temp_args=temps,
@@ -15760,65 +15765,25 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             reason=reason, family_note=family_note))
 
 
-def _frame_protocol_slot(a: TpyExpr, ptype: TpyType,
-                         structural: 'TpyType | None',
-                         callee_fi: 'FunctionInfo | None', arg_index: int,
-                         lc: '_LowerCtx') -> 'TpyType | None':
-    """The record a generator / coroutine factory's structural protocol
-    parameter binds at argument `a` (`structural`, its effective type), as
-    a reference-type record binds any protocol slot; None where the
-    argument's rows decide. A non-generic protocol takes only an argument
-    its concrete twin's frame holds by reference: the deduced `T_x&&`
-    frame member holds an lvalue argument by reference, where the twin's
-    frame copies a value, an owned view or a borrow form."""
-    proto = protocol_slot(ptype)
-    at = lc.analyzer.get_expr_type(a)
-    if (proto is None or proto.type_args or callee_fi is None
-            or not isinstance(at, TpyType)):
-        return structural
-    at = peel_binding(at)
-    if isinstance(at, LiteralType):
-        at = at.base_type
-    # `lower.frame` imports this module.
-    from .frame import classify_param_kind
-    # A literal argument binds no structural slot: its own type decides.
-    held = structural if structural is not None else at
-    # An open `T`, a protocol and Any conform by their bound.
-    if (not (isinstance(held, TypeParamRef) or is_protocol_type(held)
-             or isinstance(held, AnyType))
-            and classify_param_kind(held, lambda _: False)
-            is not FrameCaptureKind.REF):
-        # Refused until convert materializes a deduced destination
-        # (BUGS.md#frame-protocol-value-arg).
-        root = callee_fi.root
-        kind = "async" if root.is_async else "generator"
-        pname = root.params[arg_index].name
-        raise ThirUnsupported(
-            "expr.call:frame_protocol_value_arg", loc=getattr(a, "loc", None),
-            message=(f"a '{user_type_name(held)}' argument to the {kind} "
-                     f"parameter '{pname}: {proto.name}' is not supported "
-                     f"yet; declare the parameter with the argument's type"))
-    if (structural is not None and record_like(at, lc.analyzer)
-            and not at.is_value_type()):
-        return at
-    return None
-
-
 def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
                               contract: ParamContract,
                               callee_fi: 'FunctionInfo | None',
                               lc: '_LowerCtx',
                               declared: dict[str, TpyType]) -> 'TpyType | None':
     """The type a structural, non-generic protocol parameter binds at
-    argument `a`: the argument's own effective type -- a narrowed read's
-    payload, else the type its storage holds (a record, an Optional, a
-    union, a `Ptr`, None, a scalar), which the C++ template parameter
-    deduces and binds as it is held. A native callee (`str`, `repr`,
+    argument `a`: its concrete twin (`protocol_twin_slot`, the one answer
+    sema's loans and the frame hoist read), refined by the binding facts
+    only the lowering has -- a narrowed read binds its payload unless the
+    name holds the whole Optional or union there (a narrowed storage
+    Optional, a union narrowing that installs no member alias), and a
+    number literal holds the default int. The C++ template parameter
+    deduces it and binds it as it is held. A native callee (`str`, `repr`,
     `len`, `hash`) binds it as a TPy-bodied one does. None where the
-    argument's rows decide: a generic protocol, a container, a protocol
-    or frame value, and a value at a parameter the callee may write -- its
-    storage may be replaced while the callee reads it, so it is copied
-    there, as at its concrete parameter."""
+    argument has no twin, at a callee binding no template to deduce at (a
+    method called through a protocol receiver, an `@overload` stub), for
+    a fresh tuple at a runtime binding's template, which spells its own
+    element captures (its rows), and for a narrowed storage-Optional
+    name."""
     if (contract.adapts is not Adapts.STRUCTURAL or callee_fi is None
             # A declared callee binding no runtime symbol (a method called
             # through a protocol receiver, an @overload stub) keeps the
@@ -15826,46 +15791,39 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
             or (contract.declared_only
                 and not binds_runtime_symbol(callee_fi))):
         return None
-    proto = protocol_slot(ptype)
-    if proto is None or proto.type_args:
-        return None
-    at = lc.analyzer.get_expr_type(a)
-    if not isinstance(at, TpyType):
-        return None
-    u = peel_binding(at)
     an = lc.analyzer
-    if (isinstance(u, TupleType) and is_rvalue_source(an, a)
-            and binds_runtime_symbol(callee_fi)):
-        # A fresh tuple at a runtime template spells its own element
-        # captures (its rows).
+    twin = protocol_twin_slot(ptype, a, an.get_expr_type, declared.get,
+                              frame=contract.frame_captured,
+                              writes=contract.written)
+    if twin is ptype:
         return None
-    rec = binding_of(a, lc, declared)
-    if rec is not None:
-        if rec.storage_opt and not isinstance(u, OptionalType):
-            # A narrowed storage-Optional target has no payload read: its
-            # row passes the whole Optional.
+    src = _peel_coerce(a)
+    if (contract.declared_only and isinstance(twin, TupleType)
+            and is_rvalue_source(an, src)):
+        # A fresh tuple at a runtime binding's template spells its own
+        # element captures (its rows); a declared callee's contract is never
+        # DEDUCED (`materializes`), so the two agree.
+        return None
+    rec = binding_of(src, lc, declared)
+    if rec is not None and isinstance(twin, (OptionalType, UnionType)):
+        # The twin is the name's declared Optional / union.
+        if _holds_whole_storage_optional(src, lc, declared):
             return None
-        if (rec.name not in lc.inline_narrowed
-                and _union_binding_divergent(a, declared, an)):
-            # A narrowing that installs no alias leaves the name holding the
-            # whole union, whatever member(s) its read is typed as.
-            u = peel_binding(declared[rec.name])
-    if not (record_like(u, an)
-            or isinstance(u, (OptionalType, UnionType, PtrType, NoneType,
-                              TupleType, RecursiveAliasInstanceType,
-                              TypeParamRef))
-            or _eligible_scalar(u) or _eligible_char(u)
-            or _eligible_enum(u, an) is not None
-            or _resolved_str_value(u, an) is not None
-            or _resolved_bytes_value(u, an) is not None):
-        # An iterator or a view (`d.values()`) keeps its iterable rows.
-        return None
-    if (_f1_container_ref(u) or isinstance(u, ConcreteFrameType)
-            or is_protocol_type(u)
-            or (u.is_value_type() and not contract.const)):
-        return None
-    # A str local's binding type is still pending; its storage is decided.
-    return _resolve_pending_view(u, an) or u
+        read = peel_binding(an.get_expr_type(src))
+        if not (rec.name not in lc.inline_narrowed
+                and _union_binding_divergent(src, declared, an)):
+            twin = read
+    return resolve_int_literals(twin, an.ctx.default_int_for_literal)
+
+
+def _holds_whole_storage_optional(src: TpyExpr, lc: '_LowerCtx',
+                                  declared: dict[str, TpyType]) -> bool:
+    """Whether `src` names a narrowed storage-Optional target: it has no
+    payload read, so its row passes the whole Optional in place."""
+    rec = binding_of(src, lc, declared)
+    return (rec is not None and rec.storage_opt
+            and not isinstance(peel_binding(lc.analyzer.get_expr_type(src)),
+                               OptionalType))
 
 
 def _reference_object_slot(t: TpyType, analyzer) -> bool:
@@ -16080,7 +16038,7 @@ def _container_literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                                          pos=SinkPos.CALL_ARG)), st, lc)
     lowered = _lower_literal_arg(a, st, lc, declared,
                                  "container-literal arg on the make path")
-    if (slot.callee_materializes
+    if (slot.materializer is Materializer.CALLEE
             or (callee_fi is not None and binds_runtime_symbol(callee_fi))):
         return _spell_brace(lowered, st, lc)
     return lowered
@@ -16124,7 +16082,9 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                     if slot.type.is_value_type() else
                     _container_literal_at_slot(a, slot, ptype, callee_fi, lc,
                                                declared))
-            if isinstance(read, THIRLiteral) and read.result_type == slot.type:
+            if (isinstance(read, THIRLiteral) and read.result_type == slot.type
+                    # A deduced slot takes it as its twin does (`convert`).
+                    and slot.materializer is not Materializer.DEDUCED):
                 return read
             if read is None:
                 read = _arg_read(a, slot, ptype, lc, declared, temps=temps,
@@ -16159,8 +16119,10 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         if built is not None:
             read = _spell_brace(built, inner, lc)
     if (isinstance(read, (THIRLiteral, THIRUnionArgLift, THIROptionalPtrArg))
-            and read.result_type == slot.type):
-        # A scalar literal built at the slot is the slot's own value.
+            and read.result_type == slot.type
+            and slot.materializer is not Materializer.DEDUCED):
+        # A scalar literal built at the slot is the slot's own value; a
+        # deduced slot takes it as its twin does (`convert`).
         return read
     lam = lambda_of(a)
     if read is None and not reference and isinstance(lam, TpyLambda):
@@ -16239,7 +16201,8 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                                     init=expr, form=Form.BORROW,
                                     movable=unwrap_ref_type(t).is_movable(),
                                     loc=getattr(a, "loc", None)), lc)
-    if (reference and slot.caller_materializes and plan.effect is Effect.PASS
+    if (reference and slot.materializer is Materializer.CALLER
+            and plan.effect is Effect.PASS
             and temps and _select_node(_peel_coerce(a))
             and not is_rvalue_source(lc.analyzer, _peel_coerce(a))):
         # A select one of whose operands is an object the caller keeps
@@ -16254,7 +16217,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
             and expr.typed_brace_cpp is None and not expr.elements):
         # A bare `{}` bound in place names no container.
         expr = replace(expr, typed_brace_cpp=lc.render_type(slot.type))
-    if (slot.callee_materializes and plan.effect is Effect.PASS
+    if (slot.materializer is Materializer.CALLEE and plan.effect is Effect.PASS
             and isinstance(a, TpyName) and _moves_here(a, lc)):
         # A local at its last use the insert's own overload would copy is
         # moved in: its storage is the body's (a generic local's bound
@@ -16266,7 +16229,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     request = plan.storage_request
     if request is None:
         return expr
-    if (reference and not slot.caller_materializes
+    if (reference and slot.materializer is not Materializer.CALLER
             # A union built from its member is no object a callee binds.
             and not isinstance(request.type, UnionType)
             and (_names_reference(_peel_coerce(a), lc)
@@ -16283,7 +16246,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     t = request.type
     loc = getattr(a, "loc", None)
     plain = _eligible_scalar(t) or _eligible_char(t)
-    if slot.caller_materializes:
+    if slot.materializer is Materializer.CALLER:
         # The copy an owned parameter takes, moved in; a buffer its view
         # constructs explicitly is brace-initialized from it.
         _witness("argtemp.arg_copy")

@@ -35,8 +35,8 @@ from ...parse.nodes import (
 from ...typesys import (
     IntLiteralType, NominalType, TpyType, OptionalType, OwnType,
     ReadonlyType, TupleType, TypeParamRef, VoidType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync,
-    varargs_is_readonly, is_readonly_ptr, is_fn_type, is_dyn_protocol,
-    param_takes_ownership, body_function_info, body_method_info,
+    varargs_is_readonly, is_readonly_ptr, is_dyn_protocol,
+    body_function_info, body_method_info,
     pointer_repr_optional, is_protocol_type, ConcreteFrameType,
 )
 from ...value_category import (
@@ -55,7 +55,7 @@ from ...sema.source_records import publish_source_record, read_record
 from ...sema.storage_policy import first_binding_storage
 from ...type_def_registry import (
     is_str_type, is_str_category, is_big_int_type, is_bytes_type,
-    is_bytes_category, is_owned_in_coro_frame, is_str_view_type,
+    is_bytes_category, is_str_view_type,
     is_bytes_view_type, is_free_copy_scalar, iter_yields_ref_tuple_proxies, ParamPassing,
 )
 from ...typesys import (polymorphic_subclass_into_optional,
@@ -68,7 +68,7 @@ from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
 from ...codegen_cpp.frame_names import (recursive_delegation_error,
                                         sub_struct_qualname)
 from ..frame import (
-    AwaitMode, FrameCaptureKind, FrameLoopOwner,
+    AwaitMode, FrameCaptureKind, classify_param_kind, FrameLoopOwner,
     FrameLocalKind, FrameLocalLayout, GeneratorForInfo, HolderRole,
     POINTER_LOCAL_KINDS, THIRFrameHolder, WITH_POINTER_KINDS,
     THIRAwaitSuspension, THIRFrameLocal,
@@ -553,69 +553,6 @@ def frame_capture_const_names(
                 or is_ptr_variant_union(bare)):
             deep.add(pname)
     return const_ref, deep, pack
-
-
-def classify_param_kind(
-        ptype: 'TpyType',
-        is_static_protocol_param: 'Callable[[TpyType], bool]',
-) -> FrameCaptureKind:
-    """Decide the coro-frame storage kind for an async-def param.
-
-    Single source of truth for the kind cascade: `_classify_params`
-    derives the C++ spelling from it, and `param_borrows` reads it to
-    decide whether an rvalue-temporary arg bound to this param must be
-    hoisted into the awaiter's frame (see `_lift_borrowed_rvalue_args`).
-    """
-    ptype_inner = unwrap_ref_type(ptype)
-    actual = unwrap_readonly(ptype_inner)
-    # str / bytes are captured owned in the frame (copied at construction)
-    # so the view doesn't dangle across a suspension when the arg is a
-    # temporary -- see is_owned_in_coro_frame (the sema borrow set excludes
-    # the same set). Explicit view params (StrView/Span) stay borrow-form.
-    if is_owned_in_coro_frame(ptype_inner):
-        return FrameCaptureKind.OWNED_COPY
-    # `readonly[T]` is the same slot seen through the const wrapper, so it
-    # takes the same per-instantiation traits: a literal `const T&` field
-    # would hold a reference at a VALUE instantiation too, where the frame
-    # outlives the temporary the factory call materialized.
-    if isinstance(actual, TypeParamRef):
-        return FrameCaptureKind.TYPE_PARAM
-    # Checked before the OptionalType-pointer-repr branch so
-    # `Own[Awaitable[T]] | None` isn't mis-routed to POINTER --
-    # `_protocol_template_parts` rejects the nullable shape instead.
-    if is_static_protocol_param(ptype):
-        return FrameCaptureKind.STATIC_PROTOCOL
-    # Fn callable: concrete type is deduced as an `F_<pname>` template arg
-    # (like a static protocol). Checked before is_value_type() -- a
-    # CallableType would otherwise route through type_to_cpp(), which a
-    # template-mode Fn cannot answer.
-    if is_fn_type(actual):
-        return FrameCaptureKind.FN
-    # A generic `T | None` slot lands here too, and the arm's spelling is
-    # what it wants: `to_cpp_param_type()` renders the runtime's
-    # per-instantiation form, which owns at a value T and points at a
-    # reference one. Only the KIND's name is a pointer -- the borrow
-    # question is answered per instantiation, on the substituted slot the
-    # call site passes to `param_borrows`.
-    if pointer_repr_optional(actual) is not None:
-        return FrameCaptureKind.POINTER
-    if is_ptr_variant_union(actual):
-        return FrameCaptureKind.POINTER
-    # A borrow-form tuple param (std::tuple<..., T*>) is held in the frame
-    # by value-of-pointers so it aliases the caller across suspensions; a
-    # VALUE-kind field would store the storage form (std::tuple<..., T>)
-    # and silently copy the element where CPython shares it.
-    if isinstance(actual, TupleType) and actual.has_pointer_repr_element():
-        return (FrameCaptureKind.OWNED_TUPLE if param_takes_ownership(ptype)
-                else FrameCaptureKind.POINTER)
-    # Own[T] checked before is_value_type(): `OwnType.is_value_type()` is
-    # True (Own[T] uses T&& at param boundaries) but the move-only
-    # semantics need explicit forwarding, so it can't ride the VALUE path.
-    if isinstance(ptype_inner, OwnType):
-        return FrameCaptureKind.OWNED_VALUE
-    if ptype_inner.is_value_type():
-        return FrameCaptureKind.VALUE
-    return FrameCaptureKind.REF
 
 
 def capture_kind(func: TpyFunction, pname: str, ptype: 'TpyType',

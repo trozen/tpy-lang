@@ -2102,7 +2102,8 @@ class _Replay:
         # A generator object keeps what its frame borrows for as long as it
         # lives, and any call result keeps what it may point into
         # (`c = mk(g)` where `mk` returns a coroutine over it).
-        for root in (frame_operand_keys(inner)
+        for root in (frame_operand_keys(inner, self.ctx.get_expr_type,
+                                        self.ctx.declared_type)
                      + _call_loan_keys(self.ctx, inner)):
             if root.as_name() != holder:
                 out.add(_Loan(root, BorrowKind.OPAQUE,
@@ -2168,7 +2169,8 @@ class _Replay:
         # with the statement.
         for arg in _owned_args(inner):
             arg = peel_coerce(arg)
-            roots = (frame_operand_keys(arg)
+            roots = (frame_operand_keys(arg, self.ctx.get_expr_type,
+                                        self.ctx.declared_type)
                      + _call_loan_keys(self.ctx, arg))
             if isinstance(arg, TpyName) and arg.name in self.frames:
                 # The generator or coroutine object itself changes hands.

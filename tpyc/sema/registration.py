@@ -83,13 +83,13 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     get_type_def, NativeMembers, latch_native_members,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
-    is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
+    is_str_type, is_borrowing_view_type,
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
-from .type_ops import (VALUE_TYPE_PROTOCOL, param_type_can_lend,
-                       signature_may_return_borrow)
-from ..value_category import iterator_source_callee
+from .type_ops import VALUE_TYPE_PROTOCOL, signature_may_return_borrow
+from ..value_category import (frame_param_lends, iterator_source_callee,
+                              param_type_can_lend)
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
 from ..macro_api import expr_to_cpp_default
@@ -4500,10 +4500,7 @@ class TypeRegistrar:
         callers analyzed before the generator's body still see the right
         facts."""
         return frozenset(
-            i for i, ptype in enumerate(param_types)
-            if param_type_can_lend(ptype, callables=False)
-            and not is_owned_in_coro_frame(ptype)
-        )
+            i for i, ptype in enumerate(param_types) if frame_param_lends(ptype))
 
     def _defer_param_defaults(self, param_infos: 'list[ParamInfo]',
                               scope_record: str | None = None) -> None:

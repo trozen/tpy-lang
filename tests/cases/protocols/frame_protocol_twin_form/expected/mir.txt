@@ -1,0 +1,32 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_r@46:0: certified, summary: known
+main::make_str@59:0: covered (storage: no_proof_required), summary: known
+main::maybe_r@63:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pick@69:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen_text@75:0: uncovered (unsupported parameter type)
+main::gen_twice@79:0: uncovered (unsupported parameter type)
+main::gen_sub@84:0: uncovered (unsupported parameter type)
+main::gen_hash@88:0: uncovered (unsupported parameter type)
+main::gen_len@92:0: uncovered (unsupported parameter type)
+main::coro_text@96:0: uncovered (async body)
+main::coro_len@101:0: uncovered (async body)
+main::plain_len@106:0: uncovered (unsupported parameter type)
+main::show@110:0: uncovered (unsupported parameter type)
+main::values@115:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::refs@158:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::texts@188:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::tuples@215:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::pointers@236:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::optional_view@258:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::aliases@265:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::plain_views@281:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+main::plain_pack@288:0: uncovered (call needs resolved ordinary callee)
+main::relay@293:0: uncovered (loop across a suspension)
+main::coros@306:0: uncovered (async body)
+main::main@375:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::R.__repr__@18:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::P.__repr__@28:4: uncovered (unsupported owned-leaf expression)
+main::R.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::P.__init__@25:4: uncovered (missing record layout)
+main::H.__init__@35:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@42:4: covered (storage: no_proof_required), summary: known

@@ -191,7 +191,8 @@ def frame_binding_fact(value: TpyExpr | None, ctx: 'SemanticContext'
     # A coerced argument (a list passed as a Span) borrows the storage under
     # the coercion.
     operands = [peel_coerce(e) for c in calls
-                for e in frame_operands(c) or ()]
+                for e in frame_operands(c, ctx.get_expr_type,
+                                          ctx.declared_type) or ()]
     # A recorded fact: a guess about a pending callee is no root.
     may = MayLend(ctx)
     roots: set[str | None] = set()

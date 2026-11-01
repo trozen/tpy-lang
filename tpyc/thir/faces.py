@@ -110,10 +110,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.subscript_recv",         # subscript receiver: std::get<0>(t).f
     "field.storage_opt_recv",       # narrowed storage-opt local receiver
                                     # derefs at the access -- (*item).field
-    "arg.protocol_value_copy",      # by-value type at a TPy body's protocol
-                                    # slot: auto(b.n), as its twin copies
-    "arg.protocol_view",            # str / bytes at a TPy body's protocol
-                                    # slot: the view its twin takes
+    "arg.protocol_value_copy",      # a value at a deduced protocol slot:
+                                    # auto(b.n), as its twin copies
+    "arg.protocol_view",            # an owned str / bytes at a deduced
+                                    # protocol call slot: the twin's view
     "arg.storage_opt_whole",        # narrowed storage-opt local at a
                                     # protocol slot passes the whole optional
     "field.opt_check_storage_name", # unproven access off a storage-opt name

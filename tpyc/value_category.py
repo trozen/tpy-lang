@@ -31,7 +31,8 @@ from .typesys import (
     param_takes_ownership, answers_as_call, dyn_protocol_borrow_result,
     ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
     is_dyn_protocol, is_owned_leaf, substitute_type_params_structural,
-    unwrap_qualifiers,
+    unwrap_qualifiers, CallableType, LiteralType, PendingViewType, is_fn_type,
+    peel_binding, PendingContainerType, ListRepeatType,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -45,7 +46,9 @@ from .parse import (
 )
 from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
-                                is_str_type, is_str_view_type, type_def_of)
+                                is_owned_in_coro_frame, is_str_type,
+                                is_str_view_type, is_varargs, type_def_of,
+                                RUNTIME_CONTAINER_CATEGORIES, TypeCategory)
 from . import qnames
 
 
@@ -1448,6 +1451,174 @@ def iterator_source_callee(fi: 'FunctionInfo | None') -> bool:
     return is_iterator_protocol(getattr(fi, "return_type", None))
 
 
+def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
+    """Whether an argument at a parameter of this type can be storage a
+    callee's result borrows: a reference type or open `T` (passed by
+    reference), a view, a `str` / `bytes` view parameter, a `*args` pack, a
+    tuple with a borrowing element -- and, unless `callables` is off, a
+    callable, whose environment may hold references. The one predicate the
+    `borrows=` / `element_of=` validation and the generator frame's captures
+    read."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    return (not t.is_value_type() or is_str_type(t) or is_bytes_type(t)
+            or is_borrowing_view_type(t) or is_varargs(t)
+            or (isinstance(t, TupleType) and t.has_borrowing_element())
+            or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
+
+
+def frame_param_lends(ptype: TpyType) -> bool:
+    """Whether a generator or coroutine frame holding a parameter of this
+    type borrows its argument: it can lend (`param_type_can_lend`) and the
+    frame does not capture it OWNED (`is_owned_in_coro_frame`: a `str` /
+    `bytes` is copied in). A callable is held by value."""
+    return (param_type_can_lend(ptype, callables=False)
+            and not is_owned_in_coro_frame(ptype))
+
+
+def protocol_slot(ptype: TpyType | None) -> NominalType | None:
+    """The protocol a parameter names: a bare (or `readonly[P]` / `Send[P]`)
+    protocol, `@dynamic` or structural; None for anything else.
+
+    `Own[P]` (`::tpy::make_adapter<Base>` / `std::make_unique`) and the
+    `Optional[P]` / protocol-union parameters are not protocol parameters
+    here: their renders (typed null, `&(...)` address-of, `optional_to_ptr`)
+    are the borrow pointer's.
+
+    An `Own[...]` TYPE ARG (`Iterable[Own[T]]`, a `T_p&&` forwarding-ref
+    slot) is a structural slot like any other: the call-argument render --
+    not a protocol pre-arm -- rewrites a movable last-use arg into the consuming
+    `::tpy::own_iter(std::move(x))`, and `_lower_call_arg`'s Iterable arm
+    carries that wrap position-blind; every other arg takes the same
+    bare/temp verdicts as a plain structural slot.
+    """
+    if not isinstance(ptype, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_send_sync(ptype))
+    # A `Send[P]` slot arrives as `Ref[Send[P]]` -- the marker is not
+    # canonically outermost -- so peel the Ref and the marker again (Send
+    # is erased wherever it sits).
+    u = unwrap_readonly(unwrap_send_sync(unwrap_ref_type(u)))
+    if isinstance(u, OwnType) or not is_protocol_type(u):
+        return None
+    return u
+
+
+DeclaredOf = Callable[[str], 'TpyType | None']
+
+
+def param_written(fi: 'FunctionInfo | None', index: int) -> bool:
+    """The callee writes through parameter `index` (sema's mutation
+    verdict)."""
+    return fi is not None and index in (fi.root.mutated_params or ())
+
+
+def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
+                       type_of: 'ExprTypeOf | None',
+                       declared_of: 'DeclaredOf | None', *,
+                       frame: bool, writes: bool) -> TpyType | None:
+    """The type a non-generic structural protocol parameter `slot` holds at
+    argument `arg`: its concrete twin, the argument's own held type -- a
+    literal as its base type, a `str` / `bytes` local's pending view as the
+    owned type its declaration names. Any other slot, or an argument with
+    no type (no `type_of`), is the slot itself; so is an argument that
+    conforms by its bound rather than by a type of its own (a protocol,
+    `Any`, a callable's template parameter) and, at a generator or
+    coroutine factory (`frame`), an open `T`, which the frame holds through
+    its own trait; an iterable (`_bound_by_iteration`); and a value at a
+    call whose callee writes the parameter (`writes`, `param_written`),
+    whose storage may be replaced while the callee reads it, so its rows
+    copy it -- a frame member is its twin's whatever the callee writes.
+
+    The one answer sema's loans, the frame hoist and the lowering's slot
+    read: the lowering only refines it with the facts it alone has (a
+    narrowed read's payload, a number literal's default int).
+
+    A name whose declared type (`declared_of`; None where the asker has no
+    binding scope) is an Optional or a union is asked at that type, not at
+    a narrowed read's: the lowering may hand the whole binding over (a
+    union narrowed by assignment installs no member alias), so the answer
+    may keep a loan the lowering does not need, never drop one it does."""
+    proto = protocol_slot(slot)
+    if (proto is None or is_dyn_protocol(proto)
+            or getattr(proto, "type_args", None)
+            or arg is None or type_of is None):
+        return slot
+    at = type_of(arg)
+    while (isinstance(arg, TpyCoerce) and isinstance(at, TpyType)
+           and is_protocol_type(unwrap_readonly(at))):
+        # A coercion into the protocol types the argument as the protocol:
+        # the twin is what it coerces.
+        arg = arg.expr
+        at = type_of(arg)
+    if not isinstance(at, TpyType):
+        return slot
+    at = _held_type(at)
+    if not _has_twin(at, frame) or (writes and not frame
+                                     and at.is_value_type()):
+        return slot
+    name = peel_coerce(arg)
+    if declared_of is not None and isinstance(name, TpyName):
+        whole = declared_of(name.name)
+        if isinstance(whole, TpyType) and isinstance(
+                peel_binding(whole), (OptionalType, UnionType)):
+            at = peel_binding(whole)
+    return at
+
+
+def _held_type(t: TpyType) -> TpyType:
+    """The type a binding of `t` holds, a literal as its base type and a
+    pending `str` / `bytes` view as the owned type its family names."""
+    t = peel_binding(t)
+    if isinstance(t, LiteralType):
+        t = t.base_type
+    if isinstance(t, PendingViewType):
+        t = t.family.owned_type
+    return t
+
+
+def _has_twin(t: TpyType, frame: bool) -> bool:
+    """Whether an argument of (held) type `t` binds a protocol slot as a
+    concrete twin of its own type: not where it conforms by its bound (a
+    protocol, `Any`, a callable's template parameter, and at a frame an
+    open `T`, which the frame holds through its own trait), nor where it
+    is bound as an iterable (`_bound_by_iteration`)."""
+    # The registry's category covers every protocol, @dynamic or not, and a
+    # builtin stub's type whose `is_protocol` flag is not set.
+    td = type_def_of(t) if isinstance(t, NominalType) else None
+    return not (
+        (td is not None and td.category is TypeCategory.PROTOCOL)
+        or isinstance(t, (AnyType, CallableType)) or is_fn_type(t)
+        or (frame and isinstance(t, TypeParamRef))
+        or _bound_by_iteration(t, frame))
+
+
+def _bound_by_iteration(t: TpyType, frame: bool) -> bool:
+    """An argument a protocol slot binds in place as an iterable rather
+    than as a held value of a type of its own (generic protocols and
+    iterables are their own step): a reference-type iterable -- a builtin
+    container (a container literal still pending its element type, a lazy
+    repeat), `bytearray`, a generator object -- which its twin would bind
+    in place too. A value-type iterable (a range, a span) is held as its
+    twin holds it, a copy."""
+    if isinstance(t, (PendingContainerType, ListRepeatType,
+                      ConcreteFrameType)):
+        return True
+    td = type_def_of(t) if isinstance(t, NominalType) else None
+    if td is None:
+        return False
+    # Value-type iterables no row takes at their own type, bound in place
+    # instead: a dict view (BUGS.md#protocol-twin-dict-view-no-row) and a
+    # `*args` pack at a frame member
+    # (BUGS.md#protocol-twin-frame-varargs-no-row).
+    if td.category is TypeCategory.DICT_VIEW or (
+            frame and td.category is TypeCategory.VARARGS):
+        return True
+    # `bytearray` is the bytes family's one reference type.
+    return ((td.category in RUNTIME_CONTAINER_CATEGORIES
+             or td.category is TypeCategory.BYTES)
+            and not t.is_value_type())
+
+
 def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
                           analyzer) -> 'TpyExpr | None':
     """The SOURCE expression a TEMPORARY argument to a generator/coroutine
@@ -1482,7 +1653,12 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     pinned the storage. Both must read one answer -- a second copy of this
     shape rule is how a warning and a hoist drift into disagreeing about the
     same argument. `frame_temp_elem_plan` applies this same rule to the
-    elements of a tuple-literal argument."""
+    elements of a tuple-literal argument.
+
+    A structural protocol parameter holds its concrete twin
+    (`protocol_twin_slot`): the twin's slot answers, and a twin the frame
+    holds by value (`frame_param_lends`) takes the prvalue itself."""
+    ptype = _frame_twin(a, ptype, analyzer)
     pt = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -1498,6 +1674,19 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     if not materializing_temp_source(src, analyzer):
         return None
     return src
+
+
+def _frame_twin(a: TpyExpr, ptype: 'TpyType | None',
+                analyzer) -> 'TpyType | None':
+    """The slot a frame holds argument `a` of parameter `ptype` at: a
+    structural protocol's concrete twin (`protocol_twin_slot`), None where
+    that twin is held by value; any other slot as it is."""
+    # A temporary names no binding: no declared type refines it.
+    twin = protocol_twin_slot(ptype, a, analyzer.get_expr_type, None,
+                              frame=True, writes=False)
+    if twin is ptype:
+        return ptype
+    return twin if frame_param_lends(twin) else None
 
 
 def _view_slot(bare: TpyType) -> bool:
@@ -1529,7 +1718,7 @@ def frame_temp_elem_plan(a: TpyExpr, ptype: 'TpyType | None',
     itself by value, and an owned element owes nothing. A non-literal
     element at a nested tuple slot has no hoist render, so it owes none."""
     out: list[FrameTempElem] = []
-    for leaf in tuple_literal_elems(a, ptype) or ():
+    for leaf in tuple_literal_elems(a, _frame_twin(a, ptype, analyzer)) or ():
         if not TupleType.element_borrows(_bare_slot(leaf.slot)):
             continue
         src = frame_temp_arg_source(leaf.elem, leaf.slot, analyzer)

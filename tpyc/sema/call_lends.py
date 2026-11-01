@@ -77,7 +77,8 @@ from ..value_category import (
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
     ValueCategoryAnalyzer, borrowing_ctor_arg, call_operands,
     call_returns_cpp_ref, declared_result_is_value, frame_factory_callee,
-    getitem_call_of,
+    DeclaredOf, frame_param_lends, getitem_call_of, param_type_can_lend,
+    param_written, protocol_twin_slot,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
     holds_no_pointer, may_hold_pointer, peel_coerce,
@@ -90,7 +91,7 @@ from .storage_walk import (
     handle_position, operand_keys, storage_roots,
 )
 from ..storage_trace import Step, StepKind, trace
-from .type_ops import param_type_can_lend, signature_may_return_borrow
+from .type_ops import signature_may_return_borrow
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -321,10 +322,19 @@ def temp_element_can_back(slot: TpyType | None,
 
 
 
+def declared_reader(ctx: ValueCategoryAnalyzer) -> 'DeclaredOf | None':
+    """The declared-type reader of `ctx`'s binding scope, which a
+    protocol argument's twin is asked at (`protocol_twin_slot`): sema's
+    context has one; the lowering's analyzers, whose scopes are their own,
+    have none."""
+    return getattr(ctx, "declared_type", None)
+
+
 def call_lend_sources(ops: CallOperands,
                       indices: 'frozenset[int] | set[int] | None' = None,
                       held: 'frozenset[int]' = frozenset(), *,
                       expr_type: 'ExprTypeOf | None',
+                      declared_of: 'DeclaredOf | None',
                       temp_backing: bool = False
                       ) -> list[LendSource]:
     """The sources behind the operand positions `indices` (None: every
@@ -340,6 +350,11 @@ def call_lend_sources(ops: CallOperands,
     `tuple_literal_elems`. `expr_type`
     lets `lent_operands` see a `Ptr[T]` operand, which grants no write; a
     caller reading `grants_write` passes it, one that does not passes None.
+    It also types the operand a frame holds at a structural protocol
+    parameter as that protocol's concrete twin (`protocol_twin_slot`);
+    with None the protocol's own, conservative, loan stands. `declared_of`
+    names a local's declared type, which a narrowed Optional or union
+    operand is held at there (None: the asker has no binding scope).
 
     That answers "which caller storage does the result borrow". A consumer
     asking "can the result point into a temporary" passes `temp_backing`
@@ -348,8 +363,8 @@ def call_lend_sources(ops: CallOperands,
     (`temp_element_can_back`), and none when the call builds a frame,
     which holds the tuple by value for as long as the handle lives."""
     fi = ops.fi
-    temp_backing = temp_backing and not (fi.is_async
-                                         or frame_factory_callee(fi))
+    frame = fi.is_async or frame_factory_callee(fi)
+    temp_backing = temp_backing and not frame
     result = fi.return_type
     out: list[LendSource] = []
     params = fi.params
@@ -363,6 +378,16 @@ def call_lend_sources(ops: CallOperands,
         slot = params[idx].type if 0 <= idx < len(params) else None
         declared = (declared_params[idx].type
                     if 0 <= idx < len(declared_params) else None)
+        if frame:
+            # A frame holds a protocol argument as its concrete twin's frame
+            # would: it lends only where that twin's would.
+            twin = protocol_twin_slot(
+                slot, arg, expr_type, declared_of, frame=True,
+                writes=param_written(fi, idx))
+            if twin is not slot:
+                if not frame_param_lends(twin):
+                    continue
+                slot = twin
         out.extend(LendSource(
             idx, lent.expr, lent.slot, idx in held, lent.grants_write,
             not lent.temp_backed
@@ -503,7 +528,9 @@ def _view_names_operands(lend: CalleeLend) -> bool:
         and lend.access is CalleeAccess.NAME)
 
 
-def borrow_declared_sources(call: TpyCallLike) -> list[LendSource] | None:
+def borrow_declared_sources(call: TpyCallLike, type_of: ExprTypeOf,
+                            declared_of: 'DeclaredOf | None'
+                            ) -> list[LendSource] | None:
     """The operands a call to a binding that DECLARES its result's borrow
     sources (`borrows=` / `element_of=`) lends by that declaration -- what
     `stamp_result_borrow` decides the call's result form from; None for a
@@ -511,7 +538,8 @@ def borrow_declared_sources(call: TpyCallLike) -> list[LendSource] | None:
     lend = callee_lend_fact(call)
     if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
         return None
-    return call_lend_sources(lend.ops, lend.sources, expr_type=None)
+    return call_lend_sources(lend.ops, lend.sources, expr_type=type_of,
+                             declared_of=declared_of)
 
 
 def _points_by_value(t: TpyType) -> bool:
@@ -539,7 +567,8 @@ def _declared_own(t: TpyType | None) -> bool:
 
 
 def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
-                      expr_type: ExprTypeOf | None, *,
+                      expr_type: ExprTypeOf | None,
+                      declared_of: 'DeclaredOf | None', *,
                       temp_backing: bool = False) -> list[LendSource]:
     """What a call's result MAY point into under its declared contract
     alone: every operand, the receiver included, less an `Own` slot (it
@@ -573,6 +602,7 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
         declared = ops.fi.root.params
         srcs = [src for src in call_lend_sources(ops, None,
                                                  expr_type=expr_type,
+                                                 declared_of=declared_of,
                                                  temp_backing=temp_backing)
                 if not (0 <= src.idx < len(declared)
                         and _declared_own(declared[src.idx].type))]
@@ -652,11 +682,18 @@ def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
         return owner
     slot = fi.params[index].type if 0 <= index < len(fi.params) else None
     bare_slot = unwrap_qualifiers(slot) if slot is not None else None
-    if (arg is not None and type_of is not None
-            and (isinstance(bare_slot, TypeParamRef)
-                 or (bare_slot is not None and is_protocol_type(bare_slot)
-                     and not getattr(bare_slot, "type_args", None)))):
-        return type_of(arg) or slot
+    if arg is not None and type_of is not None:
+        if isinstance(bare_slot, TypeParamRef) or (
+                is_dyn_protocol(bare_slot)
+                and not getattr(bare_slot, "type_args", None)):
+            return type_of(arg) or slot
+        # Asked by the lowering of a runtime binding's call (no frame), which
+        # has no sema binding scope; a named argument's storage outlives the
+        # statement, so its retention decides no temporary's.
+        twin = protocol_twin_slot(slot, arg, type_of, None, frame=False,
+                                  writes=param_written(fi, index))
+        if twin is not slot:
+            return twin
     if slot is None or owner is None or not contains_type_param(slot):
         return slot
     bare = unwrap_qualifiers(owner)
@@ -945,7 +982,8 @@ class MayLend(CallPolicy):
                 return []
             return [s._replace(how=Lent.CONTRACT)
                     for s in _contract_sources(call, lend, ctx.get_expr_type,
-                                               type_of, temp_backing=True)]
+                                               type_of, declared_reader(ctx),
+                                               temp_backing=True)]
         ops = lend.ops
         fi = ops.fi
         declared = (ops.obj is not None and ask is not Ask.LIFETIME
@@ -957,7 +995,7 @@ class MayLend(CallPolicy):
             # (BUGS.md#pending-callee-tuple-temporary-unchecked).
             srcs = ([s._replace(assumed=True, how=Lent.CONTRACT)
                      for s in _contract_sources(call, lend, ctx.get_expr_type,
-                                                type_of)
+                                                type_of, declared_reader(ctx))
                      if not (declared and s.idx == -1)]
                     if signature_may_return_borrow(fi) else [])
             if declared:
@@ -978,7 +1016,8 @@ class MayLend(CallPolicy):
         if declared:
             indices = indices | {-1}
         srcs = call_lend_sources(ops, indices, held_whole_borrow_sources(fi),
-                                 expr_type=type_of, temp_backing=True)
+                                 expr_type=type_of, temp_backing=True,
+                                 declared_of=declared_reader(ctx))
         if not srcs and (getter or _result_points(fi)):
             return None
         # A readonly method writes nothing through its receiver, so a write
@@ -1031,7 +1070,9 @@ def frame_call(call: TpyExpr) -> 'TpyCall | TpyMethodCall | None':
             and _builds_frame(call) else None)
 
 
-def frame_operands(call: TpyExpr) -> list[TpyExpr] | None:
+def frame_operands(call: TpyExpr, type_of: ExprTypeOf,
+                   declared_of: 'DeclaredOf | None'
+                   ) -> list[TpyExpr] | None:
     """The operands the generator or coroutine frame `call` builds keeps a
     reference to (`frame_call`): the receiver of a method call on an
     object, and the operands its callee's `return_borrows_from` names
@@ -1051,15 +1092,17 @@ def frame_operands(call: TpyExpr) -> list[TpyExpr] | None:
     ops = CallOperands(fi, None, list(frame.args), frame.kwargs or {})
     out += [s.expr for s in call_lend_sources(
         ops, lend.sources if lend.kind in _RECORDS_A_FACT else None,
-        expr_type=None)]
+        expr_type=type_of, declared_of=declared_of)]
     return out
 
 
-def frame_operand_keys(call: TpyExpr) -> list[StorageKey]:
+def frame_operand_keys(call: TpyExpr, type_of: ExprTypeOf,
+                       declared_of: 'DeclaredOf | None'
+                       ) -> list[StorageKey]:
     """The loan key of each operand the frame `call` builds keeps
     (`frame_operands`; a `*args` pack lends one per element), none when
     `call` builds no frame."""
-    return [key for e in frame_operands(call) or ()
+    return [key for e in frame_operands(call, type_of, declared_of) or ()
             for key in operand_keys(e)]
 
 
@@ -1100,9 +1143,11 @@ class ViewLend(CallPolicy):
         lend = callee_lend_fact(call)
         if lend.kind is CalleeFact.RECORDED and not lend.fresh:
             return [s._replace(how=Lent.RECORDED)
-                    for s in call_lend_sources(lend.ops, lend.sources,
-                                               expr_type=None,
-                                               temp_backing=True)
+                    for s in call_lend_sources(
+                        lend.ops, lend.sources,
+                        expr_type=self.ctx.get_expr_type,
+                        declared_of=declared_reader(self.ctx),
+                        temp_backing=True)
                     ] or None
         operands = [LendSource(i, a, None, how=Lent.CONTRACT)
                     for i, a in enumerate(call.args)]
@@ -1448,7 +1493,8 @@ class ReturnLend(CallPolicy):
             if self.strict and _recorded_index_missing(op, lend):
                 return LeafKind.UNNAMED
             return [s._replace(how=Lent.AWAITED) for s in call_lend_sources(
-                lend.ops, lend.sources, expr_type=None, temp_backing=True)]
+                lend.ops, lend.sources, expr_type=self.ctx.get_expr_type,
+                declared_of=declared_reader(self.ctx), temp_backing=True)]
         if self.strict:
             return LeafKind.UNNAMED
         # Fail closed on a borrow-await with no fact: every operand.
@@ -1617,7 +1663,9 @@ class EveryTempLend(CallPolicy):
         if ops.fi.root.return_borrows_from is None:
             return lent
         return call_lend_sources(ops, recorded_return_borrow_sources(ops.fi),
-                                 expr_type=None, temp_backing=True)
+                                 expr_type=self.ctx.get_expr_type,
+                                 declared_of=declared_reader(self.ctx),
+                                 temp_backing=True)
 
     def call_kind(self, call: TpyExpr,
                   srcs: 'list[LendSource] | None') -> LeafKind:
@@ -1679,7 +1727,9 @@ class MustLend(CallPolicy):
             return None
         if lend.kind is CalleeFact.UNRESOLVED:
             return None
-        return call_lend_sources(lend.ops, lend.sources, expr_type=None)
+        return call_lend_sources(lend.ops, lend.sources,
+                                 expr_type=self.ctx.get_expr_type,
+                                 declared_of=declared_reader(self.ctx))
 
 
 class ContractLend(CallPolicy):
@@ -1708,12 +1758,13 @@ class ContractLend(CallPolicy):
                 return None
             return [s for s in call_lend_sources(
                         lend.ops, None, held_whole_borrow_sources(lend.ops.fi),
-                        expr_type=None)
+                        expr_type=self.type_of,
+                        declared_of=declared_reader(self.ctx))
                     if not (s.held_whole and s.idx >= 0)]
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return None
         return _contract_sources(call, callee_lend_fact(call), self.type_of,
-                                 None)
+                                 None, declared_reader(self.ctx))
 
 
 class NoCalls(CallPolicy):

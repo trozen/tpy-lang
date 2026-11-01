@@ -695,7 +695,8 @@ def register_iteration_loans(
             continue
         bt.add_borrow(key, holder, loan.kind, on_element=loan.on_element,
                       elem_index=loan.elem_index, merge=True)
-    for key in frame_operand_keys(iterable):
+    for key in frame_operand_keys(iterable, ctx.get_expr_type,
+                                  ctx.declared_type):
         # A frame keeps what it holds until it is destroyed, its receiver
         # included, which MAY does not name
         # (BUGS.md#generator-method-receiver-borrow-unrepresented): no move
@@ -787,7 +788,9 @@ def iterator_advanced_twice(ctx: 'SemanticContext', exprs: 'list[TpyExpr]'
                 and node.result_form is ResultForm.REFERENCE_VALUE):
             ops = call_operands(node)
             lent = (call_lend_sources(
-                        ops, ops.fi.root.element_borrows_from, expr_type=None)
+                        ops, ops.fi.root.element_borrows_from,
+                        expr_type=ctx.get_expr_type,
+                        declared_of=ctx.declared_type)
                     if ops is not None else [])
             for src in lent:
                 # The fact that the callee leaves the container alone is

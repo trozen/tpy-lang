@@ -56,9 +56,12 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
+from ..faces import witness as _witness
+from ..param_contract import Materializer
 from ..nodes import (
     Form,
     THIRCopy,
+    THIRDecayCopy,
     THIRExpr,
     THIRFormConvert,
     THIRLiteral,
@@ -961,13 +964,20 @@ def _view_copied_owner(t: TpyType, construct: SlotConstruct,
 def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
     """A view source at a value slot holding an owned buffer whose
     construction takes no implicit conversion from its view
-    (`_view_copied_owner`): the spelled copy (`std::string(v)`)."""
+    (`_view_copied_owner`): the spelled copy (`std::string(v)`); at a
+    deduced destination a bare string literal too."""
     if (slot.holds is not SlotHolds.VALUE
             or slot.representation is Representation.VIEW):
         # A view slot holds the view itself: nothing is owned.
         return None
-    owner_t = _view_copied_owner(slot.type, slot.construct, types)
-    if owner_t is None or expr.source.held is not Held.BORROWED:
+    # A deduced destination takes the argument's own type: nothing converts
+    # the view at its construction, as at a copy-initialized parameter --
+    # nor a bare string literal, whose `const char[N]` would be the type.
+    deduced = slot.materializer is Materializer.DEDUCED
+    construct = SlotConstruct.PASS if deduced else slot.construct
+    owner_t = _view_copied_owner(slot.type, construct, types)
+    if owner_t is None or not (expr.source.held is Held.BORROWED
+                               or (deduced and expr.form is Form.VALUE)):
         return None
     return Plan(THIRFormConvert(result_type=owner_t, value=expr,
                                 form=Form.STORAGE, move=False, loc=expr.loc),
@@ -1174,14 +1184,19 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     the object itself on. Decided once, on the leaves the plan says it
     copies (`_copy_permitted`)."""
     plan = _convert(expr, slot, types, explicit_copy=explicit_copy)
-    if isinstance(plan, Refuse) or slot.construct not in _COPY_CHECKED:
+    if isinstance(plan, Refuse):
+        return plan
+    if slot.materializer is Materializer.DEDUCED:
+        plan = _deduced(plan, slot)
+    if slot.construct not in _COPY_CHECKED:
         return plan
     s = expr.source
     under = expr.uncoerced.source
     _check_records(expr, slot, s, under)
     if _copy_permitted(plan, slot, s, under) is not None:
         return Refuse("copy_undeclared")
-    if (slot.caller_materializes and plan.effect is Effect.PASS
+    if (slot.materializer is Materializer.CALLER
+            and plan.effect is Effect.PASS
             and (any(is_reference_leaf(t) for _, t in plan.copied)
                  or (s.temporary is False and under.temporary is False
                      and not under.prvalue
@@ -1198,6 +1213,37 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
         return replace(plan, effect=Effect.MATERIALIZE,
                        storage_request=StorageRequest(slot.type))
     return plan
+
+
+def _deduced(plan: Plan, slot: Slot) -> Plan:
+    """The converted value handed to a parameter whose type C++ deduces
+    from it (`Materializer.DEDUCED`), as the slot's concrete twin takes it.
+
+    Where the twin's destination holds a value -- every frame member but a
+    reference one (direct-initialized, `frame_member_slot`), a call's value
+    parameter -- the call site hands a prvalue, so the deduced type is the
+    twin's and not a reference into the caller's storage: every argument
+    the conversion passed as it is is copied (`auto(x)`), a call's result
+    too (`max` returns an operand); of a prvalue, `auto` copies nothing in
+    C++23. What a conversion built (a view's owned copy, a pointer form) is
+    a prvalue of the slot's type already. A call's view parameter takes the
+    twin's view; its reference parameter binds in place."""
+    e = plan.expr
+    if (slot.construct is not SlotConstruct.DIRECT_INIT
+            and slot.representation is Representation.VIEW):
+        if not has_view_param_form(slot.type) or e.form is Form.BORROW:
+            return plan
+        _witness("arg.protocol_view")
+        return replace(plan, expr=THIRFormConvert(
+            result_type=e.result_type, value=e, form=Form.BORROW, loc=e.loc))
+    if not (slot.construct is SlotConstruct.DIRECT_INIT
+            or slot.representation is Representation.STORAGE):
+        return plan
+    if plan.effect is not Effect.PASS:
+        return plan
+    _witness("arg.protocol_value_copy")
+    return replace(plan, expr=THIRDecayCopy(result_type=e.result_type,
+                                            value=e, loc=e.loc))
 
 
 def owned_reference_paths(slot: Slot, prefix: ElemPath = ()
@@ -1593,7 +1639,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return passes(member)
         if not initializes and under.binding is not None:
             return _refuse_lift(s.held)
-    if (slot.callee_materializes and not s.pointer_held
+    if (slot.materializer is Materializer.CALLEE and not s.pointer_held
             and (_same_type(rt, member, types)
                  or (record_like(member, types)
                      and _record_slice_upcast_ok(rt, member, types)))

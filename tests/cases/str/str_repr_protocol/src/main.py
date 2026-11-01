@@ -452,8 +452,8 @@ async def frames_async() -> None:
 
 def frames() -> None:
     # generator: the caller's record is shared; the mutation happens after
-    # the frame is created (a value argument at a generator / async protocol
-    # parameter is BUGS.md#frame-protocol-value-arg)
+    # the frame is created (a value argument is copied into the frame, as
+    # at its concrete twin: tests/cases/protocols/frame_protocol_twin_form)
     r = A(1)
     it = gen_text(r)  # tpyc: ok
     r.n = 7

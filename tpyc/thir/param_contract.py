@@ -16,7 +16,8 @@ the argument or the call's kind:
   union borrow form), and whether the pointer's pointee is const.
 - materializes: who copies an lvalue into an owned parameter -- the
   caller (a `T&&` parameter) or the callee (a native type's insert stub,
-  whose runtime overload takes `const T&`).
+  whose runtime overload takes `const T&`) -- or, at a structural protocol
+  parameter, that C++ deduces the destination from the argument.
 - retention: how the callee may keep the argument past the call -- sema's
   retention verdict (`retention_channel`), asked of the call the argument
   is passed through; None when it keeps nothing.
@@ -40,12 +41,14 @@ from ..parse.nodes import TpyExpr
 from ..sema.call_lends import Retention, retention_channel
 from ..type_def_registry import ParamPassing, has_view_param_form
 from ..typesys import (
-    CONST_PARAMS_METHODS, FunctionInfo, NominalType, OwnType, PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
+    CONST_PARAMS_METHODS, FunctionInfo, PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
     TpyType, TypeParamRef, contains_type_param, is_bodyless_binding, is_dyn_protocol,
-    is_protocol_type, is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
+    is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import ExprTypeOf, frame_factory_callee
+from ..value_category import (ExprTypeOf, frame_factory_callee,
+                              param_written, protocol_slot,
+                              protocol_twin_slot)
 from .nodes import THIRCallableSignature, THIRParam
 
 
@@ -58,13 +61,18 @@ class PointerKind(Enum):
 
 
 class Materializer(Enum):
-    """Who copies an lvalue argument into an owned parameter."""
+    """Who copies an lvalue argument into an owned parameter, or how a
+    deduced parameter takes it."""
     # A `T&&` parameter binds no lvalue: the caller copies into a temporary
     # and moves it in.
     CALLER = auto()
     # A native type's insert stub (`push_back`, `insert`, `__setitem__`):
     # its runtime overload takes `const T&` and copies itself.
     CALLEE = auto()
+    # A structural protocol parameter: its type is deduced from the
+    # argument (`T_x&&`), so the call site hands a prvalue of the slot's type
+    # wherever the concrete twin's destination holds a value.
+    DEDUCED = auto()
 
 
 class Adapts(Enum):
@@ -214,11 +222,25 @@ def native_insert_stub(fi: FunctionInfo | None) -> bool:
     return fi is not None and fi.is_method and fi.name != "__init__" and is_bodyless_binding(fi)
 
 
-def materializes(fi: FunctionInfo | None, ptype: TpyType | None) -> Materializer | None:
+def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
+                 arg: TpyExpr | None = None,
+                 type_of: ExprTypeOf | None = None,
+                 written: bool = False) -> Materializer | None:
     """Who copies an lvalue into parameter `ptype` when it takes ownership
     (`param_takes_ownership`); None when it does not. A body-less binding's
     expansion binds an lvalue of a plain value type itself (a `str` / `bytes`
-    buffer it may move from is the caller's copy)."""
+    buffer it may move from is the caller's copy). A TPy body's structural
+    protocol parameter is DEDUCED at an argument `arg` it holds as that
+    argument's concrete twin (`protocol_twin_slot`, a value at a call only
+    where the callee does not write the parameter: `written`); a declared
+    callee's (a runtime binding's) reads its argument within the call."""
+    if (not declared_only(fi)
+            # Whether there is a twin does not depend on the declared type a
+            # name's twin is asked at.
+            and protocol_twin_slot(ptype, arg, type_of, None,
+                                   frame=frame_captured(fi),
+                                   writes=written) is not ptype):
+        return Materializer.DEDUCED
     if not isinstance(ptype, TpyType) or not param_takes_ownership(ptype):
         return None
     if native_insert_stub(fi):
@@ -285,34 +307,6 @@ def frame_captured(fi: FunctionInfo | None) -> bool:
 # --- adapts
 
 
-def protocol_slot(ptype: TpyType | None) -> NominalType | None:
-    """The protocol a parameter names: a bare (or `readonly[P]` / `Send[P]`)
-    protocol, `@dynamic` or structural; None for anything else.
-
-    `Own[P]` (`::tpy::make_adapter<Base>` / `std::make_unique`) and the
-    `Optional[P]` / protocol-union parameters are not protocol parameters
-    here: their renders (typed null, `&(...)` address-of, `optional_to_ptr`)
-    are the borrow pointer's.
-
-    An `Own[...]` TYPE ARG (`Iterable[Own[T]]`, a `T_p&&` forwarding-ref
-    slot) is a structural slot like any other: the call-argument render --
-    not a protocol pre-arm -- rewrites a movable last-use arg into the consuming
-    `::tpy::own_iter(std::move(x))`, and `_lower_call_arg`'s Iterable arm
-    carries that wrap position-blind; every other arg takes the same
-    bare/temp verdicts as a plain structural slot.
-    """
-    if not isinstance(ptype, TpyType):
-        return None
-    u = unwrap_readonly(unwrap_send_sync(ptype))
-    # A `Send[P]` slot arrives as `Ref[Send[P]]` -- the marker is not
-    # canonically outermost -- so peel the Ref and the marker again (Send
-    # is erased wherever it sits).
-    u = unwrap_readonly(unwrap_send_sync(unwrap_ref_type(u)))
-    if isinstance(u, OwnType) or not is_protocol_type(u):
-        return None
-    return u
-
-
 def adapts(ptype: TpyType | None) -> Adapts | None:
     """How a protocol parameter (`protocol_slot`) takes its argument."""
     proto = protocol_slot(ptype)
@@ -351,12 +345,6 @@ def declared_only(fi: FunctionInfo | None) -> bool:
     return fi is not None and (is_bodyless_binding(fi) or fi.mutated_params is None)
 
 
-def written(fi: FunctionInfo | None, index: int) -> bool:
-    """The callee writes through parameter `index` (sema's mutation
-    verdict)."""
-    return fi is not None and index in (fi.root.mutated_params or ())
-
-
 # --- the contract
 
 
@@ -384,18 +372,19 @@ def param_contract(fi: FunctionInfo | None, index: int, ptype: TpyType | None, *
     passing = published if published is not None else published_passing(signature, index)
     if passing is None and isinstance(ptype, TpyType):
         passing = ptype.param_passing(const_ref_slot(ptype, verdict))
+    writes = param_written(fi, index)
     return ParamContract(
         passing=passing,
         const=const_ref_slot(ptype, verdict) or passing is ParamPassing.CONST_REF,
         pointer=pointer_kind(ptype),
         const_pointee=const_pointee(ptype, verdict),
-        materializes=materializes(fi, ptype),
+        materializes=materializes(fi, ptype, arg, type_of, writes),
         retention=retention(fi, index, call, type_of, arg, recv),
         frame_captured=frame_captured(fi),
         adapts=adapts(ptype),
         instantiation_storage=instantiation_storage(fi, index),
         declared_only=declared_only(fi),
-        written=written(fi, index))
+        written=writes)
 
 
 def pack_element_contract(pack_retention: Retention | None) -> ParamContract:

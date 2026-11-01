@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
-from ..frame import THIRResumableFrame
+from ..frame import FrameCaptureKind, THIRResumableFrame, classify_param_kind
 from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
                             TpyNamedExpr, TpyTupleUnpack, TpyVarDecl,
@@ -63,6 +63,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _span_value,
+    _range_object_value,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_value,
@@ -723,13 +724,14 @@ class Slot:
     # an object of the body moves there implicitly. Not a result staged
     # into a temporary first (a finally / `with` body).
     implicit_move: bool = False
-    # An owned parameter whose copy of an existing object is the caller's
-    # to materialize (`Materializer.CALLER`): a `T&&` binds no lvalue,
-    # and a copy held before the call runs before sibling arguments.
-    caller_materializes: bool = False
-    # An owned parameter whose runtime overload takes `const T&` and copies
-    # an lvalue itself (`Materializer.CALLEE`, a native type's insert).
-    callee_materializes: bool = False
+    # Who materializes a parameter's copy (`ParamContract.materializes`):
+    # CALLER -- an owned parameter whose copy of an existing object is the
+    # caller's (a `T&&` binds no lvalue; the copy is held before the call so
+    # it runs before sibling arguments); CALLEE -- a runtime overload taking
+    # `const T&` copies an lvalue itself (a native type's insert); DEDUCED --
+    # a protocol parameter whose type C++ deduces from the argument, handed a
+    # prvalue where its concrete twin holds a value.
+    materializer: 'Materializer | None' = None
 
 
 def lends_elements(slot: Slot) -> bool:
@@ -860,7 +862,8 @@ def _slot_class(t: 'TpyType | None', analyzer) -> SlotClass:
     if (_eligible_scalar(t) or _eligible_char(t)
             or _eligible_enum(t, analyzer) is not None
             or _eligible_ptr_value(t, analyzer)
-            or _callable_value(t) or opt_callable_slot(t) or _span_value(t)):
+            or _callable_value(t) or opt_callable_slot(t) or _span_value(t)
+            or _range_object_value(t)):
         return SlotClass.PLAIN
     if _value_opt_scalar(t, analyzer) is not None:
         return SlotClass.VALUE_OPT
@@ -1245,10 +1248,54 @@ def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
                        placement=placement, const=const,
                        trait=TraitAbi.OPT_PARAM if open_opt else None)
     return replace(slot, lifetime=SlotLifetime.FULL_EXPRESSION,
-                   caller_materializes=(
-                       contract.materializes is Materializer.CALLER),
-                   callee_materializes=(
-                       contract.materializes is Materializer.CALLEE))
+                   materializer=contract.materializes)
+
+
+def deduced_slot(ptype: TpyType, contract: 'ParamContract', twin: TpyType,
+                 twin_contract: 'ParamContract', analyzer, *,
+                 placement: SlotPlacement = SlotPlacement.STATEMENT) -> Slot:
+    """The slot a deduced protocol parameter `ptype` (`Materializer.DEDUCED`)
+    takes its argument at, as its concrete twin -- a parameter of type
+    `twin` under `twin_contract` -- takes it: at a generator or coroutine
+    factory what the twin's frame holds (`frame_member_slot`); at a call
+    the protocol's slot at the twin's type, represented as the twin's
+    parameter is (a value, a view or a reference)."""
+    if contract.frame_captured:
+        return frame_member_slot(twin, twin_contract, analyzer,
+                                 placement=placement)
+    return replace(
+        param_slot(ptype, contract, analyzer, placement=placement,
+                   instantiated=twin),
+        representation=param_slot(twin, twin_contract, analyzer,
+                                  placement=placement).representation)
+
+
+def frame_member_slot(twin: TpyType, contract: 'ParamContract', analyzer, *,
+                      placement: SlotPlacement = SlotPlacement.STATEMENT
+                      ) -> Slot:
+    """The slot a generator / coroutine frame's deduced protocol member
+    takes its argument at: what the frame of its concrete twin -- a
+    parameter of type `twin`, under `contract` -- holds there
+    (`classify_param_kind`). A reference parameter is bound in place; a
+    borrow pointer (a pointer-repr Optional, a pointer variant, a borrow
+    tuple) is the twin's parameter, the member direct-initialized from it;
+    any other kind is the member's own storage, direct-initialized as the
+    twin's frame constructor initializes it (a scalar or a range copied,
+    an owned `str` from its view, a `BigInt` or value tuple from its const
+    reference)."""
+    kind = classify_param_kind(twin, lambda _t: False)
+    if kind is FrameCaptureKind.REF:
+        slot = param_slot(twin, contract, analyzer, placement=placement)
+    elif kind is FrameCaptureKind.POINTER:
+        slot = replace(param_slot(twin, contract, analyzer,
+                                  placement=placement),
+                       construct=SlotConstruct.DIRECT_INIT)
+    else:
+        slot = slot_for(twin, SlotPosition.STORE, analyzer,
+                        construct=SlotConstruct.DIRECT_INIT,
+                        placement=placement)
+    return replace(slot, lifetime=SlotLifetime.FULL_EXPRESSION,
+                   materializer=Materializer.DEDUCED)
 
 
 def _result_layout(result: 'ResultRepresentation', t: TpyType

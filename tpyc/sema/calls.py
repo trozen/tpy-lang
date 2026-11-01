@@ -1504,7 +1504,8 @@ class CallAnalyzer:
                     _held_instance_copy_text(payload, expr.call_display),
                     expr)
             open_result = True
-        lent = borrow_declared_sources(expr)
+        lent = borrow_declared_sources(expr, self.ctx.get_expr_type,
+                                       self.ctx.declared_type)
         if lent is None:
             return False
         verdicts = [self._lent_operand_verdict(fi, s.idx, s.expr) for s in lent]
@@ -4339,7 +4340,8 @@ class CallAnalyzer:
             # through them propagates.
             sources = call_lend_sources(
                 CallOperands(fi, None, list(ops.args)), frozenset((i,)),
-                expr_type=self.ctx.get_expr_type)
+                expr_type=self.ctx.get_expr_type,
+                declared_of=self.ctx.declared_type)
             # An open-`T` slot (the param, or a tuple param's element) renders
             # a MUTABLE borrow at every reference instantiation, so whatever
             # binds there must stay a mutable lvalue -- a loop binding too.

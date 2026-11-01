@@ -244,7 +244,7 @@ This collapses OQ2 and OQ3 into the same machinery: OQ2's `Send[T]` wrapper and 
 
 | Source | Slot shape | File |
 |--------|-----------|------|
-| Non-value params (`list[int]`, `Pet`, user records) | `T&` reference | `gen_async.py` `_classify_params` (capture kind: `thir/lower/frame.py` `classify_param_kind`) |
+| Non-value params (`list[int]`, `Pet`, user records) | `T&` reference | `gen_async.py` `_classify_params` (capture kind: `thir/frame.py` `classify_param_kind`) |
 | `Own[T]` params (move-in, owned storage) | `T` by value | -- |
 | `str` params (`std::string_view` -- non-owning view) | `std::string_view` | `gen_async.py` `_classify_params` |
 | `String` params (`std::string` -- owned string, from `lib/tpy/tpy/_core/_types.py:1511`) | `String` by value | -- |
