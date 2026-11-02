@@ -1,0 +1,27 @@
+init: 5
+keys_then_pop: 7 done
+keys_after_pop: b?
+sum_ints: 15
+set_keys: 2
+count_chars: ab!
+count_chars: 3
+reseat_view: 3
+param_after: ab2
+sum_bytes: 3
+sum_slice: 5
+lengths: 3
+maths: 5 2 97 False
+maths: 9.965071997215666
+string_clean: 2
+bytes_view_clean: 3
+copy_under_name: ab!xxxab!
+slice_copied: 5
+store_global: a-global-string-longer-than-the-small-buffer
+global_loop: 44
+init: 4
+field_copied: abxx|ab
+param_copied: abxx|ab
+bytes_copied: b'ab!xxx|ab!'
+view_copied: b'ab!xxx|ab!'
+span_list: 5
+values_list: 3

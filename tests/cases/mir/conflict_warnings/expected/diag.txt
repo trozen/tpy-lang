@@ -31,14 +31,14 @@ main.py:419: warning: Mutation of 'adj[...]' may hit the element being iterated 
 main.py:419: warning: this call may move the element the iteration over 'adj[u]' still walks, and the loop continues on line 418; iterate over a copy ('copy(adj[u])'), or make the changes after the loop
 main.py:426: warning: this call may move the element the iteration over 'rows[1]' still walks, and the loop continues on line 425; iterate over a copy ('copy(rows[1])'), or make the changes after the loop
 main.py:432: warning: this assignment may free the element 'v' still views, and 'v' is read on line 433; copy what 'v' views first, or use 'v' before this assignment
-main.py:469: warning: this assignment may free the element 'p' still refers to, and 'p' is used on line 470; copy what 'p' refers to first, or use 'p' before this assignment
-main.py:477: warning: this assignment may free the element 't.s' still views, and 't.s' is read on line 478; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
-main.py:490: warning: this call may overwrite what 'p' refers to in place, and 'p' would see the new value on line 491; copy what 'p' refers to first, or use 'p' before this call
-main.py:509: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
-main.py:509: warning: this call may move the elements of 'xs', but 'p' still refers to them and is used on line 510; look it up again after this call, or copy what 'p' refers to first
-main.py:517: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
-main.py:517: warning: this call may move the elements of 'xs', but 'p' still refers to them and is used on line 518; look it up again after this call, or copy what 'p' refers to first
-main.py:526: warning: this call may move the element 'p' still refers to, and 'p' is used on line 527; copy what 'p' refers to first, or use 'p' before this call
-main.py:534: warning: this call may move the element 'p' still refers to, and 'p' is used on line 535; copy what 'p' refers to first, or use 'p' before this call
-main.py:667: warning: Mutation of 'h.items' while borrowed ('append' may invalidate references)
-main.py:667: warning: this call may move the elements of 'h.items', but 'p' still refers to them and is used on line 668; look it up again after this call, or copy what 'p' refers to first
+main.py:470: warning: this assignment may free the element 'p' still refers to, and 'p' is used on line 471; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:478: warning: this assignment may free the element 't.s' still views, and 't.s' is read on line 479; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
+main.py:491: warning: this call may overwrite what 'p' refers to in place, and 'p' would see the new value on line 492; copy what 'p' refers to first, or use 'p' before this call
+main.py:510: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:510: warning: this call may move the elements of 'xs', but 'p' still refers to them and is used on line 511; look it up again after this call, or copy what 'p' refers to first
+main.py:518: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:518: warning: this call may move the elements of 'xs', but 'p' still refers to them and is used on line 519; look it up again after this call, or copy what 'p' refers to first
+main.py:527: warning: this call may move the element 'p' still refers to, and 'p' is used on line 528; copy what 'p' refers to first, or use 'p' before this call
+main.py:535: warning: this call may move the element 'p' still refers to, and 'p' is used on line 536; copy what 'p' refers to first, or use 'p' before this call
+main.py:668: warning: Mutation of 'h.items' while borrowed ('append' may invalidate references)
+main.py:668: warning: this call may move the elements of 'h.items', but 'p' still refers to them and is used on line 669; look it up again after this call, or copy what 'p' refers to first

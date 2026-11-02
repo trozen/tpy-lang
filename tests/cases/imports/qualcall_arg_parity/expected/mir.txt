@@ -18,7 +18,7 @@ pets::bump@22:0: covered (storage: no_proof_required), summary: known
 pets::ls@51:0: covered (storage: no_proof_required), summary: known
 pets::ls_mut@55:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 pets::dct@60:0: covered (storage: no_proof_required), summary: known
-pets::total@64:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+pets::total@64:0: covered (storage: no_proof_required), summary: known
 pets::request@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 pets::ov@76:0: uncovered (no body to lower)
 pets::ov@81:0: uncovered (no body to lower)

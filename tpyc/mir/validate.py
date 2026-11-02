@@ -845,6 +845,20 @@ def _validate_structure(fn: MIRFunction) -> None:
                      or isinstance(projections[-1], (MIRField, MIRContainerElements)))
                 and value.may_raise is (record_copy_may_raise(typ) or reaches_element(value.source)))
 
+    def global_operand_ok(operand: MIRSlotId, value: MIRRvalue, *, copies: bool = True, borrows: bool = False,
+                          reads: bool = False) -> bool:
+        """Whether `value` takes `operand` as a global may be taken: any
+        other slot; a global read explicitly (`reads`); or a global `str`,
+        held as its owned leaf's borrow, copied (`copies`) or borrowed
+        (`borrows`)."""
+        slot = slots[operand]
+        if slot.kind is not MIRSlotKind.GLOBAL:
+            return True
+        if reads and isinstance(value, MIRRead):
+            return True
+        kinds = ((MIRCopy,) if copies else ()) + ((MIRBorrow,) if borrows else ())
+        return isinstance(value, kinds) and slot.shape.owned_leaf_borrow
+
     def slot_type(slot: MIRSlotId) -> TpyType:
         _require(slot in slots, "undeclared operand or destination")
         return slots[slot].type
@@ -1033,10 +1047,11 @@ def _validate_structure(fn: MIRFunction) -> None:
         fact, value = stmt.storage_write, stmt.value
         _require(isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.IN_PLACE
                  and fact.rebind_owner == stmt.target.root, "element write needs an in-place fact")
-        for operand in operands(value):
-            _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
-                     "global value needs explicit read")
         cls = place_info(stmt.target).cls
+        for operand in operands(value):
+            # Only an owned-leaf element copies a global str.
+            _require(operand in slots and global_operand_ok(operand, value, copies=cls is MIRClass.OWNED_LEAF),
+                     "global value needs explicit read")
         if cls is MIRClass.LEAF:
             match value:
                 case MIRRead(source=source):
@@ -1170,9 +1185,7 @@ def _validate_structure(fn: MIRFunction) -> None:
 
     def validate_owned_value(value: MIRRvalue, typ: TpyType, target: MIRPlace) -> None:
         for operand in operands(value):
-            _require(operand in slots and (slots[operand].kind is not MIRSlotKind.GLOBAL
-                                           or isinstance(value, MIRCopy) and slots[operand].shape.owned_leaf_borrow),
-                     "global value needs explicit read")
+            _require(operand in slots and global_operand_ok(operand, value), "global value needs explicit read")
         match value:
             case MIRCopy():
                 source = place_info(value.source)
@@ -1371,8 +1384,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                          "payload alias requires extraction")
             for operand in operands(value):
                 slot_type(operand)
-                _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead)
-                         or isinstance(value, (MIRBorrow, MIRCopy)) and slots[operand].shape.owned_leaf_borrow,
+                _require(global_operand_ok(operand, value, borrows=True, reads=True),
                          "global value needs explicit read")
             match value:
                 case MIRRangeAdvance():
@@ -1383,8 +1395,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and type(value.step) is int and value.step in (-1, 1), "invalid range induction")
                 case MIRIteratorInit():
                     source = slots[value.source]
+                    # A leaf's cursor walks the buffer an owned leaf's borrow or a view lends.
                     _require(not stmt.target.projections and target.shape.holding is MIRHolding.CURSOR
-                             and source.shape.container_or_view
+                             and (source.shape.leaf_borrow if target.shape.leaf_cursor
+                                  else source.shape.container_or_view)
                              and target.type == source.type
                              and target.shape.members == with_access(source.shape.members, target.readonly)
                              and (not source.readonly or target.readonly), "iterator source or access mismatch")

@@ -45,7 +45,7 @@ from .nodes import (
 from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
     MIRRole, MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape,
-    holder_form, layout_fact, loan_access, member_compatible, nested_members, position_problem,
+    holder_form, layout_fact, leaf_element, loan_access, member_compatible, nested_members, position_problem,
     shape_problem, subject_class, thir_member, value_shape, caller_storage,
 )
 from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
@@ -4772,15 +4772,33 @@ class _Lowering:
         # A container view a stub returns, or a container a user call returns
         # by reference, is a call result the loop holds.
         view = isinstance(stmt.iterable, (th.THIRCall, th.THIRMethodCall))
-        _require(stmt, (stmt.iterable_lvalue is True or view)
+        # An unstepped list slice is the Span it renders, which the loop holds.
+        sliced = isinstance(stmt.iterable, th.THIRStrSlice) and region_view(stmt.iterable.result_type)
+        _require(stmt, (stmt.iterable_lvalue is True or view or sliced)
                  and type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
                  and isinstance(stmt.var, str) and bool(stmt.var), "missing or invalid native iteration facts")
-        # Any container place: a borrowed, owned or viewed binding, a field, or a view a stub returns.
-        place = self.container_place(stmt.iterable)
-        shape = place.shape_of()
-        # A cursor binds the source's declared element, one at a time.
-        _require(stmt, binds_cursor(shape.type), "missing or invalid native iteration facts")
-        element = shape.element
+        leaf = leaf_element(stmt.iterable.result_type) is not None
+        if leaf:
+            # A str / bytes binding or field: its cursor walks the buffer the
+            # place's borrow or view lends, one scalar at a time.
+            _require(stmt, self.admitted_place(stmt.iterable, (_Place.NAME, _Place.FIELD)) is not None,
+                     "leaf iteration needs a named place")
+            place = self.operand(stmt.iterable, self.lent_value(stmt.iterable))
+        else:
+            if sliced:
+                # Held in a Span holder the cursor walks, as a Span local is.
+                place = self.span_value(stmt.iterable, unwrap_readonly(stmt.iterable.result_type))
+            else:
+                # Any container place: a borrowed, owned or viewed binding, a field, or a view a stub returns.
+                place = self.container_place(stmt.iterable)
+            shape = place.shape_of()
+            # A cursor binds the source's declared element, one at a time.
+            _require(stmt, binds_cursor(shape.type), "missing or invalid native iteration facts")
+        # The iterator walks the slot holding the place: a binding's own, or a holder of a field or a call result.
+        holder = place.holder_shape_of()
+        iterator = value_shape(holder.type, access=holder.readonly, role=MIRRole.CURSOR)
+        # A leaf's cursor yields the scalar its type iterates.
+        element = iterator.element if leaf else shape.element
         # An aggregate element is bound over its container's region, at the
         # access the element has there; a write through a loop variable
         # bound readonly is a store through readonly storage, which the
@@ -4789,20 +4807,22 @@ class _Lowering:
             element.type, element.cls, Local(const=stmt.const_loop_var, source_readonly=element.readonly)),
                                  role=MIRRole.LOAN)
                      if element.cls in AGGREGATE_CLASSES else None)
-        # An owned-leaf element is read through a view of it, or a readonly borrow.
+        # An owned-leaf element is read through a view of it, a readonly
+        # borrow, or a borrow copied into the loop variable's own storage.
+        binding = stmt.binding.loop_binding
+        if binding is LoopBinding.CONST_TYPED_REFERENCE:
+            binding = LoopBinding.CONST_REFERENCE
         view = element.cls is MIRClass.OWNED_LEAF and view_leaf(stmt.elem_type)
+        copied = element.cls is MIRClass.OWNED_LEAF and not view and binding is LoopBinding.VALUE
         typ = stmt.elem_type if view else element.type
         _require(stmt, (view_compatible(stmt.elem_type, element.type) if view
                         else unwrap_readonly(stmt.elem_type) == typ)
-                 and stmt.binding.loop_binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE,
-                                                   LoopBinding.CONST_REFERENCE)
+                 and binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE,
+                                 LoopBinding.CONST_REFERENCE)
                  and (reference is None or not stmt.hoist_loop_var)
                  and (element.cls is not MIRClass.OWNED_LEAF or not stmt.hoist_loop_var and (
-                     view or stmt.binding.loop_binding is LoopBinding.CONST_REFERENCE)),
+                     view or copied or binding is LoopBinding.CONST_REFERENCE)),
                  "unsupported native target binding")
-        # The iterator walks the slot holding the place: a binding's own, or a holder of a field or a call result.
-        holder = place.holder_shape_of()
-        iterator = value_shape(holder.type, access=holder.readonly, role=MIRRole.CURSOR)
         hoists = self.hoists(stmt)
         _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,
                  "nested loop replaces outer iteration binding")
@@ -4810,14 +4830,14 @@ class _Lowering:
                  if stmt.hoist_loop_var else stmt.var not in self.scope,
                  "native target residence mismatch")
         targets, scope = self.iteration_references.copy(), self.scope.copy()
-        if reference is not None or view or element.cls is MIRClass.OWNED_LEAF:
+        if reference is not None or view or element.cls is MIRClass.OWNED_LEAF and not copied:
             self.iteration_references.add(stmt.var)
         if stmt.hoist_loop_var:
             slot = self.slot_of(stmt.var)
         else:
             slot = self.bind(stmt.var, reference if reference is not None
                              else view_holder_shape(stmt.elem_type) if view
-                             else owned_leaf_shape(element.type, MIRRole.LOAN)
+                             else owned_leaf_shape(element.type, MIRRole.STORAGE if copied else MIRRole.LOAN)
                              if element.cls is MIRClass.OWNED_LEAF else scalar_shape(stmt.elem_type), loc=stmt.loc).slot
         f = self.fragment()
         head, then, advance, normal, after = (f.block() for _ in range(5))
@@ -4839,9 +4859,19 @@ class _Lowering:
         f.branch(f.leaf(BOOL, MIRIteratorHasNext(cursor), loc), then.id, normal.id, loc)
         f.current = then
         with f.scope():
-            if not stmt.hoist_loop_var:
-                f.adopt(slot)
-            f.write(slot, MIRIteratorRead(cursor), loc)
+            if copied:
+                # The element's loan, copied into the variable's storage of the pass.
+                element_loan = f.slot(owned_leaf_shape(element.type, MIRRole.LOAN))
+                f.write(element_loan, MIRIteratorRead(cursor), loc)
+                read = self.fragment()
+                read.value = MIRValue(element_loan, loc=loc)
+                f.adopt(slot, f.scoped_duration())
+                f.write(slot, f.splice(read.sink(self.mir.records[slot].shape)), loc,
+                        MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+            else:
+                if not stmt.hoist_loop_var:
+                    f.adopt(slot)
+                f.write(slot, MIRIteratorRead(cursor), loc)
             self.sequence(f, body)
         if f.current is not None:
             f.end(MIRGoto(advance.id, loc, _last_loc(stmt.body)))

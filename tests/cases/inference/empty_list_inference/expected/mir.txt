@@ -5,7 +5,7 @@ main::test_insert@14:0: uncovered (print argument needs a scalar leaf), summary:
 main::test_multiple_append@19:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_numeric_widen@26:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::test_return_context@34:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
-main::takes_list@39:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::takes_list@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_param_context@43:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::test_param_overrides_inferred@48:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::test_alias_inference@56:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

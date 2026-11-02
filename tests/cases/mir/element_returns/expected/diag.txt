@@ -17,49 +17,49 @@ main.py:277: warning: Mutation of 'd' while borrowed ('clear' may invalidate ref
 main.py:277: warning: this call may move the elements of 'd', but 'v' still refers to them and is used on line 278; look it up again after this call, or copy what 'v' refers to first
 main.py:285: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
 main.py:285: warning: this call may move the elements of 'xs', but 'a' still refers to them and is used on line 286; look it up again after this call, or copy what 'a' refers to first
-main.py:293: warning: this call may move the elements of 'arr', but 'a' still refers to them and is used on line 294; look it up again after this call, or copy what 'a' refers to first
-main.py:301: warning: this call may move the element 'a' still refers to, and 'a' is used on line 302; copy what 'a' refers to first, or use 'a' before this call
-main.py:309: warning: this assignment may overwrite what 'a' refers to in place, and 'a' would see the new value on line 310; copy what 'a' refers to first, or use 'a' before this assignment
-main.py:317: warning: Mutation of 'rows' while borrowed ('clear' may invalidate references)
-main.py:317: warning: this call may move the elements of 'rows', but 'a' still refers to them and is used on line 318; look it up again after this call, or copy what 'a' refers to first
-main.py:323: warning: Mutation of 'rows' while borrowed ('append' may invalidate references)
-main.py:323: warning: this call may move the elements of 'rows', but 'a' still refers to them and is used on line 324; look it up again after this call, or copy what 'a' refers to first
-main.py:333: warning: this call may move the element 'a' still refers to, and 'a' is used on line 334; copy what 'a' refers to first, or use 'a' before this call
-main.py:341: warning: this call may move the element 'a' still refers to, and 'a' is used on line 342; copy what 'a' refers to first, or use 'a' before this call
-main.py:348: warning: this call may move the element 'r' still refers to, and 'r' is used on line 349; copy what 'r' refers to first, or use 'r' before this call
-main.py:357: warning: this call may move the element 'a' still refers to, and 'a' is used on line 358; look it up again after this call, or copy what 'a' refers to first
-main.py:365: warning: Mutation of 'rows' while borrowed ('clear' may invalidate references)
-main.py:365: warning: this call may move the elements of 'rows', but 'r' still refers to them and is used on line 366; look it up again after this call, or copy what 'r' refers to first
-main.py:373: warning: Mutation of 'd' while borrowed ('clear' may invalidate references)
-main.py:373: warning: this call may move the elements of 'd', but 'v' still refers to them and is used on line 374; look it up again after this call, or copy what 'v' refers to first
-main.py:382: warning: this call may move the element 'a' still refers to, and 'a' is used on line 383; copy what 'a' refers to first, or use 'a' before this call
-main.py:390: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:390: warning: this call may move the elements of 'xs', but 'a' still refers to them and is used on line 391; look it up again after this call, or copy what 'a' refers to first
-main.py:398: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:398: warning: this call may move the elements of 'xs', but 'r' still refers to them and is used on line 399; look it up again after this call, or copy what 'r' refers to first
-main.py:407: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:407: warning: this call may move the elements of 'xs', but 'a' still refers to them and is used on line 408; look it up again after this call, or copy what 'a' refers to first
-main.py:415: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 416; look it up again after this call, or copy what 's' views first
-main.py:421: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 422; look it up again after this call, or copy what 's' views first
-main.py:428: warning: this assignment may overwrite what 's' refers to in place, and 's' would see the new value on line 429; copy what 's' refers to first, or use 's' before this assignment
-main.py:439: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 440; look it up again after this call, or copy what 's' views first
-main.py:446: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 447; look it up again after this call, or copy what 's' views first
-main.py:452: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 453; look it up again after this call, or copy what 's' views first
-main.py:460: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:460: warning: this call may move the elements of 'xs', but 's' still views them and is read on line 461; look it up again after this call, or copy what 's' views first
-main.py:467: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
-main.py:467: warning: this call may move the elements of 'g.items', but 'a' still refers to them and is used on line 468; look it up again after this call, or copy what 'a' refers to first
-main.py:473: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
-main.py:473: warning: this call may move the elements of 'g.items', but 'b' still refers to them and is used on line 474; look it up again after this call, or copy what 'b' refers to first
-main.py:480: warning: argument 'xs[0]' points into 'xs', which 'pass_back' modifies through parameter 'xs' while it still uses 'a'; pass a copy ('copy(xs[0])') or restructure so the call does not hand over both
-main.py:485: warning: argument 'g.items[0]' points into 'g.items', which 'G.keep' modifies through parameter 'self' while it still uses 'a'; pass a copy ('copy(g.items[0])') or restructure so the call does not hand over both
-main.py:492: warning: this call may move the elements of 'h.names', but 'v' still views them and is read on line 493; look it up again after this call, or copy what 'v' views first
-main.py:499: warning: Mutation of 'names' while borrowed ('append' may invalidate references)
-main.py:499: warning: this call may move the elements of 'names', but 'v' still views them and is read on line 500; look it up again after this call, or copy what 'v' views first
-main.py:509: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:544: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:551: warning: Mutation of 'd' while borrowed ('clear' may invalidate references)
-main.py:598: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:627: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
-main.py:649: warning: copies P into field; use copy() to make this explicit
-main.py:654: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:292: warning: this assignment may overwrite what 'a' refers to in place, and 'a' would see the new value on line 293; copy what 'a' refers to first, or use 'a' before this assignment
+main.py:300: warning: this call may move the element 'a' still refers to, and 'a' is used on line 301; copy what 'a' refers to first, or use 'a' before this call
+main.py:308: warning: this assignment may overwrite what 'a' refers to in place, and 'a' would see the new value on line 309; copy what 'a' refers to first, or use 'a' before this assignment
+main.py:316: warning: Mutation of 'rows' while borrowed ('clear' may invalidate references)
+main.py:316: warning: this call may move the elements of 'rows', but 'a' still refers to them and is used on line 317; look it up again after this call, or copy what 'a' refers to first
+main.py:322: warning: Mutation of 'rows' while borrowed ('append' may invalidate references)
+main.py:322: warning: this call may move the elements of 'rows', but 'a' still refers to them and is used on line 323; look it up again after this call, or copy what 'a' refers to first
+main.py:332: warning: this call may move the element 'a' still refers to, and 'a' is used on line 333; copy what 'a' refers to first, or use 'a' before this call
+main.py:340: warning: this call may move the element 'a' still refers to, and 'a' is used on line 341; copy what 'a' refers to first, or use 'a' before this call
+main.py:347: warning: this call may move the element 'r' still refers to, and 'r' is used on line 348; copy what 'r' refers to first, or use 'r' before this call
+main.py:356: warning: this call may move the element 'a' still refers to, and 'a' is used on line 357; look it up again after this call, or copy what 'a' refers to first
+main.py:364: warning: Mutation of 'rows' while borrowed ('clear' may invalidate references)
+main.py:364: warning: this call may move the elements of 'rows', but 'r' still refers to them and is used on line 365; look it up again after this call, or copy what 'r' refers to first
+main.py:372: warning: Mutation of 'd' while borrowed ('clear' may invalidate references)
+main.py:372: warning: this call may move the elements of 'd', but 'v' still refers to them and is used on line 373; look it up again after this call, or copy what 'v' refers to first
+main.py:381: warning: this call may move the element 'a' still refers to, and 'a' is used on line 382; copy what 'a' refers to first, or use 'a' before this call
+main.py:389: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:389: warning: this call may move the elements of 'xs', but 'a' still refers to them and is used on line 390; look it up again after this call, or copy what 'a' refers to first
+main.py:397: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:397: warning: this call may move the elements of 'xs', but 'r' still refers to them and is used on line 398; look it up again after this call, or copy what 'r' refers to first
+main.py:406: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:406: warning: this call may move the elements of 'xs', but 'a' still refers to them and is used on line 407; look it up again after this call, or copy what 'a' refers to first
+main.py:414: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 415; look it up again after this call, or copy what 's' views first
+main.py:420: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 421; look it up again after this call, or copy what 's' views first
+main.py:427: warning: this assignment may overwrite what 's' refers to in place, and 's' would see the new value on line 428; copy what 's' refers to first, or use 's' before this assignment
+main.py:438: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 439; look it up again after this call, or copy what 's' views first
+main.py:445: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 446; look it up again after this call, or copy what 's' views first
+main.py:451: warning: this call may move the elements of 'h.items', but 's' still views them and is read on line 452; look it up again after this call, or copy what 's' views first
+main.py:459: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:459: warning: this call may move the elements of 'xs', but 's' still views them and is read on line 460; look it up again after this call, or copy what 's' views first
+main.py:466: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
+main.py:466: warning: this call may move the elements of 'g.items', but 'a' still refers to them and is used on line 467; look it up again after this call, or copy what 'a' refers to first
+main.py:472: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
+main.py:472: warning: this call may move the elements of 'g.items', but 'b' still refers to them and is used on line 473; look it up again after this call, or copy what 'b' refers to first
+main.py:479: warning: argument 'xs[0]' points into 'xs', which 'pass_back' modifies through parameter 'xs' while it still uses 'a'; pass a copy ('copy(xs[0])') or restructure so the call does not hand over both
+main.py:484: warning: argument 'g.items[0]' points into 'g.items', which 'G.keep' modifies through parameter 'self' while it still uses 'a'; pass a copy ('copy(g.items[0])') or restructure so the call does not hand over both
+main.py:491: warning: this call may move the elements of 'h.names', but 'v' still views them and is read on line 492; look it up again after this call, or copy what 'v' views first
+main.py:498: warning: Mutation of 'names' while borrowed ('append' may invalidate references)
+main.py:498: warning: this call may move the elements of 'names', but 'v' still views them and is read on line 499; look it up again after this call, or copy what 'v' views first
+main.py:508: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:543: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:550: warning: Mutation of 'd' while borrowed ('clear' may invalidate references)
+main.py:597: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:626: warning: Mutation of 'g' while borrowed ('push_first' may invalidate references)
+main.py:648: warning: copies P into field; use copy() to make this explicit
+main.py:653: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit

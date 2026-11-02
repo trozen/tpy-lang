@@ -2261,9 +2261,11 @@ as the corpus grows).
   `bytes` / `bytearray` overloads over an `Iterable`, whose iteration can
   run user code or advance an iterator, and the two over a `bytearray`,
   whose key in an augmented assignment would be evaluated twice
-  (BUGS.md#aug-inert-key-reread-after-rhs). Remaining: free stubs without a
-  contract (`math.*`, `os.*`, `time.*`, `ord`, `abs`, `unsafe_*`,
-  `list.extend`), exception classes' and raw `@native` records'
+  (BUGS.md#aug-inert-key-reread-after-rhs). The scalar `math` stubs and
+  `ord(str | String | StrView)` declare `@pure` since 2026-11-02 (the
+  per-stub verdicts are in TODO.md). Remaining: free stubs without a
+  contract (`os.*`, `time.*`, the signal helpers, `unsafe_*`, `frexp` /
+  `modf`, `list.extend`), exception classes' and raw `@native` records'
   initializers, and constructor paths that attach no stub callee
   (`Span` / `SpanIter` / `Ptr`, one-argument `StrView`, the
   `float("inf")` fold, the `bool(obj)` / `str(container)` fallbacks,
@@ -2568,17 +2570,20 @@ as the corpus grows).
   same type. `dict_items`, whose `__iter__` yields
   `tuple[K, V]`, declares both members and binds no cursor
   (`scalar_leaves.binds_cursor`): `len(d.items())` is covered, iterating
-  it refuses. `Span.__setitem__` and `Array.__setitem__` do NOT declare
-  `mutates="elements"`, although a span or a fixed-size array never
-  moves its elements: sema reads that fact as "invalidates nothing" and
-  would stop warning on the explicit spelling `a.__setitem__(i, v)` under a
-  live loop or element borrow (`BUGS.md#setitem-write-under-live-element-borrow`),
-  and this unit changes no diagnostic. A `__setitem__` whose stub declares
-  no `mutates` lowers as the stub call it is -- a structure write of
-  the receiver (`arr_write` in the case: `writes={param0[structure]}`), the
-  conservative verdict that reaches every holder inside the container; a
-  write through a Span stays an element write by the view rule. The
-  subscript spelling `a[i] = v` never warned for any container; MIR reports
+  it refuses. `Span.__setitem__` and `Array.__setitem__` declare
+  `mutates="elements"` since 2026-11-02, as `list.__setitem__` does: a
+  span or a fixed-size array never moves its elements, so `a[i] = v` and
+  the explicit `a.__setitem__(i, v)` are element writes. Under a live
+  element borrow or loop variable over a record element they warn *may
+  overwrite what 'p' refers to in place* (sema's "invalidates the
+  iterator" / "may invalidate references" on the explicit spelling, which
+  read the missing fact as "moves every element", is gone; MIR's warning
+  is the one left), and under a loop over scalar elements they are an
+  in-place element write the cursor survives. A `__setitem__` whose stub
+  declares no `mutates` lowers as the stub call it is -- a structure write
+  of the receiver, the conservative verdict that reaches every holder
+  inside the container. The
+  subscript spelling `a[i] = v` never warned in sema for any container; MIR reports
   it as `replacement` on list, dict, Array and Span alike.
 - **Moves.** A `MIRMove` out of owned storage (an `Own[list[T]]` argument or
   return, an owned leaf) is a replacement event on the source place: a live
@@ -2628,6 +2633,40 @@ as the corpus grows).
   element region on both sides it warns as a "may" hazard since
   2026-11-01 (TODO "Promote evidence-only conflict classes to warnings",
   item (2), element identity). `tests/cases/mir/nested_containers`.
+- **Loop targets (2026-11-02).** A for-each loop binds ONE cursor holding
+  a readonly loan of the iterated storage: a container's `[structure]`
+  and `[elements]`, a Span's region, or -- new -- a leaf's own storage or
+  what a leaf view lends. A `str` / `bytes` binding, field or parameter
+  (or a `StrView` / `BytesView`) is walked by a cursor of the leaf's own
+  type (`MIRShape.leaf_cursor`) whose element is the scalar
+  `TypeDef.element_of` names (`value.leaf_element`: `char`, `uint8`; `int`
+  has none and is never a cursor); the leaf holder stays memberless. The
+  cursor depends on the leaf's whole storage, so replacing the leaf
+  (`for c in t: t = t + "x"`) is a replacement under it: it FREES what the
+  cursor walks (`witness.holder_views`), warned *this assignment frees the
+  old value of 't', but the iteration over 't' still walks it ...; make the
+  change after the loop*. The C++ loop walks the name, not the string bound
+  when it started (BUGS.md#str-loop-walks-reassigned-name). A view local
+  reseated in the body (`t = s` over a `str` parameter) frees nothing and
+  stays silent. A loop variable that COPIES an owned-leaf element
+  (`LoopBinding.VALUE`: a `str` dict key, a `BigInt` list element) is the
+  element's loan copied into the variable's own storage of the pass
+  (`Fragment.sink`, `MIRCopy`, may raise as the copy does), so it holds no
+  loan and may be reassigned; `CONST_TYPED_REFERENCE` (`const BigInt& y`)
+  is a loan of the element, as `CONST_REFERENCE`. An unstepped list slice
+  iterable (`for x in items[0:2]`) is held through `span_value` in a Span
+  holder the cursor walks, as a `Span` local is. The iteration remedy
+  is a copy that compiles: `copy(...)` of a whole container, `list(...)`
+  of a view (a slice, a Span, a dict view), and for a leaf's walk a copy
+  bound to another name first (`u = t; for c in u:` binds an owned copy).
+  A literal assigned into an owned `String` local and a generator's
+  owned-leaf hoisted local leave the body uncovered (TODO.md "MIR admits
+  a literal assigned into an owned str", "MIR admits owned-leaf hoisted
+  generator locals"). Out (filed): hoisted copied
+  targets (BUGS.md#hoisted-str-loop-target-under-view), fresh iterables,
+  literals, str / bytes and stepped slices (TODO.md "Loops over fresh
+  iterables and literals"), `d.items()`, `list.extend` / `+=`.
+  `tests/cases/mir/loop_targets`.
 - **Conflict naming.** No container-specific kind: sema's
   `iter_invalidation`, `borrow_invalidation` and `borrowed_container_arg`
   families are all `replacement`. `p = ps[0]; ps[0] = Point(..)` is a

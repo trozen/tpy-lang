@@ -87,15 +87,26 @@ class MIRShape:
 
     @property
     def element(self) -> 'MIRShape':
-        """What iterating a container yields: a list / set / Array element, a dict key."""
+        """What iterating a container yields: a list / set / Array element, a
+        dict key; a leaf's cursor, the scalar its type iterates (`leaf_element`)."""
+        if self.leaf_cursor:
+            return value_shape(leaf_element(self.type), MIRClass.LEAF)
         assert self.cls in CONTAINER_CLASSES
         return self.members[0]
 
     @property
     def value(self) -> 'MIRShape | None':
-        """A dict's value member, None for any other container."""
+        """A dict's value member, None for any other container or a leaf's cursor."""
+        if self.leaf_cursor:
+            return None
         assert self.cls in CONTAINER_CLASSES
         return self.members[1] if len(self.members) > 1 else None
+
+    @property
+    def leaf_cursor(self) -> bool:
+        """A cursor over an owned leaf's buffer or what a leaf view lends:
+        memberless, since the leaf itself is one."""
+        return self.holding is MIRHolding.CURSOR and self.cls in _LEAVES_ITERATED
 
     @property
     def subscript(self) -> 'MIRShape':
@@ -366,6 +377,19 @@ class MIRRecords(Mapping[TpyType, MIRRecordLayout]):
 
 
 _LEAVES = (MIRClass.LEAF, MIRClass.OWNED_LEAF)
+# The leaf classes whose buffer a cursor may walk (`leaf_element`).
+_LEAVES_ITERATED = frozenset({MIRClass.OWNED_LEAF, MIRClass.VIEW})
+
+
+def leaf_element(typ: TpyType) -> TpyType | None:
+    """The scalar iterating an owned leaf or a leaf view of type `typ`
+    yields (`TypeDef.element_of`: a `str` family's `char`, a `bytes`
+    family's `uint8`); None for a leaf that does not iterate (`int`)."""
+    bare = unwrap_readonly(typ)
+    if value_class(bare) not in _LEAVES_ITERATED:
+        return None
+    element = bare.get_element_type()
+    return element if value_class(element) is MIRClass.LEAF else None
 
 
 def require_valid(condition: bool, message: str) -> None:
@@ -766,7 +790,7 @@ def _holdings(cls: MIRClass, declared: TpyType, position: MIRPosition) -> frozen
             roles.add(MIRRole.LOAN)
         if cls is MIRClass.LEAF:
             roles.add(MIRRole.ALIAS)
-        if cls in CONTAINER_CLASSES:
+        if cls in CONTAINER_CLASSES or leaf_element(declared) is not None:
             roles.add(MIRRole.CURSOR)
     return frozenset(holding_of(cls, role) for role in roles)
 

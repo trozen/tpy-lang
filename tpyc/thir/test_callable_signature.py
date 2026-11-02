@@ -110,7 +110,7 @@ def test_native_template_and_constructor_stubs(lowered) -> None:
     assert log10.signature.passings == (ParamPassing.VALUE,)
     assert log10.signature.return_type == FLOAT
     assert log10.signature.return_representation is Representation.STORAGE
-    assert log10.contract is None and log10.readonly == (False,)
+    assert log10.contract is th.THIRStubContract.PURE and log10.readonly == (True,)
     chr_ = nodes["chr"].stub_callee
     assert nodes["chr"].cpp_template is not None
     assert chr_.identity.qualified_name.endswith(".chr") and chr_.identity.param_types == (INT32,)
@@ -219,7 +219,7 @@ def test_dump_lists_callee_facts_after_the_body(lowered) -> None:
     lines = _callee_lines(run)
     assert lines[0] == "  signature(Ref[Cell]: mut_ref, float: value, int64: value) -> reference"
     assert "    [0] bump: callee main.bump(Ref[Cell]: mut_ref, str: view, int32: value) -> storage" in lines
-    assert "    [2] log10: stub math.log10(float: value) -> storage, none" in lines
+    assert "    [2] log10: stub math.log10(float: value) -> storage, pure" in lines
     assert any(line.endswith("probe_clock: stub __main__.probe_clock() -> storage, transient") for line in lines)
 
 

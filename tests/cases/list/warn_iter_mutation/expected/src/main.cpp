@@ -491,7 +491,7 @@ void test_else_clause_ok() {
 //     total: int32 = 0
 //     for x in items[0:2]:
 //         total += x
-//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/) warning(/iteration over 'items\[0:2\]'/)
 void test_slice_source_warns() {
     std::vector<int32_t> items = {1, 2, 3};
     int32_t total = 0;

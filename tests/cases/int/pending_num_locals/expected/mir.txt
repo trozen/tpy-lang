@@ -17,7 +17,7 @@ main::er_body@177:0: uncovered (error-return body)
 main::match_arm@188:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::mixed_widths@205:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::slice_bound@213:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::accumulate@221:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::accumulate@221:0: covered (storage: no_proof_required), summary: known
 main::derived@229:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::unsigned_store@239:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::negative_seed@246:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

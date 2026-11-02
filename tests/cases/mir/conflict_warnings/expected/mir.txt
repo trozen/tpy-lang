@@ -38,33 +38,33 @@ main::loop_var_overwrite@407:0: covered (storage: no_proof_required), conflicts:
 main::link@417:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::other_row@424:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::str_view@430:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::str_loop@438:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
-main::scale@445:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::span_scale@453:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::dict_scale@461:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::inner_ref@467:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::tok_view@475:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::clob@481:0: covered (storage: no_proof_required), summary: known
-main::callee_loop@486:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::store_then_grow@495:0: covered (storage: no_proof_required), summary: known
-main::grow_then_store@500:0: covered (storage: no_proof_required), summary: known
-main::kept_store_then_grow@506:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::kept_grow_then_store@514:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::row_store_then_grow@523:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::row_grow_then_store@531:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::which_element@538:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-main::through_param@574:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
-main::dict_insert@580:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::drop_and_read@598:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
-main::drop_and_read_call@604:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::replace_and_read@621:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
-main::replace_and_read_call@627:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::replace_then_read_global@644:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a global against the caller's arguments)
-main::replace_then_read_global_call@650:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::one_object@664:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::grow_keep@672:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::summary_inverse_call@677:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::main@686:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::str_loop@439:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::scale@446:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::span_scale@454:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::dict_scale@462:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::inner_ref@468:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::tok_view@476:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::clob@482:0: covered (storage: no_proof_required), summary: known
+main::callee_loop@487:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::store_then_grow@496:0: covered (storage: no_proof_required), summary: known
+main::grow_then_store@501:0: covered (storage: no_proof_required), summary: known
+main::kept_store_then_grow@507:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::kept_grow_then_store@515:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::row_store_then_grow@524:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::row_grow_then_store@532:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::which_element@539:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::through_param@575:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::dict_insert@581:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::drop_and_read@599:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::drop_and_read_call@605:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::replace_and_read@622:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
+main::replace_and_read_call@628:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::replace_then_read_global@645:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a global against the caller's arguments)
+main::replace_then_read_global_call@651:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::one_object@665:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::grow_keep@673:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::summary_inverse_call@678:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@687:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Tok.adopt@14:4: covered (storage: no_proof_required), summary: known
 main::Bag.grow@74:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::Bag.grow_copy@83:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
@@ -82,7 +82,7 @@ main::Named.__init__@283:4: covered (storage: no_proof_required), summary: known
 main::NamedLine.__init__@291:4: covered (storage: no_proof_required), summary: known
 main::Points.__init__@299:4: covered (storage: no_proof_required), summary: known
 main::Frame.__init__@307:4: covered (storage: no_proof_required), summary: known
-main::Hv.__init__@592:4: covered (storage: no_proof_required), summary: known
-main::Rb.__init__@615:4: covered (storage: no_proof_required), summary: known
-main::Rs.__init__@639:4: covered (storage: no_proof_required), summary: known
-main::Box.__init__@659:4: covered (storage: no_proof_required), summary: known
+main::Hv.__init__@593:4: covered (storage: no_proof_required), summary: known
+main::Rb.__init__@616:4: covered (storage: no_proof_required), summary: known
+main::Rs.__init__@640:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@660:4: covered (storage: no_proof_required), summary: known

@@ -34,7 +34,7 @@ from .mir.nodes import (
     MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call, statement_target, view_member,
 )
 from .mir.witness import MIREffect, MIRHazardKind, MIRVerdict, MIRWitness, holder_views
-from .typesys import unwrap_readonly, view_owned_leaf
+from .typesys import contains_reference_type, unwrap_readonly, view_owned_leaf
 from .mir.value import MIRValidationError
 from .mir.definitions import MIRDefinitions, body_calls, constructor_record_qname
 from .mir_workspace import MIRProgram
@@ -512,8 +512,21 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         what = f"this {action} frees the old value of {target.quoted}"
         kept = "it"
     if verb == "walks":
-        fix = (f"iterate over a copy ('copy({words.place(hazard.holder).name})'), or make the changes after the loop"
-               if target.region is not None else "make the change after the loop")
+        # The copy that compiles and keeps CPython's result: `copy(...)` of a
+        # whole container (deep in both runtimes), `list(...)` of a view (a
+        # slice, a Span, a dict view) only over elements that hold no reference
+        # type (CPython's `list` is shallow, TPy's copies them); a leaf's buffer
+        # is copied by binding it to another name first.
+        walker = words.names.slots[hazard.holder.root].shape
+        if target.region is None:
+            fix = "make the change after the loop" + (
+                ", or iterate over a copy under another name" if walker.leaf_cursor else "")
+        elif walker.cls is MIRClass.CONTAINER or not contains_reference_type(walker.element.type):
+            walked = words.place(hazard.holder).name
+            spelled = f"copy({walked})" if walker.cls is MIRClass.CONTAINER else f"list({walked})"
+            fix = f"iterate over a copy ('{spelled}'), or make the changes after the loop"
+        else:
+            fix = "make the changes after the loop"
     elif target.region == "structure":
         fix = f"look it up again after this {action}, or copy what {holder} {verb} first"
     elif not hazard.target.projections and target.origin == "named":

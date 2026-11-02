@@ -49,16 +49,19 @@ def chr(i: int, /) -> char: ...
 def ord(c: char, /) -> int32: ...
 
 @dispatch
+@pure
 @readonly
 @native("tpy::ord_str")
 def ord(c: str, /) -> int32: ...
 
 @dispatch
+@pure
 @readonly
 @native("tpy::ord_str")
 def ord(c: String, /) -> int32: ...
 
 @dispatch
+@pure
 @readonly
 @native("tpy::ord_str")
 def ord(c: StrView, /) -> int32: ...

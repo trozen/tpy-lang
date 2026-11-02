@@ -105,7 +105,7 @@ void link(std::vector<std::vector<int32_t>>& adj, int32_t u);
 void other_row(std::vector<std::vector<int32_t>>& rows);
 // def str_view(names: list[str], i: int32) -> None:
 void str_view(std::vector<std::string>& names, int32_t i);
-// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(uncovered /native target binding/)
+// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
 void str_loop(std::vector<std::string>& names, int32_t i);
 // def scale(xs: list[int32]) -> None:
 void scale(std::vector<int32_t>& xs);

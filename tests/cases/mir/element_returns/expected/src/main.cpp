@@ -302,11 +302,10 @@ void live_span(std::vector<P>& xs) {
     std::cout << a.x << "\n" << ::tpy::check_signals;
 }
 
-// # live, Array: an element is replaced (as a `__setitem__` call), warned as a growth that "may move"
-// # the elements: BUGS.md#array-setitem-structure-write
+// # live, Array: an element is replaced in place, so 'a' may see the new value, as with the list twin
 // def live_array(arr: Array[P, 2]) -> None:  # tpyc: mir(conflict /replacement/)
 //     a = array_first(arr)  # tpyc: mir_borrows(a, arr[elements])
-//     arr[0] = P(9)  # tpyc: warning(/may move the elements of 'arr', but 'a' still refers to them/)
+//     arr[0] = P(9)  # tpyc: warning(/may overwrite what 'a' refers to in place/)
 //     print(a.x)
 void live_array(std::array<P, 2>& arr) {
     P& a = ::tpyapp::main::array_first(arr);

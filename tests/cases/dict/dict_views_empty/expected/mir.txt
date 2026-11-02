@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@2:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::main@2:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)

@@ -1,0 +1,45 @@
+main::__tpy_init: uncovered (module initialization)
+main::pop_keys@64:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::grow_str@70:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::respell_param@78:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::grow_bytes@85:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::grow_from_slice@93:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::nested_respell@99:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::keys_after_pop@106:0: covered (storage: no_proof_required), summary: known
+main::sum_ints@116:0: covered (storage: no_proof_required), summary: known
+main::set_keys@127:0: covered (storage: no_proof_required), summary: known
+main::count_chars@136:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::reseat_view@148:0: covered (storage: no_proof_required), summary: known
+main::param_after@158:0: covered (storage: no_proof_required), summary: known
+main::sum_bytes@167:0: covered (storage: no_proof_required), summary: known
+main::sum_slice@175:0: covered (storage: no_proof_required), summary: known
+main::lengths@183:0: covered (storage: no_facts: storage facts have not been published)
+main::maths@191:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::string_hazard@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::string_clean@206:0: covered (storage: no_proof_required), summary: known
+main::bytes_view_hazard@214:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::bytes_view_clean@223:0: covered (storage: no_proof_required), summary: known
+main::copy_under_name@231:0: covered (storage: no_proof_required), summary: known
+main::span_hazard@240:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::values_hazard@247:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::slice_copied@254:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::store_global@261:0: covered (storage: no_proof_required), summary: known
+main::literal_respell@267:0: uncovered (conversion aliases its source), summary: opaque (conversion aliases its source)
+main::gen_respell@276:0: uncovered (unsupported hoisted value)
+main::outer_respell@285:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::walrus_respell@296:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::global_loop@305:0: uncovered (leaf iteration needs a named place), summary: opaque (leaf iteration needs a named place)
+main::record_slice_hazard@314:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::param_copied@321:0: covered (storage: no_proof_required), summary: known
+main::bytes_copied@329:0: covered (storage: no_proof_required), summary: known
+main::view_copied@338:0: covered (storage: no_proof_required), summary: known
+main::span_list@350:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::values_list@360:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::record_span_hazard@371:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::main@377:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Words.drop_all@35:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::Words.respell@40:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::Words.field_copied@45:4: covered (storage: no_proof_required), summary: known
+main::Words.keys_then_pop@52:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Words.__init__@24:4: covered (storage: no_proof_required), summary: opaque (summary output effect)

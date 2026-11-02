@@ -530,10 +530,10 @@ def test_an_element_write_without_a_reference_preserving_stub_is_the_call(active
 def test_an_element_write_through_a_span_or_on_an_array(active) -> None:
     lines = _lines(_fn(active, "span_set"))
     assert "%3 = borrow (*%0)[elements]" in lines and "%3[elements] = read %4 [in_place]" in lines
-    # The Array stub does not declare that it preserves references: the stub call, a structure write.
+    # An Array never moves its elements (`mutates="elements"`): an element write in place, no stub call.
     array = _lines(_fn(active, "array_set"))
-    assert any(line.startswith("call stub tpy.Array.__setitem__[Array[int32, 3], int32, Own[int32]](%0, ")
-               and "[writes={param0[structure]}, may-raise]" in line for line in array)
+    assert any("[elements] = read " in line and line.endswith("[in_place]") for line in array)
+    assert not any(line.startswith("call stub tpy.Array.__setitem__") for line in array)
 
 
 # --- container fields ----------------------------------------------------------------

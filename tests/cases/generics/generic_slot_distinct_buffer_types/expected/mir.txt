@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::has_item@10:0: uncovered (generic body)
 main::has_item_str@19:0: covered (storage: no_proof_required), summary: known
-main::has_item_string@26:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::has_item_string@26:0: covered (storage: no_proof_required), summary: known
 main::has_item_bytes@33:0: covered (storage: no_proof_required), summary: known
 main::size_of@40:0: covered (storage: no_proof_required), summary: known
 main::echo_ref@46:0: uncovered (generic body)

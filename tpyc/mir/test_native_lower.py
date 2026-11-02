@@ -216,6 +216,8 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
     ("list[str]", "%0: list[str] readonly-ref element=str:owned_leaf:readonly parameter xs"),
     ("dict[str, int32]", "%0: dict[str, int32] readonly-ref element=str:owned_leaf:readonly "
                          "value=int32:leaf:readonly parameter xs"),
+    # An element the loop variable copies: an `int` key of a set.
+    ("set[int]", "%0: set[int] readonly-ref element=int:owned_leaf:readonly parameter xs"),
 ])
 def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
     _, bodies, _, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
@@ -228,8 +230,7 @@ def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
     assert line in [l.strip() for l in dump_function(fn).splitlines()]
 
 
-@pytest.mark.parametrize("typ", ["list[tuple[int32, int32]]", "list[Cell | None]", "set[int]",
-                                  "dict[int32, Cell]"])
+@pytest.mark.parametrize("typ", ["list[tuple[int32, int32]]", "list[Cell | None]", "dict[int32, Cell]"])
 def test_other_native_elements_remain_uncovered(typ: str) -> None:
     _, bodies, _, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:

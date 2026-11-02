@@ -730,7 +730,9 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
                 # The [structure] sibling keeps an element write from reaching every
                 # referent of the cursor (an in-place `s[i] = x` stays evidence); for
                 # a Span parameter it lies on the view root, which nothing in-body writes.
-                result[target] = _project(refs, MIRContainerStructure(), MIRContainerElements())
+                # A leaf's cursor depends on the leaf's whole storage: its buffer has no member places.
+                result[target] = (refs if slots[target.root].shape.leaf_cursor
+                                  else _project(refs, MIRContainerStructure(), MIRContainerElements()))
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):

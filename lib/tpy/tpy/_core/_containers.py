@@ -61,7 +61,7 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True, element_access=unchecked_set)
+    @native("tpy::__setitem__", function=True, mutates="elements", element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::seq_contains", function=True, element_effect="lookup")
@@ -160,7 +160,7 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True, element_access=unchecked_set)
+    @native("tpy::__setitem__", function=True, mutates="elements", element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::seq_contains", function=True, element_effect="lookup")

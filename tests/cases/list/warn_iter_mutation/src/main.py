@@ -207,7 +207,7 @@ def test_slice_source_warns() -> None:
     total: int32 = 0
     for x in items[0:2]:
         total += x
-        items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+        items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/) warning(/iteration over 'items\[0:2\]'/)
 
 def test_merged_element_loan_unknown_index() -> None:
     """An iteration's loan that is index-uncertain.

@@ -176,12 +176,12 @@ def _member_records(shape: MIRShape) -> tuple[TpyType, ...] | None:
     record its record; whatever holds a container (a pointer at it, a view,
     a cursor) its record elements, destroyed and copied by the container
     itself. Inline aggregate storage is admitted by its slot
-    (`_private_records`), not here."""
+    (`_private_records`), not here. A cursor over a leaf walks scalars."""
     if shape.is_scalar or shape.cls is MIRClass.LEAF and shape.holding is MIRHolding.ALIAS:
         return ()
     if shape.cls in CONTAINER_CLASSES:
         return tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
-    if shape.view_holder or shape.leaf_storage:
+    if shape.view_holder or shape.leaf_storage or shape.leaf_cursor:
         return ()
     if shape.is_pointer:
         return (shape.type,)

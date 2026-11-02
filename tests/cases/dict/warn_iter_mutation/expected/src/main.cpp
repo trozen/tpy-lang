@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_pop() -> None:
 //     d: dict[str, int32] = {"a": int32(1)}
 //     for k in d:
-//         d.pop(k)  # tpyc: warning(/Mutation of 'd'.*'pop'/)
+//         d.pop(k)  # tpyc: warning(/Mutation of 'd'.*'pop'/) warning(/may move the elements of 'd'/)
 void test_pop() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     auto& __obj_0 = d;
@@ -22,7 +22,7 @@ void test_pop() {
 // def test_clear() -> None:
 //     d: dict[str, int32] = {"a": int32(1)}
 //     for k in d:
-//         d.clear()  # tpyc: warning(/Mutation of 'd'.*'clear'/)
+//         d.clear()  # tpyc: warning(/Mutation of 'd'.*'clear'/) warning(/may move the elements of 'd'/)
 void test_clear() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     auto& __obj_0 = d;
@@ -54,7 +54,7 @@ void test_update() {
 // def test_setdefault() -> None:
 //     d: dict[str, int32] = {"a": int32(1)}
 //     for k in d:
-//         d.setdefault(k, int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/)
+//         d.setdefault(k, int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/) warning(/may move the elements of 'd'/)
 void test_setdefault() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     auto& __obj_0 = d;
@@ -69,7 +69,7 @@ void test_setdefault() {
 // def test_del() -> None:
 //     d: dict[str, int32] = {"a": int32(1)}
 //     for k in d:
-//         del d[k]  # tpyc: warning(/Mutation of 'd'.*'del'/)
+//         del d[k]  # tpyc: warning(/Mutation of 'd'.*'del'/) warning(/may move the elements of 'd'/)
 void test_del() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     auto& __obj_0 = d;
@@ -85,7 +85,7 @@ void test_del() {
 //     d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
 //     for k in d:
 //         if k == "a":
-//             d.pop(k)  # tpyc: warning(/Mutation of 'd'/)
+//             d.pop(k)  # tpyc: warning(/Mutation of 'd'/) warning(/may move the elements of 'd'/)
 void test_conditional_mutation() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     auto& __obj_0 = d;

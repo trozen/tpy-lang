@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::narrow@25:0: covered (storage: no_proof_required), summary: known
 main::show@30:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::rescale@34:0: covered (storage: no_proof_required), summary: known
-main::accumulate@42:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::accumulate@42:0: covered (storage: no_proof_required), summary: known
 main::halves@51:0: uncovered (loop across a suspension)
 main::fetch@57:0: uncovered (async body)
 main::bump@63:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -3,7 +3,7 @@ main::describe@23:0: uncovered (unsupported statement), summary: opaque (unsuppo
 main::chain_raise@36:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::chain_if_else@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::chain_try_finally@61:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::chain_break@75:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
+main::chain_break@75:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::union_nested_match@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::union_while_true@101:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::union_assert_false@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

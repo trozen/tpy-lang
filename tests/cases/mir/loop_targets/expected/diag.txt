@@ -1,0 +1,26 @@
+main.py:37: warning: Mutation of 'self.d' while iterating over it ('pop' invalidates the iterator)
+main.py:37: warning: this call may move the elements of 'self.d', but the iteration over 'self.d' still walks them and continues on line 36; iterate over a copy ('copy(self.d)'), or make the changes after the loop
+main.py:42: warning: Mutation of 'self.s' while iterating over it (field assignment invalidates the iterator)
+main.py:42: warning: this assignment frees the old value of 'self.s', but the iteration over 'self.s' still walks it and continues on line 41; make the change after the loop, or iterate over a copy under another name
+main.py:66: warning: Mutation of 'd' while iterating over it ('pop' invalidates the iterator)
+main.py:66: warning: this call may move the elements of 'd', but the iteration over 'd' still walks them and continues on line 65; iterate over a copy ('copy(d)'), or make the changes after the loop
+main.py:73: warning: this assignment frees the old value of 't', but the iteration over 't' still walks it and continues on line 72; make the change after the loop, or iterate over a copy under another name
+main.py:80: warning: this assignment frees the old value of 's', but the iteration over 's' still walks it and continues on line 79; make the change after the loop, or iterate over a copy under another name
+main.py:88: warning: this assignment frees the old value of 't', but the iteration over 't' still walks it and continues on line 87; make the change after the loop, or iterate over a copy under another name
+main.py:95: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:95: warning: this call may move the elements of 'items', but the iteration over 'items[0:2]' still walks them and continues on line 94; iterate over a copy ('list(items[0:2])'), or make the changes after the loop
+main.py:102: warning: this assignment frees the old value of 'k', but the iteration over 'k' still walks it and continues on line 101; make the change after the loop, or iterate over a copy under another name
+main.py:201: warning: this assignment frees the old value of 'w', but the iteration over 'w' still walks it and continues on line 200; make the change after the loop, or iterate over a copy under another name
+main.py:218: warning: Mutation of 't' while borrowed (reassignment invalidates view 'v')
+main.py:218: warning: this assignment frees the old value of 't', but the iteration over 'v' still walks it and continues on line 217; make the change after the loop, or iterate over a copy under another name
+main.py:243: warning: Mutation of 'items' while borrowed ('append' may invalidate references)
+main.py:243: warning: this call may move the elements of 'items', but the iteration over 'sp' still walks them and continues on line 242; iterate over a copy ('list(sp)'), or make the changes after the loop
+main.py:249: warning: Mutation of 'd' while iterating over it ('pop' invalidates the iterator)
+main.py:249: warning: this call may move the elements of 'd', but the iteration over 'd.values()' still walks them and continues on line 248; iterate over a copy ('list(d.values())'), or make the changes after the loop
+main.py:316: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:316: warning: this call may move the elements of 'xs', but the iteration over 'xs[0:1]' still walks them and continues on line 315; make the changes after the loop
+main.py:316: warning: this call may move the elements of 'xs', but 'p' still refers to them and is used on line 317; look it up again after this call, or copy what 'p' refers to first
+main.py:345: warning: Mutation of 't' while borrowed (reassignment invalidates view 'v')
+main.py:355: warning: Mutation of 'items' while borrowed ('append' may invalidate references)
+main.py:374: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:374: warning: this call may move the elements of 'xs', but the iteration over 'sp' still walks them and continues on line 373; make the changes after the loop

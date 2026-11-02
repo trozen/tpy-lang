@@ -433,9 +433,10 @@ def str_view(names: list[str], i: int32) -> None:
     print("str_view", v)
 
 
-# which element, str loop twin: the loop variable is an owned copy here, so nothing is freed under it;
-# MIR does not cover the body (owned loop variable), BUGS.md#str-loop-var-copied-when-list-written
-def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(uncovered /native target binding/)
+# which element, str loop twin: the loop variable is an owned copy, so the element store under the loop
+# frees nothing it holds and warns nothing; the conflict is the store against the walk's elements region,
+# kept as evidence (the copy itself is unwarned: BUGS.md#str-loop-var-copied-when-list-written)
+def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
     for s in names:
         names[i] = "y" + str(i)  # tpyc: ok
         print("str_loop", s)

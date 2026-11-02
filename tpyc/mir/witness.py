@@ -540,10 +540,12 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
 
 def holder_views(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """Whether a holder views what it keeps rather than referring to an
-    object: a record's view member, or a view slot itself."""
+    object: a record's view member, a view slot itself, or a cursor over a
+    leaf (it walks the buffer, not the object)."""
     if view_member(place) is not None:
         return True
-    return not place.projections and slots[place.root].shape.cls in (MIRClass.VIEW, MIRClass.CONTAINER_VIEW)
+    shape = slots[place.root].shape
+    return not place.projections and (shape.cls in (MIRClass.VIEW, MIRClass.CONTAINER_VIEW) or shape.leaf_cursor)
 
 
 def _shape_write(place: MIRPlace) -> bool:

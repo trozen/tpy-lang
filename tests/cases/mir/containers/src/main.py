@@ -353,10 +353,10 @@ def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(confl
     return t
 
 
-# free function: an Array element write -- the Array `__setitem__` stub does not declare
-# that it preserves references, so the write is the stub call, a structure write
+# free function: an Array element write -- an Array never moves its elements (its `__setitem__`
+# declares mutates="elements"), so the write replaces an element in place, as on a list
 def arr_write(a: Array[int32, 3]) -> int32:  # tpyc: mir(covered)
-    a[1] = 9  # tpyc: mir_write(a[structure])
+    a[1] = 9  # tpyc: mir_write(a[elements])
     return a[1]
 
 
