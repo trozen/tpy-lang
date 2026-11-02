@@ -55,14 +55,14 @@ from ..parse.nodes import (AugHeldPart, SubscriptDunder, TpyArrayLiteral,
                            TpyStrLiteral, TpyTupleLiteral)
 from ..type_def_registry import is_borrowing_view_type, is_free_copy_scalar
 from ..typesys import (FloatLiteralType, IntLiteralType, LiteralType,
-                       PendingNumType, is_numeric_type, param_takes_ownership,
+                       PendingNumType, contains_reference_type,
+                       is_numeric_type, param_takes_ownership,
                        unwrap_qualifiers)
 from ..value_category import call_operands, peel_coerce, result_is_fresh
 from .compatibility import TempRoot, TypeCompatibility
 from .call_lends import may_hold_pointer
 from .loop_frames import WriteProof
 from .may_interrupt import NotInert, is_inert_type
-from .own_copy import contains_reference_type
 
 if TYPE_CHECKING:
     from ..parse import TpyExpr

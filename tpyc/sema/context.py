@@ -1727,6 +1727,17 @@ class ReceiverCredit(NamedTuple):
         return bool(self.targets or self.bindings or self.captured)
 
 
+class ReadonlyReceiverCheck(NamedTuple):
+    """A call of `callee` on a readonly receiver that waits for const
+    inference (`SemanticContext.queue_readonly_receiver_check`): `method`
+    is the dunder a default message names, `site` where the call is, and
+    `message` the diagnostic when the default does not fit."""
+    callee: 'FunctionInfo'
+    method: str
+    site: SourceLocation | None
+    message: str | None = None
+
+
 class ClimbNode(NamedTuple):
     """One storage a write climbs through (`storage_climb`). `site` is the
     binding site the root name resolves to (None: a parameter, a local or
@@ -3264,10 +3275,10 @@ class SemanticContext:
     # Set by the analyzer: registers and analyzes a genexpr's function at the
     # expression that creates it, under a function state of its own.
     analyze_genexpr_function: 'Callable[[TpyFunction, tuple[tuple[str, LoanInfo], ...]], None] | None' = None
-    # Queues an implicit dunder call on a readonly receiver for the
-    # workspace-wide finalize pass (`CallAnalyzer.pending_readonly_receiver_checks`),
-    # installed by the analyzer: `(callee, dunder, site)`.
-    queue_readonly_receiver_check: 'Callable[[tuple], None] | None' = None
+    # Queues a call on a readonly receiver for the workspace-wide finalize
+    # pass (`CallAnalyzer.pending_readonly_receiver_checks`), installed by
+    # the analyzer.
+    queue_readonly_receiver_check: 'Callable[[ReadonlyReceiverCheck], None] | None' = None
     genexpr_counter: int = 0
     # genexpr function -> the function or method whose emitted body creates
     # its frame (through any nested def or genexpr between them); None at

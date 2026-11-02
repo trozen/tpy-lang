@@ -60,7 +60,7 @@ from ..type_def_registry import (
     type_def_of,
 )
 from ..typesys import (
-    FunctionInfo, LiteralType, NominalType, OptionalType, OwnType,
+    contains_reference_type, FunctionInfo, LiteralType, NominalType, OptionalType, OwnType,
     PendingGenericInstanceType, PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
     contains_type_param, declares_no_writes, held_whole_borrow_sources,
@@ -84,7 +84,6 @@ from ..value_category import (
     holds_no_pointer, may_hold_pointer, peel_coerce,
     reference_may_hold_pointer,
 )
-from . import own_copy
 from .storage_walk import (
     qualifier_kind,
     Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at,
@@ -317,7 +316,7 @@ def temp_element_can_back(slot: TpyType | None,
     if (r.is_value_type() or not isinstance(r, NominalType)
             or is_protocol_type(r) or is_dyn_protocol(r)):
         return True
-    return (own_copy.contains_reference_type(slot)
+    return (contains_reference_type(slot)
             or reference_may_hold_pointer(r))
 
 

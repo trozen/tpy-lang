@@ -46,10 +46,9 @@ from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpySubscript, is_property_getter_read)
-from ..typesys import (INT32, NominalType, ReadonlyType, TpyType, TypeParamRef,
-                       is_indirection_type, unwrap_qualifiers,
-                       substitute_type_params_simple, unwrap_readonly,
-                       unwrap_ref_type)
+from ..typesys import (NominalType, ReadonlyType, TpyType,
+                       contains_reference_type, inner_type_param_names,
+                       unwrap_qualifiers, unwrap_readonly, unwrap_ref_type)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -127,46 +126,6 @@ class OwnCopyEdge:
         return (id(self.callee), self.subst, self.is_record)
 
 
-def contains_reference_type(typ: TpyType, *,
-                            open_params_as_values: bool = False,
-                            held_only: bool = False) -> bool:
-    """True when copying `typ` copies a reference type -- the copy question.
-
-    Recursive, because a structural type answers `is_value_type()` for its
-    own shape and not for what it holds: `TupleType` hardcodes True, so
-    `tuple[str, Node]` is a value type that copies a `Node`. An open
-    `TypeParamRef` counts as a possible reference; at discharge the payload
-    is fully substituted, so the answer there is definite.
-
-    `open_params_as_values` reads every open type parameter as a value type,
-    so the answer is whether the copy is CERTAIN whatever the parameters
-    turn out to be (`tuple[T, Box]` copies a `Box` at every instantiation;
-    `tuple[T, int32]` only maybe).
-
-    `held_only` asks what the copy holds by value: an indirection (`Ptr`,
-    `Span`, a view) copies the reference, never its referent, so it holds
-    no reference type whatever it points at.
-
-    Owned by this module rather than by `compatibility.py` so the sink that
-    RECORDS the obligation and the discharge that ANSWERS it ask one
-    question; a second predicate would let the two disagree.
-    """
-    if open_params_as_values:
-        # Substituted rather than skipped in the walk: an Optional / union
-        # answers `is_value_type()` from its members, so an open member
-        # would read as a reference one level up.
-        names = type_param_names(typ)
-        if names:
-            typ = substitute_type_params_simple(typ,
-                                                dict.fromkeys(names, INT32))
-    if held_only and is_indirection_type(typ):
-        return False
-    if not typ.is_value_type():
-        return True
-    return any(contains_reference_type(inner, held_only=held_only)
-               for inner in typ.inner_types())
-
-
 def holds_only_values(typ: TpyType) -> bool:
     """Whether a copy of `typ` copies values only -- the test a loop
     variable whose source may change reads before taking its own copy (a
@@ -174,29 +133,9 @@ def holds_only_values(typ: TpyType) -> bool:
     return not contains_reference_type(unwrap_qualifiers(typ))
 
 
-def type_param_names(typ: TpyType | None) -> set[str]:
-    """Every type parameter `typ` names, at any depth.
-
-    The copy verdict keys on *contains* rather than *is* a `TypeParamRef`: a
-    `T | None` or `tuple[T, int32]` payload is just as unknowable as a bare
-    `T`, and answering it confidently is a false positive at a value `T`.
-    """
-    names: set[str] = set()
-    if typ is None:
-        return names
-    stack = [typ]
-    while stack:
-        current = stack.pop()
-        if isinstance(current, TypeParamRef):
-            names.add(current.name)
-            continue
-        stack.extend(current.inner_types())
-    return names
-
-
 def type_has_type_param(typ: TpyType | None) -> bool:
     """Whether `typ` names any type parameter."""
-    return bool(type_param_names(typ))
+    return bool(inner_type_param_names(typ))
 
 
 def copy_is_hedged(display: TpyType, target: TpyType,
@@ -226,7 +165,7 @@ def reference_source_params(typ: TpyType) -> 'set[str] | None':
     """
     if contains_reference_type(typ, open_params_as_values=True):
         return None
-    return type_param_names(typ)
+    return inner_type_param_names(typ)
 
 
 def slot_message(display: TpyType, target: TpyType, dest: str, kind: str,

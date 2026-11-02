@@ -1,0 +1,1 @@
+main.py:15: error: 'cb' cannot be passed as Fn[[int64], int64]: its parameter 'x' is int32 and would receive int64 (write 'lambda x: cb(x)' to convert each call)

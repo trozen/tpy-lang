@@ -890,11 +890,11 @@ def test_structural_match_rejects_cross_container():
     (pass-1 overload resolution). Post-Phase-D list/set/Array/Span are all
     NominalType, so `type(x) != type(y)` returns False and the recursive
     inner-type match would fire -- needs a name comparison too."""
-    from tpyc.sema.overloads import _structural_match
-    assert not _structural_match(ts.make_list(ts.INT32), ts.make_set(ts.INT32))
-    assert not _structural_match(ts.make_set(ts.INT32), ts.make_list(ts.INT32))
+    from tpyc.sema.overloads import _structural_match, _always_false_checker as no
+    assert not _structural_match(ts.make_list(ts.INT32), ts.make_set(ts.INT32), no)
+    assert not _structural_match(ts.make_set(ts.INT32), ts.make_list(ts.INT32), no)
     # Positive case: exact match still works.
-    assert _structural_match(ts.make_list(ts.INT32), ts.make_list(ts.INT32))
+    assert _structural_match(ts.make_list(ts.INT32), ts.make_list(ts.INT32), no)
 
 
 # =========================================================================

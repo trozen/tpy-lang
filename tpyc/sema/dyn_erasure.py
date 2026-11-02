@@ -59,6 +59,16 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
     return declares_dynamic_base(concrete_type, protocol, registry)
 
 
+def inherits_in_cpp(child: TpyType, base: TpyType, registry) -> bool:
+    """Whether C++ converts a reference to `child` into one to `base` with
+    no adapter: `base` is a class `child` inherits, or a @dynamic protocol
+    `child`'s emitted struct derives from (`record_inherits_dynamic`)."""
+    if is_dyn_protocol(base):
+        assert isinstance(base, NominalType)
+        return record_inherits_dynamic(child, base, registry)
+    return registry.is_subclass_of(child, base)
+
+
 def declares_dynamic_base(concrete_type: TpyType, protocol: NominalType,
                           registry) -> bool:
     """Whether a record or one of its base classes implements a @dynamic

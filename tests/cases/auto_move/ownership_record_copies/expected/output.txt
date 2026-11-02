@@ -64,7 +64,6 @@ COPY 30
 lend_member method 1 4
 COPY 30
 lend_next 1 5
-COPY 30
 callable_member 1 6
 COPY 13
 module_rebind 1 2

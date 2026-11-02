@@ -1,6 +1,6 @@
 # A record with multiple __call__ overloads: direct calls dispatch per
-# arity, and the instance satisfies an Fn contract matching ONE of the
-# overloads (previously an internal-error assert).
+# arity, and the instance reaches an Fn parameter through a lambda, since an
+# object with several __call__ variants is refused at a callback slot.
 from typing import overload
 from tpy import Fn, int32
 
@@ -29,7 +29,7 @@ def main() -> None:
     a = Adder(10)
     print(a(1))
     print(a(1, 2))
-    use(a)
+    use(lambda x: a(x))
 
 
 main()

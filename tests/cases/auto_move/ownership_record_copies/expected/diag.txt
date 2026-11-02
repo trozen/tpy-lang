@@ -1,7 +1,7 @@
-main.py:474: warning: copies A into owned storage; use copy() to make this explicit ('ma' is bound to existing storage at line 473)
+main.py:478: warning: copies A into owned storage; use copy() to make this explicit ('ma' is bound to existing storage at line 477)
 main.py:40: warning: copies A into field (tuple element 1); use copy() to make this explicit
-main.py:312: warning: copies A into field; use copy() to make this explicit
 main.py:316: warning: copies A into field; use copy() to make this explicit
+main.py:320: warning: copies A into field; use copy() to make this explicit
 main.py:65: warning: copies A into field (tuple element 0); use copy() to make this explicit ('ft' is bound to existing storage at line 63)
 main.py:65: warning: copies A into field (tuple element 1); use copy() to make this explicit ('ft' is bound to existing storage at line 61)
 main.py:74: warning: copies A into field; use copy() to make this explicit ('a' is bound to existing storage at line 72)
@@ -27,6 +27,6 @@ main.py:251: warning: copies A into owned storage (tuple element 0); use copy() 
 main.py:263: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 260)
 main.py:273: warning: copies A into owned storage; use copy() to make this explicit
 main.py:278: warning: copies list[int32] into owned storage; use copy() to make this explicit
-main.py:321: warning: copies A into field; use copy() to make this explicit
-main.py:330: warning: copies A into field; use copy() to make this explicit
-main.py:337: warning: copies A into field; use copy() to make this explicit
+main.py:325: warning: copies A into field; use copy() to make this explicit
+main.py:334: warning: copies A into field; use copy() to make this explicit
+main.py:341: warning: copies A into field; use copy() to make this explicit

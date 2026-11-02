@@ -13,7 +13,8 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
-    lands_in_indirection, make_readonly, substitute_cpp_ret, bound_as_spelled,
+    contains_reference_type, lands_in_indirection, make_readonly,
+    substitute_cpp_ret, bound_as_spelled,
     declares_no_writes, param_may_be_written,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
@@ -51,7 +52,7 @@ from ..parse import (
 from ..prescan import isinstance_narrowing_key
 from ..modules import extract_type_params
 from ..namespace import BindingKind, NameBinding
-from ..coercions import CoercionContext, VALUE_TO_PTR
+from ..coercions import CoercionContext, VALUE_TO_PTR, owning_param
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
                               walk_attribute_chain)
 from .arg_binding import (
@@ -65,14 +66,14 @@ from .call_lends import (
     proven_lend_roots,
 )
 from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
-                      PENDING_CONTAINER_TYPES, ProbeSlot)
+                      PENDING_CONTAINER_TYPES, ProbeSlot, ReadonlyReceiverCheck)
 from ..parse.nodes import DefaultReferent, name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
                               is_iterator_protocol,
                               is_rvalue_source, peel_coerce)
-from .own_copy import (KIND_SLOT, contains_reference_type, copy_result_under_write,
+from .own_copy import (KIND_SLOT, copy_result_under_write,
                        lost_write_message,
                        slot_message, value_call_copy_message)
 from .iter_loans import IterElementSource, iter_element_source, temp_arg_spelling
@@ -817,6 +818,86 @@ def call_shape(call: 'TpyExpr | TpyStmt', args: list[TpyExpr]) -> CallShape:
                      src.double_star is not None)
 
 
+def _iterable_elem_param(ptype: TpyType) -> str | None:
+    """`T` of a parameter declared `Iterable[T]`, else None."""
+    slot = unwrap_send_sync(unwrap_ref_type(ptype))
+    if (isinstance(slot, NominalType)
+            and slot.qualified_name() == qnames.ITERABLE
+            and len(slot.type_args) == 1
+            and isinstance(slot.type_args[0], TypeParamRef)):
+        return slot.type_args[0].name
+    return None
+
+
+def element_fed_positions(params: 'Iterable[ParamInfo]',
+                          ptype: TpyType) -> frozenset[int]:
+    """The positions of callable parameter `ptype`, as the callee declares
+    it (type parameters unsubstituted), that receive the elements of an
+    `Iterable[T]` argument: a position typed `T` where one of the call's
+    bound parameters `params` is `Iterable[T]`. A callable whose own
+    parameter there is `Own[X]` makes that argument an owning element slot
+    (`check_own_callback_feeds`)."""
+    slot = unwrap_send_sync(unwrap_ref_type(ptype))
+    if not isinstance(slot, CallableType):
+        return frozenset()
+    fed = {name for p in params
+           if (name := _iterable_elem_param(p.type)) is not None}
+    return frozenset(j for j, t in enumerate(slot.param_types)
+                     if isinstance(t, TypeParamRef) and t.name in fed)
+
+
+def owned_element_types(
+        bound: 'Sequence[tuple[ParamInfo, TpyType | None]]',
+) -> dict[str, OwnType]:
+    """The call's owning element feeds: for each type parameter `T` whose
+    `Iterable[T]` argument's elements a callable argument receives as
+    `Own[X]` (`element_fed_positions`), that `Own[X]`. `bound` pairs each
+    parameter the call binds, as the callee declares it, with its argument's
+    ranked type (None: not typed)."""
+    given = [p for p, arg_t in bound if arg_t is not None]
+    owned: dict[str, OwnType] = {}
+    for p, arg_t in bound:
+        fn_t = (unwrap_send_sync(unwrap_ref_type(unwrap_readonly(arg_t)))
+                if arg_t is not None else None)
+        if not isinstance(fn_t, CallableType):
+            continue
+        slot = unwrap_send_sync(unwrap_ref_type(p.type))
+        for j in element_fed_positions(given, p.type):
+            fn_pt = fn_t.param_types[j] if j < len(fn_t.param_types) else None
+            if fn_pt is not None and owning_param(fn_pt):
+                own = unwrap_ref_type(fn_pt)
+                assert isinstance(own, OwnType)
+                owned[slot.param_types[j].name] = own
+    return owned
+
+
+def fed_callable_params(decl: FunctionInfo, resolved: FunctionInfo,
+                        owned: 'Mapping[str, OwnType]') -> FunctionInfo:
+    """`resolved`, the substitution of `decl`, with each callable
+    parameter's element-fed position whose type parameter `owned` names
+    received as that `Own[X]` (`owned_element_types`): `T` stays the data
+    type, the ownership is the callback parameter's alone."""
+    if not owned:
+        return resolved
+    names = set(owned)
+    params = list(resolved.params)
+    for i, p in enumerate(decl.params):
+        slot = unwrap_send_sync(unwrap_ref_type(p.type))
+        got = params[i].type
+        if not (isinstance(slot, CallableType) and isinstance(got, CallableType)):
+            continue
+        fed = [j for j in element_fed_positions(decl.params, p.type)
+               if slot.param_types[j].name in names]
+        if not fed:
+            continue
+        pts = list(got.param_types)
+        for j in fed:
+            pts[j] = owned[slot.param_types[j].name]
+        params[i] = dc_replace(params[i],
+                               type=dc_replace(got, param_types=tuple(pts)))
+    return dc_replace(resolved, params=params)
+
+
 def _is_fn_slot_param(ptype: TpyType) -> bool:
     """A parameter that takes a callable argument. `Send`/`Sync` are
     unwrapped because `Send[Callable[...]]` is a callable slot too."""
@@ -878,10 +959,10 @@ class CallAnalyzer:
         # Entry: (method_call, subject_path_str, match arm).
         self.pending_match_subject_checks: list = []
         # Implicit dunder calls (`for x in g`, `g[k]`, `with g`, ...) on a
-        # readonly receiver: whether the dunder may be called on a const
-        # receiver is its emitted const-ness, final only once every module's
-        # const inference has run. Entry: (callee FunctionInfo, dunder, site).
-        self.pending_readonly_receiver_checks: list = []
+        # readonly receiver, and a readonly callable object at a callback
+        # slot: whether the callee mutates its receiver reads its emitted
+        # const-ness, final only once every module's const inference has run.
+        self.pending_readonly_receiver_checks: list[ReadonlyReceiverCheck] = []
 
     def resolve_template_placeholders(
             self, fi: FunctionInfo,
@@ -1025,16 +1106,20 @@ class CallAnalyzer:
         self.pending_match_subject_checks.clear()
 
     def resolve_pending_readonly_receiver_checks(self) -> None:
-        """Reject a queued implicit dunder call on a readonly receiver whose
-        callee is emitted non-const: not inferred readonly, or inferred but
-        kept non-const (`FunctionInfo.const_withheld`)."""
+        """Reject a queued call on a readonly receiver whose callee mutates
+        it (`call_mutates_receiver`, the question that queued it) once const
+        inference has settled: emitted non-const -- not inferred readonly,
+        or inferred but kept non-const (`FunctionInfo.const_withheld`) -- or
+        lending a writable handle into the receiver."""
         pending = self.pending_readonly_receiver_checks[:]
         self.pending_readonly_receiver_checks.clear()
-        for callee, method, site in pending:
-            if not callee.emitted_const:
-                raise self.ctx.error(
-                    f"Cannot call non-readonly method '{method}' on readonly reference",
-                    site)
+        for check in pending:
+            if not call_mutates_receiver(check.callee):
+                continue
+            message = check.message or (
+                f"Cannot call non-readonly method '{check.method}' on "
+                f"readonly reference")
+            raise self.ctx.error_from_loc(message, check.site)
 
     def bind_args(self, call: 'TpyCallLike', params: list[ParamInfo],
                   name: str, src: CallSource | None = None) -> ArgBinding:
@@ -3614,29 +3699,16 @@ class CallAnalyzer:
         it: (parameter index, declared parameter, operand, ranked type).
         Returns the effective slots by parameter index, for the lowering
         (`ctx.own_callback_feeds`)."""
-        owned_elems: dict[str, OwnType] = {}
-        for _, p, _, arg_t in bound:
-            slot = unwrap_send_sync(unwrap_ref_type(p.type))
-            fn_t = (unwrap_send_sync(unwrap_ref_type(unwrap_readonly(arg_t)))
-                    if arg_t is not None else None)
-            if not (isinstance(slot, CallableType) and isinstance(fn_t, CallableType)):
-                continue
-            for slot_pt, fn_pt in zip(slot.param_types, fn_t.param_types):
-                if isinstance(slot_pt, TypeParamRef) and isinstance(fn_pt, OwnType):
-                    owned_elems[slot_pt.name] = fn_pt
+        owned_elems = owned_element_types([(p, t) for _, p, _, t in bound])
         feeds: dict[int, TpyType] = {}
         if not owned_elems:
             return feeds
         for i, p, arg, arg_t in bound:
-            slot = unwrap_send_sync(unwrap_ref_type(p.type))
-            if not (isinstance(slot, NominalType)
-                    and slot.qualified_name() == qnames.ITERABLE
-                    and len(slot.type_args) == 1
-                    and isinstance(slot.type_args[0], TypeParamRef)
-                    and slot.type_args[0].name in owned_elems
-                    and arg_t is not None):
+            elem = _iterable_elem_param(p.type)
+            if elem not in owned_elems or arg_t is None:
                 continue
-            owning_slot = slot.with_inner_types((owned_elems[slot.type_args[0].name],))
+            slot = unwrap_send_sync(unwrap_ref_type(p.type))
+            owning_slot = slot.with_inner_types((owned_elems[elem],))
             feeds[i] = owning_slot
             self.compat.check_type_compatible(
                 arg_t, owning_slot, f"argument '{p.name}'", source_expr=arg,
@@ -4695,10 +4767,12 @@ class CallAnalyzer:
         overloads: list[FunctionInfo] | None = None,
         shape: CallShape | None = None,
         ats: 'list[int | str] | None' = None,
+        feeds_elements: bool = False,
     ) -> list[TpyType | None]:
         with self.ctx.probe_slot_scope(True):
             return self._infer_arg_types_in(func, evidence, seed,
-                                            overloads, shape, ats)
+                                            overloads, shape, ats,
+                                            feeds_elements)
 
     def _infer_arg_types_in(
         self, func: FunctionInfo,
@@ -4707,6 +4781,7 @@ class CallAnalyzer:
         overloads: list[FunctionInfo] | None = None,
         shape: CallShape | None = None,
         ats: 'list[int | str] | None' = None,
+        feeds_elements: bool = False,
     ) -> list[TpyType | None]:
         """Analyze a call's arguments for type param inference, with two
         phases for Fn/Callable params. `evidence` pairs each argument with
@@ -4728,6 +4803,11 @@ class CallAnalyzer:
         first pass -- this lets nested generic constructor calls see the outer
         LHS hint before arg-driven inference has any evidence. The seed's
         provenance reaches each argument hint through ``ReturnSeed.slot``.
+
+        ``feeds_elements``: the call hands a callable argument the elements
+        of its iterable arguments (`check_own_callback_feeds`), so the
+        callable is fitted with those positions owning
+        (`element_fed_positions`).
         """
         seed = seed or ReturnSeed()
 
@@ -4805,8 +4885,13 @@ class CallAnalyzer:
                         for p in concrete_hint.param_types
                     )
                     if not has_unresolved:
+                        owning = (element_fed_positions(
+                            (func.params[s] for s, _ in evidence
+                             if s is not None), ptype)
+                            if feeds_elements else frozenset())
                         arg_types[k] = self.expr.analyze_expr_with_hint(
-                            arg, seed.slot(ptype, concrete_hint))
+                            arg, seed.slot(ptype, concrete_hint).fitting(
+                                arg, frozenset(callee_unresolved), owning))
 
         # Fallback: analyze any remaining unresolved args without hints
         for k, (_, arg) in enumerate(evidence):
@@ -4836,13 +4921,17 @@ class CallAnalyzer:
         resolve_pending_view: bool = False,
         preserve_declaration_order: bool = True,
         src: CallSource | None = None,
+        feeds_elements: bool = False,
     ) -> ResolveResult:
         """Selection-only overload resolution shared by builtin and user paths.
 
         `src`: the arguments the ranking reads, when not the call's own
         fields. Every candidate takes them where the call's one binding
         places them on its parameters (`bind`); one they do not bind to is
-        not applicable.
+        not applicable. `feeds_elements`: the winner's commit pairs callable
+        and iterable arguments (`check_own_callback_feeds`), so a callable
+        argument is fitted, and each candidate substituted, with its
+        element-fed positions owning (`fed_callable_params`).
 
         Picks a regime based on how many candidates have an Fn-typed param
         filled by a *supplied* (non-default) call argument:
@@ -4895,6 +4984,7 @@ class CallAnalyzer:
                     explicit_type_args=explicit_type_args,
                     strip_ref_own=strip_ref_own,
                     resolve_pending_view=resolve_pending_view,
+                    feeds_elements=feeds_elements,
                 ))
 
         # Regime A (0) or B (1): single fn_generic candidate (or none).
@@ -4918,7 +5008,8 @@ class CallAnalyzer:
             slots = [i for i, _ in addressed] + [None] * (len(ats) - len(addressed))
             types = self._infer_arg_types(
                 func, [(slot, src.at(at)) for slot, at in zip(slots, ats)],
-                seed, overloads=func_infos, shape=shape, ats=ats)
+                seed, overloads=func_infos, shape=shape, ats=ats,
+                feeds_elements=feeds_elements)
             by_at = dict(zip(ats, self.ranked_arg_types(types, named)))
             out = src.mapped(lambda at, _: by_at[at])
             if strip_ref_own:
@@ -4973,6 +5064,10 @@ class CallAnalyzer:
                             if isinstance(v, PendingViewType):
                                 type_subst[k] = v.family.owned_type
                     resolved = self.type_ops.substitute_method_type_params(func, type_subst)
+                    if feeds_elements:
+                        resolved = fed_callable_params(
+                            func, resolved, owned_element_types(
+                                [(func.params[i], t) for i, t in evidence]))
                     candidates.append(resolved)
                     generic_originals[id(resolved)] = (func, type_subst)
             else:
@@ -5157,6 +5252,7 @@ class CallAnalyzer:
         explicit_type_args: tuple[TpyType, ...] | None,
         strip_ref_own: bool,
         resolve_pending_view: bool,
+        feeds_elements: bool,
     ) -> ResolveResult:
         """Per-candidate Fn arg typing for 2+ Fn-bearing-by-supplied
         candidates.
@@ -5230,6 +5326,7 @@ class CallAnalyzer:
                     baseline=baseline,
                     explicit_type_args=explicit_type_args,
                     resolve_pending_view=resolve_pending_view,
+                    feeds_elements=feeds_elements,
                 )
             except SemanticError as e:
                 if saved_dry_error is None:
@@ -5290,6 +5387,7 @@ class CallAnalyzer:
         baseline: 'dict[int | str, TpyType]',
         explicit_type_args: tuple[TpyType, ...] | None,
         resolve_pending_view: bool,
+        feeds_elements: bool,
     ) -> tuple[
         FunctionInfo,                                # substituted candidate
         CallSource,                                  # argument types
@@ -5383,8 +5481,15 @@ class CallAnalyzer:
                 func_infos = self._named_function_overloads(arg)
                 if not func_infos:
                     return None
+                owning = (element_fed_positions(
+                    (func.params[i] for i, _ in bound.addresses()),
+                    func.params[slot.param_index].type)
+                    if feeds_elements else frozenset())
                 matched_data = self.expr._match_function_to_hint_data(
-                    func_infos, hint, arg.name, arg)
+                    func_infos,
+                    SlotHint.declared(hint).fitting(
+                        arg, frozenset(unresolved), owning),
+                    arg.name, arg, probing=True)
                 if matched_data is None:
                     return None
                 # Build the matcher's concrete callable type from the
@@ -5392,7 +5497,10 @@ class CallAnalyzer:
                 # type args. This can supply a return type the partial
                 # hint didn't.
                 fi, type_args = matched_data
-                slot_type = self.expr.build_concrete_callable(fi, type_args, hint)
+                # A named function is not an erased callable: it ranks by
+                # its own signature at a Callable parameter too.
+                slot_type = self.expr.build_concrete_callable(
+                    fi, type_args, template=True)
             else:
                 # Pre-analyzed at baseline (variable / arbitrary expr).
                 # If pre-analysis failed (no baseline), reject.
@@ -5419,6 +5527,10 @@ class CallAnalyzer:
                     if isinstance(v, PendingViewType):
                         type_subst[k] = v.family.owned_type
             substituted = self.type_ops.substitute_method_type_params(func, type_subst)
+            if feeds_elements:
+                substituted = fed_callable_params(
+                    func, substituted, owned_element_types(
+                        [(func.params[i], t) for i, t in evidence]))
             origin = (func, type_subst)
         else:
             substituted = func
@@ -6187,6 +6299,7 @@ class CallAnalyzer:
                 resolve_pending_view=True,
                 preserve_declaration_order=False,
                 src=src,
+                feeds_elements=True,
             )
         except OverloadAmbiguityError as e:
             raise self._ambiguous_overload_error(expr, overloads[0].name, e)
@@ -6439,7 +6552,8 @@ class CallAnalyzer:
         if matched is not None:
             return matched
         failed: list[SemanticError] = []
-        shaped = structural_matches(candidates, result.enriched)
+        shaped = structural_matches(candidates, result.enriched,
+                                    self.type_ops.inherits_in_cpp)
         if generic_ok:
             validated: list[tuple[Candidate, FunctionInfo]] = []
             shaped_ids = {id(f) for f in shaped}

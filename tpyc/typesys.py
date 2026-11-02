@@ -2589,6 +2589,23 @@ def borrow_slot_types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
         yield from types_held_by_value(typ)
 
 
+def returns_storage_form(typ: 'TpyType') -> bool:
+    """Whether `to_cpp_return`'s form of `typ` is its storage form
+    (`to_cpp`), read from the `return_passing` it spells and walked as
+    `return_types_held_by_value` walks it: by value; a tuple (or an
+    Optional one) whose every part is returned so; a pointer whose return
+    render is its storage render (`Ptr[T]` is `T*` in both). A reference,
+    a borrow pointer into storage of another form, a view or a trait is
+    not."""
+    passing = typ.return_passing()
+    if passing is ReturnPassing.VALUE:
+        return True
+    if passing is ReturnPassing.ELEMENTS:
+        return all(returns_storage_form(part) for part in typ.inner_types())
+    return (passing is ReturnPassing.POINTER
+            and typ.to_cpp_return() == typ.to_cpp())
+
+
 def return_types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
     """Every class whose complete definition `to_cpp_return`'s form of `typ`
     needs, read from the `return_passing` it spells."""
@@ -4655,6 +4672,29 @@ def type_param_names(t: TpyType) -> frozenset[str]:
     else:
         inner = list(t.inner_types())
     return frozenset().union(*(type_param_names(i) for i in inner))
+
+
+def inner_type_param_names(typ: TpyType | None) -> set[str]:
+    """Every type parameter `typ` names, at any depth, walked by
+    `inner_types()`: an integer parameter of a nominal type (`N` in
+    `Array[T, N]`) is not one, as `substitute_type_params_simple` does not
+    reach it either.
+
+    The copy verdict keys on *contains* rather than *is* a `TypeParamRef`: a
+    `T | None` or `tuple[T, int32]` payload is just as unknowable as a bare
+    `T`, and answering it confidently is a false positive at a value `T`.
+    """
+    names: set[str] = set()
+    if typ is None:
+        return names
+    stack = [typ]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, TypeParamRef):
+            names.add(current.name)
+            continue
+        stack.extend(current.inner_types())
+    return names
 
 
 def is_value_type_bound(bound: 'TpyType | None') -> bool:
@@ -7211,6 +7251,46 @@ def holds_borrowing_view(t: 'TpyType | None') -> bool:
     return False
 
 
+def contains_reference_type(typ: TpyType, *,
+                            open_params_as_values: bool = False,
+                            held_only: bool = False) -> bool:
+    """True when copying `typ` copies a reference type -- the copy question.
+
+    Recursive, because a structural type answers `is_value_type()` for its
+    own shape and not for what it holds: `TupleType` hardcodes True, so
+    `tuple[str, Node]` is a value type that copies a `Node`. An open
+    `TypeParamRef` counts as a possible reference; at discharge the payload
+    is fully substituted, so the answer there is definite.
+
+    `open_params_as_values` reads every open type parameter as a value type,
+    so the answer is whether the copy is CERTAIN whatever the parameters
+    turn out to be (`tuple[T, Box]` copies a `Box` at every instantiation;
+    `tuple[T, int32]` only maybe).
+
+    `held_only` asks what the copy holds by value: an indirection (`Ptr`,
+    `Span`, a view) copies the reference, never its referent, so it holds
+    no reference type whatever it points at.
+
+    One predicate for the sink that RECORDS an own-copy obligation, the
+    discharge that ANSWERS it and the callback fit's by-value test; a
+    second would let them disagree.
+    """
+    if open_params_as_values:
+        # Substituted rather than skipped in the walk: an Optional / union
+        # answers `is_value_type()` from its members, so an open member
+        # would read as a reference one level up.
+        names = inner_type_param_names(typ)
+        if names:
+            typ = substitute_type_params_simple(typ,
+                                                dict.fromkeys(names, INT32))
+    if held_only and is_indirection_type(typ):
+        return False
+    if not typ.is_value_type():
+        return True
+    return any(contains_reference_type(inner, held_only=held_only)
+               for inner in typ.inner_types())
+
+
 def lands_in_view_member(slot: 'TpyType', value_type: 'TpyType | None') -> bool:
     """For a union slot holding a view, whether a value of `value_type`
     lands in a view member: a view, or a str / bytes value the view member
@@ -8782,6 +8862,27 @@ class FunctionInfo:
     direct_structural_mutated_params = _root_fact("direct_structural_mutated_params")
     direct_elem_mutated_params = _root_fact("direct_elem_mutated_params")
     call_edges = _root_fact("call_edges")
+
+    @property
+    def callable_return_type(self) -> Optional[TpyType]:
+        """What a call through a callable slot hands back: an async def
+        returns a fresh frame by value, which a Callable slot adapts into
+        the owned handle (`Own[Cancellable[T]]`), where `return_type` is
+        the handle a direct call is typed as."""
+        if (self.is_async
+                and self.return_type is not None
+                and not isinstance(self.return_type, OwnType)):
+            return OwnType(self.return_type)
+        return self.return_type
+
+    @property
+    def callable_signature(self) -> CallableType:
+        """This function as a callable of its own signature: an `Fn`, whose
+        return is the function's own form, not a std::function's held
+        result."""
+        assert self.callable_return_type is not None
+        return make_fn_type(tuple(t for _, t in self.params),
+                            self.callable_return_type)
 
     @property
     def overloaded(self) -> bool:

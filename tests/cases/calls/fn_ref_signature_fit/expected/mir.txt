@@ -1,0 +1,82 @@
+helper::__tpy_init: uncovered (module initialization)
+helper::h_wide@4:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::wide@39:0: covered (storage: no_proof_required), summary: known
+main::big@43:0: covered (storage: no_proof_required), summary: known
+main::half@47:0: covered (storage: no_proof_required), summary: known
+main::gen_wide@51:0: uncovered (generic body)
+main::count@55:0: covered (storage: no_proof_required), summary: known
+main::maybe@59:0: covered (storage: no_proof_required), summary: known
+main::maybe_s@63:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ret8@67:0: covered (storage: no_proof_required), summary: known
+main::shout@71:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::getv@76:0: covered (storage: no_proof_required), summary: known
+main::ask@80:0: uncovered (unsupported parameter type)
+main::sv@84:0: covered (storage: no_proof_required), summary: known
+main::st@88:0: covered (storage: no_proof_required), summary: known
+main::u@92:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::tw@98:0: covered (storage: no_proof_required), summary: known
+main::cb@102:0: covered (storage: no_proof_required), summary: known
+main::twb@128:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_inc@132:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_big@136:0: covered (storage: no_proof_required), summary: known
+main::own_wide@141:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::same@146:0: covered (storage: no_proof_required), summary: known
+main::getp@150:0: covered (storage: no_proof_required), summary: known
+main::maybe_cb@154:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::maybe64@158:0: covered (storage: no_proof_required), summary: known
+main::blen@162:0: covered (storage: no_proof_required), summary: known
+main::call32@166:0: uncovered (unsupported parameter type)
+main::callc32@170:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::callbig@174:0: uncovered (unsupported parameter type)
+main::callbb@178:0: uncovered (unsupported parameter type)
+main::callcb@182:0: uncovered (unsupported parameter type)
+main::callf@186:0: uncovered (unsupported parameter type)
+main::callfi@190:0: uncovered (unsupported parameter type)
+main::callp@194:0: uncovered (unsupported parameter type)
+main::callv@198:0: uncovered (unsupported parameter type)
+main::call_child@202:0: uncovered (unsupported parameter type)
+main::call_dog@206:0: uncovered (unsupported parameter type)
+main::call_str@210:0: uncovered (unsupported parameter type)
+main::call_string@214:0: uncovered (unsupported parameter type)
+main::call_u@218:0: uncovered (unsupported parameter type)
+main::call_tw@222:0: uncovered (unsupported parameter type)
+main::call_opt@226:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::call_ustr@230:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::call_bytes@234:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::call_wopt@238:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::join@242:0: covered (storage: no_proof_required), summary: known
+main::call64@246:0: uncovered (unsupported parameter type)
+main::ro_offset@250:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::ro_scale@255:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::ro_scale_c@260:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::best@265:0: uncovered (unsupported parameter type)
+main::ap@275:0: uncovered (no body to lower)
+main::ap@280:0: uncovered (no body to lower)
+main::choose@285:0: uncovered (no body to lower)
+main::choose@290:0: uncovered (no body to lower)
+main::pick@305:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::pass_on@310:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ptr_of@315:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::call_ptr@319:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::new_p@335:0: covered (storage: no_proof_required), summary: known
+main::via@340:0: uncovered (no body to lower)
+main::via@345:0: uncovered (no body to lower)
+main::double@349:0: uncovered (async body)
+main::run_fn@354:0: uncovered (async body)
+main::main@361:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Dog.speak@35:4: covered (storage: no_proof_required)
+main::Wide.__call__@107:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Offset.__call__@116:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Scale.__call__@124:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::Runner.run@298:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Runner.apply@301:4: uncovered (unsupported parameter type)
+main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::Offset.__init__@112:4: covered (storage: no_proof_required), summary: known
+main::Scale.__init__@121:4: covered (storage: no_proof_required), summary: known
+main::Runner.__init__@295:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Hp.__init__@326:4: covered (storage: no_proof_required), summary: known
+main::SubHp.__init__@331:4: covered (storage: no_proof_required), summary: known

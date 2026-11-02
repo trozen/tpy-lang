@@ -52,6 +52,25 @@ class HintKind(Enum):
     INFERRED = auto()
 
 
+@dataclass(frozen=True, eq=False)
+class NodeBinding:
+    """What a hint carries for one argument node alone. A `fill` binding
+    makes the hint fill-only (`SlotHint.fill`): it types `node` and no
+    other. Otherwise the hint is in force as usual, and only fitting a
+    function named at `node` to a generic call's callable parameter reads
+    the binding: the callee's type parameters the call is still inferring,
+    the only slot positions any type fits at (an enclosing function's `T`
+    is a type there), and the slot's parameter positions at which the call
+    hands over each element it passes (`element_fed_positions`)."""
+    node: TpyExpr | None
+    fill: bool = False
+    open_params: frozenset[str] = frozenset()
+    owning: frozenset[int] = frozenset()
+
+
+_NO_BINDING = NodeBinding(None)
+
+
 @dataclass(frozen=True)
 class SlotHint:
     type: TpyType
@@ -59,9 +78,11 @@ class SlotHint:
     pattern: TpyType | None = None
     seeded: frozenset[str] = frozenset()
     kind: HintKind = HintKind.DECLARED
-    # A fill-only hint: the argument node it types, and no other. Equality
-    # ignores it on purpose -- nothing compares or caches hints by scope.
-    fill_node: TpyExpr | None = field(default=None, compare=False)
+    # The one argument node the hint carries something for alone
+    # (`NodeBinding`); a callable-fit one is kept through every projection
+    # (`map`), a fill-only one is not. Equality ignores it on purpose --
+    # nothing compares or caches hints by scope.
+    binding: NodeBinding | None = field(default=None, compare=False)
 
     @staticmethod
     def declared(t: TpyType) -> SlotHint:
@@ -78,21 +99,28 @@ class SlotHint:
         """An overload's declared parameter type `t` for the argument
         `node`, typing it as an inferred local's type would, but only
         where nothing else does."""
-        return replace(SlotHint.inferred_local(t), fill_node=node)
+        return replace(SlotHint.inferred_local(t),
+                       binding=NodeBinding(node, fill=True))
 
     @property
     def is_fill(self) -> bool:
-        return self.fill_node is not None
+        return self.binding is not None and self.binding.fill
+
+    @property
+    def fill_node(self) -> TpyExpr | None:
+        """The one node a fill-only hint types."""
+        return self.binding.node if self.is_fill else None
 
     def retarget(self, node: TpyExpr) -> SlotHint:
         """This fill-only hint for `node` instead: an operand whose value
         is the value of the node it was for."""
-        return replace(self, fill_node=node)
+        assert self.binding is not None
+        return replace(self, binding=replace(self.binding, node=node))
 
     def as_local(self) -> SlotHint:
         """The hint without its fill-only scope: what the argument node's
         own analysis types its open positions under."""
-        return replace(self, fill_node=None)
+        return replace(self, binding=None)
 
     @staticmethod
     def partly_inferred(t: TpyType, pattern: TpyType,
@@ -120,11 +148,35 @@ class SlotHint:
                 and isinstance(self.pattern, TypeParamRef)
                 and self.pattern.name in self.seeded)
 
+    def fitting(self, node: TpyExpr, open_params: frozenset[str],
+                owning: frozenset[int]) -> SlotHint:
+        """This hint for the argument `node` of a call still inferring
+        `open_params` and handing each element over at the callable
+        positions `owning` (`NodeBinding`)."""
+        return replace(self, binding=NodeBinding(
+            node, open_params=open_params, owning=owning))
+
+    def callable_fit_at(self, node: TpyExpr) -> NodeBinding:
+        """What fitting a function at `node` takes from the call; nothing
+        for any node but the argument the hint was made for."""
+        b = self.binding
+        return (b if b is not None and not b.fill and b.node is node
+                else _NO_BINDING)
+
     def map(self, fn: Callable[[TpyType], TpyType | None]) -> SlotHint | None:
         """Project `type` and `pattern` together: `fn` takes the same part
         (an element, a type argument, a wrapper's inner type) of both, so
         the part keeps the provenance its position has, and answers None
-        where a type has no such part. None when the TYPE has none."""
+        where a type has no such part. None when the TYPE has none. A
+        callable-fit binding stays bound to its node; a fill-only one is
+        dropped, since a part of the hint types no argument node."""
+        out = self._project(fn)
+        if out is None or self.binding is None or self.binding.fill:
+            return out
+        return replace(out, binding=self.binding)
+
+    def _project(self, fn: Callable[[TpyType], TpyType | None],
+                 ) -> SlotHint | None:
         t = fn(self.type)
         if t is None:
             return None

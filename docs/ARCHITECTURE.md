@@ -1279,9 +1279,9 @@ error, which takes the hedge's line when the declaring module composes its
 diagnostics. A copyable instantiation answers nothing. It is a leaf module
 (it imports only `diagnostics`, `typesys` and `identity_map`) so
 `compatibility`, `statements`,
-`expressions`, `type_ops` and `methods` can all reach it, and it owns
-`contains_reference_type` -- the recursive copy predicate -- so the site that
-records and the pass that answers cannot ask different questions.
+`expressions`, `type_ops` and `methods` can all reach it. The site that
+records and the pass that answers ask one recursive copy predicate,
+`typesys.contains_reference_type`, so they cannot ask different questions.
 `Compiler._finalize_workspace` drives the discharge for every module before
 any module collapses or withdraws its diagnostics.
 

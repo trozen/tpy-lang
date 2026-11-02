@@ -22,7 +22,7 @@ from ..typesys import (
     OptionalType, UnionType,
     unwrap_ref_type, strip_own_type_args,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
-    contains_type_param, contains_pending_leaf,
+    contains_type_param, contains_pending_leaf, type_param_names,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type,
@@ -31,7 +31,8 @@ from ..type_def_registry import (
 )
 from .arg_binding import ArgBinding, BindReject, CallSource, bind
 from ..coercions import (resolve_coercion, CoercionContext, int_literal_fits_fixed_int,
-                         coercion_refuses_value)
+                         coercion_refuses_value, callable_fits,
+                         callable_value_fits, Inherits)
 from ..identity_map import IdentityMap
 from .protocols import ProtocolConformanceKind
 
@@ -213,7 +214,7 @@ def _score(per_arg: tuple[tuple[MatchTier, int], ...]) -> tuple[tuple[int, ...],
     return (tuple(-c for c in counts[1:]), total_cost)
 
 
-def _structural_match(arg: TpyType, param: TpyType) -> bool:
+def _structural_match(arg: TpyType, param: TpyType, inherits: Inherits) -> bool:
     """Structural match with TypeParamRef as wildcard."""
     if isinstance(param, TypeParamRef):
         return True
@@ -225,14 +226,13 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     if isinstance(arg, OwnType):
         arg = arg.wrapped
     if isinstance(param, ReadonlyType):
-        return _structural_match(unwrap_readonly(arg), param.wrapped)
+        return _structural_match(unwrap_readonly(arg), param.wrapped, inherits)
     arg = unwrap_readonly(arg)
     # Callable -> Fn: structurally compatible callable types
     if isinstance(arg, CallableType) and is_fn_type(param):
-        if len(arg.param_types) != len(param.param_types):
-            return False
-        return (all(_structural_match(a, p) for a, p in zip(arg.param_types, param.param_types))
-                and _structural_match(arg.return_type, param.return_type))
+        return callable_fits(arg, param,
+                             inherits=inherits,
+                             wildcards=type_param_names(param))
     # None literal (NoneType) matches None annotation (VoidType)
     if isinstance(arg, NoneType) and isinstance(param, VoidType):
         return True
@@ -253,7 +253,7 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
         return False
     if not arg_inners:
         return arg == param
-    return all(_structural_match(a, p) for a, p in zip(arg_inners, param_inners))
+    return all(_structural_match(a, p, inherits) for a, p in zip(arg_inners, param_inners))
 
 
 class LiteralHomes(NamedTuple):
@@ -558,19 +558,15 @@ def _classify_strict_match(
     meet = _undecided_container_arm(arg_type, param_type, type_ops)
     if meet is not None:
         return (MatchTier.EXACT_CONCRETE, 0) if meet.accepted else None
-    # CallableType (Fn and Callable): compare with qualifier unwrapping on inner
-    # types. The arg callable may have Own/Ref on param/return types from FI,
-    # while the resolved overload's callable has bare types from substitution.
-    if (is_callable_type(arg_inner)
-            and is_callable_type(param_inner)
-            and len(arg_inner.param_types) == len(param_inner.param_types)):
-        def _strip(t: TpyType) -> TpyType:
-            t = unwrap_ref_type(t)
-            if isinstance(t, OwnType): t = t.wrapped
-            if isinstance(t, PendingViewType): t = t.family.owned_type
-            return t
-        if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))
-                and _strip(arg_inner.return_type) == _strip(param_inner.return_type)):
+    # Only an unchanged callable is strict: a widened one ranks below it.
+    if is_callable_type(arg_inner) and is_callable_type(param_inner):
+        wildcards = type_param_names(param_inner)
+        if (callable_fits(arg_inner, param_inner,
+                          inherits=_always_false_checker,
+                          exact=True, wildcards=wildcards)
+                and callable_value_fits(arg_inner, param_inner,
+                                        inherits=_always_false_checker,
+                                        wildcards=wildcards)):
             return (MatchTier.EXACT_CONCRETE, 0)
     # A numeric literal matches strictly at its home (`_scalar_widening_cost`
     # 0: the default int width, `float` for a float literal) and an int
@@ -596,12 +592,6 @@ def _classify_strict_match(
             return (MatchTier.EXACT_CONCRETE, 0)
         return _classify_strict_match(arg_inner, param_inner.inner, protocol_classifier, default_int_type,
                                       type_ops, subclass_checker, homes)
-    # Callable -> Fn: std::function satisfies template requires clauses
-    if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
-            and arg_inner.param_types == param_inner.param_types
-            and (arg_inner.return_type == param_inner.return_type
-                 or isinstance(param_inner.return_type, VoidType))):
-        return (MatchTier.EXACT_CONCRETE, 0)
     # PendingViewType: same-family pending types match each other and their resolved types
     if isinstance(arg_inner, PendingViewType) and isinstance(param_inner, PendingViewType):
         if arg_inner.family is param_inner.family:
@@ -787,13 +777,16 @@ def type_matches_with_coercion(
     deref_checker: DerefChecker | None = None,
     subclass_checker: SubclassChecker | None = None,
     type_ops: 'TypeOperations | None' = None,
+    inherits: Inherits | None = None,
 ) -> bool:
     """Type matching allowing IntLiteral flexibility, protocols, and registered coercions.
 
     The applicability check of the conversion stage of overload resolution
     (`_converted_cell`), which hands it the argument's conversion target
     (`_conversion_target`), so an Optional parameter arrives here as its
-    payload for a non-optional argument.
+    payload for a non-optional argument. A callable argument fits a
+    callable parameter by `callable_value_fits` under `inherits`, and not
+    at all without one.
     """
     # An undecided container is applicable here exactly when it is in the
     # strict pass (`_undecided_container_arm`).
@@ -841,11 +834,10 @@ def type_matches_with_coercion(
         # Mirrors the unwrapping in type_matches_strict.
         check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
         return protocol_checker(check_arg, param_inner)
-    # Callable -> Fn: std::function satisfies template requires clauses
-    if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
-            and arg_inner.param_types == param_inner.param_types
-            and (arg_inner.return_type == param_inner.return_type
-                 or isinstance(param_inner.return_type, VoidType))):
+    if (inherits is not None and is_callable_type(arg_inner)
+            and is_callable_type(param_inner)
+            and callable_value_fits(arg_inner, param_inner, inherits=inherits,
+                                    wildcards=type_param_names(param_inner))):
         return True
     if resolve_coercion(arg_inner, param_inner, CoercionContext.ARG) is not None:
         return True
@@ -924,6 +916,7 @@ def _converted_cell(
     subclass_checker: SubclassChecker | None,
     default_int_type: TpyType | None,
     homes: LiteralHomes | None = None,
+    inherits: Inherits | None = None,
 ) -> _Conversion | None:
     """How an argument the strict match refuses converts to its parameter,
     None when it does not: whether it narrows (a `narrows_checked` row: an
@@ -942,7 +935,8 @@ def _converted_cell(
     if coercion_refuses_value(arg_inner, target, CoercionContext.ARG):
         return None
     if not type_matches_with_coercion(arg_type, target, protocol_checker,
-                                      deref_checker, subclass_checker):
+                                      deref_checker, subclass_checker,
+                                      inherits=inherits):
         return None
     row = resolve_coercion(arg_inner, target, CoercionContext.ARG)
     narrowing = int(row is not None and row.narrows_checked)
@@ -1285,8 +1279,8 @@ def _rank_stages(
                         bindings[best])
 
 
-def structural_matches(overloads: list[FunctionInfo],
-                       args: CallSource) -> list[FunctionInfo]:
+def structural_matches(overloads: list[FunctionInfo], args: CallSource,
+                       inherits: Inherits) -> list[FunctionInfo]:
     """The generic overloads whose declared parameters take `args` (types,
     as written) by shape alone, a type parameter matching anything: the
     candidates a call no ranking took names in its diagnostic."""
@@ -1297,7 +1291,8 @@ def structural_matches(overloads: list[FunctionInfo],
         evidence = bound_evidence(overload, args)
         if isinstance(evidence, BindReject):
             continue
-        if all(_structural_match(t, operand_param_type(overload.params[i]))
+        if all(_structural_match(t, operand_param_type(overload.params[i]),
+                                 inherits)
                for i, t in evidence):
             out.append(overload)
     return out
@@ -1442,7 +1437,9 @@ class CallRanking(NamedTuple):
             return None
         conversion = _converted_cell(
             arg_type, param_type, self.protocol_checker, self.deref_checker,
-            self.subclass_checker, self.default_int_type, self.homes)
+            self.subclass_checker, self.default_int_type, self.homes,
+            self.type_ops.inherits_in_cpp if self.type_ops is not None
+            else None)
         if conversion is None:
             conversion = self.received(arg_type, param_type, open_leaf)
         if conversion is None:

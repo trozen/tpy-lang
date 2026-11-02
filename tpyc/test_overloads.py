@@ -304,6 +304,9 @@ class _Ops:
         self.asked.append(param)
         return self.leaves.get(param)
 
+    def inherits_in_cpp(self, child, base):
+        return False
+
 
 _OPEN_LIST = PendingListType(element_type=IntLiteralType(value=1), size=2, literal_id=7)
 _CELL = object()

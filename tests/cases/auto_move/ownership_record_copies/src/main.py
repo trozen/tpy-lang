@@ -304,6 +304,10 @@ def mk_w(n: int32) -> Own[Wrap]:
     return Wrap(A(n))
 
 
+def fresh_w(ho: Holder) -> Own[Wrap]:
+    return Wrap(A(ho.w.a.items[0]))
+
+
 class K:
     a: A
 
@@ -331,9 +335,9 @@ def lend_next(h: H, ws: list[Wrap], ho: Holder) -> None:
 
 
 def callable_member(h: H, ho: Holder) -> None:
-    # a member of a `Callable` value's result copies: the signature does not
-    # prove the result fresh, and the target here lends `ho.w`
-    fn: Callable[[Holder], Wrap] = get_w
+    # a member of a `Callable` value's result warns although the
+    # std::function returns a fresh Wrap (BUGS.md#callable-result-member-copy-warning-false)
+    fn: Callable[[Holder], Wrap] = fresh_w
     h.p = fn(ho).a  # tpyc: warning(/copies A into field/)
 
 

@@ -1,6 +1,5 @@
-# No __call__ overload satisfies the expected signature: located error
-# listing the candidates (previously an internal-error assert when more
-# than one overload existed).
+# An object with several __call__ overloads at a callback slot: located
+# error listing the candidates.
 from typing import overload
 from tpy import Fn, int32, StrView
 
@@ -21,7 +20,7 @@ def use(f: Fn[[StrView], int32]) -> None:
 
 
 def main() -> None:
-    use(Adder())  # tpyc: error(/no '__call__' overload .*candidates:/)
+    use(Adder())  # tpyc: error(/several '__call__' variants.*candidates:/)
 
 
 main()

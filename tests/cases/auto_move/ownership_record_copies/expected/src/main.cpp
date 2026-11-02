@@ -474,6 +474,12 @@ Wrap mk_w(int32_t n) {
     return Wrap(A(n));
 }
 
+// def fresh_w(ho: Holder) -> Own[Wrap]:
+//     return Wrap(A(ho.w.a.items[0]))
+Wrap fresh_w(const Holder& ho) {
+    return Wrap(A(::tpy::__getitem__(ho.w.a.items, 0)));
+}
+
 // def lend_member(h: H, ho: Holder) -> None:
 //     # free function: a member of a lending call's result copies ...
 //     h.p = get_w(ho).a  # tpyc: warning(/copies A into field/)
@@ -495,12 +501,12 @@ void lend_next(H& h, std::vector<Wrap>& ws, Holder& ho) {
 }
 
 // def callable_member(h: H, ho: Holder) -> None:
-//     # a member of a `Callable` value's result copies: the signature does not
-//     # prove the result fresh, and the target here lends `ho.w`
-//     fn: Callable[[Holder], Wrap] = get_w
+//     # a member of a `Callable` value's result warns although the
+//     # std::function returns a fresh Wrap (BUGS.md#callable-result-member-copy-warning-false)
+//     fn: Callable[[Holder], Wrap] = fresh_w
 //     h.p = fn(ho).a  # tpyc: warning(/copies A into field/)
 void callable_member(H& h, Holder& ho) {
-    std::function<Wrap(Holder&)> fn = get_w;
+    std::function<Wrap(Holder&)> fn = fresh_w;
     h.p = fn(ho).a;
 }
 

@@ -25,7 +25,8 @@ from ..typesys import (
     type_param_names,
     strip_template_repr, resolve_int_literals, INT_TYPE_ARG_MAX,
 )
-from ..coercions import resolve_coercion, CoercionContext
+from ..coercions import resolve_coercion, CoercionContext, callable_value_fits
+from .dyn_erasure import inherits_in_cpp
 from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
@@ -1213,11 +1214,15 @@ class TypeOperations:
                 return False
             if len(param_type.param_types) != len(arg_type.param_types):
                 return False
-            for pp, ap in zip(param_type.param_types, arg_type.param_types):
-                if not self.match_type_with_inference(pp, ap, inferred):
-                    return False
-            return self.match_type_with_inference(
-                param_type.return_type, arg_type.return_type, inferred)
+            # Positions naming a type parameter bind it -- this inference
+            # is the call at hand's -- and the rest must fit.
+            pairs = [*zip(param_type.param_types, arg_type.param_types),
+                     (param_type.return_type, arg_type.return_type)]
+            return (all(self.match_type_with_inference(pp, ap, inferred)
+                        for pp, ap in pairs if contains_type_param(pp))
+                    and callable_value_fits(
+                        arg_type, param_type, inherits=self.inherits_in_cpp,
+                        wildcards=type_param_names(param_type)))
 
         # Own[T] wrapper -- unwrap and match T against arg (any type can be owned).
         # arg_type has already had a top-level Own stripped above.
@@ -2446,6 +2451,11 @@ class TypeOperations:
         if subst:
             method = self.substitute_method_type_params(method, subst)
         return owner, method
+
+    def inherits_in_cpp(self, child: TpyType, base: TpyType) -> bool:
+        """`dyn_erasure.inherits_in_cpp` in this module's registry: the
+        `inherits` a callable fit (`callable_fits`) takes."""
+        return inherits_in_cpp(child, base, self.ctx.registry)
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""

@@ -5,18 +5,19 @@ Type compatibility checking, coercions, and lvalue analysis.
 """
 
 from __future__ import annotations
+import itertools
 import math
 import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
-from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
+from typing import (TYPE_CHECKING, AbstractSet, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
 from ..type_def_registry import has_view_param_form
 from ..typesys import (lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type)
 from ..typesys import (
-    is_value_type_bound,
+    contains_reference_type, inner_type_param_names, is_value_type_bound,
     same_class, Representation, return_representation,
     make_readonly,
     ELEM,
@@ -29,7 +30,7 @@ from ..typesys import (
     is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own, owned_payload, drop_own_marker,
     contains_type_param,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
-    CallableType, is_fn_type, RefType, unwrap_ref_type,
+    CallableType, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
@@ -79,7 +80,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..parse.nodes import program_names, walk_body_stmts, walk_expr_tree
 from .dyn_erasure import dyn_erasure_coercion
-from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_misfit, callable_value_fits
 from ..modules import get_span_return_type
 from .call_lends import (
     EveryTempLend, Lent, MayLend, ReturnLend,
@@ -90,7 +91,7 @@ from .context import (
     CompTarget, ConsumingLoop, FinallyCapture, ProbeSlot,
     OwnIterMove, OwningRead, PendingCopy, SinkCopy,
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
-    BorrowKind,
+    BorrowKind, ReadonlyReceiverCheck,
     BorrowTracker, SitedKey, holds_generator_object, paths_overlap,
 )
 from ..prescan import expr_to_narrowing_key
@@ -114,6 +115,7 @@ from ..type_def_registry import (
     is_dict_view,
 )
 from .overloads import type_matches_numeric
+from .receiver_calls import call_mutates_receiver
 from .int_narrowing import narrowing_proven_safe, site_value_range
 from .pending_num import (ContainerCells, at_path, container_parts,
                           is_numeric_slot, is_pending_num, literal_entries,
@@ -272,7 +274,7 @@ def _container_elem_matches(actual_elem: TpyType, expected_elem: TpyType) -> boo
 def _contains_semantic_ref(t: TpyType) -> bool:
     """True if t contains a RefType wrapper (explicit borrowed reference).
 
-    Unlike `own_copy.contains_reference_type`, which asks the structural
+    Unlike `contains_reference_type`, which asks the structural
     is_value_type() question, this checks for RefType specifically -- the
     semantic marker that sema inserts for borrowed references. Used to detect
     iterator-to-container copies where the source is an rvalue but yields
@@ -778,6 +780,16 @@ def _declared(reg: SinkRead, leaves: dict[ElemPath, TupleLeaf]
     return {p: dc_replace(leaf, permission=LeafPermission.UNDECLARED)
             if leaf.permission.copies else leaf
             for p, leaf in leaves.items()}
+
+
+GENERATOR_AT_CALLABLE = ("a generator cannot be passed as a callable yet "
+                         "(BUGS.md#generator-at-callable-slot-unlowered)")
+
+
+def _lambda_calling(callee: str, names: Sequence[str]) -> str:
+    """The lambda that calls `callee` with its own parameters `names`."""
+    args = ", ".join(names)
+    return f"lambda {args}: {callee}({args})" if args else f"lambda: {callee}()"
 
 
 class TypeCompatibility:
@@ -1507,19 +1519,21 @@ class TypeCompatibility:
                 actual.wrapped, expected, context, loc, source_expr,
                 is_return, coercion_ctx, target_is_storage_form, sink_owns,
                 landing=landing, param=param)
-        # CallableType (Fn and Callable): inner param/return types may carry
-        # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
-        if (is_callable_type(actual)
-                and is_callable_type(expected)
-                and len(actual.param_types) == len(expected.param_types)):
-            stripped_actual = type(actual)(
-                tuple(unwrap_ref_type(unwrap_own(p)) for p in actual.param_types),
-                unwrap_ref_type(unwrap_own(actual.return_type)))
-            stripped_expected = type(expected)(
-                tuple(unwrap_ref_type(unwrap_own(p)) for p in expected.param_types),
-                unwrap_ref_type(unwrap_own(expected.return_type)))
-            if stripped_actual == stripped_expected:
+        if is_callable_type(actual) and is_callable_type(expected):
+            if callable_value_fits(actual, expected,
+                                   inherits=self.type_ops.inherits_in_cpp):
                 return None
+            erased_both = not actual.is_template and not expected.is_template
+            misfit = (None if erased_both
+                      else self.callable_misfit_reason(actual, expected))
+            if misfit is not None:
+                reason, lambda_converts = misfit
+                hint = (" (wrap it in a lambda to convert each call)"
+                        if lambda_converts else "")
+                return CompatError(
+                    f"Type mismatch in {context}: expected "
+                    f"{self.shown_type(expected)}, got "
+                    f"{self.shown_type(actual)}: {reason}{hint}", loc)
         # None literal (NoneType) is compatible with None annotation (VoidType)
         if isinstance(actual, NoneType) and isinstance(expected, VoidType):
             return None
@@ -1579,6 +1593,13 @@ class TypeCompatibility:
         # capture's, which owns their message.
         # Note: mutable Span is NOT excepted even for returns -- you cannot
         # construct a mutable span from a const container.
+        if (isinstance(actual, ReadonlyType) and is_callable_type(expected)
+                and isinstance(actual.wrapped, NominalType)):
+            overloads = self._call_overloads(actual.wrapped)
+            if overloads:
+                return self._call_overload_compat(
+                    actual.wrapped, overloads, expected, context, loc,
+                    source_expr, readonly_receiver=True)
         if isinstance(actual, ReadonlyType) and not isinstance(expected, ReadonlyType):
             if (isinstance(actual.wrapped, TupleType) and not is_return
                     and not isinstance(expected, OwnType)):
@@ -1896,7 +1917,7 @@ class TypeCompatibility:
                                  ITERABLE_LVALUE_COPY_HINT)
                         for t in expected.inner_types()
                         if isinstance(t, OwnType)
-                        and own_copy.contains_reference_type(t.wrapped))
+                        and contains_reference_type(t.wrapped))
                     is_auto_moved = self.claim_name_move(
                         source_expr, OwnType(expected), sink=skipped)
                     lent_value = handle_lends if is_auto_moved else None
@@ -1922,7 +1943,7 @@ class TypeCompatibility:
                             if not isinstance(inner_t, OwnType):
                                 continue
                             elem_type = inner_t.wrapped
-                            if not own_copy.contains_reference_type(elem_type):
+                            if not contains_reference_type(elem_type):
                                 continue
                             display_type = unwrap_ref_type(elem_type)
                             # Lvalue source (container): suggest copy_iter or copy.
@@ -1983,37 +2004,12 @@ class TypeCompatibility:
                 loc
             )
 
-        # Callable object -> Fn/Callable: record with a __call__ overload
-        # satisfying the expected signature (first declared match wins).
-        # Plain signature-to-signature matching, not `CallRanking.resolve` --
-        # that machinery scores call-site ARG types; here two signatures
-        # are compared, with the same variance rule as Callable -> Fn.
         if isinstance(actual, NominalType) and is_callable_type(expected):
-            record = self.ctx.registry.get_record_for_type(actual)
-            if record:
-                overloads = self.ctx.registry.get_method_overloads_with_parents(record, "__call__")
-                if overloads:
-                    for fi in overloads:
-                        if (len(fi.params) == len(expected.param_types)
-                                and self._callable_signature_satisfies(
-                                    tuple(p.type for p in fi.params), fi.return_type,
-                                    expected, loc)):
-                            return None
-                    candidates = "; ".join(
-                        f"({', '.join(str(p.type) for p in fi.params)}) -> {fi.return_type}"
-                        for fi in overloads)
-                    return CompatError(
-                        f"no '__call__' overload of '{actual}' matches {expected} "
-                        f"in {context} (candidates: {candidates})",
-                        loc,
-                    )
-
-        # Callable -> Fn: std::function satisfies template requires clauses in C++
-        if isinstance(actual, CallableType) and is_fn_type(expected):
-            if (len(actual.param_types) == len(expected.param_types)
-                    and self._callable_signature_satisfies(
-                        actual.param_types, actual.return_type, expected, loc)):
-                return None
+            overloads = self._call_overloads(actual)
+            if overloads:
+                return self._call_overload_compat(
+                    actual, overloads, expected, context, loc, source_expr,
+                    readonly_receiver=False)
 
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
         if isinstance(actual, NominalType) and isinstance(expected, NominalType):
@@ -4607,8 +4603,8 @@ class TypeCompatibility:
                          or self.per_leaf_source(inner))):
                 return True
             if (inner_after_own.is_value_type()
-                    and not (own_copy.type_param_names(inner_after_own)
-                             and own_copy.contains_reference_type(
+                    and not (inner_type_param_names(inner_after_own)
+                             and contains_reference_type(
                                  inner_after_own))):
                 return True
             # A WHOLE returned Own-typed name moves out (C++ moves a returned
@@ -4955,26 +4951,164 @@ class TypeCompatibility:
             return False
         return False
 
-    def _callable_signature_satisfies(
-        self, actual_params: tuple[TpyType, ...], actual_return: TpyType,
-        expected: CallableType, loc: 'SourceLocation | None',
-    ) -> bool:
-        """Whether a concrete callable signature satisfies an expected
-        Fn/Callable contract. Function params are CONTRAVARIANT: the callee
-        must accept everything the contract may pass, so each expected param
-        must be compatible with the callee's declared param (e.g. a callee
-        taking int32 | None satisfies Fn[[int32], ...], not the reverse).
-        Returns are covariant; a void contract accepts any return.
-        """
-        if len(actual_params) != len(expected.param_types):
-            return False
-        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
-            if not all(self._check_compat(e, a, "param", loc) is None
-                       for a, e in zip(actual_params, expected.param_types)):
-                return False
-            return (self._check_compat(actual_return, expected.return_type,
-                                       "return", loc) is None
-                    or isinstance(expected.return_type, VoidType))
+    def shown_type(self, t: TpyType) -> TpyType:
+        """`t` as a diagnostic names it: no `Ref` borrow marker at any
+        depth, a pending container as the one it resolves to."""
+        def drop_refs(u: TpyType) -> TpyType:
+            return unwrap_ref_type(u).map_inner_types(drop_refs)
+        return self.diag_type(drop_refs(t))
+
+    def callable_misfit_reason(
+        self, actual: CallableType, expected: CallableType,
+        called: FunctionInfo | None = None,
+        wildcards: AbstractSet[str] = frozenset(),
+        owning: AbstractSet[int] = frozenset(),
+    ) -> tuple[str, bool] | None:
+        """Why a callable of type `actual` does not fit `expected`
+        (`callable_misfit`), and whether a direct call -- what a lambda
+        spells -- converts there; None when it fits or the arities differ.
+        A lambda returns what the call returns, so it never converts a
+        return that differs only by `Own`. `called` is the named function
+        or `__call__` whose signature `actual` is, None for a callable
+        value; a generator one never fits
+        (BUGS.md#generator-at-callable-slot-unlowered)."""
+        if called is not None and called.is_generator:
+            return GENERATOR_AT_CALLABLE, False
+        if len(actual.param_types) != len(expected.param_types):
+            return None
+        param_names = ([p.name for p in called.params]
+                       if called is not None else None)
+        misfit = callable_misfit(actual, expected,
+                                 inherits=self.type_ops.inherits_in_cpp,
+                                 wildcards=wildcards, owning=owning)
+        if misfit is None:
+            return None
+        if misfit.borrowed:
+            kept = self.shown_type(unwrap_own(misfit.expected))
+            # A callable value (no `param_names`) has no body to change;
+            # the parameter it came through spells its type.
+            if param_names is not None:
+                remedy = f"return Own[{kept}] if it builds a new one"
+            else:
+                owned = dc_replace(actual, return_type=OwnType(
+                    unwrap_own(actual.return_type)))
+                remedy = f"spell the parameter {self.shown_type(owned)}"
+            return (f"it returns a borrow of {self.shown_type(misfit.actual)} "
+                    f"where the Callable keeps its own {kept} ({remedy})",
+                    False)
+        context = "param" if misfit.index is not None else "return"
+        source, target = ((misfit.expected, misfit.actual)
+                          if misfit.index is not None
+                          else (misfit.actual, misfit.expected))
+        lambda_converts = (misfit.index is not None
+                           or unwrap_own(source) != unwrap_own(target))
+        if lambda_converts:
+            try:
+                with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                    self.check_type_compatible(source, target, context)
+            except SemanticError:
+                lambda_converts = False
+        actual = self.shown_type(misfit.actual)
+        wanted = self.shown_type(misfit.expected)
+        if misfit.index is None:
+            return f"it returns {actual} where {wanted} is expected", lambda_converts
+        name = (f"'{param_names[misfit.index]}'" if param_names
+                else str(misfit.index + 1))
+        return (f"its parameter {name} is {actual} and would receive {wanted}",
+                lambda_converts)
+
+    def callable_ref_refusal(
+        self, name: str, called: FunctionInfo,
+        actual: CallableType, expected: CallableType,
+        wildcards: AbstractSet[str] = frozenset(),
+        owning: AbstractSet[int] = frozenset(),
+    ) -> str | None:
+        """The refusal of function `called`, named `name` where it is
+        passed, of type `actual` at `expected` (`callable_misfit_reason`),
+        with the lambda that converts each call where a direct call
+        converts; None when it fits."""
+        misfit = self.callable_misfit_reason(actual, expected, called,
+                                             wildcards, owning)
+        if misfit is None:
+            return None
+        reason, lambda_converts = misfit
+        param_names = [p.name for p in called.params]
+        hint = (f" (write '{_lambda_calling(name, param_names)}' to convert "
+                f"each call)" if lambda_converts else "")
+        return (f"'{name}' cannot be passed as {self.shown_type(expected)}: "
+                f"{reason}{hint}")
+
+    def _call_overloads(self, obj: NominalType) -> list[FunctionInfo]:
+        """The `__call__` variants of a callable object's type, inherited
+        ones included; empty for a type with none."""
+        record = self.ctx.registry.get_record_for_type(obj)
+        if record is None:
+            return []
+        return self.ctx.registry.get_method_overloads_with_parents(
+            record, "__call__")
+
+    def _call_overload_compat(
+        self, obj: NominalType, overloads: list[FunctionInfo],
+        expected: CallableType, context: str, loc: SourceLocation | None,
+        source_expr: TpyExpr | None, *, readonly_receiver: bool,
+    ) -> CompatError | None:
+        """Whether a callable object of type `obj`, readonly at the
+        argument when `readonly_receiver`, fits the slot `expected`: its
+        one `__call__` fits (`callable_fits`) and does not mutate a
+        readonly object. With several `__call__` variants -- `@dispatch`
+        ones, a mutable / `@readonly` pair -- C++ picks the one a call
+        through the slot runs by its own conversion and const rules, which
+        can differ from a direct call's, so none is taken."""
+        candidates = "; ".join(
+            f"({', '.join(str(self.shown_type(p.type)) for p in fi.params)}) -> "
+            f"{self.shown_type(fi.return_type)}"
+            for fi in overloads)
+        shown_expected = self.shown_type(expected)
+        hint = ""
+        if isinstance(source_expr, TpyName):
+            # Not a variant's own names: one may be the object's name.
+            names = list(itertools.islice(
+                (n for n in (f"x{i}" for i in itertools.count())
+                 if n != source_expr.name),
+                len(expected.param_types)))
+            lam = _lambda_calling(source_expr.name, names)
+            hint = f" (write '{lam}' to convert each call)"
+        if len(overloads) > 1:
+            return CompatError(
+                f"'{obj}' cannot be passed as {shown_expected} in {context}: "
+                f"it has several '__call__' variants, and a call through the "
+                f"slot may run another one than a direct call (candidates: "
+                f"{candidates}){hint}",
+                loc,
+            )
+        called = overloads[0]
+        signature = called.callable_signature
+        misfit = self.callable_misfit_reason(signature, expected, called)
+        if misfit is not None:
+            reason, lambda_converts = misfit
+            return CompatError(
+                f"'{obj}' cannot be passed as {shown_expected} in {context}: "
+                f"{reason}{hint if lambda_converts else ''}", loc)
+        # No misfit: it fits, unless the arities differ.
+        if len(signature.param_types) == len(expected.param_types):
+            if (readonly_receiver and call_mutates_receiver(called)
+                    and self.ctx.slot_step_commits()):
+                # Const inference settles an undecorated `__call__` only
+                # after every body is analyzed, so the verdict waits for it.
+                assert self.ctx.queue_readonly_receiver_check is not None
+                self.ctx.queue_readonly_receiver_check(ReadonlyReceiverCheck(
+                    called, "__call__",
+                    loc if loc is not None
+                    else self.ctx._resolve_loc(source_expr),
+                    f"'{obj}' cannot be passed as {shown_expected} in "
+                    f"{context}: its '__call__' is not readonly and the "
+                    f"object is readonly here"))
+            return None
+        return CompatError(
+            f"no '__call__' overload of '{obj}' matches {expected} "
+            f"in {context} (candidates: {candidates})",
+            loc,
+        )
 
     def _lost_override_arg_msg(self, actual: TpyType, expected: TpyType,
                                param: str | None) -> str | None:

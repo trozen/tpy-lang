@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import protocol_param_alternatives
-from ..typesys import (drop_own_marker, pointer_repr_optional, pointer_variant_union,
+from ..typesys import (contains_reference_type, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -134,7 +134,7 @@ from .iter_loans import (
     temp_arg_spelling,
 )
 from .dyn_erasure import erased_source
-from .own_copy import (contains_reference_type, copy_result_under_write,
+from .own_copy import (copy_result_under_write,
                        lost_write_message,
                        type_has_type_param, warn_value_call_binding)
 from .value_range import ValueRange

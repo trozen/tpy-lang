@@ -10,6 +10,6 @@ def apply(f: Fn[[int32], str], x: int32) -> str:
 
 def main():
     r = ReturnsInt()
-    apply(r, 5)  # tpyc: error(/no '__call__' overload .*matches/)
+    apply(r, 5)  # tpyc: error(/'ReturnsInt' cannot be passed as Fn.*: it returns int32 where str is expected/)
 
 main()

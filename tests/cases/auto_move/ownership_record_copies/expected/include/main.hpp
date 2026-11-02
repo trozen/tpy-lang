@@ -100,6 +100,8 @@ int32_t lift_arg(const A& a);
 Wrap& get_w(Holder& ho);
 // def mk_w(n: int32) -> Own[Wrap]:
 Wrap mk_w(int32_t n);
+// def fresh_w(ho: Holder) -> Own[Wrap]:
+Wrap fresh_w(const Holder& ho);
 // def lend_member(h: H, ho: Holder) -> None:
 void lend_member(H& h, Holder& ho);
 // def lend_next(h: H, ws: list[Wrap], ho: Holder) -> None:

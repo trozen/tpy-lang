@@ -151,9 +151,8 @@ and two constrained templates over unrelated protocols are unordered).
   on as every delegating shim moves it (`forward_param`: an ownership
   transfer, or a by-value one whose copy is not known cheap), a consuming
   receiver `std::move(*this).m__int(x)`). What C++ calls on its own -- a protocol
-  concept and a protocol-bounded body, a `@dynamic` adapter, a callable
-  object's `operator()`, the friend operator / `operator[]` shims, runtime
-  helpers -- reaches the plain name and sees exactly the overload set it
+  concept and a protocol-bounded body, a `@dynamic` adapter, the friend
+  operator / `operator[]` shims, runtime helpers -- reaches the plain name and sees exactly the overload set it
   always did, picking among it by C++ rules
   (BUGS.md#dispatch-method-variant-reresolved-by-cpp). A variant with a
   `Literal` parameter has no forwarder: no plain-name member could tell
@@ -783,7 +782,7 @@ lower numeric value beats higher):
 
 | # | Tier | Matches |
 |---|------|---------|
-| 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also a numeric literal at its home (an int literal at the default int width it fits, a float literal at `float`) or an int literal at a fixed width it fits, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
+| 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also a numeric literal at its home (an int literal at the default int width it fits, a float literal at `float`) or an int literal at a fixed width it fits, `None` -> `Void`, a callable whose signature fits the callable parameter unchanged (`callable_fits` with `exact`; one that fits only by a widening, `wide(x: int64)` at `Fn[[int32], int64]`, ranks in the coercion pass, so an exact overload wins over it), pending views -> resolved views. |
 | 2 | `EXACT_GENERIC_SHAPE` | Param declared with a type parameter inside a concrete outer shape: `list[T]` matching `list[int32]`, `Ptr[T]`, `tuple[T, T]`, `T \| None`, `Callable[[Rec], T]`, etc. |
 | 3 | `SUBCLASS` | A subclass argument at a base-class param: a user record (`Dog` at `Animal`), or a `Ptr` pointee (`Ptr[Dog]` at `Ptr[Animal]`, never dropping a `readonly`); an owned base (`Own[Animal]`) ranks the same, and the call then refuses the slicing move. Its cost is the MRO distance (`TypeRegistry.subclass_distance`: 1 for the first ancestor), so the nearer base wins. |
 | 4 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
@@ -1295,7 +1294,11 @@ call and reports which Fn-typed slots are filled by a *supplied*
   pure data matcher (`_match_function_to_hint_data`) that returns the
   matched `FunctionInfo` plus inferred type args without mutating the
   AST; the matcher's concrete callable type pins return TPRs for
-  named refs.
+  named refs. That type is an `Fn` even at a `Callable` parameter: a
+  named function is no erased callable, so it ranks by its own signature
+  (`choose(wide, 1)` with `wide(x: int64) -> int64` takes the
+  `Callable[[int32], int64]` variant), and the matcher reports no
+  refusal for a candidate it does not fit.
 
 Candidates that differ only in a type parameter's bound or a parameter's
 `readonly` (the value and reference overloads of `max(iterable, key)`) type

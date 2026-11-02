@@ -31,7 +31,7 @@ from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
                                  iter_yields_owned_elements, protocol_info_of)
 from ..typesys import (
-    FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
+    contains_reference_type, FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
     ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_always_borrows,
     is_callable_type, is_fn_type, is_protocol_type, type_param_names,
@@ -53,7 +53,6 @@ from .receiver_calls import (
     check_implicit_readonly_receiver, implicit_call_mutates_receiver,
     check_receiver_call_loans, credit_implicit_receiver_call,
 )
-from .own_copy import contains_reference_type
 from .protocols import protocol_is_const
 from .scope_tracker import lend_places
 

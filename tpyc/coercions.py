@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Optional
+from typing import AbstractSet, Callable, NamedTuple, Optional
 
 from .typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
@@ -13,6 +13,10 @@ from .typesys import (
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly, AnyType, same_base_type,
     VIEW_TYPE_FAMILIES, INT_TYPE_ARG_MAX,
+    VoidType, CallableType, PendingViewType, TupleType, UnionType,
+    ViewTypeFamily, unwrap_ref_type, contains_type_param,
+    view_family_of, holds_borrowing_view, contains_reference_type,
+    returns_storage_form,
 )
 from .parse.nodes import TpyCoerce, TpyExpr
 from .type_def_registry import (
@@ -252,6 +256,11 @@ class Coercion:
     # still considered widenings at this position (same as implicit int->float
     # promotion in Python arithmetic).
     widening_safe: bool = False
+    # A `widening_safe` row C++ performs implicitly and that cannot raise,
+    # so a call through a callable value can make it
+    # (`widens_without_check`). BigInt -> float / float32 is not one:
+    # CPython raises OverflowError for a huge int.
+    widens_unchecked: bool = False
     check_range: Optional[Callable[[TpyType, TpyType], bool]] = None
     # An integer into a fixed-width slot that does not hold every value of
     # the source type: the render checks the range at run time
@@ -375,6 +384,7 @@ COERCIONS: list[Coercion] = [
         to_type=is_fixed_int_type,
         type_match=_is_safe_widening,
         widening_safe=True,
+        widens_unchecked=True,
         context_free_wrap=True,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
@@ -401,6 +411,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_big_int_type,
         widening_safe=True,
+        widens_unchecked=True,
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
@@ -431,6 +442,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_float64_type,
         widening_safe=True,
+        widens_unchecked=True,
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
@@ -471,6 +483,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_float32_type,
         widening_safe=True,
+        widens_unchecked=True,
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
@@ -489,6 +502,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_float32_type,
         to_type=is_float64_type,
         widening_safe=True,
+        widens_unchecked=True,
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
@@ -886,11 +900,295 @@ def is_protocol_type_arg_widening(
         return is_float64_type(expected) or is_float32_type(expected)
     if actual == expected:
         return True
-    for c in COERCIONS:
-        if (c.widening_safe and c.from_type(actual) and c.to_type(expected)
-                and c.type_match(actual, expected)):
-            return True
-    return False
+    return _safe_widening_row(actual, expected) is not None
+
+
+def _safe_widening_row(actual: TpyType, expected: TpyType) -> Coercion | None:
+    return next((c for c in COERCIONS
+                 if c.widening_safe and c.from_type(actual)
+                 and c.to_type(expected) and c.type_match(actual, expected)),
+                None)
+
+
+def widens_without_check(actual: TpyType, expected: TpyType) -> bool:
+    """Whether a value of `actual` converts into `expected` by a numeric
+    widening C++ makes implicitly and that cannot raise (a
+    `widens_unchecked` row)."""
+    row = _safe_widening_row(actual, expected)
+    return row is not None and row.widens_unchecked
+
+
+# Whether C++ converts a reference to the first type into one to the
+# second with no adapter: the second is a class the first inherits, or a
+# @dynamic protocol its emitted struct derives from.
+Inherits = Callable[[TpyType, TpyType], bool]
+
+
+class CallableMisfit(NamedTuple):
+    """The first position at which a callable does not fit a callback slot:
+    `index` is the parameter's index, None for the return; `actual` is the
+    callable's type there, `expected` the slot's. `borrowed`: the return
+    is handed out as a reference where the slot holds its own value."""
+    index: int | None
+    actual: TpyType
+    expected: TpyType
+    borrowed: bool = False
+
+
+def _logical(t: TpyType) -> TpyType:
+    t = unwrap_ref_type(t)
+    return t.family.owned_type if isinstance(t, PendingViewType) else t
+
+
+def _view_family(t: TpyType) -> ViewTypeFamily | None:
+    """The view family whose owned type or view `t` is; None for the
+    mutable sibling (`String`), whose parameter form is its own."""
+    family = view_family_of(t)
+    if family is None or t not in (family.owned_type, family.view_type):
+        return None
+    return family
+
+
+def _union_members(t: TpyType) -> tuple[TpyType, ...] | None:
+    if isinstance(t, OptionalType):
+        inner = t.inner
+        return inner.members if isinstance(inner, UnionType) else (inner,)
+    return t.members if isinstance(t, UnionType) else None
+
+
+def _by_value(t: TpyType) -> bool:
+    """Whether every C++ form of `t` is the value itself: no `Own`, and
+    nothing inside that is a borrowing view or a reference type -- a tuple
+    of a class passes as a tuple of pointers but is held as one of
+    objects."""
+    t = unwrap_readonly(unwrap_ref_type(t))
+    return not isinstance(t, OwnType) and _holds_values(t)
+
+
+def _holds_values(t: TpyType) -> bool:
+    """Whether `t` holds no borrowing view and no reference type. A
+    `Callable` holds its target by value whatever its signature names."""
+    t = unwrap_readonly(unwrap_ref_type(t))
+    if isinstance(t, CallableType):
+        return True
+    members = _union_members(t)
+    if members is not None:
+        return all(_holds_values(m) for m in members)
+    return not (holds_borrowing_view(t)
+                or contains_reference_type(t, held_only=True))
+
+
+def _is_number(t: TpyType) -> bool:
+    return (is_fixed_int_type(t) or is_big_int_type(t)
+            or is_float64_type(t) or is_float32_type(t))
+
+
+def _tuple_received(param: TupleType, passed: TupleType) -> bool:
+    """Whether a tuple parameter receives a different tuple: each element
+    the same or a numeric widening, and both tuples numbers only, so the
+    converted copy is a numeric conversion per element, as a scalar
+    parameter's is."""
+    pairs = list(zip(param.element_types, passed.element_types))
+    return (len(param.element_types) == len(passed.element_types)
+            and all(_is_number(p) and _is_number(s)
+                    and (p == s or widens_without_check(s, p))
+                    for p, s in pairs))
+
+
+def _held_by_value(held: TpyType, value: TpyType) -> bool:
+    """Whether a position C++ holds by value (a `Callable` slot's return, a
+    union member) of type `held` takes a `value` unchanged: an equal type,
+    a numeric widening, and a by-value `value` (`_by_value`) into a by-value
+    Optional whose payload takes it or a by-value union it is a member of."""
+    if held == value or widens_without_check(value, held):
+        return True
+    if not (_by_value(value) and _by_value(held)):
+        return False
+    if isinstance(held, OptionalType):
+        return _held_by_value(held.inner, value)
+    return isinstance(held, UnionType) and value in held.members
+
+
+def _param_receives(param: TpyType, passed: TpyType, inherits: Inherits) -> bool:
+    """Whether a callable's parameter of type `param`, a reference or a view
+    in C++, binds what a slot passing `passed` hands it."""
+    if param == passed:
+        return True
+    if isinstance(param, ReadonlyType):
+        return _param_receives(param.wrapped, unwrap_readonly(passed), inherits)
+    if isinstance(passed, (ReadonlyType, OwnType)):
+        return False
+    if isinstance(param, OwnType):
+        # An owned by-value type whose parameter is no view takes what its
+        # parameter takes; `Own[str]` is a `std::string` where `str` is a
+        # view.
+        owned = _logical(param.wrapped)
+        return (_by_value(owned) and not has_view_param_form(owned)
+                and _param_receives(owned, passed, inherits))
+    if widens_without_check(passed, param):
+        return True
+    if (isinstance(param, NominalType) and isinstance(passed, NominalType)
+            and inherits(passed, param)):
+        return True
+    family = _view_family(param)
+    if family is not None:
+        # The owned type and the view share one parameter form; the owned
+        # type's parameter also binds its mutable sibling (`String`).
+        return (_view_family(passed) is family
+                or (param == family.owned_type
+                    and family.promote_param_match(passed)))
+    if isinstance(param, TupleType) and isinstance(passed, TupleType):
+        return _tuple_received(param, passed)
+    if _union_members(param) is None:
+        return False
+    # Only a by-value union holds its members by value, and only a value
+    # whose own parameter form is that value converts into it. A str /
+    # bytes value is a view there, which `str | None`'s parameter form
+    # keeps as one.
+    if has_view_param_form(passed):
+        return isinstance(param, OptionalType) and param.inner == passed
+    return _held_by_value(param, passed)
+
+
+def _param_fits(passed: TpyType, param: TpyType, exact: bool,
+                inherits: Inherits, wildcards: AbstractSet[str]) -> bool:
+    passed, param = _logical(passed), _logical(param)
+    if contains_type_param(passed, set(wildcards)) or passed == param:
+        return True
+    # A by-value type's owned form is passed as the value itself, which
+    # its parameter form binds.
+    if (isinstance(passed, OwnType) and _by_value(passed.wrapped)
+            and _logical(passed.wrapped) == param):
+        return True
+    return not exact and _param_receives(param, passed, inherits)
+
+
+def _return_form(t: TpyType) -> TpyType:
+    """`t` as its storage form tells it: `Own[T]` is `T` where it holds `T`
+    by value, and keeps its own form where it holds a pointer (a @dynamic
+    protocol)."""
+    t = _logical(t)
+    if isinstance(t, OwnType) and t.wrapped in t.held_by_value():
+        return _logical(t.wrapped)
+    return t
+
+
+def _return_fits(returned: TpyType, slot_return: TpyType, exact: bool,
+                 wildcards: AbstractSet[str]) -> bool:
+    slot_return, returned = _return_form(slot_return), _return_form(returned)
+    if contains_type_param(slot_return, set(wildcards)) or slot_return == returned:
+        return True
+    return not exact and _held_by_value(slot_return, returned)
+
+
+def owning_param(param: TpyType) -> bool:
+    """Whether a callable's parameter of type `param` takes over the value
+    it receives (`Own[X]`), which only a call handing over each value it
+    passes can feed."""
+    return isinstance(_logical(param), OwnType)
+
+
+def callable_misfit(
+    actual: CallableType, expected: CallableType,
+    *, inherits: Inherits, exact: bool = False,
+    wildcards: AbstractSet[str] = frozenset(),
+    owning: AbstractSet[int] = frozenset(),
+) -> CallableMisfit | None:
+    """The first position at which a callable of type `actual` cannot stand
+    at the callback slot `expected`, None when it fits. `actual` must have
+    the slot's arity. A named function or callable object is described by
+    its own signature as an `Fn` (`make_fn_type`): like a template
+    parameter's callable, its return is its own form; a `Callable` value is
+    a std::function, which holds its result.
+
+    A call through the slot renders no TPy conversion: each value it passes
+    must be received unchanged by the callable's parameter, and the
+    callable's return by the slot's return, as C++ receives it there. A
+    parameter (a reference or a view) receives an equal type (`Ref` set
+    aside), `T` into `readonly[T]`, a numeric widening
+    (`widens_without_check`), a subclass C++ inherits (`inherits`), a str /
+    bytes owned type or view into either (and the owned type's mutable
+    sibling into it), a tuple of numbers element by element as equal or
+    widened when both tuples hold numbers only (`_tuple_received`), and a
+    by-value union or Optional as a by-value position takes it (a str /
+    bytes value only into an Optional). A by-value position -- a
+    `Callable` slot's return, a union member -- receives an equal type, a
+    numeric widening, and a by-value type (`_by_value`: not `Own`, no
+    reference or view inside, a `Callable` whatever its signature) into a
+    by-value Optional whose payload receives it or a by-value union it is
+    a member of (`_held_by_value`), and only a return the callable hands
+    out by value (`returns_storage_form`), never a reference or a borrow
+    pointer -- unless the callable is itself a std::function, which holds
+    its result. An `Fn` slot's return is the
+    callable's own, so it must be equal; an `Own` on it still asks for a
+    return handed out by value. `Own` on a return counts as a type only
+    where it changes the storage form (a @dynamic protocol), and on a
+    parameter's value only for a by-value type; an `Own[X]` parameter
+    whose `X` is by-value and whose parameter form is no view is `X`'s
+    parameter. A void slot return takes any return. With `exact` only
+    equal positions fit. A slot position naming one of `wildcards` -- the type
+    parameters the call at hand is inferring -- fits anything. At a position
+    in `owning` the call hands over each value it passes there, so an
+    `Own[X]` parameter receives it as `Own[X]`.
+    """
+    ret = actual.return_type
+    for i, (passed, param) in enumerate(zip(expected.param_types,
+                                            actual.param_types)):
+        if i in owning and owning_param(param):
+            passed = OwnType(_logical(passed))
+        if not _param_fits(passed, param, exact, inherits, wildcards):
+            return CallableMisfit(i, param, passed)
+    slot_return = expected.return_type
+    if isinstance(slot_return, VoidType):
+        return None
+    # An Fn slot is a template parameter: a call through it has the
+    # callable's own return type, so only a std::function converts one.
+    if not _return_fits(ret, slot_return,
+                        exact or expected.is_template, wildcards):
+        return CallableMisfit(None, ret, slot_return)
+    # A std::function holds its result by value, and an `Own` slot return
+    # says the result is owned: a reference or a borrow returned into
+    # either would be copied where the caller sees the original.
+    slot_owns = (not expected.is_template
+                 or isinstance(_logical(slot_return), OwnType))
+    if (slot_owns and actual.is_template
+            and not contains_type_param(_return_form(slot_return),
+                                        set(wildcards))
+            and not returns_storage_form(ret)):
+        return CallableMisfit(None, ret, slot_return, borrowed=True)
+    return None
+
+
+def callable_fits(
+    actual: CallableType, expected: CallableType,
+    *, inherits: Inherits, exact: bool = False,
+    wildcards: AbstractSet[str] = frozenset(),
+    owning: AbstractSet[int] = frozenset(),
+) -> bool:
+    """Whether a callable of type `actual` fits the callback slot
+    `expected` (`callable_misfit`)."""
+    return (len(actual.param_types) == len(expected.param_types)
+            and callable_misfit(actual, expected, inherits=inherits,
+                                exact=exact, wildcards=wildcards,
+                                owning=owning) is None)
+
+
+def callable_value_fits(
+    actual: CallableType, expected: CallableType, *, inherits: Inherits,
+    wildcards: AbstractSet[str] = frozenset(),
+) -> bool:
+    """Whether a callable VALUE of type `actual` fits the slot `expected`
+    (`callable_fits`). A std::function converted into another of a
+    different signature builds a new wrapper, so between two erased
+    callables only an unchanged signature fits -- a void slot return
+    included."""
+    if actual.is_template or expected.is_template:
+        return callable_fits(actual, expected, inherits=inherits,
+                             wildcards=wildcards)
+    return (callable_fits(actual, expected, inherits=inherits, exact=True,
+                          wildcards=wildcards)
+            and (not isinstance(expected.return_type, VoidType)
+                 or isinstance(actual.return_type, VoidType)))
 
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionContext) -> str:

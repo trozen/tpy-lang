@@ -196,8 +196,9 @@ implemented with the coupled contract in checkpoint 4.
    (*implemented-now*) -- a lambda takes the lambda stamp, a function reference
    takes `function_ref_info` (`tpyc/parse/nodes.py:232`, the channel
    `tpyc/sema/compatibility.py:468` already reads), an annotated local or field
-   its declared slot type, a `__call__` object the overload the conformance loop
-   matched -- and for a form mismatch on a user `def` it never degrades into
+   its declared slot type, a `__call__` object its one `__call__` (an object
+   with several is refused at a callback slot, since C++ would pick among
+   them by its own rules) -- and for a form mismatch on a user `def` it never degrades into
    "'mk' is not a variable". Builtin and bound-method references (`key=len`,
    `key=str.lower`, `obj.method`) keep their current, non-conforming messages:
    out of scope here.
@@ -208,20 +209,19 @@ implemented with the coupled contract in checkpoint 4.
    each binding and joined conservatively, a join that cannot name one form
    rejecting.
 8. **The check cannot live where the qualifiers are stripped** (*implemented-now*):
-   SIX sites erase the form and must agree rather than be replaced --
-   `_check_compat`'s callable arm (`tpyc/sema/compatibility.py:620-628`),
-   `build_concrete_callable` (`tpyc/sema/expressions.py:4291`, `:4300`, which
-   strips `Own` but PRESERVES `Ref` by design, `:4299-4303`, so it erases the
-   FRESH half only), `_concrete_fn_type` (`:4278`),
-   `_match_function_to_hint_data` accepting `Own[Node]` against a bare `Node`
-   hint (`:4364-4374`), `_classify_strict_match`'s `_strip`
-   (`tpyc/sema/overloads.py:235`, `:252-269`) and `_structural_match` (`:102`),
-   whose callable arm (`:118-121`) strips `Own`/`Ref` off both sides of the
-   callable return and whose readonly arm (`:113-114`) erases the permission
-   dimension rule 5 weakens along. The check joins at the ARGUMENT-COERCE SITE
-   with the source in hand;
-   `_callable_signature_satisfies` (`compatibility.py:2472`) is no chokepoint,
-   reached only from the `__call__` branch.
+   every site that decides whether a callable fits a callable slot reads one
+   predicate, `callable_misfit` / `callable_fits` (`tpyc/coercions.py`) --
+   `_check_compat`'s callable arm and its `__call__` arm
+   (`tpyc/sema/compatibility.py`), `_match_function_to_hint_data` and
+   `_infer_generic_ref_type_args` (`tpyc/sema/expressions.py`), callable
+   inference in `match_type_with_inference` (`tpyc/sema/type_ops.py`), and
+   overload ranking's `_structural_match`, `_classify_strict_match` and
+   `type_matches_with_coercion` (`tpyc/sema/overloads.py`). The predicate sets
+   `Ref` aside, and `Own` on a return only where the C++ form stays the same,
+   so it erases the borrow/fresh form like the sites it replaced;
+   `build_concrete_callable` (`tpyc/sema/expressions.py`) strips `Own` but
+   PRESERVES `Ref` on the return by design. The check joins at the
+   ARGUMENT-COERCE SITE with the source in hand.
 
 **(f) The erased `Callable`.**
 

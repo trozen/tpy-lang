@@ -36,12 +36,12 @@ from ..parse.nodes import (TpyCall, TpyComprehensionGenerator, TpyExpr,
 from ..prescan import loop_bindings_of
 from ..type_def_registry import has_view_param_form
 from ..typesys import (FrameType, OptionalType, TpyType,
+                       contains_reference_type, inner_type_param_names,
                        TupleType, UnionType, is_dyn_protocol,
                        is_ptr_variant_union, param_takes_ownership,
                        pointer_repr_optional, unwrap_qualifiers,
                        unwrap_ref_type, unwrap_send_sync)
 from .binding_ownership import ReadBinding, ReadKind
-from .own_copy import contains_reference_type, type_param_names
 
 if TYPE_CHECKING:
     from .context import FunctionTrackingState, SemanticContext
@@ -171,7 +171,7 @@ def classify_capture(ctx: 'SemanticContext', name: str,
     if (contains_reference_type(bare, open_params_as_values=True,
                                 held_only=True)
             and not capture_holds_pointer(ctx.func, name, ctype, binding)
-            and not type_param_names(bare)
+            and not inner_type_param_names(bare)
             and not is_dyn_protocol(bare)
             and _holds_by_value(ctx, name, binding, bare)):
         return CaptureCopy.DEFINITE

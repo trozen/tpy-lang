@@ -8,12 +8,12 @@ namespace tpyapp::main {
 //     a = Adder(10)
 //     print(a(1))
 //     print(a(1, 2))
-//     use(a)
+//     use(lambda x: a(x))
 void main() {
     Adder a = Adder(10);
     std::cout << a.__call____int32(1) << "\n" << ::tpy::check_signals;
     std::cout << a.__call____int32__int32(1, 2) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::use(a);
+    ::tpyapp::main::use([&a](int32_t x) -> int32_t { return a.__call____int32(x); });
 }
 
 // main()

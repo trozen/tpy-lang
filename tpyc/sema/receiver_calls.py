@@ -33,8 +33,8 @@ from ..typesys import (
     receiver_lends_handle,
 )
 from .context import (
-    call_param_args, element_index_key, element_loan_mutation_warning,
-    storage_loan_mutation_warning,
+    ReadonlyReceiverCheck, call_param_args, element_index_key,
+    element_loan_mutation_warning, storage_loan_mutation_warning,
 )
 from .storage_walk import MarkRequest, StorageKey, mark_roots, receiver_leaves
 
@@ -461,7 +461,8 @@ def check_implicit_readonly_receiver(
             f"Cannot call non-readonly method '{method}' on readonly reference",
             site)
     assert ctx.queue_readonly_receiver_check is not None
-    ctx.queue_readonly_receiver_check((callee, method, site))
+    ctx.queue_readonly_receiver_check(ReadonlyReceiverCheck(
+        callee, method, ctx._resolve_loc(site)))
 
 
 def credit_implicit_receiver_call(

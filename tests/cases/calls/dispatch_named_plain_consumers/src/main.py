@@ -108,8 +108,11 @@ def main() -> None:
     # @dynamic adapter: the slot is a single def beside a set of another name.
     print("dynamic:", total_area(sq))  # tpyc: ok
     a = Adder(10)
-    # Callable: the callable object's `operator()` forwards to the plain name.
-    print("callable:", apply(a), a(1), a("xyz"))  # tpyc: ok
+    # Callable: an object with several __call__ variants is refused at a
+    # callback slot, so a lambda calls the variant a direct call picks.
+    # The lambda copies `a` when it is created (warned), the same copy a
+    # Callable makes of any object (BUGS.md#stateful-callable-store-copy-silent).
+    print("callable:", apply(lambda x: a(x)), a(1), a("xyz"))  # tpyc: warning(/copies the object 'a' refers to/)
 
 
 main()

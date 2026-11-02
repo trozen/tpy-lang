@@ -29,8 +29,11 @@ int32_t apply(const std::function<int32_t(int32_t)>& f) {
 //     # @dynamic adapter: the slot is a single def beside a set of another name.
 //     print("dynamic:", total_area(sq))  # tpyc: ok
 //     a = Adder(10)
-//     # Callable: the callable object's `operator()` forwards to the plain name.
-//     print("callable:", apply(a), a(1), a("xyz"))  # tpyc: ok
+//     # Callable: an object with several __call__ variants is refused at a
+//     # callback slot, so a lambda calls the variant a direct call picks.
+//     # The lambda copies `a` when it is created (warned), the same copy a
+//     # Callable makes of any object (BUGS.md#stateful-callable-store-copy-silent).
+//     print("callable:", apply(lambda x: a(x)), a(1), a("xyz"))  # tpyc: warning(/copies the object 'a' refers to/)
 void main() {
     std::array<Key, 3> ks = {Key(3), Key(1), Key(2)};
     std::cout << "sorted:" << " " << ::tpy::ListPrinter(({
@@ -53,7 +56,7 @@ void main() {
     ::tpy::RefAdapter<Shape, Sq> __tmp_1{sq};
     std::cout << "dynamic:" << " " << ::tpyapp::main::total_area(__tmp_1) << "\n" << ::tpy::check_signals;
     Adder a = Adder(10);
-    std::cout << "callable:" << " " << ::tpyapp::main::apply(a) << " " << a.__call____int32(1) << " " << a.__call____str("xyz") << "\n" << ::tpy::check_signals;
+    std::cout << "callable:" << " " << ::tpyapp::main::apply([a](int32_t x) -> int32_t { return a.__call____int32(x); }) << " " << a.__call____int32(1) << " " << a.__call____str("xyz") << "\n" << ::tpy::check_signals;
 }
 
 // main()

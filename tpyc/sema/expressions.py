@@ -76,7 +76,7 @@ from ..type_def_registry import (
 from ..namespace import BindingKind
 from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
-from ..coercions import CoercionContext, resolve_coercion
+from ..coercions import CoercionContext, resolve_coercion, callable_fits
 from ..prescan import (
     expr_to_narrowing_key, bound_names_of, fold_int_constant,
     int_constant_too_wide, storage_spelling, walrus_names_of)
@@ -1832,7 +1832,7 @@ class ExpressionAnalyzer:
 
         # Named function reference with Fn/Callable hint: resolve as function value.
         if isinstance(expr, TpyName) and is_callable_type(lambda_hint):
-            result = self._try_resolve_function_ref(expr, lambda_hint)
+            result = self._try_resolve_function_ref(expr, lambda_slot)
             ref = expr.function_ref_info if result is not None else None
             if (isinstance(result, CallableType) and ref is not None
                     and self._hint_converts_int(
@@ -7573,13 +7573,15 @@ class ExpressionAnalyzer:
     # --- Function references ---
 
     def _try_resolve_function_ref(
-        self, expr: TpyName, hint: CallableType,
+        self, expr: TpyName, slot: SlotHint,
     ) -> CallableType | None:
         """Try to resolve a name as a function reference matching an Fn/Callable hint.
 
         Returns a concrete Fn/Callable type if a matching function is found,
         None to fall through to normal name analysis.
         """
+        hint = slot.type
+        assert isinstance(hint, CallableType)
         # Look up in namespace -- variables shadow functions
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.name)
@@ -7588,7 +7590,7 @@ class ExpressionAnalyzer:
                     return None  # local variable shadows any function
                 if binding.kind == BindingKind.FUNCTION and binding.func_infos:
                     matched_data = self._match_function_to_hint_data(
-                        binding.func_infos, hint, expr.name, expr)
+                        binding.func_infos, slot, expr.name, expr)
                     if matched_data is not None:
                         matched, type_args = matched_data
                         if type_args is not None:
@@ -7613,7 +7615,7 @@ class ExpressionAnalyzer:
         func_infos = self.ctx.registry.get_function(expr.name)
         if func_infos:
             matched_data = self._match_function_to_hint_data(
-                func_infos, hint, expr.name, expr)
+                func_infos, slot, expr.name, expr)
             if matched_data is not None:
                 matched, type_args = matched_data
                 if type_args is not None:
@@ -7635,40 +7637,70 @@ class ExpressionAnalyzer:
         """
         if not contains_type_param(hint):
             return hint
-        return self.build_concrete_callable(fi, expr.function_ref_type_args, hint)
+        return self.build_concrete_callable(fi, expr.function_ref_type_args,
+                                            hint.is_template)
 
     def build_concrete_callable(
         self, fi: FunctionInfo,
         type_args: tuple[TpyType, ...] | None,
-        hint: CallableType,
+        template: bool,
     ) -> CallableType:
-        """Concrete Fn/Callable from `fi`'s actual signature, optionally
-        substituted with `type_args`.
+        """`fi`'s own signature (`callable_signature`), optionally
+        substituted with `type_args`, as an `Fn` when `template`, else a
+        `Callable`.
 
-        Strips Ref from param types and Own from return type -- the Fn
-        type represents the logical callable contract. Ref on return
-        type IS preserved so type inference can track reference
-        semantics through combinators (e.g. map(identity, pts) infers
-        U=Ref[Point] -> val_or_ref<Point>). Shape mirrors `hint` -- Fn
-        if template, Callable otherwise.
+        Strips Ref from param types. The return is what a call through
+        a callable hands back (`callable_return_type`): an `Own` on it
+        says the result is fresh, which the callable fit reads, and Ref
+        IS preserved so type inference can track reference semantics
+        through combinators (e.g. map(identity, pts) infers
+        U=Ref[Point] -> val_or_ref<Point>).
         """
-        param_types = tuple(unwrap_ref_type(ptype) for _, ptype in fi.params)
-        return_type = unwrap_own(fi.return_type)
-        if fi.is_generic() and type_args:
-            subst = dict(zip(fi.type_params, type_args))
-            param_types = tuple(
-                self.type_ops.substitute_type_params(p, subst) for p in param_types
-            )
-            return_type = self.type_ops.substitute_type_params(return_type, subst)
-        if hint.is_template:
-            return make_fn_type(param_types, return_type)
-        return CallableType(param_types, return_type)
+        own = fi.callable_signature
+        # Stripped before substituting: a type argument `Ref[X]` stays
+        # `Ref[X]` at a parameter, as inference reads it.
+        signature = self._at_type_args(fi, make_fn_type(
+            tuple(unwrap_ref_type(p) for p in own.param_types),
+            own.return_type), type_args)
+        if template:
+            return signature
+        return CallableType(signature.param_types, signature.return_type)
+
+    def fit_signature(
+        self, fi: FunctionInfo, type_args: tuple[TpyType, ...] | None,
+    ) -> CallableType:
+        """`fi`'s own signature (`callable_signature`) at `type_args`: the
+        one form every callable fit of a named function reads, as a
+        `__call__`'s does -- `callable_misfit` sets a parameter's `Ref`
+        aside itself."""
+        return self._at_type_args(fi, fi.callable_signature, type_args)
+
+    def _at_type_args(
+        self, fi: FunctionInfo, signature: CallableType,
+        type_args: tuple[TpyType, ...] | None,
+    ) -> CallableType:
+        """`signature`, an `Fn` of generic `fi`, substituted with
+        `type_args`; unchanged for a non-generic `fi` or no `type_args`."""
+        if not (fi.is_generic() and type_args):
+            return signature
+        subst = dict(zip(fi.type_params, type_args))
+        return make_fn_type(
+            tuple(self.type_ops.substitute_type_params(p, subst)
+                  for p in signature.param_types),
+            self.type_ops.substitute_type_params(signature.return_type, subst))
 
     def _match_function_to_hint_data(
-        self, func_infos: list[FunctionInfo], hint: CallableType,
+        self, func_infos: list[FunctionInfo], slot: SlotHint,
         name: str, err_node: TpyName,
+        probing: bool = False,
     ) -> tuple[FunctionInfo, tuple[TpyType, ...] | None] | None:
-        """Find a function overload matching the Fn/Callable hint signature.
+        """Find a function overload matching the Fn/Callable hint signature
+        of `slot`; what the call at hand adds for `err_node`
+        (`SlotHint.callable_fit_at`) -- the hint's type parameters it is
+        still inferring, the positions it hands each element over at -- is
+        read by `callable_misfit`. A function that does not fit is
+        refused with its reason, unless `probing` (an overload candidate's
+        hint, which another candidate may fit).
 
         Pure data lookup: returns ``(matched_fi, inferred_type_args)`` on a
         unique match (``type_args`` is ``None`` for non-generic matches),
@@ -7682,8 +7714,11 @@ class ExpressionAnalyzer:
         ``function_ref_info``, ``function_ref_type_args``) commit those
         themselves after a winning candidate is chosen.
         """
+        hint = slot.type
+        assert isinstance(hint, CallableType)
+        fit = slot.callable_fit_at(err_node)
+        wildcards, owning = fit.open_params, fit.owning
         hint_params = hint.param_types
-        hint_return = hint.return_type
         # Each candidate is (FunctionInfo, inferred_type_args_or_None)
         candidates: list[tuple[FunctionInfo, tuple[TpyType, ...] | None]] = []
         # Track first generic rejection for diagnostics
@@ -7692,36 +7727,28 @@ class ExpressionAnalyzer:
             if len(fi.params) != len(hint_params):
                 continue
             if fi.is_generic():
-                type_args, rejection = self._infer_generic_ref_type_args(fi, hint)
+                type_args, rejection = self._infer_generic_ref_type_args(
+                    fi, hint, wildcards, owning, probing)
                 if type_args is not None:
                     candidates.append((fi, type_args))
                 elif rejection is not None and generic_rejection is None:
                     generic_rejection = rejection
                 continue
-            match = True
-            for (_, ptype), htype in zip(fi.params, hint_params):
-                if isinstance(htype, TypeParamRef):
-                    continue  # unresolved type param in hint -- wildcard match
-                if ptype != htype:
-                    try:
-                        self.compat.check_type_compatible(htype, ptype, "param")
-                    except SemanticError:
-                        match = False
-                        break
-            if not match:
-                continue
-            if fi.return_type != hint_return:
-                if isinstance(hint_return, (VoidType, TypeParamRef)):
-                    # VoidType: Python semantics (callers discard the return value)
-                    # TypeParamRef: unresolved type param in hint -- wildcard match
-                    pass
-                else:
-                    try:
-                        self.compat.check_type_compatible(fi.return_type, hint_return, "return")
-                    except SemanticError:
-                        continue
-            candidates.append((fi, None))
+            if callable_fits(self.fit_signature(fi, None), hint,
+                             inherits=self.type_ops.inherits_in_cpp,
+                             wildcards=wildcards, owning=owning):
+                candidates.append((fi, None))
         if len(candidates) == 1:
+            # A candidate whose signature fits can still be refused (a
+            # generator): an overloaded callee picks it by signature, and
+            # its commit says why.
+            fi, type_args = candidates[0]
+            if not probing:
+                refusal = self.compat.callable_ref_refusal(
+                    name, fi, self.fit_signature(fi, type_args), hint,
+                    wildcards, owning)
+                if refusal is not None:
+                    raise self.ctx.error(refusal, err_node)
             return candidates[0]
         if len(candidates) > 1:
             raise self.ctx.error(
@@ -7730,28 +7757,45 @@ class ExpressionAnalyzer:
         # No match -- emit generic rejection diagnostic if we have one
         if generic_rejection is not None:
             raise self.ctx.error(generic_rejection, err_node)
+        if probing:
+            return None
+        for fi in func_infos:
+            if len(fi.params) == len(hint_params) and not fi.is_generic():
+                refusal = self.compat.callable_ref_refusal(
+                    name, fi, self.fit_signature(fi, None), hint,
+                    wildcards, owning)
+                if refusal is not None:
+                    raise self.ctx.error(refusal, err_node)
         # Return None to fall through (might be a variable, not a function)
         return None
 
     def _infer_generic_ref_type_args(
         self, fi: FunctionInfo, hint: CallableType,
+        wildcards: frozenset[str] = frozenset(),
+        owning: frozenset[int] = frozenset(),
+        probing: bool = False,
     ) -> tuple[tuple[TpyType, ...] | None, str | None]:
-        """Try to infer type parameters for a generic function from an Fn/Callable hint.
+        """Try to infer type parameters for a generic function from an
+        Fn/Callable hint: positions naming the function's type parameters
+        bind them, then the substituted signature must fit the hint
+        (`callable_fits`).
 
         Returns (inferred_type_args, None) on success,
-        (None, rejection_message) on bound or inference failure,
+        (None, rejection_message) on bound or inference failure or a
+        substituted signature only a lambda would convert,
         (None, None) on type mismatch (not a candidate at all).
         """
+        own = set(fi.type_params)
         inferred: dict[str, TpyType] = {}
-        # Match each function param type against the hint param type
         for (_, ptype), htype in zip(fi.params, hint.param_types):
-            if not self.type_ops.match_type_with_inference(ptype, htype, inferred):
+            if (contains_type_param(ptype, own)
+                    and not self.type_ops.match_type_with_inference(ptype, htype, inferred)):
                 return None, None
-        # Match return type (unless hint is void -- any return is acceptable)
-        if not isinstance(hint.return_type, VoidType):
-            if not self.type_ops.match_type_with_inference(fi.return_type, hint.return_type, inferred):
-                return None, None
-        # Check all type params were inferred
+        if (not isinstance(hint.return_type, VoidType)
+                and contains_type_param(fi.return_type, own)
+                and not self.type_ops.match_type_with_inference(
+                    fi.return_type, hint.return_type, inferred)):
+            return None, None
         unresolved = [tp for tp in fi.type_params if tp not in inferred]
         if unresolved:
             return None, (
@@ -7759,7 +7803,6 @@ class ExpressionAnalyzer:
                 f"cannot infer type parameter(s) {', '.join(unresolved)} "
                 f"from {hint}"
             )
-        # Validate type parameter bounds
         for param_name, bound_arg in inferred.items():
             if param_name in fi.type_param_bounds:
                 bound = fi.type_param_bounds[param_name]
@@ -7778,7 +7821,17 @@ class ExpressionAnalyzer:
                     f"{param_name}={bound_arg}: the type argument is not "
                     f"resolved (use a lambda instead)"
                 )
-        return tuple(inferred[tp] for tp in fi.type_params), None
+        type_args = tuple(inferred[tp] for tp in fi.type_params)
+        signature = self.fit_signature(fi, type_args)
+        if not callable_fits(signature, hint,
+                             inherits=self.type_ops.inherits_in_cpp,
+                             wildcards=wildcards, owning=owning):
+            if probing:
+                return None, None
+            refusal = self.compat.callable_ref_refusal(
+                fi.name, fi, signature, hint, wildcards, owning)
+            return None, refusal
+        return type_args, None
 
 
 def _text_spec_error(fields: FormatSpecFields) -> str | None:

@@ -1,0 +1,50 @@
+named-fn 6
+named-callable 6
+imported 7
+generic 7
+nested 4
+bigint 5000000000000
+int-float 1.5
+float 1.5
+ret-widen 200
+void slot saw 4
+callable-local 6
+callable-param 5
+object 15
+object-callable 15
+object-readonly 105
+ctor 7
+method 7
+local 10
+list 2 3
+return 11
+key 4
+readonly 1
+optional 8
+optional-str 3
+subclass 10
+dynamic 12
+strview 5
+string 3
+union int 42
+tuple 3
+dispatch 6 6
+choose 2
+lambda 2000000000
+ret-optional 3
+ret-union 4
+ret-widen-optional 6
+optional-widen 15
+bytearray 3
+own-str-map [3, 3]
+object-readonly-inferred 15
+tuple-bigint 20
+own-number 8
+own-bigint 1
+own-widen 8
+optional-callable 7
+object-readonly-inferred-callable 20
+ptr-return 5
+callable-exact callable 2
+callable-exact-named callable 2
+async-fn-own 6
