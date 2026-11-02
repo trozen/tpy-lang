@@ -559,7 +559,7 @@ int32_t while_walrus_or_else() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
-        total = std::move(c);
+        total = c;
     }
     __after_else_0:;
     return total;

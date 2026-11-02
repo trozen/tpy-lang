@@ -33,7 +33,7 @@ inside THIR emit).
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Set as AbstractSet
+from collections.abc import Iterable, Mapping, Sequence, Set as AbstractSet
 from dataclasses import fields as dc_fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
@@ -134,8 +134,11 @@ from ..frame import (
     THIRWithEnter,
     THIRWithRegion,
     THIRYieldSuspension,
+    stmt_slots,
+    terminator_slots,
 )
 from .checks import (
+    BindingSource,
     _module_qual_ctor_shape,
     _assert_narrow_info,
     _ctor_shape_ok,
@@ -144,7 +147,7 @@ from .checks import (
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
-                      SlotPlacement,
+                      SlotPlacement, _walrus_nodes,
                       async_payload_slot, result_hosts_temps, yield_slot,
                       _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_FRAME_FACTORY,
@@ -1885,8 +1888,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # `g = v;` as a sync body's (global writes are function-kind-blind).
     _seed_global_scope(func, analyzer, lc, declared, native_globals or {})
 
-    # Pass 1 -- scope registration. Each frame-field decl (and each await
-    # bind on a fresh name) registers its FIRST decl's type, in BB-id order.
+    # Pass 1 -- scope registration. Each frame-field decl or walrus (and
+    # each await bind on a fresh name) registers its FIRST decl's type, in
+    # BB-id order.
     # Registering while lowering is not enough: the CFG builder allocates
     # join BBs BEFORE the body BBs they join (try bodies, if arms past a
     # suspension), so a leaf in the join can read a name whose decl lives in
@@ -1898,6 +1902,33 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # finally bodies are frame code outside cfg.blocks, lowered by the same
     # leaf arms, so they register too -- after the blocks, keeping a block
     # decl the first one.
+    def _register_first_decls(
+            decls: Sequence[TpyVarDecl | BindingSource]) -> None:
+        for decl in decls:
+            if decl.name in frame_fields and decl.name not in declared:
+                declared[decl.name] = _var_decl_type(decl, analyzer)
+                # A value-repr `Optional[scalar]` frame field is the same
+                # bare `std::optional<T>` binding a sync local declares, but
+                # pass 1 has already put it in `declared`, so the decl arm
+                # reads as a reassign and never registers it. Register here
+                # so its reads take the binding-keyed value-opt arms.
+                frame_setup.append(
+                    (decl.name, declared[decl.name], "first_decl"))
+
+    def _walrus_decls(exprs: Iterable[TpyExpr]) -> list[BindingSource]:
+        # A walrus is its target's declaration from its value, as on the
+        # sync path.
+        return [BindingSource(w.target, w.value, w.loc)
+                for e in exprs for w in _walrus_nodes(e)]
+
+    def _own_exprs(src: object) -> list[TpyExpr]:
+        if isinstance(src, TpyExpr):
+            return [src]
+        if isinstance(src, TpyStmt):
+            return src.exprs()
+        return [e for slot, _role in stmt_slots(src)
+                for e in _own_exprs(slot.source)]
+
     def _register_stmts(bb_stmts: list[TpyStmt]) -> None:
         # Nested walk: a branch-nested first decl registers its frame field
         # too (the dispatch's plain frame-field arm lowers it; later BBs
@@ -1905,18 +1936,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # recursive walk is equivalent to the old top-level scan.
         top_level = IdentitySet(bb_stmts)
         for stmt in _iter_nested_stmts(bb_stmts):
-            if (isinstance(stmt, TpyVarDecl) and stmt.init is not None
-                    and stmt.name in frame_fields
-                    and stmt.name not in declared):
-                declared[stmt.name] = _var_decl_type(stmt, analyzer)
-                # A value-repr `Optional[scalar]` frame field is the same
-                # bare `std::optional<T>` binding a sync local declares, but
-                # pass 1 has already put it in `declared`, so the decl arm
-                # reads as a reassign and never registers it. Register here
-                # so its reads take the binding-keyed value-opt arms.
-                frame_setup.append(
-                    (stmt.name, declared[stmt.name], "first_decl"))
-            elif (isinstance(stmt, TpyTupleUnpack)
+            if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+                _register_first_decls([stmt])
+            _register_first_decls(_walrus_decls(_own_exprs(stmt)))
+            if (isinstance(stmt, TpyTupleUnpack)
                     and stmt in top_level):
                 # TOP-LEVEL frame-target unpack: register the targets from
                 # the sema local types (the same source the frame
@@ -1947,6 +1970,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         bb = cfg.blocks[bb_id]
         _register_stmts(_block_sources(bb.stmts))
         t = bb.terminator
+        # A terminator's own expression (a condition, a yield or await
+        # operand) may bind a walrus too.
+        _register_first_decls(_walrus_decls(
+            e for slot, _role in terminator_slots(t)
+            for e in _own_exprs(slot.source)))
         if isinstance(t, THIRSuspend) and isinstance(t.payload,
                                                     THIRAwaitSuspension):
             # A VARDECL-kind bind (`x = await f()` on a fresh name) or an

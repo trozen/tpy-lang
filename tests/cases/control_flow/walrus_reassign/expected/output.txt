@@ -8,3 +8,33 @@ asd!
 3
 7 3
 while_rebind 6 bb!
+iter_live ab!
+iter_live kept ab!
+reversed_live !ba
+reversed_live kept ab!
+opt_iter_live ab?
+opt_iter_live kept ab?
+method_iter_live cd?
+method_iter_live kept cd?
+gen_opt 0
+gen_opt 5
+gen_stmt_opt 0
+gen_stmt_opt 5
+gen_stmt_opt 4
+gen_stmt_opt none 0
+gen_opt_big 0
+gen_opt_big 50
+async_opt 7
+own_sinks 3 e! f# g
+big_append 1 8
+er_iter a
+er_iter b
+er_iter !
+er_iter kept ab!
+ref_movers 11 1
+opt_value_append 1
+any_arg h!
+any_append h?
+any_arg h#
+unpack_value 2
+unpack_value 1 9

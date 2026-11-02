@@ -2926,6 +2926,69 @@ def test_every_exception_and_forced_row_names_its_reason() -> None:
     assert M.TRIVIAL_VALUE.slug is None and M.BY_VALUE_OPTIONAL.forced
 
 
+_VALUE_LOCAL_PROGRAM = '''
+from tpy import int32, ValueType, error_return, ReturnException
+class E(Exception, ReturnException):
+    pass
+class V(ValueType):
+    n: int
+    def __init__(self, n: int) -> None:
+        self.n = n
+@error_return(E)
+def make_big(n: int) -> int:
+    return n + 1
+def make_v(n: int) -> Own[V] | None:
+    return V(n)
+def walrus(xs: list[str]) -> str:
+    kept = ""
+    if len(w := xs[0] + "!") > 0:
+        it = iter(w)
+        kept = w
+        for ch in it:
+            print(ch)
+    return kept
+@error_return(E)
+def movers(n: int, out: list[int], vs: list[V | None]) -> None:
+    big = make_big(n)
+    out.append(big)
+    r = make_v(n)
+    vs.append(r)
+@error_return(E)
+def make_p(n: int) -> Own[P]:
+    return P(n)
+def make_op(n: int) -> Own[P] | None:
+    return P(n)
+@error_return(E)
+def ref_movers(n: int, out: list[P], ops: list[P | None]) -> None:
+    p = make_p(n)
+    out.append(p)
+    q = make_op(n)
+    ops.append(q)
+'''
+
+
+def test_a_value_typed_local_is_no_move_source() -> None:
+    # A value-typed local is no move source at every rung, the explicit
+    # call-result ones included; a reference-typed local still moves.
+    func, table = _plan(_VALUE_LOCAL_PROGRAM, "walrus")
+    w = _rec(table, "w", "walrus")
+    assert (w.move_exception, w.movable) == (M.VIEWFAM_VALUE, False)
+    func, table = _plan(_VALUE_LOCAL_PROGRAM, "movers")
+    big = _rec(table, "big", "decl")
+    assert big.construct == C.ER_BIND
+    assert (big.move_exception, big.movable) == (M.OWNED_VALUE, False)
+    r = _rec(table, "r", "decl")
+    assert r.construct == C.OPT_RECORD_CALL
+    assert (r.move_exception, r.movable) == (M.TRIVIAL_VALUE, False)
+    func, table = _plan(_VALUE_LOCAL_PROGRAM, "ref_movers")
+    p = _rec(table, "p", "decl")
+    assert (p.construct, p.move_exception, p.movable) == (
+        C.ER_BIND, None, True)
+    q = _rec(table, "q", "decl")
+    assert (q.construct, q.move_exception, q.movable) == (
+        C.OPT_RECORD_CALL, None, True)
+
+
 _ROWS_PROGRAM_3 = _PRELUDE + '''
 from typing import Iterator
 from tpy import int32, readonly

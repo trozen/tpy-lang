@@ -4,17 +4,271 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
+struct Picker;
+struct Fail;
+struct V;
+struct R;
+
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_opt;
+struct __gen_gen_opt_big;
+struct __gen_gen_stmt_opt;
+struct __coro_async_opt;
 
 // def while_rebind_int(xs: list[int32]) -> int32:
 int32_t while_rebind_int(const std::vector<int32_t>& xs);
 // def while_rebind_str(xs: list[str]) -> str:
 std::string while_rebind_str(const std::vector<std::string>& xs);
+// def iter_live(xs: list[str]) -> str:
+std::string iter_live(const std::vector<std::string>& xs);
+// def reversed_live(xs: list[str]) -> str:
+std::string reversed_live(const std::vector<std::string>& xs);
+// def pick(xs: list[str]) -> str | None:
+std::optional<std::string> pick(const std::vector<std::string>& xs);
+// def opt_iter_live(xs: list[str]) -> str:
+std::string opt_iter_live(const std::vector<std::string>& xs);
+// def opt_i(k: int32) -> int32 | None:
+std::optional<int32_t> opt_i(int32_t k);
+// def gen_opt(k: int32) -> Iterator[int32]:
+__gen_gen_opt gen_opt(int32_t k);
+// def opt_big(k: int) -> int | None:
+std::optional<::tpy::BigInt> opt_big(const ::tpy::BigInt& k);
+// def gen_opt_big(k: int) -> Iterator[int]:
+__gen_gen_opt_big gen_opt_big(::tpy::BigInt k);
+// def gen_stmt_opt(k: int32) -> Iterator[int32]:
+__gen_gen_stmt_opt gen_stmt_opt(int32_t k);
+// async def async_opt(k: int32) -> int32:
+__coro_async_opt async_opt(int32_t k);
+// def take_own(s: Own[str], out: list[str]) -> None:
+void take_own(std::string s, std::vector<std::string>& out);
+// def own_arg(xs: list[str], out: list[str]) -> None:
+void own_arg(const std::vector<std::string>& xs, std::vector<std::string>& out);
+// def own_append(xs: list[str], out: list[str]) -> None:
+void own_append(const std::vector<std::string>& xs, std::vector<std::string>& out);
+// @error_return(Fail)
+// def make_big(n: int) -> int:
+std::expected<::tpy::BigInt, Fail> make_big(const ::tpy::BigInt& n);
+// @error_return(Fail)
+// def big_append(n: int, out: list[int]) -> None:
+std::expected<void, Fail> big_append(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>& out);
+// @error_return(Fail)
+// def make_s(x: str) -> str:
+std::expected<std::string, Fail> make_s(std::string_view x);
+// @error_return(Fail)
+// def er_iter(x: str) -> None:
+std::expected<void, Fail> er_iter(std::string_view x);
+// def make_v(n: int) -> Own[V] | None:
+std::optional<V> make_v(const ::tpy::BigInt& n);
+// def opt_value_append(n: int, out: list[V | None]) -> None:
+void opt_value_append(const ::tpy::BigInt& n, std::vector<std::optional<V>>& out);
+// @error_return(Fail)
+// def make_r(n: int) -> Own[R]:
+std::expected<R, Fail> make_r(const ::tpy::BigInt& n);
+// @error_return(Fail)
+// def ref_movers(n: int, out: list[R]) -> None:
+std::expected<void, Fail> ref_movers(const ::tpy::BigInt& n, std::vector<R>& out);
+// def take_any(v: Any) -> None:
+void take_any(::tpy::Any v);
+// def any_sinks(xs: list[str]) -> Any:
+::tpy::Any any_sinks(const std::vector<std::string>& xs);
+// def unpack_value(p: tuple[Own[V], int32], out: list[V]) -> None:
+void unpack_value(std::tuple<V, int32_t>&& p, std::vector<V>& out);
 // def main() -> None:
 void main();
 
+// class Picker:
+struct Picker {
+    // calls: int32
+    int32_t calls;
+
+    // def __init__(self) -> None:
+    Picker();
+
+    // def first_live(self, xs: list[str]) -> str:
+    std::string first_live(const std::vector<std::string>& xs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Picker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
+    ::tpy::print_object_default(os, Picker::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Fail(Exception, ReturnException):
+struct Fail : ::tpy::ReturnException {
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Fail";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
+    ::tpy::print_object_default(os, Fail::__tpy_class_name__, obj);
+    return os;
+}
+
+// class V(ValueType):
+struct V {
+    // n: int
+    ::tpy::BigInt n;
+
+    // def __init__(self, n: int) -> None:
+    V() = default;
+    explicit V(const ::tpy::BigInt& n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.V";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const V& obj) {
+    ::tpy::print_object_default(os, V::__tpy_class_name__, obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::V> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class R:
+struct R {
+    // n: int
+    ::tpy::BigInt n;
+
+    // def __init__(self, n: int) -> None:
+    R() = default;
+    explicit R(const ::tpy::BigInt& n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.R";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const R& obj) {
+    ::tpy::print_object_default(os, R::__tpy_class_name__, obj);
+    return os;
+}
+
+// async def async_opt(k: int32) -> int32:
+struct __coro_async_opt {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t k;
+    std::optional<int32_t> x;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_async_opt(int32_t k_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          k(std::move(k_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_opt&) {
+        return os << "<coroutine async_opt>";
+    }
+};
+
+// def gen_opt(k: int32) -> Iterator[int32]:
+struct __gen_gen_opt : public ::tpy::next_iter_mixin<__gen_gen_opt, int32_t> {
+    ::tpy::frame_state __state;
+    int32_t k;
+    std::optional<int32_t> x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_opt(int32_t k_)
+        : __state(S_INITIAL),
+          k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_opt& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_opt&) {
+        return os << "<generator gen_opt>";
+    }
+};
+
+// def gen_opt_big(k: int) -> Iterator[int]:
+struct __gen_gen_opt_big : public ::tpy::next_iter_mixin<__gen_gen_opt_big, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::BigInt k;
+    std::optional<::tpy::BigInt> x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_opt_big(::tpy::BigInt k_)
+        : __state(S_INITIAL),
+          k(std::move(k_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_opt_big& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_opt_big&) {
+        return os << "<generator gen_opt_big>";
+    }
+};
+
+// def gen_stmt_opt(k: int32) -> Iterator[int32]:
+struct __gen_gen_stmt_opt : public ::tpy::next_iter_mixin<__gen_gen_stmt_opt, int32_t> {
+    ::tpy::frame_state __state;
+    int32_t k;
+    std::optional<int32_t> x;
+    std::optional<int32_t> y;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_DONE = 6,
+    };
+
+    __gen_gen_stmt_opt(int32_t k_)
+        : __state(S_INITIAL),
+          k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_stmt_opt& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_stmt_opt&) {
+        return os << "<generator gen_stmt_opt>";
+    }
+};
+
+
+// def __init__(self) -> None:
+//     self.calls = 0
+inline Picker::Picker() : calls(0) {}
+
+// def __init__(self, n: int) -> None:
+//     self.n = n
+inline V::V(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, n: int) -> None:
+//     self.n = n
+inline R::R(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

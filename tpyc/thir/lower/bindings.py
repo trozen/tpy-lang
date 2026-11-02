@@ -73,7 +73,7 @@ from ...type_def_registry import (is_array, is_bytes_view_type,
                                   is_str_view_type)
 from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         NominalType, OptionalType, OwnType, PendingListType,
-                        peel_binding,
+                        peel_binding, peel_slot,
                         PendingViewType, ReadonlyType, TpyType, TupleType,
                         RecursiveAliasInstanceType, TypeParamRef, UnionType,
                         collapse_tuple_own_elements,
@@ -813,6 +813,12 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
                           is_param=site.kind in ("param", "lambda",
                                                  "nested_param"),
                           move_exception=_no_move(typ))
+    if (rec.move_exception is None and rec.move_forced is None
+            and _local_site(site) and rec.form in (F.VALUE, F.VALUE_OPT)
+            and _value_typed(typ)):
+        # A local's value is no move source: liveness does not see an
+        # iterator or view of it (BUGS.md#owned-viewfam-local-last-use-copies).
+        rec = replace(rec, move_exception=_value_exception(typ))
     # A lambda's parameters live in the lambda's scope, never the frame's.
     if (inp.frame is not None and name in inp.frame.const_bindings
             and site.kind != "lambda"
@@ -829,6 +835,25 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
 # planner's module-global test and sema's declared globals disagree, the
 # name stays unmoved).
 _OWNED_ONLY_ROWS = frozenset({M.ALIAS, M.CONST_SLOT, M.MODULE_STORAGE})
+
+
+def _value_typed(t: TpyType | None) -> bool:
+    """A value type with no owned non-value inside: `OwnType.is_value_type()`
+    holds for every `Own[T]`, so the wrappers are peeled first."""
+    if not isinstance(t, TpyType):
+        return False
+    t = peel_slot(t)
+    if isinstance(t, OptionalType):
+        return _value_typed(t.inner)
+    if isinstance(t, TupleType):
+        return all(_value_typed(e) for e in t.element_types)
+    return t.is_value_type()
+
+
+def _local_site(site: _Site) -> bool:
+    """Whether `site` binds a function-local name (not an iteration head)."""
+    return site.kind in ("decl", "assign", "hoist", "walrus") or (
+        site.kind == "unpack" and not site.node.is_loop_head)
 
 
 def with_movable(rec: BindingRepr, own: BindingOwnership) -> BindingRepr:
@@ -864,7 +889,7 @@ def _ownership(site: '_Site', name: str, typ: TpyType | None,
     if kind in ("loop", "comp", "with", "except", "match") or (
             kind == "unpack" and site.node.is_loop_head):
         return site_ownership(ctx, site.node, name)
-    if kind in ("decl", "assign", "hoist", "walrus", "unpack"):
+    if _local_site(site):
         func = site.func or inp.func
         # A module's names are module storage.
         if inp.top_level and func is inp.func:
@@ -1388,8 +1413,7 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
         if vtype is not None and _try_hoist_type_ok(vtype, an):
             slot_t = _st._value_slot_render_type(vtype, an)
             rec = _mk(site, name, typ, F.VALUE, BC.NO_INIT_VALUE,
-                      value_opt=_declared_value_opt_kind(typ, an),
-                      move_exception=_value_exception(typ))
+                      value_opt=_declared_value_opt_kind(typ, an))
             return (replace(rec, effective_type=slot_t)
                     if slot_t is not vtype else rec)
         return None
@@ -1695,8 +1719,7 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
         if _p._opt_view_arg_shim(_param_declared_type(init.name, ctx),
                                  vtype, an):
             return _mk(site, name, typ, F.VALUE_OPT, BC.OPTVIEW_SHIM,
-                       value_opt=ValueOptKind.VIEW,
-                       move_exception=_value_exception(typ))
+                       value_opt=ValueOptKind.VIEW)
     # A tuple-literal first decl, by the literal's captures.
     if isinstance(init, TpyTupleLiteral):
         rec = _tuple_literal_decl(site, name, typ, inp)
@@ -1711,11 +1734,10 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
     vo = _declared_value_opt_kind(typ, an)
     if vo is not None:
         return _mk(site, name, typ, F.VALUE_OPT, BC.VALUE_OPT,
-                   value_opt=vo, move_exception=_value_exception(typ))
+                   value_opt=vo)
     if _p._value_opt_record(vtype) is not None:
         return _mk(site, name, typ, F.VALUE_OPT, BC.OPT_VALUE_RECORD,
-                   value_opt=ValueOptKind.RECORD,
-                   move_exception=_value_exception(typ))
+                   value_opt=ValueOptKind.RECORD)
     if not vtype.is_value_type():
         return _mk(site, name, typ, F.VALUE, BC.OWNED)
     return None
@@ -1826,8 +1848,6 @@ def _tuple_literal_decl(site, name, typ, inp: 'PlanInputs'
                        F.STORAGE_TUPLE if storage else F.VALUE,
                        BC.TUPLE_LITERAL_WIDE,
                        storage_tuple=storage,
-                       move_exception=(None if storage
-                                       else _value_exception(typ)),
                        effective_type=wide)
     if not storage_record:
         return None
@@ -2131,8 +2151,7 @@ def _value_hoist(site, name, typ, an) -> BindingRepr:
     """The default-constructed value predecl (`T name;`), a value-repr
     Optional by its value-opt kind."""
     return _mk(site, name, typ, F.VALUE, None,
-               value_opt=_declared_value_opt_kind(typ, an),
-               move_exception=_value_exception(typ))
+               value_opt=_declared_value_opt_kind(typ, an))
 
 
 def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
