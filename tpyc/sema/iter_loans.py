@@ -34,7 +34,8 @@ from ..typesys import (
     contains_reference_type, FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
     ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_always_borrows,
-    is_callable_type, is_fn_type, is_protocol_type, type_param_names,
+    is_callable_type, is_dyn_protocol, is_fn_type, is_protocol_type,
+    type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
@@ -708,12 +709,16 @@ def register_iteration_loans(
             # through a method that mutates iterator state, so the
             # generated param must be `T&`, not `const T&` -- unless the
             # protocol's methods all promise not to write it. A concrete
-            # type gets the same verdict from the call itself.
+            # type gets the same verdict from the call itself. A protocol's
+            # write is one only where the argument's own members write
+            # (`MutationCallEdge.twin_members`).
             inner = unwrap_ref_type(unwrap_readonly(iterable_type))
-            if isinstance(inner, TypeParamRef) or (
-                    is_protocol_type(inner)
-                    and not protocol_is_const(protocol_info_of(inner))):
+            if isinstance(inner, TypeParamRef):
                 mark_roots(ctx, [StorageKey.of_name(iterable.name)], MarkRequest())
+            elif (is_protocol_type(inner)
+                    and not protocol_is_const(protocol_info_of(inner))):
+                mark_roots(ctx, [StorageKey.of_name(iterable.name)],
+                           MarkRequest(protocol_only=not is_dyn_protocol(inner)))
         return IterationLoan(unplaceable=storage.unplaceable,
                              loans=storage.loans)
     fi_iter = storage.callee

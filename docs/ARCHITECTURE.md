@@ -544,6 +544,27 @@ depend on whether the writer was analyzed before the loop. A nested def's
 write deferred to a callee replays onto the enclosing function as an edge
 (`NestedMutationMark.callee`).
 
+A write through a STRUCTURAL PROTOCOL parameter has its own lattice. A
+parameter the body writes only through its protocol -- iterating it
+(`MarkRequest.protocol_only`), calling one of the protocol's members on it
+(`MutationCallEdge.protocol_receiver`), forwarding it, or a whole alias of
+it (`SemanticContext.protocol_alias_param`), to a slot the callee writes
+only that way and whose protocol it statically conforms to
+(`MutationCallEdge.forward_slots`) -- is in
+`protocol_only_mutated_params`, a subset of `mutated_params` seeded from
+`direct_protocol_only_mutated_params`; `_Facts` folds "written" and
+"written directly" as two monotone sets and stores the difference. For
+such a callee slot an edge carries the members of the argument's twin type
+(`protocol_twin_slot`) the protocol's methods resolve to
+(`MutationCallEdge.twin_members`, from
+`ProtocolChecker.protocol_members_on`, which reads the conformance walk's
+requirements and takes every non-consuming same-name overload, since C++
+re-resolves the call inside the protocol's template), and the slot writes the argument iff one of them needs a
+mutable receiver (`_receiver_must_be_mutable`), re-read every pass. Those
+members are fixpoint dependencies like the callee: they join the
+component's Kahn adjacency and its cycle iteration. Readers of a callee's
+own verdict (`param_written`, the argument's form) keep the union.
+
 A write through an alias of a member path (`q = p.cell; bump(q)`) reaches
 the owner only when a write through that member writes the owner's own
 storage: not past a handle field (`Ptr`, a view), a fresh or readonly

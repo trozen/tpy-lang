@@ -20,10 +20,10 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpystd::tpy::Poll<T> drive_implicit(T_aw&& aw);
 // def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
 template<typename T>
-::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t);
+::tpystd::tpy::Poll<T> use_shadowed(const MyTask<T>& t);
 // def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 template<typename U>
-::tpystd::tpy::Poll<U> use_renamed(MyTask<U>& t);
+::tpystd::tpy::Poll<U> use_renamed(const MyTask<U>& t);
 // def main() -> None:
 void main();
 
@@ -60,13 +60,13 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 // def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
 //     return drive_implicit(t)
 template<typename T>
-::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t) {
+::tpystd::tpy::Poll<T> use_shadowed(const MyTask<T>& t) {
     return ::tpyapp::main::drive_implicit<T>(t);
 }
 // def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 //     return drive_implicit(t)
 template<typename U>
-::tpystd::tpy::Poll<U> use_renamed(MyTask<U>& t) {
+::tpystd::tpy::Poll<U> use_renamed(const MyTask<U>& t) {
     return ::tpyapp::main::drive_implicit<U>(t);
 }
 

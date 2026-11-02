@@ -484,7 +484,7 @@ __gen_ternary_params_src ternary_params_src(const std::vector<Cell>& xs, const s
 
 
 // def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
-__gen_delegate_proto_src delegate_proto_src(std::vector<int32_t>& xs) {
+__gen_delegate_proto_src delegate_proto_src(const std::vector<int32_t>& xs) {
     return __gen_delegate_proto_src(xs);
 }
 

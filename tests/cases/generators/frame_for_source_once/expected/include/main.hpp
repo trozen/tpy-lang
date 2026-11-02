@@ -135,7 +135,7 @@ __gen_ternary_params_src ternary_params_src(const std::vector<Cell>& xs, const s
 template <::tpystd::typing::Iterable<int32_t> T_items>
 __gen_doubled<T_items> doubled(T_items&& items);
 // def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
-__gen_delegate_proto_src delegate_proto_src(std::vector<int32_t>& xs);
+__gen_delegate_proto_src delegate_proto_src(const std::vector<int32_t>& xs);
 // def iter_object_src(h: Holder) -> Iterator[int32]:
 __gen_iter_object_src iter_object_src(Holder& h);
 // def nested_src(rows: list[Row]) -> Iterator[str]:
@@ -1166,7 +1166,7 @@ __gen_doubled<T_items> doubled(T_items&& items) {
 // def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
 struct __gen_delegate_proto_src : public ::tpy::next_iter_mixin<__gen_delegate_proto_src, int32_t> {
     ::tpy::frame_state __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::doubled(xs)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -1180,7 +1180,7 @@ struct __gen_delegate_proto_src : public ::tpy::next_iter_mixin<__gen_delegate_p
         S_DONE = 4,
     };
 
-    __gen_delegate_proto_src(std::vector<int32_t>& xs)
+    __gen_delegate_proto_src(const std::vector<int32_t>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 

@@ -4961,7 +4961,8 @@ class StatementAnalyzer:
             else:
                 self.ctx.mark_param_mutated(mark.key,
                                             through_field=mark.through_field,
-                                            via_element=mark.via_element)
+                                            via_element=mark.via_element,
+                                            protocol_only=mark.protocol_only)
 
         # Create FunctionInfo and register as local function
         param_infos = [ParamInfo(name=pname, type=ptype) for pname, ptype in params]

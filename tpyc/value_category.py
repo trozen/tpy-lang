@@ -32,7 +32,8 @@ from .typesys import (
     ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
     is_dyn_protocol, is_owned_leaf, substitute_type_params_structural,
     unwrap_qualifiers, CallableType, LiteralType, PendingViewType, is_fn_type,
-    peel_binding, PendingContainerType, ListRepeatType,
+    peel_binding, PendingContainerType, ListRepeatType, param_may_be_written,
+    contains_reference_type,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -1511,9 +1512,19 @@ DeclaredOf = Callable[[str], 'TpyType | None']
 
 
 def param_written(fi: 'FunctionInfo | None', index: int) -> bool:
-    """The callee writes through parameter `index` (sema's mutation
-    verdict)."""
-    return fi is not None and index in (fi.root.mutated_params or ())
+    """The callee may write through parameter `index`
+    (`param_may_be_written`); an unresolved callee writes nothing."""
+    if fi is None:
+        return False
+    if fi.root.mutated_params is None and 0 <= index < len(fi.params):
+        # A write reaches the caller only through a reference leaf (an
+        # open type parameter may be one) or a handle with a mutable
+        # referent (`Ptr[T]`, a mutable `Span[T]`).
+        ptype = unwrap_qualifiers(fi.params[index].type)
+        if (not contains_reference_type(ptype)
+                and indirection_referent_readonly(ptype) is not False):
+            return False
+    return param_may_be_written(fi, index)
 
 
 def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,

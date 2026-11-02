@@ -1,0 +1,72 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@93:0: uncovered (unsupported parameter type)
+main::use@100:0: uncovered (unsupported parameter type)
+main::only_peeks@104:0: uncovered (unsupported parameter type)
+main::forward@108:0: uncovered (unsupported parameter type)
+main::nested_use@112:0: uncovered (unsupported parameter type)
+main::feed_each@118:0: uncovered (unsupported parameter type)
+main::count_chars@123:0: uncovered (unsupported parameter type)
+main::sum_u8@130:0: uncovered (unsupported parameter type)
+main::size_of@137:0: uncovered (unsupported parameter type)
+main::first@141:0: uncovered (unsupported parameter type)
+main::apply_add@145:0: uncovered (unsupported parameter type)
+main::rebound@149:0: uncovered (unsupported parameter type)
+main::ping@156:0: uncovered (unsupported parameter type)
+main::pong@162:0: uncovered (unsupported parameter type)
+main::alias_call@166:0: uncovered (unsupported parameter type)
+main::alias_reseat@171:0: uncovered (unsupported parameter type)
+main::alias_iter@178:0: uncovered (unsupported parameter type)
+main::alias_forward@186:0: uncovered (unsupported parameter type)
+main::atotal@191:0: uncovered (async body)
+main::gen_total@195:0: uncovered (unsupported parameter type)
+main::free_list@211:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::free_dict@215:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::free_set@219:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::free_bytes@223:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::free_str@228:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::free_immutable_bytes@232:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_calm@237:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_sized@242:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_adder@247:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_alias_call@254:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_alias_iter@258:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_alias_reseat@265:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_rebound@286:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_ping_loud@292:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_ping_quiet@296:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_quiet@301:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_loud@306:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_mixed@311:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_countdown@316:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_forward@321:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_nested@328:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_elems@333:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_async@338:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::g_caller@343:0: uncovered (call needs resolved ordinary callee)
+main::a_caller@347:0: uncovered (async body)
+main::k_gen@352:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::k_ctor@360:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::k_comp@378:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::k_closure@383:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@389:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Quiet.feed@23:4: covered (storage: no_proof_required), summary: known
+main::Loud.feed@33:4: covered (storage: no_proof_required), summary: known
+main::Mixed.peek@44:4: covered (storage: no_proof_required), summary: known
+main::Mixed.feed@47:4: covered (storage: no_proof_required), summary: known
+main::Calm.feed@59:4: covered (storage: no_proof_required), summary: known
+main::IntAdder.add@73:4: covered (storage: no_proof_required), summary: known
+main::Countdown.__iter__@83:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Countdown.__next__@86:4: uncovered (error-return body)
+main::Summer.add@206:4: uncovered (unsupported parameter type)
+main::SelfFeeder.feed@277:4: covered (storage: no_proof_required), summary: known
+main::SelfFeeder.go@280:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Holder.sum_items@372:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Quiet.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Loud.__init__@30:4: covered (storage: no_proof_required), summary: known
+main::Mixed.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::Calm.__init__@55:4: covered (storage: no_proof_required), summary: known
+main::IntAdder.__init__@70:4: covered (storage: no_proof_required), summary: known
+main::Countdown.__init__@80:4: covered (storage: no_proof_required), summary: known
+main::Summer.__init__@203:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::SelfFeeder.__init__@274:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@368:4: covered (storage: no_proof_required), summary: known

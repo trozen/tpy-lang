@@ -1,0 +1,32 @@
+free_list 6
+free_dict 3
+free_set 9
+free_bytes 3
+free_str 3
+free_immutable_bytes 7
+calm 4
+sized 4
+adder 101
+alias_call 2
+alias_iter 12
+alias_reseat 2
+self_method 6
+rebound 2
+ping_loud 2 2
+ping_quiet 2
+async 6
+gen_body 6
+async_body 6
+quiet 2 1
+loud 2 2
+mixed 1 1
+countdown 3 0
+forward 6
+nested 3
+elems 6 6
+gen 12
+ctor 12
+method 3
+comp 7
+closure 6
+module 15

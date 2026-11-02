@@ -50,11 +50,14 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
     for fi in local_fis:
         seen_callees: set[int] = set()
         for edge in (fi.call_edges or []):
-            cid = id(edge.callee_fi)
-            if cid in local_set and cid not in seen_callees:
-                seen_callees.add(cid)
-                in_degree[id(fi)] += 1
-                reverse_adj[cid].append(fi)
+            # A twin's member is read like a callee: its facts decide what
+            # the call writes.
+            for dep in _edge_dependencies(edge):
+                cid = id(dep)
+                if cid in local_set and cid not in seen_callees:
+                    seen_callees.add(cid)
+                    in_degree[id(fi)] += 1
+                    reverse_adj[cid].append(fi)
 
     # Start with leaf functions (no local callees)
     queue: list[FunctionInfo] = [fi for fi in local_fis if in_degree[id(fi)] == 0]
@@ -89,21 +92,33 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
         fi.call_edges = None
 
 
+def _edge_dependencies(edge: MutationCallEdge) -> list[FunctionInfo]:
+    """The functions whose facts fold `edge`: its callee and the members
+    of its arguments' twins."""
+    return [edge.callee_fi,
+            *(m for members in edge.twin_members.values()
+              for m in members or ())]
+
+
 class _Facts:
     """One function's mutation facts folded over its direct marks and its
-    call edges: the three lattices (`mutated`, `structural`, `elem`) and the
-    self flag, each monotone in the callees' facts."""
-    __slots__ = ("mutated", "structural", "elem", "self_mutated")
+    call edges: the four lattices (`mutated`, `direct` -- the part written
+    other than through a structural protocol --, `structural`, `elem`) and
+    the self flag, each monotone in the callees' facts."""
+    __slots__ = ("mutated", "direct", "structural", "elem", "self_mutated")
 
     def __init__(self, fi: FunctionInfo, *, from_resolved: bool = False):
         # A cycle's fixed point refolds from the CURRENT estimate; a single
         # function (and a fresh cycle iteration) starts from the direct marks.
         if from_resolved:
             self.mutated = set(fi.mutated_params or frozenset())
+            self.direct = self.mutated - fi.protocol_only_mutated_params
             self.structural = set(fi.structural_mutated_params or frozenset())
             self.elem = set(fi.elem_mutated_params or frozenset())
         else:
             self.mutated = set(fi.direct_mutated_params or frozenset())
+            self.direct = (self.mutated
+                           - fi.direct_protocol_only_mutated_params)
             self.structural = set(fi.direct_structural_mutated_params or frozenset())
             self.elem = set(fi.direct_elem_mutated_params or frozenset())
         self.self_mutated = bool(fi.direct_self_mutated)
@@ -116,12 +131,16 @@ class _Facts:
             writes, elem = slot_writes(edge, callee_idx)
             if writes:
                 self.mutated.add(caller_idx)
+                if not _protocol_only_write(edge, callee_idx):
+                    self.direct.add(caller_idx)
             if elem:
                 self.elem.add(caller_idx)
         if edge.receiver_idx is not None:
             writes, elem = slot_writes(edge, -1)
             if writes:
                 self.mutated.add(edge.receiver_idx)
+                if not _protocol_only_write(edge, -1):
+                    self.direct.add(edge.receiver_idx)
             if elem:
                 self.elem.add(edge.receiver_idx)
         # Structural mutation propagation: more specific than mutated_params.
@@ -152,12 +171,16 @@ class _Facts:
             if -1 in lattice:
                 self.self_mutated = True
         self.mutated.discard(-1)
-        new = (frozenset(self.mutated), frozenset(self.structural),
-               frozenset(self.elem), self.self_mutated)
-        old = (fi.mutated_params, fi.structural_mutated_params,
-               fi.elem_mutated_params, fi.self_mutated)
-        (fi.mutated_params, fi.structural_mutated_params,
-         fi.elem_mutated_params, fi.self_mutated) = new
+        new = (frozenset(self.mutated),
+               frozenset(self.mutated - self.direct),
+               frozenset(self.structural), frozenset(self.elem),
+               self.self_mutated)
+        old = (fi.mutated_params, fi.protocol_only_mutated_params,
+               fi.structural_mutated_params, fi.elem_mutated_params,
+               fi.self_mutated)
+        (fi.mutated_params, fi.protocol_only_mutated_params,
+         fi.structural_mutated_params, fi.elem_mutated_params,
+         fi.self_mutated) = new
         return new != old
 
 
@@ -179,8 +202,9 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
     for fi in cycle_fis:
         _Facts(fi).store(fi)
 
-    # Safety bound: each iteration must add at least one param/self-mutation somewhere.
-    max_iters = sum(len(fi.params) + 1 for fi in cycle_fis) + 1
+    # Safety bound: each iteration must add at least one element to one of
+    # the four per-param lattices or set a self flag somewhere.
+    max_iters = sum(4 * len(fi.params) + 1 for fi in cycle_fis) + 1
 
     for _ in range(max_iters):
         changed = False
@@ -202,10 +226,12 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
                         facts.mutated.add(caller_idx)
+                        facts.direct.add(caller_idx)
                         facts.structural.add(caller_idx)
                         facts.elem.add(caller_idx)
                     if edge.receiver_idx is not None:
                         facts.mutated.add(edge.receiver_idx)
+                        facts.direct.add(edge.receiver_idx)
                         facts.structural.add(edge.receiver_idx)
             facts.store(fi)
 
@@ -316,9 +342,36 @@ def slot_writes(edge: MutationCallEdge, slot: int) -> tuple[bool, bool]:
         writes = elem = emp is not None and slot in emp
     else:
         writes, elem = slot in mp, emp is not None and slot in emp
+        if (writes and slot in callee.protocol_only_mutated_params
+                and slot not in edge.forward_slots):
+            writes = _twin_writes(edge, slot)
     if slot in edge.elem_step and (writes or elem):
         writes = elem = True
     return writes, elem
+
+
+def _twin_writes(edge: MutationCallEdge, slot: int) -> bool:
+    """Whether a callee writing structural-protocol slot `slot` only
+    through its protocol writes the argument: some member the twin
+    resolves needs a mutable receiver, read off its current facts, as a
+    receiver edge's callee is. An argument with no resolved twin is
+    written."""
+    members = edge.twin_members.get(slot)
+    if members is None:
+        return True
+    return any(_receiver_must_be_mutable(m) for m in members)
+
+
+def _protocol_only_write(edge: MutationCallEdge, slot: int) -> bool:
+    """Whether what the callee of `edge` writes through slot `slot` (-1:
+    the receiver) is a write of the caller's parameter through its own
+    protocol only: a protocol member called on the parameter, or the
+    parameter forwarded to a slot the callee writes only through its
+    protocol."""
+    if slot == -1:
+        return edge.protocol_receiver
+    return (slot in edge.forward_slots
+            and slot in edge.callee_fi.protocol_only_mutated_params)
 
 
 def _receiver_must_be_mutable(callee: FunctionInfo) -> bool:

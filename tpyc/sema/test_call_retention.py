@@ -131,7 +131,7 @@ def subject(acc: list[Box], xs: list[Box], b: Box, vs: list[StrView],
 
 
 @pytest.fixture(scope="module")
-def calls() -> Iterator[tuple[object, dict[str, TpyExpr]]]:
+def calls() -> Iterator[tuple[object, object, dict[str, TpyExpr]]]:
     compiler, modules = _compile(_SRC)
     entry = _entry(modules)
     fn = next(f for f in entry.ast.functions if f.name == "subject")
@@ -151,14 +151,16 @@ def calls() -> Iterator[tuple[object, dict[str, TpyExpr]]]:
               "keep_spread", "pick_box", "span", "gen_method"]
     assert len(by_line) == len(labels)
     with activate_compiler(compiler):
-        yield entry.analyzer.ctx, dict(zip(labels, (c for _l, c in by_line)))
+        yield (compiler, entry.analyzer.ctx,
+               dict(zip(labels, (c for _l, c in by_line))))
 
 
 def _retains(case, label: str, index: int) -> bool:
-    ctx, found = case
+    compiler, ctx, found = case
     call = found[label]
-    return callee_retains_arg(call.resolved_function_info, index, call,
-                              ctx)
+    with activate_compiler(compiler):
+        return callee_retains_arg(call.resolved_function_info, index, call,
+                                  ctx)
 
 
 @pytest.mark.parametrize("label,index,want", [
@@ -209,7 +211,7 @@ def test_stub_channels(calls, label: str, index: int, want: bool) -> None:
 def test_result_and_copies_are_both_reported(calls) -> None:
     # One verdict, every channel: a binding whose result keeps the view may
     # also keep a copy of it, unless `@pure` promises it keeps nothing.
-    ctx, found = calls
+    _c, ctx, found = calls
     for label, want in (("pick_any", Retention.RESULT | Retention.COPIES),
                         ("pick_a", Retention.RESULT)):
         call = found[label]
@@ -226,7 +228,7 @@ def test_result_and_copies_are_both_reported(calls) -> None:
     ("span", Retention.RESULT),
 ])
 def test_declared_result_channel(calls, label: str, want: Retention) -> None:
-    ctx, found = calls
+    _c, ctx, found = calls
     call = found[label]
     assert retention_channel(call.resolved_function_info, 0, call,
                              ctx) == want
@@ -235,7 +237,7 @@ def test_declared_result_channel(calls, label: str, want: Retention) -> None:
 def test_overload_stub_backed_by_a_body_answers_from_its_facts(calls) -> None:
     # A `typing.overload` stub is no binding: the implementation's measured
     # facts answer, and none measured yet retains (fail closed).
-    fi = calls[1]["overload"].resolved_function_info
+    fi = calls[2]["overload"].resolved_function_info
     root = fi.root
     saved = root.return_borrows_from
     try:

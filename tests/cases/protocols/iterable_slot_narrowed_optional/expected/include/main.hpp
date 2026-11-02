@@ -21,7 +21,7 @@ int32_t local_name();
 // def param_name(maybe: list[int32] | None) -> int32:
 int32_t param_name(std::vector<int32_t>* maybe);
 // def plain(xs: list[int32]) -> int32:
-int32_t plain(std::vector<int32_t>& xs);
+int32_t plain(const std::vector<int32_t>& xs);
 // def mutate_through(maybe: list[int32] | None) -> int32:
 int32_t mutate_through(std::vector<int32_t>* maybe);
 // def main() -> None:

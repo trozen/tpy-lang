@@ -38,7 +38,7 @@ struct Holder {
     explicit Holder(std::vector<int32_t>&& rows);
 
     template <::tpystd::typing::Iterable<int32_t> T_extra>
-    __coro_Holder_run<T_extra> run(T_extra&& extra);
+    __coro_Holder_run<T_extra> run(T_extra&& extra) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -128,7 +128,7 @@ template <::tpystd::typing::Iterable<int32_t> T_extra>
 struct __coro_Holder_run {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    Holder& __self;
+    const Holder& __self;
     T_extra extra;
     std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((__self.rows))>>> __sub_0;
     std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((extra))>>> __sub_1;
@@ -140,7 +140,7 @@ struct __coro_Holder_run {
         S_DONE = 3,
     };
 
-    __coro_Holder_run(Holder& __self, T_extra&& extra_)
+    __coro_Holder_run(const Holder& __self, T_extra&& extra_)
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
@@ -190,7 +190,7 @@ template <::tpystd::typing::Iterable<int32_t> T_extra>
 
 
 template <::tpystd::typing::Iterable<int32_t> T_extra>
-inline __coro_Holder_run<T_extra> Holder::run(T_extra&& extra) {
+inline __coro_Holder_run<T_extra> Holder::run(T_extra&& extra) const {
     return __coro_Holder_run<T_extra>(*this, std::forward<T_extra>(extra));
 }
 

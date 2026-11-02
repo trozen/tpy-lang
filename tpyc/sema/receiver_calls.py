@@ -273,14 +273,18 @@ def record_receiver_edges(ctx: SemanticContext, callee: FunctionInfo,
                           bindings: 'tuple[object, ...]',
                           captured: 'tuple[tuple[str, bool, bool], ...]' = (), *,
                           param_edge: MutationCallEdge | None = None,
-                          slot: int = -1) -> None:
+                          slot: int = -1,
+                          protocol_receivers: frozenset[int] = frozenset(),
+                          ) -> None:
     """File the Phase-2 edges of a deferred write through `callee`'s slot
     `slot` (-1: its receiver): one per caller param in `targets`
     (`WriteReach.params`: element-stepped or lent as each says), the loop
     bindings the argument climbs through on the first -- or on
     `param_edge`, the call's argument edge, which then also carries the
     first param. In a nested def, the enclosing function's `captured` names
-    get theirs at the replay (`defer_nested_writes`)."""
+    get theirs at the replay (`defer_nested_writes`). A receiver param in
+    `protocol_receivers` reached as itself is written through its protocol
+    only (`MutationCallEdge.protocol_receiver`)."""
     fn = ctx.func
     ctx.defer_nested_writes(callee, slot, captured)
     edges: list[MutationCallEdge] = []
@@ -289,6 +293,8 @@ def record_receiver_edges(ctx: SemanticContext, callee: FunctionInfo,
                 else MutationCallEdge(callee_fi=callee.root, param_map={}))
         if slot == -1:
             edge.receiver_idx = idx
+            edge.protocol_receiver = (idx in protocol_receivers
+                                      and not elem and not lent)
         else:
             edge.param_map = {**edge.param_map, slot: idx}
             if lent:

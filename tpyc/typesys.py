@@ -8515,6 +8515,21 @@ class MutationCallEdge:
     # each is written when the callee writes through the slot. Parallel to
     # `param_map`, whose readers know nothing of bindings.
     bindings: dict[int, tuple[object, ...]] = field(default_factory=dict)
+    # Per structural-protocol callee slot: the members of the argument's
+    # twin type the protocol's members resolve to -- every one a call
+    # through the protocol may run on it -- or None when one does not
+    # resolve. A slot the callee writes only through its protocol is
+    # written by the call iff one of them needs a mutable receiver.
+    twin_members: dict[int, 'tuple[FunctionInfo, ...] | None'] = field(
+        default_factory=dict)
+    # Callee protocol slots the argument fills with a caller parameter
+    # whose own protocol statically conforms to the slot's: a write only
+    # through the slot's protocol stays one through the caller's.
+    forward_slots: frozenset[int] = frozenset()
+    # The receiver is a caller parameter of a structural protocol type, or
+    # a whole alias of one, and the callee one of that protocol's members:
+    # the write is through the protocol only.
+    protocol_receiver: bool = False
 
 
 def _root_fact(name: str) -> property:
@@ -8686,6 +8701,12 @@ class FunctionInfo:
     # through a call that lends its result (`g(zip(xs, ys))`) carries only
     # this: advancing the combinator mutates nothing the caller passed.
     # Subset of mutated_params. None = not yet analyzed.
+    _protocol_only_mutated_params: frozenset[int] = field(default=frozenset(), compare=False)
+    # The part of mutated_params written ONLY through the parameter's
+    # structural protocol (its iteration, a non-`@readonly` member call,
+    # forwarding to such a parameter): a call writes the argument only where
+    # the argument's own type implements a member that writes
+    # (`MutationCallEdge.twin_members`). Every other write is direct.
     _return_borrows_from: Optional[frozenset[int]] = field(default=None, compare=False)
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
@@ -8713,6 +8734,7 @@ class FunctionInfo:
     _direct_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     _direct_structural_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     _direct_elem_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
+    _direct_protocol_only_mutated_params: frozenset[int] = field(default=frozenset(), compare=False)
     _call_edges: Optional[list['MutationCallEdge']] = field(default=None, compare=False)
     # Running this body may reach a Ctrl-C check point (or any code the
     # compiler cannot see through). False only when the body is INERT:
@@ -8861,6 +8883,9 @@ class FunctionInfo:
     direct_mutated_params = _root_fact("direct_mutated_params")
     direct_structural_mutated_params = _root_fact("direct_structural_mutated_params")
     direct_elem_mutated_params = _root_fact("direct_elem_mutated_params")
+    protocol_only_mutated_params = _root_fact("protocol_only_mutated_params")
+    direct_protocol_only_mutated_params = _root_fact(
+        "direct_protocol_only_mutated_params")
     call_edges = _root_fact("call_edges")
 
     @property

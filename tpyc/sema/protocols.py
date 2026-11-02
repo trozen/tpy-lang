@@ -6,7 +6,7 @@ Protocol conformance checking and method/field lookups.
 
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Callable, Iterator, TYPE_CHECKING
+from typing import Any, Callable, Iterator, NamedTuple, TYPE_CHECKING
 
 import re
 import dataclasses
@@ -267,6 +267,15 @@ def text_leaves(t: TpyType) -> Iterator[TpyType]:
         return
     for part in part_wise[0]:
         yield from text_leaves(part)
+
+
+class _MethodRequirement(NamedTuple):
+    """One method a structural protocol requires of a type, substituted at
+    it: name, parameter types, return type, whether it must be readonly."""
+    name: str
+    params: list[TpyType]
+    return_type: TpyType
+    readonly: bool
 
 
 class ProtocolConformanceKind(Enum):
@@ -653,28 +662,17 @@ class ProtocolChecker:
         if self._check_builtin_extends(actual, protocol):
             return ProtocolConformanceKind.EXPLICIT
 
-        # Build type substitution map
-        type_subst: dict[str, TpyType] = {"Self": actual}
-        if protocol_info.type_params and protocol.type_args:
-            if len(protocol_info.type_params) != len(protocol.type_args):
-                return None
-            type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
-
-        # Collect all required methods (including inherited)
-        all_methods = self.collect_protocol_methods(protocol_info)
-        for method_sig in all_methods:
-            expected_params = [
-                self.type_ops.substitute_types(ptype, type_subst)
-                for _, ptype in method_sig.params
-            ]
-            expected_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
-            method_readonly = method_sig.is_readonly or protocol_info.is_readonly
-
+        requirements = self._method_requirements(actual, protocol,
+                                                 protocol_info)
+        if requirements is None:
+            return None
+        for req in requirements:
             if not self.type_has_method_with_signature(
-                actual, method_sig.name, expected_params, expected_return,
-                require_readonly=method_readonly,
+                actual, req.name, req.params, req.return_type,
+                require_readonly=req.readonly,
             ):
                 return None
+        type_subst = self._requirement_subst(actual, protocol, protocol_info)
 
         # Collect all required fields (including inherited)
         all_fields = self.collect_protocol_fields(protocol_info)
@@ -916,81 +914,178 @@ class ProtocolChecker:
                             return False
                     return True
             return False
-        else:
-            # Record or builtin type - unified lookup via get_record_for_type
-            record_info = self.ctx.registry.get_record_for_type(actual)
-            if record_info is None:
-                return False
+        return bool(self._matching_overloads(
+            actual, method_name, expected_params, expected_return,
+            require_readonly))
 
-            overloads, type_subst = self.lookup_record_method_overloads(record_info, method_name)
+    def _requirement_subst(self, actual: TpyType, protocol: NominalType,
+                           protocol_info: 'ProtocolInfo',
+                           ) -> dict[str, TpyType] | None:
+        """`Self` and the protocol's type parameters at `actual`; None when
+        the protocol's type arguments do not fit its parameters."""
+        type_subst: dict[str, TpyType] = {"Self": actual}
+        if protocol_info.type_params and protocol.type_args:
+            if len(protocol_info.type_params) != len(protocol.type_args):
+                return None
+            type_subst.update(zip(protocol_info.type_params,
+                                  protocol.type_args))
+        return type_subst
+
+    def _method_requirements(self, actual: TpyType, protocol: NominalType,
+                             protocol_info: 'ProtocolInfo',
+                             ) -> 'list[_MethodRequirement] | None':
+        """Every method `protocol` requires of `actual` (inherited ones
+        included), substituted at it -- the structural conformance walk's
+        list, read by the conformance check and by `protocol_members_on`."""
+        type_subst = self._requirement_subst(actual, protocol, protocol_info)
+        if type_subst is None:
+            return None
+        return [_MethodRequirement(
+            sig.name,
+            [self.type_ops.substitute_types(t, type_subst)
+             for _, t in sig.params],
+            self.type_ops.substitute_types(sig.return_type, type_subst),
+            sig.is_readonly or protocol_info.is_readonly)
+            for sig in self.collect_protocol_methods(protocol_info)]
+
+    def protocol_members_on(self, actual: TpyType, protocol: NominalType,
+                            ) -> list[FunctionInfo] | None:
+        """The methods of `actual` a call through structural protocol
+        `protocol` may run on it, as roots: for every method the
+        conformance walk requires (`_method_requirements`), EVERY
+        non-consuming same-name overload (`_member_overloads`), and --
+        where an `__iter__` hands back the object itself -- its
+        `__next__`, which the iteration runs too. Every overload counts
+        because C++ re-resolves the plain-name call inside the protocol's
+        template by receiver and arguments, so no pick made here is the
+        one it makes: the caller stays const only when every overload is
+        const, and then C++ picks the same one either way. None where one
+        does not resolve: `actual` is no record (a protocol, a type
+        parameter), a builtin conforms by declaration alone, the protocol
+        requires no method."""
+        protocol_info = protocol_info_of(protocol)
+        if protocol_info is None or is_protocol_type(actual):
+            return None
+        requirements = self._method_requirements(actual, protocol,
+                                                 protocol_info)
+        if not requirements:
+            return None
+        members: list[FunctionInfo] = []
+        for req in requirements:
+            overloads = self._member_overloads(actual, req.name)
             if not overloads:
-                return False
+                return None
+            members += [m.root for m in overloads]
+            if req.name == "__iter__" and any(
+                    isinstance(unwrap_qualifiers(m.return_type), SelfType)
+                    or unwrap_qualifiers(m.return_type) == actual
+                    for m in overloads):
+                nexts = self._member_overloads(actual, "__next__")
+                if not nexts:
+                    return None
+                members += [m.root for m in nexts]
+        return members
 
-            # Build instance-level type substitution
-            instance_subst = self.type_ops.build_type_substitution(actual)
-            if instance_subst:
-                if type_subst:
-                    # Merge: resolve inherited params through instance params
-                    combined = {**instance_subst}
-                    for k, v in type_subst.items():
-                        combined[k] = self.type_ops.substitute_type_params(v, instance_subst) if isinstance(v, TpyType) else v
-                    type_subst = combined
-                else:
-                    type_subst = instance_subst
+    def _member_overloads(self, actual: TpyType,
+                          method_name: str) -> list[FunctionInfo]:
+        """Every overload of `actual`'s method `method_name` a borrowed
+        receiver may run: all but the consuming ones."""
+        return [resolved for _method, resolved in
+                self._substituted_overloads(actual, method_name)
+                if not resolved.is_consuming]
 
-            # Transitively resolve TypeParamRef chains (e.g., Base.T->Mid.U->Child.V->int32)
+    def _matching_overloads(
+        self,
+        actual: TpyType,
+        method_name: str,
+        expected_params: list[TpyType],
+        expected_return: TpyType,
+        require_readonly: bool = False,
+    ) -> list[FunctionInfo]:
+        """The overloads of record or builtin `actual`'s method
+        `method_name` (inherited ones included, substituted at `actual`)
+        matching the expected signature -- the structural conformance
+        check's member match."""
+        matched: list[FunctionInfo] = []
+        for _method, resolved in self._substituted_overloads(actual,
+                                                             method_name):
+            # Allow non-readonly methods when the return type has a
+            # protocol-safe coercion to the expected return (e.g. __span__()
+            # -> Span[T] satisfies a readonly protocol expecting
+            # Span[readonly[T]], since the compiler auto-generates a const
+            # overload).
+            if require_readonly and not resolved.is_readonly:
+                if not is_protocol_safe_coercion(resolved.return_type, expected_return):
+                    continue
+            # Check return type (Own[T] in impl matches T in protocol)
+            if not self._protocol_type_matches(resolved.return_type, expected_return):
+                continue
+            # Check parameter count and types (account for defaults)
+            required_count = resolved.min_args
+            if not (required_count <= len(expected_params) <= len(resolved.params)):
+                continue
+            if all(self._protocol_type_matches(actual_ptype, expected_ptype)
+                   for (_, actual_ptype), expected_ptype
+                   in zip(resolved.params, expected_params)):
+                matched.append(resolved)
+        return matched
+
+    def _substituted_overloads(
+        self, actual: TpyType, method_name: str,
+    ) -> list[tuple[FunctionInfo, FunctionInfo]]:
+        """Every overload of record or builtin `actual`'s method
+        `method_name` (inherited ones included), each with its signature
+        substituted at `actual`, whose parameters the class bounds its
+        definer shadows admit at `actual`."""
+        record_info = self.ctx.registry.get_record_for_type(actual)
+        if record_info is None:
+            return []
+
+        overloads, type_subst = self.lookup_record_method_overloads(record_info, method_name)
+        if not overloads:
+            return []
+
+        # Build instance-level type substitution
+        instance_subst = self.type_ops.build_type_substitution(actual)
+        if instance_subst:
             if type_subst:
-                changed = True
-                while changed:
-                    changed = False
-                    for k, v in type_subst.items():
-                        if isinstance(v, TypeParamRef) and v.name in type_subst and type_subst[v.name] is not v:
-                            type_subst[k] = type_subst[v.name]
-                            changed = True
+                # Merge: resolve inherited params through instance params
+                combined = {**instance_subst}
+                for k, v in type_subst.items():
+                    combined[k] = self.type_ops.substitute_type_params(v, instance_subst) if isinstance(v, TpyType) else v
+                type_subst = combined
+            else:
+                type_subst = instance_subst
 
-            # Check if any overload matches the expected signature
-            for method in overloads:
-                resolved = self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
-                # Check readonly requirement.
-                # Allow non-readonly methods when the return type has a protocol-safe
-                # coercion to the expected return (e.g. __span__() -> Span[T] satisfies
-                # a readonly protocol expecting Span[readonly[T]], since the compiler
-                # auto-generates a const overload).
-                if require_readonly and not resolved.is_readonly:
-                    if not is_protocol_safe_coercion(resolved.return_type, expected_return):
-                        continue
-                # Check return type (Own[T] in impl matches T in protocol)
-                if not self._protocol_type_matches(resolved.return_type, expected_return):
-                    continue
-                # Check parameter count and types (account for defaults)
-                required_count = resolved.min_args
-                if not (required_count <= len(expected_params) <= len(resolved.params)):
-                    continue
-                params_match = True
-                for (_, actual_ptype), expected_ptype in zip(resolved.params, expected_params):
-                    if not self._protocol_type_matches(actual_ptype, expected_ptype):
-                        params_match = False
-                        break
-                if not params_match:
-                    continue
-                # Class-shadowed method type-param bounds: `def m[T: Bound](...)`
-                # on `class C[T]` is "callable only when class T satisfies Bound",
-                # so Box[NotHashable] should NOT conform to Hashable just because
-                # Box has __hash__. type_subst has its TypeParamRef chains already
-                # resolved above, so multi-level inheritance sees the concrete T.
-                # The bound shadows the params of the class defining the
-                # method (an inherited one's: list's `T` under `GL[U]`).
-                definer = self.ctx.registry.mro_method_definer(
-                    record_info, method_name)
-                definer_params = (definer[1].type_params if definer is not None
-                                  else record_info.type_params)
-                if type_subst and find_method_class_param_bound_violation(
+        # Transitively resolve TypeParamRef chains (e.g., Base.T->Mid.U->Child.V->int32)
+        if type_subst:
+            changed = True
+            while changed:
+                changed = False
+                for k, v in type_subst.items():
+                    if isinstance(v, TypeParamRef) and v.name in type_subst and type_subst[v.name] is not v:
+                        type_subst[k] = type_subst[v.name]
+                        changed = True
+
+        # Class-shadowed method type-param bounds: `def m[T: Bound](...)`
+        # on `class C[T]` is "callable only when class T satisfies Bound",
+        # so Box[NotHashable] should NOT conform to Hashable just because
+        # Box has __hash__. type_subst has its TypeParamRef chains already
+        # resolved above, so multi-level inheritance sees the concrete T.
+        # The bound shadows the params of the class defining the
+        # method (an inherited one's: list's `T` under `GL[U]`).
+        definer = self.ctx.registry.mro_method_definer(
+            record_info, method_name)
+        definer_params = (definer[1].type_params if definer is not None
+                          else record_info.type_params)
+        return [(method,
+                 self.type_ops.substitute_method_type_params(method, type_subst)
+                 if type_subst else method)
+                for method in overloads
+                if not (type_subst and find_method_class_param_bound_violation(
                     method, definer_params, type_subst,
                     self.type_conforms_to_protocol,
-                ) is not None:
-                    continue
-                return True
-            return False
+                ) is not None)]
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""

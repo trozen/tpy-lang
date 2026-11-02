@@ -1203,6 +1203,15 @@ class SemanticAnalyzer:
         for fi in all_fis:
             populate_const_borrow_params(fi)
 
+    def _protocol_only_params(self, param_list: list[str]) -> frozenset[int]:
+        """The params this body writes only through their structural
+        protocol (`FunctionInfo.protocol_only_mutated_params`)."""
+        fn = self.ctx.func
+        return frozenset(
+            i for i, pname in enumerate(param_list)
+            if pname in fn.current_mutated_param_names
+            and pname not in fn.current_nonprotocol_mutated_param_names)
+
     def _receiver_deferred_params(self, param_list: list[str]) -> frozenset[int]:
         """The params a receiver call left to Phase 2, for the initial
         estimate only: a reader before Phase 2 (a constructor call's copy of
@@ -1872,6 +1881,8 @@ class SemanticAnalyzer:
                 if pname in self.ctx.func.current_mutated_param_names
             )
             func_info.direct_mutated_params = direct
+            func_info.direct_protocol_only_mutated_params = (
+                self._protocol_only_params(param_list))
             func_info.call_edges = list(self.ctx.func.current_call_edges)
             func_info.representational_type_params = frozenset(self.ctx.func.current_representational_params)
             (func_info.own_copy_obligations,
@@ -3095,6 +3106,8 @@ class SemanticAnalyzer:
                         if pname in self.ctx.func.current_mutated_param_names
                     )
                     method_fi.direct_mutated_params = direct
+                    method_fi.direct_protocol_only_mutated_params = (
+                        self._protocol_only_params(param_list))
                     method_fi.direct_self_mutated = self.ctx.func.current_self_mutated
                     method_fi.call_edges = list(self.ctx.func.current_call_edges)
                     method_fi.mutated_params = direct | self._receiver_deferred_params(param_list)

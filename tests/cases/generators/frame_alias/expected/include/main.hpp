@@ -125,7 +125,7 @@ void with_first_bound();
 // def branch_first_bound(xs: list[int32], c: bool) -> None:
 void branch_first_bound(const std::vector<int32_t>& xs, bool c);
 // def branch_alias(xs: list[int32], c: bool) -> None:
-void branch_alias(std::vector<int32_t>& xs, bool c);
+void branch_alias(const std::vector<int32_t>& xs, bool c);
 // def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list();
 // def outer_lift() -> Iterator[int32]:

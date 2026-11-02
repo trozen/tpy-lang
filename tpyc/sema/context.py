@@ -65,7 +65,7 @@ from ..parse import (
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
     CallOperands, ExprTypeOf, binds_owned_value, is_rvalue_source,
-    peel_coerce,
+    peel_coerce, protocol_slot,
 )
 from ..prescan import (
     FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
@@ -1664,6 +1664,7 @@ class NestedMutationMark(NamedTuple):
     callee: 'FunctionInfo | None' = None
     slot: int = -1
     lent: bool = False
+    protocol_only: bool = False
 
 
 class LoopSources(NamedTuple):
@@ -2401,6 +2402,10 @@ class FunctionTrackingState:
     current_param_names: set[str] = field(default_factory=set)
     current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
     current_mutated_param_names: set[str] = field(default_factory=set)
+    # The params among them some mark writes other than through their
+    # structural protocol (`MarkRequest.protocol_only`).
+    current_nonprotocol_mutated_param_names: set[str] = field(
+        default_factory=set)
     # Params a receiver call may mutate, left to Phase 2 (the receiver call
     # edge): kept out of the direct facts Phase 2 starts from, but in the
     # initial estimate, which a reader before Phase 2 takes as the callee's
@@ -5084,7 +5089,8 @@ class SemanticContext:
 
     def mark_param_mutated(self, key: StorageKey | SitedKey, *,
                            through_field: bool = False,
-                           via_element: bool = False) -> None:
+                           via_element: bool = False,
+                           protocol_only: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
         `key` is the storage written: a name, or a member path a loan was
@@ -5108,25 +5114,60 @@ class SemanticContext:
         is the fact a caller who passed the name through a lending call (a
         combinator) needs: the callee's own advance of the combinator is not
         a write into the caller's containers.
+
+        ``protocol_only``: the write is through the name's structural
+        protocol; it stays one only at a node reached as the name itself --
+        storage reached through an element or a borrow is written directly.
         """
         fn = self.func
+        start = (key if isinstance(key, StorageKey) else key.key).as_name()
+        alias_of = (self.protocol_alias_param(start)
+                    if protocol_only and start is not None and not via_element
+                    else None)
         for node in self.storage_climb(key, through_field=through_field,
                                        via_element=via_element):
             name = node.key.as_name()
             receiver = name == "self" and self.self_names_receiver()
+            through_protocol = protocol_only and (
+                (not node.via_element and not node.handle)
+                or (alias_of is not None and name == alias_of))
             if fn.in_nested_def:
                 fn.nested_mutation_marks.append(NestedMutationMark(
                     node.key, through_field=node.through_field,
                     structural=False, via_element=node.via_element,
-                    receiver=receiver))
+                    receiver=receiver, protocol_only=through_protocol))
             if receiver:
                 fn.current_self_mutated = True
                 if node.via_element:
                     fn.current_elem_mutated_param_names.add("self")
             elif self.is_param_node(node):
                 fn.current_mutated_param_names.add(name)
+                if not through_protocol:
+                    fn.current_nonprotocol_mutated_param_names.add(name)
                 if node.via_element:
                     fn.current_elem_mutated_param_names.add(name)
+
+    def protocol_alias_param(self, name: str) -> str | None:
+        """The parameter `name` is, or aliases whole, read at the same
+        structural protocol it declares: the climb from `name` reaches one
+        parameter (however many times) and crosses no member path, loop binding or handle on
+        the way. A write through the protocol of such a name is one through
+        the parameter's protocol."""
+        proto = protocol_slot(self.declared_type(name))
+        if proto is None or is_dyn_protocol(proto):
+            return None
+        nodes = self.storage_climb(StorageKey.of_name(name), members=True)
+        if any(n.key.members or n.loop_elem or n.handle for n in nodes):
+            return None
+        # A re-seat to the same parameter (on a branch, in a loop) reaches
+        # it once more: the parameter, not the node, must be unique.
+        params = {n.key.as_name() for n in nodes if self.is_param_node(n)}
+        if len(params) != 1:
+            return None
+        param, = params
+        if protocol_slot(self.declared_type(param)) != proto:
+            return None
+        return param
 
     def mark_param_structurally_mutated(self, key: StorageKey | SitedKey
                                         ) -> None:

@@ -3,8 +3,10 @@ asked of the callees a compiled program resolves."""
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..type_def_registry import ParamPassing
-from ..typesys import FunctionInfo
+from ..typesys import FunctionInfo, param_may_be_written
+from ..value_category import param_written
 from .param_contract import (
     Adapts, Materializer, PointerKind, Retention, bound_passing, param_const, param_contract, published_passing,
     retention,
@@ -204,3 +206,73 @@ def test_published_const_ref_is_const(registry, analyzer) -> None:
     assert sig.passings[0] is ParamPassing.CONST_REF
     assert not param_const(fi, 0)
     assert param_contract(fi, 0, fi.params[0].type, signature=sig).const
+
+
+WRITTEN_SOURCE = """\
+from typing import Protocol
+from tpy import int32, readonly, Ptr, Span
+from tpy.extern import native
+
+class Feeder(Protocol):
+    def feed(self, xs: list[int32]) -> None: ...
+    def mix(self, n: int32, t: tuple[list[int32], int32]) -> None: ...
+
+class Peeker(Protocol):
+    @readonly
+    def peek(self, xs: list[int32]) -> None: ...
+
+def length(xs: list[int32]) -> int32:
+    return len(xs)
+
+@readonly
+@native("probe_count")
+def probe_count(xs: list[int32]) -> int32: ...
+
+@native("probe_open")
+def probe_open[T](x: T) -> None: ...
+
+@native("probe_poke")
+def probe_poke(p: Ptr[int32], q: Ptr[readonly[int32]]) -> None: ...
+
+@native("probe_fill")
+def probe_fill(s: Span[int32], r: Span[readonly[int32]]) -> None: ...
+
+def subject(f: Feeder, p: Peeker, xs: list[int32]) -> None:
+    f.feed(xs)
+    p.peek(xs)
+    print(length(xs), probe_count(xs))
+    t = (xs, 2)
+    f.mix(1, t)
+"""
+
+
+def test_param_written_reads_the_declaration_where_no_facts_exist() -> None:
+    compiler, modules = _compile(WRITTEN_SOURCE)
+    entry = _entry(modules)
+    registry = entry.analyzer.registry
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    feed = fn.body[0].expr.resolved_function_info
+    peek = fn.body[1].expr.resolved_function_info
+    with activate_compiler(compiler):
+        # A protocol method has no body to analyze: a non-readonly one may
+        # write `xs`, as `param_may_be_written` already answers.
+        assert param_written(feed, 0) and param_may_be_written(feed, 0)
+        assert not param_written(peek, 0)
+        # Without facts, a write reaches the caller only through a
+        # reference leaf: none in an `int32`, one inside a tuple, and an
+        # open `T` may be one.
+        mix = fn.body[4].expr.resolved_function_info
+        assert not param_written(mix, 0)
+        assert param_written(mix, 1)
+        assert param_written(_fn(registry, "probe_open"), 0)
+        # A handle with a mutable referent carries a write to the caller;
+        # a readonly one does not.
+        poke = _fn(registry, "probe_poke")
+        fill = _fn(registry, "probe_fill")
+        assert param_written(poke, 0) and not param_written(poke, 1)
+        assert param_written(fill, 0) and not param_written(fill, 1)
+        # A bodied callee answers from its mutation set.
+        assert not param_written(_fn(registry, "length"), 0)
+        # A bodyless `@readonly` stub writes nothing by declaration.
+        assert not param_written(_fn(registry, "probe_count"), 0)
+        assert not param_written(None, 0)

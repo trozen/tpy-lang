@@ -1331,7 +1331,10 @@ class MarkRequest:
     receiver: an iterator view advances itself); `structural`: the
     structural mark; `effective_storage`: the param and
     loop-var marks land on the storage the name borrows
-    (`effective_storage`) rather than the name."""
+    (`effective_storage`) rather than the name; `protocol_only`: the write
+    is through the name's structural protocol (its iteration), so a
+    parameter reached as itself is written only through its protocol
+    (`FunctionInfo.protocol_only_mutated_params`)."""
     params: bool = True
     loop_vars: bool = False
     handle_bindings: bool = True
@@ -1339,6 +1342,7 @@ class MarkRequest:
     via_element: bool = False
     structural: bool = False
     effective_storage: bool = False
+    protocol_only: bool = False
 
 
 def mark_roots(ctx: 'SemanticContext',
@@ -1369,6 +1373,7 @@ def mark_roots(ctx: 'SemanticContext',
             ctx.mark_binding_written(key)
         if req.params:
             ctx.mark_param_mutated(key, through_field=req.through_field,
-                                   via_element=req.via_element)
+                                   via_element=req.via_element,
+                                   protocol_only=req.protocol_only)
         if req.structural:
             ctx.mark_param_structurally_mutated(key)

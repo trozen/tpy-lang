@@ -15,7 +15,7 @@ from ..compilation_context import require_current_compiler
 from ..typesys import (
     contains_reference_type, lands_in_indirection, make_readonly,
     substitute_cpp_ret, bound_as_spelled,
-    declares_no_writes, param_may_be_written,
+    declares_no_writes, param_may_be_written, is_dyn_protocol,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
@@ -72,6 +72,7 @@ from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
                               is_iterator_protocol,
+                              protocol_slot, protocol_twin_slot,
                               is_rvalue_source, peel_coerce)
 from .own_copy import (KIND_SLOT, copy_result_under_write,
                        lost_write_message,
@@ -101,7 +102,8 @@ from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
-from .protocols import dynamic_dispatch_type_conforms, handle_payload_may_be
+from .protocols import (dynamic_dispatch_type_conforms, handle_payload_may_be,
+                        protocol_methods)
 from .dyn_erasure import erased_source
 from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
                        seeded_arg_hint)
@@ -4456,29 +4458,137 @@ class CallAnalyzer:
         callee = fi.root
         assert callee.canonical_fi is None, (
             f"non-collapsed canonical_fi chain on {callee.name}")
+        twin_members = {
+            i: self._protocol_twin_members(fi, i, ops.args[i])
+            for i in {*param_map, *(k[0] for k in extra_param_edges)}
+            if protocol_slot(fi.params[i].type) is not None}
+        main_lent_slots = frozenset(
+            i for i, is_lent in main_lent.items() if is_lent)
         edge = MutationCallEdge(
             callee_fi=callee, param_map=param_map,
-            lent=frozenset(i for i, is_lent in main_lent.items() if is_lent),
+            lent=main_lent_slots,
             elem_step=frozenset(elem_step),
-            bindings={i: tuple(b) for i, b in bindings.items()})
+            bindings={i: tuple(b) for i, b in bindings.items()},
+            twin_members=twin_members,
+            forward_slots=frozenset(
+                i for i, cidx in param_map.items()
+                if i not in elem_step and i not in main_lent_slots
+                and self._forwards_protocol_param(fi, i, ops.args[i], cidx)))
         # One edge carries one receiver: every other operand a select
         # receiver may pick gets an edge of its own.
-        record_receiver_edges(self.ctx, callee, receiver_targets,
-                              tuple(receiver_bindings),
-                              tuple(receiver_captured), param_edge=edge)
+        record_receiver_edges(
+            self.ctx, callee, receiver_targets, tuple(receiver_bindings),
+            tuple(receiver_captured), param_edge=edge,
+            protocol_receivers=self._protocol_receiver_params(expr))
         if edge.param_map or edge.receiver_idx is not None:
             self.ctx.func.current_call_edges.append(edge)
         if edge.bindings:
             self.ctx.binding_edges.append(edge)
         for (callee_idx, caller_idx, stepped), is_lent in (
                 extra_param_edges.items()):
+            forwards = (not stepped and not is_lent
+                        and self._forwards_protocol_param(
+                            fi, callee_idx, ops.args[callee_idx], caller_idx))
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee,
                                  param_map={callee_idx: caller_idx},
                                  lent=(frozenset((callee_idx,)) if is_lent
                                        else frozenset()),
                                  elem_step=(frozenset((callee_idx,))
-                                            if stepped else frozenset())))
+                                            if stepped else frozenset()),
+                                 twin_members={
+                                     k: v for k, v in twin_members.items()
+                                     if k == callee_idx},
+                                 forward_slots=(frozenset((callee_idx,))
+                                                if forwards else frozenset())))
+
+    def _protocol_twin_members(self, fi: FunctionInfo, i: int,
+                               arg: 'TpyExpr | None',
+                               ) -> 'tuple[FunctionInfo, ...] | None':
+        """The members of argument `arg`'s twin a call through `fi`'s
+        structural-protocol slot `i` may run on it and that may write it
+        (`MutationCallEdge.twin_members`): the twin is the type the call's
+        C++ deduces (`protocol_twin_slot`); a member declared to write
+        nothing is left out, as its receiver edge would be. None: no twin
+        or a member that does not resolve."""
+        slot = fi.params[i].type
+        proto = protocol_slot(slot)
+        if proto is None or is_dyn_protocol(proto):
+            return None
+        # Asked as at a written parameter whatever the callee's facts say so
+        # far: they are not final here, and the answer must not depend on
+        # which body sema reached first.
+        twin = protocol_twin_slot(
+            slot, arg, self.ctx, self.ctx.declared_type,
+            frame=fi.is_async or frame_factory_callee(fi),
+            writes=True, callee=fi)
+        if twin is slot or twin is None:
+            return None
+        members = self.protocols.protocol_members_on(
+            unwrap_qualifiers(twin), proto)
+        if members is None:
+            return None
+        return tuple(m for m in members if not declares_no_writes(m))
+
+    def _caller_protocol_param(self, idx: int) -> 'tuple[str, NominalType] | None':
+        """The name and declared structural protocol of the current
+        body's parameter `idx`, when it is one."""
+        fn = self.ctx.func
+        name = next((n for n, i in fn.current_param_name_to_idx.items()
+                     if i == idx), None)
+        if name is None or name in fn.current_rebound_params:
+            return None
+        proto = protocol_slot(self.ctx.declared_type(name))
+        if proto is None or is_dyn_protocol(proto):
+            return None
+        return name, proto
+
+    def _forwards_protocol_param(self, fi: FunctionInfo, i: int,
+                                 arg: 'TpyExpr | None', caller_idx: int,
+                                 ) -> bool:
+        """Argument `arg` of `fi`'s structural-protocol slot `i` is the
+        caller's own protocol parameter `caller_idx` (or a whole alias of
+        it, `protocol_alias_param`), whose declared
+        protocol statically conforms to the slot's: every member the
+        callee may call through the slot is one the caller's twin
+        resolves (`MutationCallEdge.forward_slots`)."""
+        proto = protocol_slot(fi.params[i].type)
+        caller = self._caller_protocol_param(caller_idx)
+        if proto is None or is_dyn_protocol(proto) or caller is None:
+            return False
+        name, caller_proto = caller
+        arg = peel_coerce(arg) if arg is not None else None
+        return (isinstance(arg, TpyName)
+                and self.ctx.protocol_alias_param(arg.name) == name
+                and self.protocols.type_conforms_to_protocol(caller_proto,
+                                                             proto))
+
+    def _protocol_receiver_params(self, expr: 'TpyExpr') -> frozenset[int]:
+        """The caller parameter a method call's receiver is, when the
+        receiver is that parameter, or a whole alias of it
+        (`protocol_alias_param`), read at its declared structural
+        protocol and the method one of the protocol's members: the call
+        writes it through the protocol only
+        (`MutationCallEdge.protocol_receiver`)."""
+        if not isinstance(expr, TpyMethodCall) or expr.super_parent_type:
+            return frozenset()
+        recv = peel_coerce(expr.obj)
+        if not isinstance(recv, TpyName):
+            return frozenset()
+        param = self.ctx.protocol_alias_param(recv.name)
+        idx = (self.ctx.func.current_param_name_to_idx.get(param)
+               if param is not None else None)
+        caller = (self._caller_protocol_param(idx) if idx is not None
+                  else None)
+        if caller is None:
+            return frozenset()
+        recv_type = self.ctx.get_expr_type(recv)
+        if (not isinstance(recv_type, TpyType)
+                or protocol_slot(recv_type) is None):
+            return frozenset()
+        names = {m.name for m in protocol_methods(
+            protocol_info_of(caller[1]))}
+        return frozenset((idx,)) if expr.method in names else frozenset()
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).

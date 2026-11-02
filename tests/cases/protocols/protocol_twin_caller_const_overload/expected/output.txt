@@ -1,0 +1,4 @@
+twice 20 1
+widen 20 1
+broad 20 1
+unreached 10 0

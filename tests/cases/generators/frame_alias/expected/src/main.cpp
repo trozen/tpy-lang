@@ -514,7 +514,7 @@ void branch_first_bound(const std::vector<int32_t>& xs, bool c) {
 //         # An alias of a deduced frame bound inside a branch.
 //         j = h  # tpyc: ok
 //         print("branch_alias", first(j), first(h))
-void branch_alias(std::vector<int32_t>& xs, bool c) {
+void branch_alias(const std::vector<int32_t>& xs, bool c) {
     auto h = ::tpyapp::main::relay(xs);
     if (c) {
         auto& j = h;

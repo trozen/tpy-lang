@@ -192,18 +192,22 @@ the twin is a probe.
 **Rule.** Iterating a protocol-typed parameter calls the protocol's `__iter__`, and
 `Iterable.__iter__` is not `@readonly`, so a body that only loops over `it: Iterable[T]` counts
 as writing `it` -- while the same loop over `xs: list[T]` does not, because the concrete
-`__iter__` is `@readonly`. Every verdict keyed on "this parameter is written" (the argument's
-form at the call, whether a `readonly[...]` argument is accepted, the caller's const-ness) can
-therefore differ between a protocol parameter and its concrete twin, and flips the moment the
-body gains a `for`.
+`__iter__` is `@readonly`. Every verdict keyed on the callee's own "this parameter is written"
+(the argument's form at the call, whether a `readonly[...]` argument is accepted) can therefore
+differ between a protocol parameter and its concrete twin, and flips the moment the body gains a
+`for`. The caller's const-ness is the one verdict that asks the argument's type instead
+(`FunctionInfo.protocol_only_mutated_params` and the call edge's twin members).
 
 **Example.** `def total(it: Iterable[int32]) -> int32` and `def ltotal(it: list[int32]) -> int32`,
-both with the body `for v in it: t += v`, called from `def f(xs: list[int32])`. The twin renders
-`int32_t ltotal(const std::vector<int32_t>& it)` and leaves the caller `void f(const
-std::vector<int32_t>& xs)`; the protocol renders `int32_t total(T_it&& it)` as a written
-parameter, and one `total(xs)` call turns the caller into `void f(std::vector<int32_t>& xs)`.
-A design that assumed "an `Iterable` parameter is read-only" promised the twin's form for every
-iterated protocol argument and had to be re-planned once the written verdict was probed.
+both with the body `for v in it: t += v`. The twin renders `int32_t ltotal(const
+std::vector<int32_t>& it)`; the protocol renders `int32_t total(T_it&& it)` and keeps `it` in
+its own written set (the union `mutated_params`, which the argument's form at the call reads).
+What a caller `def f(xs: list[int32])` passing `xs` gets is decided per call since 2026-11-02:
+`total` writes `it` only through its protocol, and `list.__iter__` is `@readonly`, so `f` keeps
+`void f(const std::vector<int32_t>& xs)`. A design that read the union as "the caller's argument
+is written" -- the verdict before that split -- turned every such caller mutable, and one that
+assumed "an `Iterable` parameter is read-only" promised the twin's form for every iterated
+protocol argument and had to be re-planned once the written verdict was probed.
 
 **Check.** For a design or fix that reads a protocol parameter's written verdict, probe a body
 that only iterates the parameter and a body that only calls a `@readonly` method on it, and

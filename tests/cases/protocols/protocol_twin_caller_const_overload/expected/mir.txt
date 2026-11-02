@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@95:0: uncovered (unsupported parameter type)
+main::use0@99:0: uncovered (unsupported parameter type)
+main::k_twice@104:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_widen@110:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::use_list@114:0: uncovered (unsupported parameter type)
+main::k_broad@120:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::k_unreached@127:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@131:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Twice.feed@27:4: uncovered (no body to lower)
+main::Twice.feed@33:4: uncovered (no body to lower)
+main::Widen.feed@45:4: uncovered (no body to lower)
+main::Widen.feed@51:4: uncovered (no body to lower)
+main::Broad.feed@67:4: uncovered (no body to lower)
+main::Broad.feed@73:4: uncovered (no body to lower)
+main::Unreached.feed@85:4: uncovered (no body to lower)
+main::Unreached.feed@90:4: uncovered (no body to lower)
+main::Twice.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Widen.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::Broad.__init__@62:4: covered (storage: no_proof_required), summary: known
+main::Unreached.__init__@80:4: covered (storage: no_proof_required), summary: known

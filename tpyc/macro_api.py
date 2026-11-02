@@ -904,6 +904,8 @@ class PostSemaFunctionMacroContext(FunctionMacroContext):
                 f"{self.function_name!r}")
         fi.direct_mutated_params = (
             (fi.direct_mutated_params or frozenset()) | {param_index})
+        fi.direct_protocol_only_mutated_params = (
+            fi.direct_protocol_only_mutated_params - {param_index})
 
 
 # ---------------------------------------------------------------------------

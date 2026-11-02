@@ -17,7 +17,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 int32_t length(T_xs&& xs);
 // def total_of[T](xs: MyList[T]) -> int32:
 template<typename T>
-int32_t total_of(MyList<T>& xs);
+int32_t total_of(const MyList<T>& xs);
 // def main() -> None:
 void main();
 
@@ -138,7 +138,7 @@ int32_t length(T_xs&& xs) {
 //     # `get_extends_protocol_type_arg` with a Ref-wrapped arg.
 //     return length(xs)
 template<typename T>
-int32_t total_of(MyList<T>& xs) {
+int32_t total_of(const MyList<T>& xs) {
     return ::tpyapp::main::length<T>(xs);
 }
 

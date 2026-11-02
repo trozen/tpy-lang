@@ -40,7 +40,7 @@ int32_t param_name(std::vector<int32_t>* maybe) {
 // # free function: the plain container name, which stays bare.
 // def plain(xs: list[int32]) -> int32:
 //     return total(xs)  # tpyc: ok
-int32_t plain(std::vector<int32_t>& xs) {
+int32_t plain(const std::vector<int32_t>& xs) {
     return ::tpyapp::main::total(xs);
 }
 
