@@ -6342,8 +6342,22 @@ struct Dog : Animal {
   of `list` (Python asks the subclass's reflected `__eq__` first; TPy runs `list.__eq__`).
   A builtin callee warns even where its C++ never calls the override
   (BUGS.md#builtin-dunder-arg-warning-false-positive).
-  The C++ is unchanged. Escape: annotate the parameter with the subclass or a structural
-  protocol, or make the base a `@dynamic` protocol (user classes).
+  A callable whose parameter takes the base, passed where its slot hands it the subclass
+  (`call_child(f, c)` with `def f(b: Base)` at `g: Fn[[Child], str]`, a `Callable[[Child], str]`
+  local, module-level global, list element or return, a `@dispatch` receiver, a callable
+  object's `__call__`, a `Callable[[Base], str]` value), warns the same at the argument,
+  naming the parameter as a direct call through it would (`'b'`, `parameter 'b' of
+  Namer.__call__`, `'arg1'` for a callable value). A generic slot `g: Fn[[T], str]` warns
+  where the call binds `T` to the subclass (`ap(f, c)`), not in a generic body that forwards
+  an open `T` (`def fwd[T](g: Fn[[T], str], x: T): return ap(g, x)`). A callable value or
+  object there needs the explicit `ap[Child](hb, c)` / `ap[Child](Namer(), c)` until
+  inference joins the two bindings of `T`
+  (BUGS.md#generic-callable-param-subclass-arg-unjoined). Not yet: a named function at an
+  open-`T` slot inside a generic body (BUGS.md#generic-body-fn-ref-open-t-slot-refused) and
+  at a `@dispatch` set mixing a generic and a concrete variant
+  (BUGS.md#dispatch-generic-fn-ref-arg-unmatched). The C++ is unchanged. Escape: annotate
+  the parameter with the subclass or a structural protocol, or make the base a `@dynamic`
+  protocol (user classes).
 
 #### Multiple Inheritance (D22)
 

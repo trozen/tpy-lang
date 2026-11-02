@@ -15,10 +15,30 @@ class Base:
     def __init__(self, v: int32) -> None:
         self.v = v
 
+    @readonly
+    def get(self) -> int32:
+        return self.v
+
+
+class HasV(Protocol):
+    @readonly
+    def get(self) -> int32: ...
+
 
 class Child(Base):
     def __init__(self, v: int32) -> None:
         super().__init__(v)
+
+
+# Kid overrides get so a T bound to Base instead of Kid shows in the output;
+# the override's static-dispatch note is expected.
+class Kid(Base):  # tpyc: warning(/hides 'Base.get'/)
+    def __init__(self, v: int32) -> None:
+        super().__init__(v)
+
+    @readonly
+    def get(self) -> int32:
+        return self.v * 100
 
 
 @dynamic
@@ -79,6 +99,32 @@ def getv(b: Base) -> int32:
 
 def ask(s: readonly[Speaker]) -> int32:
     return s.speak()
+
+
+class Pet(Speaker):
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+    @readonly
+    def speak(self) -> int32:
+        return self.v
+
+
+class Puppy(Pet):
+    def __init__(self, v: int32) -> None:
+        super().__init__(v)
+
+    @readonly
+    def speak(self) -> int32:
+        return self.v * 10
+
+
+def pet_speak(p: readonly[Pet]) -> int32:
+    return p.speak()
+
+
+def tag[T: HasV](x: T) -> int32:
+    return x.get()
 
 
 def sv(s: StrView) -> int32:
@@ -203,8 +249,16 @@ def call_child(f: Fn[[Child], int32], c: Child) -> int32:
     return f(c)
 
 
+def call_kid(f: Fn[[Kid], int32], k: Kid) -> int32:
+    return f(k)
+
+
 def call_dog(f: Fn[[readonly[Dog]], int32], d: Dog) -> int32:
     return f(d)
+
+
+def call_puppy(f: Fn[[readonly[Puppy]], int32], p: Puppy) -> int32:
+    return f(p)
 
 
 def call_str(f: Fn[[str], int32], s: str) -> int32:
@@ -408,6 +462,21 @@ def main() -> None:
     # A subclass C++ inherits: a class base and an inherited @dynamic protocol.
     print("subclass", call_child(getv, Child(10)))  # tpyc: ok
     print("dynamic", call_dog(ask, Dog(12)))  # tpyc: ok
+    # No warning: speak is a @dynamic protocol method, so the call through
+    # Pet still runs Puppy.speak (30, as in CPython). The second call shows
+    # the callback sees the same object, not a copy.
+    pup = Puppy(3)
+    print("dynamic-member", call_puppy(pet_speak, pup))  # tpyc: ok
+    pup.v = 4
+    print("dynamic-member-after", call_puppy(pet_speak, pup))  # tpyc: ok
+    # A generic callback binds T to the subclass itself: no upcast, so the
+    # subclass's override of get runs (a bind to Base would print v, not
+    # v * 100), on the object itself, a write made after the first call
+    # included.
+    kid = Kid(4)
+    print("generic-child", call_kid(tag, kid))  # tpyc: ok
+    kid.v = 5
+    print("generic-child-after", call_kid(tag, kid))  # tpyc: ok
     # The str family: str and StrView share a parameter form; str binds String.
     print("strview", call_str(sv, "hello"))  # tpyc: ok
     print("string", call_string(st, String("abc")))  # tpyc: ok

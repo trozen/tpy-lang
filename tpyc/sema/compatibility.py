@@ -10,7 +10,7 @@ import math
 import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
-from typing import (TYPE_CHECKING, AbstractSet, Callable, Iterable, Iterator, NamedTuple,
+from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
 from ..type_def_registry import has_view_param_form
@@ -80,7 +80,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..parse.nodes import program_names, walk_body_stmts, walk_expr_tree
 from .dyn_erasure import dyn_erasure_coercion
-from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_misfit, callable_value_fits
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_fit, callable_value_fit, CallableFit, CallableUpcast
 from ..modules import get_span_return_type
 from .call_lends import (
     EveryTempLend, Lent, MayLend, ReturnLend,
@@ -1520,12 +1520,22 @@ class TypeCompatibility:
                 is_return, coercion_ctx, target_is_storage_form, sink_owns,
                 landing=landing, param=param)
         if is_callable_type(actual) and is_callable_type(expected):
-            if callable_value_fits(actual, expected,
-                                   inherits=self.type_ops.inherits_in_cpp):
+            fit = callable_value_fit(actual, expected,
+                                     inherits=self.type_ops.inherits_in_cpp)
+            if fit is not None and fit.misfit is None:
+                # A function reference's fit was decided and warned where
+                # the name resolved at its slot; warning here again would
+                # double it where its type kept its own signature (an open T).
+                if not (isinstance(source_expr, TpyName)
+                        and source_expr.is_function_ref):
+                    self.warn_callable_upcasts(
+                        fit.upcasts, lambda i: f"'arg{i + 1}'", source_expr,
+                        loc)
                 return None
             erased_both = not actual.is_template and not expected.is_template
-            misfit = (None if erased_both
-                      else self.callable_misfit_reason(actual, expected))
+            misfit = (None if erased_both or fit is None
+                      else self.callable_misfit_reason(actual, expected,
+                                                       None, fit))
             if misfit is not None:
                 reason, lambda_converts = misfit
                 hint = (" (wrap it in a lambda to convert each call)"
@@ -4960,27 +4970,25 @@ class TypeCompatibility:
 
     def callable_misfit_reason(
         self, actual: CallableType, expected: CallableType,
-        called: FunctionInfo | None = None,
-        wildcards: AbstractSet[str] = frozenset(),
-        owning: AbstractSet[int] = frozenset(),
+        called: FunctionInfo | None,
+        fit: CallableFit | None,
     ) -> tuple[str, bool] | None:
-        """Why a callable of type `actual` does not fit `expected`
-        (`callable_misfit`), and whether a direct call -- what a lambda
-        spells -- converts there; None when it fits or the arities differ.
-        A lambda returns what the call returns, so it never converts a
-        return that differs only by `Own`. `called` is the named function
-        or `__call__` whose signature `actual` is, None for a callable
-        value; a generator one never fits
-        (BUGS.md#generator-at-callable-slot-unlowered)."""
+        """Why a callable of type `actual` does not fit `expected` -- its
+        `fit` there (`callable_fit`), None when there is none to read (the
+        arities differ, or `callable_value_fit` refused an erased void
+        slot) -- and whether a direct call -- what a lambda spells --
+        converts there; None when it fits or has no fit. A lambda returns what the
+        call returns, so it never converts a return that differs only by
+        `Own`. `called` is the named function or `__call__` whose
+        signature `actual` is, None for a callable value; a generator one
+        never fits (BUGS.md#generator-at-callable-slot-unlowered)."""
         if called is not None and called.is_generator:
             return GENERATOR_AT_CALLABLE, False
-        if len(actual.param_types) != len(expected.param_types):
+        if fit is None:
             return None
         param_names = ([p.name for p in called.params]
                        if called is not None else None)
-        misfit = callable_misfit(actual, expected,
-                                 inherits=self.type_ops.inherits_in_cpp,
-                                 wildcards=wildcards, owning=owning)
+        misfit = fit.misfit
         if misfit is None:
             return None
         if misfit.borrowed:
@@ -5019,16 +5027,13 @@ class TypeCompatibility:
 
     def callable_ref_refusal(
         self, name: str, called: FunctionInfo,
-        actual: CallableType, expected: CallableType,
-        wildcards: AbstractSet[str] = frozenset(),
-        owning: AbstractSet[int] = frozenset(),
+        actual: CallableType, expected: CallableType, fit: CallableFit,
     ) -> str | None:
         """The refusal of function `called`, named `name` where it is
-        passed, of type `actual` at `expected` (`callable_misfit_reason`),
-        with the lambda that converts each call where a direct call
-        converts; None when it fits."""
-        misfit = self.callable_misfit_reason(actual, expected, called,
-                                             wildcards, owning)
+        passed, of type `actual` at `expected` with `fit` there
+        (`callable_misfit_reason`), with the lambda that converts each call
+        where a direct call converts; None when it fits."""
+        misfit = self.callable_misfit_reason(actual, expected, called, fit)
         if misfit is None:
             return None
         reason, lambda_converts = misfit
@@ -5083,14 +5088,24 @@ class TypeCompatibility:
             )
         called = overloads[0]
         signature = called.callable_signature
-        misfit = self.callable_misfit_reason(signature, expected, called)
+        fit = (callable_fit(signature, expected,
+                            inherits=self.type_ops.inherits_in_cpp)
+               if len(signature.param_types) == len(expected.param_types)
+               else None)
+        misfit = self.callable_misfit_reason(signature, expected, called,
+                                             fit)
         if misfit is not None:
             reason, lambda_converts = misfit
             return CompatError(
                 f"'{obj}' cannot be passed as {shown_expected} in {context}: "
                 f"{reason}{hint if lambda_converts else ''}", loc)
         # No misfit: it fits, unless the arities differ.
-        if len(signature.param_types) == len(expected.param_types):
+        if fit is not None:
+            self.warn_callable_upcasts(
+                fit.upcasts,
+                lambda i: self.methods.calls.param_label(
+                    called, called.params[i].name),
+                source_expr, loc)
             if (readonly_receiver and call_mutates_receiver(called)
                     and self.ctx.slot_step_commits()):
                 # Const inference settles an undecorated `__call__` only
@@ -5137,6 +5152,18 @@ class TypeCompatibility:
             self.ctx.warning(msg, source_expr)
         else:
             self.ctx.warning_from_loc(msg, loc)
+
+    def warn_callable_upcasts(self, upcasts: tuple[CallableUpcast, ...],
+                              label: Callable[[int], str],
+                              source_expr: TpyExpr | None,
+                              loc: SourceLocation | None) -> None:
+        """The lost-override warning (`warn_lost_override_arg`) for each
+        parameter a callable fit accepted a subclass at: a call through
+        the slot hands it over as a direct call would. `label` names the
+        parameter at its index as a direct call does."""
+        for up in upcasts:
+            self.warn_lost_override_arg(up.passed, up.param, label(up.index),
+                                        source_expr, loc)
 
     def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
         """Check if child -> parent is valid for covariant conversion.

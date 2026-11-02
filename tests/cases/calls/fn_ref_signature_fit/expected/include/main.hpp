@@ -13,6 +13,12 @@ namespace tpyapp::main {
 
 using ::tpyapp::helper::h_wide;
 
+// class HasV(Protocol):
+template<typename T>
+concept HasV = requires(const T& t) {
+    { t.get() } -> std::convertible_to<int32_t>;
+};
+
 struct Speaker;
 // @dynamic
 // class Speaker(Protocol):
@@ -35,7 +41,10 @@ namespace tpyapp::main {
 struct P;
 struct Base;
 struct Child;
+struct Kid;
 struct Dog;
+struct Pet;
+struct Puppy;
 struct Wide;
 struct Offset;
 struct Scale;
@@ -72,6 +81,11 @@ int32_t shout(int32_t x);
 int32_t getv(const Base& b);
 // def ask(s: readonly[Speaker]) -> int32:
 int32_t ask(const Speaker& s);
+// def pet_speak(p: readonly[Pet]) -> int32:
+int32_t pet_speak(const Pet& p);
+// def tag[T: HasV](x: T) -> int32:
+template<HasV T>
+int32_t tag(::tpy::param_val_or_ref_t<T> x);
 // def sv(s: StrView) -> int32:
 int32_t sv(std::string_view s);
 // def st(s: str) -> int32:
@@ -156,12 +170,24 @@ template<typename __F0>
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t call_child(__F0&& f, Child& c);
+// def call_kid(f: Fn[[Kid], int32], k: Kid) -> int32:
+template<typename __F0>
+  requires requires(__F0& __fn, Kid& __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t call_kid(__F0&& f, Kid& k);
 // def call_dog(f: Fn[[readonly[Dog]], int32], d: Dog) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, const Dog& __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t call_dog(__F0&& f, const Dog& d);
+// def call_puppy(f: Fn[[readonly[Puppy]], int32], p: Puppy) -> int32:
+template<typename __F0>
+  requires requires(__F0& __fn, const Puppy& __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t call_puppy(__F0&& f, const Puppy& p);
 // def call_str(f: Fn[[str], int32], s: str) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
@@ -286,6 +312,10 @@ struct Base {
     // def __init__(self, v: int32) -> None:
     Base() = default;
     explicit Base(int32_t v);
+
+    // @readonly
+    // def get(self) -> int32:
+    int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -311,6 +341,26 @@ struct Dog : Speaker {
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     ::tpy::print_object_default(os, Dog::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Pet(Speaker):
+struct Pet : Speaker {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Pet() = default;
+    explicit Pet(int32_t v);
+
+    // @readonly
+    // def speak(self) -> int32:
+    int32_t speak() const override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pet";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
+    ::tpy::print_object_default(os, Pet::__tpy_class_name__, obj);
     return os;
 }
 
@@ -425,6 +475,42 @@ struct Child : Base {
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Kid(Base):  # tpyc: warning(/hides 'Base.get'/)
+struct Kid : Base {
+
+    // def __init__(self, v: int32) -> None:
+    Kid() = default;
+    explicit Kid(int32_t v);
+
+    // @readonly
+    // def get(self) -> int32:
+    int32_t get() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Kid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Kid& obj) {
+    ::tpy::print_object_default(os, Kid::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Puppy(Pet):
+struct Puppy : Pet {
+
+    // def __init__(self, v: int32) -> None:
+    Puppy() = default;
+    explicit Puppy(int32_t v);
+
+    // @readonly
+    // def speak(self) -> int32:
+    int32_t speak() const override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Puppy";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
+    ::tpy::print_object_default(os, Puppy::__tpy_class_name__, obj);
     return os;
 }
 
@@ -557,6 +643,13 @@ inline P::P(int32_t v) : v(v) {}
 //     self.v = v
 inline Base::Base(int32_t v) : v(v) {}
 
+// @readonly
+// def get(self) -> int32:
+//     return self.v
+inline int32_t Base::get() const {
+    return this->v;
+}
+
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline Dog::Dog(int32_t v) : v(v) {}
@@ -565,6 +658,17 @@ inline Dog::Dog(int32_t v) : v(v) {}
 // def speak(self) -> int32:
 //     return self.v
 inline int32_t Dog::speak() const {
+    return this->v;
+}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Pet::Pet(int32_t v) : v(v) {}
+
+// @readonly
+// def speak(self) -> int32:
+//     return self.v
+inline int32_t Pet::speak() const {
     return this->v;
 }
 
@@ -625,6 +729,28 @@ inline Hp::Hp() : p(P(1)) {}
 //     super().__init__(v)
 inline Child::Child(int32_t v) : Base(v) {}
 
+// def __init__(self, v: int32) -> None:
+//     super().__init__(v)
+inline Kid::Kid(int32_t v) : Base(v) {}
+
+// @readonly
+// def get(self) -> int32:
+//     return self.v * 100
+inline int32_t Kid::get() const {
+    return (::tpy::mul_check<int32_t>(this->v, 100));
+}
+
+// def __init__(self, v: int32) -> None:
+//     super().__init__(v)
+inline Puppy::Puppy(int32_t v) : Pet(v) {}
+
+// @readonly
+// def speak(self) -> int32:
+//     return self.v * 10
+inline int32_t Puppy::speak() const {
+    return (::tpy::mul_check<int32_t>(this->v, 10));
+}
+
 // def __init__(self) -> None:
 //     super().__init__()
 inline SubHp::SubHp() : Hp() {}
@@ -644,6 +770,12 @@ inline int64_t Runner::apply(__F0&& f, int32_t s) const {
 template<typename T>
 int64_t gen_wide(::tpy::param_val_or_ref_t<T> x) {
     return 7;
+}
+// def tag[T: HasV](x: T) -> int32:
+//     return x.get()
+template<HasV T>
+int32_t tag(::tpy::param_val_or_ref_t<T> x) {
+    return x.get();
 }
 // def call32(f: Fn[[int32], int64], s: int32) -> int64:
 //     return f(s)
@@ -726,6 +858,15 @@ template<typename __F0>
 int32_t call_child(__F0&& f, Child& c) {
     return f(c);
 }
+// def call_kid(f: Fn[[Kid], int32], k: Kid) -> int32:
+//     return f(k)
+template<typename __F0>
+  requires requires(__F0& __fn, Kid& __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t call_kid(__F0&& f, Kid& k) {
+    return f(k);
+}
 // def call_dog(f: Fn[[readonly[Dog]], int32], d: Dog) -> int32:
 //     return f(d)
 template<typename __F0>
@@ -734,6 +875,15 @@ template<typename __F0>
   }
 int32_t call_dog(__F0&& f, const Dog& d) {
     return f(d);
+}
+// def call_puppy(f: Fn[[readonly[Puppy]], int32], p: Puppy) -> int32:
+//     return f(p)
+template<typename __F0>
+  requires requires(__F0& __fn, const Puppy& __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t call_puppy(__F0&& f, const Puppy& p) {
+    return f(p);
 }
 // def call_str(f: Fn[[str], int32], s: str) -> int32:
 //     return f(s)

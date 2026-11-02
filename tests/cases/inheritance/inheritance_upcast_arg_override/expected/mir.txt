@@ -1,10 +1,36 @@
 main::__tpy_init: uncovered (module initialization)
-main::describe@25:0: covered (storage: no_proof_required), summary: known
-main::describe_ptr@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::main@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Animal.speak@14:4: covered (storage: no_proof_required), summary: known
-main::Dog.speak@22:4: covered (storage: no_proof_required), summary: known
-main::Parrot.speak@40:4: covered (storage: no_proof_required)
-main::Animal.__init__@12:4: covered (storage: no_proof_required), summary: known
-main::Dog.__init__@19:4: covered (storage: no_proof_required), summary: known
-main::Parrot.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::describe@28:0: covered (storage: no_proof_required), summary: known
+main::describe_ptr@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::f@62:0: covered (storage: no_proof_required), summary: known
+main::f2@65:0: covered (storage: no_proof_required), summary: known
+main::fro@68:0: covered (storage: no_proof_required), summary: known
+main::call_child@75:0: uncovered (unsupported parameter type)
+main::callc_child@78:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::opt_child@81:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pick@86:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::ov@91:0: uncovered (no body to lower)
+main::ov@95:0: uncovered (no body to lower)
+main::ovp@99:0: uncovered (no body to lower)
+main::ovp@103:0: uncovered (no body to lower)
+main::ap@106:0: uncovered (generic body)
+main::ap2@109:0: uncovered (generic body)
+main::fwd@112:0: uncovered (generic body)
+main::apply_l@116:0: uncovered (generic body)
+main::forward_l@119:0: uncovered (generic body)
+main::gen_cb@140:0: uncovered (reference yield)
+main::co_cb@144:0: uncovered (async body)
+main::callbacks@148:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@206:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Animal.speak@17:4: covered (storage: no_proof_required), summary: known
+main::Dog.speak@25:4: covered (storage: no_proof_required), summary: known
+main::Parrot.speak@43:4: covered (storage: no_proof_required)
+main::Base.name@51:4: covered (storage: no_proof_required), summary: known
+main::Child.name@59:4: covered (storage: no_proof_required), summary: known
+main::Namer.__call__@72:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Holder.run@136:4: uncovered (unsupported parameter type)
+main::Animal.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::Parrot.__init__@41:4: covered (storage: no_proof_required), summary: known
+main::Base.__init__@47:4: covered (storage: no_proof_required), summary: known
+main::Child.__init__@55:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@133:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

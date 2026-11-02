@@ -1,0 +1,1 @@
+main.py:35: warning: Method 'Kid.get' hides 'Base.get' -- any 'Base' reference will call 'Base.get', not 'Kid.get' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch

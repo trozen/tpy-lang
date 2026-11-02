@@ -935,6 +935,22 @@ class CallableMisfit(NamedTuple):
     borrowed: bool = False
 
 
+class CallableUpcast(NamedTuple):
+    """A parameter position a callable fit accepted because C++ inherits:
+    the slot hands `passed`, a subclass, to the callable's `param`, the
+    class it derives from (both with readonly / Own set aside)."""
+    index: int
+    passed: NominalType
+    param: NominalType
+
+
+class CallableFit(NamedTuple):
+    """A callable fit's verdict (`callable_fit`): the first misfit, None
+    when it fits, and the parameter positions it accepted by inheritance."""
+    misfit: CallableMisfit | None
+    upcasts: tuple[CallableUpcast, ...] = ()
+
+
 def _logical(t: TpyType) -> TpyType:
     t = unwrap_ref_type(t)
     return t.family.owned_type if isinstance(t, PendingViewType) else t
@@ -1009,13 +1025,17 @@ def _held_by_value(held: TpyType, value: TpyType) -> bool:
     return isinstance(held, UnionType) and value in held.members
 
 
-def _param_receives(param: TpyType, passed: TpyType, inherits: Inherits) -> bool:
+def _param_receives(param: TpyType, passed: TpyType, inherits: Inherits,
+                    upcast: list[tuple[NominalType, NominalType]] | None = None,
+                    ) -> bool:
     """Whether a callable's parameter of type `param`, a reference or a view
-    in C++, binds what a slot passing `passed` hands it."""
+    in C++, binds what a slot passing `passed` hands it. A subclass bound
+    to its base is recorded as (`passed`, `param`) in `upcast`."""
     if param == passed:
         return True
     if isinstance(param, ReadonlyType):
-        return _param_receives(param.wrapped, unwrap_readonly(passed), inherits)
+        return _param_receives(param.wrapped, unwrap_readonly(passed), inherits,
+                               upcast)
     if isinstance(passed, (ReadonlyType, OwnType)):
         return False
     if isinstance(param, OwnType):
@@ -1024,11 +1044,13 @@ def _param_receives(param: TpyType, passed: TpyType, inherits: Inherits) -> bool
         # view.
         owned = _logical(param.wrapped)
         return (_by_value(owned) and not has_view_param_form(owned)
-                and _param_receives(owned, passed, inherits))
+                and _param_receives(owned, passed, inherits, upcast))
     if widens_without_check(passed, param):
         return True
     if (isinstance(param, NominalType) and isinstance(passed, NominalType)
             and inherits(passed, param)):
+        if upcast is not None:
+            upcast.append((passed, param))
         return True
     family = _view_family(param)
     if family is not None:
@@ -1051,7 +1073,8 @@ def _param_receives(param: TpyType, passed: TpyType, inherits: Inherits) -> bool
 
 
 def _param_fits(passed: TpyType, param: TpyType, exact: bool,
-                inherits: Inherits, wildcards: AbstractSet[str]) -> bool:
+                inherits: Inherits, wildcards: AbstractSet[str],
+                upcast: list[tuple[NominalType, NominalType]]) -> bool:
     passed, param = _logical(passed), _logical(param)
     if contains_type_param(passed, set(wildcards)) or passed == param:
         return True
@@ -1060,7 +1083,7 @@ def _param_fits(passed: TpyType, param: TpyType, exact: bool,
     if (isinstance(passed, OwnType) and _by_value(passed.wrapped)
             and _logical(passed.wrapped) == param):
         return True
-    return not exact and _param_receives(param, passed, inherits)
+    return not exact and _param_receives(param, passed, inherits, upcast)
 
 
 def _return_form(t: TpyType) -> TpyType:
@@ -1094,6 +1117,18 @@ def callable_misfit(
     wildcards: AbstractSet[str] = frozenset(),
     owning: AbstractSet[int] = frozenset(),
 ) -> CallableMisfit | None:
+    """The first position at which a callable of type `actual` cannot stand
+    at the callback slot `expected`, None when it fits (`callable_fit`)."""
+    return callable_fit(actual, expected, inherits=inherits, exact=exact,
+                        wildcards=wildcards, owning=owning).misfit
+
+
+def callable_fit(
+    actual: CallableType, expected: CallableType,
+    *, inherits: Inherits, exact: bool = False,
+    wildcards: AbstractSet[str] = frozenset(),
+    owning: AbstractSet[int] = frozenset(),
+) -> CallableFit:
     """The first position at which a callable of type `actual` cannot stand
     at the callback slot `expected`, None when it fits. `actual` must have
     the slot's arity. A named function or callable object is described by
@@ -1129,23 +1164,28 @@ def callable_misfit(
     equal positions fit. A slot position naming one of `wildcards` -- the type
     parameters the call at hand is inferring -- fits anything. At a position
     in `owning` the call hands over each value it passes there, so an
-    `Own[X]` parameter receives it as `Own[X]`.
+    `Own[X]` parameter receives it as `Own[X]`. The fit also lists each
+    parameter that receives a subclass of its class (`CallableUpcast`).
     """
     ret = actual.return_type
+    upcasts: list[CallableUpcast] = []
     for i, (passed, param) in enumerate(zip(expected.param_types,
                                             actual.param_types)):
         if i in owning and owning_param(param):
             passed = OwnType(_logical(passed))
-        if not _param_fits(passed, param, exact, inherits, wildcards):
-            return CallableMisfit(i, param, passed)
+        upcast: list[tuple[NominalType, NominalType]] = []
+        if not _param_fits(passed, param, exact, inherits, wildcards, upcast):
+            return CallableFit(CallableMisfit(i, param, passed))
+        upcasts.extend(CallableUpcast(i, sub, base) for sub, base in upcast)
+    fits = CallableFit(None, tuple(upcasts))
     slot_return = expected.return_type
     if isinstance(slot_return, VoidType):
-        return None
+        return fits
     # An Fn slot is a template parameter: a call through it has the
     # callable's own return type, so only a std::function converts one.
     if not _return_fits(ret, slot_return,
                         exact or expected.is_template, wildcards):
-        return CallableMisfit(None, ret, slot_return)
+        return CallableFit(CallableMisfit(None, ret, slot_return))
     # A std::function holds its result by value, and an `Own` slot return
     # says the result is owned: a reference or a borrow returned into
     # either would be copied where the caller sees the original.
@@ -1155,8 +1195,8 @@ def callable_misfit(
             and not contains_type_param(_return_form(slot_return),
                                         set(wildcards))
             and not returns_storage_form(ret)):
-        return CallableMisfit(None, ret, slot_return, borrowed=True)
-    return None
+        return CallableFit(CallableMisfit(None, ret, slot_return, borrowed=True))
+    return fits
 
 
 def callable_fits(
@@ -1178,17 +1218,30 @@ def callable_value_fits(
     wildcards: AbstractSet[str] = frozenset(),
 ) -> bool:
     """Whether a callable VALUE of type `actual` fits the slot `expected`
-    (`callable_fits`). A std::function converted into another of a
-    different signature builds a new wrapper, so between two erased
-    callables only an unchanged signature fits -- a void slot return
-    included."""
-    if actual.is_template or expected.is_template:
-        return callable_fits(actual, expected, inherits=inherits,
+    (`callable_value_fit`)."""
+    fit = callable_value_fit(actual, expected, inherits=inherits,
                              wildcards=wildcards)
-    return (callable_fits(actual, expected, inherits=inherits, exact=True,
-                          wildcards=wildcards)
-            and (not isinstance(expected.return_type, VoidType)
-                 or isinstance(actual.return_type, VoidType)))
+    return fit is not None and fit.misfit is None
+
+
+def callable_value_fit(
+    actual: CallableType, expected: CallableType, *, inherits: Inherits,
+    wildcards: AbstractSet[str] = frozenset(),
+) -> CallableFit | None:
+    """The fit of a callable VALUE of type `actual` at the slot `expected`
+    (`callable_fit`), None when the arities differ or an erased void slot
+    meets a callable that returns a value. A std::function converted into
+    another of a different signature builds a new wrapper, so between two
+    erased callables only an unchanged signature fits -- a void slot
+    return included."""
+    if len(actual.param_types) != len(expected.param_types):
+        return None
+    erased = not (actual.is_template or expected.is_template)
+    if (erased and isinstance(expected.return_type, VoidType)
+            and not isinstance(actual.return_type, VoidType)):
+        return None
+    return callable_fit(actual, expected, inherits=inherits, exact=erased,
+                        wildcards=wildcards)
 
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionContext) -> str:

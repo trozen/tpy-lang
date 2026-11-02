@@ -68,6 +68,12 @@ int32_t ask(const Speaker& s) {
     return s.speak();
 }
 
+// def pet_speak(p: readonly[Pet]) -> int32:
+//     return p.speak()
+int32_t pet_speak(const Pet& p) {
+    return p.speak();
+}
+
 // def sv(s: StrView) -> int32:
 //     return len(s)
 int32_t sv(std::string_view s) {
@@ -355,6 +361,21 @@ __coro_double_ double_(int32_t n) {
 //     # A subclass C++ inherits: a class base and an inherited @dynamic protocol.
 //     print("subclass", call_child(getv, Child(10)))  # tpyc: ok
 //     print("dynamic", call_dog(ask, Dog(12)))  # tpyc: ok
+//     # No warning: speak is a @dynamic protocol method, so the call through
+//     # Pet still runs Puppy.speak (30, as in CPython). The second call shows
+//     # the callback sees the same object, not a copy.
+//     pup = Puppy(3)
+//     print("dynamic-member", call_puppy(pet_speak, pup))  # tpyc: ok
+//     pup.v = 4
+//     print("dynamic-member-after", call_puppy(pet_speak, pup))  # tpyc: ok
+//     # A generic callback binds T to the subclass itself: no upcast, so the
+//     # subclass's override of get runs (a bind to Base would print v, not
+//     # v * 100), on the object itself, a write made after the first call
+//     # included.
+//     kid = Kid(4)
+//     print("generic-child", call_kid(tag, kid))  # tpyc: ok
+//     kid.v = 5
+//     print("generic-child-after", call_kid(tag, kid))  # tpyc: ok
 //     # The str family: str and StrView share a parameter form; str binds String.
 //     print("strview", call_str(sv, "hello"))  # tpyc: ok
 //     print("string", call_string(st, String("abc")))  # tpyc: ok
@@ -446,6 +467,14 @@ void main() {
     std::cout << "subclass" << " " << ::tpyapp::main::call_child(getv, __tmp_1) << "\n" << ::tpy::check_signals;
     Dog __tmp_2 = Dog(12);
     std::cout << "dynamic" << " " << ::tpyapp::main::call_dog(ask, __tmp_2) << "\n" << ::tpy::check_signals;
+    Puppy pup = Puppy(3);
+    std::cout << "dynamic-member" << " " << ::tpyapp::main::call_puppy(pet_speak, pup) << "\n" << ::tpy::check_signals;
+    pup.v = 4;
+    std::cout << "dynamic-member-after" << " " << ::tpyapp::main::call_puppy(pet_speak, pup) << "\n" << ::tpy::check_signals;
+    Kid kid = Kid(4);
+    std::cout << "generic-child" << " " << ::tpyapp::main::call_kid(tag<Kid>, kid) << "\n" << ::tpy::check_signals;
+    kid.v = 5;
+    std::cout << "generic-child-after" << " " << ::tpyapp::main::call_kid(tag<Kid>, kid) << "\n" << ::tpy::check_signals;
     std::cout << "strview" << " " << ::tpyapp::main::call_str(sv, "hello") << "\n" << ::tpy::check_signals;
     std::cout << "string" << " " << ::tpyapp::main::call_string(st, ::tpy::String("abc")) << "\n" << ::tpy::check_signals;
     std::cout << "union" << " " << ::tpyapp::main::call_u(u, 42) << "\n" << ::tpy::check_signals;

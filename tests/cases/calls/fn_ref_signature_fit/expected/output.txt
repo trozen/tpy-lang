@@ -24,6 +24,10 @@ optional 8
 optional-str 3
 subclass 10
 dynamic 12
+dynamic-member 30
+dynamic-member-after 40
+generic-child 400
+generic-child-after 500
 strview 5
 string 3
 union int 42

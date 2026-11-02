@@ -2,11 +2,12 @@
 `tests/cases/calls/fn_ref_signature_fit`."""
 import pytest
 
-from tpyc.coercions import callable_fits
+from tpyc.coercions import CallableUpcast, callable_fit, callable_fits
 from tpyc.diagnostics import SemanticError
 from tpyc.sema.slot_hint import SlotHint, element
 from tpyc.thir.testutil import _compile
-from tpyc.typesys import INT32, CallableType, PtrType, TupleType, make_fn_type
+from tpyc.typesys import (INT32, INT64, CallableType, NominalType, PtrType,
+                          ReadonlyType, TpyType, TupleType, make_fn_type)
 
 _PRELUDE = '''from typing import Any, Callable, Iterable, Iterator, Protocol
 from tpy import int16, int32, int64, uint8, uint32, Fn, Own, StrView, dispatch, dynamic, readonly
@@ -869,3 +870,26 @@ def test_projection_keeps_only_a_fit_binding() -> None:
     fit = SlotHint.declared(pair).fitting(node, frozenset({"T"}), frozenset())
     part = fit.map(element(0))
     assert part is not None and part.callable_fit_at(node).open_params == {"T"}
+
+
+_BASE = NominalType("Base", _module_qname="m.Base")
+_CHILD = NominalType("Child", _module_qname="m.Child")
+
+
+@pytest.mark.parametrize("param, passed, upcasts", [
+    (_BASE, _CHILD, (CallableUpcast(1, _CHILD, _BASE),)),
+    (ReadonlyType(_BASE), _CHILD, (CallableUpcast(1, _CHILD, _BASE),)),
+    (_BASE, _BASE, ()),
+    (INT64, INT32, ()),
+], ids=["subclass", "readonly-base", "equal", "widening"])
+def test_fit_reports_upcast_positions(param: TpyType, passed: TpyType,
+                                      upcasts: tuple[CallableUpcast, ...]
+                                      ) -> None:
+    """The fit lists the parameters it accepted because C++ inherits, the
+    positions a call through the slot hands a subclass to a base, and no
+    other accepted position."""
+    fit = callable_fit(make_fn_type((INT32, param), INT32),
+                       make_fn_type((INT32, passed), INT32),
+                       inherits=lambda sub, base: (sub, base) == (_CHILD, _BASE))
+    assert fit.misfit is None
+    assert fit.upcasts == upcasts

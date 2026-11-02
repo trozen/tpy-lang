@@ -5612,7 +5612,7 @@ class CallAnalyzer:
                 # function's actual signature substituted with inferred
                 # type args. This can supply a return type the partial
                 # hint didn't.
-                fi, type_args = matched_data
+                fi, type_args = matched_data.info, matched_data.type_args
                 # A named function is not an erased callable: it ranks by
                 # its own signature at a Callable parameter too.
                 slot_type = self.expr.build_concrete_callable(

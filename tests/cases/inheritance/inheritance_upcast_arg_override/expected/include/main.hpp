@@ -4,6 +4,8 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
 
 namespace tpyapp::main {
 
@@ -29,13 +31,100 @@ namespace tpyapp::main {
 struct Animal;
 struct Dog;
 struct Parrot;
+struct Base;
+struct Child;
+struct Namer;
+struct Holder;
 
+extern std::function<std::string(Child&)> G;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_cb;
+struct __coro_co_cb;
 
 // def describe(a: Animal) -> str:
 std::string describe(const Animal& a);
 // def describe_ptr(a: Ptr[Animal]) -> str:
 std::string describe_ptr(Animal* a);
+// def f(b: Base) -> str:
+std::string f(const Base& b);
+// def f2(b: Base, k: int) -> str:
+std::string f2(const Base& b, const ::tpy::BigInt& k);
+// def fro(b: readonly[Base]) -> str:
+std::string fro(const Base& b);
+// def call_child(g: Fn[[Child], str], c: Child) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string call_child(__F0&& g, Child& c);
+// def callc_child(g: Callable[[Child], str], c: Child) -> str:
+std::string callc_child(const std::function<std::string(Child&)>& g, Child& c);
+// def opt_child(c: Child, g: Callable[[Child], str] | None = None) -> str:
+std::string opt_child(Child& c, std::optional<std::function<std::string(Child&)>> g = std::nullopt);
+// def pick() -> Callable[[Child], str]:
+std::function<std::string(Child&)> pick();
+// @dispatch
+// def ov(g: Fn[[Child], str], c: Child) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ov__Fn_Child_str__Child(__F0&& g, Child& c);
+// @dispatch
+// def ov(g: Fn[[int], str], c: Child) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, const ::tpy::BigInt& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ov__Fn_int_str__Child(__F0&& g, const Child& c);
+// @dispatch
+// def ovp(g: Fn[[Base], str], c: Child) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, Base& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ovp__Fn_Base_str__Child(__F0&& g, Child& c);
+// @dispatch
+// def ovp(g: Fn[[Child], str], c: Child) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ovp__Fn_Child_str__Child(__F0&& g, const Child& c);
+// def ap[T](g: Fn[[T], str], x: T) -> str:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ap(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
+// def ap2[T](g: Fn[[Child, T], str], x: T) -> str:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, Child& __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  }
+std::string ap2(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
+// def fwd[T](g: Fn[[T], str], x: T) -> str:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string fwd(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
+// def apply_l[T](g: Fn[[Child, list[T]], str], x: list[T]) -> str:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, Child& __a0, std::vector<T>& __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  }
+std::string apply_l(__F0&& g, std::vector<T>& x);
+// def forward_l[T](x: list[T]) -> str:
+template<typename T>
+std::string forward_l(std::vector<T>& x);
+// def gen_cb() -> Iterator[Callable[[Child], str]]:
+__gen_gen_cb gen_cb();
+// async def co_cb(c: Child) -> str:
+__coro_co_cb co_cb(Child& c);
+// def callbacks() -> None:
+void callbacks();
 // def main() -> None:
 void main();
 
@@ -55,6 +144,62 @@ struct Animal {
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     ::tpy::print_object_default(os, Animal::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Base:
+struct Base {
+
+    // def __init__(self) -> None:
+    Base();
+
+    // @readonly
+    // def name(self) -> str:
+    std::string name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
+    ::tpy::print_object_default(os, Base::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Namer:
+struct Namer {
+
+
+    // def __call__(self, b: Base) -> str:
+    std::string __call__(const Base& b) const;
+
+    std::string operator()(const Base& b) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Namer";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Namer& obj) {
+    ::tpy::print_object_default(os, Namer::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // self.g = g
+    std::function<std::string(Child&)> g;
+
+    // def __init__(self, g: Callable[[Child], str]) -> None:
+    Holder() = default;
+    explicit Holder(std::function<std::string(Child&)> g);
+
+    // def run(self, g: Fn[[Child], str], c: Child) -> str:
+    template<typename __F0>
+      requires requires(__F0& __fn, Child& __a0) {
+          { __fn(__a0) } -> std::convertible_to<std::string>;
+      }
+    std::string run(__F0&& g, Child& c) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -94,6 +239,23 @@ inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
     return os;
 }
 
+// class Child(Base):  # tpyc: warning(/hides 'Base.name'/)
+struct Child : Base {
+
+    // def __init__(self) -> None:
+    Child();
+
+    // @readonly
+    // def name(self) -> str:
+    std::string name() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
+    ::tpy::print_object_default(os, Child::__tpy_class_name__, obj);
+    return os;
+}
+
 } // namespace tpyapp::main
 
 template<tpyapp::main::__Speaker_Concept__ T>
@@ -113,6 +275,51 @@ struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
 
 namespace tpyapp::main {
 
+// async def co_cb(c: Child) -> str:
+struct __coro_co_cb {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    Child& c;
+    std::function<std::string(Child&)> h;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_co_cb(Child& c)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_cb&) {
+        return os << "<coroutine co_cb>";
+    }
+};
+
+// def gen_cb() -> Iterator[Callable[[Child], str]]:
+struct __gen_gen_cb : public ::tpy::next_iter_mixin<__gen_gen_cb, std::function<std::string(Child&)>> {
+    ::tpy::frame_state __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_cb() : __state(S_INITIAL) {}
+
+    std::expected<std::function<std::string(Child&)>, ::tpy::StopIteration> __next__();
+    __gen_gen_cb& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_cb&) {
+        return os << "<generator gen_cb>";
+    }
+};
+
 
 // def __init__(self, name: str) -> None:
 //     self.name = name
@@ -123,6 +330,32 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 inline std::string Animal::speak() const {
     return "...";
 }
+
+// def __init__(self) -> None:
+//     pass
+inline Base::Base() {
+}
+
+// @readonly
+// def name(self) -> str:
+//     return "base"
+inline std::string Base::name() const {
+    return "base";
+}
+
+// def __call__(self, b: Base) -> str:
+//     return b.name()
+inline std::string Namer::__call__(const Base& b) const {
+    return b.name();
+}
+
+inline std::string Namer::operator()(const Base& b) const {
+    return __call__(b);
+}
+
+// def __init__(self, g: Callable[[Child], str]) -> None:
+//     self.g = g
+inline Holder::Holder(std::function<std::string(Child&)> g) : g(g) {}
 
 // def __init__(self, name: str, breed: str) -> None:
 //     super().__init__(name)
@@ -146,5 +379,133 @@ inline Parrot::Parrot(std::string_view name) : Animal(name) {}
 inline std::string Parrot::speak() {
     return "Hello!";
 }
+
+// def __init__(self) -> None:
+//     super().__init__()
+inline Child::Child() : Base() {}
+
+// @readonly
+// def name(self) -> str:
+//     return "child"
+inline std::string Child::name() const {
+    return "child";
+}
+
+// def run(self, g: Fn[[Child], str], c: Child) -> str:
+//     return g(c)
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+inline std::string Holder::run(__F0&& g, Child& c) const {
+    return g(c);
+}
+
+// def call_child(g: Fn[[Child], str], c: Child) -> str:
+//     return g(c)
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string call_child(__F0&& g, Child& c) {
+    return g(c);
+}
+// @dispatch
+// def ov(g: Fn[[Child], str], c: Child) -> str:
+//     return g(c)
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ov__Fn_Child_str__Child(__F0&& g, Child& c) {
+    return g(c);
+}
+// @dispatch
+// def ov(g: Fn[[int], str], c: Child) -> str:
+//     return "int"
+template<typename __F0>
+  requires requires(__F0& __fn, const ::tpy::BigInt& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ov__Fn_int_str__Child(__F0&& g, const Child& c) {
+    return "int";
+}
+// @dispatch
+// def ovp(g: Fn[[Base], str], c: Child) -> str:
+//     return g(c)  # tpyc: warning(/calls through 'arg1' run 'Base.name'/)
+template<typename __F0>
+  requires requires(__F0& __fn, Base& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ovp__Fn_Base_str__Child(__F0&& g, Child& c) {
+    return g(c);
+}
+// @dispatch
+// def ovp(g: Fn[[Child], str], c: Child) -> str:
+//     return "child"
+template<typename __F0>
+  requires requires(__F0& __fn, Child& __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ovp__Fn_Child_str__Child(__F0&& g, const Child& c) {
+    return "child";
+}
+// def ap[T](g: Fn[[T], str], x: T) -> str:
+//     return g(x)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string ap(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
+    return g(x);
+}
+// def ap2[T](g: Fn[[Child, T], str], x: T) -> str:
+//     return g(Child(), x)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, Child& __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  }
+std::string ap2(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
+    Child __tmp_1 = Child();
+    return g(__tmp_1, x);
+}
+// def fwd[T](g: Fn[[T], str], x: T) -> str:
+//     # Generic body: T is still open at ap's slot, so nothing warns here.
+//     return ap(g, x)  # tpyc: ok
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string fwd(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
+    return ::tpyapp::main::ap<T>(g, x);
+}
+// def apply_l[T](g: Fn[[Child, list[T]], str], x: list[T]) -> str:
+//     return g(Child(), x)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, Child& __a0, std::vector<T>& __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  }
+std::string apply_l(__F0&& g, std::vector<T>& x) {
+    Child __tmp_1 = Child();
+    return g(__tmp_1, x);
+}
+// def forward_l[T](x: list[T]) -> str:
+//     def fl(b: Base, y: list[T]) -> str:
+//         return b.name()
+//     # A slot keeping an open T: the reference warns once, at its
+//     # resolution, not again at the argument's value check.
+//     hl: Callable[[Base, list[T]], str] = fl
+//     # A Callable value at the same slot is checked as a value: once.
+//     return (apply_l(fl, x)  # tpyc: warning(/calls through 'b' run 'Base.name'/)
+//             + apply_l(hl, x))  # tpyc: warning(/calls through 'arg1' run 'Base.name'/)
+template<typename T>
+std::string forward_l(std::vector<T>& x) {
+    auto fl = [](Base& b, std::vector<T>& y) -> std::string {
+        return b.name();
+    };
+    std::function<std::string(Base&, std::vector<T>&)> hl = fl;
+    return (::tpy::str_concat(::tpyapp::main::apply_l<T>(fl, x), ::tpyapp::main::apply_l<T>(hl, x)));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

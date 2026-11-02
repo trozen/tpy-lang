@@ -76,7 +76,7 @@ from ..type_def_registry import (
 from ..namespace import BindingKind
 from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
-from ..coercions import CoercionContext, resolve_coercion, callable_fits
+from ..coercions import CoercionContext, resolve_coercion, callable_fit, CallableFit
 from ..prescan import (
     expr_to_narrowing_key, bound_names_of, fold_int_constant,
     int_constant_too_wide, storage_spelling, walrus_names_of)
@@ -454,6 +454,15 @@ def _temp_root_spelling(root: TpyExpr) -> str | None:
         obj = storage_spelling(root.obj)
         return f"{obj}.{root.method}(...)" if obj is not None else None
     return None
+
+
+class FunctionRefMatch(NamedTuple):
+    """The function a name passed at a callback slot resolves to
+    (`ExpressionAnalyzer._match_function_to_hint_data`): its type
+    arguments when generic, and its fit at the slot."""
+    info: FunctionInfo
+    type_args: tuple[TpyType, ...] | None
+    fit: CallableFit
 
 
 class SubscriptViews(NamedTuple):
@@ -7582,6 +7591,8 @@ class ExpressionAnalyzer:
         """
         hint = slot.type
         assert isinstance(hint, CallableType)
+        matched_data = None
+        nested_def = False
         # Look up in namespace -- variables shadow functions
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.name)
@@ -7591,40 +7602,39 @@ class ExpressionAnalyzer:
                 if binding.kind == BindingKind.FUNCTION and binding.func_infos:
                     matched_data = self._match_function_to_hint_data(
                         binding.func_infos, slot, expr.name, expr)
-                    if matched_data is not None:
-                        matched, type_args = matched_data
-                        if type_args is not None:
-                            expr.function_ref_type_args = type_args
-                        expr.is_function_ref = True
-                        expr.function_ref_info = matched
-                        if expr.name in self.ctx.func.nested_def_names:
-                            # Frame members have no value form -- reject any
-                            # value use in a resumable body (Callable AND Fn).
-                            self.ctx.reject_resumable_nested_def_escape(
-                                expr.name, expr)
-                        # Escape tracking: passing nested def to Callable (type-erased)
-                        # marks it as escaping. Fn (template) stays inline -- no escape.
-                        # The committed slot's mark.
-                        if (isinstance(hint, CallableType) and not hint.is_template
-                                and expr.name in self.ctx.func.nested_def_names
-                                and self.ctx.slot_step_commits()):
-                            self.ctx.mark_nested_def_escape(expr.name)
-                        return self._concrete_fn_type(matched, expr, hint)
+                    nested_def = (matched_data is not None
+                                  and expr.name in self.ctx.func.nested_def_names)
 
         # Check registry (covers imported functions not yet in namespace)
-        func_infos = self.ctx.registry.get_function(expr.name)
-        if func_infos:
-            matched_data = self._match_function_to_hint_data(
-                func_infos, slot, expr.name, expr)
-            if matched_data is not None:
-                matched, type_args = matched_data
-                if type_args is not None:
-                    expr.function_ref_type_args = type_args
-                expr.is_function_ref = True
-                expr.function_ref_info = matched
-                return self._concrete_fn_type(matched, expr, hint)
+        if matched_data is None:
+            func_infos = self.ctx.registry.get_function(expr.name)
+            if func_infos:
+                matched_data = self._match_function_to_hint_data(
+                    func_infos, slot, expr.name, expr)
+        if matched_data is None:
+            return None
 
-        return None
+        matched, type_args = matched_data.info, matched_data.type_args
+        if type_args is not None:
+            expr.function_ref_type_args = type_args
+        expr.is_function_ref = True
+        expr.function_ref_info = matched
+        if nested_def:
+            # Frame members have no value form -- reject any
+            # value use in a resumable body (Callable AND Fn).
+            self.ctx.reject_resumable_nested_def_escape(expr.name, expr)
+            # Escape tracking: passing nested def to Callable (type-erased)
+            # marks it as escaping. Fn (template) stays inline -- no escape.
+            # The committed slot's mark.
+            if not hint.is_template and self.ctx.slot_step_commits():
+                self.ctx.mark_nested_def_escape(expr.name)
+        if self.ctx.slot_step_commits():
+            self.compat.warn_callable_upcasts(
+                matched_data.fit.upcasts,
+                lambda i: self.calls.param_label(matched,
+                                                 matched.params[i].name),
+                expr, None)
+        return self._concrete_fn_type(matched, expr, hint)
 
     def _concrete_fn_type(
         self, fi: FunctionInfo, expr: TpyName, hint: CallableType,
@@ -7693,7 +7703,7 @@ class ExpressionAnalyzer:
         self, func_infos: list[FunctionInfo], slot: SlotHint,
         name: str, err_node: TpyName,
         probing: bool = False,
-    ) -> tuple[FunctionInfo, tuple[TpyType, ...] | None] | None:
+    ) -> FunctionRefMatch | None:
         """Find a function overload matching the Fn/Callable hint signature
         of `slot`; what the call at hand adds for `err_node`
         (`SlotHint.callable_fit_at`) -- the hint's type parameters it is
@@ -7702,8 +7712,8 @@ class ExpressionAnalyzer:
         refused with its reason, unless `probing` (an overload candidate's
         hint, which another candidate may fit).
 
-        Pure data lookup: returns ``(matched_fi, inferred_type_args)`` on a
-        unique match (``type_args`` is ``None`` for non-generic matches),
+        Pure data lookup: returns the `FunctionRefMatch` on a unique match
+        (``type_args`` is ``None`` for non-generic matches),
         ``None`` when no overload matches (callers may treat the name as a
         variable instead). Raises ``SemanticError`` on ambiguity or
         generic-rejection -- ``err_node`` provides source location and is
@@ -7719,34 +7729,37 @@ class ExpressionAnalyzer:
         fit = slot.callable_fit_at(err_node)
         wildcards, owning = fit.open_params, fit.owning
         hint_params = hint.param_types
-        # Each candidate is (FunctionInfo, inferred_type_args_or_None)
-        candidates: list[tuple[FunctionInfo, tuple[TpyType, ...] | None]] = []
+        candidates: list[FunctionRefMatch] = []
+        misfits: list[tuple[FunctionInfo, CallableFit]] = []
         # Track first generic rejection for diagnostics
         generic_rejection: str | None = None
         for fi in func_infos:
             if len(fi.params) != len(hint_params):
                 continue
             if fi.is_generic():
-                type_args, rejection = self._infer_generic_ref_type_args(
+                generic, rejection = self._infer_generic_ref_type_args(
                     fi, hint, wildcards, owning, probing)
-                if type_args is not None:
-                    candidates.append((fi, type_args))
+                if generic is not None:
+                    candidates.append(generic)
                 elif rejection is not None and generic_rejection is None:
                     generic_rejection = rejection
                 continue
-            if callable_fits(self.fit_signature(fi, None), hint,
-                             inherits=self.type_ops.inherits_in_cpp,
-                             wildcards=wildcards, owning=owning):
-                candidates.append((fi, None))
+            fi_fit = callable_fit(self.fit_signature(fi, None), hint,
+                                  inherits=self.type_ops.inherits_in_cpp,
+                                  wildcards=wildcards, owning=owning)
+            if fi_fit.misfit is None:
+                candidates.append(FunctionRefMatch(fi, None, fi_fit))
+            else:
+                misfits.append((fi, fi_fit))
         if len(candidates) == 1:
             # A candidate whose signature fits can still be refused (a
             # generator): an overloaded callee picks it by signature, and
             # its commit says why.
-            fi, type_args = candidates[0]
+            fi, type_args = candidates[0].info, candidates[0].type_args
             if not probing:
                 refusal = self.compat.callable_ref_refusal(
                     name, fi, self.fit_signature(fi, type_args), hint,
-                    wildcards, owning)
+                    candidates[0].fit)
                 if refusal is not None:
                     raise self.ctx.error(refusal, err_node)
             return candidates[0]
@@ -7759,13 +7772,11 @@ class ExpressionAnalyzer:
             raise self.ctx.error(generic_rejection, err_node)
         if probing:
             return None
-        for fi in func_infos:
-            if len(fi.params) == len(hint_params) and not fi.is_generic():
-                refusal = self.compat.callable_ref_refusal(
-                    name, fi, self.fit_signature(fi, None), hint,
-                    wildcards, owning)
-                if refusal is not None:
-                    raise self.ctx.error(refusal, err_node)
+        for fi, fi_fit in misfits:
+            refusal = self.compat.callable_ref_refusal(
+                name, fi, self.fit_signature(fi, None), hint, fi_fit)
+            if refusal is not None:
+                raise self.ctx.error(refusal, err_node)
         # Return None to fall through (might be a variable, not a function)
         return None
 
@@ -7774,13 +7785,13 @@ class ExpressionAnalyzer:
         wildcards: frozenset[str] = frozenset(),
         owning: frozenset[int] = frozenset(),
         probing: bool = False,
-    ) -> tuple[tuple[TpyType, ...] | None, str | None]:
+    ) -> tuple[FunctionRefMatch | None, str | None]:
         """Try to infer type parameters for a generic function from an
         Fn/Callable hint: positions naming the function's type parameters
         bind them, then the substituted signature must fit the hint
-        (`callable_fits`).
+        (`callable_fit`).
 
-        Returns (inferred_type_args, None) on success,
+        Returns (the match, None) on success,
         (None, rejection_message) on bound or inference failure or a
         substituted signature only a lambda would convert,
         (None, None) on type mismatch (not a candidate at all).
@@ -7823,15 +7834,16 @@ class ExpressionAnalyzer:
                 )
         type_args = tuple(inferred[tp] for tp in fi.type_params)
         signature = self.fit_signature(fi, type_args)
-        if not callable_fits(signature, hint,
-                             inherits=self.type_ops.inherits_in_cpp,
-                             wildcards=wildcards, owning=owning):
+        fit = callable_fit(signature, hint,
+                           inherits=self.type_ops.inherits_in_cpp,
+                           wildcards=wildcards, owning=owning)
+        if fit.misfit is not None:
             if probing:
                 return None, None
             refusal = self.compat.callable_ref_refusal(
-                fi.name, fi, signature, hint, wildcards, owning)
+                fi.name, fi, signature, hint, fit)
             return None, refusal
-        return type_args, None
+        return FunctionRefMatch(fi, type_args, fit), None
 
 
 def _text_spec_error(fields: FormatSpecFields) -> str | None:
