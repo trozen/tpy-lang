@@ -468,7 +468,7 @@ def test_external_header_edited_during_build_publishes_nothing(tmp_path, cxx):
     afterwards would certify contents the .gch does not hold."""
     root = _root(tmp_path)
     entry = pch_entry(GCC, root, [])
-    cxx.during = lambda: cxx.external.write_text("// edited mid-build\n")
+    cxx.during = lambda: _edit(cxx.external, "// edited mid-build\n")
     assert shared_pch(GCC, root, []) is None
     assert not (entry / PCH_GCH).exists()
     assert _leftovers(entry) == set()
