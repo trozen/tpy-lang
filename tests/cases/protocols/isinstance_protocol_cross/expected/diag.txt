@@ -1,0 +1,1 @@
+main.py:7: warning: isinstance() against protocol 'Hashable' is TPy-only: CPython checks only @runtime_checkable protocols

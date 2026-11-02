@@ -102,8 +102,10 @@ from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
-from .protocols import (dynamic_dispatch_type_conforms, handle_payload_may_be,
-                        protocol_methods)
+from .protocols import (
+    dynamic_dispatch_type_conforms, handle_payload_may_be, is_runtime_checkable,
+    protocol_methods,
+)
 from .dyn_erasure import erased_source
 from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
                        seeded_arg_hint)
@@ -3456,6 +3458,10 @@ class CallAnalyzer:
         expr.isinstance_type = protocol_type
         expr.isinstance_is_protocol = True
         expr.resolved_function_info = self._isinstance_function_info()
+        if not is_runtime_checkable(protocol_info):
+            self.ctx.warning(
+                f"isinstance() against protocol '{protocol_name}' is TPy-only: "
+                f"CPython checks only @runtime_checkable protocols", expr)
         return BOOL
 
     def _derive_narrowed_type_args(

@@ -1,8 +1,9 @@
 # isinstance() on Optional[Protocol] -- narrows away None at compile time
-from typing import Protocol, Sized
-from tpy import int32, Spannable, Span, Array
+from typing import Protocol, Sized, runtime_checkable
+from tpy import int32
 
 
+@runtime_checkable
 class HasN(Protocol):
     def n(self) -> int32: ...
 
@@ -23,22 +24,13 @@ def count_if_sized(items: Sized | None = None) -> int32:
     return -1
 
 
-def sum_span(items: Spannable[int32] | None = None) -> int32:
-    if isinstance(items, Spannable):
-        total: int32 = 0
-        for x in items:
-            total += x
-        return total
-    return -1
-
-
 def check_not(items: Sized | None = None) -> int32:
     if not isinstance(items, Sized):
         return -1
     return len(items)
 
 
-# a method call after the early return (a user protocol: no CPython isinstance)
+# a method call after the early return (a decorated user protocol)
 def method_tail(x: HasN | None = None) -> int32:
     if not isinstance(x, HasN):  # tpyc: ok
         return -1
@@ -46,17 +38,10 @@ def method_tail(x: HasN | None = None) -> int32:
 
 
 def main() -> None:
-    arr: Array[int32, 3] = [10, 20, 30]
-    s: Span[int32] = arr
-
     # Sized | None
     nums: list[int32] = [1, 2, 3, 4, 5]
     print(count_if_sized(nums))
     print(count_if_sized())
-
-    # Spannable[T] | None (generic protocol)
-    print(sum_span(s))
-    print(sum_span())
 
     # not isinstance
     print(check_not(nums))

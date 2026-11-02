@@ -39,6 +39,11 @@ def overload(): ...
 @builtin_decorator("typing.override")
 def override(): ...
 
+# CPython's isinstance() accepts only protocols marked so; the compiler
+# records the mark to warn on isinstance() against an unmarked one.
+@builtin_decorator("typing.runtime_checkable")
+def runtime_checkable(): ...
+
 # typing.cast(T, x): static-only no-op in CPython; in TPy compiled
 # binaries this gets runtime panic-on-mismatch semantics when the source
 # is Any. Signature is illustrative; sema/codegen handle this specially.
@@ -46,11 +51,13 @@ def override(): ...
 def cast(target_type, value): ...
 
 
+@runtime_checkable
 class Sized(Protocol):
     @readonly
     def __len__(self) -> int32: ...
 
 
+@runtime_checkable
 class Sequence[T](Protocol):
     @readonly
     def __len__(self) -> int32: ...
@@ -58,6 +65,7 @@ class Sequence[T](Protocol):
     def __getitem__(self, index: int32) -> T: ...
 
 
+@runtime_checkable
 class MutableSequence[T](Protocol):
     @readonly
     def __len__(self) -> int32: ...
@@ -65,10 +73,12 @@ class MutableSequence[T](Protocol):
     def __setitem__(self, index: int32, value: T) -> None: ...
 
 
+@runtime_checkable
 class Iterator[T](Protocol):
     def __next__(self) -> T: ...
     def __iter__(self) -> Self: ...
 
 
+@runtime_checkable
 class Iterable[T](Protocol):
     def __iter__(self) -> Iterator[T]: ...

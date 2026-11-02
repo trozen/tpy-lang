@@ -960,6 +960,7 @@ class Parser:
                         methods=result.methods,
                         type_params=result.type_params,
                         is_dynamic=result.is_dynamic,
+                        is_runtime_checkable=result.is_runtime_checkable,
                         module=self._public_module(),
                     ))
                 elif isinstance(result, TpyEnum):
@@ -1210,13 +1211,25 @@ class Parser:
             return func_node.attr
         return None
 
-    def _require_decorator(self, dec: ast.expr, context: str) -> tuple[str, object]:
+    def _require_decorator(self, dec: ast.expr, context: str,
+                           allow_protocol_only: bool = False) -> tuple[str, object]:
         """Resolve a decorator or raise a helpful error. Returns (qname, arg)."""
         resolved = self._resolve_decorator(dec)
         if resolved is None:
             local_name = self._decorator_local_name(dec) or "?"
             raise ParseError(f"Unknown decorator '{local_name}' on {context}", dec)
-        return self._qualify(resolved), resolved[2]
+        qname = self._qualify(resolved)
+        if not allow_protocol_only:
+            self._reject_protocol_only_decorator(qname, dec)
+        return qname, resolved[2]
+
+    _PROTOCOL_ONLY_DECORATORS = frozenset((qnames.DYNAMIC, qnames.RUNTIME_CHECKABLE))
+
+    def _reject_protocol_only_decorator(self, qname: str, dec: ast.expr) -> None:
+        # CPython raises TypeError for @runtime_checkable on a non-protocol;
+        # without this the decorator would fall through to the macro lookup.
+        if qname in self._PROTOCOL_ONLY_DECORATORS:
+            raise ParseError(f"@{bare_name(qname)} applies only to protocols", dec)
 
     def _parse_type_param_default(self, dec: ast.expr) -> dict[str, str]:
         """Parse @type_param_default(T=DefaultInt) -> {"T": "tpy.extern.DefaultInt"}."""
@@ -1550,6 +1563,12 @@ class Parser:
             if non_td_bases:
                 raise ParseError("TypedDict cannot have additional base classes", node)
             if node.decorator_list:
+                for dec in node.decorator_list:
+                    resolved = self._resolve_decorator(dec)
+                    if resolved is not None:
+                        # TypedDict rejects every decorator without _require_decorator,
+                        # so the protocol-only name is checked here to give its message.
+                        self._reject_protocol_only_decorator(self._qualify(resolved), dec)
                 raise ParseError("Decorators are not supported on TypedDict", node)
             if hasattr(node, 'type_params') and node.type_params:
                 raise ParseError("Type parameters are not supported on TypedDict", node)
@@ -1961,12 +1980,17 @@ class Parser:
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
         is_dynamic = False
+        is_runtime_checkable = False
         cpp_concept: str | None = None
         for dec in node.decorator_list:
-            qname, arg = self._require_decorator(dec, f"protocol '{node.name}'")
+            qname, arg = self._require_decorator(dec, f"protocol '{node.name}'",
+                                                 allow_protocol_only=True)
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.DYNAMIC:
                 is_dynamic = True
+                continue
+            if qname == qnames.RUNTIME_CHECKABLE:
+                is_runtime_checkable = True
                 continue
             if qname == qnames.NATIVE:
                 if not isinstance(pos, str):
@@ -1978,7 +2002,8 @@ class Parser:
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(
                 f"Unsupported decorator '@{dec_name}' on protocol '{node.name}'. "
-                f"Only @dynamic (from tpy) and @native (from tpy.extern) are allowed on protocols", dec)
+                f"Only @dynamic (from tpy), @runtime_checkable (from typing) and "
+                f"@native (from tpy.extern) are allowed on protocols", dec)
         # @dynamic + @native together is meaningful for runtime-defined
         # abstract bases: the C++ class (named by @native) provides the
         # vtable, and TPy treats the protocol as @dynamic for the
@@ -2115,7 +2140,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, cpp_concept=cpp_concept, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, is_runtime_checkable=is_runtime_checkable, cpp_concept=cpp_concept, loc=self._loc(node))
 
     def _parse_enum(
         self, node: ast.ClassDef,

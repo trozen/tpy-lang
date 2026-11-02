@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::user@32:0: uncovered (unsupported parameter type)
+main::stub@39:0: uncovered (unsupported parameter type)
+main::equatable@46:0: uncovered (unsupported parameter type)
+main::eq_row@59:0: uncovered (unsupported parameter type)
+main::main@79:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.speak@19:4: covered (storage: no_proof_required), summary: known
+main::Cat.walk@27:4: covered (storage: no_proof_required), summary: known
+main::Checker.pick@73:4: uncovered (unsupported parameter type)
+main::Checker.pick@73:4#2: uncovered (unsupported parameter type)
+main::Dog.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Checker.__init__@68:4: covered (storage: no_proof_required), summary: known

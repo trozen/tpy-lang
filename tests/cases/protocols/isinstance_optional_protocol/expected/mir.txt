@@ -1,8 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
-main::count_if_sized@20:0: uncovered (unsupported parameter type)
-main::sum_span@26:0: uncovered (unsupported parameter type)
-main::check_not@35:0: uncovered (unsupported parameter type)
-main::method_tail@42:0: uncovered (unsupported parameter type)
-main::main@48:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
-main::A.n@16:4: covered (storage: no_proof_required), summary: known
-main::A.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::count_if_sized@21:0: uncovered (unsupported parameter type)
+main::check_not@27:0: uncovered (unsupported parameter type)
+main::method_tail@34:0: uncovered (unsupported parameter type)
+main::main@40:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::A.n@17:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@14:4: covered (storage: no_proof_required), summary: known

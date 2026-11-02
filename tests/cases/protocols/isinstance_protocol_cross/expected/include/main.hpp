@@ -16,7 +16,8 @@ void cross_protocol(const T_items& items);
 void main();
 
 // def cross_protocol(items: Sequence[int32]) -> None:
-//     if isinstance(items, Hashable):
+//     # the warning is right: Hashable is undecorated because CPython's isinstance raises against it
+//     if isinstance(items, Hashable):  # tpyc: warning(/TPy-only/)
 //         print("hashable sequence of", len(items))
 //     else:
 //         print("non-hashable sequence of", len(items))

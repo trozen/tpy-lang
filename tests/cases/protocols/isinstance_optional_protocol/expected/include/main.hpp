@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+// @runtime_checkable
 // class HasN(Protocol):
 template<typename T>
 concept HasN = requires(T& t) {
@@ -21,10 +22,6 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
-// def sum_span(items: Spannable[int32] | None = None) -> int32:
-template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t sum_span(const T_items* items = nullptr);
 // def check_not(items: Sized | None = None) -> int32:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
@@ -76,29 +73,6 @@ int32_t count_if_sized(const T_items* items) {
     }
     return -1;
 }
-// def sum_span(items: Spannable[int32] | None = None) -> int32:
-//     if isinstance(items, Spannable):
-//         total: int32 = 0
-//         for x in items:
-//             total += x
-//         return total
-//     return -1
-template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t sum_span(const T_items* items) {
-    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        int32_t total = 0;
-        auto& __obj_0 = (*items);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t x = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, x);
-        }
-        return total;
-    }
-    return -1;
-}
 // def check_not(items: Sized | None = None) -> int32:
 //     if not isinstance(items, Sized):
 //         return -1
@@ -113,7 +87,7 @@ int32_t check_not(const T_items* items) {
         return ::tpy::__len__((*items));
     }
 }
-// # a method call after the early return (a user protocol: no CPython isinstance)
+// # a method call after the early return (a decorated user protocol)
 // def method_tail(x: HasN | None = None) -> int32:
 //     if not isinstance(x, HasN):  # tpyc: ok
 //         return -1

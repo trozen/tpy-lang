@@ -3668,7 +3668,7 @@ struct Container {
 };
 ```
 
-**`Optional[Protocol]` parameters**: Parameters typed `Optional[Protocol]` (e.g., `items: Optional[Sized] = None`) use pointer repr (`const T*`) in C++ with a default template argument of `std::nullptr_t`. Narrowing (`if items is not None:`) uses `!= nullptr` and dereference (`(*items)`) works automatically. Protocol operations inside narrowing bodies are wrapped in `if constexpr (!std::same_as<T, std::nullptr_t>)` to prevent instantiation when the argument is omitted or `None`. The code after an early-exit guard (`if not isinstance(x, P): return`, `if x is not None: ... else: return`, `continue` / `break` in a loop, the guard nested in an `if` / `elif` arm, a `try` or a `with` body) or after `assert isinstance(x, P)` sees the narrowed parameter too -- `print(x)`, method calls, `len(x)`, passing it on: sema records the narrowing that holds after each statement, and the rest of the list is emitted inside `if constexpr (!std::same_as<T_x, std::nullptr_t>) { ... }`, so it is never instantiated at the `None` default. The same holds for a protocol union parameter (`x: Sized | Iterable[int32]`, with or without `None`): after a statement that narrows it to some of its alternatives, the rest is emitted under the test for those alternatives (`if constexpr (::tpystd::typing::Sized<T_x>)`; `std::same_as<T_x, std::nullptr_t> || ...` when `None` is among them), and a protocol `assert isinstance` renders its failure as `if constexpr (<fails>) { raise_assertion_error(); }`. So the code after a narrowing guard is compiled only where the narrowing holds. `isinstance(x, P)` is False at `None` (even for a protocol whose methods CPython's None has, a tracked difference: `BUGS.md#none-never-conforms-to-protocol`): on a parameter with `None` among its alternatives, a protocol alternative's test is `(!std::same_as<T_x, std::nullptr_t> && P<T_x>)`, since a C++ concept may accept `std::nullptr_t` (`Sized` and `Iterable` through `const char*`, an `__eq__` protocol through `==`). One renderer spells every such test (guard, assert, `is not None`, the wrap). `if x is None:` on such a parameter is refused today (`BUGS.md#protocol-param-is-none-guard-rejects`).
+**`Optional[Protocol]` parameters**: Parameters typed `Optional[Protocol]` (e.g., `items: Optional[Sized] = None`) use pointer repr (`const T*`) in C++ with a default template argument of `std::nullptr_t`. Narrowing (`if items is not None:`) uses `!= nullptr` and dereference (`(*items)`) works automatically. Protocol operations inside narrowing bodies are wrapped in `if constexpr (!std::same_as<T, std::nullptr_t>)` to prevent instantiation when the argument is omitted or `None`. The code after an early-exit guard (`if not isinstance(x, P): return`, `if x is not None: ... else: return`, `continue` / `break` in a loop, the guard nested in an `if` / `elif` arm, a `try` or a `with` body) or after `assert isinstance(x, P)` sees the narrowed parameter too -- `print(x)`, method calls, `len(x)`, passing it on: sema records the narrowing that holds after each statement, and the rest of the list is emitted inside `if constexpr (!std::same_as<T_x, std::nullptr_t>) { ... }`, so it is never instantiated at the `None` default. The same holds for a protocol union parameter (`x: Sized | Iterable[int32]`, with or without `None`): after a statement that narrows it to some of its alternatives, the rest is emitted under the test for those alternatives (`if constexpr (::tpystd::typing::Sized<T_x>)`; `std::same_as<T_x, std::nullptr_t> || ...` when `None` is among them), and a protocol `assert isinstance` renders its failure as `if constexpr (<fails>) { raise_assertion_error(); }`. So the code after a narrowing guard is compiled only where the narrowing holds. `isinstance(x, P)` is False at `None` (even for a protocol whose methods CPython's None has, a tracked difference: `BUGS.md#isinstance-protocol-signatures-vs-names row 5`): on a parameter with `None` among its alternatives, a protocol alternative's test is `(!std::same_as<T_x, std::nullptr_t> && P<T_x>)`, since a C++ concept may accept `std::nullptr_t` (`Sized` and `Iterable` through `const char*`, an `__eq__` protocol through `==`). One renderer spells every such test (guard, assert, `is not None`, the wrap). `if x is None:` on such a parameter is refused today (`BUGS.md#protocol-param-is-none-guard-rejects`).
 
 ```python
 class Container:
@@ -4149,6 +4149,54 @@ Planned design:
 
 Current limitations:
 - **User records**: a reference-returning `__getitem__` (`-> Rec`) generates dual `operator[]` overloads (const + mutable via the implicit `@auto_readonly` cloning) that alias the returned storage, so `items[i].method()` mutates through -- but a `MutableSequence`-style protocol surface (`__setitem__` requirement, `append`/`pop`) is still undesigned. A reference-returning `__getitem__` whose result is a CONTAINER (`-> list[int]`, or `-> V` at a container `V`) is a container lvalue rooted in the receiver, exactly like a builtin nested element (`rows[0]` of `list[list[int]]`): `len(g[k])`, `for v in g[k]`, `if g[k]`, `x in g[k]` (list element), `print(g[k])`, `g[k][0] = 5` and `g[k].append(1)` all read `g[k]` in place, and `x = g[k]` binds a real alias (`std::vector<int>& x = g[k];`), so a mutation through `x` is visible through `g[k]` as in CPython -- `const` off a readonly receiver, and a reseatable pointer (`T* x = &(g[k]);`) when the local is reassigned, which a record result gets too. On a readonly receiver any reference result reads as `readonly[T]` (`p = lst[0]` on `readonly[ArrayList[Point, 8]]` -> `const Point& p = lst[0];`, so `p.x` reads and a write through `p` is rejected). The same element is still refused as the source of most builtin calls and operators (`sum(g[k])`, `g[k] == [1]`, ...), as a builtin nested element is (BUGS.md#nested-element-builtin-source-rejects). A mutating (`@readonly(False)`) `__getitem__` is a method call on its receiver like any other (see "Implicit dunder calls are method calls on the receiver" under `@readonly`).
+
+#### Working: `@runtime_checkable` Protocols
+
+`typing.runtime_checkable` marks a protocol that CPython's `isinstance()` accepts. TPy answers
+`isinstance(x, P)` at compile time either way (the `if constexpr (P<T_x>)` of a protocol-typed
+parameter or protocol union); the decorator only says CPython can answer it too.
+
+```python
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Speaker(Protocol):
+    def speak(self) -> str: ...
+
+class LoudSpeaker(Speaker, Protocol):   # inherits checkability, as in CPython
+    def shout(self) -> str: ...
+
+def f(x: LoudSpeaker | Walker) -> None:
+    if isinstance(x, LoudSpeaker):      # no warning
+        ...
+```
+
+- A protocol is runtime-checkable when it or any protocol ancestor is declared `@runtime_checkable`.
+- `isinstance()` against a protocol that is not warns: *isinstance() against protocol 'P' is TPy-only:
+  CPython checks only @runtime_checkable protocols*. Adding the decorator silences it. A stub protocol
+  the program cannot decorate keeps the warning: `Hashable` (every ordinary CPython class inherits
+  `object.__hash__`; a list or a class defining `__eq__` without `__hash__` does not), `Equatable` and
+  `Comparable` (`object` provides `__eq__` / `__lt__`, so CPython's names-only answer is True for every
+  class), the marker protocols (`Copyable`, `Default`, `ValueType`, `Send`, ...), `tpy.coro.Awaitable`.
+- Decorated in the library: `Sized`, `Iterable`, `Iterator`, `Sequence`, `MutableSequence`, `Stringable`,
+  `Representable`, `Truthy`, `Spannable`, `NativeIterable`, `Readable`, `Writable`, `Seekable`, `Closable`,
+  `BinaryReadable`, `BinaryWritable`, `Deref`.
+- `@runtime_checkable` (like `@dynamic`) on a class, enum, function, method or TypedDict is an error:
+  *@runtime_checkable applies only to protocols*. It combines with `@dynamic` and `@native` on a protocol.
+- A generic protocol is tested bare (`isinstance(x, Getter)`); `isinstance(x, Getter[int32])` stays
+  rejected, as CPython raises there too.
+- **isinstance tests conformance including signatures at compile time; CPython tests member names at run
+  time.** Once a protocol is checkable the two can still answer differently (`BUGS.md#isinstance-protocol-signatures-vs-names`):
+  - a method of the same name with a different signature: TPy False, CPython True;
+  - a `@readonly` protocol member whose implementation mutates `self`: TPy False, CPython True;
+  - `Sequence` / `MutableSequence` (ABCs in CPython, nominal) over a class defining the methods: TPy True, CPython False;
+  - an undecorated user sub-protocol of an ABC-backed stub such as `Sized` / `Iterable`: TPy inherits
+    checkability (no warning), CPython raises TypeError (an ABC passes none on);
+  - a user `@runtime_checkable` protocol whose member is one `object` provides (`__eq__`, `__lt__`,
+    `__hash__`), over a class that does not define it: TPy False, CPython True;
+  - `NativeIterable` over a class with `__iter__` but no native begin/end: TPy False, CPython True.
+  - a builtin container through a member only TPy's stub gives it (a `list` is `Spannable` through its stub
+    `__span__`; CPython's list has none): TPy True, CPython False.
 
 #### Working: `@dynamic` Protocol Declaration and Dispatch
 
@@ -4968,7 +5016,7 @@ source is `Any`.
   - **Protocol unions**: all non-None members must be static protocols (2+ protocols, optionally with None)
     - `Sized | Sequence[int]` -- required protocol union, generates template with disjunctive concept constraints
     - `Sized | Sequence[int] | None` -- nullable protocol union, pointer repr with `if constexpr` guards
-    - `isinstance(x, Protocol)` dispatches via `if constexpr (Concept<T_x>)` inside protocol union bodies; with `None` among the alternatives it is False at `None` (even for a protocol whose methods CPython's None has, a tracked difference: `BUGS.md#none-never-conforms-to-protocol`) and renders `(!std::same_as<T_x, std::nullptr_t> && Concept<T_x>)`; the code after a narrowing guard or `assert isinstance` is compiled only where the narrowing holds
+    - `isinstance(x, Protocol)` dispatches via `if constexpr (Concept<T_x>)` inside protocol union bodies; with `None` among the alternatives it is False at `None` (even for a protocol whose methods CPython's None has, a tracked difference: `BUGS.md#isinstance-protocol-signatures-vs-names row 5`) and renders `(!std::same_as<T_x, std::nullptr_t> && Concept<T_x>)`; the code after a narrowing guard or `assert isinstance` is compiled only where the narrowing holds
     - Mixed protocol + concrete types in unions is a sema error
     - `@dynamic` protocols cannot appear in unions (sema error)
     - **Limitation**: `isinstance()` on protocol unions not yet supported in ternary expressions (use if/elif/else statements)

@@ -1,0 +1,1 @@
+isinstance(None, P) is False in TPy (decision 2026-11-01, BUGS.md#isinstance-protocol-signatures-vs-names row 5), where CPython's member lookup on None answers True

@@ -13,13 +13,6 @@ namespace tpyapp::main {
 //         print("user_assert", r)
 //     except AssertionError:
 //         print("user_assert: raised")
-//     t = Tag(1)
-//     print("eq_guard", eq_guard(), eq_guard(t))
-//     try:
-//         r = eq_assert()
-//         print("eq_assert", r)
-//     except AssertionError:
-//         print("eq_assert: raised")
 void main() {
     OnlyB ob = OnlyB();
     std::cout << "user_guard" << " " << ::tpyapp::main::user_guard() << " " << ::tpyapp::main::user_guard(&(ob)) << "\n" << ::tpy::check_signals;
@@ -30,16 +23,6 @@ void main() {
             std::cout << "user_assert" << " " << r << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AssertionError&) {
             std::cout << "user_assert: raised" << "\n" << ::tpy::check_signals;
-        }
-    }
-    Tag t = Tag(1);
-    std::cout << "eq_guard" << " " << ::tpyapp::main::eq_guard() << " " << ::tpyapp::main::eq_guard(&(t)) << "\n" << ::tpy::check_signals;
-    {
-        try {
-            int32_t r = ::tpyapp::main::eq_assert();
-            std::cout << "eq_assert" << " " << r << "\n" << ::tpy::check_signals;
-        } catch (const ::tpy::AssertionError&) {
-            std::cout << "eq_assert: raised" << "\n" << ::tpy::check_signals;
         }
     }
 }

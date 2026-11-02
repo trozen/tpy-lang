@@ -7,12 +7,14 @@
 
 namespace tpyapp::main {
 
+// @runtime_checkable
 // class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.measure() } -> std::convertible_to<::tpy::BigInt>;
 };
 
+// @runtime_checkable
 // class Walkable(Protocol):
 template<typename T>
 concept Walkable = requires(T& t) {

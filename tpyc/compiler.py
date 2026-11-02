@@ -2728,6 +2728,7 @@ class Compiler:
                 type_params=list(protocol.type_params) if protocol.type_params else [],
                 module=public,
                 is_dynamic=protocol.is_dynamic,
+                is_runtime_checkable=protocol.is_runtime_checkable,
             )
             compiled.exports.protocols[protocol.name] = skel
             attach_dynamic_type_def(

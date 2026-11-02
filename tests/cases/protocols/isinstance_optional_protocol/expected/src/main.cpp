@@ -5,17 +5,10 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
-//     arr: Array[int32, 3] = [10, 20, 30]
-//     s: Span[int32] = arr
-//
 //     # Sized | None
 //     nums: list[int32] = [1, 2, 3, 4, 5]
 //     print(count_if_sized(nums))
 //     print(count_if_sized())
-//
-//     # Spannable[T] | None (generic protocol)
-//     print(sum_span(s))
-//     print(sum_span())
 //
 //     # not isinstance
 //     print(check_not(nums))
@@ -25,13 +18,9 @@ namespace tpyapp::main {
 //     a = A()
 //     print("method_tail", method_tail(a), method_tail())
 void main() {
-    std::array<int32_t, 3> arr = {10, 20, 30};
-    std::span<int32_t> s = ::tpy::as_mut_span(arr);
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     std::cout << ::tpyapp::main::count_if_sized(&(nums)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::count_if_sized() << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::sum_span(&(s)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::sum_span() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_not(&(nums)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_not() << "\n" << ::tpy::check_signals;
     A a = A();

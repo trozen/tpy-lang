@@ -1,0 +1,4 @@
+CPython raises TypeError at isinstance against a protocol that is not
+@runtime_checkable; the eq_row section answers `eq yes` under CPython
+(object provides __eq__) where TPy prints `eq no`
+(BUGS.md#isinstance-protocol-signatures-vs-names, row 5).

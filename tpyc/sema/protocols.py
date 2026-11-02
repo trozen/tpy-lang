@@ -153,6 +153,30 @@ def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
     return bool(methods) and all(m.is_readonly for m in methods)
 
 
+def is_runtime_checkable(protocol_info: 'ProtocolInfo') -> bool:
+    """The protocol or one of its protocol ancestors is declared
+    @runtime_checkable; CPython passes the flag down to sub-protocols.
+
+    Walked at query time rather than read from `transitive_supertypes`:
+    that closure misses an import-cycle peer's parents
+    (BUGS.md#protocol-closure-misses-cycle-peer-parents)."""
+    seen: set[str] = set()
+    stack = [protocol_info]
+    while stack:
+        info = stack.pop()
+        qname = info.qualified_name()
+        if qname in seen:
+            continue
+        seen.add(qname)
+        if info.is_runtime_checkable:
+            return True
+        for parent in info.parent_protocols:
+            parent_info = protocol_info_of(parent)
+            if parent_info is not None:
+                stack.append(parent_info)
+    return False
+
+
 def _substitute_method_signature(
     method: MethodSignature, subst: dict[str, TpyType], type_ops: 'TypeOperations',
 ) -> MethodSignature:

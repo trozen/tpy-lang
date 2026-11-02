@@ -4108,6 +4108,7 @@ class TypeRegistrar:
             cpp_concept=ensure_qualified(protocol.cpp_concept) if protocol.cpp_concept else None,
             is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
+            is_runtime_checkable=protocol.is_runtime_checkable,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),
         )
         # Cycle peers' bind_imports captures a reference to a
@@ -4148,7 +4149,7 @@ class TypeRegistrar:
         ancestors: set[str] = set()
         stack: list[NominalType] = list(info.parent_protocols)
         while stack:
-            parent_info = self.ctx.registry.protocol_for_type(stack.pop())
+            parent_info = protocol_info_of(stack.pop())
             if parent_info is None:
                 continue  # not a protocol: validate_protocol_parents reports it
             qname = parent_info.qualified_name()
@@ -4166,7 +4167,7 @@ class TypeRegistrar:
         surface (methods + fields from all ancestor protocols).
         """
         for parent in protocol.parent_protocols:
-            parent_info = self.ctx.registry.protocol_for_type(parent)
+            parent_info = protocol_info_of(parent)
             if parent_info is None:
                 raise SemanticError(
                     f"Protocol '{protocol.name}' inherits from '{parent.name}', "

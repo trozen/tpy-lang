@@ -269,7 +269,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `isinstance` | Done | Some CPython cases missing -- see TODO.md entries on protocol/union isinstance in ternary expressions and `@runtime_checkable` |
+| `isinstance` | Done | Some CPython cases missing -- see TODO.md entries on protocol/union isinstance in ternary expressions |
 | `repr` | Done | User-type fallback partial. `repr`/`str`/`print`/f-string of unions all work via the variant visitor. `bytes`, `bytearray` and `range` repr as CPython does (`b'a\x03'`, `bytearray(b'z')`, `range(0, 3)`). Rejected: a literal argument such as `repr(3)` (BUGS.md#repr-pending-literal-arg) |
 | `issubclass` | Missing | |
 | `callable` | Missing | Compile-time evaluable under static dispatch |
@@ -1023,7 +1023,7 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `Protocol`, `runtime_checkable` | Partial | Protocols via `Protocol`; `@runtime_checkable` N/A |
+| `Protocol`, `runtime_checkable` | Done | Protocols via `Protocol`; `@runtime_checkable` marks a protocol CPython's `isinstance()` accepts, and `isinstance()` against an undecorated one warns |
 | `Self` | Done | |
 | `overload`, `override` | Done | |
 | `Sized`, `Iterable`, `Iterator`, `Sequence`, `MutableSequence` | Done | |

@@ -452,6 +452,34 @@ class TestHotpathDecorator:
         assert not mod.functions[0].is_hotpath
 
 
+class TestProtocolOnlyDecoratorRejected:
+    """@runtime_checkable and @dynamic apply only to protocols; every other
+    decorated definition rejects them by name, as CPython raises TypeError."""
+
+    _SRC = ("from typing import Protocol, TypedDict, runtime_checkable\n"
+            "from enum import Enum\n"
+            "from tpy import dynamic\n")
+
+    @pytest.mark.parametrize("decorator, body", [
+        ("runtime_checkable", "@{d}\nclass C:\n    pass\n"),
+        ("runtime_checkable", "@{d}\nclass E(Enum):\n    A = 1\n"),
+        ("runtime_checkable", "@{d}\ndef f() -> int:\n    return 1\n"),
+        ("runtime_checkable",
+         "class C:\n    @{d}\n    def m(self) -> int:\n        return 1\n"),
+        ("runtime_checkable", "@{d}\nclass TD(TypedDict):\n    a: int\n"),
+        ("runtime_checkable",
+         "class P(Protocol):\n    @{d}\n    def m(self) -> int: ...\n"),
+        ("dynamic", "@{d}\nclass C:\n    pass\n"),
+        ("dynamic",
+         "class P(Protocol):\n    @{d}\n    def m(self) -> int: ...\n"),
+    ], ids=["class", "enum", "function", "method", "typeddict",
+            "protocol_method", "dynamic_class", "dynamic_protocol_method"])
+    def test_rejected_by_name(self, decorator, body):
+        with pytest.raises(ParseError) as info:
+            Parser().parse(self._SRC + body.format(d=decorator), module_name="m")
+        assert info.value.message == f"@{decorator} applies only to protocols"
+
+
 class TestValidateCppTemplate:
     """`_validate_cpp_template` rejects a repeated runtime-value placeholder
     ({self}/{N}); type placeholders ({cpp}, {T}) and single use stay legal."""

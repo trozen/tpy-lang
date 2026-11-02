@@ -1,0 +1,4 @@
+main.py:74: warning: isinstance() against protocol 'Speaker' is TPy-only: CPython checks only @runtime_checkable protocols
+main.py:33: warning: isinstance() against protocol 'Speaker' is TPy-only: CPython checks only @runtime_checkable protocols
+main.py:40: warning: isinstance() against protocol 'Hashable' is TPy-only: CPython checks only @runtime_checkable protocols
+main.py:47: warning: isinstance() against protocol 'Equatable' is TPy-only: CPython checks only @runtime_checkable protocols

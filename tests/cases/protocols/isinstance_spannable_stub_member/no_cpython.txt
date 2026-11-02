@@ -1,0 +1,4 @@
+Under CPython `s: Span[int32] = arr` leaves the plain list, which has no
+`__span__` (nor does the CPython Span stub), so isinstance(s, Spannable) is
+False and sum_span(s) prints -1 where TPy prints 60
+(BUGS.md#isinstance-protocol-signatures-vs-names, row 7).

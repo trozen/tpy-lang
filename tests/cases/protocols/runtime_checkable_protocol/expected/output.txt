@@ -1,0 +1,7 @@
+free_fn woof walks 4
+inherited WOOF walks 4
+generic 5 4
+dynamic 9
+stub sized
+method woof walks
+twice 7 8

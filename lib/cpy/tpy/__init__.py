@@ -1222,13 +1222,11 @@ class Covariant(_Protocol[T]):
     pass
 
 
-@_runtime_checkable
 class Comparable(_Protocol):
     """Protocol for types supporting comparison with <."""
     def __lt__(self, other: "Comparable") -> bool: ...
 
 
-@_runtime_checkable
 class Equatable(_Protocol):
     """Protocol for types supporting equality with ==."""
     def __eq__(self, other: object) -> bool: ...

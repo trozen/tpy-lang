@@ -1,0 +1,5 @@
+user woof walks
+stub unhashable
+equatable eq
+eq_row eq no
+twice 7 8

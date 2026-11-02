@@ -1,0 +1,20 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@68:0: uncovered (unsupported parameter type)
+main::inherited@75:0: uncovered (unsupported parameter type)
+main::generic@82:0: uncovered (unsupported parameter type)
+main::dynamic_area@89:0: uncovered (unsupported parameter type)
+main::stub_sized@94:0: uncovered (unsupported parameter type)
+main::main@120:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Dog.speak@36:4: covered (storage: no_proof_required), summary: known
+main::Dog.shout@39:4: covered (storage: no_proof_required), summary: known
+main::Cat.walk@47:4: covered (storage: no_proof_required), summary: known
+main::Holder.get@55:4: covered (storage: no_proof_required), summary: known
+main::Square.area@63:4: covered (storage: no_proof_required)
+main::Checker.check@107:4: uncovered (unsupported parameter type)
+main::Checker.pick@114:4: uncovered (unsupported parameter type)
+main::Checker.pick@114:4#2: uncovered (unsupported parameter type)
+main::Dog.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@44:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@60:4: covered (storage: no_proof_required), summary: known
+main::Checker.__init__@103:4: covered (storage: no_proof_required), summary: known

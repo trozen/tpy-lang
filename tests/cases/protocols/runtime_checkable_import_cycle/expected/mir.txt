@@ -1,0 +1,11 @@
+a::__tpy_init: uncovered (module initialization)
+b::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::check@30:0: uncovered (unsupported parameter type)
+main::lone@38:0: uncovered (unsupported parameter type)
+main::lone_child@45:0: uncovered (unsupported parameter type)
+main::main@51:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::C.f@18:4: covered (storage: no_proof_required), summary: known
+main::W.walk@26:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::W.__init__@23:4: covered (storage: no_proof_required), summary: known

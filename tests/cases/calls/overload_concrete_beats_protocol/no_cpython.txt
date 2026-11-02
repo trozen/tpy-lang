@@ -1,3 +1,4 @@
-CPython's @overload dispatch shim needs @runtime_checkable on Protocol
-parents, but tpyc rejects the decorator -- mutually exclusive. The tier
-ranker behavior this test guards is tpyc-specific anyway.
+CPython's @dispatch shim takes the first variant whose annotations match,
+so the protocol overload declared first wins there ("animal: Rex"); tpyc
+ranks the concrete overload above it. The tier ranker this test guards is
+tpyc-specific.

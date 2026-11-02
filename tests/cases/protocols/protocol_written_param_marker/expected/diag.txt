@@ -1,0 +1,2 @@
+main.py:38: warning: isinstance() against protocol 'Copyable' is TPy-only: CPython checks only @runtime_checkable protocols
+main.py:47: warning: isinstance() against protocol 'Default' is TPy-only: CPython checks only @runtime_checkable protocols

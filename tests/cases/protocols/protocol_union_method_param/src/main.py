@@ -1,10 +1,12 @@
 # Test: protocol union as a method parameter on a class
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 
+@runtime_checkable
 class Measurable(Protocol):
     def measure(self) -> int: ...
 
+@runtime_checkable
 class Walkable(Protocol):
     def walk(self) -> int: ...
 

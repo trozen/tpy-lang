@@ -1193,6 +1193,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "typing.Sized": dict(
         name="Sized", module="typing",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__len__",),
@@ -1200,6 +1201,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "typing.Sequence": dict(
         name="Sequence", module="typing",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__getitem__", "__len__"),
@@ -1207,6 +1209,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "typing.MutableSequence": dict(
         name="MutableSequence", module="typing",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__getitem__", "__len__", "__setitem__"),
@@ -1214,6 +1217,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "typing.Iterator": dict(
         name="Iterator", module="typing",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__iter__", "__next__"),
@@ -1221,6 +1225,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "typing.Iterable": dict(
         name="Iterable", module="typing",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__iter__",),
@@ -1229,6 +1234,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Throwable": dict(
         name="Throwable", module="tpy",
         is_dynamic=True, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::Throwable",
         type_params=(), parent_protocols=(),
         methods=("__raise__", "clone"),
@@ -1237,6 +1243,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.coro.Awaitable": dict(
         name="Awaitable", module="tpy.coro",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__poll__",),
@@ -1244,6 +1251,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.coro.Awaker": dict(
         name="Awaker", module="tpy.coro",
         is_dynamic=True, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("mark_runnable",),
@@ -1251,6 +1259,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.coro.Cancellable": dict(
         name="Cancellable", module="tpy.coro",
         is_dynamic=True, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__poll__", "cancel"),
@@ -1258,6 +1267,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Truthy": dict(
         name="Truthy", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__bool__",),
@@ -1265,6 +1275,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Stringable": dict(
         name="Stringable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__str__",),
@@ -1272,6 +1283,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Representable": dict(
         name="Representable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__repr__",),
@@ -1279,6 +1291,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Hashable": dict(
         name="Hashable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__hash__",),
@@ -1286,6 +1299,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Comparable": dict(
         name="Comparable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__lt__",),
@@ -1293,6 +1307,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Equatable": dict(
         name="Equatable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("__eq__",),
@@ -1300,6 +1315,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Deref": dict(
         name="Deref", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__deref__",),
@@ -1307,6 +1323,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Spannable": dict(
         name="Spannable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__span__",),
@@ -1314,6 +1331,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Writable": dict(
         name="Writable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("flush", "write"),
@@ -1321,6 +1339,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Readable": dict(
         name="Readable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("read", "readline"),
@@ -1328,6 +1347,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.BinaryWritable": dict(
         name="BinaryWritable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("flush", "write"),
@@ -1335,6 +1355,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.BinaryReadable": dict(
         name="BinaryReadable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("read", "readline"),
@@ -1342,6 +1363,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Seekable": dict(
         name="Seekable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("seek", "tell"),
@@ -1349,6 +1371,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Closable": dict(
         name="Closable", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept=None,
         type_params=(), parent_protocols=(),
         methods=("close",),
@@ -1357,6 +1380,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.NativeIterable": dict(
         name="NativeIterable", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=True,
         cpp_concept="::tpy::NativeIterable",
         type_params=("T",),
         parent_protocols=(
@@ -1374,6 +1398,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.NativeRangeConstructible": dict(
         name="NativeRangeConstructible", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::NativeRangeConstructible",
         type_params=("T",), parent_protocols=(),
         methods=(),
@@ -1381,6 +1406,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.ValueType": dict(
         name="ValueType", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::ValueType",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1388,6 +1414,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.ComparableValue": dict(
         name="ComparableValue", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(),
         parent_protocols=(
@@ -1401,6 +1428,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.ReferenceType": dict(
         name="ReferenceType", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::ReferenceType",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1408,6 +1436,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.ComparableRef": dict(
         name="ComparableRef", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept=None,
         type_params=(),
         parent_protocols=(
@@ -1421,6 +1450,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Copyable": dict(
         name="Copyable", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::Copyable",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1428,6 +1458,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Send": dict(
         name="Send", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::Send",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1435,6 +1466,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Sync": dict(
         name="Sync", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::Sync",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1442,6 +1474,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Default": dict(
         name="Default", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::std::default_initializable",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1449,6 +1482,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.ReturnException": dict(
         name="ReturnException", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::ReturnException",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1456,6 +1490,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Covariant": dict(
         name="Covariant", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::Covariant",
         type_params=("T",), parent_protocols=(),
         methods=(),
@@ -1463,6 +1498,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.AnyFixedInt": dict(
         name="AnyFixedInt", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::AnyFixedInt",
         type_params=(), parent_protocols=(),
         methods=(),
@@ -1470,6 +1506,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.AnyFixedSigned": dict(
         name="AnyFixedSigned", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::AnyFixedSigned",
         type_params=(), parent_protocols=(
             ts.NominalType(
@@ -1482,6 +1519,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.AnyFixedUnsigned": dict(
         name="AnyFixedUnsigned", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
+        is_runtime_checkable=False,
         cpp_concept="::tpy::AnyFixedUnsigned",
         type_params=(), parent_protocols=(
             ts.NominalType(
@@ -1596,6 +1634,7 @@ def test_protocol_type_def_matches_snapshot(qname, _protocol_registry):
     assert info.name == expected["name"]
     assert info.module == expected["module"]
     assert info.is_dynamic == expected["is_dynamic"]
+    assert info.is_runtime_checkable == expected["is_runtime_checkable"]
     assert info.is_marker == expected["is_marker"]
     assert info.is_readonly == expected["is_readonly"]
     assert info.cpp_concept == expected["cpp_concept"]

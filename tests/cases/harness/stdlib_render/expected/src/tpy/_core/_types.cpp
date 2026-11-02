@@ -4,7 +4,7 @@
 namespace tpystd::tpy {
 
 
-// from .._typing import Protocol, Self, Iterator, Iterable, Sized
+// from .._typing import Protocol, Self, Iterator, Iterable, Sized, runtime_checkable
 //
 // from .._bootstrap._decorators import readonly, pure, nocopy, Own, dynamic, dispatch
 // from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion, DefaultInt

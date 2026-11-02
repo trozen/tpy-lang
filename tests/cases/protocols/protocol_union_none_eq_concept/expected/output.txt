@@ -1,0 +1,2 @@
+eq_guard -1 1
+eq_assert: raised

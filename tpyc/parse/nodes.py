@@ -2456,6 +2456,7 @@ class TpyProtocol:
     # parents like `Iterable[T]` carry their type args in NominalType.type_args.
     parent_protocols: 'list[NominalType | TypeRefNode]' = field(default_factory=list)
     is_dynamic: bool = False
+    is_runtime_checkable: bool = False
     cpp_concept: str | None = None
     loc: SourceLocation | None = None
 

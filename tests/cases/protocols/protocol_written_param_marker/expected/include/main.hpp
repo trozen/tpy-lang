@@ -96,7 +96,8 @@ inline int32_t Plain::get() {
 // # `HasN.get` is not @readonly, so `p` is written.
 // def copyable(p: HasN) -> None:
 //     # a @nocopy reference record is not Copyable.
-//     if isinstance(p, Copyable):  # tpyc: ok
+//     # the warning is right: Copyable is undecorated because CPython's isinstance raises against it
+//     if isinstance(p, Copyable):  # tpyc: warning(/TPy-only/)
 //         print("copyable", p.get())
 //     else:
 //         print("not copyable", p.get())
@@ -110,7 +111,8 @@ void copyable(T_p&& p) {
 }
 // def default(p: HasN) -> None:
 //     # a default-constructible reference record is Default.
-//     if isinstance(p, Default):  # tpyc: ok
+//     # the warning is right: Default is undecorated because CPython's isinstance raises against it
+//     if isinstance(p, Default):  # tpyc: warning(/TPy-only/)
 //         print("default", p.get())
 //     else:
 //         print("not default", p.get())

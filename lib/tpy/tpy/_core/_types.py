@@ -1,5 +1,5 @@
 __tpy__ = {"cpp_namespace": "tpystd::tpy"}
-from .._typing import Protocol, Self, Iterator, Iterable, Sized
+from .._typing import Protocol, Self, Iterator, Iterable, Sized, runtime_checkable
 from tpy import (
     Span, Ptr,
     # Primitive types used in method signatures (forward references within this file)
@@ -42,16 +42,19 @@ class Throwable(Protocol):
 
 # --- Structural protocols (concept generated from method signatures) ---
 
+@runtime_checkable
 class Truthy(Protocol):
     @readonly
     def __bool__(self) -> bool: ...
 
 
+@runtime_checkable
 class Stringable(Protocol):
     @readonly
     def __str__(self) -> str: ...
 
 
+@runtime_checkable
 class Representable(Protocol):
     @readonly
     def __repr__(self) -> str: ...
@@ -72,45 +75,53 @@ class Equatable(Protocol):
     def __eq__(self, other: Self) -> bool: ...
 
 
+@runtime_checkable
 class Deref[T](Protocol):
     def __deref__(self) -> T: ...
 
 
+@runtime_checkable
 class Spannable[T](Protocol):
     @readonly
     def __span__(self) -> Span[readonly[T]]: ...
 
 
+@runtime_checkable
 class Writable(Protocol):
     def write(self, text: str) -> int32: ...
 
     def flush(self) -> None: ...
 
 
+@runtime_checkable
 class Readable(Protocol):
     def read(self, size: int32 = -1) -> str: ...
 
     def readline(self) -> str: ...
 
 
+@runtime_checkable
 class BinaryWritable(Protocol):
     def write(self, data: bytes) -> int32: ...
 
     def flush(self) -> None: ...
 
 
+@runtime_checkable
 class BinaryReadable(Protocol):
     def read(self, size: int32 = -1) -> bytes: ...
 
     def readline(self) -> bytes: ...
 
 
+@runtime_checkable
 class Seekable(Protocol):
     def seek(self, pos: int32, whence: int32 = 0) -> int32: ...
 
     def tell(self) -> int32: ...
 
 
+@runtime_checkable
 class Closable(Protocol):
     def close(self) -> None: ...
     # TODO: add `@property closed -> bool` once Protocol+@property is exercised
@@ -123,6 +134,7 @@ class Closable(Protocol):
 
 # --- Marker protocols (no methods, map to runtime C++ concepts) ---
 
+@runtime_checkable
 @native("tpy::NativeIterable")
 class NativeIterable[T](Iterable[T], Protocol): ...
 

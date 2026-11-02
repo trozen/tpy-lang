@@ -9571,6 +9571,9 @@ class ProtocolInfo:
     is_marker: bool = False  # Marker protocols require explicit extends
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
     is_dynamic: bool = False  # Supports runtime dispatch via base/adapter
+    # Declared @runtime_checkable on this protocol itself; an ancestor's
+    # declaration also counts (see sema.protocols.is_runtime_checkable).
+    is_runtime_checkable: bool = False
     module: str = ""  # Module that defines this protocol (e.g. "typing", "tpy")
     # Qualified names of every protocol reachable via repeated
     # parent_protocols walks (self excluded). Populated once by sema after
