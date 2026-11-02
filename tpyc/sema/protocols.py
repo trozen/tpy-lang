@@ -1415,13 +1415,7 @@ class ProtocolChecker:
             if not inherited:
                 continue
             type_subst = self.get_parent_type_subst(anc_type, anc_info)
-            if type_subst:
-                return PropertyInfo(
-                    name=inherited.name,
-                    accessors=[self.type_ops.substitute_method_type_params(fi, type_subst)
-                               for fi in inherited.accessors],
-                )
-            return inherited
+            return self.type_ops.substitute_property(inherited, type_subst)
         return None
 
     def lookup_record_method_overloads(

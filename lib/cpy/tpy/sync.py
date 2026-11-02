@@ -13,6 +13,9 @@ from typing import Generic, TypeVar
 T = TypeVar("T")
 
 
+_GUARD_OWN = frozenset(("_mutex", "_acquire", "_release", "_locked"))
+
+
 class _Guard(Generic[T]):
     def __init__(self, mutex, acquire, release) -> None:
         self._mutex = mutex
@@ -49,13 +52,23 @@ class _Guard(Generic[T]):
         return self._mutex._lock
 
     def __getattr__(self, name):
-        # Private/dunder lookups fall through to normal attribute machinery;
-        # payload names (append, keys, ...) forward to the aliased payload but
+        # Dunder lookups and the guard's own state fall through to normal
+        # attribute machinery; every other name -- a payload's private field
+        # too, as TPy's deref reaches it -- forwards to the aliased payload,
         # only while the lock is held.
-        if name.startswith("_"):
+        if name.startswith("__") or name in _GUARD_OWN:
             raise AttributeError(name)
         self._require_locked()
         return getattr(self._mutex._value, name)
+
+    def __setattr__(self, name, value) -> None:
+        # Only the guard's own state lands on the guard; a payload attribute
+        # written through it lands on the payload, as TPy's deref does.
+        if name in _GUARD_OWN:
+            object.__setattr__(self, name, value)
+            return
+        self._require_locked()
+        setattr(self._mutex._value, name, value)
 
 
 # The TPy guard types, for annotations: one guard class serves all three.

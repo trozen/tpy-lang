@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::via_ptr@59:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_ptr_local@64:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::via_hbox@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_g_int_ptr@76:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::via_g_rec_ptr@81:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::gen_store@86:0: uncovered (unsupported parameter type)
+main::via_opt@92:0: covered (storage: no_proof_required), summary: known
+main::main@98:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.v@17:4: covered (storage: no_proof_required), summary: known
+main::Box.v@21:4: covered (storage: no_proof_required), summary: known
+main::G.v@40:4: uncovered (generic body)
+main::G.v@40:4#2: uncovered (generic body)
+main::G.v@44:4: uncovered (generic body)
+main::Poker.poke@54:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
+main::Inner.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@35:4: uncovered (generic constructor)
+main::Poker.__init__@51:4: covered (storage: no_proof_required), summary: known

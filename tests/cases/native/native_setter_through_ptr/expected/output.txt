@@ -1,0 +1,7 @@
+ptr 10
+ptr_non_null 20
+hbox 50
+order caught
+recv_order recv
+recv_order value
+recv_order 40

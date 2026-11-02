@@ -3845,11 +3845,9 @@ class ExpressionAnalyzer:
             # Check properties (getter access)
             prop = self.protocols.lookup_record_property(record, expr.field)
             if prop is not None:
-                expr.resolved_property_getter = prop.getter
-                prop_type = prop.type
-                if type_subst:
-                    prop_type = self.type_ops.substitute_type_params(prop_type, type_subst)
-                return prop_type
+                prop = self.type_ops.substitute_property(prop, type_subst)
+                expr.resolved_property = prop
+                return prop.type
             # Class constant fallback for instance-side reads (`obj.X`,
             # `self.X`); codegen emits the declaring class's qualified name
             # regardless of which class the user accessed through.
@@ -4136,6 +4134,7 @@ class ExpressionAnalyzer:
                 if expr.class_constant_owner is not None:
                     return make_ref(result)
                 expr.deref_depth = deref_depth
+                expr.deref_receiver_type = current_type if deref_depth else None
                 # Readonly protects the receiver's own storage: a non-value
                 # field read through it is readonly. A `Ptr` / `Span` field is
                 # a value-typed handle, so it is not wrapped -- what it points

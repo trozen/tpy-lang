@@ -177,10 +177,14 @@ node kind: every position answers at its call arm.
 
 The WRITE position is the one exception -- a settable property on the left of
 an assignment keeps the field-access node kind, pinned by `is_write_target`
-before the target is analysed as a read, so the setter is looked up by the
-field name the node still carries.
+before the target is analysed as a read. The read analysis still resolves the
+property through the receiver's deref chain (`Ptr[T]`, a `__deref__` wrapper)
+and records it, accessors substituted at the receiver's type arguments, as
+`resolved_property`; the setter comes from there, not from a second lookup on
+the raw receiver type.
 
-- Assignment analysis constructs setter `TpyMethodCall`, stores on `property_setter_call`
+- Assignment analysis builds the setter `TpyMethodCall` with `method_call_through`
+  (the receiver markers a getter call carries) and stores it on `property_setter_call`
 - Property methods removed from `RecordInfo.methods` (not callable as `obj.prop()`)
 - Stored in `RecordInfo.properties` dict as a `PropertyInfo` whose `accessors`
   hold every accessor body's own `FunctionInfo` (each getter clone, then the
@@ -191,7 +195,7 @@ field name the node still carries.
 ### Codegen
 
 - A read needs no delegation: lowering sees a method call
-- `_gen_assign_code`: if `property_setter_call` is set, delegates to `_gen_method_call`
+- The assignment lowering (`tpyc/thir/lower/statements.py`): if `property_setter_call` is set, the statement lowers that call through the method-call path in discard position
 - Getter return type: normal `_resolve_return_type` except for Optional/Union
   pointer-repr types which use storage type (`std::optional<T>&`, `::tpy::Union<A,B>&`).
   This is the one property-specific CONVENTION that survives the collapse

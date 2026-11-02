@@ -87,6 +87,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         while_head_always_true)
 from ..parse.nodes import (
     SourceLocation, VarLinkage, op_spelling, name_path, DeferredCapture,
+    method_call_through,
 )
 from .arg_binding import source_view
 from .calls import class_callee
@@ -7863,20 +7864,14 @@ class StatementAnalyzer:
         # (lifetime analysis), re-yielding it (yield-onward check), and capturing
         # it by reference in a closure (nested-def escape check).
         # Property setter: validate and tag for codegen
-        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
-            obj_type = self.ctx.get_expr_type(stmt.target.obj)
-            actual = unwrap_readonly(obj_type) if obj_type else None
-            record = self.ctx.registry.receiver_record(actual) if isinstance(actual, NominalType) else None
-            prop = self.protocols.lookup_record_property(record, stmt.target.field) if record else None
-            if prop and prop.setter:
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property is not None:
+            prop = stmt.target.resolved_property
+            if prop.setter is not None:
                 stmt.target.property_setter = True
-                # Construct setter TpyMethodCall for codegen delegation
-                setter_name = f"set_{stmt.target.field}"
-                setter_call = TpyMethodCall(
-                    obj=stmt.target.obj, method=setter_name, args=[stmt.value])
-                setter_call.resolved_function_info = prop.setter
-                stmt.target.property_setter_call = setter_call
-            elif prop and not prop.setter:
+                stmt.target.property_setter_call = method_call_through(
+                    stmt.target, method=f"set_{stmt.target.field}",
+                    args=[stmt.value], fi=prop.setter)
+            else:
                 raise self.ctx.error(
                     f"Property '{stmt.target.field}' is read-only (no setter defined)",
                     stmt,

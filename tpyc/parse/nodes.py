@@ -172,7 +172,8 @@ if TYPE_CHECKING:
     from ..sema.storage_walk import StorageKey
     from ..symbol_binding import SymbolBinding
     from ..namespace import NameBinding
-    from ..typesys import FunctionInfo, RecordInfo, ResolvedBinop, ResolvedUnaryop
+    from ..typesys import (FunctionInfo, PropertyInfo, RecordInfo,
+                           ResolvedBinop, ResolvedUnaryop)
 
 
 @dataclass
@@ -688,17 +689,21 @@ class TpyFieldAccess(TpyExpr, NoneChecked):
     field: str
     none_use: NoneUse | None = None  # Set by sema on every analysis: the receiver's None check
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
+    # Set by sema past a deref chain (`deref_depth` > 0): the type the field
+    # resolved on, which the receiver reaches through the chain.
+    deref_receiver_type: Optional[TpyType] = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     # Set by sema BEFORE the target of an assignment is analysed as a read:
     # the write position is the one place a property is not its getter, so
-    # this access keeps the field-access node kind and the setter is looked
-    # up by the field name it still carries.
+    # this access keeps the field-access node kind and the setter call is
+    # built from the property it resolved (`resolved_property`).
     is_write_target: bool = False
-    # Set by sema when the access resolves to a @property. A READ consumes it
-    # immediately -- the node becomes the getter call -- so an access still
-    # carrying it is a write target, and this is the fact the setter lookup
-    # and the augmented-assignment reject key on.
-    resolved_property_getter: 'FunctionInfo | None' = None
+    # Set by sema when the access resolves to a @property, with the
+    # receiver's type arguments substituted into its accessors. A READ
+    # consumes it immediately -- the node becomes the getter call -- so an
+    # access still carrying it is a write target, and this is the fact the
+    # setter call and the augmented-assignment reject key on.
+    resolved_property: 'PropertyInfo | None' = None
     property_setter: bool = False  # Set by sema: assignment target is a property setter
     property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
     dyn_getattr_call: 'TpyMethodCall | None' = None  # Set by sema: __getattr__ fallback method call (D16)
@@ -722,6 +727,11 @@ class TpyFieldAccess(TpyExpr, NoneChecked):
     # `enum_member_of`), and `obj` is a placeholder no scope binds, so the
     # node is a leaf.
     default_fill: bool = False
+
+    @property
+    def resolved_property_getter(self) -> 'FunctionInfo | None':
+        prop = self.resolved_property
+        return prop.getter if prop is not None else None
 
     @property
     def hidden_call(self) -> 'TpyMethodCall | None':
@@ -799,6 +809,23 @@ def is_property_getter_read(expr: TpyExpr) -> bool:
     return fi is not None and fi.is_property_getter
 
 
+def method_call_through(node: TpyFieldAccess, *, method: str,
+                        args: list[TpyExpr],
+                        fi: 'FunctionInfo') -> TpyMethodCall:
+    """The call to `fi` that access `node` dispatches to (a property's getter
+    or setter): it reaches the callee through the same hops as the field
+    lookup did (a `Ptr` receiver's deref, a Deref wrapper's chain, an
+    unproven Optional), so it carries exactly the markers `obj.method(...)`
+    would, and the method-call arms spell them."""
+    call = TpyMethodCall(obj=node.obj, method=method, args=args, loc=node.loc)
+    call.resolved_function_info = fi
+    call.deref_depth = node.deref_depth
+    call.deref_receiver_type = node.deref_receiver_type
+    call.ptr_non_null = node.ptr_non_null
+    call.none_use = node.none_use
+    return call
+
+
 def become_method_call(node: TpyFieldAccess, *, method: str,
                        args: list[TpyExpr],
                        fi: 'FunctionInfo') -> TpyMethodCall:
@@ -811,16 +838,10 @@ def become_method_call(node: TpyFieldAccess, *, method: str,
     `__slots__`, so the swap is the ordinary Python one, and no parent slot
     is written -- nothing walks the body.
 
-    The receiver-shape markers transfer: the getter is reached through the
-    same hops as the field lookup was (a `Ptr` receiver's deref, an
-    unproven Optional), so the call carries exactly the
-    markers `obj.getter()` would, and the method-call arms spell them.
+    The receiver-shape markers transfer as `method_call_through` carries
+    them.
     """
-    call = TpyMethodCall(obj=node.obj, method=method, args=args, loc=node.loc)
-    call.resolved_function_info = fi
-    call.deref_depth = node.deref_depth
-    call.ptr_non_null = node.ptr_non_null
-    call.none_use = node.none_use
+    call = method_call_through(node, method=method, args=args, fi=fi)
     node.__dict__.clear()
     node.__dict__.update(call.__dict__)
     node.__class__ = TpyMethodCall

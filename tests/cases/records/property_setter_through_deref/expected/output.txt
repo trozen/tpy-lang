@@ -1,0 +1,17 @@
+ptr 10
+ptr_local before 0
+ptr_local 20
+hbox 50
+rc 60
+rc_generic 7
+mutex 70
+mutex_private 8
+g_int 11
+g_int_ptr 13
+g_rec 12
+g_rec_ptr 14
+method 90
+generator 80
+plain 30
+opt 40
+getters 10 50 60 13 14

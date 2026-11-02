@@ -16,7 +16,7 @@ from ..typesys import (
     TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
     NoneType, VoidType, SendType, SyncType, unwrap_send_sync,
-    RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
+    RecordInfo, FunctionInfo, ParamInfo, PropertyInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, unwrap_own, RefType, is_dyn_protocol,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
     is_callable_type, is_integer_type, is_float_type,
@@ -2332,6 +2332,18 @@ class TypeOperations:
                     taken.add(renamed[tp])
         return renamed
 
+    def substitute_property(
+        self, prop: PropertyInfo, type_subst: dict[str, TpyType | int],
+    ) -> PropertyInfo:
+        """`prop` with `type_subst` applied to every accessor's signature."""
+        if not type_subst:
+            return prop
+        return PropertyInfo(
+            name=prop.name,
+            accessors=[self.substitute_method_type_params(fi, type_subst)
+                       for fi in prop.accessors],
+        )
+
     def substitute_method_type_params(
         self, method: FunctionInfo, type_subst: dict[str, TpyType],
         in_scope: Sequence[str] = (),
@@ -2411,6 +2423,10 @@ class TypeOperations:
             native_function=method.native_function,
             native_mutates=method.native_mutates,
             native_element_effect=method.native_element_effect,
+            # The C++ return type is the binding's, not T's: without it a
+            # generic `@native(cpp_return_type=...)` member loses the cast
+            # its call needs.
+            native_cpp_return_type=method.native_cpp_return_type,
             element_access=method.element_access,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,

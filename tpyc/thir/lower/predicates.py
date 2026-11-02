@@ -3871,7 +3871,8 @@ def _deref_member_call_ok(e: TpyMethodCall) -> bool:
             or e.inferred_type_args or e.needs_optional_runtime_check):
         return False
     fi = e.resolved_function_info
-    if fi is None or not _plain_method_fi_ok(fi, property_getter_ok=True):
+    if fi is None or not _plain_method_fi_ok(fi, property_getter_ok=True,
+                                                 property_setter_ok=True):
         return False
     return not (fi.cpp_template is not None or fi.native_function
                 or fi.type_params)
