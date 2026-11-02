@@ -12,13 +12,46 @@ Point& combine(Point& p, Point&& q) {
     return p;
 }
 
+// # `q` is read, not consumed: the "never consumed" warning on this line is right
+// # (an `Own[...]` callback is what makes the iterable an owning element slot).
+// def add(k: int32, q: Own[Point]) -> int32:  # tpyc: warning(/never consumed/)
+//     return k + q.x
+int32_t add(int32_t k, Point&& q) {
+    return (::tpy::add_check<int32_t>(k, q.x));
+}
+
+// def make() -> Own[list[Point]]:
+//     return [Point(1, 0), Point(2, 0)]
+std::vector<Point> make() {
+    return std::vector<Point>{Point(1, 0), Point(2, 0)};
+}
+
 // def main() -> None:
+//     # dead: first arg by reference (written through), second handed over.
 //     pts = [Point(1, 2), Point(3, 4)]
 //     extras = [Point(10, 0), Point(20, 0)]
-//     for p in map(combine, pts, extras):
+//     for p in map(combine, pts, extras):  # tpyc: ok
 //         pass
 //     print(pts[0].x)  # 11 (1 + 10, modified through reference)
 //     print(pts[1].x)  # 23 (3 + 20)
+//
+//     # live: the caller keeps `kept`, so each element is copied.
+//     kept = make()
+//     print("live", list(map(add, [10, 20], kept)))  # tpyc: warning(/copies Point elements/)
+//     print("live", kept[0].x, len(kept))
+//
+//     # fresh: the call's result is handed over.
+//     print("fresh", list(map(add, [10, 20], make())))  # tpyc: ok
+//
+//     # empty local at the owning slot still deduces `list[Point]`. Through an
+//     # annotated callable: `add` passed directly over an empty list is refused
+//     # (BUGS.md#own-callback-empty-literal-rejects).
+//     fn: Callable[[int32, Own[Point]], int32] = add
+//     xs = []
+//     print("empty", list(map(fn, [1], xs)))  # tpyc: warning(/copies Point elements/)
+//     ys = [Point(5, 0)]
+//     zs = xs if len(ys) > 5 else ys
+//     print("empty", len(zs), xs == ys)
 void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     std::array<Point, 2> extras = {Point(10, 0), Point(20, 0)};
@@ -33,6 +66,16 @@ void main() {
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
+    std::vector<Point> kept = ::tpyapp::main::make();
+    std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{10, 20}, kept))) << "\n" << ::tpy::check_signals;
+    std::cout << "live" << " " << ::tpy::__getitem__(kept, 0).x << " " << ::tpy::__len__(kept) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{10, 20}, ::tpy::own_iter(::tpyapp::main::make())))) << "\n" << ::tpy::check_signals;
+    std::function<int32_t(int32_t, Point&&)> fn = add;
+    std::vector<Point> xs = std::vector<Point>{};
+    std::cout << "empty" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(fn, std::array<int32_t, 1>{1}, xs))) << "\n" << ::tpy::check_signals;
+    std::vector<Point> ys = {Point(5, 0)};
+    std::vector<Point>& zs = (((::tpy::__len__(ys) > 5)) ? (xs) : (ys));
+    std::cout << "empty" << " " << ::tpy::__len__(zs) << " " << ::tpy::print_bool((xs == ys)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

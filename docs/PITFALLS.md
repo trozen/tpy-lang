@@ -213,6 +213,32 @@ protocol argument and had to be re-planned once the written verdict was probed.
 that only iterates the parameter and a body that only calls a `@readonly` method on it, and
 state the verdict each gets next to the concrete twin's.
 
+### `cpp-choice-holds-for-every-candidate`
+
+**Rule.** A compiler verdict that changes a choice C++ makes inside a template -- which overload
+a plain-name call picks, whether a concept is satisfied -- holds for EVERY candidate C++ could
+pick, never only for the one sema expects it to pick. Sema's selection runs before Phase 2 infers
+const-ness and does not model C++ overload resolution, so a prediction of C++'s choice is a
+parallel implementation that drifts; key the verdict on all candidates instead, so C++'s choice
+cannot change the result.
+
+**Example.** `use(p: Feed)` calls `p.feed(xs)` with `Feed.feed(self, x: list[int32])`; the twin
+`Twice` has a const `feed(self, x: list[int32])` and a writing `feed(self, x: Sized)` (both
+`@dispatch`); `def caller(r: Twice, xs: list[int32]): return use(r, xs)`. With a mutable `r`
+C++ picks the writing template and prints `20 1`; rendering the caller `const Twice& r` leaves
+only the const overload viable and prints `10 0`, silently. The caller-const rule first checked
+only the members the body calls (a const caller then failed the concept, which requires every
+member), then predicted the selected overload twice (filtered by return type; by protocol
+signature) and missed a writer each time. Right: a member counts as written when ANY same-name
+non-consuming overload writes (`ProtocolChecker.protocol_members_on`), so the caller is
+`int32_t caller(Twice& r, ...)` and C++ picks the same overload either way
+(`tests/cases/protocols/protocol_twin_caller_const_overload`).
+
+**Check.** For a verdict that changes a receiver's or argument's const-ness, form or type at a
+template call: list the candidates C++ chooses among (every same-name overload, every member the
+concept requires), make a writing / non-matching one of each kind, and confirm the verdict holds
+for all of them -- a probe per candidate, not a probe of the expected pick.
+
 ### `safety-rules-sound-by-default`
 
 **Rule.** An ownership, invalidation or borrow rule is an allow-list: a value is durable only

@@ -841,7 +841,7 @@ def element_fed_positions(params: 'Iterable[ParamInfo]',
     `Iterable[T]` argument: a position typed `T` where one of the call's
     bound parameters `params` is `Iterable[T]`. A callable whose own
     parameter there is `Own[X]` makes that argument an owning element slot
-    (`check_own_callback_feeds`)."""
+    (`own_fed_iterable_params`)."""
     slot = unwrap_send_sync(unwrap_ref_type(ptype))
     if not isinstance(slot, CallableType):
         return frozenset()
@@ -901,6 +901,31 @@ def fed_callable_params(decl: FunctionInfo, resolved: FunctionInfo,
         params[i] = dc_replace(params[i],
                                type=dc_replace(got, param_types=tuple(pts)))
     return dc_replace(resolved, params=params)
+
+
+def own_fed_iterable_params(
+        decl: 'Sequence[ParamInfo]', matched: FunctionInfo,
+        bound: 'Sequence[tuple[int, TpyType | None]]') -> FunctionInfo:
+    """`matched`, the winner of a call to generic `decl` (its parameters
+    as declared, type parameters unsubstituted), with each `Iterable[T]`
+    parameter whose elements a callable argument receives as `Own[X]`
+    (`owned_element_types`) taken as `Iterable[Own[X]]`: the call hands
+    those elements over, so the argument is checked and lowered at an
+    owning element slot. `bound` pairs each parameter index the call binds
+    with its argument's ranked type (None: not typed). Applied after
+    ranking, so the declared parameter decides which overload wins."""
+    owned = owned_element_types([(decl[i], t) for i, t in bound])
+    if not owned:
+        return matched
+    params = list(matched.params)
+    for i, arg_t in bound:
+        elem = _iterable_elem_param(decl[i].type)
+        if elem not in owned or arg_t is None:
+            continue
+        slot = unwrap_send_sync(unwrap_ref_type(decl[i].type))
+        params[i] = dc_replace(params[i],
+                               type=slot.with_inner_types((owned[elem],)))
+    return dc_replace(matched, params=params)
 
 
 def _is_fn_slot_param(ptype: TpyType) -> bool:
@@ -3732,35 +3757,6 @@ class CallAnalyzer:
             f"evaluated operand; assign it to a local before the expression "
             f"to make the unconditional build explicit", arg)
 
-    def check_own_callback_feeds(
-            self, bound: 'list[tuple[int, ParamInfo, TpyExpr, TpyType | None]]',
-    ) -> dict[int, TpyType]:
-        """An iterable argument whose elements a callable argument receives
-        as `Own[X]` is an owning element slot: the callee's declaration
-        (type parameters unsubstituted) types the callable slot
-        `Fn[[..., T, ...], U]` and the iterable slot `Iterable[T]` with the
-        same `T`, and the callable's own parameter there is `Own[X]`. Each such
-        argument gets the `Iterable[Own[X]]` parameter's element-copy check.
-        `bound` holds each written argument where the call's binding puts
-        it: (parameter index, declared parameter, operand, ranked type).
-        Returns the effective slots by parameter index, for the lowering
-        (`ctx.own_callback_feeds`)."""
-        owned_elems = owned_element_types([(p, t) for _, p, _, t in bound])
-        feeds: dict[int, TpyType] = {}
-        if not owned_elems:
-            return feeds
-        for i, p, arg, arg_t in bound:
-            elem = _iterable_elem_param(p.type)
-            if elem not in owned_elems or arg_t is None:
-                continue
-            slot = unwrap_send_sync(unwrap_ref_type(p.type))
-            owning_slot = slot.with_inner_types((owned_elems[elem],))
-            feeds[i] = owning_slot
-            self.compat.check_type_compatible(
-                arg_t, owning_slot, f"argument '{p.name}'", source_expr=arg,
-                coercion_ctx=CoercionContext.ARG, param=f"'{p.name}'")
-        return feeds
-
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
                         pname: str, ptype: TpyType) -> None:
         """Run Own[T] / Own[T]|None param checks: @nocopy error and unnecessary-copy warning.
@@ -4959,7 +4955,7 @@ class CallAnalyzer:
         provenance reaches each argument hint through ``ReturnSeed.slot``.
 
         ``feeds_elements``: the call hands a callable argument the elements
-        of its iterable arguments (`check_own_callback_feeds`), so the
+        of its iterable arguments (`own_fed_iterable_params`), so the
         callable is fitted with those positions owning
         (`element_fed_positions`).
         """
@@ -5083,7 +5079,7 @@ class CallAnalyzer:
         fields. Every candidate takes them where the call's one binding
         places them on its parameters (`bind`); one they do not bind to is
         not applicable. `feeds_elements`: the winner's commit pairs callable
-        and iterable arguments (`check_own_callback_feeds`), so a callable
+        and iterable arguments (`own_fed_iterable_params`), so a callable
         argument is fitted, and each candidate substituted, with its
         element-fed positions owning (`fed_callable_params`).
 
@@ -6215,7 +6211,6 @@ class CallAnalyzer:
             fresh_own: str = "keep",
             char_literal_init: bool = False,
             builtin_form: bool = False,
-            feeds: 'tuple[list[ParamInfo], CallSource] | None' = None,
             kwargs_arg: 'TpyExpr | None | _RegionNotBuilt' = REGION_NOT_BUILT,
     ) -> ArgLayout:
         """Commit candidate `cand` of call `expr` to `name`, the one commit
@@ -6234,17 +6229,10 @@ class CallAnalyzer:
         index: a parameter received at another type than `cand.matched`
         spells, the parameters as the callee declares them, a type the
         call's preparation decided, a slot an earlier call inferred.
-        `feeds`: the generic declaration's params and the ranked argument
-        types as written, for `check_own_callback_feeds`. `kwargs_arg`: the
+        `kwargs_arg`: the
         `**kwargs` region an earlier step of the call built (None: the
         callee takes none), unless `REGION_NOT_BUILT`, built here."""
         matched, binding = cand.matched, cand.binding
-        fed: dict[int, TpyType] = {}
-        if feeds is not None:
-            decl, typed = feeds
-            fed = self.check_own_callback_feeds(
-                [(i, decl[i], a, t) for (i, a), (_, t)
-                 in zip(cand.evidence, binding.evidence(typed))])
         if stamp is not None:
             expr.resolved_function_info = stamp
         if isinstance(kwargs_arg, _RegionNotBuilt):
@@ -6268,11 +6256,6 @@ class CallAnalyzer:
              for k, v in cand.subst.items()},
             analyze=False, fill=fill, kwargs_arg=kwargs_arg,
             receive=receive)
-        if fed and committed(expr):
-            # The lowering reads each by where the layout puts its argument.
-            at = expr.binding.at
-            self.ctx.own_callback_feeds[expr] = {
-                at[i]: slot for i, slot in fed.items() if at[i] is not None}
         return layout
 
     def _receive_layout(
@@ -6466,12 +6449,16 @@ class CallAnalyzer:
 
         if matched is not None:
             cand = result.candidate
-            feeds = None
             subst: dict[str, TpyType | int] = {}
             if result.matched_origin is not None:
                 overload, type_subst = result.matched_origin
-                feeds = (overload.params, result.typed.mapped(
-                    lambda _, t: unwrap_own(unwrap_ref_type(t))))
+                typed = result.typed.mapped(
+                    lambda _, t: unwrap_own(unwrap_ref_type(t)))
+                matched = own_fed_iterable_params(
+                    overload.params, matched,
+                    [(i, t) for (i, _), (_, t) in zip(
+                        cand.evidence, cand.binding.evidence(typed))])
+                cand = dc_replace(cand, matched=matched)
                 self.expr.set_step_route(expr, GenericCallRoute(builtin=True))
                 expr.inferred_type_args = tuple(
                     self._resolve_inferred_type_arg(type_subst[p])
@@ -6479,7 +6466,7 @@ class CallAnalyzer:
                 subst = dict(zip(overload.type_params,
                                  expr.inferred_type_args))
             self.commit_winner(expr, cand, expr.func_name, stamp=matched,
-                               scope=scope, builtin_form=True, feeds=feeds)
+                               scope=scope, builtin_form=True)
             self._validate_lvalue_params(expr)
             self.commit_facts(expr, matched)
             key = next((i for i, p in enumerate(matched.params)
@@ -6942,7 +6929,9 @@ class CallAnalyzer:
         if not (is_protocol_type(inner) and isinstance(inner, NominalType)
                 and inner.type_args and len(inner.type_args) == 1):
             return
-        elem_type = inner.type_args[0]
+        # An owning element slot (`own_fed_iterable_params`) still holds
+        # `X` elements: `Own` is the hand-over, not the list's element type.
+        elem_type = unwrap_own(inner.type_args[0])
         # Skip abstract/unresolved element types: pinning to a TypeParamRef or
         # UnknownElementType (which can happen when generic inference for T
         # fails on an all-empty-iterable call site) would just move the error

@@ -15058,8 +15058,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             inline_template=kind is not None
             and kind[0] in ("native", "native_c", "template"),
             callee_fi=_callee_fi, arg_index=arg_index, signature=signature,
-            retention=_keep, lifetime_checked=True,
-            own_wrap_slot=(analyzer.ctx.own_callback_feeds.get(e) or {}).get(arg_index)),
+            retention=_keep, lifetime_checked=True),
         lower_owned=lambda owned: _lower_call_arg(
             _peel_coerce(a), owned, lc, declared, temp_args=True,
             callee_fi=_callee_fi, arg_index=arg_index, signature=signature,
@@ -16482,8 +16481,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     then a fresh temporary at an owning element slot handed over
     (`_rvalue_iter_handover`) -- whichever arm rendered it."""
     arg = _lower_call_arg_at(a, ptype, lc, declared, **kw)
-    return _rvalue_iter_handover(a, kw.get("own_wrap_slot") or ptype, lc,
-                                 arg)
+    return _rvalue_iter_handover(a, ptype, lc, arg)
 
 
 def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
@@ -16521,10 +16519,6 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     # slot with the same verdict (`_refuse_dying_arg`), so
                     # the entry does not ask it again.
                     lifetime_checked: bool = False,
-                    # The argument's effective `Iterable[Own[X]]` slot where its
-                    # declared `Iterable[T]` feeds a callable argument's
-                    # `Own[X]` parameter (sema's `own_callback_feeds`).
-                    own_wrap_slot: 'TpyType | None' = None,
                     # The signature the call's callee publishes, resolved
                     # where its node is built (`converted_arg`).
                     signature: 'CallSignature | None' = None) -> THIRExpr:
@@ -17590,8 +17584,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # arg; corpus-verified bare), a still-live name, a family with NO
         # consuming __iter__ (Array, Span) -- binds bare, because the wrap
         # keys those facts itself and returns None.
-        wrapped = _consuming_iter_wrap(a, own_wrap_slot or ptype, lc,
-                                       declared)
+        wrapped = _consuming_iter_wrap(a, ptype, lc, declared)
         if wrapped is not None:
             return wrapped
         return _lower_expr(a, lc, declared)

@@ -3217,11 +3217,6 @@ class SemanticContext:
     # is its clause's, never the function's name-keyed ownership fact,
     # which speaks for an enclosing binding of the name.
     comp_var_reads: IdentityMap = field(default_factory=IdentityMap)
-    # Per call whose callable argument takes an `Own[X]` parameter fed by an
-    # `Iterable[T]` argument (`map(take, ks, rows)`): argument index ->
-    # the effective `Iterable[Own[X]]` slot, an owning element slot like a
-    # spelled one.
-    own_callback_feeds: IdentityMap = field(default_factory=IdentityMap)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is

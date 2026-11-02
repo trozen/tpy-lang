@@ -13,6 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def combine(p: Point, q: Own[Point]) -> Point:
 Point& combine(Point& p, Point&& q);
+// def add(k: int32, q: Own[Point]) -> int32:  # tpyc: warning(/never consumed/)
+int32_t add(int32_t k, Point&& q);
+// def make() -> Own[list[Point]]:
+std::vector<Point> make();
 // def main() -> None:
 void main();
 
@@ -26,6 +30,13 @@ struct Point {
     // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
+
+    // def __eq__(self, other: "Point") -> bool:
+    bool __eq__(const Point& other) const;
+
+    friend bool operator==(const Point& lhs, const Point& other) {
+        return lhs.__eq__(other);
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -41,5 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __eq__(self, other: "Point") -> bool:
+//     return self.x == other.x and self.y == other.y
+inline bool Point::__eq__(const Point& other) const {
+    return ((this->x == other.x) && (this->y == other.y));
+}
 void __tpy_init();
 } // namespace tpyapp::main

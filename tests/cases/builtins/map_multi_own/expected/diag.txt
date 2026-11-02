@@ -1,1 +1,4 @@
-main.py:12: warning: Own[Point] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:17: warning: Own[Point] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:23: warning: Own[Point] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:40: warning: copies Point elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:51: warning: copies Point elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
