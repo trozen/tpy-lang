@@ -1,0 +1,22 @@
+list_local True False
+list_literal True
+list_field True False
+set False True
+dict True False
+dict_keys True
+tuple_name False
+tuple_member True
+user_contains True False
+user_iter True
+not_in True False
+intenum True
+call_list False
+call_tuple True
+field_needle True
+imported True False
+nested True False
+comprehension [True, False]
+generator [True, False]
+method True False
+eq True True
+intenum_lt True

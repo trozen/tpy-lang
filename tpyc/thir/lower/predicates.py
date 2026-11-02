@@ -2426,6 +2426,14 @@ def _eligible_enum(t: TpyType | None, analyzer) -> 'TpyType | None':
         return None
     return t
 
+def _by_value_needle(t: TpyType | None, analyzer) -> bool:
+    """A membership needle that renders bare and compares by `==`: a scalar,
+    or an enum value. An enum is one because its C++ type has a built-in
+    `==` and carries no form facts (no view, owner or pointer repr), so the
+    containment helpers and the `==` OR-chain take it exactly as a scalar."""
+    return (_resolved_scalar(t, analyzer)
+            or _eligible_enum(t, analyzer) is not None)
+
 def _enum_member_cpp(e: TpyFieldAccess, analyzer) -> str:
     """The rendered `E::A` spelling for a type-level enum member access (a
     BindingKind.ENUM head, or a chained nested access):

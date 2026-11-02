@@ -1,0 +1,11 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_color@62:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::gen@66:0: uncovered (loop across a suspension)
+main::main@72:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Palette.has@34:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Bag.__contains__@40:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::ColorIter.__iter__@50:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::ColorIter.__next__@53:4: uncovered (error-return body)
+main::Palette.__init__@30:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::ColorIter.__init__@47:4: covered (storage: no_proof_required), summary: known
+shades::__tpy_init: uncovered (module initialization)

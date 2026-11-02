@@ -2901,8 +2901,10 @@ class ExpressionAnalyzer:
             return BOOL
 
         # Enum operators: base Enum supports == and != only;
-        # IntEnum also supports ordering, comparison with integers, and arithmetic
-        if is_enum_type(left_effective) or is_enum_type(right_effective):
+        # IntEnum also supports ordering, comparison with integers, and arithmetic.
+        # Membership is the right operand's `__contains__`, resolved below.
+        if ((is_enum_type(left_effective) or is_enum_type(right_effective))
+                and expr.op not in ("in", "not in")):
             left_is_int_enum = is_int_enum_type(left_effective)
             right_is_int_enum = is_int_enum_type(right_effective)
             is_comparison = expr.op in ("==", "!=", "<", ">", "<=", ">=")

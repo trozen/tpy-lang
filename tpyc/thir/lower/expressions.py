@@ -386,6 +386,7 @@ from .predicates import (
     _inst_slice_arg_ok,
     _isinstance_narrow_info,
     _eligible_enum,
+    _by_value_needle,
     _eligible_ptr_value,
     _eligible_scalar,
     _enum_compare_pair,
@@ -3927,10 +3928,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     elif e.op in _MEMBERSHIP_OPS and isinstance(e.right, TpyTupleLiteral):
         # `x in (a, b, ...)` / `not in`: a tuple-literal membership expands to an
         # OR-chain of `==` compares (no `__contains__`). Value-comparable
-        # (scalar / str / bytes) needle + elements only, so each `==` renders
-        # plainly.
+        # (by-value scalar or enum / str / bytes) needle + elements only, so
+        # each `==` renders plainly.
         lt = _declared_type(e.left, declared, analyzer)
-        left_scalar = lt is not None and _resolved_scalar(lt, analyzer)
+        left_scalar = lt is not None and _by_value_needle(lt, analyzer)
         left_str = (lt is not None
                     and _resolved_str_value(lt, analyzer) is not None)
         left_bytes = (lt is not None
@@ -3940,7 +3941,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         for el in e.right.elements:
             et = analyzer.get_expr_type(el)
             if et is None or (
-                    left_scalar and not _resolved_scalar(et, analyzer)) or (
+                    left_scalar and not _by_value_needle(et, analyzer)) or (
                     left_str and _resolved_str_value(et, analyzer) is None) or (
                     left_bytes and not _bytes_compare_operand(el, et, analyzer)):
                 reject()
@@ -3967,7 +3968,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # one is admitted where the haystack's elements can be it -- the
             # helper's identity leg supplies Python's `x is e` half.
             return bool(
-                _resolved_scalar(lt, analyzer)
+                _by_value_needle(lt, analyzer)
                 or _resolved_viewfam_value(lt, analyzer) is not None
                 # An open-T needle inside a generic body (`key in
                 # self._data` on `dict[T, int]`): the needle renders by
@@ -4031,7 +4032,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and not lc.binding(e.right.name).global_slot
                     and _resolved_str_value(rt, analyzer) is None
                     and _resolved_bytes_value(rt, analyzer) is None
-                    and _resolved_scalar(lt, analyzer)):
+                    and _by_value_needle(lt, analyzer)):
                 # A USER iterable with no `__contains__` (`20 in b` on a
                 # __iter__/__next__ record): the universal
                 # statement-expression loop over the bare receiver name.
@@ -4074,7 +4075,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             key_view = (key_slot if key_slot is not None
                         and (is_str_view_type(key_slot)
                              or is_bytes_view_type(key_slot)) else None)
-            if not ((_resolved_scalar(lt, analyzer)
+            if not ((_by_value_needle(lt, analyzer)
                        or (isinstance(e.left, TpyName)
                            and record_like(lt_bare, analyzer))
                        # An open-T needle inside a generic body (`key in
@@ -4117,9 +4118,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                   e.right, declared, analyzer, methods=("values", "keys"))):
             # `x in d.values()` / `x in d.keys()`: the view rvalue renders
             # `::tpy::dict_values(d).contains(x)`; the needle is the dict's
-            # value/key (scalar or bare-str / bytes). `.items()` needs a
+            # value/key (by-value scalar or enum, or bare-str / bytes).
+            # `.items()` needs a
             # tuple needle, a later cell.
-            if not (_resolved_scalar(lt, analyzer)
+            if not (_by_value_needle(lt, analyzer)
                     or _resolved_viewfam_value(lt, analyzer) is not None):
                 reject()
         else:

@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::get_owner@26:0: uncovered (no body to lower)
+main::has@29:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@34:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Bag.__contains__@17:4: uncovered (no body to lower)
