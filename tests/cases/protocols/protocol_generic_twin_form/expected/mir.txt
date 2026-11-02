@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::push@22:0: uncovered (unsupported parameter type)
+main::total_after@26:0: uncovered (unsupported parameter type)
+main::size_after@34:0: uncovered (unsupported parameter type)
+main::seqsum@39:0: uncovered (unsupported parameter type)
+main::walk@43:0: uncovered (unsupported parameter type)
+main::gl@48:0: uncovered (loop across a suspension)
+main::bsum@53:0: uncovered (unsupported parameter type)
+main::bwalk@60:0: uncovered (unsupported parameter type)
+main::gsize@65:0: uncovered (unsupported parameter type)
+main::apush@69:0: uncovered (async body)
+main::main@102:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::amain@170:0: uncovered (async body)
+main::warn@177:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Bag.add@18:4: covered (storage: no_proof_required), summary: known
+main::H.items@88:4: covered (storage: no_proof_required), summary: known
+main::H.items@88:4#2: covered (storage: no_proof_required), summary: known
+main::H.push_into@91:4: uncovered (unsupported parameter type)
+main::H.sum_after@94:4: uncovered (unsupported parameter type)
+main::Bag.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Pusher.__init__@75:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::H.__init__@83:4: covered (storage: no_proof_required), summary: known

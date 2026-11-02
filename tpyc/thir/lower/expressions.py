@@ -1942,7 +1942,7 @@ def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
     # keeps it past the statement whatever its slot does with it, so
     # it hoists to a named local too.
     return _frame_temp_arg(
-        a, ptype, lc, lc.analyzer, active=frame_factory,
+        a, ptype, lc, lc.analyzer, active=frame_factory, callee=fi,
         temp_args=temp_args,
         no_flush_reason=("factory-method temp arg outside a "
                          "flush position"),
@@ -10996,8 +10996,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail(_recv_shape_reject(e.obj, declared, analyzer))
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if (_select_has_fresh_operand(e.obj, analyzer)
-                    and callee_retains_arg(fi, -1, e,
-                                           analyzer.get_expr_type)):
+                    and callee_retains_arg(fi, -1, e, analyzer)):
                 # The select's fresh operand lives in a slot that dies with
                 # the statement's block; a result that borrows the receiver
                 # (a `self` reference, a view, an iterator, a frame holding
@@ -15049,7 +15048,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     # The frame-capturing TEMPORARY argument: the free-call twin of the
     # factory-METHOD row.
     return _frame_temp_arg(
-        a, ptype, lc, analyzer, active=frame_capturing, temp_args=temp_args,
+        a, ptype, lc, analyzer, active=frame_capturing, callee=_callee_fi,
+        temp_args=temp_args,
         no_flush_reason="frame temp arg outside a flush position",
         lower=lambda: _lower_call_arg(
             a, ptype, lc, declared, temp_args=temp_args,
@@ -15068,6 +15068,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
 
 def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                     lc: '_LowerCtx', analyzer, *, active: bool,
+                    callee: 'FunctionInfo | None',
                     temp_args: bool, no_flush_reason: str,
                     lower: 'Callable[[], THIRExpr]',
                     lower_owned: 'Callable[[TpyType], THIRExpr]') -> THIRExpr:
@@ -15084,7 +15085,7 @@ def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     `no_flush_reason` is the seam's own reject text: the row NEEDS a hoist
     position, and with none the honest answer is a reject rather than the
     inline prvalue whose dangle this row exists to remove."""
-    slot = frame_temp_arg_slot(a, ptype, analyzer) if active else None
+    slot = frame_temp_arg_slot(a, ptype, analyzer, callee) if active else None
     if slot is None:
         return lower()
     # Inside a resumable body this row's flush point is the state's `case`
@@ -15546,7 +15547,7 @@ def arg_contract(fi: 'FunctionInfo | None', index: int,
         fi, index, ptype,
         published=(signature.passing(index) if signature is not None
                    else None),
-        call=call, type_of=an.get_expr_type, arg=arg, recv=recv)
+        call=call, analyzer=an, arg=arg, recv=recv)
 
 
 def _tuple_param(t: TpyType) -> bool:
@@ -15642,7 +15643,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         inst = structural
         if contract.materializes is Materializer.DEDUCED:
             twin = param_contract(callee_fi, arg_index, structural,
-                                  call=call, type_of=lc.analyzer.get_expr_type,
+                                  call=call, analyzer=lc.analyzer,
                                   arg=a, recv=recv)
             if (isinstance(_peel_coerce(a), TpyTupleLiteral)
                     and _tuple_param(structural)):
@@ -15704,7 +15705,8 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     hoist_t = ptype if twin is not None else inst
     frame_kept = (contract.frame_captured
                   and cls is not ParamSlotClass.TRAIT
-                  and frame_temp_arg_slot(a, hoist_t, lc.analyzer) is None)
+                  and frame_temp_arg_slot(a, hoist_t, lc.analyzer,
+                                          callee_fi) is None)
 
     def lower() -> THIRExpr:
         pinned = _pinned_literal_arg(a, inst, callee_fi, lc, declared)
@@ -15732,7 +15734,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     return _frame_temp_arg(
         a, hoist_t, lc, lc.analyzer,
         active=(contract.frame_captured
-                and cls is not ParamSlotClass.TRAIT),
+                and cls is not ParamSlotClass.TRAIT), callee=callee_fi,
         temp_args=temps,
         no_flush_reason="frame temp arg outside a flush position",
         lower=lower,
@@ -15768,9 +15770,9 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
                 and not binds_runtime_symbol(callee_fi))):
         return None
     an = lc.analyzer
-    twin = protocol_twin_slot(ptype, a, an.get_expr_type, declared.get,
+    twin = protocol_twin_slot(ptype, a, an, declared.get,
                               frame=contract.frame_captured,
-                              writes=contract.written)
+                              writes=contract.written, callee=callee_fi)
     if twin is ptype:
         return None
     src = _peel_coerce(a)
@@ -16806,7 +16808,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # expression, so every temporary element it borrows is owed a
             # named local (the element half of the frame-temp rule).
             frame_elems = ({e.path: e.owned for e in frame_temp_elem_slots(
-                               a, ptype, lc.analyzer)}
+                               a, ptype, lc.analyzer, callee_fi)}
                            if frame_capturing else None)
             if (pslot.has_pointer_repr_element()
                     # A nested tuple borrowing a level down (`tuple[int32,

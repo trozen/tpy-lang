@@ -812,7 +812,7 @@ class MatchAnalyzer:
             call = peel_coerce(subject)
             if isinstance(call, (TpyCall, TpyMethodCall)):
                 for src in borrow_declared_sources(
-                        call, self.ctx.get_expr_type,
+                        call, self.ctx,
                         self.ctx.declared_type) or ():
                     self._warn_arm_subject_mutation(case, src.expr)
             return

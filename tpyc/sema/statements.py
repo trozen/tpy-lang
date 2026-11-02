@@ -1516,7 +1516,7 @@ class StatementAnalyzer:
             # A returned generator or coroutine keeps what its frame
             # borrows, whatever slot the return fills.
             ret_call = peel_coerce(stmt.value)
-            for src in frame_operand_keys(ret_call, self.ctx.get_expr_type,
+            for src in frame_operand_keys(ret_call, self.ctx,
                                           self.ctx.declared_type):
                 sited = self.ctx.sited_here(src)
                 self.ctx.mark_param_returned(sited)

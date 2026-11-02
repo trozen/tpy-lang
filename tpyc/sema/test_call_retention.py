@@ -158,7 +158,7 @@ def _retains(case, label: str, index: int) -> bool:
     ctx, found = case
     call = found[label]
     return callee_retains_arg(call.resolved_function_info, index, call,
-                              ctx.get_expr_type)
+                              ctx)
 
 
 @pytest.mark.parametrize("label,index,want", [
@@ -214,7 +214,7 @@ def test_result_and_copies_are_both_reported(calls) -> None:
                         ("pick_a", Retention.RESULT)):
         call = found[label]
         assert retention_channel(call.resolved_function_info, 0, call,
-                                 ctx.get_expr_type) == want
+                                 ctx) == want
 
 
 @pytest.mark.parametrize("label,want", [
@@ -229,7 +229,7 @@ def test_declared_result_channel(calls, label: str, want: Retention) -> None:
     ctx, found = calls
     call = found[label]
     assert retention_channel(call.resolved_function_info, 0, call,
-                             ctx.get_expr_type) == want
+                             ctx) == want
 
 
 def test_overload_stub_backed_by_a_body_answers_from_its_facts(calls) -> None:

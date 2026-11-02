@@ -1,0 +1,4 @@
+main.py:135: warning: Mutation of 'ba' while borrowed ('append' may invalidate references)
+main.py:166: warning: Mutation of 'la' while borrowed ('append' may invalidate references)
+main.py:182: warning: Mutation of 'll' while borrowed ('append' may invalidate references)
+main.py:188: warning: Mutation of 'h.xs' while borrowed ('append' may invalidate references)

@@ -91,6 +91,9 @@ module-qualified, nested class, aliased import, the result of a macro expansion.
 And across the BINDING FORMS of one name -- assignment, unpack, `for` head, walrus, `match`
 capture, `with ... as`, `except ... as`: a fact about a variable (its storage, whether it owns)
 belongs to the variable's binding record, never to the form that bound it.
+And across the ARGUMENT SPELLINGS of one value: name, field, element, property read, call
+result, literal, `a or b` / `a and b`, ternary, walrus. `or`, `and` and a ternary pick one of
+their operands, so over two existing objects the result is that object, not a fresh value.
 The compiler decides each fact once and every position consumes that decision; a position with
 its own copy of the logic is where the next divergence lives.
 
@@ -104,12 +107,19 @@ Binding forms: `mv = "m"` at module level, then `for mv in mk(): pass` inside an
 loop's temporary list, garbage on print -- "a module variable owns its text" was a flag each
 binding form set, and the loop head did not. Right: `std::string mv;`, decided once in the
 view-vs-owned predicate from the variable's module-slot fact.
+Argument spellings: `ag = walk(la or lb)` with `def walk(it: Iterable[int32]) -> Iterator[int32]`,
+then `la.append(5)` and `print(sum(ag))`. Wrong: the `or` was classed as a fresh value, so the
+generator frame held a silent copy and printed 3 where CPython prints 8. Right: the frame holds
+`la` itself, `walk(((::tpy::__len__(la) != 0) ? la : lb))`, as `walk(la)` would, and the append
+warns "Mutation of 'la' while borrowed" as it does for the bare name.
 
 **Check.** For the construct under change, compile the same subject at two positions other
 than the one the reporter saw, and at each other spelling of it (`T(x)`, `mod.T(x)`,
 `Outer.T(x)`, a call macro that expands to it), and diff the emitted C++ for the subject.
 For a fact about a variable, bind the variable by each binding form above and diff its
 declaration; grep the change for the fact read or set per form.
+For a verdict on an argument ("existing object or fresh value"), pass each argument spelling
+above at a plain call and at a generator or async call, and diff the emitted argument.
 A difference is the defect. A fix that touches several consuming sites instead of the deciding
 site is the same defect in the compiler -- and so is a verdict read off the source spelling
 when the lowered node already carries the answer.
@@ -176,6 +186,28 @@ instantiation the case uses and diff the emitted C++ for the subject and the dia
 different form, verdict or warning is the defect, and a temporary, copy or allocation the twin
 does not pay is a different form. Where the corpus spells only the generic,
 the twin is a probe.
+
+### `iterating-a-protocol-param-writes-it`
+
+**Rule.** Iterating a protocol-typed parameter calls the protocol's `__iter__`, and
+`Iterable.__iter__` is not `@readonly`, so a body that only loops over `it: Iterable[T]` counts
+as writing `it` -- while the same loop over `xs: list[T]` does not, because the concrete
+`__iter__` is `@readonly`. Every verdict keyed on "this parameter is written" (the argument's
+form at the call, whether a `readonly[...]` argument is accepted, the caller's const-ness) can
+therefore differ between a protocol parameter and its concrete twin, and flips the moment the
+body gains a `for`.
+
+**Example.** `def total(it: Iterable[int32]) -> int32` and `def ltotal(it: list[int32]) -> int32`,
+both with the body `for v in it: t += v`, called from `def f(xs: list[int32])`. The twin renders
+`int32_t ltotal(const std::vector<int32_t>& it)` and leaves the caller `void f(const
+std::vector<int32_t>& xs)`; the protocol renders `int32_t total(T_it&& it)` as a written
+parameter, and one `total(xs)` call turns the caller into `void f(std::vector<int32_t>& xs)`.
+A design that assumed "an `Iterable` parameter is read-only" promised the twin's form for every
+iterated protocol argument and had to be re-planned once the written verdict was probed.
+
+**Check.** For a design or fix that reads a protocol parameter's written verdict, probe a body
+that only iterates the parameter and a body that only calls a `@readonly` method on it, and
+state the verdict each gets next to the concrete twin's.
 
 ### `safety-rules-sound-by-default`
 

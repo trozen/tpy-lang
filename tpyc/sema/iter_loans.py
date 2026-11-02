@@ -364,7 +364,7 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
         return False
     if not frame_factory_callee(fi):
         return iterator_source_callee(fi)
-    return frame_temp_arg_source(arg, slot, ctx) is not None
+    return frame_temp_arg_source(arg, slot, ctx, fi) is not None
 
 
 def temp_arg_spelling(fi: FunctionInfo, idx: int) -> str:
@@ -695,7 +695,7 @@ def register_iteration_loans(
             continue
         bt.add_borrow(key, holder, loan.kind, on_element=loan.on_element,
                       elem_index=loan.elem_index, merge=True)
-    for key in frame_operand_keys(iterable, ctx.get_expr_type,
+    for key in frame_operand_keys(iterable, ctx,
                                   ctx.declared_type):
         # A frame keeps what it holds until it is destroyed, its receiver
         # included, which MAY does not name
@@ -789,7 +789,7 @@ def iterator_advanced_twice(ctx: 'SemanticContext', exprs: 'list[TpyExpr]'
             ops = call_operands(node)
             lent = (call_lend_sources(
                         ops, ops.fi.root.element_borrows_from,
-                        expr_type=ctx.get_expr_type,
+                        analyzer=ctx,
                         declared_of=ctx.declared_type)
                     if ops is not None else [])
             for src in lent:

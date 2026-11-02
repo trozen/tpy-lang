@@ -1,0 +1,18 @@
+free_elem 9
+method_elem 5
+ctor_elem 11
+field_iter 13 23
+field_push 14
+sized 3 5
+seq 3
+dict_elem 9
+ba 195
+ba_gen 196
+gen_sized 4
+getter 31
+gen_elem 17
+andor 8 8
+async_elem 1 4
+warn 3
+warn_field 3
+module_elem 9

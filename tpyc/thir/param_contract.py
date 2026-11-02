@@ -46,7 +46,7 @@ from ..typesys import (
     is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import (ExprTypeOf, frame_factory_callee,
+from ..value_category import (ValueCategoryAnalyzer, frame_factory_callee,
                               param_written, protocol_slot,
                               protocol_twin_slot)
 from .nodes import THIRCallableSignature, THIRParam
@@ -224,7 +224,7 @@ def native_insert_stub(fi: FunctionInfo | None) -> bool:
 
 def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
                  arg: TpyExpr | None = None,
-                 type_of: ExprTypeOf | None = None,
+                 analyzer: ValueCategoryAnalyzer | None = None,
                  written: bool = False) -> Materializer | None:
     """Who copies an lvalue into parameter `ptype` when it takes ownership
     (`param_takes_ownership`); None when it does not. A body-less binding's
@@ -238,9 +238,9 @@ def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
     if (not declared_only(fi)
             # Whether there is a twin does not depend on the declared type a
             # name's twin is asked at.
-            and protocol_twin_slot(ptype, arg, type_of, None,
+            and protocol_twin_slot(ptype, arg, analyzer, None,
                                    frame=frame_captured(fi),
-                                   writes=written) is not ptype):
+                                   writes=written, callee=fi) is not ptype):
         return Materializer.DEDUCED
     if not isinstance(ptype, TpyType) or not param_takes_ownership(ptype):
         return None
@@ -258,7 +258,7 @@ def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
 
 def retention(fi: FunctionInfo | None, index: int,
               call: TpyExpr | None = None,
-              type_of: ExprTypeOf | None = None,
+              analyzer: ValueCategoryAnalyzer | None = None,
               arg: TpyExpr | None = None,
               recv: TpyExpr | None = None) -> Retention | None:
     """How callee `fi`, reached through `call` (or receiver `recv` where
@@ -268,7 +268,7 @@ def retention(fi: FunctionInfo | None, index: int,
     kills. An argument with no parameter index fails closed."""
     if index < 0:
         return Retention.MEASURED
-    return retention_channel(fi, index, call, type_of, arg, recv)
+    return retention_channel(fi, index, call, analyzer, arg, recv)
 
 
 def arg_retention(fi: FunctionInfo | None, index: int,
@@ -277,7 +277,7 @@ def arg_retention(fi: FunctionInfo | None, index: int,
                   recv: TpyExpr | None = None) -> Retention | None:
     """`retention` typed by `analyzer`: the verdict a call site takes for
     its argument `index`."""
-    return retention(fi, index, call, analyzer.get_expr_type, arg, recv)
+    return retention(fi, index, call, analyzer, arg, recv)
 
 
 def operand_retention(resolved: ResolvedBinop | ResolvedUnaryop | None,
@@ -292,7 +292,7 @@ def operand_retention(resolved: ResolvedBinop | ResolvedUnaryop | None,
     if resolved is None or resolved.method is None:
         return None
     return retention_channel(resolved.method, -1 if operand is recv else 0,
-                             None, analyzer.get_expr_type, operand, recv)
+                             None, analyzer, operand, recv)
 
 
 # --- frame_captured
@@ -353,7 +353,7 @@ def param_contract(fi: FunctionInfo | None, index: int, ptype: TpyType | None, *
                    signature: THIRCallableSignature | None = None,
                    published: ParamPassing | None = None,
                    call: TpyExpr | None = None,
-                   type_of: ExprTypeOf | None = None,
+                   analyzer: ValueCategoryAnalyzer | None = None,
                    arg: TpyExpr | None = None,
                    recv: TpyExpr | None = None) -> ParamContract:
     """Every fact for parameter `index` (of declared type `ptype`) of the
@@ -366,7 +366,7 @@ def param_contract(fi: FunctionInfo | None, index: int, ptype: TpyType | None, *
     whatever the verdict says: the signature is what the callee renders.
     The retention is asked of the call context: `call` (or the receiver
     `recv` where no call node states it), argument `arg`, typed by
-    `type_of` (`retention`)."""
+    `analyzer` (`retention`)."""
     verdict = param_const(fi, index) or bool(forced_param_const(fi, index, ptype)) or bool(
         fi is not None and is_bodyless_binding(fi) and 0 <= index < len(fi.params)
         and stub_param_consts(fi)[index])
@@ -379,8 +379,8 @@ def param_contract(fi: FunctionInfo | None, index: int, ptype: TpyType | None, *
         const=const_ref_slot(ptype, verdict) or passing is ParamPassing.CONST_REF,
         pointer=pointer_kind(ptype),
         const_pointee=const_pointee(ptype, verdict),
-        materializes=materializes(fi, ptype, arg, type_of, writes),
-        retention=retention(fi, index, call, type_of, arg, recv),
+        materializes=materializes(fi, ptype, arg, analyzer, writes),
+        retention=retention(fi, index, call, analyzer, arg, recv),
         frame_captured=frame_captured(fi),
         adapts=adapts(ptype),
         instantiation_storage=instantiation_storage(fi, index),

@@ -9712,7 +9712,8 @@ def _strview_coerce_name(a: TpyExpr) -> 'TpyName | None':
     return None
 
 def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
-                        analyzer) -> 'TpyType | None':
+                        analyzer, callee: 'FunctionInfo | None'
+                        ) -> 'TpyType | None':
     """The OWNED storage type to hoist for a TEMPORARY argument at a
     generator/coroutine factory call -- `frame_temp_arg_source`'s shape verdict
     plus the type the hoisted local is spelled with. None when no hoist is
@@ -9725,7 +9726,7 @@ def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
     by now); an UNRESOLVED one is returned as-is so the render arm rejects on
     it rather than fall through to the inline prvalue this row exists to
     remove."""
-    src = frame_temp_arg_source(a, ptype, analyzer)
+    src = frame_temp_arg_source(a, ptype, analyzer, callee)
     if src is None:
         return None
     st = analyzer.get_expr_type(src)
@@ -9745,12 +9746,14 @@ def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
     return st
 
 def frame_temp_elem_slots(a: TpyExpr, ptype: 'TpyType | None',
-                          analyzer) -> tuple[FrameTempElem, ...]:
+                          analyzer, callee: 'FunctionInfo | None'
+                          ) -> tuple[FrameTempElem, ...]:
     """`frame_temp_elem_plan`'s entries for argument `a`, each with the
     OWNED storage type `frame_temp_arg_slot` spells for its local."""
     out: list[FrameTempElem] = []
-    for entry in frame_temp_elem_plan(a, ptype, analyzer):
-        owned = frame_temp_arg_slot(entry.source, entry.slot, analyzer)
+    for entry in frame_temp_elem_plan(a, ptype, analyzer, callee):
+        owned = frame_temp_arg_slot(entry.source, entry.slot, analyzer,
+                                    callee)
         if owned is not None:
             out.append(entry._replace(owned=owned))
     return tuple(out)
