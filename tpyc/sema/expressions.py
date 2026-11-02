@@ -73,13 +73,14 @@ from ..type_def_registry import (
     find_factory_by_simple_name, protocol_info_of,
     type_def_of, is_borrowing_view_type,
 )
-from ..namespace import BindingKind
+from ..namespace import BindingKind, Blocked, NameBinding
 from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion, callable_fit, CallableFit
 from ..prescan import (
     expr_to_narrowing_key, bound_names_of, fold_int_constant,
-    int_constant_too_wide, storage_spelling, walrus_names_of)
+    int_constant_too_wide, storage_spelling,
+    walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
 from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source
@@ -88,7 +89,7 @@ from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owne
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
-from .binding_ownership import resolve_read, step_handover_paths
+from .binding_ownership import step_handover_paths
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, truthy_operands
 from .flow_facts import Branch, FlowFacts
@@ -165,33 +166,6 @@ def _collect_body_name_refs(stmts: list[TpyStmt],
 
     walk_body_stmts(stmts, on_expr, lambda s: None)
     return names
-
-
-def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
-    """Collect names defined locally in a statement body (not from enclosing scope)."""
-    defs: set[str] = set()
-
-    def on_stmt(stmt: TpyStmt) -> None:
-        if isinstance(stmt, TpyVarDecl):
-            defs.add(stmt.name)
-        elif isinstance(stmt, TpyAssign):
-            if isinstance(stmt.target, TpyName):
-                defs.add(stmt.target.name)
-        elif isinstance(stmt, TpyTupleUnpack):
-            for name in stmt.targets:
-                if name is not None:
-                    defs.add(name)
-        elif isinstance(stmt, TpyForEach):
-            defs.add(stmt.var)
-        elif isinstance(stmt, TpyWith):
-            for item in stmt.items:
-                if item.target is not None:
-                    defs.add(item.target)
-        elif isinstance(stmt, TpyNestedDef):
-            defs.add(stmt.func.name)
-
-    walk_body_stmts(stmts, lambda e: None, on_stmt)
-    return defs
 
 
 def _has_pending_literal_below(typ: TpyType, first_own: int) -> bool:
@@ -275,19 +249,19 @@ def _comp_free_names(expr: TpyExpr) -> set[str]:
     return {r.name for r in comp_free_reads(expr)}
 
 
-def _nested_def_free_names(func: TpyFunction,
+def _nested_def_free_names(func: TpyFunction, local_names: Iterable[str],
                            into_lambdas: bool = False) -> set[str]:
     """Names a nested def's body reads from the scope the `def` is written in
     (`into_lambdas`: its lambdas' bodies too).
 
-    A binding of its own -- a parameter, an assignment, a loop variable --
-    shadows the enclosing name and is not such a read. A `nonlocal` target is
-    not counted here either: the caller has the authoritative set and adds it
-    back, because it is a write THROUGH to the enclosing binding.
+    A name local to the def (`local_names`, its
+    `SemanticContext.local_names_for`) shadows the enclosing name and is
+    not such a read. A `nonlocal` target is the caller's to take out: it
+    has the authoritative set, and adds it back as a write THROUGH to the
+    enclosing binding.
     """
     return (_collect_body_name_refs(func.body, into_lambdas=into_lambdas)
-            - {p for p, _ in func.params}
-            - _collect_body_local_defs(func.body))
+            - set(local_names))
 
 
 def _union_like_members(ut: TpyType) -> 'tuple[TpyType, ...]':
@@ -2058,7 +2032,14 @@ class ExpressionAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
-        self.ctx.read_bindings[expr] = resolve_read(self.ctx, expr.name)
+        typ = self._name_read_type(expr)
+        # Once the read is resolved, or a pending loop variable promoted.
+        self.ctx.record_read_binding(expr)
+        return typ
+
+    def _name_read_type(self, expr: TpyName) -> TpyType:
+        """The type of name read `expr`, diagnosing a read that no binding
+        reaches."""
         read = self.ctx.name_read(expr.name)
         if read.comp is not None:
             self.ctx.comp_var_reads[expr] = read.comp
@@ -2073,9 +2054,7 @@ class ExpressionAnalyzer:
         # for the never-consumed warning.
         self.ctx.func.unread_coro_locals.pop(expr.name, None)
 
-        # Before the namespace walk, which reaches the module level: a nested
-        # def's name is a local of this scope from its start.
-        self.ctx.check_nested_def_shadowed_read(expr.name, expr)
+        binding = self.ctx.resolve_name(expr.name, expr)
         # A generator its block kept closed with the block.
         closed = self.ctx.func.block_closed_frames.get(expr.name)
         if closed is not None:
@@ -2099,10 +2078,8 @@ class ExpressionAnalyzer:
 
         # Use namespace for unified lookup (includes builtins)
         if self.ctx.func.current_ns:
-            binding = read.binding
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
-                    self._check_definitely_assigned(expr)
                     result = self.narrowing.narrow_name_type(expr.name, binding.type)
                     return self._apply_own_wrapper(expr, result)
                 if binding.kind == BindingKind.BUILTIN:
@@ -2123,21 +2100,17 @@ class ExpressionAnalyzer:
         # Migration bridge: scope may contain names not yet in namespace
         # (e.g., during incremental namespace adoption). Remove once all
         # name registration flows go through Namespace.
-        typ = self.ctx.func.current_scope.lookup(expr.name)
+        typ = self.ctx.func.current_scope.bound_type(expr.name)
         if typ is None:
             # Check built-in names (like __name__)
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
             # Lazy promotion of loop-scoped variables referenced after the loop
             if self._promote_pending_loop_var(expr.name, expr):
-                # The read resolves to the promoted local, not to module
-                # storage it resolved to before the promotion defined it.
-                self.ctx.read_bindings[expr] = resolve_read(self.ctx,
-                                                            expr.name)
-                typ = self.ctx.func.current_scope.lookup(expr.name)
+                typ = self.ctx.func.current_scope.bound_type(expr.name)
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
-        self._check_definitely_assigned(expr)
+        self.ctx.check_assigned(expr.name, expr)
         result = self.narrowing.narrow_name_type(expr.name, typ)
         return self._apply_own_wrapper(expr, result)
 
@@ -2172,14 +2145,6 @@ class ExpressionAnalyzer:
                     or self.compat.demoted_by_hidden_borrow(expr)):
                 return OwnType(result)
         return result
-
-    def _check_definitely_assigned(self, expr: TpyName) -> None:
-        """Check that a local variable is definitely assigned before use."""
-        if (not self.ctx.func.init_terminated
-                and expr.name in self.ctx.func.var_scope_depth
-                and self.ctx.func.var_scope_depth[expr.name] >= 1
-                and expr.name not in self.ctx.func.definitely_assigned):
-            raise self.ctx.error(not_assigned_message(expr.name), expr)
 
     def _pending_decl_anchor(self, bind_stack: tuple[TpyStmt, ...]) -> TpyStmt:
         """The statement a loop-body-first local pre-declares in front of.
@@ -4846,7 +4811,7 @@ class ExpressionAnalyzer:
         # So does one the value binds first (`(x := (x := v) + 1)`).
         inner = self.pend.value_binds_first(
             name, unbound=(not self.ctx.in_comprehension
-                           and self.ctx.func.current_scope.lookup(name)
+                           and self.ctx.func.current_scope.bound_type(name)
                            is None))
         with self.pend.sink(expr.value if cell is not None or inner.joins
                             else None):
@@ -4882,13 +4847,18 @@ class ExpressionAnalyzer:
 
         # PEP 572: walrus in comprehension leaks to enclosing function scope
         target_scope = self.ctx.func.current_scope
+        target_ns = self.ctx.func.current_ns
         levels = self.ctx.in_comprehension
         while levels > 0 and target_scope.parent is not None:
             target_scope = target_scope.parent
+            # The namespace level the scope's matches, so both chains see
+            # the binding after the comprehension.
+            if target_ns is not None and target_ns.parent is not None:
+                target_ns = target_ns.parent
             levels -= 1
 
         existing = (self.ctx.global_scope.lookup(name) if is_global
-                    else target_scope.lookup(name))
+                    else target_scope.bound_type(name))
         if existing is not None and self.compat.write_binds_local(name):
             existing = None
         # The target binds outside this body -- a comprehension's walrus binds
@@ -4916,8 +4886,8 @@ class ExpressionAnalyzer:
             # This walrus's own slot step: the binding it made takes the
             # type its value completed to.
             target_scope.define(name, resolved)
-            if self.ctx.func.current_ns:
-                self.ctx.func.current_ns.bind_variable(name, resolved)
+            if target_ns is not None:
+                target_ns.bind_variable(name, resolved)
             return _walrus_result_type(resolved, value_type)
 
         rebinds = existing is not None
@@ -4965,8 +4935,8 @@ class ExpressionAnalyzer:
             resolved, declared = self.pend.derived_binding(
                 name, resolved, expr, loop_head=False)
             target_scope.define(name, resolved)
-            if self.ctx.func.current_ns:
-                self.ctx.func.current_ns.bind_variable(name, declared)
+            if target_ns is not None:
+                target_ns.bind_variable(name, declared)
             stamp_bind_kind(self.ctx, expr, name, expr.value, resolved,
                             rebind=False)
             # The walrus binds a fresh local, so its literal members take the
@@ -5709,7 +5679,7 @@ class ExpressionAnalyzer:
         # an iterator over a Range object.
         range_args: list[TpyExpr] = []
         it = gen.iterable
-        if (isinstance(it, TpyCall) and it.func_name == "range" and not it.kwargs
+        if (self.ctx.calls_builtin(it, "range") and not it.kwargs
                 and 1 <= len(it.args) <= 3
                 and not any(isinstance(a, TpyStarUnpack) for a in it.args)):
             range_args = list(it.args)
@@ -5717,7 +5687,10 @@ class ExpressionAnalyzer:
         bound_names = [fresh(f"__r{i}") for i in range(len(range_args))]
         src: TpyExpr = TpyName(src_name, loc=loc)
         if range_args:
-            src = TpyCall(TpyName("range", loc=loc),
+            # The builtin the source call resolved to, never a name the
+            # frame resolves again: its loop variable or a bound may shadow
+            # the source's spelling.
+            src = TpyCall(self.ctx.builtin_callee("range", loc),
                           [TpyName(n, loc=loc) for n in bound_names], loc=loc)
         loop = clause_loop(gen, src, inner, loc)
         self.ctx.genexpr_counter += 1
@@ -5789,7 +5762,8 @@ class ExpressionAnalyzer:
         # are capturable too: the frame takes a reference either way.
         assigned = (self.ctx.func.definitely_assigned
                     | (self.ctx.func.outer_scope_locals or set()))
-        free_names = _nested_def_free_names(func)
+        free_names = _nested_def_free_names(
+            func, self.ctx.local_names_for(func))
         # The written names are captured like the read ones -- the frame holds
         # the enclosing variable by reference -- and are rebound by every pull.
         captures = sorted({n for n in free_names
@@ -5803,7 +5777,7 @@ class ExpressionAnalyzer:
             # A capture borrows the enclosing variable whatever that variable
             # owns, so the param never takes its `Own`.
             captured = unwrap_own(self.analyze_expr(read))
-            declared = (self.ctx.func.current_scope.lookup(read.name)
+            declared = (self.ctx.func.current_scope.bound_type(read.name)
                         if self.ctx.func.current_scope is not None else None)
             if read.name in written:
                 # The body stores into the enclosing variable, so it holds the
@@ -6133,7 +6107,7 @@ class ExpressionAnalyzer:
             return None
 
         # range(N) or range(start, stop) with literal args
-        if isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range":
+        if self.ctx.calls_builtin(gen.iterable, "range"):
             size = self._range_literal_size(gen.iterable)
         else:
             # Array[T, N] source -- size is known from the type
@@ -7575,7 +7549,7 @@ class ExpressionAnalyzer:
         binding is not a plain variable -- classified conservatively)."""
         ns = self.ctx.func.current_ns
         binding = ns.lookup(name) if ns else None
-        if binding is not None and binding.kind == BindingKind.VARIABLE:
+        if isinstance(binding, NameBinding) and binding.kind == BindingKind.VARIABLE:
             return binding.type
         return None
 
@@ -7596,6 +7570,9 @@ class ExpressionAnalyzer:
         # Look up in namespace -- variables shadow functions
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.name)
+            if isinstance(binding, Blocked):
+                # A local bound later: the read is the name's own analysis.
+                return None
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     return None  # local variable shadows any function

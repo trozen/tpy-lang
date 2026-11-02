@@ -9,7 +9,7 @@ counter: int32 = 5
 
 def main() -> None:
     # the read cannot reach the module variable: `counter` is main's local here
-    print("before:", counter)  # tpyc: error(/is read before the nested function 'counter'/)
+    print("before:", counter)  # tpyc: error(/'counter' is read before it is bound on line 14: .* does not see the module's 'counter'/)
 
     def counter(x: int32) -> int32:
         return x + 1

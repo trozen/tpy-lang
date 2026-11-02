@@ -626,6 +626,7 @@ class SemanticAnalyzer:
         # records/functions into the module while bodies are being analyzed.
         self._module = module
         self.ctx.analyze_genexpr_function = self._analyze_genexpr_function
+        self.ctx.promote_pending_loop_var = self.expr._promote_pending_loop_var
         self.ctx.queue_readonly_receiver_check = (
             self.calls.pending_readonly_receiver_checks.append)
         self._genexpr_enclosing: list = []
@@ -2134,7 +2135,7 @@ class SemanticAnalyzer:
                     # and their warnings do not apply. The receiver-
                     # lifetime residual is tracked in BUGS.md.
                     continue
-                cap_type = self.ctx.func.current_scope.lookup(cap_name) if self.ctx.func.current_scope else None
+                cap_type = self.ctx.func.current_scope.bound_type(cap_name) if self.ctx.func.current_scope else None
                 if cap_type is None:
                     continue
                 raw_type = unwrap_readonly(cap_type)
@@ -2949,14 +2950,15 @@ class SemanticAnalyzer:
 
             local_ns = Namespace(parent=self.ctx.global_ns)
             self.ctx.func.current_ns = local_ns
-            if not method.is_staticmethod:
+            receiver = method.receiver_name
+            if receiver == "self":
                 self_named = receiver_self_type(record, self.ctx.registry)
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
                 self.ctx.declare_local("self", scope.depth, block_depth=0)
                 self.ctx.func.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
-            elif method.is_classmethod:
+            elif receiver == "cls":
                 # `cls` is a second name for the defining record, not a value:
                 # a RECORD binding, so every consumer that already handles a
                 # bare class name (constructor calls, class constants,

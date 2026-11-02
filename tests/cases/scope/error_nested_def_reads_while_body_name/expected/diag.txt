@@ -1,0 +1,1 @@
+main.py:15: error: 'x' is read by nested function 'inner' after the loop that binds it on line 9; TPy does not yet support reading a name bound in a loop from a nested function defined after that loop

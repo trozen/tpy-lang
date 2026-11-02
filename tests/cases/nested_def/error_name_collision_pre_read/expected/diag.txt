@@ -1,1 +1,1 @@
-main.py:14: error: 'helper' is read before the nested function 'helper' defined on line 16 is bound. A nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'helper' -- move the 'def' above this line, or rename it
+main.py:14: error: 'helper' is read before it is bound on line 16: a name bound anywhere in a function is local to the whole function, so this read does not see the module's 'helper'; rename one of them

@@ -1,0 +1,1 @@
+main.py:11: error: 'x' is read by nested function 'inner' before 'outer' binds it on line 12

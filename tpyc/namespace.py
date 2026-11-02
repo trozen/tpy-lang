@@ -19,6 +19,8 @@ from enum import Enum, auto
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from .parse.nodes import SourceLocation
     from .typesys import TpyType, FunctionInfo, RecordInfo, NominalType
 
 
@@ -61,6 +63,29 @@ class NameBinding:
     module_slot: bool = False
 
 
+@dataclass(frozen=True, eq=False)
+class Blocked:
+    """What a lookup finds for a name local to a function (its
+    `local_names`, the `barrier` of the function's root namespace and
+    scope) that no binding of the function reaches yet: the name is the
+    function's local, so no outer binding of it -- an enclosing
+    function's, the module's, a builtin -- answers the lookup. `root` is
+    the namespace or scope whose barrier stopped it; `shadowed` is what
+    the walk would have found past it, and `shadowed_owner` the namespace
+    level holding that (both None for a scope's lookup, or when nothing
+    outer binds the name)."""
+    name: str
+    root: object
+    barrier: 'Mapping[str, SourceLocation | None]'
+    shadowed: 'NameBinding | Blocked | None' = None
+    shadowed_owner: 'Namespace | None' = None
+
+    @property
+    def first_bind_loc(self) -> 'SourceLocation | None':
+        """Where the function first binds the name."""
+        return self.barrier.get(self.name)
+
+
 class Namespace:
     """A namespace containing name bindings with optional parent chain.
 
@@ -76,6 +101,9 @@ class Namespace:
     def __init__(self, parent: Optional[Namespace] = None):
         self.parent = parent
         self._bindings: dict[str, NameBinding] = {}
+        # A function root's local names (`Blocked`): a lookup of one that
+        # this level does not bind stops here instead of reaching the parent.
+        self.barrier: 'Mapping[str, SourceLocation | None] | None' = None
 
     def bind(self, binding: NameBinding) -> None:
         """Add a binding to this namespace."""
@@ -156,17 +184,28 @@ class Namespace:
         """True when THIS level binds `name`, parents excluded."""
         return name in self._bindings
 
-    def lookup(self, name: str) -> Optional[NameBinding]:
+    def lookup(self, name: str) -> 'NameBinding | Blocked | None':
         """Look up a name in this namespace and its parents.
 
-        Returns the binding if found, None otherwise.
+        Returns the binding if found, `Blocked` when a function root's
+        barrier stops the walk, None otherwise.
         Inner bindings automatically shadow outer ones.
         """
+        return self.lookup_owned(name)[0]
+
+    def lookup_owned(self, name: str
+                     ) -> 'tuple[NameBinding | Blocked | None, Namespace | None]':
+        """`lookup`, with the namespace level that answered it: the one
+        binding the name, or the root whose barrier stopped the walk."""
         if name in self._bindings:
-            return self._bindings[name]
+            return self._bindings[name], self
+        if self.barrier is not None and name in self.barrier:
+            shadowed, owner = (self.parent.lookup_owned(name)
+                               if self.parent else (None, None))
+            return Blocked(name, self, self.barrier, shadowed, owner), self
         if self.parent:
-            return self.parent.lookup(name)
-        return None
+            return self.parent.lookup_owned(name)
+        return None, None
 
     def own_variables(self) -> dict[str, TpyType]:
         """The VARIABLE bindings of this level only, without parents."""
@@ -207,6 +246,8 @@ class Namespace:
                 if binding.kind == BindingKind.VARIABLE:
                     binding.type = typ
                     return True
+                return False
+            if ns.barrier is not None and name in ns.barrier:
                 return False
             ns = ns.parent
         return False

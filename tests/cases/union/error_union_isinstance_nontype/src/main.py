@@ -11,4 +11,4 @@ class B:
 
 def f(v: A | B) -> None:
     t: int = 1
-    isinstance(v, t)  # tpyc: error(/must be a type/)
+    isinstance(v, t)  # tpyc: error(/'t' is a local variable here, not a type/)

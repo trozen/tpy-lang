@@ -51,7 +51,7 @@ from ..parse import (
 )
 from ..prescan import isinstance_narrowing_key
 from ..modules import extract_type_params
-from ..namespace import BindingKind, NameBinding
+from ..namespace import BindingKind, Blocked, NameBinding
 from ..coercions import CoercionContext, VALUE_TO_PTR, owning_param
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
                               walk_attribute_chain)
@@ -67,7 +67,7 @@ from .call_lends import (
 )
 from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
                       PENDING_CONTAINER_TYPES, ProbeSlot, ReadonlyReceiverCheck)
-from ..parse.nodes import DefaultReferent, name_path
+from ..parse.nodes import bound_callee, name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
@@ -119,6 +119,7 @@ from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, 
 from ..macro_loader import expand_call_macro
 
 if TYPE_CHECKING:
+    from ..typesys import TypeAliasInfo
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
@@ -265,9 +266,9 @@ def class_callee(record: RecordInfo,
     """A callee naming `record` itself, dispatched on its class binding
     (`DefaultReferent.ctor`) under a spelling no scope can bind: a
     construction built for a class already resolved."""
-    binding = NameBinding(BindingKind.RECORD, record.name, record_info=record)
-    return TpyName(f"<{record.qualified_name()}>",
-                   default_referent=DefaultReferent(ctor=binding), loc=loc)
+    return bound_callee(
+        NameBinding(BindingKind.RECORD, record.name, record_info=record),
+        record.qualified_name(), loc)
 
 
 def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
@@ -283,14 +284,14 @@ def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
         return _clone_path(func, loc)
     here = ctx.name_read(func.name)
     there = ctx.class_of_binding(ref.ctor)
-    if (here.comp is None and here.binding is not None
+    if (here.comp is None and isinstance(here.binding, NameBinding)
             and there is not None
             and ctx.class_of_binding(here.binding) is there):
         return TpyName(func.name, loc=loc)
     spelled = (ref.ctor.record_info.qualified_name()
                if ref.ctor.record_info is not None
                else ".".join(ref.ctor.import_source or (ref.ctor.name,)))
-    return TpyName(f"<{spelled}>", default_referent=ref, loc=loc)
+    return bound_callee(ref.ctor, spelled, loc)
 
 
 def _clone_path(expr: TpyExpr, loc: 'SourceLocation | None') -> TpyExpr:
@@ -329,7 +330,7 @@ def _scope_module_var(ctx: 'SemanticContext',
     but a module-level variable (a comprehension variable, a type
     parameter, a local, a parameter, a capture) or nothing."""
     read = ctx.name_read(name)
-    if (read.comp is not None or read.binding is None
+    if (read.comp is not None or not isinstance(read.binding, NameBinding)
             or read.binding.kind != BindingKind.VARIABLE
             or read.binding is not ctx.global_ns.lookup_local(name)):
         return None
@@ -1509,27 +1510,44 @@ class CallAnalyzer:
         return resolved, subst
 
     def _callee_binding(self, expr: TpyCall) -> 'NameBinding | None':
-        """What a call's callee name binds: in the scope being analyzed,
-        or, for a filled parameter default's constructor, where the
-        default is written (`DefaultReferent.ctor`) -- the one by-name
-        dispatch of `analyze_call` serves both."""
+        """What a call's callee name binds: the active read of it in the
+        scope being analyzed (`resolve_name`, which diagnoses a local of
+        the function no binding reaches), or, for a filled parameter
+        default's constructor, where the default is written
+        (`DefaultReferent.ctor`) -- the one by-name dispatch of
+        `analyze_call` serves both."""
         ref = expr.func.default_referent
-        if ref is not None and ref.ctor is not None:
+        if ref is not None:
             return ref.ctor
-        ns = self.ctx.func.current_ns
-        return ns.lookup(expr.func_name) if ns is not None else None
+        return self.ctx.resolve_name(expr.func_name, expr)
+
+    def _callee_type_alias(self, name: str, binding: 'NameBinding | None'
+                           ) -> 'TypeAliasInfo | None':
+        """The type alias a callee spelled `name` names, from `binding`,
+        what its read resolved to: an alias binds no namespace entry in its
+        own module, so an unbound name is this module's alias of that name
+        and an import is the alias it imports; any other binding of the
+        name -- a nested def, a local, a class -- shadows every alias."""
+        if binding is None:
+            return self.ctx.registry.get_type_alias_info(name)
+        if (binding.kind != BindingKind.IMPORTED_NAME
+                or binding.import_source is None):
+            return None
+        module, original = binding.import_source
+        info = self.ctx.registry.get_module(module)
+        return info.type_aliases.get(original) if info is not None else None
 
     def _record_for_local_name(self, name: str,
-                               binding: 'NameBinding | None' = None
+                               binding: 'NameBinding | None'
                                ) -> 'RecordInfo | None':
         """The class a bare callee name denotes, resolved like every other
-        type path (`type_ref_path`): its scoped binding (`binding`, when
-        the caller looked it up), an import, or a builtin -- never another
-        module's class that shares the short name. Outside its own module a
-        generic `@builtin_type` class (`Span`, `list`) constructs through
-        its type factory, which infers its type arguments."""
-        ref = (self.ctx.type_ref_path([name]) if binding is None
-               else self.ctx.type_ref_bound_path(binding, [name]))
+        type path (`type_ref_path`) from `binding`, what the callee's read
+        resolved to: its scoped binding, an import, or a builtin -- never
+        another module's class that shares the short name. Outside its own
+        module a generic `@builtin_type` class (`Span`, `list`)
+        constructs through its type factory, which infers its type
+        arguments."""
+        ref = self.ctx.type_ref_bound_path(binding, [name])
         if ref is None or ref.kind != SymbolKind.RECORD:
             return None
         rec = ref.info
@@ -1688,21 +1706,26 @@ class CallAnalyzer:
         """Analyze a function or constructor call."""
         # Expression callees: callbacks[0](x), get_handler()(x), etc.
         if not isinstance(expr.func, TpyName):
+            self.ctx.record_builtin_callee(expr, "")
             return self._analyze_expr_callee(expr)
 
-        # Before ANY outward resolution: the namespace chain reaches the
-        # module level, so a nested def's name would resolve to the shadowed
-        # module function/class until the walk reaches the `def`.
-        self.ctx.check_nested_def_shadowed_read(expr.func_name, expr)
+        # Before ANY outward resolution: a name local to the function names
+        # nothing outer, whatever the registry knows by that name.
+        callee = self._callee_binding(expr)
+        self.ctx.record_builtin_callee(expr, self.ctx.builtin_target(callee))
 
         # Type aliases: builtin type aliases (e.g. float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
         # Exception: recursive union aliases are callable as wrapper constructors.
-        if expr.call_type is None:
-            alias_type = self.ctx.registry.get_type_alias(expr.func_name)
+        alias_info = (self._callee_type_alias(expr.func_name, callee)
+                      if expr.call_type is None else None)
+        if alias_info is not None:
+            alias_type = alias_info.body
             if alias_type is not None:
                 # Recursive union alias: Tree(value) wraps value in the union
-                if expr.func_name in self.ctx.recursive_union_names:
+                # Only this module's own recursive alias (its name binds no
+                # namespace entry here) has a wrapper this call constructs.
+                if alias_info.is_recursive and callee is None:
                     return self._analyze_recursive_union_constructor(expr, alias_type)
                 record = self.ctx.registry.get_record_for_type(alias_type)
                 if record and record.builtin_type_key and record.get_method_overloads("__init__"):
@@ -1726,7 +1749,7 @@ class CallAnalyzer:
             # sets call_type for any imported name, so we need to verify
             is_known_function = self.ctx.registry.get_function(expr.func_name) is not None
             if not is_known_function and self.ctx.func.current_ns:
-                binding = self.ctx.func.current_ns.lookup(expr.func_name)
+                binding = callee
                 if binding and binding.kind == BindingKind.FUNCTION:
                     is_known_function = True
                 elif binding and binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
@@ -1739,7 +1762,7 @@ class CallAnalyzer:
                 expr.call_type = None
             if not is_known_function:
                 # Check if it's a user-defined record - use _analyze_record_constructor for bound validation
-                record = self._record_for_local_name(expr.func_name)
+                record = self._record_for_local_name(expr.func_name, callee)
                 if record:
                     return self._analyze_record_constructor(expr, record)
                 # Subscript callee fallback: Handlers[0](args) was parsed as
@@ -1789,7 +1812,7 @@ class CallAnalyzer:
         imported_generic_td: TypeDef | None = None
 
         # Use namespace for unified lookup - handles shadowing automatically
-        binding = self._callee_binding(expr)
+        binding = callee
         if binding:
             if binding.kind == BindingKind.VARIABLE:
                 if expr.subscript_callee is not None:
@@ -1927,7 +1950,7 @@ class CallAnalyzer:
         # exception classes reach here, not the namespace RECORD path) skip
         # arity/type validation entirely: OSError(an_int64, "msg") emitted
         # silently-narrowing C++.
-        record = self._record_for_local_name(expr.func_name)
+        record = self._record_for_local_name(expr.func_name, callee)
         if record:
             return self._analyze_record_constructor(expr, record)
 
@@ -2050,7 +2073,7 @@ class CallAnalyzer:
                 )
             # list() with no args and no context hint -- create empty list with
             # unknown element type (same as []) if in function scope.
-            if (expr.func_name == "list"
+            if (self.ctx.builtin_target_of(record_info) == "list"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.expr.literal_id_for(expr)
@@ -2066,7 +2089,7 @@ class CallAnalyzer:
                 expr.call_type = result_type
                 return result_type
             # dict() with no args -- create empty dict with unknown key/value types.
-            if (expr.func_name == "dict"
+            if (self.ctx.builtin_target_of(record_info) == "dict"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.expr.literal_id_for(expr)
@@ -2081,7 +2104,7 @@ class CallAnalyzer:
                 expr.call_type = result_type
                 return result_type
             # set() with no args -- create empty set with unknown element type.
-            if (expr.func_name == "set"
+            if (self.ctx.builtin_target_of(record_info) == "set"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
                 literal_id = self.expr.literal_id_for(expr)
@@ -2460,6 +2483,9 @@ class CallAnalyzer:
         type-inference failure."""
         if len(expr.args) != 1 or not isinstance(expr.args[0], TpyName):
             return
+        binding = self.ctx.resolve_name(expr.args[0].name, expr.args[0])
+        if binding is not None and binding.kind == BindingKind.VARIABLE:
+            return
         overloads = self.ctx.registry.get_function(expr.args[0].name)
         if not any(getattr(fi, "is_async", False) for fi in (overloads or ())):
             return
@@ -2540,7 +2566,7 @@ class CallAnalyzer:
         # narrowed to Dog still returns Own[Dog | Cat])
         arg = expr.args[0]
         if isinstance(arg, TpyName) and self.ctx.func.current_scope:
-            binding_type = self.ctx.func.current_scope.lookup(arg.name)
+            binding_type = self.ctx.func.current_scope.bound_type(arg.name)
             if binding_type is not None:
                 bt = binding_type.wrapped if isinstance(binding_type, OwnType) else binding_type
                 if isinstance(bt, UnionType) and not isinstance(arg_type, UnionType):
@@ -2668,7 +2694,7 @@ class CallAnalyzer:
                 "try_parse() first argument must be an enum type name",
                 expr,
             )
-        ref = self.ctx.type_ref(first_arg)
+        _, ref = self.ctx.type_ref_of_head(path, first_arg)
         if ref is None or ref.kind != SymbolKind.ENUM:
             raise self.ctx.error(
                 f"try_parse() first argument must be an enum type, "
@@ -2726,9 +2752,13 @@ class CallAnalyzer:
     def _resolve_isinstance_type(
         self, name: str, expr: TpyCall, *, allow_any: bool = False,
         allow_bare_generic: bool = False,
+        target: 'tuple[str | None, str] | None' = None,
     ) -> TpyType:
         """Resolve a type name used as the second argument to isinstance()
-        (or as the first arg to typing.cast).
+        (or as the first arg to typing.cast). `target` is what the name
+        stands for (`SemanticContext.spelled_type_target`): an import's
+        defining module and original name, or `(None, name)` for the name
+        itself; the type is taken from it, never from the local spelling.
 
         Reached for a bare name that names no class (`_type_operand`
         resolves classes, user and builtin, through the type-path resolver
@@ -2745,7 +2775,8 @@ class CallAnalyzer:
         `isinstance(x, dict[str, int])` raises "cannot be a parameterized
         generic"). Off for typing.cast.
         """
-        if (name == "Any"
+        module, spelled = target if target is not None else (None, name)
+        if (spelled == "Any"
                 or self.ctx.imported_names.get(name) == ("typing", "Any")):
             if allow_any:
                 return ANY
@@ -2755,7 +2786,7 @@ class CallAnalyzer:
                 expr,
             )
         # Builtin type names
-        resolved = _resolve_concrete_type_name(name)
+        resolved = _resolve_concrete_type_name(spelled)
         if resolved is not None:
             return resolved
         # Generic type alias used as an isinstance second arg.  A non-
@@ -2764,7 +2795,12 @@ class CallAnalyzer:
         # body, so there's no `Pair` class to test against.  Direct the
         # user to test the body's expanded members instead.  See Codex
         # review point B in docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
-        alias_info = self.ctx.registry.get_type_alias_info(name)
+        if module is None:
+            alias_info = self.ctx.registry.get_type_alias_info(spelled)
+        else:
+            defining = self.ctx.registry.get_module(module)
+            alias_info = (defining.type_aliases.get(spelled)
+                          if defining is not None else None)
         if alias_info is not None and alias_info.type_params:
             raise self.ctx.error(
                 f"isinstance() does not support generic type alias "
@@ -2816,15 +2852,17 @@ class CallAnalyzer:
         path = name_path(arg)
         if path is None:
             return None
-        ref = self.ctx.type_ref(arg)
+        head, ref = self.ctx.type_ref_of_head(path, arg)
         # A type form (`Any`) is no runtime class; its name says so below.
         if (ref is not None and ref.kind == SymbolKind.RECORD
                 and not ref.info.is_keyword_stub):
             return self.ctx.type_of_ref(ref)
-        if isinstance(arg, TpyName):
+        target = (self.ctx.spelled_type_target(head, arg.name)
+                  if isinstance(arg, TpyName) else None)
+        if target is not None:
             return self._resolve_isinstance_type(
                 arg.name, expr, allow_any=allow_any,
-                allow_bare_generic=allow_bare_generic)
+                allow_bare_generic=allow_bare_generic, target=target)
         raise self.ctx.error(
             f"isinstance() second argument must be a type, got '{'.'.join(path)}'",
             expr)
@@ -5329,6 +5367,9 @@ class CallAnalyzer:
         binding shadows the registry."""
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.name)
+            if isinstance(binding, Blocked):
+                # A local of the function, bound later: no function.
+                return None
             if binding:
                 if binding.kind == BindingKind.FUNCTION:
                     return binding.func_infos or None
@@ -6478,7 +6519,7 @@ class CallAnalyzer:
 
         # abs() fallback: a user type with __abs__ (the native abs overloads
         # only cover numerics). Mirrors CPython's abs() -> x.__abs__() dispatch.
-        if expr.func_name == "abs" and len(arg_types) == 1:
+        if self.ctx.builtin_target_of(overloads) == "abs" and len(arg_types) == 1:
             inner = unwrap_readonly(unwrap_ref_type(arg_types[0]))
             if isinstance(inner, NominalType):
                 abs_rec = self.ctx.registry.get_record_for_type(inner)

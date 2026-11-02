@@ -33,7 +33,7 @@ from .value_range import ValueRange
 from ..prescan import (
     match_is_none, expr_to_narrowing_key, object_leaves, storage_spelling,
 )
-from ..namespace import BindingKind
+from ..namespace import BindingKind, NameBinding
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
 from .context import binds_value_copy
@@ -123,9 +123,10 @@ class NarrowingTracker:
         """
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(name)
-            if binding and binding.kind == BindingKind.VARIABLE:
+            if (isinstance(binding, NameBinding)
+                    and binding.kind == BindingKind.VARIABLE):
                 return self._inspected(unwrap_ref_type(binding.type))
-        typ = self.ctx.func.current_scope.lookup(name)
+        typ = self.ctx.func.current_scope.bound_type(name)
         return self._inspected(unwrap_ref_type(typ)) if typ is not None else None
 
     def _inspected(self, typ: TpyType) -> TpyType:
@@ -427,7 +428,8 @@ class NarrowingTracker:
             if (isinstance(node, TpyMethodCall)
                     or (isinstance(node, TpyCall)
                         and node.isinstance_type is None
-                        and node.func_name not in ("isinstance", "len"))
+                        and not self.ctx.calls_builtin(node, "isinstance")
+                        and not self.ctx.calls_builtin(node, "len"))
                     # A membership test calling a TPy `__contains__`, and a
                     # pull of an iteration source running TPy code, are calls
                     # no node kind shows.
@@ -605,7 +607,7 @@ class NarrowingTracker:
             nonempty = nonempty_container_literal(expr)
             if nonempty is not None:
                 return nonempty
-        if isinstance(expr, TpyCall) and expr.func_name == "range":
+        if self.ctx.calls_builtin(expr, "range"):
             return self._range_call_nonempty(expr)
         if isinstance(expr, TpyName):
             return self._name_bound_to_nonempty_literal(expr.name)
@@ -837,7 +839,7 @@ class NarrowingTracker:
 
     def _extract_len_of(self, expr: TpyExpr) -> str | None:
         """Extract container name from len(container) call."""
-        if (isinstance(expr, TpyCall) and expr.func_name == "len"
+        if (self.ctx.calls_builtin(expr, "len")
                 and len(expr.args) == 1 and isinstance(expr.args[0], TpyName)):
             return expr.args[0].name
         return None
@@ -931,7 +933,7 @@ class NarrowingTracker:
         its own copy of what it was bound from. A name with no type yet
         answers False: it may be an alias."""
         scope = self.ctx.func.current_scope
-        return scope is not None and binds_value_copy(scope.lookup(name))
+        return scope is not None and binds_value_copy(scope.bound_type(name))
 
     def store_keeps(self, target_type: TpyType | None,
                     rhs_type: TpyType | None,
@@ -1117,12 +1119,10 @@ class NarrowingTracker:
         local shadows it). In the module's own statements only a global some
         function rebinds counts: nothing else runs code that rebinds it."""
         gns = self.ctx.global_ns
-        if gns is None:
+        if gns is None or not self.ctx.reads_module_slot(name):
             return False
         binding = gns.lookup_local(name)
         if binding is None or binding.kind != BindingKind.VARIABLE:
-            return False
-        if not self.ctx.reads_module_slot(name):
             return False
         if self.ctx.is_top_level and name not in self.ctx.rebound_globals:
             return False

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, NoReturn
 
 from ...identity_map import IdentityMap
 from .callables import body_passings
-from .predicates import _owning_fi
+from .predicates import _is_range_call, _owning_fi
 from ...prescan import loop_bindings_of
 from ...parse.nodes import (
     RebindStorage, TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl,
@@ -3100,7 +3100,7 @@ class FrameBuilder:
         holds_source = for_source_is_rvalue(stmt, self.analyzer)
 
         # Range counter optimization
-        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
+        if _is_range_call(stmt.iterable):
             elem_cpp = self.deps.type_to_cpp(elem_type) if elem_type else "int32_t"
             fields: list[tuple[str, str]] = [
                 (f"__for_i_{uid}", elem_cpp),

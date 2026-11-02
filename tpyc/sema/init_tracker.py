@@ -192,7 +192,7 @@ class InitTracker:
         if self.narrowing.is_rebindable_global(name):
             return None
         scope = f.current_scope
-        typ = scope.lookup(name) if scope is not None else None
+        typ = scope.bound_type(name) if scope is not None else None
         if typ is None or not is_any_int_type(unwrap_qualifiers(typ)):
             return None
         if direction == "+" and current.lo is not None:

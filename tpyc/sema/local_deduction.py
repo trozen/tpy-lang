@@ -1331,7 +1331,7 @@ class LocalTypeDeduction:
             info.expr.call_type = resolved
 
         if info.variable_name and self.ctx.func.current_scope:
-            current_type = self.ctx.func.current_scope.lookup(info.variable_name)
+            current_type = self.ctx.func.current_scope.bound_type(info.variable_name)
             if isinstance(current_type, PENDING_CONTAINER_TYPES):
                 self.ctx.func.current_scope.define(info.variable_name, resolved)
 
@@ -1589,7 +1589,7 @@ class LocalTypeDeduction:
             return
         self.ctx.set_expr_type(info.expr, resolved)
         if info.variable_name and self.ctx.func.current_scope:
-            current_type = self.ctx.func.current_scope.lookup(info.variable_name)
+            current_type = self.ctx.func.current_scope.bound_type(info.variable_name)
             if current_type is not None:
                 self.ctx.func.current_scope.define(info.variable_name, resolved)
         if info.variable_name:
@@ -1745,7 +1745,7 @@ class LocalTypeDeduction:
         # Another pending or view local (must match the same family).
         # LiteralType[str] locals get view storage end-to-end (see
         # _resolve_literal_view_storage in codegen).
-        scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
+        scope_type = self.ctx.func.current_scope.bound_type(name) if self.ctx.func.current_scope else None
         lit_str_scope = isinstance(scope_type, LiteralType) and scope_type.is_str_base()
         if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type) or lit_str_scope):
             return True
@@ -1785,7 +1785,7 @@ class LocalTypeDeduction:
         if bound is None:
             if name not in self.ctx.func.var_scope_depth:
                 return name in self.ctx.final_globals
-            bound = (self.ctx.func.current_scope.lookup(name)
+            bound = (self.ctx.func.current_scope.bound_type(name)
                      if self.ctx.func.current_scope else None)
         if bound is None:
             return False
@@ -1908,7 +1908,7 @@ class LocalTypeDeduction:
                     if is_str_view_type(ptype) or is_bytes_view_type(ptype):
                         return True
                     break
-        scope_type = (self.ctx.func.current_scope.lookup(leaf.name)
+        scope_type = (self.ctx.func.current_scope.bound_type(leaf.name)
                       if self.ctx.func.current_scope else None)
         if scope_type is not None:
             scope_type = unwrap_readonly(scope_type)
@@ -2060,7 +2060,7 @@ class LocalTypeDeduction:
                 if pname == name:
                     return ptype
         scope = self.ctx.func.current_scope
-        return scope.lookup(name) if scope is not None else None
+        return scope.bound_type(name) if scope is not None else None
 
     def register_view_source_storages(self, family: ViewTypeFamily, var_id: int,
                                       expr: TpyExpr) -> None:
@@ -2086,7 +2086,7 @@ class LocalTypeDeduction:
     def tuple_target_view_family(self, name: str) -> ViewTypeFamily | None:
         """The pending str/bytes view family of tuple-unpack target `name`, or
         None if it is not a pending-view local."""
-        bound = self.ctx.func.current_scope.lookup(name)
+        bound = self.ctx.func.current_scope.bound_type(name)
         inner = (unwrap_own(unwrap_ref_type(unwrap_readonly(bound)))
                  if bound is not None else None)
         return inner.family if isinstance(inner, PendingViewType) else None
@@ -2359,7 +2359,7 @@ class LocalTypeDeduction:
             resolved = info.resolved_type
 
             if info.variable_name and self.ctx.func.current_scope:
-                current_type = self.ctx.func.current_scope.lookup(info.variable_name)
+                current_type = self.ctx.func.current_scope.bound_type(info.variable_name)
                 if isinstance(current_type, family.pending_type_class):
                     self.ctx.func.current_scope.define(info.variable_name, resolved)
 

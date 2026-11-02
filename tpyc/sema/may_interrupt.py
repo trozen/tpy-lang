@@ -158,7 +158,7 @@ class InertWalk:
                 t = self.param_types.get(n)
                 if t is None:
                     scope = self.ctx.func.current_scope
-                    t = scope.lookup(n) if scope is not None else None
+                    t = scope.bound_type(n) if scope is not None else None
                 self.require(t is None or is_inert_type(t))
                 self.rebind(n, t)
         elif isinstance(s, TpyRaise):

@@ -1,8 +1,8 @@
 # A nested def that shadows a module function and binds the same name with
-# `except ... as`. That binding is scoped to the handler, so the read after it
-# is still the nested def's own name (CPython raises UnboundLocalError there --
-# the handler binding is deleted at the handler's end) rather than the module
-# function.
+# `except ... as`. The binding makes the name the nested def's own local, and
+# the handler's end deletes it, so the read after the handler is unbound
+# (CPython raises UnboundLocalError) -- neither the module function nor the
+# nested def itself.
 from tpy import int32
 
 
@@ -18,8 +18,8 @@ def main() -> None:
             raise ValueError("v")
         except ValueError as helper:
             pass
-        # the handler binding is gone here, so this read is the nested def
-        return helper(x + 200)  # tpyc: error(/Recursive nested functions are not supported/)
+        # the handler unbound the nested def's own `helper`, so this read is unbound
+        return helper(x + 200)  # tpyc: error(/variable 'helper' may not be assigned at this point/)
 
     print(helper(1))
 

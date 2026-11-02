@@ -559,10 +559,12 @@ def return_tier(k: int32) -> int32:
 def inner_handler(xs: list[E]) -> None:
     for a in xs:
         try:
-            raise E(1)
+            if a.x > 0:
+                raise E(1)
         except E as a:
             print(a.x)
-        print(a.x)
+        else:
+            print(a.x)
 """)
     # The return tier's handler keys its target as the throw tier's does.
     rt = f["return_tier"]
@@ -570,13 +572,16 @@ def inner_handler(xs: list[E]) -> None:
     read = [n for n in _nodes(rt, TpyName) if n.name == "e"][0]
     assert ctx.read_bindings[read].node is handler
     assert not site_ownership(ctx, handler, "e")
-    # After an inner handler rebinding the loop variable's name, a read
-    # resolves to the loop again.
+    # Beside an inner handler rebinding the loop variable's name, a read
+    # the handler does not cover (the head test, the `else` clause)
+    # resolves to the loop. (The handler's end unbinds the name, so no
+    # read after the `try` reaches either binding.)
     ih = f["inner_handler"]
     loop = ih.body[0]
     handler = loop.body[0].handlers[0]
     reads = [n for n in _nodes(ih, TpyName) if n.name == "a"]
-    assert [ctx.read_bindings[r].node for r in reads] == [handler, loop]
+    reads.sort(key=lambda r: r.loc.line)
+    assert [ctx.read_bindings[r].node for r in reads] == [loop, handler, loop]
 
 
 def test_a_module_level_loop_site_reads_its_body_rebinds() -> None:

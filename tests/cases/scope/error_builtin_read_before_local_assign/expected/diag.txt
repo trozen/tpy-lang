@@ -1,0 +1,1 @@
+main.py:10: error: 'max' is read before it is bound on line 11: a name bound anywhere in a function is local to the whole function, so this read does not see the builtin 'max'; rename one of them

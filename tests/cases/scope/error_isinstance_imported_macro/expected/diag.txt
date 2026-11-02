@@ -1,0 +1,1 @@
+main.py:9: error: isinstance() second argument must be a type, got 'str'

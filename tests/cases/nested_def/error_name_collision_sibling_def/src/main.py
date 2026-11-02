@@ -4,9 +4,8 @@
 # C++ lambda can only name one declared above it, so sema reports the read
 # instead of reaching the module function. A sibling declared AFTER the `def`
 # resolves and keeps compiling (the `sibling_after` section of
-# `name_collides_with_function`). The rule is the "a sibling nested def
-# declared ABOVE the shadowing one cannot call it" sentence under Lambda /
-# Closures in docs/LANGUAGE_FEATURES.md.
+# `name_collides_with_function`). The limitation is
+# BUGS.md#nested-def-reads-enclosing-local-bound-later.
 from tpy import int32
 
 
@@ -17,7 +16,7 @@ def helper(x: int32) -> int32:
 def main() -> None:
     def caller(y: int32) -> int32:
         # `helper` is main's local, bound below -- not the module function
-        return helper(y)  # tpyc: error(/is read before the nested function 'helper'/)
+        return helper(y)  # tpyc: error(/'helper' is read by nested function 'caller' before 'main' binds it on line 21/)
 
     def helper(x: int32) -> int32:
         return x + 100

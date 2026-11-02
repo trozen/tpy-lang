@@ -375,7 +375,7 @@ class ScopeTracker:
                        element: bool = False) -> str:
         # copy() is not available for a @nocopy source -- naming it there
         # sends the author into a second, unrelated rejection.
-        source_type = (self.ctx.func.current_scope.lookup(root.name)
+        source_type = (self.ctx.func.current_scope.bound_type(root.name)
                        if self.ctx.func.current_scope else None)
         if source_type is not None and self.ctx.is_type_nocopy(source_type):
             return f"'{root.name}' cannot be copied"
@@ -420,6 +420,6 @@ class ScopeTracker:
         # Hoisted vars become pointer-locals -- strip Own[T] wrapper
         # since they can no longer own their storage.
         if self.ctx.func.current_scope:
-            scope_type = self.ctx.func.current_scope.lookup(source_name)
+            scope_type = self.ctx.func.current_scope.bound_type(source_name)
             if isinstance(scope_type, OwnType):
                 self.ctx.func.current_scope.define(source_name, scope_type.wrapped)

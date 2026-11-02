@@ -5,12 +5,13 @@ Neutral diagnostics module used by both the parse/resolve and sema/analyze
 phases. Sits upstream of both so neither layer needs to reach into the
 other for error classes.
 
-Only depends on `.typesys` (for `TpyType` in `Scope`) and `.parse` (for
-`TpyExpr`, `SourceLocation` in `Diagnostic` / `SemanticError`). Both are
-base modules. No reverse dependency at RUNTIME -- the one exception is
-`format_diagnostics`, whose driver parameter types (`Compiler`,
-`CompiledModule`) name the module that imports this one, so they are
-spelled under `TYPE_CHECKING` and stay out of the import graph.
+Only depends on `.typesys` (for `TpyType` in `Scope`), `.namespace` (for
+`Blocked`, what `Scope.lookup` shares with the namespace lookup) and
+`.parse` (for `TpyExpr`, `SourceLocation` in `Diagnostic` /
+`SemanticError`). All are base modules. No reverse dependency at RUNTIME
+-- the one exception is `format_diagnostics`, whose driver parameter types
+(`Compiler`, `CompiledModule`) name the module that imports this one, so
+they are spelled under `TYPE_CHECKING` and stay out of the import graph.
 """
 
 from __future__ import annotations
@@ -19,12 +20,13 @@ from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
 from .typesys import TpyType
+from .namespace import Blocked
 from .parse import TpyExpr, SourceLocation
 
 if TYPE_CHECKING:
     # `compiler` imports this module (through sema), so the driver types the
     # diagnostic walk names are only reachable to a type checker.
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Mapping
     from .namespace import Namespace
 
     from .compiler import CompiledModule, Compiler
@@ -193,7 +195,7 @@ class Scope:
     # expression's own, never a binding of the enclosing function's body.
     expression: bool = False
     # The binding identity a read here resolves to
-    # (`binding_ownership.resolve_read`): the binding site node of each name
+    # (`read_binding.resolve_read`): the binding site node of each name
     # it binds there -- a for statement, a loop-head unpack or a
     # comprehension clause, and for its block a `with` item, an `except`
     # handler or a `match` case -- the lambda whose parameters it binds,
@@ -211,16 +213,38 @@ class Scope:
                                           compare=False)
     outer_bound: frozenset[str] = field(default=frozenset(), repr=False,
                                         compare=False)
+    # A function root's local names, as on its namespace
+    # (`Namespace.barrier`): a lookup of one that no binding reaches yet
+    # stops here.
+    barrier: 'Mapping[str, SourceLocation | None] | None' = field(
+        default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.depth = (self.parent.depth + 1) if self.parent else 0
 
-    def lookup(self, name: str) -> Optional[TpyType]:
-        if name in self.bindings:
-            return self.bindings[name]
-        if self.parent:
-            return self.parent.lookup(name)
-        return None
+    def lookup(self, name: str) -> 'TpyType | Blocked | None':
+        return self.lookup_owned(name)[0]
+
+    def lookup_owned(self, name: str
+                     ) -> 'tuple[TpyType | Blocked | None, Scope | None]':
+        """`lookup`, with the scope that answered it: the one binding the
+        name, or the function root whose barrier stopped the walk
+        (`Namespace.lookup_owned`)."""
+        scope: Optional[Scope] = self
+        while scope is not None:
+            if name in scope.bindings:
+                return scope.bindings[name], scope
+            if scope.barrier is not None and name in scope.barrier:
+                return Blocked(name, scope, scope.barrier), scope
+            scope = scope.parent
+        return None, None
+
+    def bound_type(self, name: str) -> Optional[TpyType]:
+        """The type a binding that reaches here gives `name`: `lookup`
+        without the `Blocked` answer, for a caller that asks only what a
+        binding it already knows of holds."""
+        found = self.lookup(name)
+        return None if isinstance(found, Blocked) else found
 
     def body_reads(self, names: Iterable[str]) -> tuple[str, ...]:
         """Those of `names` a closure created in this scope reads from the
@@ -228,10 +252,8 @@ class Scope:
         or lambda around the closure makes."""
         reads: list[str] = []
         for name in names:
-            scope: Optional[Scope] = self
-            while scope is not None and name not in scope.bindings:
-                scope = scope.parent
-            if scope is None or not scope.expression:
+            _found, owner = self.lookup_owned(name)
+            if owner is None or not owner.expression:
                 reads.append(name)
         return tuple(reads)
 
@@ -258,13 +280,11 @@ class Scope:
         Walks up the parent chain and rewrites the binding in-place at the
         owning scope. Returns True on update, False if the name was not bound.
         """
-        scope: Optional[Scope] = self
-        while scope is not None:
-            if name in scope.bindings:
-                scope.bindings[name] = typ
-                return True
-            scope = scope.parent
-        return False
+        found, owner = self.lookup_owned(name)
+        if owner is None or isinstance(found, Blocked):
+            return False
+        owner.bindings[name] = typ
+        return True
 
     def all(self) -> dict[str, TpyType]:
         """Return all bindings in this scope (not including parent)."""

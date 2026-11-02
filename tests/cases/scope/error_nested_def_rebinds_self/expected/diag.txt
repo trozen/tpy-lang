@@ -1,0 +1,1 @@
+main.py:13: error: Cannot rebind 'self' in a nested function: the method receiver cannot be rebound. Bind the new object to a different name instead

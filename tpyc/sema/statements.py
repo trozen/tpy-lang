@@ -71,7 +71,8 @@ from ..coercions import (Coercion, CoercionContext, int_payload,
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
-    bound_names_of, walrus_names_of, scope_bound_names, ScanResult,
+    bound_names_of, walrus_names_of, scope_bound_names,
+    ScanResult,
     scan_reassigned_vars, collect_in_place_writes,
     storage_spelling,
     FactKills, liveness_alias_sources,
@@ -1140,6 +1141,11 @@ class StatementAnalyzer:
         func_name = target_expr.maybe_func_name
         if not func_name:
             return
+        # The callee is read here first: a local of that name is no async
+        # def, whatever the registry holds under it.
+        binding = self.ctx.resolve_name(func_name, target_expr)
+        if binding is not None and binding.kind == BindingKind.VARIABLE:
+            return
         overloads = self.ctx.registry.get_function(func_name)
         if not any(getattr(fi, "is_async", False) for fi in (overloads or ())):
             return
@@ -1283,7 +1289,7 @@ class StatementAnalyzer:
         top; a coroutine is run to its end by `await` or handed on whole,
         so when its name dies is never observed."""
         t = (self.ctx.local_decl_type(name)
-             or self.ctx.func.current_scope.lookup(name))
+             or self.ctx.func.current_scope.bound_type(name))
         return (name in self.ctx.func.frame_local_roots
                 and holds_generator_object(t)
                 and name not in self.ctx.func.escape_hoisted_vars)
@@ -1369,7 +1375,7 @@ class StatementAnalyzer:
             t = self.ctx.get_expr_type(init)
             cand = unwrap_readonly(unwrap_ref_type(t)) if t else None
         elif isinstance(init, TpyName):
-            src = self.ctx.func.current_scope.lookup(init.name)
+            src = self.ctx.func.current_scope.bound_type(init.name)
             cand = unwrap_readonly(unwrap_ref_type(src)) if src else None
         self._check_one_frame_type(stmt, prev, cand)
 
@@ -1754,7 +1760,7 @@ class StatementAnalyzer:
                 and TupleType._element_is_pointer_repr(bare.element_types[index]))
 
     def _declared_binding(self, name: str) -> 'TpyType | None':
-        declared = (self.ctx.func.current_scope.lookup(name)
+        declared = (self.ctx.func.current_scope.bound_type(name)
                     if self.ctx.func.current_scope is not None else None)
         if declared is not None:
             declared = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
@@ -2128,7 +2134,12 @@ class StatementAnalyzer:
         when the exception type resolved, so without it an unresolved handler
         would drop a pre-existing local of that name.
         """
-        if not name or not was_bound or not self.ctx.func.current_ns:
+        if not name or not was_bound:
+            return
+        # CPython deletes the name when the handler ends, whatever it held
+        # before the `try`: a read after it is unbound on this path.
+        self.ctx.func.definitely_assigned.discard(name)
+        if not self.ctx.func.current_ns:
             return
         if prev is not None:
             self.ctx.func.current_ns.bind(prev)
@@ -2174,7 +2185,7 @@ class StatementAnalyzer:
             canonical = self.ctx.var_types.get(var_decl)
             if canonical is None:
                 continue
-            current = self.ctx.func.current_scope.lookup(name)
+            current = self.ctx.func.current_scope.bound_type(name)
             if current is None:
                 # Out of scope here: a block-declared local whose one
                 # declaration is promoted -- with its anchor and its
@@ -2202,7 +2213,7 @@ class StatementAnalyzer:
             return False
         ns = self.ctx.func.current_ns
         binding = ns.lookup(expr.name) if ns is not None else None
-        return (binding is not None
+        return (isinstance(binding, NameBinding)
                 and self.ctx.class_record_of(binding) is not None)
 
     def _check_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:
@@ -2586,7 +2597,8 @@ class StatementAnalyzer:
                 if here is None and isinstance(s, (TpyForEach, TpyWhile)):
                     here = end_of(s)
                 if isinstance(s, TpyNestedDef):
-                    if kept & _nested_def_free_names(s.func):
+                    if kept & _nested_def_free_names(
+                            s.func, self.ctx.local_names_for(s.func)):
                         horizon = unknown
                     continue
                 if (s is not stmt and s.loc is not None
@@ -2812,7 +2824,7 @@ class StatementAnalyzer:
                 branch_new if per_arm else branch_new - predecl)
             if predecl:
                 decls = self.ctx.record_branch_decls(stmt, {
-                    name: self.ctx.func.current_scope.lookup(name)
+                    name: self.ctx.func.current_scope.bound_type(name)
                     for name in sorted(predecl)
                 }, per_arm=per_arm)
                 self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
@@ -3201,14 +3213,14 @@ class StatementAnalyzer:
         Detects: range(len(arr)), range(N).
         """
         iterable = stmt.iterable
-        if not isinstance(iterable, TpyCall) or iterable.func_name != "range":
+        if not self.ctx.calls_builtin(iterable, "range"):
             return
 
         args = iterable.args
         if len(args) == 1:
             arg = args[0]
             # range(len(arr)) -- symbolic bound
-            if (isinstance(arg, TpyCall) and arg.func_name == "len"
+            if (self.ctx.calls_builtin(arg, "len")
                     and len(arg.args) == 1 and isinstance(arg.args[0], TpyName)):
                 self.ctx.func.value_ranges[stmt.var] = ValueRange.for_range_index(
                     stop_len_of=arg.args[0].name,
@@ -3422,7 +3434,7 @@ class StatementAnalyzer:
         name alone resolves by that name."""
         if h.exception_path:
             path = list(h.exception_path)
-            ref = self.ctx.type_ref_path(path)
+            _, ref = self.ctx.type_ref_of_head(path, h)
             if ref is not None:
                 return ref.info if ref.kind == SymbolKind.RECORD else None
             miss = self.ctx.type_path_miss(path, "an exception class")
@@ -4439,7 +4451,7 @@ class StatementAnalyzer:
 
             # Register the as-variable if present
             if item.target is not None:
-                if self.ctx.func.current_scope.lookup(item.target) is None:
+                if self.ctx.func.current_scope.bound_type(item.target) is None:
                     self.ctx.declare_local(
                         item.target, self.ctx.func.current_scope.depth)
                 resolved = self._infer_new_local_type(
@@ -4537,7 +4549,7 @@ class StatementAnalyzer:
             branch_new, predecl, "'with' block", keepable=branch_new)
         if predecl:
             self.ctx.record_branch_decls(stmt, {
-                name: self.ctx.func.current_scope.lookup(name)
+                name: self.ctx.func.current_scope.bound_type(name)
                 for name in sorted(predecl)
                 if name in self.ctx.func.current_scope.bindings
             })
@@ -4614,11 +4626,6 @@ class StatementAnalyzer:
         self.ctx.func.pending_num_excluded = scan.literal_locals.excluded
         self.ctx.func.pending_num_rebound = scan.literal_locals.rebound
         self.ctx.func.first_bindings = scan.first_bindings
-        # Python binds a nested def's name for the whole enclosing scope, so
-        # the set has to exist before the walk reaches any `def`. The update
-        # (not an assign) keeps the outer scope's still-unbound names a
-        # nested def was seeded with.
-        self.ctx.func.nested_def_pending.update(scan.nested_def_bind_loc)
         self.ctx.func.own_ns = ns
         self._warn_scalar_type_shadows(None if module_init else func,
                                        param_names, scan)
@@ -4636,6 +4643,19 @@ class StatementAnalyzer:
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.func.body_bound_names = frozenset(
             scan.bound_names() | scan.reassigned)
+        if not module_init:
+            # A generator expression's captures and its module-level walrus
+            # targets are the enclosing scope's; its other captures are
+            # parameters it gained after its free names were read.
+            outside = nonlocal_params | self.ctx.func.global_declarations
+            local_names = dict.fromkeys(param_names)
+            for name, loc in self.ctx.local_names_for(func).items():
+                local_names.setdefault(name, loc)
+            self.ctx.func.local_names = {
+                n: loc for n, loc in local_names.items() if n not in outside}
+            scope.barrier = self.ctx.func.local_names
+            if ns is not None:
+                ns.barrier = self.ctx.func.local_names
         self.ctx.func.nested_nonlocal_rebinds = (
             collect_nested_def_nonlocal_rebinds(func.body, include_del=True)
             | self.ctx.func.enclosing_nonlocal_rebinds)
@@ -4823,11 +4843,14 @@ class StatementAnalyzer:
         # its analysis.
         nonlocal_names: set[str] = set()
         collect_nonlocals(func.body, nonlocal_names)
+        inner_locals = self.ctx.local_names_for(func)
+        free_reads = _nested_def_free_names(func, inner_locals,
+                                            into_lambdas=True) - nonlocal_names
         # The body is analyzed under a function state of its own: the
         # pending locals it reads or stores through `nonlocal` get their type
         # here, in this function. A name it binds itself only shadows one.
         self.pend.settle_names(
-            _nested_def_free_names(func, into_lambdas=True) - nonlocal_names,
+            free_reads,
             stmt,
             f"read by the nested function '{func.name}'",
             container_what=f"captured by the nested function '{func.name}'")
@@ -4836,13 +4859,6 @@ class StatementAnalyzer:
             f"declared nonlocal in the nested function '{func.name}'")
         # Collect outer locals available for capture
         outer_locals = self.ctx.func.definitely_assigned.copy()
-        # Sibling nested defs the enclosing scope has not bound yet: this
-        # body shares the enclosing scope's binding for their names, so a
-        # read of one must not resolve outward either. The def's OWN name is
-        # excluded -- a self-reference is the recursion diagnostic instead.
-        outer_pending = {n: loc for n, loc
-                         in self.ctx.func.nested_def_pending.items()
-                         if n != func.name and n not in outer_locals}
 
         # The receiver has no rebindable storage behind `this` -- a
         # `nonlocal self` rebind would silently keep using the original
@@ -4879,7 +4895,6 @@ class StatementAnalyzer:
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
             enter_enclosing_scope(self.ctx, enclosing)
-            self.ctx.func.nested_def_pending = outer_pending
             bind_nonlocals(self.ctx, enclosing, inner_scope, nonlocal_names,
                            declare=False)
 
@@ -4933,7 +4948,8 @@ class StatementAnalyzer:
 
         # Compute captures: free variables that come from outer scope
         captured = sorted(
-            (_nested_def_free_names(func) - nonlocal_names) & outer_locals
+            (_nested_def_free_names(func, inner_locals) - nonlocal_names)
+            & outer_locals
         )
         # Nonlocal names are also captures (mutable references)
         for name in sorted(nonlocal_names):
@@ -4979,7 +4995,7 @@ class StatementAnalyzer:
         def _capture_type(name: str) -> 'TpyType | None':
             ns = self.ctx.func.current_ns
             b = ns.lookup(name) if ns else None
-            return b.type if (b is not None
+            return b.type if (isinstance(b, NameBinding)
                               and b.kind == BindingKind.VARIABLE) else None
         # A captured receiver is a by-ref slot regardless of escape mode:
         # codegen captures `this` (an alias into the origin thread's
@@ -5078,7 +5094,7 @@ class StatementAnalyzer:
             # The head assigns the existing local, which reads as its own
             # type; `_check_loop_var_rebind` holds the element to it, or
             # joins it into the local's cell.
-            existing = self.ctx.func.current_scope.lookup(stmt.var)
+            existing = self.ctx.func.current_scope.bound_type(stmt.var)
             if existing is None:
                 return elem_type, elem_type
             existing = unwrap_readonly(unwrap_ref_type(existing))
@@ -5137,7 +5153,7 @@ class StatementAnalyzer:
             # the way a plain assignment after the loop is -- otherwise the
             # head declares a fresh local that a zero-trip loop leaves
             # uninitialized where CPython keeps the body's value.
-            if self.ctx.func.current_scope.lookup(stmt.var) is None:
+            if self.ctx.func.current_scope.bound_type(stmt.var) is None:
                 self.expr._promote_pending_loop_var(stmt.var, stmt)
         elif stmt.var not in self.ctx.func.definitely_assigned:
             # A head-first name is bound only once an earlier read or binding
@@ -5145,7 +5161,7 @@ class StatementAnalyzer:
             if not self._pending_local_is_declared(stmt.var):
                 return
             self.expr._promote_pending_loop_var(stmt.var, stmt)
-        existing = self.ctx.func.current_scope.lookup(stmt.var)
+        existing = self.ctx.func.current_scope.bound_type(stmt.var)
         if existing is None:
             return
         exist_bare = self._resolve_literal_type(
@@ -5569,7 +5585,7 @@ class StatementAnalyzer:
         global -- the enclosing function's param or loop variable, for a
         `nonlocal` name."""
         fs = self.ctx.func
-        existing_type = fs.current_scope.lookup(name)
+        existing_type = fs.current_scope.bound_type(name)
         if existing_type is None:
             return
         if (name in fs.global_declarations
@@ -6199,22 +6215,23 @@ class StatementAnalyzer:
             f"'{stmt.name}' is already bound{at}; an annotation goes on the "
             f"first binding", stmt)
 
+    def _reject_nested_self_rebind(self, name: str, stmt: TpyStmt) -> None:
+        """A nested def rebinding the enclosing method's `self`: the
+        receiver has no rebindable storage behind `this`."""
+        fs = self.ctx.func
+        if (fs.in_nested_def and name == "self"
+                and name in fs.outer_scope_locals
+                and name not in fs.current_nonlocal_names
+                and self.ctx.self_names_receiver()):
+            raise self.ctx.error(
+                "Cannot rebind 'self' in a nested function: the method"
+                " receiver cannot be rebound. Bind the new object to a"
+                " different name instead",
+                stmt)
+
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
-        # In nested defs, assigning to an outer variable requires nonlocal
-        if (self.ctx.func.in_nested_def
-                and stmt.name in self.ctx.func.outer_scope_locals
-                and stmt.name not in self.ctx.func.current_nonlocal_names):
-            if stmt.name == "self" and self.ctx.self_names_receiver():
-                raise self.ctx.error(
-                    "Cannot rebind 'self' in a nested function: the method"
-                    " receiver cannot be rebound. Bind the new object to a"
-                    " different name instead",
-                    stmt)
-            raise self.ctx.error(
-                f"Cannot assign to '{stmt.name}' in nested function"
-                f" without 'nonlocal' declaration",
-                stmt)
+        self._reject_nested_self_rebind(stmt.name, stmt)
         # Type alias expansion: replace NominalType("Shape") with the alias
         # target (one level; recurses into the target's inner types; _seen
         # guards self-referential aliases). Must run before `resolve_type`
@@ -6353,7 +6370,8 @@ class StatementAnalyzer:
         # Detect native global import: x: T = native_global("name")
         if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) and self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(stmt.init.func_name)
-            if (binding and binding.kind == BindingKind.IMPORTED_NAME
+            if (isinstance(binding, NameBinding)
+                    and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
                     and binding.import_source[0] == "tpy.extern"
                     and binding.import_source[1] == "native_global"):
@@ -6428,7 +6446,7 @@ class StatementAnalyzer:
         else:
             self._refuse_later_annotation(stmt)
             # Check if this is a reassignment (variable already exists in scope)
-            existing_type = self.ctx.func.current_scope.lookup(stmt.name)
+            existing_type = self.ctx.func.current_scope.bound_type(stmt.name)
             # Top-level typed globals are pre-registered before statement analysis.
             # For an earlier unannotated write to the same name, treat this as a
             # fresh local write and let a later annotation retro-validate history.
@@ -6461,7 +6479,7 @@ class StatementAnalyzer:
                 if (pending is not None and pending.head_stmt is None
                         and self.expr._promote_pending_loop_var(stmt.name,
                                                                 stmt)):
-                    existing_type = self.ctx.func.current_scope.lookup(stmt.name)
+                    existing_type = self.ctx.func.current_scope.bound_type(stmt.name)
 
         # Block reassignment of Final globals at module level
         # (inside functions, local shadowing is allowed)
@@ -6869,7 +6887,7 @@ class StatementAnalyzer:
                         cand = self._concrete_coro_bind_type(
                             init_i, make_cancellable(prev_inner.type_args[0]))
                     elif isinstance(init_i, TpyName):
-                        src_t = self.ctx.func.current_scope.lookup(init_i.name)
+                        src_t = self.ctx.func.current_scope.bound_type(init_i.name)
                         if src_t is not None:
                             cand = unwrap_readonly(unwrap_own(
                                 unwrap_ref_type(src_t)))
@@ -7286,7 +7304,7 @@ class StatementAnalyzer:
             if self.ctx.is_top_level and name in self.ctx.final_globals:
                 raise self.ctx.error(
                     f"Cannot reassign Final variable '{name}'", stmt)
-            existing = self.ctx.func.current_scope.lookup(name)
+            existing = self.ctx.func.current_scope.bound_type(name)
             if existing is not None and self.compat.write_binds_local(name):
                 existing = None
             if existing is not None:
@@ -7692,22 +7710,8 @@ class StatementAnalyzer:
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
-        # In nested defs, assigning to an outer variable requires nonlocal
-        if (self.ctx.func.in_nested_def
-                and isinstance(stmt.target, TpyName)
-                and stmt.target.name in self.ctx.func.outer_scope_locals
-                and stmt.target.name not in self.ctx.func.current_nonlocal_names):
-            if (stmt.target.name == "self"
-                    and self.ctx.self_names_receiver()):
-                raise self.ctx.error(
-                    "Cannot rebind 'self' in a nested function: the method"
-                    " receiver cannot be rebound. Bind the new object to a"
-                    " different name instead",
-                    stmt)
-            raise self.ctx.error(
-                f"Cannot assign to '{stmt.target.name}' in nested function"
-                f" without 'nonlocal' declaration",
-                stmt)
+        if isinstance(stmt.target, TpyName):
+            self._reject_nested_self_rebind(stmt.target.name, stmt)
         # D16 dyn-attr write: if the target is `obj.foo` where foo is undeclared
         # AND the class has __setattr__, the read-side analysis would either
         # resolve via __getattr__ (handled below) or raise "no field". Detect
@@ -8035,7 +8039,7 @@ class StatementAnalyzer:
                 )
             # Match var-decl flow: reject forbidden rebinding before any type mutation.
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
-            declared_target_type = self.ctx.func.current_scope.lookup(stmt.target.name)
+            declared_target_type = self.ctx.func.current_scope.bound_type(stmt.target.name)
             if declared_target_type is not None:
                 target_type = declared_target_type
             # Unwrap Ref, Own, and ReadonlyType for reassignment type resolution --
@@ -8469,7 +8473,7 @@ class StatementAnalyzer:
         """Analyze a variable deletion statement (del x)."""
         for name in stmt.names:
             if holds_generator_object(self.ctx.local_decl_type(name)
-                                      or self.ctx.func.current_scope.lookup(
+                                      or self.ctx.func.current_scope.bound_type(
                                           name)):
                 self._reject_generator_end_under_loop(
                     name, stmt, "delete", "delete it after the loop")
@@ -8499,6 +8503,7 @@ class StatementAnalyzer:
             is_external = (name in self.ctx.func.global_declarations
                            or name in self.ctx.func.current_nonlocal_names)
             if not is_external and name not in self.ctx.func.definitely_assigned:
+                self.ctx.resolve_name(name, stmt, verb="deleted")
                 raise self.ctx.error(not_assigned_message(name), stmt)
             # Remove from definitely_assigned so use-after-del is caught
             self.ctx.func.definitely_assigned.discard(name)
@@ -8624,7 +8629,7 @@ class StatementAnalyzer:
             return self.compat.ternary_arm_copies(expr)
         if not isinstance(expr, TpyName):
             return False
-        scope_type = self.ctx.func.current_scope.lookup(expr.name) if self.ctx.func.current_scope else None
+        scope_type = self.ctx.func.current_scope.bound_type(expr.name) if self.ctx.func.current_scope else None
         if scope_type is not None and isinstance(scope_type, (RefType, OwnType)):
             return False  # already caught by the Ref/Own check
         if scope_type is not None and scope_type.is_value_type():
@@ -8830,22 +8835,10 @@ class StatementAnalyzer:
         self._credit_subscript_setitem(target, stmt, check_loans=hit is None)
 
     def _analyze_aug_assign_body(self, stmt: TpyAugAssign) -> None:
-        # In nested defs, aug-assign to an outer variable requires nonlocal
-        if (self.ctx.func.in_nested_def
-                and isinstance(stmt.target, TpyName)
-                and stmt.target.name in self.ctx.func.outer_scope_locals
-                and stmt.target.name not in self.ctx.func.current_nonlocal_names):
-            if (stmt.target.name == "self"
-                    and self.ctx.self_names_receiver()):
-                raise self.ctx.error(
-                    "Cannot rebind 'self' in a nested function: the method"
-                    " receiver cannot be rebound. Bind the new object to a"
-                    " different name instead",
-                    stmt)
-            raise self.ctx.error(
-                f"Cannot modify '{stmt.target.name}' in nested function"
-                f" without 'nonlocal' declaration",
-                stmt)
+        if isinstance(stmt.target, TpyName):
+            self._reject_nested_self_rebind(stmt.target.name, stmt)
+            self.ctx.resolve_name(stmt.target.name, stmt.target,
+                                  verb="modified")
         # Block augmented assignment of Final globals at module level
         if isinstance(stmt.target, TpyName) and self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
             raise self.ctx.error(

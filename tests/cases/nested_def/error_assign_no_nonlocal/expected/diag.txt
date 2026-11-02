@@ -1,1 +1,0 @@
-main.py:7: error: Cannot assign to 'x' in nested function without 'nonlocal' declaration

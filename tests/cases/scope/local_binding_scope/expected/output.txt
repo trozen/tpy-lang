@@ -1,0 +1,61 @@
+read_after 5
+branch 5
+global 8
+nonlocal 6
+comprehension [0, 1] 7
+walrus 198
+param 3
+inner_fresh 9
+inner_fresh 1
+closure 5
+method 8
+generator [7, 1]
+async 8
+for_leak 2
+default 5
+match P
+ctor 4
+method_bind 11
+generator_bind [20]
+async_bind 30
+nested_binders caught
+nested_binders 1 5 6
+isinstance True
+except_inside v
+del done
+user_len 6
+nested_cls 9 True
+cls_lambda 9
+self_lambda 10
+alias_shadow 7
+param_capture 5
+isinstance_builtin True
+user_range for 3
+user_range for 3
+user_range comp [2, 2]
+imported_isinstance True
+imported_case Shape
+imported_except Oops
+rebound_after 6
+bound_before 3
+dotted_try_parse Hue.BLUE
+aliased_range 6
+aliased_gen [0, 2, 4]
+aliased_gen_shadow [0, 1, 2]
+aliased_gen_bound [0, 1, 2]
+aliased_comp [1, 2, 3]
+aliased_in_gen [0, 10, 20]
+aliased_in_method 106
+aliased_len_cond 7
+aliased_len_cond grown [7, 9]
+dotted_for 0
+dotted_for 1
+dotted_for 2
+dotted_gen [0, 3, 6]
+dotted_len 3
+reexported_len 15
+aliased_len_views 2 2
+user_range gen [4, 4]
+user_range async 10
+module 1 0 0
+module 7 8 4 1

@@ -11056,11 +11056,15 @@ def _generic_root_subst(e: TpyCall, analyzer) -> 'tuple[FunctionInfo, dict[str, 
     return root, subst
 
 def _is_range_call(it: TpyExpr) -> bool:
-    """The `range(...)` iterable form -- the range-vs-container discriminator
-    shared by the for-loop lowering, the comprehension routes, and the
+    """The `range(...)` iterable form (a call sema resolved to the builtin,
+    `Compiler.builtin_callees`, whatever it is spelled: `rng(n)`,
+    `builtins.range(n)`) -- the range-vs-container discriminator shared by
+    the for-loop lowering, the comprehension routes, and the
     instantiation-arg face, so eligibility and lowering can't drift on which
-    shape a range takes."""
-    return isinstance(it, TpyCall) and it.func_name == "range"
+    shape a range takes. Its routes read only the call's arguments."""
+    compiler = get_current_compiler()
+    return (isinstance(it, (TpyCall, TpyMethodCall)) and compiler is not None
+            and compiler.builtin_callees.get(it) == "range")
 
 def _range_counter_type(call, analyzer) -> 'TpyType | None':
     """The range call's counter type -- get_iterable_element_type over the

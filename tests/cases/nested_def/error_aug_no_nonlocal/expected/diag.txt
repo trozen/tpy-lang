@@ -1,1 +1,1 @@
-main.py:7: error: Cannot modify 'x' in nested function without 'nonlocal' declaration
+main.py:9: error: 'x' is modified before it is bound on line 9: a name bound anywhere in a function is local to the whole function, so this modification does not see the local 'x' of 'main'; rename one of them

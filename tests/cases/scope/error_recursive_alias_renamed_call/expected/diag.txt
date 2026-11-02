@@ -1,0 +1,1 @@
+main.py:12: error: Type alias 'T' is not callable. Use int32 | list[Tree] directly, or let the type be inferred from an annotation

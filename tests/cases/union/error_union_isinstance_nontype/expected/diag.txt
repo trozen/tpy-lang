@@ -1,1 +1,1 @@
-main.py:14: error: isinstance() second argument must be a type, got 't'
+main.py:14: error: 't' is a local variable here, not a type

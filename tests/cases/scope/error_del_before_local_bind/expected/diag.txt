@@ -1,0 +1,1 @@
+main.py:11: error: 'G' is deleted before it is bound on line 12: a name bound anywhere in a function is local to the whole function, so this deletion does not see the module's 'G'; rename one of them

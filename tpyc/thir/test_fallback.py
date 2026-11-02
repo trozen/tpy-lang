@@ -283,12 +283,12 @@ def test_global_lowering_reject_falls_back_at_constructor_boundary():
 def test_raise_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import int32\n"
-        "err = ValueError('bad')\n"
+        "gl = int32(0)\n"
         "def rejected(n: int32) -> int32:\n"
+        "    xs = [(gl := n + i) for i in range(2)]\n"
         "    if n > 0:\n"
-        "        raise err\n"
-        "    err = ValueError('x')\n"
-        "    raise err\n"
+        "        raise ValueError(str(gl))\n"
+        "    return xs[0]\n"
         "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
@@ -302,11 +302,11 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
                 _record_reject("body")
             else:
                 routed.append(fn.name)
-    # The later local SHADOW excludes `err` from seeding (whole-function
-    # scan), so the read-before-shadow raise-source rejects -- the nested
-    # reason folds the body back at the sync boundary while `clean` stays
-    # routed. (An un-shadowed record global raise routes via the slot
-    # seeding now.)
+    # The comprehension's walrus binds a local `gl` that the lowering's
+    # read after it does not see
+    # (BUGS.md#comprehension-walrus-global-name-unlowered), so the
+    # raise-source rejects -- the nested reason folds the body back at the
+    # sync boundary while `clean` stays routed.
     assert _tally(compiler).get("body:stmt.raise:name.global_read") == 1
     assert "clean" in routed
 

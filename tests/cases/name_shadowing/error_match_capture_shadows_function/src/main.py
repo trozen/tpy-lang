@@ -2,8 +2,8 @@
 # later arm cannot reach the module function of that name -- CPython raises
 # UnboundLocalError for the same source. Registering captures for name
 # resolution is what makes this reachable; before, the later arm silently called
-# the module function. The diagnostic names callability rather than the
-# shadowing, which is tracked in BUGS.md.
+# the module function. The capture binds only on its own arm's path, so the
+# later arm's read is not assigned there.
 from tpy import int32
 
 
@@ -25,7 +25,7 @@ def pick(v: Cat | Dog) -> int32:
         case Cat(lives=helper):
             return helper
         case Dog():
-            return helper()  # tpyc: error(/'helper' is not callable/)
+            return helper()  # tpyc: error(/variable 'helper' may not be assigned at this point/)
 
 
 def main() -> None:

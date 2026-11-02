@@ -17,7 +17,7 @@ class Tag:
 
 def main() -> None:
     # the `Tag` read inside the lambda shares main's binding for the name
-    tag_of: Callable[[int32], int32] = lambda k: Tag(k).v  # tpyc: error(/is read before the nested function 'Tag'/)
+    tag_of: Callable[[int32], int32] = lambda k: Tag(k).v  # tpyc: error(/'Tag' is read before it is bound on line 23: .* does not see the module's 'Tag'/)
     print("pre:", tag_of(1))
 
     def Tag(x: int32) -> int32:

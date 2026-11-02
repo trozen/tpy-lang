@@ -256,12 +256,22 @@ class DefaultReferent:
     """What a name in a parameter default names in the scope the default
     is written in, as CPython binds it once at the `def`: a module variable
     (`module_var`: its defining module and name), a class constant of the
-    class whose body holds the `def` (`class_owner`), or, for a
-    constructor call's callee, the binding of the class it constructs
-    (`ctor`), which the call is dispatched on wherever it is filled."""
+    class whose body holds the `def` (`class_owner`), or, for a call's
+    callee, the callee binding (`ctor`: a class, or a function such as a
+    builtin a call built for it already resolved), which the call is
+    dispatched on wherever it stands (`bound_callee`)."""
     module_var: tuple[str, str] | None = None
     class_owner: 'RecordInfo | None' = None
     ctor: 'NameBinding | None' = None
+
+
+def bound_callee(binding: 'NameBinding', spelled: str,
+                 loc: 'SourceLocation | None') -> 'TpyName':
+    """A callee dispatched on `binding` (`DefaultReferent.ctor`) under the
+    display name `<spelled>`, a spelling no scope can bind, so no scope the
+    call lands in resolves it again."""
+    return TpyName(f"<{spelled}>",
+                   default_referent=DefaultReferent(ctor=binding), loc=loc)
 
 
 # The parser judges a default by its shape; sema refuses with the same words
@@ -2300,6 +2310,17 @@ class TpyFunction:
         (`TpyRecord.del_method` / `copy_method` / `move_method`): its `self`
         is not an initialized object borrowed for a call."""
         return self.is_method and self.name in LIFECYCLE_HOOKS
+
+    @property
+    def receiver_name(self) -> str | None:
+        """The name a method's body binds on entry for its implicit first
+        slot: `self`, `cls` on a classmethod; None for a static method or a
+        function."""
+        if self.is_classmethod:
+            return "cls"
+        if self.is_method and not self.is_staticmethod:
+            return "self"
+        return None
 
     @property
     def is_initializer(self) -> bool:

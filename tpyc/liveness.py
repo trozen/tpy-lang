@@ -31,6 +31,7 @@ from .parse import (
 )
 from .parse.nodes import (comp_clause_children, stmts_have_any_suspension,
                           written_names)
+from .prescan import local_names_of
 
 # source_name -> set[alias_name] reverse map
 _Aliases = dict[str, set[str]]
@@ -217,44 +218,28 @@ def _lambda_captures(expr: TpyExpr) -> set[str]:
 
 def _free_names_approx(func: TpyFunction) -> set[str]:
     """Names a nested def reads from its enclosing scope: body reads minus
-    its params and minus names it assigns (an assigned name is local in
-    Python unless declared nonlocal, and reading a local before assignment
-    is an UnboundLocalError, so read+assigned implies local).
+    its local names (`local_names_of`: a name bound anywhere in it is its
+    own), plus every name a `nonlocal` declares and every such read of a
+    def nested in it.
     """
-    params = {name for name, _ in func.params}
     reads: set[str] = set()
-    assigned: set[str] = set()
     forced: set[str] = set()
 
     def walk(body: list[TpyStmt]) -> None:
         for s in body:
-            if isinstance(s, TpyVarDecl):
-                assigned.add(s.name)
-            elif isinstance(s, TpyTupleUnpack):
-                assigned.update(n for n in s.targets if n is not None)
-            elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
-                assigned.add(s.target.name)
-            elif isinstance(s, TpyForEach):
-                assigned.add(s.var)
-            elif isinstance(s, TpyWith):
-                assigned.update(
-                    i.target for i in s.items if i.target is not None)
-            elif isinstance(s, TpyTry):
-                assigned.update(
-                    h.binding for h in s.handlers if h.binding is not None)
-            elif isinstance(s, TpyNonlocal):
+            if isinstance(s, TpyNonlocal):
                 forced.update(s.names)
             elif isinstance(s, TpyNestedDef):
                 forced.update(_free_names_approx(s.func))
             walrus: set[str] = set()
             for e in s.exprs():
                 reads.update(n.name for n in _collect_reads_expr(e, walrus))
-            assigned.update(walrus)
             for b in s.sub_bodies():
                 walk(b)
 
     walk(func.body)
-    return (reads - assigned - params) | forced
+    own = local_names_of(func.body, [name for name, _ in func.params])
+    return (reads - set(own)) | forced
 
 
 # -- Alias map helpers --------------------------------------------------------

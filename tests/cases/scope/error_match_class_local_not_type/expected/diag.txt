@@ -1,0 +1,1 @@
+main.py:12: error: 'str' is a local variable here, not a type

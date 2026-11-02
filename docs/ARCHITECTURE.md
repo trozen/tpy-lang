@@ -1256,7 +1256,9 @@ storage, no LOCAL entry and no statement site of it owns anything; all
 written by one writer (`record_body_ownership`) at the end of
 `settle_owning_reads`, into `SemanticContext.body_ownership` /
 `site_ownership`. A read records the binding it resolves to where it is
-analyzed (`resolve_read`, into `read_bindings`: a binding site through
+analyzed (`SemanticContext.record_read_binding`, the one writer of
+`read_bindings`; `sema/read_binding.py` classifies the scope
+`Scope.lookup_owned` finds: a binding site through
 `Scope.binders` -- a `with` item, handler or case for its block only --
 which every statement binder registers through `register_binder` /
 `unregister_binder` (`sema/scope_tracker.py`), the owner of the

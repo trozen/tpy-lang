@@ -671,7 +671,7 @@ class MatchAnalyzer:
                 arm_new, predecl, "'match' statement", keepable=arm_new)
         if predecl:
             self.ctx.record_branch_decls(stmt, {
-                name: self.ctx.func.current_scope.lookup(name)
+                name: self.ctx.func.current_scope.bound_type(name)
                 for name in sorted(predecl)
             })
             self.stmts.deduction.promote_hoisted_views(predecl, arm_new - predecl)
@@ -962,9 +962,13 @@ class MatchAnalyzer:
         neither."""
         path = name_path(pattern.cls)
         spelled = ".".join(path) if path is not None else "<expression>"
-        ref = self.ctx.type_ref(pattern.cls) if path is not None else None
+        head, ref = (self.ctx.type_ref_of_head(path, pattern.cls)
+                     if path is not None else (None, None))
         if ref is None:
-            scalar = _resolve_concrete_type_name(spelled) if path and len(path) == 1 else None
+            target = (self.ctx.spelled_type_target(head, path[0])
+                      if path and len(path) == 1 else None)
+            scalar = (_resolve_concrete_type_name(target[1])
+                      if target is not None else None)
             return spelled, None, scalar
         if ref.kind == SymbolKind.ENUM:
             return spelled, None, None
@@ -1513,6 +1517,9 @@ class MatchAnalyzer:
             self._analyze_or_pattern(pattern, subject_type, seen_values, bindings, stmt, kind=OrPatternKind.NONUNION)
 
         else:
+            if isinstance(pattern, TpyClassPattern):
+                # The class the pattern names is read first, as everywhere.
+                self._pattern_class(pattern)
             raise self.ctx.error(
                 f"Unsupported pattern for {subject_type} subject", pattern
             )

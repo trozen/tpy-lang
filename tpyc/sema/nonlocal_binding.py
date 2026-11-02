@@ -17,7 +17,7 @@ from ..diagnostics import Scope
 from ..parse import TpyFunction
 from ..typesys import (PendingViewType, TpyType, unwrap_readonly,
                        unwrap_ref_type)
-from .context import SemanticContext
+from .context import SemanticContext, binding_loop_line
 
 
 def nonvalue_params(func: object) -> dict[str, TpyType]:
@@ -41,6 +41,7 @@ class EnclosingScopeFacts:
     declared: frozenset[str]
     annotation_lines: dict[str, int | None]
     binding_lines: dict[str, int]
+    loop_bound_lines: dict[str, int | None]
     outer_locals: frozenset[str]
     self_is_receiver: bool
     # The enclosing scope's loop variables and the names that do not own
@@ -64,7 +65,7 @@ def enclosing_scope_facts(ctx: SemanticContext,
     scope = fs.current_scope
     types: dict[str, TpyType] = {}
     for name in written:
-        t = scope.lookup(name) if scope is not None else None
+        t = scope.bound_type(name) if scope is not None else None
         if t is not None:
             types[name] = t
     return EnclosingScopeFacts(
@@ -74,6 +75,9 @@ def enclosing_scope_facts(ctx: SemanticContext,
                           for n in fs.authoritative_types},
         binding_lines={n: d.loc.line for n, d in fs.var_decl_by_name.items()
                        if d.loc is not None},
+        loop_bound_lines={
+            n: binding_loop_line(p) for n, p in fs.pending_loop_vars.items()
+            if scope is None or scope.bound_type(n) is None},
         outer_locals=frozenset(fs.definitely_assigned),
         self_is_receiver=ctx.receiver_self_in_scope(),
         loop_vars=frozenset(fs.loop_vars),
@@ -91,6 +95,7 @@ def enter_enclosing_scope(ctx: SemanticContext,
     fs.enclosing_declared_names = set(facts.declared)
     fs.enclosing_annotation_lines = dict(facts.annotation_lines)
     fs.enclosing_binding_lines = dict(facts.binding_lines)
+    fs.enclosing_loop_bound_lines = dict(facts.loop_bound_lines)
     fs.outer_scope_locals = set(facts.outer_locals)
     fs.outer_self_is_receiver = facts.self_is_receiver
     fs.enclosing_loop_vars = set(facts.loop_vars)

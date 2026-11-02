@@ -1,0 +1,1 @@
+main.py:11: error: 'str' is a module variable here, not a type

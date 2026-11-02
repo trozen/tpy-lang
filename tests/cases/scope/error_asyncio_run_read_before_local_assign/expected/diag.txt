@@ -1,0 +1,1 @@
+main.py:14: error: 'work' is read before it is bound on line 15: a name bound anywhere in a function is local to the whole function, so this read does not see the module's 'work'; rename one of them

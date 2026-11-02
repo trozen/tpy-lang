@@ -1,1 +1,1 @@
-main.py:20: error: 'Tag' is read before the nested function 'Tag' defined on line 23 is bound. A nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'Tag' -- move the 'def' above this line, or rename it
+main.py:20: error: 'Tag' is read before it is bound on line 23: a name bound anywhere in a function is local to the whole function, so this read does not see the module's 'Tag'; rename one of them

@@ -54,12 +54,6 @@ class ScanResult:
     # genexpr loop vars, lambda params, `except ... as`, `match` arm
     # captures); kept apart so they never displace a body binding.
     scoped_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
-    # name -> location of the `def` that binds it, for every nested def in
-    # this body at any statement depth. Python makes such a name a local of
-    # the enclosing scope from the scope's START, so sema needs the set
-    # before it walks the body; a read of one before anything binds it is
-    # CPython's UnboundLocalError.
-    nested_def_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
     # Per local, the statements that are together its first binding
     # (`scan_first_bindings`), and the literal-seeded locals among them
     # (`scan_pending_num_locals`); both filled only on request.
@@ -658,7 +652,6 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.aug_assigned.add(stmt.target.name)
         elif isinstance(stmt, TpyNestedDef):
             name = stmt.func.name
-            result.nested_def_bind_loc.setdefault(name, stmt.loc)
             if name in declared:
                 result.reassigned.add(name)
                 result.rvalue_reassigned.add(name)
@@ -1721,20 +1714,67 @@ def bound_names_of(stmt: TpyStmt) -> set[str]:
 
 def scope_bound_names(body: list[TpyStmt],
                       params: Iterable[str] = ()) -> set[str]:
-    """A function's own-scope bindings: `params` plus every name its body
-    binds (`written_names`, lambda-body walruses included -- see
-    `walrus_names_of`), minus the names it declares `nonlocal` / `global`."""
-    out: set[str] = set(params)
-    declared_outside: set[str] = set()
+    """A function's own-scope bindings, the set the lowering seeds: its
+    local names (`local_names_of`) with a walrus inside a lambda body
+    counted as one of the function's too (see `walrus_names_of`)."""
+    return set(local_names_of(body, params, lambda_walrus=True))
+
+
+def local_names_of(body: list[TpyStmt], params: Iterable[str] = (),
+                   excluded: Iterable[str] = (), *,
+                   lambda_walrus: bool = False
+                   ) -> dict[str, SourceLocation | None]:
+    """CPython's local set of a function body, order-free: `params` plus
+    every name the body binds anywhere (`written_names`: an assignment, an
+    augmented assignment, `del`, a loop / `with` / `except` / match target,
+    a nested def, a walrus outside a lambda), minus the names it declares
+    `global` / `nonlocal` and `excluded`. Each maps to the location of
+    its first binding that is not a `del` (None for a parameter, and for a
+    name only `del` binds): a read of the name anywhere in the body is a
+    read of this local, whichever line binds it.
+    `lambda_walrus` also counts a walrus inside a lambda body, as the
+    lowering's own-scope set does (`scope_bound_names`)."""
+    found: dict[str, SourceLocation | None] = {}
+
+    def bind(name: str, loc: SourceLocation | None) -> None:
+        prior = found.get(name)
+        if name not in found or prior is None or (
+                loc is not None
+                and (loc.line, loc.column) < (prior.line, prior.column)):
+            found[name] = loc
+
+    declared_outside: set[str] = set(excluded)
 
     def on_stmt(s: TpyStmt) -> None:
-        out.update(written_names(s))
-        out.update(walrus_names_of(s))
         if isinstance(s, (TpyGlobal, TpyNonlocal)):
             declared_outside.update(s.names)
+        if isinstance(s, TpyTry):
+            for h in s.handlers:
+                if h.binding is not None:
+                    bind(h.binding, h.loc or s.loc)
+        elif isinstance(s, TpyMatch):
+            for case in s.cases:
+                for cap in iter_capture_bindings(case.pattern):
+                    bind(cap.name, cap.loc or case.loc or s.loc)
+        elif isinstance(s, TpyDelVar):
+            for name in s.names:
+                found.setdefault(name, None)
+        else:
+            for name in written_names(s, walrus=False):
+                bind(name, s.loc)
+        for ne in walrus_bindings(s):
+            bind(ne.target, ne.loc or s.loc)
+        if lambda_walrus:
+            for name in walrus_names_of(s):
+                bind(name, s.loc)
 
     walk_body_stmts(body, lambda e: None, on_stmt)
-    return out - declared_outside
+    out: dict[str, SourceLocation | None] = {p: None for p in params}
+    for name, loc in found.items():
+        out.setdefault(name, loc)
+    for name in declared_outside:
+        out.pop(name, None)
+    return out
 
 
 def walrus_names_of(stmt: TpyStmt) -> set[str]:

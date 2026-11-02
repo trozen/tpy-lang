@@ -626,7 +626,7 @@ class ValueBindsFirst:
         type the local reads as."""
         if not self.unbound:
             return None
-        bound = self.pend.ctx.func.current_scope.lookup(self.name)
+        bound = self.pend.ctx.func.current_scope.bound_type(self.name)
         cell = self.pend.cell_for(self.name) if bound is not None else None
         return (cell, bound) if cell is not None else None
 
@@ -3155,7 +3155,7 @@ class PendingNums:
                 self.ctx.func.variable_to_literal.get(n, -1))
             lc = (self.cells_of(info)
                   if info is not None and info.elem_cells is not None
-                  else self.container_cells(scope.lookup(n))
+                  else self.container_cells(scope.bound_type(n))
                   if scope is not None else None)
             if lc is not None:
                 cids |= {c.cid for c in lc.cells if c.settled is None}

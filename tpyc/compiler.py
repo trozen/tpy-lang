@@ -802,6 +802,10 @@ class Compiler:
         # (sema/receiver_calls.py record_implicit_call), read across modules
         # by the frame rules.
         self.implicit_calls: IdentityMap = IdentityMap()
+        # The builtin each call's callee resolved to (`range`; "" for any
+        # other callee), decided by sema (`SemanticContext.calls_builtin`)
+        # and read by the lowering's builtin-shaped routes.
+        self.builtin_callees: IdentityMap = IdentityMap()
         # Per-face witness counts (thir/faces.py) for the harness's
         # zero-witness report.
         self._thir_face_witnesses: dict[str, int] = {}

@@ -3515,11 +3515,13 @@ def _container_aug_setitem_ok(
     return True
 
 def _is_len_native(e: TpyExpr) -> bool:
-    """Whether `e` is the builtin `len(...)` call -- it resolves to the `tpy::__len__`
-    @native free function. A user function named `len` has a different (or no)
-    native_name and is excluded, so the emit dispatch keys on the symbol, not the name."""
-    if not (isinstance(e, TpyCall) and isinstance(e.func, TpyName)
-            and e.func_name == "len"):
+    """Whether `e` is the builtin `len(...)` call, whatever it is spelled (the
+    call sema resolved to the builtin, `Compiler.builtin_callees`) -- it
+    resolves to the `tpy::__len__` @native free function, so the emit
+    dispatch keys on the symbol, not the name."""
+    compiler = get_current_compiler()
+    if not (isinstance(e, TpyCall) and compiler is not None
+            and compiler.builtin_callees.get(e) == "len"):
         return False
     fi = e.resolved_function_info
     return fi is not None and fi.native_name == "tpy::__len__"

@@ -277,7 +277,7 @@ def closure_forms() -> None:
     print("closure nonlocal", count)
     total = 0
     for b in range(3):
-        # Local assignment is rejected: BUGS.md#nested-local-shadow-requires-nonlocal.
+        # A parameter of the nested def shadows the loop variable.
         def local(b: int32) -> int32:  # tpyc: ok
             return b
 

@@ -1,1 +1,1 @@
-main.py:11: error: in function 'bump': this construct is not yet supported by C++ code generation (stmt.aug_assign)
+main.py:11: error: 'counter' is modified before it is bound on line 11: a name bound anywhere in a function is local to the whole function, so this modification does not see the module's 'counter'; rename one of them

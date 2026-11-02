@@ -1149,7 +1149,7 @@ class TypeCompatibility:
         if (not isinstance(inner, TpyName) or scope is None
                 or isinstance(unwrap_ref_type(actual), ReadonlyType)):
             return actual
-        declared = scope.lookup(inner.name)
+        declared = scope.bound_type(inner.name)
         if (declared is not None and readonly_access(declared)
                 and isinstance(unwrap_readonly(unwrap_ref_type(declared)),
                                UnionType)):
@@ -2927,7 +2927,7 @@ class TypeCompatibility:
             scope = self.ctx.func.current_scope
             coercion = dyn_erasure_coercion(
                 expr, expected,
-                scope.lookup(expr.name)
+                scope.bound_type(expr.name)
                 if isinstance(expr, TpyName) and scope is not None else None,
                 self.ctx, handle=coercion_ctx is CoercionContext.ARG)
         if coercion is None:
@@ -3625,7 +3625,7 @@ class TypeCompatibility:
         """Whether alias local `name` refers into its source's storage:
         a reference type or a borrowing view, by its type here."""
         scope = self.ctx.func.current_scope
-        t = scope.lookup(name) if scope is not None else None
+        t = scope.bound_type(name) if scope is not None else None
         if t is None:
             return True
         bare = unwrap_readonly(unwrap_ref_type(unwrap_own(t)))
@@ -4509,7 +4509,7 @@ class TypeCompatibility:
         fs = self.ctx.func
         base = fs.bp_copy_into_own_idxs(name)
         scope = fs.current_scope
-        slot = scope.lookup(name) if scope is not None else None
+        slot = scope.bound_type(name) if scope is not None else None
         bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(
             unwrap_send_sync(slot)))) if slot is not None else None)
         if not isinstance(bare, TupleType):
@@ -5192,13 +5192,13 @@ class TypeCompatibility:
                 and not self.ctx.reads_module_slot(name))
 
     def write_binds_local(self, name: str) -> bool:
-        """Whether a store into module global `name` from here binds a local
-        of the function instead: Python's rule that a bare write in a
-        function body makes a local, unless `global` declares the name or a
-        binding of the function already shadows it."""
+        """Whether a store into `name` from here, which reaches a binding
+        of it, is the first binding of a local of the function instead:
+        Python's rule that a bare write in a function body makes a local,
+        unless `global` declares the name or a binding of the function
+        already shadows it."""
         return (not self.ctx.is_top_level
                 and name not in self.ctx.func.global_declarations
-                and name in self.ctx.global_scope.bindings
                 and not self.is_local_shadow(name))
 
     def _is_owned_var(self, name: str) -> bool:
@@ -5232,7 +5232,7 @@ class TypeCompatibility:
             # A for-loop variable gets Own[T] from a consuming iteration's
             # element type; its movability is the consuming iteration's
             # (consumed_loop_vars), not this binding's.
-            scope_type = fs.current_scope.lookup(name) if fs.current_scope else None
+            scope_type = fs.current_scope.bound_type(name) if fs.current_scope else None
             if (scope_type and isinstance(scope_type, OwnType)
                     and name not in fs.loop_vars):
                 return True
@@ -5244,7 +5244,7 @@ class TypeCompatibility:
         # A local of the module's init code (a block's binding, a desugar
         # temp) bound by reference (a pointer slot, or a tuple of them)
         # points at storage it does not own, so its last use is no move.
-        var_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
+        var_type = self.ctx.func.current_scope.bound_type(name) if self.ctx.func.current_scope else None
         if var_type:
             inner = var_type.wrapped if isinstance(var_type, OwnType) else var_type
             if global_binds_by_reference(inner):
@@ -6989,13 +6989,13 @@ class TypeCompatibility:
 
     def reads_capture(self, name: str) -> bool:
         """Whether `name` read in this body is a nested def's capture of
-        its enclosing scope's binding (a nested def cannot bind an
-        enclosing name of its own without `nonlocal`). Read off the
-        enclosing scope's names: the def's `captured_names` are set only
-        once its whole body is analyzed."""
+        its enclosing scope's binding: an enclosing local the def does not
+        bind itself (`local_names`). Read off the enclosing scope's names:
+        the def's `captured_names` are set only once its whole body is
+        analyzed."""
         fs = self.ctx.func
         return (fs.in_nested_def and name in fs.outer_scope_locals
-                and name not in fs.current_param_names)
+                and name not in fs.local_names)
 
     def records_slot(self, slot: TpyType, source: TpyExpr) -> bool:
         """Whether an owning slot's source gets a record: one holding a
@@ -7621,7 +7621,7 @@ class TypeCompatibility:
                     and name not in func.current_reassigned_vars)):
             return frozenset()
         declared = (self.ctx.global_scope.lookup(name) if is_global
-                    else func.current_scope.lookup(name))
+                    else func.current_scope.bound_type(name))
         dt = (unwrap_readonly(unwrap_ref_type(declared))
               if declared is not None else None)
         if not isinstance(dt, TupleType) or len(dt.element_types) != arity:
@@ -7638,7 +7638,7 @@ class TypeCompatibility:
         capture's return does. No read of a capture moves."""
         self.register_sink(expr, slot, sink, per_leaf=True)
         scope = self.ctx.func.current_scope
-        dt = bare_tuple(scope.lookup(name) if scope is not None else None)
+        dt = bare_tuple(scope.bound_type(name) if scope is not None else None)
         if dt is None or len(dt.element_types) != len(tuple_type.element_types):
             return
         owned = owned_slot_paths(slot)

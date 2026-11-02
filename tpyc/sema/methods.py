@@ -819,7 +819,7 @@ class MethodAnalyzer:
         frame, which a move of the handle leaves in place."""
         if not isinstance(expr.obj, TpyName) or self.ctx.func.current_scope is None:
             return
-        t = self.ctx.func.current_scope.lookup(expr.obj.name)
+        t = self.ctx.func.current_scope.bound_type(expr.obj.name)
         inner = unwrap_readonly(unwrap_own(unwrap_ref_type(t))) if t else None
         if isinstance(inner, ConcreteCoroType):
             self.ctx.func.started_coro_locals.setdefault(
@@ -861,6 +861,8 @@ class MethodAnalyzer:
                     adopt_temp_call(expr, flat_expr)
                     expr.builtin_module_call = flat_expr.builtin_module_call
                     expr.user_module_call = flat_expr.user_module_call
+                    self.ctx.record_builtin_callee(
+                        expr, self.ctx.recorded_builtin_callee(flat_expr) or "")
                     return result
 
         # A method of a list literal's own may leave its element open
@@ -1077,7 +1079,7 @@ class MethodAnalyzer:
                     expr,
                 )
             # Reject consuming through pointers -- pointer doesn't own the pointee
-            obj_type = self.ctx.func.current_scope.lookup(name)
+            obj_type = self.ctx.func.current_scope.bound_type(name)
             if obj_type is not None and (isinstance(obj_type, PtrType)
                                          or isinstance(unwrap_readonly(obj_type), PtrType)):
                 raise self.ctx.error(
@@ -1551,6 +1553,8 @@ class MethodAnalyzer:
             if module_name is None:
                 return None
 
+        self.ctx.record_builtin_callee(
+            expr, self.ctx.module_member_builtin(module_name, expr.method))
         module_info = self.ctx.registry.get_module(module_name)
         if module_info and module_info.functions and expr.method in module_info.functions:
             overloads = module_info.functions[expr.method]

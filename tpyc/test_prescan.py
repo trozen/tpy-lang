@@ -908,7 +908,12 @@ def _tracker(*, receivers: set[str] = frozenset(),
                            in_place_writes=_bound({}),
                            current_scope=None)
     tracker = NarrowingTracker.__new__(NarrowingTracker)
-    tracker.ctx = SimpleNamespace(func=func)
+    # The conditions are parsed, not analyzed: a call spelled like a
+    # builtin stands for the verdict sema records for it.
+    tracker.ctx = SimpleNamespace(
+        func=func,
+        calls_builtin=lambda e, name: getattr(
+            e, "maybe_func_name", None) == name)
     tracker._module_has_rebindable_globals = lambda: False
     return tracker
 

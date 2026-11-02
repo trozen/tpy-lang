@@ -11,7 +11,7 @@ def helper(x: int32) -> int32:
 
 def main() -> None:
     # the read cannot reach the module function: `helper` is main's local here
-    print("before:", helper(1))  # tpyc: error(/is read before the nested function 'helper'/)
+    print("before:", helper(1))  # tpyc: error(/'helper' is read before it is bound on line 16: .* does not see the module's 'helper'/)
 
     def helper(x: int32) -> int32:
         return x + 100

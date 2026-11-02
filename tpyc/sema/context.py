@@ -16,7 +16,7 @@ from typing import (Any, Callable, Iterable, Iterator, NamedTuple,
 from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
-from ..parse.nodes import SourceLocation, TryTier, name_path
+from ..parse.nodes import SourceLocation, TryTier, bound_callee, name_path
 from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
@@ -49,9 +49,11 @@ from ..typesys import (
     is_dyn_protocol, contains_pending_leaf, TypeParamRef,
     is_indirection_type, record_owner, is_protocol_type, contains_type_param,
 )
-from ..namespace import BindingKind, NameBinding, Namespace
-from ..symbol_binding import (SymbolBinding, SymbolKind, resolve_type_path,
-                              walk_attribute_chain)
+from ..compilation_context import get_current_compiler
+from ..namespace import BindingKind, Blocked, NameBinding, Namespace
+from ..symbol_binding import (SymbolBinding, SymbolKind, lookup_imported,
+                              resolve_definer,
+                              resolve_type_path, walk_attribute_chain)
 from ..type_def_registry import (TypeDef, enum_info_of, get_type_def,
                                  int_traits_of, is_borrowing_view_type)
 from ..parse import (
@@ -62,14 +64,15 @@ from ..parse import (
     TpyComprehensionGenerator,
     is_parse_node,
 )
-from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
+from ..diagnostics import (Diagnostic, DiagnosticLevel, SemanticError, Scope,
+                           not_assigned_message)
 from ..value_category import (
     CallOperands, ExprTypeOf, binds_owned_value, is_rvalue_source,
     peel_coerce, protocol_slot,
 )
 from ..prescan import (
     FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
-    loop_bindings_of, walrus_names_of,
+    local_names_of, loop_bindings_of, walrus_names_of,
 )
 from .arg_binding import ArgBinding, CallSource, bind
 from .call_lends import (
@@ -84,6 +87,7 @@ from .storage_walk import (
     storage_roots, ternary_operands,
 )
 from ..storage_trace import StepKind, trace
+from .read_binding import resolve_read
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
@@ -1839,6 +1843,17 @@ class PendingLocal:
         return self.head_stmt is None and not self.head_first
 
 
+def binding_loop_line(pending: 'PendingLocal') -> int | None:
+    """The header line of the loop that binds pending local `pending`:
+    its `for` head, else the innermost loop around its first binding."""
+    loop = pending.head_stmt
+    if loop is None:
+        loop = next((s for s in reversed(pending.first_stack)
+                     if isinstance(s, (TpyForEach, TpyWhile))), None)
+    loc = getattr(loop, "loc", None)
+    return loc.line if loc is not None else None
+
+
 @dataclass(frozen=True, slots=True)
 class CompTarget:
     """A target a comprehension clause binds: clause `clause` of `comp`,
@@ -1855,10 +1870,11 @@ class CompTarget:
 class NameRead(NamedTuple):
     """What a read of a name resolves to (`SemanticContext.name_read`): the
     comprehension clause binding it (`comp`), whether it is an INT type
-    parameter, else the namespace binding (None when nothing binds it)."""
+    parameter, else the namespace binding (None when nothing binds it,
+    `Blocked` for a local of the function no binding reaches yet)."""
     comp: CompTarget | None
     int_type_param: bool
-    binding: NameBinding | None
+    binding: 'NameBinding | Blocked | None'
 
 
 @dataclass
@@ -2084,6 +2100,11 @@ class FunctionTrackingState:
     # plus every parameter it rebinds: whatever the function may destroy
     # after a return value is built, whichever block bound it.
     body_bound_names: frozenset[str] = frozenset()
+    # CPython's local set of the body (`prescan.local_names_of`), each name
+    # with its first binding's location: no read of one of these names may
+    # resolve past the function's root scope.
+    local_names: dict[str, 'SourceLocation | None'] = field(
+        default_factory=dict)
     # Names a nested def rebinds via `nonlocal`: the reassigned-var scan does
     # not look into nested defs, and the closure may run at any point, so a
     # view borrowing such a name's storage is treated as reseated.
@@ -2275,6 +2296,11 @@ class FunctionTrackingState:
     # The line of each enclosing local's first binding, where an annotation
     # that declares it goes.
     enclosing_binding_lines: dict[str, int] = field(default_factory=dict)
+    # The enclosing function's names bound only in a loop that has ended
+    # at the def (its pending loop locals), each with the line of the
+    # binding loop's header.
+    enclosing_loop_bound_lines: dict[str, int | None] = field(
+        default_factory=dict)
     # The enclosing function's for-each loop variables live at the def, its
     # locals some binding so far re-pointed at existing storage, and its
     # non-value parameters (at their types): a `nonlocal` rebind of one is
@@ -2298,13 +2324,6 @@ class FunctionTrackingState:
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
-    # Nested-def names this scope binds, with the `def`'s location, from the
-    # prescan -- seeded before the body walk because Python binds them for
-    # the whole scope. An entry stays live until something actually binds
-    # the name here; while it is live, a read of the name must NOT resolve
-    # outward to the shadowed module entity
-    # (see check_nested_def_shadowed_read).
-    nested_def_pending: dict[str, 'SourceLocation | None'] = field(default_factory=dict)
     # A nested `def` written inside a compound statement's body declares its
     # callable for that block alone, so nothing past the block's end can
     # name it -- even when every path through the block bound it. Live
@@ -2680,11 +2699,10 @@ def seed_identity_objects(value: object, memo: dict,
 # never emitted -- and every consumer keying on the function NODE by identity
 # (the generic-yield settle's parked entry, `_is_frame_resident_local` reading
 # `generator_locals`) writes to or reads from a node sema and codegen do not
-# hold. `own_ns` belongs here for a further reason: `bound_in_own_scope`
+# hold. `own_ns` belongs here for a further reason: `resolve_name`
 # recognizes the scope's own namespace level by IDENTITY along `current_ns`'s
-# parent chain, so a cloned one is never reached and the walk runs on out to
-# the enclosing function -- a read of a still-pending nested def then resolves
-# outward instead of being rejected.
+# parent chain, so a cloned one is never reached -- a read the function's own
+# barrier stopped would then be taken for one an enclosing function's did.
 LIVE_HANDLE_FIELDS = frozenset((
     'current_scope', 'current_ns', 'current_function', 'own_ns',
 ))
@@ -3179,7 +3197,7 @@ class SemanticContext:
     # The declarations that bind a call's `val_or_ref_t` result itself
     # (`binding_ownership.binds_val_or_ref`), decided once at settlement.
     val_or_ref_decls: IdentitySet = field(default_factory=IdentitySet)
-    # Every name read's binding identity (`binding_ownership.ReadBinding`),
+    # Every name read's binding identity (`read_binding.ReadBinding`),
     # recorded where the read is analyzed.
     read_bindings: IdentityMap = field(default_factory=IdentityMap)
     # The reads a statement reads again after the owning slot takes them
@@ -3284,12 +3302,19 @@ class SemanticContext:
     # pass (`CallAnalyzer.pending_readonly_receiver_checks`), installed by
     # the analyzer.
     queue_readonly_receiver_check: 'Callable[[ReadonlyReceiverCheck], None] | None' = None
+    # Installed by the analyzer: promotes a loop-bound local read after its
+    # loop (`ExpressionAnalyzer._promote_pending_loop_var`), True when it
+    # did -- the one way `resolve_name` answers a `Blocked` read.
+    promote_pending_loop_var: 'Callable[[str, object], bool] | None' = None
     genexpr_counter: int = 0
     # genexpr function -> the function or method whose emitted body creates
     # its frame (through any nested def or genexpr between them); None at
     # module level. A table, not a node field: a pointer from the function
     # back up to its creator would make the parse tree cyclic.
     genexpr_roots: 'IdentityMap[TpyFunction, TpyFunction | None]' = field(
+        default_factory=IdentityMap)
+    # The names each function body binds (`local_names_for`), computed once.
+    function_local_names: 'IdentityMap[TpyFunction, dict]' = field(
         default_factory=IdentityMap)
     # Per outermost body, the generator expressions created in it, in
     # creation order (`GenexprCreation`); `finalize_pointer_tuples` takes
@@ -3371,7 +3396,7 @@ class SemanticContext:
         """
         if self.func.current_scope is None:
             return False
-        declared = self.func.current_scope.lookup(name)
+        declared = self.func.current_scope.bound_type(name)
         return declared is not None and isinstance(declared, ReadonlyType)
 
     def class_record_of(self, binding: NameBinding) -> RecordInfo | None:
@@ -3419,7 +3444,7 @@ class SemanticContext:
         the module (declarations resolve where they are defined)."""
         return self.func.current_ns or self.global_ns
 
-    def _scope_binding(self, name: str) -> NameBinding | None:
+    def _scope_binding(self, name: str) -> 'NameBinding | Blocked | None':
         ns = self._scope_ns()
         return ns.lookup(name) if ns is not None else None
 
@@ -3432,10 +3457,13 @@ class SemanticContext:
         return self.module_of_bound_path(self._scope_binding(root), root,
                                          segments)
 
-    def module_of_bound_path(self, binding: NameBinding | None, root: str,
-                             segments: 'list[str]') -> str | None:
+    def module_of_bound_path(self, binding: 'NameBinding | Blocked | None',
+                             root: str, segments: 'list[str]') -> str | None:
         """`_module_of_path` with `binding`, what `root` binds in the scope
-        the caller resolves it in, already looked up."""
+        the caller resolves it in, already looked up. A local of the
+        function (`Blocked`) names no module."""
+        if isinstance(binding, Blocked):
+            return None
         if binding is not None and binding.kind != BindingKind.MODULE:
             return None
         if not segments:
@@ -3475,7 +3503,8 @@ class SemanticContext:
         if isinstance(expr, TpyName):
             ns = self.func.current_ns
             binding = ns.lookup(expr.name) if ns else None
-            if (binding is not None and binding.kind == BindingKind.RECORD
+            if (isinstance(binding, NameBinding)
+                    and binding.kind == BindingKind.RECORD
                     and binding.is_sema_alias):
                 return None
         ref = self.type_ref(expr)
@@ -3490,10 +3519,13 @@ class SemanticContext:
         expression (an `except` clause)."""
         return self.type_ref_bound_path(self._scope_binding(path[0]), path)
 
-    def type_ref_bound_path(self, binding: NameBinding | None,
+    def type_ref_bound_path(self, binding: 'NameBinding | Blocked | None',
                             path: 'list[str]') -> SymbolBinding | None:
         """`type_ref_path` with `binding`, what the head `path[0]` binds in
-        the scope the caller resolves it in, already looked up."""
+        the scope the caller resolves it in, already looked up. A local of
+        the function (`Blocked`) names no type."""
+        if isinstance(binding, Blocked):
+            return None
         root, members = path[0], list(path[1:])
         if binding is None or binding.kind == BindingKind.MODULE:
             for k in range(len(members) - 1, -1, -1):
@@ -4572,7 +4604,7 @@ class SemanticContext:
                 return
             srcs = (self.loop_var_iterable.get(site)
                     if site is not None else None)
-            loop_type = (fn.current_scope.lookup(name)
+            loop_type = (fn.current_scope.bound_type(name)
                          if fn.current_scope else None)
             if srcs is not None and not is_indirection_type(loop_type):
                 for src in _slot_sources(site, name, srcs, fallback):
@@ -4631,7 +4663,7 @@ class SemanticContext:
     def declared_type(self, name: str) -> 'TpyType | None':
         """The type the current scope's binding of `name` declares."""
         scope = self.func.current_scope
-        return scope.lookup(name) if scope is not None else None
+        return scope.bound_type(name) if scope is not None else None
 
     def sited_here(self, key: StorageKey) -> SitedKey:
         """`key` with the binding its root names here and, for a member
@@ -4719,7 +4751,7 @@ class SemanticContext:
                 if (fn.in_nested_def and node.site is None
                         and root != "self"
                         and root in fn.outer_scope_locals
-                        and root not in fn.current_param_names):
+                        and root not in fn.local_names):
                     captured[(root, elem)] = (captured.get((root, elem), True)
                                               and node.handle)
                 continue
@@ -4762,6 +4794,12 @@ class SemanticContext:
         ns = self.func.current_ns
         return NameRead(comp, False, ns.lookup(name) if ns else None)
 
+    def record_read_binding(self, expr: 'TpyName') -> None:
+        """Record the binding `expr`, a name read resolved (and, for a
+        pending loop variable, promoted) here, reads: the one writer of
+        `read_bindings` for a name read."""
+        self.read_bindings[expr] = resolve_read(self, expr.name)
+
     def comp_binding(self, name: str) -> CompTarget | None:
         """The comprehension clause a read of `name` here resolves to, or
         None when it resolves to anything else (a lambda parameter, a
@@ -4785,122 +4823,382 @@ class SemanticContext:
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
 
-    def own_scope_binding(self, name: str) -> tuple[bool, bool]:
-        """`(bound, reaches)` for `name` against THIS function scope, from
-        ONE namespace walk.
+    def resolve_name(self, name: str, node: 'TpyExpr | TpyStmt | None', *,
+                     verb: str = "read") -> 'NameBinding | None':
+        """THE active read of `name` here: the binding it resolves to, None
+        when nothing binds it.
 
-        `bound`: the scope binds the name -- its params, its locals, or a
-        sub-scope of it (lambda param, comprehension variable, live
-        `except ... as` / match capture). An enclosing function's or the
-        module's binding of the same name is NOT this scope's, which is the
-        whole point: Python resolves such a name against this scope alone
-        once this scope binds it anywhere.
+        A comprehension's, a lambda's or a type parameter's binding answers
+        first (`name_read`). A name local to the function that no binding
+        reaches (`Blocked`) is a loop-bound local read after its loop,
+        which the read promotes, or CPython's UnboundLocalError, diagnosed
+        here; so is a binding the walk reached that is not assigned on
+        every path to the read. `verb` says what the statement does to the
+        name ("modified" for an augmented assignment, "deleted" for
+        `del`)."""
+        return self._resolve(name, node, verb)[0]
 
-        `reaches`: a binding of it reaches this read. A SUB-scope binding is
-        that scope's own and always reaches -- the enclosing scope's flow
-        says nothing about it. A binding at this scope's OWN level is the
-        definite-assignment question, and `definitely_assigned` is the fact
-        that answers it: the namespace entry a binding inside an `if` /
-        `for` / `while` / `try` / `with` / `match` body makes is never
-        withdrawn, but the branch merges drop the name from the assigned
-        set, which is exactly the path on which Python raises
-        UnboundLocalError."""
-        ns = self.func.current_ns
-        root = self.func.own_ns
-        if ns is None or root is None:
-            assigned = name in self.func.definitely_assigned
-            return assigned, assigned
-        # The module's own body has the global namespace as its root.
-        while ns is not None and (ns is not self.global_ns or ns is root):
-            if ns.has_local(name):
-                if ns is not root:
-                    return True, True
-                return True, name in self.func.definitely_assigned
-            if ns is root:
-                break
-            ns = ns.parent
-        return False, False
-
-    def check_nested_def_shadowed_read(
-            self, name: str, node: 'TpyExpr | TpyStmt | None') -> None:
-        """Reject a read of `name` that Python resolves to a nested `def` of
-        this scope but sema would resolve outward.
-
-        Python binds a nested def's name for the WHOLE enclosing scope, while
-        sema binds the FunctionInfo only when the walk reaches the `def`;
-        without this, an earlier read silently reaches the shadowed module
-        function / class / enum.
-
-        `own_scope_binding` answers two of the three facts this needs.
-        Ownership is asked, rather than `definitely_assigned`, because an
-        `except ... as name` handler leaves the name in the assigned set
-        after unbinding it, and the read that follows is exactly the one
-        that must not resolve outward. Reachability is where a `def` inside
-        an `if` / loop / `try` / `with` / `match` body differs: the name is
-        this scope's local everywhere, but only the paths through the `def`
-        bind it, so the others are CPython's UnboundLocalError.
-
-        The third is `nested_def_block_dead`: such a `def` declares its
-        callable for its block only, so a read past the block's end has
-        nothing to reach even on the paths where the binding is definite --
-        the whole-scope local Python gives the name has no counterpart
-        here, and there is no outer `name` to fall back to."""
-        # This runs on every bare-name read and every bare-name call, so the
-        # two dict lookups that can possibly fire come before the namespace
-        # walk. A nested def's own name is deliberately not seeded into
-        # `nested_def_pending`, so the recursion leg needs its own test.
-        recursive = (self.func.in_nested_def
-                     and name == self.func.nested_def_name)
-        if not recursive and name not in self.func.nested_def_pending:
-            return
-        bound_here, reaches = self.own_scope_binding(name)
-        block = (None if recursive
-                 else self.func.nested_def_block_dead.get(name))
-        # The recursion leg is a restriction on the emitted lambda, not a
-        # definite-assignment question, so a binding of the name is enough
-        # there; the ordinary "may not be assigned" check covers the rest.
-        if bound_here and (recursive or (reaches and block is None)):
-            return
-        # A `global` / `nonlocal` declaration takes the name out of this
-        # scope's binding set entirely, so nothing here shadows anything.
-        if (name in self.func.global_declarations
-                or name in self.func.current_nonlocal_names):
-            return
-        if recursive:
+    def _resolve(self, name: str, node: 'TpyExpr | TpyStmt | None',
+                 verb: str) -> 'tuple[NameBinding | None, Namespace | None]':
+        """`resolve_name`, with the namespace level holding the binding."""
+        fs = self.func
+        ns = fs.current_ns
+        found, owner = ns.lookup_owned(name) if ns is not None else (None, None)
+        read = self.name_read(name)
+        if read.comp is not None or read.int_type_param:
+            return (found if isinstance(found, NameBinding) else None), owner
+        # The emitted lambda cannot name itself, whatever an enclosing scope
+        # binds under the name.
+        if (fs.in_nested_def and name == fs.nested_def_name
+                and name not in fs.local_names
+                and self._level_of(owner) != "own"):
             raise self.error(
                 f"Recursive nested functions are not supported. "
                 f"'{name}' cannot call itself", node)
-        loc = self.func.nested_def_pending[name]
-        where = f" on line {loc.line}" if loc is not None else ""
-        if block is not None:
+        if found is None and ns is None:
+            scope = fs.current_scope
+            looked = scope.lookup(name) if scope is not None else None
+            if isinstance(looked, Blocked):
+                found = looked
+        if isinstance(found, Blocked):
+            scope = fs.current_scope
+            if scope is None or scope.bound_type(name) is None:
+                self._resolve_blocked(found, node, verb)
+            # A loop-bound local read after its loop is bound in the scope
+            # alone (the namespace levels hold the resumable frame's
+            # members, which a promotion must not add to): its binding is
+            # the scope's, at the level of the root that stopped the walk (an
+            # enclosing function's, for a nested def's read).
+            owner = found.root if isinstance(found.root, Namespace) else fs.own_ns
+            found = NameBinding(kind=BindingKind.VARIABLE, name=name,
+                                type=fs.current_scope.bound_type(name))
+        if found is not None:
+            self._check_binding_reaches(name, found, owner, node)
+        return found, owner
+
+    def _level_of(self, owner: 'Namespace | None') -> str:
+        """Whose binding a namespace level holds: "own" (this function's
+        body, its comprehension and lambda levels included), "enclosing"
+        (the function a nested def is written in) or "module" (the module,
+        its macros, the builtins -- or nothing)."""
+        if (owner is None or owner is self.global_ns
+                or owner is self.builtins_ns or owner is self.macro_ns):
+            return "module"
+        ns = self.func.current_ns
+        root = self.func.own_ns
+        while ns is not None:
+            if ns is owner:
+                return "own"
+            if ns is root:
+                break
+            ns = ns.parent
+        return "enclosing"
+
+    def _resolve_blocked(self, blocked: Blocked,
+                         node: 'TpyExpr | TpyStmt | None',
+                         verb: str) -> None:
+        """Promote the loop-bound local `blocked` stopped at, or diagnose."""
+        name = blocked.name
+        fs = self.func
+        own = (blocked.root is fs.own_ns
+               or blocked.root is self._function_root_scope())
+        block = fs.nested_def_block_dead.get(name)
+        if own and block is not None:
+            raise self.error(self._block_dead_message(name, block), node)
+        if (own and self.promote_pending_loop_var is not None
+                and self.promote_pending_loop_var(name, node)):
+            return
+        loc = blocked.first_bind_loc
+        line = loc.line if loc is not None else None
+        on_line = f" on line {line}" if line is not None else ""
+        inner = fs.nested_def_name or getattr(fs.current_function, "name", "")
+        if not own and name in fs.enclosing_loop_bound_lines:
+            loop_line = fs.enclosing_loop_bound_lines[name]
+            at = f" on line {loop_line}" if loop_line is not None else ""
             raise self.error(
-                f"'{name}' is not readable after {block}: the nested "
-                f"function '{name}' defined{where} is bound inside that "
-                f"block and does not outlive it, and a nested 'def' makes "
-                f"its name a local of the whole enclosing scope, so this "
-                f"read cannot reach an outer '{name}' -- move the 'def' "
-                f"above the block, or rename it",
-                node)
-        # Which of the two remaining ways the binding fails to reach this
-        # read is a source-order question, not a scope one: a `def` the walk
-        # has already passed bound the name on SOME path only (the other arm
-        # of the same branch), while one still ahead has bound it on none.
+                f"'{name}' is read by nested function '{inner}' after the "
+                f"loop that binds it{at}; TPy does not yet support "
+                f"reading a name bound in a loop from a nested function "
+                f"defined after that loop", node)
         read_loc = getattr(node, "loc", None)
-        if (loc is not None and read_loc is not None
-                and loc.line <= read_loc.line):
+        # A binding the walk already passed did not reach this read (another
+        # branch, a handler's capture, a `del`): Python's UnboundLocalError,
+        # whatever an outer scope binds.
+        if (line is not None and read_loc is not None
+                and line < read_loc.line):
+            raise self.error(not_assigned_message(name), node)
+        if not own:
+            outer = self.enclosing_function()
             raise self.error(
-                f"'{name}' may not be assigned at this point: the nested "
-                f"function '{name}' defined{where} binds it only on some "
-                f"paths, and a nested 'def' makes its name a local of the "
-                f"whole enclosing scope, so this read cannot reach an outer "
-                f"'{name}' -- move the 'def' above the block, or rename it",
-                node)
+                f"'{name}' is read by nested function '{inner}' before "
+                f"'{outer.name if outer is not None else ''}' binds it"
+                f"{on_line}", node)
+        outer_word = self._outer_binding_word(blocked)
+        if outer_word is None:
+            raise self.error(not_assigned_message(name), node)
+        noun = {"read": "read", "modified": "modification",
+                "deleted": "deletion"}[verb]
         raise self.error(
-            f"'{name}' is read before the nested function '{name}' defined"
-            f"{where} is bound. A nested 'def' makes its name a local of the "
-            f"whole enclosing scope, so this read cannot reach an outer "
-            f"'{name}' -- move the 'def' above this line, or rename it",
-            node)
+            f"'{name}' is {verb} before it is bound{on_line}: a name bound "
+            f"anywhere in a function is local to the whole function, so this "
+            f"{noun} does not see {outer_word}; rename one of them", node)
+
+    def _function_root_scope(self) -> 'Scope | None':
+        scope = self.func.current_scope
+        while scope is not None and scope.barrier is None:
+            scope = scope.parent
+        return scope
+
+    def _outer_binding_word(self, blocked: Blocked) -> str | None:
+        """How the diagnostic names what `blocked`'s name would have read
+        past the barrier (`Blocked.shadowed`): a builtin, the module's
+        binding, an enclosing function's local; None when nothing outer
+        binds it."""
+        name = blocked.name
+        owner = blocked.shadowed_owner
+        if blocked.shadowed is None or owner is None:
+            return None
+        if owner is self.builtins_ns:
+            return f"the builtin '{name}'"
+        outer = self.enclosing_function()
+        if self._level_of(owner) == "module" or outer is None:
+            return f"the module's '{name}'"
+        return f"the local '{name}' of '{outer.name}'"
+
+    def _block_dead_message(self, name: str, block: str) -> str:
+        loc = self.func.local_names.get(name)
+        where = f" on line {loc.line}" if loc is not None else ""
+        return (f"'{name}' is not readable after {block}: the nested "
+                f"function '{name}' defined{where} is bound inside that "
+                f"block and does "
+                f"not outlive it, and a nested 'def' makes its name a local "
+                f"of the whole enclosing scope, so this read cannot reach an "
+                f"outer '{name}' -- move the 'def' above the block, or "
+                f"rename it")
+
+    def check_assigned(self, name: str,
+                       node: 'TpyExpr | TpyStmt | None') -> None:
+        """THE definite-assignment check of a read of local `name`."""
+        fs = self.func
+        if (not fs.init_terminated
+                and fs.var_scope_depth.get(name, 0) >= 1
+                and name not in fs.definitely_assigned):
+            raise self.error(not_assigned_message(name), node)
+
+    def _check_binding_reaches(self, name: str, binding: NameBinding,
+                               owner: 'Namespace | None',
+                               node: 'TpyExpr | TpyStmt | None') -> None:
+        """A binding of `name` the walk reached on some paths only: a
+        variable not definitely assigned here, a nested def bound in a
+        branch or in a block it does not outlive, an enclosing function's
+        local not definitely assigned where the nested def is written."""
+        fs = self.func
+        level = self._level_of(owner)
+        # A binding with no storage of its own (`cls`, the record) cannot be
+        # deleted or rebound, so it reaches every read.
+        if (level == "enclosing" and name not in fs.outer_scope_locals
+                and name not in fs.current_nonlocal_names
+                and not binding.is_sema_alias):
+            raise self.error(not_assigned_message(name), node)
+        if binding.kind == BindingKind.VARIABLE:
+            self.check_assigned(name, node)
+            return
+        if binding.kind != BindingKind.FUNCTION or level != "own":
+            return
+        block = fs.nested_def_block_dead.get(name)
+        if block is not None:
+            raise self.error(self._block_dead_message(name, block), node)
+        if name not in fs.definitely_assigned:
+            raise self.error(not_assigned_message(name), node)
+
+    def local_names_for(self, func: 'TpyFunction'
+                        ) -> 'dict[str, SourceLocation | None]':
+        """The names `func`'s body binds, with its parameters as declared and
+        its receiver (`local_names_of`), computed once: a nested def's free
+        names read them at the `def`, and its body analysis takes out the
+        enclosing scope's names (`FunctionTrackingState.local_names`)."""
+        found = self.function_local_names.get(func)
+        if found is None:
+            params = [p for p, _ in func.params]
+            if func.receiver_name is not None:
+                params.append(func.receiver_name)
+            found = local_names_of(func.body, params)
+            self.function_local_names[func] = found
+        return found
+
+    def calls_builtin(self, expr: object, name: str) -> bool:
+        """Whether `expr` is a call of builtin `name` (`range`, `len`) a
+        special-cased arm may take as such: the call's analysis recorded
+        that its callee resolves to the builtins module's `name`, whatever
+        it is spelled (`record_builtin_callee`). A method call is recorded
+        only when it calls a module's function; any other is no builtin."""
+        if not isinstance(expr, (TpyCall, TpyMethodCall)):
+            return False
+        recorded = self.recorded_builtin_callee(expr)
+        if recorded is None:
+            assert (isinstance(expr, TpyMethodCall)
+                    or get_current_compiler() is None), (
+                f"builtin-callee verdict asked before the call on line "
+                f"{expr.loc.line if expr.loc else '?'} was analyzed")
+            return False
+        return recorded == name
+
+    def record_builtin_callee(self, expr: 'TpyCall | TpyMethodCall',
+                              target: str) -> str:
+        """Record `target`, the builtin `expr`'s callee resolves to
+        (`builtin_target`; "" for none), in `Compiler.builtin_callees`, the
+        one table sema and the lowering read it from; returns it."""
+        compiler = get_current_compiler()
+        if compiler is not None:
+            compiler.builtin_callees[expr] = target
+        return target
+
+    def recorded_builtin_callee(self, expr: object) -> 'str | None':
+        """The verdict `record_builtin_callee` recorded for `expr`, None
+        when its analysis recorded none."""
+        compiler = get_current_compiler()
+        return (compiler.builtin_callees.get(expr)
+                if compiler is not None else None)
+
+    def builtin_callee(self, name: str,
+                       loc: 'SourceLocation | None') -> TpyName:
+        """A callee naming builtin `name` itself, dispatched on the builtins
+        scope's binding of it (`DefaultReferent.ctor`) under a spelling no
+        scope can bind: a call built for a builtin already resolved."""
+        assert self.builtins_ns is not None
+        binding = self.builtins_ns.lookup_local(name)
+        assert binding is not None, f"no builtin '{name}'"
+        return bound_callee(binding, f"builtins.{name}", loc)
+
+    def builtin_target(self, binding: object) -> str:
+        """The builtins module's name `binding` resolves to, "" for none:
+        the builtins scope's import of a builtin, or the function or class
+        an import or a definition binds (`builtin_target_of`); an import of
+        a name its module itself imports resolves to where it is defined
+        (`resolve_definer`)."""
+        if not isinstance(binding, NameBinding):
+            return ""
+        if binding.kind == BindingKind.IMPORTED_NAME:
+            source = binding.import_source
+            if source is None:
+                return ""
+            if source[0] == "builtins":
+                return source[1]
+            return self.module_member_builtin(*resolve_definer(
+                self.registry, *source, SymbolKind.FUNCTION, SymbolKind.RECORD))
+        if binding.kind == BindingKind.FUNCTION:
+            return self.builtin_target_of(binding.func_infos)
+        if binding.kind == BindingKind.RECORD:
+            return self.builtin_target_of(binding.record_info)
+        return ""
+
+    def module_member_builtin(self, module: str, name: str) -> str:
+        """The builtins module's name for module `module`'s function or
+        class `name` (`builtin_target_of`), "" for none."""
+        info = self.registry.get_module(module)
+        if info is None:
+            return ""
+        return self.builtin_target_of((info.functions or {}).get(name)
+                                      or (info.records or {}).get(name))
+
+    def builtin_target_of(self, target: object) -> str:
+        """The builtins module's name for `target`, a resolved function's
+        overloads or a class, "" for none: the object the builtins module
+        exports (under any name it is imported as, its defining module the
+        one builtins re-exports it from), or -- in the builtins module
+        itself -- its own definition."""
+        builtins = self.registry.get_module("builtins")
+        if isinstance(target, list) and target:
+            fi = target[0]
+            exported = ((builtins.functions or {}).get(fi.name)
+                        if builtins else None)
+            if (exported and exported[0] is fi) or (
+                    fi.qualified_name == f"builtins.{fi.name}"):
+                return fi.name
+        elif isinstance(target, RecordInfo):
+            exported = ((builtins.records or {}).get(target.name)
+                        if builtins else None)
+            if (exported is target
+                    or target.qualified_name() == f"builtins.{target.name}"):
+                return target.name
+        return ""
+
+    def resolve_type_head(self, path: 'list[str]',
+                          node: 'TpyExpr | TpyStmt | TpyExceptHandler | None'
+                          ) -> 'NameBinding | None':
+        """The active read of `path`'s head name in a type position (a class
+        pattern, an isinstance / try_parse / cast operand, an except
+        clause), as `resolve_name`: the binding the position decides from.
+        A binding of the function's own -- a value, a nested def, a loop
+        variable -- names no type, nor does a module-level variable,
+        function or module, defined here or imported; a class binding
+        (`cls`) does. A module heading a dotted path (`m.C`) is the path's
+        start, not the type."""
+        name = path[0]
+        binding, owner = self._resolve(name, node, "read")
+        if binding is None or binding.kind in (BindingKind.RECORD,
+                                               BindingKind.ENUM):
+            return binding
+        if self._level_of(owner) != "module":
+            raise self.error(
+                f"'{name}' is a local variable here, not a type", node)
+        if owner is self.global_ns:
+            what = self._non_type_kind(binding, name)
+            if what is not None and not (len(path) > 1 and what == "module"):
+                raise self.error(
+                    f"'{name}' is a {what} here, not a type", node)
+        return binding
+
+    def type_ref_of_head(self, path: 'list[str]',
+                         node: 'TpyExpr | TpyStmt | TpyExceptHandler | None'
+                         ) -> 'tuple[NameBinding | None, SymbolBinding | None]':
+        """A type position's dotted `path`: the binding its head resolved
+        to (`resolve_type_head`) and the class or enum the path names
+        from it."""
+        head = self.resolve_type_head(path, node)
+        return head, self.type_ref_bound_path(head, path)
+
+    _TYPE_SYMBOLS = (SymbolKind.RECORD, SymbolKind.ENUM, SymbolKind.TYPE_ALIAS,
+                     SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC)
+
+    def _non_type_kind(self, binding: NameBinding, name: str) -> str | None:
+        """How a module-level `binding` of `name` that names no type is
+        described -- a variable, a function, a module, defined here or what
+        an import resolves to (`lookup_imported`) -- or None when it is
+        none of those."""
+        kind = binding.kind
+        if kind == BindingKind.IMPORTED_NAME:
+            table = self.module_attributes
+            if lookup_imported(table, name, SymbolKind.FUNCTION) is not None:
+                return "module function"
+            if lookup_imported(table, name, SymbolKind.VARIABLE) is not None:
+                return "module variable"
+            if lookup_imported(table, name, SymbolKind.MODULE,
+                               SymbolKind.SUBMODULE) is not None:
+                return "module"
+            return None
+        if kind == BindingKind.VARIABLE:
+            return "module variable"
+        if kind == BindingKind.FUNCTION:
+            return "module function"
+        if kind == BindingKind.MODULE:
+            return "module"
+        return None
+
+    def spelled_type_target(self, binding: 'NameBinding | None', name: str
+                            ) -> 'tuple[str | None, str] | None':
+        """What a type position whose head `name` resolved to `binding`
+        may take by spelling, as `(module, name)` -- a builtin scalar or a
+        type alias: `name` itself when it binds nothing here or binds the
+        builtin (`(None, name)`), the import's defining module and name when
+        it imports a type (`lookup_imported`); None for anything else, which
+        names no type."""
+        if binding is None or self.builtin_target(binding) == name:
+            return None, name
+        if binding.kind == BindingKind.IMPORTED_NAME:
+            return lookup_imported(self.module_attributes, name,
+                                   *self._TYPE_SYMBOLS)
+        return None
 
     def receiver_self_in_scope(self) -> bool:
         """True when 'self' in the current function scope is the method
@@ -4989,7 +5287,7 @@ class SemanticContext:
         slot's (`NameBinding.module_slot`)."""
         ns = self.func.current_ns or self.global_ns
         binding = ns.lookup(name) if ns is not None else None
-        return binding is not None and binding.module_slot
+        return isinstance(binding, NameBinding) and binding.module_slot
 
     def reads_module_slot(self, name: str) -> bool:
         """Whether `name` read here resolves to a module global's
@@ -4999,7 +5297,7 @@ class SemanticContext:
             return True
         ns = self.func.current_ns or self.global_ns
         binding = ns.lookup(name) if ns is not None else None
-        if binding is None:
+        if not isinstance(binding, NameBinding):
             return False
         # The module's own statements are one Python scope: a block's
         # binding of a name they bind in a module slot is that slot's
