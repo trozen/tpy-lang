@@ -418,6 +418,31 @@ def owned_leaf_layout(typ: NominalType) -> MIRRecordLayout:
     return MIRRecordLayout(typ, (), True, True, opaque=True)
 
 
+class _HeldLayouts(Mapping[TpyType, MIRRecordLayout]):
+    """The record layouts a definitions' walk reads, and an owned leaf's
+    builtin layout (`owned_leaf_layout`) on demand: the members of a
+    container a walk crosses (`list[str]` past a field) are admitted by
+    the same layouts `container_definition` gives them. Lookup only:
+    iteration lists the record layouts, never the owned leaves."""
+
+    def __init__(self, records: Mapping[NominalType, MIRRecordLayout]) -> None:
+        self._records = records
+
+    def __getitem__(self, typ: TpyType) -> MIRRecordLayout:
+        found = self._records.get(typ)
+        if found is not None:
+            return found
+        if isinstance(typ, NominalType) and value_class(typ) is MIRClass.OWNED_LEAF:
+            return owned_leaf_layout(typ)
+        raise KeyError(typ)
+
+    def __iter__(self) -> Iterator[TpyType]:
+        return iter(self._records)
+
+    def __len__(self) -> int:
+        return len(self._records)
+
+
 @dataclass(frozen=True)
 class MIRHeldLayout:
     """The layout of a record a body reaches only through a holder
@@ -537,7 +562,8 @@ class MIRDefinitions:
         for typ in sources:
             verify(typ)
         object.__setattr__(self, "records", MappingProxyType(records))
-        object.__setattr__(self, "layouts", MIRRecords(MappingProxyType(layouts), _DeclaredFields(self.compiler)))
+        object.__setattr__(self, "layouts", MIRRecords(_HeldLayouts(MappingProxyType(layouts)),
+                                                       _DeclaredFields(self.compiler)))
 
     def get(self, node: object, typ: NominalType
             ) -> MIRConstructorDefinition | MIROwnedLeafDefinition | MIRContainerDefinition:

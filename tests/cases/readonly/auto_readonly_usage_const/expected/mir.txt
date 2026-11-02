@@ -3,9 +3,9 @@ main::read_through_get@42:0: uncovered (reference needs local name), summary: op
 main::write_through_get@46:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::mutate_through_get@50:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
 main::aug_through_get@54:0: uncovered (unsupported metadata: held), summary: opaque (unsupported metadata: held)
-main::alias_read@58:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
-main::alias_write@63:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
-main::elem_alias_write@68:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary record: record member holds a borrow)
+main::alias_read@58:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::alias_write@63:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::elem_alias_write@68:0: certified, summary: opaque (summary record: record member holds a borrow)
 main::read_user_accessor@73:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::write_user_accessor@77:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::peek_user_accessor@81:0: covered (storage: no_proof_required), summary: known

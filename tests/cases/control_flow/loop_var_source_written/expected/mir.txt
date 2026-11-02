@@ -59,7 +59,7 @@ main::set_g2@525:0: uncovered (element write needs a container place), summary: 
 main::del_record@539:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::field_replace@556:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::span_param@563:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
-main::span_call@579:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::span_call@579:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::span_write@586:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
 main::loop_in_with@604:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::loop_in_error_return@616:0: uncovered (error-return body)

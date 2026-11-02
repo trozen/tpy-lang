@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::main@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::gen@99:0: uncovered (loop across a suspension)
 main::kwgen@107:0: uncovered (loop across a suspension)
-main::first@115:0: uncovered (reference needs local name)
+main::first@115:0: covered (storage: no_proof_required)
 main::forward@119:0: uncovered (call needs resolved ordinary callee)
 main::forward2@123:0: uncovered (call needs resolved ordinary callee)
 main::drop@127:0: covered (storage: no_proof_required), summary: known

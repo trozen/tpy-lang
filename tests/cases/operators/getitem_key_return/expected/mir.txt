@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@23:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::main@23:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::KeyEcho.__getitem__@19:4: covered (storage: no_proof_required)
 main::KeyEcho.__getitem__@19:4#2: covered (storage: no_proof_required)
 main::Node.__init__@11:4: covered (storage: no_proof_required), summary: known

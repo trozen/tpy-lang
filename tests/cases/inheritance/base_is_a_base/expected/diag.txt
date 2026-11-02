@@ -12,6 +12,7 @@ main.py:734: warning: Method 'SevSet.__iter__' hides 'set.__iter__' -- any 'set'
 main.py:742: warning: Method 'SevDict.__iter__' hides 'dict.__iter__' -- any 'dict' reference will call 'dict.__iter__', not 'SevDict.__iter__' (differs from Python's dynamic dispatch)
 main.py:768: warning: Method 'NamedL.__repr__' hides 'list.__repr__' -- any 'list' reference will call 'list.__repr__', not 'NamedL.__repr__' (differs from Python's dynamic dispatch)
 main.py:847: warning: Method 'OvL.__len__' overrides 'list.__len__' but the override is non-polymorphic. 'list'-typed references will call 'list.__len__', not 'OvL.__len__'.
+main.py:999: warning: this call may move the elements of 'd.ps', but 'a' still refers to them and is used on line 1000; look it up again after this call, or copy what 'a' refers to first
 main.py:1003: warning: Method 'SupL.append' hides 'list.append' -- any 'list' reference will call 'list.append', not 'SupL.append' (differs from Python's dynamic dispatch)
 main.py:1003: warning: Method 'SupL.__eq__' hides 'list.__eq__' -- any 'list' reference will call 'list.__eq__', not 'SupL.__eq__' (differs from Python's dynamic dispatch)
 main.py:1019: warning: Method 'SupD.__setitem__' hides 'dict.__setitem__' -- any 'dict' reference will call 'dict.__setitem__', not 'SupD.__setitem__' (differs from Python's dynamic dispatch)

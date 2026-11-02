@@ -597,8 +597,9 @@ class Fragment:
         return MIRCopy(storage, self.root.copy_may_raise(dest) or reaches_element(storage))
 
     def view(self, want: MIRShape, node: object = None) -> 'Fragment':
-        """This fragment's value as a view holder of shape `want` takes it,
-        converted in place: a place or a storage slot borrowed, a holder
+        """This fragment's value as a holder of shape `want` takes it (a
+        view's, or an aggregate's borrowed result), converted in place: a
+        place or a storage slot borrowed, a holder
         aliased, a view or a static constant as it is, a borrowed owned leaf
         aliased through the holder it is lent by; fresh storage is
         materialized for `node` and lent first. A view binding's place is

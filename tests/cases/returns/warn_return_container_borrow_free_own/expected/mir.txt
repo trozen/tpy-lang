@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::first@11:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
-main::take@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::take_copy@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::first@11:0: covered (storage: no_proof_required), summary: known
+main::take@15:0: covered (storage: no_proof_required), summary: known
+main::take_copy@21:0: covered (storage: no_proof_required), summary: known
 main::main@25:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

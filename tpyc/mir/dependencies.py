@@ -24,7 +24,7 @@ from .nodes import (
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
-    element_result, loan_field, member_types, WRAPPER_CLASSES,
+    loan_field, member_types, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
@@ -333,7 +333,8 @@ def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSl
     refs = (frozenset({MIRReferent(leaf, external)})
             if slots[place.root].shape.owns_storage else state.get(leaf, empty))
     # A container view's referents already are an elements region: a container
-    # projection on the view itself names that region, never a region of it.
+    # projection on the view itself names that region, never a region of it --
+    # for a view holder reached at any hop, and only for the hop right after it.
     through_view = slots[place.root].shape.container_view_holder
     for hop in place_walk(place, slots, records).hops:
         match projection := hop.projection:
@@ -356,10 +357,10 @@ def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSl
             case MIRContainerStructure() | MIRContainerElements() if through_view:
                 pass
             case MIRField() | MIRContainerStructure() | MIRContainerElements():
-                through_view = False
                 refs = _project(refs, projection)
             case _:
                 raise MIRValidationError("unknown dependency projection")
+        through_view = hop.reached is not None and hop.reached.container_view_holder
     return refs
 
 
@@ -628,23 +629,17 @@ def apply_transfers(present: MIRPresentCall, state: dict[MIRPlace, frozenset[MIR
 
 
 def resolve_call_returns(present: MIRPresentCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
-                         records: Mapping[TpyType, MIRRecordLayout],
-                         result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
+                         records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent] | None:
     """The caller's origins of a call's borrowed result: each return
-    origin's place (`call_place`), resolved in sequence like a direct
-    borrow of it. A whole-parameter origin is the argument; what a
-    container lends other than itself (an element, a view of it) lies in
-    its elements region (`element_result`), so the `result` holder takes
-    that region of a container argument. A path is never re-projected."""
+    origin's place (`call_place`, its exact path under the argument),
+    resolved in sequence like a direct borrow of it, never widened or
+    re-projected."""
     call = present.call
     origins: set[MIRReferent] = set()
     for origin in present.effects.returns:
-        argument = slots[call.arguments[origin.parameter]]
         refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
         if not refs:
             return None
-        if not origin.path and result is not None and element_result(argument.shape, result.type):
-            refs = _project(refs, MIRContainerElements())
         origins.update(refs)
     return frozenset(origins)
 
@@ -656,18 +651,21 @@ def call_return_problem(present: MIRPresentCall, result: MIRSlot, state: MIRRefe
     the summary met too), plus what only the caller's arguments answer: a
     container holder of a whole parameter needs a container argument, and
     never one rooted in an elements region (its writes would land under
-    that region, where no write of the container reaches)."""
+    that region, where no write of the container reaches). A container
+    result at an element endpoint is the element's region, the holder a
+    direct `row = rows[i]` binding takes."""
     call = present.call
     for origin in present.effects.returns:
         argument = slots[call.arguments[origin.parameter]]
         place = call_place(call, origin.parameter, origin.path, slots)
-        problem = return_endpoint_problem(origin.path, lambda: place_shape(place, slots, records).type,
-                                          result.type)
+        problem = return_endpoint_problem(origin.path, lambda: place_walk(place, slots, records), result.type)
         if problem is not None:
             return problem
         if result.shape.whole_container:
             if not origin.path and not argument.shape.whole_container:
                 return "container result of a non-container argument"
+            if origin.path and isinstance(origin.path[-1], MIRContainerElements):
+                continue
             refs = resolve_referents(place, state, slots, records)
             if any(r.place.projections and isinstance(r.place.projections[-1], REGION_STEPS) for r in refs):
                 return "container result rooted in an elements region"
@@ -715,7 +713,7 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
                 # before its result is resolved or fills storage.
                 apply_transfers(value, state, slots, layouts)
                 borrowed = call.summary.borrowed_result is not None
-                returns = (resolve_call_returns(value, state, slots, layouts, slots[target.root])
+                returns = (resolve_call_returns(value, state, slots, layouts)
                            if borrowed or final else None)
                 # Only the fixpoint's states are checked: an intermediate one may still lack an origin.
                 if final and (problem := "missing call return origin" if returns is None else call_return_problem(

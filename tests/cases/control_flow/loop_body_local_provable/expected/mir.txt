@@ -38,7 +38,7 @@ main::else_match_arm@417:0: uncovered (unsupported statement), summary: opaque (
 main::else_error_return@431:0: uncovered (error-return body)
 main::pair@443:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::else_tuple_str@447:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
-main::else_ref@457:0: covered (storage: not_covered: THIRPtrLocalRebind: borrowed operation has no MIR correspondence), summary: known
+main::else_ref@457:0: certified, summary: known
 main::else_join@468:0: covered (storage: no_proof_required), summary: known
 main::else_read_in_else@479:0: covered (storage: no_proof_required), summary: known
 main::else_inner_break@492:0: covered (storage: no_proof_required), summary: known

@@ -996,7 +996,7 @@ class GrowSub(Grow):
 # borrowed element, warned as on the base
 def invalidation_user(d: GrowSub) -> None:
     a = d.at(0)
-    d.grow()  # tpyc: warning(/Mutation of 'd' while borrowed .'grow' may invalidate/)
+    d.grow()  # tpyc: warning(/Mutation of 'd' while borrowed .'grow' may invalidate/) warning(/may move the elements of 'd.ps'/)
     a.n = 3
 
 

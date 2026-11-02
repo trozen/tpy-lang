@@ -280,10 +280,10 @@ def lent_record(shape: MIRShape) -> MIRShape | None:
 
 def element_result(container: MIRShape, result: TpyType) -> bool:
     """Whether a borrowed result of type `result` that a whole-container
-    parameter of `container` returns lies in its elements region, where
-    the caller projects a whole-parameter return origin: a result that is
-    no container (an element, a view of the elements), or a container of
-    the member type (an element itself). Decided by the member shape."""
+    parameter of `container` lends lies in its elements region (a stub's
+    return origin there): a result that is no container (an element, a
+    view of the elements), or a container of the member type (an element
+    itself). Decided by the member shape."""
     if not container.whole_container:
         return False
     bare = unwrap_readonly(result)

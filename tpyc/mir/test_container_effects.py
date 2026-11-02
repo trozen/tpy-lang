@@ -390,7 +390,7 @@ def test_a_cursor_over_owned_container_storage_depends_on_its_regions() -> None:
                                                               ref(0, ELEMENTS, external=False)}
 
 
-def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True) -> MIRFunction:
+def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True, path: tuple = ()) -> MIRFunction:
     signature = th.THIRCallableSignature((argument.type,), RefType(result.type),
                                          borrowed_result=th.THIRBorrowedRecord(result.type, False),
                                          passings=(ParamPassing.MUT_REF,),
@@ -399,15 +399,16 @@ def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True) -> MIR
     # A record argument is lent as the record it is.
     lent = th.THIRBorrowedRecord(argument.type, False) if argument.shape.cls is MIRClass.RECORD else None
     summary = MIRCallSummary(callee, (bound(argument.type, ParamPassing.MUT_REF, ref=lent),),
-                             frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
+                             frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0, path)}),
+                             frozenset(), True)
     return body((argument, result, scalar(2)), MIRBlock(bid(0), (assign(1, MIRCall(summary, (sid(0),))),
                                                              assign(2, MIRConstant(0))), MIRReturn(sid(2))))
 
 
 def test_a_call_result_borrowed_from_a_container_lies_in_its_elements() -> None:
-    # `p = first(ps)`: the summary names the whole parameter; what a
-    # container lends besides itself lies in its elements region.
-    fn = element_call(holder(1, name="p"), param(0, name="ps"))
+    # `p = first(ps)`: the summary names the elements region, resolved
+    # under the argument as it is, never re-projected.
+    fn = element_call(holder(1, name="p"), param(0, name="ps"), path=(ELEMENTS,))
     deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 1)][place(1)] == {ref(0, ELEMENTS)}
     # A record result of a record argument stays the argument itself.
@@ -649,7 +650,7 @@ def test_an_argument_temporary_the_body_reads_keeps_the_summary_opaque(compiled)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 
 
-def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
+def test_an_element_result_returns_at_its_exact_path(compiled) -> None:
     decl = declared(compiled, "first")
     container, readonly = container_param(decl)
     cell = container.type_args[0]
@@ -665,7 +666,7 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
                      parameter_bindings=bindings_of(decl))
     result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
-    assert result.summary.returns == {MIRReturnOrigin(0)} and result.summary.writes == frozenset()
+    assert result.summary.returns == {MIRReturnOrigin(0, (ELEMENTS,))} and result.summary.writes == frozenset()
 
 
 def test_an_element_field_write_is_published_under_the_elements_region(compiled) -> None:
@@ -689,7 +690,7 @@ def test_an_element_field_write_is_published_under_the_elements_region(compiled)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     value = th.THIRFieldIdentity(cell, "value", INT32)
     assert result.summary.writes == {MIRParameterWrite(0, (ELEMENTS, value))}
-    assert result.summary.returns == {MIRReturnOrigin(0)}
+    assert result.summary.returns == {MIRReturnOrigin(0, (ELEMENTS,))}
     assert "writes={param0[elements].value}" in _dump_call(MIRCall(result.summary, (sid(0),), True))
 
 

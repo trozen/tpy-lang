@@ -6,7 +6,7 @@ main::via_ptr@222:0: uncovered (unsupported parameter type), summary: opaque (un
 main::ro@346:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::collisions@365:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::shapes@381:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::borrow@398:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::borrow@398:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
 main::main@405:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Store.add@35:4: uncovered (no body to lower)
 main::Store.add@40:4: uncovered (no body to lower)

@@ -579,7 +579,7 @@ def test_readers_write_nothing_and_view_results_borrow_the_receiver(methods) -> 
     # The @auto_readonly mutable clone is pure: it reads a receiver it could write.
     values = _summary(stubs["values"][0])
     assert values.writes == frozenset() and not values.parameters[0].readonly
-    assert values.returns == frozenset({MIRReturnOrigin(0)})
+    assert values.returns == frozenset({MIRReturnOrigin(0, (MIRContainerElements(),))})
     assert values.borrowed_result == th.THIRBorrowedRecord(values.callee.signature.return_type, False)
     copy = _summary(stubs["copy"][0])
     assert copy.writes == frozenset() and copy.returns == frozenset() and copy.parameters[0].readonly
@@ -671,7 +671,8 @@ def _user_summary(fn: th.THIRFunction, bindings: tuple[MIRParameterBinding, ...]
                                          return_representation(ret))
     return MIRCallSummary(th.THIRResolvedCallee(th.THIRFunctionIdentity("main", fn.name), signature), bindings,
                           frozenset(range(len(bindings))), frozenset(writes), frozenset(),
-                          frozenset(MIRReturnOrigin(r) for r in returns), frozenset(), False)
+                          frozenset(MIRReturnOrigin(*r) if isinstance(r, tuple) else MIRReturnOrigin(r)
+                                    for r in returns), frozenset(), False)
 
 
 def test_user_summaries_publish_container_writes(methods) -> None:
@@ -730,21 +731,28 @@ def test_user_summaries_return_container_views_and_elements_of_parameters(method
     bindings = (bound(xs.type, ParamPassing.CONST_REF, True), bound(ps.type, ParamPassing.CONST_REF, True))
     rsp = next(p.type for p in methods.thir["shapes"].params if p.name == "rsp")
     sp = next(p.type for p in methods.thir["shapes"].params if p.name == "sp")
-    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0}), no_layouts()) is None
+    # A view and an element lie at the elements region's path.
+    elements = (MIRContainerElements(),)
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={(0, elements)}), no_layouts()) is None
+    # The whole parameter is the container itself, which no view of its elements is.
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0}), no_layouts()) == (
+        "unsupported return origin type or access")
     # A mutable view of a parameter lent readonly would write what the caller lent.
-    assert summary_problem(_user_summary(fn, bindings, ret=sp, returns={0}), no_layouts()) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=sp, returns={(0, elements)}), no_layouts()) == (
         "unsupported return origin type or access")
     # A view of another element type is no view of the parameter.
-    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={1}), no_layouts()) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={(1, elements)}), no_layouts()) == (
         "unsupported return origin type or access")
     # A record result's access is its declared type's.
     point = unwrap_readonly(unwrap_ref_type(ps.type)).type_args[0]
     element = RefType(ReadonlyType(point))
-    assert summary_problem(_user_summary(fn, bindings, ret=element, returns={1}), no_layouts()) is None
-    assert summary_problem(_user_summary(fn, bindings, ret=element, returns={0}), no_layouts()) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=element, returns={(1, elements)}), no_layouts()) is None
+    assert summary_problem(_user_summary(fn, bindings, ret=element, returns={1}), no_layouts()) == (
         "unsupported return origin type or access")
-    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), returns={1}), no_layouts()) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=element, returns={(0, elements)}), no_layouts()) == (
         "unsupported return origin type or access")
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), returns={(1, elements)}),
+                           no_layouts()) == "unsupported return origin type or access"
 
 
 def test_a_pure_stub_reads_a_native_container_through_its_protocol_parameter(methods) -> None:

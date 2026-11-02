@@ -1045,7 +1045,7 @@ void bytearray_noinit() {
 // # borrowed element, warned as on the base
 // def invalidation_user(d: GrowSub) -> None:
 //     a = d.at(0)
-//     d.grow()  # tpyc: warning(/Mutation of 'd' while borrowed .'grow' may invalidate/)
+//     d.grow()  # tpyc: warning(/Mutation of 'd' while borrowed .'grow' may invalidate/) warning(/may move the elements of 'd.ps'/)
 //     a.n = 3
 void invalidation_user(GrowSub& d) {
     P& a = d.at(0);

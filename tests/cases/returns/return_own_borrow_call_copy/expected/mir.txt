@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
 main::take_container@33:0: covered (storage: no_proof_required), summary: known
-main::first@38:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::first@38:0: covered (storage: no_proof_required), summary: known
 main::frec@42:0: certified, summary: known
-main::take_free@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::take_free@46:0: covered (storage: no_proof_required), summary: known
 main::take_record@52:0: covered (storage: no_proof_required), summary: known
 main::take_record_free@57:0: covered (storage: no_proof_required), summary: known
 main::take_record_field@61:0: covered (storage: no_proof_required), summary: known

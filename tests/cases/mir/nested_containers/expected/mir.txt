@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::silent_alias@58:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
-main::silent_bag@66:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, summary: known
+main::silent_alias@58:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+main::silent_bag@66:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::silent_nest@74:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::outer_grow@81:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::dict_rows@87:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
@@ -30,14 +30,14 @@ main::literal_rows@249:0: covered (storage: no_proof_required), summary: known
 main::element_sources@257:0: covered (storage: no_proof_required), summary: known
 main::grow_one@263:0: covered (storage: no_proof_required), summary: known
 main::gen_total@283:0: covered (storage: no_facts: storage facts have not been published)
-main::pick@290:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::pick@290:0: certified, summary: known
 main::picked@296:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::deep_row@304:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (unsupported return origin type or access)
-main::first@309:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::deep_row@304:0: certified, summary: known
+main::first@309:0: certified, summary: known
 main::first_kept@315:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::same_rows@322:0: covered (storage: no_proof_required), summary: known
 main::same_kept@327:0: certified, summary: known
-main::value_of@333:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::value_of@333:0: certified, summary: known
 main::value_kept@339:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::main@346:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::Grid.widen@277:4: covered (storage: no_proof_required), summary: known

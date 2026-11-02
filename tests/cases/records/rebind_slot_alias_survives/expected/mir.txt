@@ -4,7 +4,7 @@ main::alias_survives_rebind@61:0: certified, summary: opaque (summary output eff
 main::rebind_in_loop@69:0: certified, summary: opaque (summary output effect)
 main::borrow_call_rebind@80:0: certified, summary: opaque (summary output effect)
 main::none_reassign@90:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::scalar_deep@171:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::scalar_deep@171:0: certified, summary: opaque (summary output effect)
 main::self_view@181:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::with_scalar@189:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::constructor_escape@198:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

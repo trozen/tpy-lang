@@ -11,7 +11,7 @@ from enum import Enum, auto
 from ..thir.scalar_leaves import MIRClass, inline_member_type, value_class
 from ..typesys import OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
 from .nodes import (
-    MIRAssign, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
+    MIRAssign, MIRCall, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
     MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, builds_base, place_shape,
 )
 from .shapes import (
@@ -348,7 +348,9 @@ BEGINS = frozenset({MIRStorageEventKind.INITIALIZE, MIRStorageEventKind.CONSTRUC
 class MIRStorageEvent:
     kind: MIRStorageEventKind
     place: MIRPlace
-    # The holder a whole-record write rebinds to the written storage.
+    # The holder a whole-record write rebinds to the written storage; the
+    # slot a call's result is bound to at its call writes, which precede the
+    # borrow the call returns.
     rebind_owner: MIRSlotId | None = None
     # False for an assignment whose storage write fact is missing: its kind
     # is the one its destination gives (a replacement of storage a borrow
@@ -419,7 +421,14 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
                 kind = MIRStorageEventKind.REPLACE
             events.append(MIRStorageEvent(kind, target, fact.rebind_owner if known else None, known,
                                           payloads if kind is not MIRStorageEventKind.INITIALIZE else ()))
-    events.extend(MIRStorageEvent(MIRStorageEventKind.CALL_WRITE, place)
+    # The result is bound on the normal return, after the callee's writes:
+    # a whole slot it fills holds nothing they replace. This relies on a
+    # covered body having no exceptional edge inside it (a raise leaves the
+    # body without binding the result); TODO.md "The call-write rebind keys
+    # to the normal-return edge".
+    result = (stmt.target.root if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+              and not stmt.target.projections else None)
+    events.extend(MIRStorageEvent(MIRStorageEventKind.CALL_WRITE, place, result)
                   for place in call_writes if storage_destination(place, slots))
     if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.owns_storage:
         events.append(MIRStorageEvent(MIRStorageEventKind.MOVE, MIRPlace(stmt.value.source)))

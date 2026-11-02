@@ -293,12 +293,6 @@ def test_retained_call_result_observes_iteration_end(artifacts: Artifacts, name:
 
 
 @pytest.mark.parametrize("extra, reason", [
-    ('''def explicit(cell: readonly[Cell]) -> readonly[Cell]:
-    return cell
-def rejected() -> int32:
-    saved = explicit(Cell(1))
-    return saved.value
-''', "temporary needs full-expression boundary"),
     ('''def mutable(cell: Cell) -> Cell:
     cell.value = 2
     return cell

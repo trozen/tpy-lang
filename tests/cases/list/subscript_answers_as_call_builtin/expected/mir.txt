@@ -23,7 +23,7 @@ main::bump@287:0: covered (storage: no_proof_required), summary: known
 main::bump_proven@291:0: covered (storage: no_proof_required), summary: known
 main::proven_mutation@300:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::own_first@306:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::first_ro@312:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::first_ro@312:0: certified, summary: known
 main::opt_reads@319:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::generic_store@324:0: uncovered (generic body)
 main::references@330:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

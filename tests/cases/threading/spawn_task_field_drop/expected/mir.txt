@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@57:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
-main::Notifier.__del__@39:4: uncovered (missing alias binding)
+main::Notifier.__del__@39:4: uncovered (unsupported borrowed expression form)
 main::Task.run@53:4: covered (storage: no_proof_required), summary: opaque (summary record: member definition: custom record special member)
 main::State.__init__@18:4: covered (storage: no_proof_required), summary: known
 main::Shared.__init__@27:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

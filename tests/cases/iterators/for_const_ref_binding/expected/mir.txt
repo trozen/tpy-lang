@@ -16,7 +16,7 @@ main::bump_slice_subscript@133:0: uncovered (missing or invalid native iteration
 main::first_of_row@139:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::test_subscript_source_loops@146:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::bump_param_field_sub@223:0: covered (storage: no_proof_required), summary: known
-main::bump_elem_field@228:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::bump_elem_field@228:0: certified, summary: known
 main::bump_dict_elem_field@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::bump_loop_var_root@240:0: covered (storage: no_proof_required), summary: known
 main::alias_read@246:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

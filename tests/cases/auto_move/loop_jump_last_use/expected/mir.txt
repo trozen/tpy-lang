@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::fail_at@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::take@72:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
 main::take_list@77:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
-main::first@83:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::first@83:0: certified, summary: known
 main::for_break@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::while_break@96:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::while_true_break@107:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

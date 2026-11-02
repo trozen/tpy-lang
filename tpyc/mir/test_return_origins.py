@@ -20,7 +20,8 @@ from .call_contract import (
     return_endpoint_problem, return_origin_problem, stub_summary, summary_problem,
 )
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, store_problem, walk,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRHop, MIRTupleIndex, MIRUnionPayload, MIRWalk,
+    store_problem, walk,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
@@ -31,12 +32,11 @@ from .nodes import (
     MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
     MIRPresentCall, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from . import summaries
 from .summaries import summarize_function
 from .testutil import (
     as_declared, Redeclared, no_layouts, borrowed_shape, bound, leaf_shape, reaccess, prepared, workspace_functions,
 )
-from .value import MIRRecords, MIRField, MIRFieldId, MIRHolding, MIRShape
+from .value import MIRRecords, MIRField, MIRFieldId, MIRHolding, MIRShape, value_shape
 
 
 SOURCE = '''\
@@ -336,12 +336,10 @@ def test_the_whole_receiver_returns_with_an_empty_path(program: _Program) -> Non
 
 
 def test_unspellable_origins_refuse(program: _Program) -> None:
-    # A Span over a field: the origin is a region under the field, which the grammar does not return.
-    assert _summary(program, "Bag.span_items").state is MIRSummaryState.OPAQUE
-    assert _summary(program, "Bag.span_items").reason == (
-        "summary unsupported return origin: unsupported return origin type or access")
     elems = _known(program, "Bag.elems")
     items = _field(program, "items", INTS)
+    # A Span over a field views the field's elements region: the region endpoint.
+    assert _known(program, "Bag.span_items").returns == frozenset({MIRReturnOrigin(0, (items, MIRContainerElements()))})
     n = _field(program, "n", INT32)
     for returns, reason in (
         # A container result needs the container: a scalar field, the whole record or a region refuse.
@@ -582,9 +580,9 @@ def test_nested_return_origins(program: _Program, nested: _Nested) -> None:
         (False, False, nested.shelf, (frozen_bag,), nested.bag, "unsupported return origin type or access"),
         (False, False, nested.room, (replace(nested.shelf_f, type=ReadonlyType(nested.shelf)), nested.bag_f),
          nested.bag, "unsupported return origin type or access"),
-        # A projection ends no return path.
+        # A container's structure ends no return path.
         (False, False, nested.shelf, (nested.bag_f, MIRContainerStructure()), nested.bag,
-         "element projection needs container storage"),
+         "unsupported return origin type or access"),
         # A field the holder does not declare, a field after a projection.
         (False, False, nested.shelf, (nested.n, nested.bag_f), nested.bag, "field missing from declared fields"),
         (False, False, nested.shelf, (MIRContainerElements(), nested.bag_f), nested.bag,
@@ -611,21 +609,36 @@ def test_one_endpoint_table_serves_writes_and_returns(program: _Program, nested:
 
 def test_one_return_endpoint_rule_serves_the_summary_and_the_caller(program: _Program, nested: _Nested) -> None:
     # `return_endpoint_problem` is the rule the summary's endpoint and
-    # every caller's type check read: a region, a mismatched place, a view
-    # of no leaf, and a place at or under an Optional record field's
-    # payload (whatever produced the referent) end no published return.
+    # every caller's type check read: a structure region, a mismatched
+    # place, a view of no leaf or of another region, and a place at or
+    # under an Optional record field's payload (whatever produced the
+    # referent) end no published return. An elements region is an element
+    # endpoint, or a region endpoint for a container view result.
     inner = unwrap_ref_type(_free(program, "inner_of").params[1].type)
     maybe = th.THIRFieldIdentity(nested.shelf, "maybe", OptionalType(inner))
     x = th.THIRFieldIdentity(inner, "x", INT32)
     payload = MIRUnionPayload(1)
-    assert return_endpoint_problem((nested.bag_f, nested.items), lambda: INTS, INTS) is None
-    assert return_endpoint_problem((nested.bag_f, nested.name), lambda: STR, nested.view) is None
+    elements = MIRContainerElements()
+    span = NominalType("Span", (INT32,), _module_qname="tpy.Span")
+    strs = NominalType("list", (STR,), _module_qname="builtins.list")
+
+    def ends_at(member: object, region: object = None) -> MIRWalk:
+        # The last hop of a return's walk: what it reaches, from the container whose region it is.
+        holder = value_shape(region) if region is not None else value_shape(member)
+        return MIRWalk(holder, (MIRHop(elements, holder, value_shape(member)),))
+    assert return_endpoint_problem((nested.bag_f, nested.items), lambda: ends_at(INTS), INTS) is None
+    assert return_endpoint_problem((nested.bag_f, nested.name), lambda: ends_at(STR), nested.view) is None
+    assert return_endpoint_problem((nested.bag_f, nested.items, elements), lambda: ends_at(INT32, INTS),
+                                   span) is None
+    assert return_endpoint_problem((nested.bag_f, elements), lambda: ends_at(STR, strs), nested.view) is None
     for path, end, result, reason in (
-            ((nested.bag_f, nested.items, MIRContainerElements()), None, INTS, "call result of a container region"),
-            ((nested.bag_f, nested.n), INT32, nested.bag, "call result of a mismatched place"),
-            ((nested.bag_f, nested.items), INTS, nested.view, "view result of a non-leaf place"),
-            ((maybe, payload), inner, inner, "call result under an Optional field's payload"),
-            ((maybe, payload, x), INT32, nested.view, "call result under an Optional field's payload")):
+            ((nested.bag_f, nested.items, MIRContainerStructure()), None, INTS, "call result of a container region"),
+            ((nested.bag_f, nested.items, elements), ends_at(INT32, INTS), INTS, "call result of a mismatched place"),
+            ((nested.bag_f, elements), ends_at(STR, strs), span, "view result of a mismatched region"),
+            ((nested.bag_f, nested.n), ends_at(INT32), nested.bag, "call result of a mismatched place"),
+            ((nested.bag_f, nested.items), ends_at(INTS), nested.view, "view result of a non-leaf place"),
+            ((maybe, payload), None, inner, "call result under an Optional field's payload"),
+            ((maybe, payload, x), None, nested.view, "call result under an Optional field's payload")):
         assert return_endpoint_problem(path, lambda: end, result) == reason, path
     # The summary refuses the same payload return, so no caller sees it.
     laid = _retyped(program.definitions.layouts, nested.shelf, "maybe", maybe.type)
@@ -718,7 +731,11 @@ def test_call_return_problem_checks_record_and_view_endpoints(program: _Program)
     assert call_return_problem(_present(view.value), holder, state, slots, records) is None
     assert call_return_problem(_present(_returning(view.value, items)), holder, state, slots, records) == (
         "view result of a non-leaf place")
+    # The element endpoint of a list of ints: an int, which no view views.
     assert call_return_problem(_present(_returning(view.value, items, MIRContainerElements())), holder, state, slots,
+                               records) == (
+        "view result of a non-leaf place")
+    assert call_return_problem(_present(_returning(view.value, items, MIRContainerStructure())), holder, state, slots,
                                records) == (
         "call result of a container region")
     record, holder, state, slots, records = _call_site(program, "write_through_me")
@@ -741,28 +758,6 @@ def test_a_return_field_outside_the_certified_layout_is_opaque(program: _Program
     object.__setattr__(definitions, "layouts", as_declared(program.definitions.layouts, fewer.layout))
     assert summarize_function(fn, lowered, prepared(lowered), definitions).reason == (
         "summary unsupported return origin: field missing from declared fields")
-
-
-def test_a_return_origin_inside_a_record_is_read_from_the_parameters_slot(
-        program: _Program, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Whether a result returns as the whole parameter is what the
-    # parameter's slot lends (`lent_record`): a slot lending none spells a
-    # region-only path as the whole parameter; any other path is the walk
-    # itself, published as it is.
-    identity = _definition(program, "Bag.elems").resolved_callee.identity
-    body, fn = program.workspace.definitions[identity]
-    lowered = workspace_functions(program.workspace)[body]
-    receiver = next(s for s in lowered.slots if s.name == "self").shape
-    asked: list[MIRShape] = []
-
-    def lends_nothing(shape: MIRShape) -> MIRShape | None:
-        asked.append(shape)
-        return None
-    known = summarize_function(fn, lowered, prepared(lowered), program.definitions)
-    assert known.state is MIRSummaryState.KNOWN and all(origin.path for origin in known.summary.returns)
-    monkeypatch.setattr(summaries, "lent_record", lends_nothing)
-    assert summarize_function(fn, lowered, prepared(lowered), program.definitions) == known
-    assert asked == [receiver]
 
 
 def test_an_optional_record_parameter_returns_inside_its_payload(program: _Program) -> None:
@@ -864,7 +859,7 @@ def test_a_span_argument_is_projected_once() -> None:
     for path in ((), (MIRContainerElements(),)):
         summary = MIRCallSummary(callee, (bound(span, ParamPassing.VALUE, True),), frozenset({0}),
                                  frozenset(), frozenset(), frozenset({MIRReturnOrigin(0, path)}), frozenset(), True)
-        assert resolve_call_returns(_present(MIRCall(summary, (t.id,), False)), state, slots, {}, u) == {xs_elements}
+        assert resolve_call_returns(_present(MIRCall(summary, (t.id,), False)), state, slots, {}) == {xs_elements}
 
 
 def test_dump_spells_return_paths(program: _Program) -> None:

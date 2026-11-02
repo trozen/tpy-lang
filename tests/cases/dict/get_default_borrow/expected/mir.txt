@@ -37,7 +37,7 @@ main::ro_copy@455:0: uncovered (unsupported native container element), summary: 
 main::main@464:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::logged@528:0: covered (storage: no_proof_required), summary: known
 main::default_in_place@535:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::H.bump@55:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::H.bump@55:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
 main::K.__hash__@291:4: covered (storage: no_proof_required), summary: known
 main::K.__eq__@294:4: covered (storage: no_proof_required)
 main::P.__init__@12:4: covered (storage: no_proof_required), summary: known

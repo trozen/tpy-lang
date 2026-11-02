@@ -66,7 +66,7 @@ main::via_spa@949:0: uncovered (unsupported expression), summary: opaque (unsupp
 main::dyn_override@955:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::union_count@960:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::bytearray_noinit@972:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
-main::invalidation_user@997:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::invalidation_user@997:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::super_builtin@1059:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::super_base_part@1165:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::nongeneric_base_method@1200:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
@@ -108,7 +108,7 @@ main::EmpStr.empty@890:4: covered (storage: no_proof_required), summary: opaque 
 main::Pr.__repr__@913:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::SpA.m@939:4: covered (storage: no_proof_required)
 main::SpB.m@945:4: covered (storage: no_proof_required)
-main::Grow.at@984:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Grow.at@984:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Grow.grow@987:4: covered (storage: no_proof_required), summary: known
 main::SupL.append@1004:4: uncovered (container source needs a place)
 main::SupL.size@1008:4: uncovered (container source needs a place)
@@ -133,7 +133,7 @@ main::ClrS.empty_unbound@1134:4: uncovered (container source needs a place)
 main::SupBoxes.first@1145:4: uncovered (unsupported borrowed expression form)
 main::SupBoxes.first_unbound@1149:4: uncovered (unsupported borrowed expression form)
 main::SupBoxes.first_n@1152:4: uncovered (container source needs a place)
-main::SupBoxes.pin_first@1155:4: uncovered (missing alias binding)
+main::SupBoxes.pin_first@1155:4: uncovered (unsupported borrowed expression form)
 main::ChooseBase.choose@1190:4: uncovered (generic body)
 main::StaticG.ident@1206:4: uncovered (generic body)
 main::StaticG.pick@1210:4: uncovered (generic body)

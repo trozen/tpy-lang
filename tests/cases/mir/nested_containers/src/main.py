@@ -300,8 +300,8 @@ def picked(rows: list[list[int32]]) -> int32:  # tpyc: mir(conflict /replacement
     return len(row)
 
 
-# summary: an element two region steps deep is no return origin a whole-parameter summary spells, so it is opaque
-def deep_row(cube: list[list[list[int32]]]) -> list[int32]:  # tpyc: mir_summary(opaque /unsupported return origin type or access/)
+# summary: an element two region steps deep is published at its exact path (param0[elements][elements])
+def deep_row(cube: list[list[list[int32]]]) -> list[int32]:  # tpyc: mir_summary(known)
     row = cube[0][0]
     return row
 

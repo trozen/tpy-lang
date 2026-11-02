@@ -1044,7 +1044,7 @@ outside an inner flush region -- is the validator's, not a scan the
 lowering re-runs.
 
 Not yet honest, and named so: a record borrow-returning call stays `VALUE`
-(MIR's `_borrowed_expression` asserts a call is tagged `VALUE`, and a
+(MIR's `borrowed_source` asserts a call is tagged `VALUE`, and a
 `@property` getter's storage-reference result is lifted through a
 `THIRFormConvert` that would become a no-op); an all-`Own` tuple result has
 no pointer-repr element and reads as a value; an owned local's name read

@@ -9,7 +9,7 @@ main::va_local@293:0: uncovered (container name type mismatch)
 main::va_closure@299:0: uncovered (container name type mismatch)
 main::va_match@307:0: uncovered (unsupported statement)
 main::va_unpack@316:0: uncovered (container name type mismatch)
-main::va_write@323:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence)
+main::va_write@323:0: certified
 main::value_sum@365:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::value_methods@371:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::value_total@377:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
@@ -45,7 +45,7 @@ main::PBox.get@222:4: uncovered (generic body)
 main::PBox.ga@227:4: uncovered (generic body)
 main::PBox.ga@227:4#2: uncovered (generic body)
 main::PHold.touch@240:4: uncovered (generic body)
-main::PHoldA.touch@251:4: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::PHoldA.touch@251:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
 main::Key.bump@262:4: covered (storage: no_proof_required), summary: known
 main::Key.__eq__@265:4: covered (storage: no_proof_required)
 main::Key.__hash__@268:4: covered (storage: no_proof_required), summary: known

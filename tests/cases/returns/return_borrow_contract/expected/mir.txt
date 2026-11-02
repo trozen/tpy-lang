@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::get_first@16:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::get_first@16:0: certified, summary: known
 main::identity@21:0: certified, summary: known
 main::make_point@26:0: covered (storage: no_proof_required), summary: known
 main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Container.add@37:4: uncovered (constructor argument type), summary: opaque (constructor argument type)
-main::Container.first@40:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Container.first@40:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::Container.__init__@34:4: covered (storage: no_proof_required), summary: known

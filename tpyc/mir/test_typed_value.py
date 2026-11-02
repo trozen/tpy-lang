@@ -243,10 +243,11 @@ def test_a_field_returned_readonly_is_lent_through_a_readonly_holder(dumps) -> N
     assert "%2 = borrow (*%0).__main__.R::p" in lines and "return %2" in lines
 
 
-def test_a_mutable_name_returned_readonly_is_its_own_holder(dumps) -> None:
+def test_a_mutable_name_returned_readonly_is_held_readonly(dumps) -> None:
+    # The result holder takes the parameter's referent at the result's access.
     lines = dumps["narrow_name"]
-    assert "%0: P mutable-ref parameter p" in lines and "return %0" in lines
-    assert not any(re.match(r"%\d+: P ", line) for line in lines if "parameter" not in line)
+    assert "%0: P mutable-ref parameter p" in lines and "%2: P readonly-ref temporary" in lines
+    assert "%2 = alias %0" in lines and "return %2" in lines
 
 
 # --- the records a call's summary paths read (`crossed_records`) ----------------------
@@ -274,7 +275,7 @@ def _summary(*paths: tuple[int, th.THIRFieldIdentity]) -> SimpleNamespace:
 
 def _walks(*paths: tuple[int, th.THIRFieldIdentity]) -> dict:
     roots = {0: _OWNED.value, 1: _LENT.lent_record}
-    return {(end, (field,)): path_walk(roots[end], (field,), _DECLARED) for end, field in paths}
+    return {(end, (field,), False): path_walk(roots[end], (field,), _DECLARED) for end, field in paths}
 
 
 def _crossed(*paths, skip=None, storage=_R) -> tuple[list[NominalType], list[int]]:

@@ -1,11 +1,11 @@
 ba::__tpy_init: uncovered (module initialization)
-ba::pick_ba@7:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+ba::pick_ba@7:0: certified, summary: known
 ba::sink@11:0: covered (storage: no_proof_required), summary: known
-ba::use@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ba::use@16:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 bb::__tpy_init: uncovered (module initialization)
-bb::pick_bb@6:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+bb::pick_bb@6:0: certified, summary: known
 bb::sink@10:0: covered (storage: no_proof_required), summary: known
-bb::use@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+bb::use@15:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 ca::__tpy_init: uncovered (module initialization)
 ca::forward@7:0: covered (storage: no_proof_required), summary: known
 ca::one@11:0: covered (storage: no_proof_required), summary: known

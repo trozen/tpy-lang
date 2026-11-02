@@ -2588,13 +2588,26 @@ as the corpus grows).
   `-> Own[list[T]]` is an owned result moved out (the template an
   `Own[R]` record result follows, [owned record results](#owned-record-results)).
   A Span or element result
-  rooted in `param[elements]` publishes the whole parameter (a caller's
-  structure write still reaches it by prefix overlap); a container field
-  of a record parameter publishes its field path
+  publishes its exact path (`return xs[0]` -> `param0[elements]`,
+  `return rows[i][j]` -> `param0[elements][elements]`, `return s` of a
+  Span -> `param0[elements]`); a container field of a record parameter
+  publishes its field path, an element of it the field path and the
+  region (`return self.items[i]` -> `param0.items[elements]`)
   ([projected return origins](#projected-return-origins)). `MIRParameterWrite.path` widens to field
   identities and container projections (`(structure,)`, `(F::items,
   structure)`, `(elements,)`), so a free function's container writes reach
   its callers as call-write events (`grow_if` / `forwarded` in the case);
+  a call's own writes precede the borrow it returns, so each call-write
+  event rebinds the whole slot the call's result is bound to
+  (`MIRStorageEvent.rebind_owner`, set by `reach.storage_events`): the
+  result is bound on the normal return, and a raise leaves the body
+  without binding it (`a = g.push_first()` with `self.items.append(...)`
+  before `return self.items[0]` is clean). A holder live before the call
+  still conflicts; so does a view the callee stores inside an owned
+  record it returns (a loan taken before the write, `made_replace` in
+  `tests/cases/mir/view_field_stores`); a result passed back from an
+  argument the writes reach is the callee's no-alias obligation,
+  warned at the call as an argument alias (`pass_back(xs[0], xs)`);
   `invalidates` stays required-empty, and a callee keeps a loan only as a
   transfer into a view member ([view fields](#view-fields)). A user method's summary
   follows the same rules with the receiver as parameter 0
@@ -2634,8 +2647,8 @@ as the corpus grows).
   unpacking `items()` (tuple elements); `in` (`THIRMembership`); protocol
   `for` over user iterators, comprehensions and generator expressions
   (frames, B4); call-duration loans (`xs.extend(xs)`, `rename(r, r.name)`);
-  a result rooted in `param[elements]` of a container parameter summarizes
-  as the whole parameter (an empty-path return origin); sibling-element precision (element identity is
+  a getter returning from a `try` / `finally` or a `match` arm
+  ("unsupported statement"); sibling-element precision (element identity is
   not tracked, so `xs[i] = v` under a live iterator conflicts); stepped
   slices; tuple, Optional and union elements; `bytearray`; a dict view
   bound to a local is a lowering reject today
@@ -3031,52 +3044,81 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   exactly the referent the direct borrow of that place produces. The path
   is a `MIRParameterPath`, the alphabet `MIRParameterWrite.path` uses, under
   one grammar (`call_contract.resolve_path`): fields through inline record
-  members, then at most one container projection
+  members, then container elements regions
   ([nested records](#nested-records) has the hop rule). The whole
   parameter is the empty path. The MIR dump spells
-  `returns={param0.items}` / `returns={param0}`.
-- **Body rule** (`summaries.summarize_function`). The field path of a
-  returned referent is kept, never widened to the whole parameter. Into a
-  borrowed record parameter it admits the record itself (a record result
-  of its own type), a container field (a container result:
-  `return self.items` -> `param0.items`), an owned-leaf field a `str` /
-  `bytes` view result views (`return self.name` at `-> StrView` ->
-  `param0.name`) and an inline record member a record result of its type
-  is (`return self.a` -> `param0.a`); each
-  field must be a member of the storage its hop reads -- one of its
-  record's declared fields -- by the walk of the path. Anything else refuses
-  "summary unsupported return origin", followed by the path check's own
-  reason (a field its record does not declare: "field missing from declared
-  fields"): a Span over a field
-  (`test_unspellable_origins_refuse`). A result rooted in a parameter that is
-  no record (a container, a Span, a leaf) keeps the whole-parameter
-  origin.
+  `returns={param0.items}` / `returns={param0[elements]}` /
+  `returns={param0}`.
+- **One encoding: the exact path** (2026-11-02). The origin is the exact
+  place under the parameter the return reads, for every parameter kind;
+  nothing collapses it to the whole parameter, and no caller widens or
+  re-projects it. One endpoint rule (`return_endpoint_problem`), read by
+  the summary (`endpoint_admitted`) and by every caller
+  (`call_return_problem`), gives a path ending at an elements region two
+  meanings: a container view result views that region (the REGION
+  endpoint: `return s`, `return xs[1:]`, `return self.items[1:]`, a
+  `dict.values()` stub), any other result is that region's member (the
+  ELEMENT endpoint: a record, a container, a view of an owned leaf). A
+  path ending at a container's structure is never a result. A return's
+  walk ends at the trailing region's member where a write's ends at the
+  region (`_path_walk`'s `returned`; the walk cache is keyed by it).
+- **Body rule** (`summaries.summarize_function`). Into a borrowed record
+  parameter it admits the record itself (a record result of its own
+  type), a container field (a container result: `return self.items` ->
+  `param0.items`), an element of one (`return self.items[i]` ->
+  `param0.items[elements]`), an owned-leaf field a `str` / `bytes` view
+  result views (`return self.name` at `-> StrView` -> `param0.name`) and
+  an inline record member a record result of its type is
+  (`return self.a` -> `param0.a`); into a container or Span parameter an
+  element (`param0[elements]`, nested `param0[elements][elements]`) or the
+  region a view result views; each field must be a member of the storage
+  its hop reads -- one of its record's declared fields -- by the walk of
+  the path. Anything else refuses "summary unsupported return origin",
+  followed by the path check's own reason (a field its record does not
+  declare: "field missing from declared fields"). The lowering classifies
+  the returned expression once (`_Lowering.borrowed_source`, through
+  `aggregate_place`: a member, an element, a user call, a tuple member, a
+  conditional whose arms recurse through it), the return opening the
+  full expression around it, as a binding does.
 - **Summary check** (`return_origin_problem`, inside `summary_problem`).
   Origins are validated as writes are: the grammar, a field of the
-  parameter's record, an endpoint typed for the result (a container field
-  or a record member equal to a container or record result, an owned leaf
-  compatible with a view result), and never more access than the source
-  lends, checked with the result bound at the definition's receiver.
+  parameter's record, an endpoint typed for the result (a container field,
+  element or record member equal to a container or record result, an
+  owned leaf compatible with a view result, a region a view result's type
+  views), and never more access than the source lends, checked with the
+  result bound at the definition's receiver. The whole parameter is a
+  result of exactly its own type.
 - **Caller** (`dependencies.resolve_call_returns`). Each origin's PLACE
   is built through `call_place` -- shared with call writes -- and its
-  referents resolved in sequence, like a direct borrow of it; a non-empty
-  path is never re-projected, a whole-parameter origin keeps its
-  elements projection for a result that is no container, and a Span
-  argument is projected once (`test_a_span_argument_is_projected_once`).
+  referents resolved in sequence, like a direct borrow of it; the path is
+  never re-projected, and a Span argument is projected once
+  (`test_a_span_argument_is_projected_once`). The view rule holds at
+  every hop: a container view holder reached anywhere on a path names its
+  region, so `sp[0][0]` of a `Span[list[P]]` resolves to
+  `rows[elements][elements]`, never the outer region.
   `call_return_problem` type-checks each origin's place against the
   holder the result fills: "container result of a non-container
-  argument", "... of a non-container place", "container result rooted in
-  an elements region", "view result of a non-leaf place", "call result of
-  a mismatched place" (`test_call_return_problem_checks_the_endpoint_type`).
+  argument", "container result rooted in an elements region" (a
+  whole-parameter container result of an argument that is itself an
+  element; a container result at an element endpoint is that element's
+  region, the holder `row = rows[i]` takes), "view result of a non-leaf
+  place", "view result of a mismatched region", "call result of a
+  mismatched place" (`test_call_return_problem_checks_record_and_view_endpoints`).
   A user-call container result is a container place wherever a
   container place is read (a receiver, a subscript, a `for`, an alias
   declaration); a call that WRITES refuses there, "order-sensitive eager
   operands", since the emitted C++ may evaluate an index or slice bound
   before the container (`test_a_writing_call_is_no_container_place`).
-- **Stubs.** Stub summaries keep whole-argument origins and their
-  result-dependent elements projection; the derivation equality between
-  a stub's declaration and its summary is unchanged
-  (`test_stub_summaries_keep_whole_argument_origins`).
+  A user call's Span result binds a Span local (`s = h.tail()` over
+  `return self.items[1:]`) as the region the call lends: the result is
+  held at the call's own type first, then aliased or, at another view
+  type (`Span[readonly[P]]`), its region borrowed (`lower.view_call`,
+  shared with a `str` view result).
+- **Stubs.** A native stub's result lying in a container argument's
+  elements region (an element by reference, `dict.keys()` /
+  `dict.values()`) publishes `param0[elements]`, any other the whole
+  argument (`call_contract._stub_return`); the derivation equality
+  between a stub's declaration and its summary is unchanged.
 - **Measured, accessor summaries and return origins** (same tool and
   sample; branch base 23cefb5ab1 vs the integrated tree 545f1ac360; 11142
   test bodies on the base, 11185 on the branch, the 43 more being
@@ -3693,9 +3735,10 @@ and setter and `getter_through_field`; `mir/method_calls`
   replaced whole (the same endpoint for both aggregates), or a
   projection of a container field whose members MIR models (an element
   write keys on the container's access); a
-  return takes no projection and ends at an owned leaf or a view member of
-  a view result's family, or at a container or record field of exactly the result's type at
-  no more access. `write_problem` / `return_origin_problem` are those two
+  return ends at an owned leaf or a view member of a view result's
+  family, at a container or record place of exactly the result's type,
+  or at an elements region a container view result views, at no more
+  access (`return_endpoint_problem`). `write_problem` / `return_origin_problem` are those two
   steps ("invalid call write path" / "invalid return parameter" for a
   malformed path, "unsupported call write field or access" / "unsupported
   return origin type or access" for its end), and `summary_problem` takes

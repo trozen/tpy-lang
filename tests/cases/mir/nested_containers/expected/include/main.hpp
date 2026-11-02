@@ -85,7 +85,7 @@ __gen_gen_total gen_total(const std::vector<std::vector<int32_t>>& rows);
 std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows);
 // def picked(rows: list[list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t picked(std::vector<std::vector<int32_t>>& rows);
-// def deep_row(cube: list[list[list[int32]]]) -> list[int32]:  # tpyc: mir_summary(opaque /unsupported return origin type or access/)
+// def deep_row(cube: list[list[list[int32]]]) -> list[int32]:  # tpyc: mir_summary(known)
 std::vector<int32_t>& deep_row(std::vector<std::vector<std::vector<int32_t>>>& cube);
 // def first(bags: list[Bag]) -> Bag:  # tpyc: mir(covered) mir_summary(known)
 Bag& first(std::vector<Bag>& bags);

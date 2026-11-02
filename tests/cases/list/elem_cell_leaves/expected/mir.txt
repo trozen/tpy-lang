@@ -30,7 +30,7 @@ main::row_rebind_pos@302:0: uncovered (unsupported metadata: is_arrow), summary:
 main::row_iadd_pos@312:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::return_ctx_pos@318:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::empty_row_pos@325:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::alias_widens_pos@332:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::alias_widens_pos@332:0: certified, summary: opaque (summary output effect)
 main::tuple_sinks_pos@340:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::float32_member_pos@349:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::subscript_row_pos@358:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)

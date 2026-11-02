@@ -35,7 +35,7 @@ from .nodes import (
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, SUM_CLASSES, MIRField, MIRHolding, MIRRecords, MIRShape,
-    MIRValidationError, lent_record, WRAPPER_CLASSES,
+    MIRValidationError, WRAPPER_CLASSES,
 )
 from .validate import owned_leaf_place_type, statement_reads
 
@@ -439,18 +439,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                         return MIRSummaryResult.opaque("view result origin outside the parameters" if view
                                                        else "summary unsupported return origin")
                     index = parameters[origin.place.root]
-                    if lent_record(slots[origin.place.root].shape) is None and all(
-                            isinstance(p, REGION_STEPS) for p in path):
-                        # A container result, a Span, or a record element of a
-                        # container parameter returns as the whole parameter (the
-                        # caller projects a container argument into its elements).
-                        returns.add(MIRReturnOrigin(index))
-                        continue
-                    # Inside a record parameter: the record itself, or a field
-                    # chain through its inline members, under the one grammar
+                    # The exact place under the parameter, under the one grammar
                     # and endpoint rule a caller checks the origin by; each field
                     # must be a member of the layout of the storage its hop reads.
-                    returned = MIRReturnOrigin(index, summary_path(origin.place.projections))
+                    returned = MIRReturnOrigin(index, summary_path(path))
                     problem = return_origin_problem(returned, result, tuple(bindings), definitions.layouts)
                     if problem is not None:
                         return MIRSummaryResult.opaque(f"summary unsupported return origin: {problem}")

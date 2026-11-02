@@ -20,7 +20,7 @@ main::rows_fn@234:0: uncovered (unsupported owned-leaf expression type), summary
 main::consumers_fn@243:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::values_fn@253:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::mk_ps@295:0: covered (storage: no_proof_required), summary: known
-main::head@299:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::head@299:0: certified, summary: known
 main::temp_written_fn@303:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::ctor_arg_fn@326:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::lowest_or_raise@355:0: uncovered (error-return body)

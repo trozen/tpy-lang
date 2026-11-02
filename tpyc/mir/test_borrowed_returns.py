@@ -363,8 +363,16 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
     assert "returns={" in dump_function(body)
 
 
+def test_a_holder_of_a_temporary_argument_outlives_its_statement(workspace: MIRCallWorkspace) -> None:
+    # `saved = observe(Cell(1))`: the binding's full expression owns the
+    # temporary, which ends before `saved` is read.
+    body = workspace_functions(workspace)[MIRBodyId("main", "temporary")]
+    assert isinstance(body, MIRFunction), body
+    result = inspect_scope_lifetimes(prepared(body))
+    assert not isinstance(result, MIRNotCovered) and result.conflicts
+
+
 @pytest.mark.parametrize("name, reason", [
-    ("temporary", "temporary needs full-expression boundary"),
     ("recursive", "recursive or recursion-dependent call"),
     ("tuple_result", "unsupported return type"),
     ("optional_result", "unsupported return type"),

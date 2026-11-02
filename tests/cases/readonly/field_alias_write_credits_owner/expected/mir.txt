@@ -43,7 +43,7 @@ main::inv_ptr_member@516:0: uncovered (unsupported local type or form), summary:
 main::inv_ptr_narrowed@522:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
 main::inv_ptr_union@529:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
 main::ro_alias@537:0: certified, summary: known
-main::ro_loop@543:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::ro_loop@543:0: certified, summary: known
 main::ro_two_line@550:0: certified, summary: known
 main::via_ptr@558:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::ro_warnings@564:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
@@ -67,12 +67,12 @@ main::P.self_list@83:4: covered (storage: no_proof_required), summary: opaque (s
 main::P.self_narrowed@88:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
 main::P.self_index_ro@95:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::P.self_index_mut@100:4: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
-main::G.view_above@129:4: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::G.view_above@129:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::G.c@134:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::G.c@134:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::G.snap@138:4: covered (storage: no_proof_required), summary: known
 main::G.view@142:4: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
-main::G.view_below@146:4: uncovered (unsupported view source), summary: opaque (unsupported view source)
+main::G.view_below@146:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::H.pp@158:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::H.self_ptr@162:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::W.add@180:4: covered (storage: no_proof_required), summary: known

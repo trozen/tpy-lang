@@ -700,7 +700,7 @@ class _Lowering:
         summary, walks = found
         result = call_result(callee, None)
         owned = owned_value_type(signature_result(callee.signature))
-        if result is not None and view_leaf(result.type):
+        if result is not None and (view_leaf(result.type) or region_view(result.type)):
             pass
         elif result is not None:
             # A record or container returned by reference: a holder of its declared type.
@@ -1753,29 +1753,18 @@ class _Lowering:
             f.write(slot, self.wrapper_copy(MIRPlace(storage), holder) if holder.cls is MIRClass.OPTIONAL
                     else MIRBorrow(lent), loc)
 
-    def put_borrow_binding(self, loc: object, slot: MIRSlotId, declare: bool, source: Fragment, deref: bool,
+    def put_borrow_binding(self, loc: object, slot: MIRSlotId, declare: bool, value: Fragment,
                            operation: object) -> Fragment:
-        """A holder bound or rebound to a borrow of a place (`deref`: through
-        a tuple member's pointer, which a parameter captures)."""
+        """A holder bound or rebound to what its source reaches (`value`, as
+        the holder takes it: a borrow of a place, another holder's referent
+        aliased), within the binding's full expression."""
         f = self.fragment()
-        place = f.splice(source)
-        value = MIRBorrow(MIRPlace(place.root, (*place.projections, MIRDeref())) if deref else place)
         if declare:
             f.adopt(slot)
-        f.borrow_operation(operation)
-        f.write(slot, value, loc)
-        return f
-
-    def put_borrowed_binding(self, loc: object, slot: MIRSlotId, declare: bool, value: Fragment,
-                             operation: object) -> Fragment:
-        """A holder bound or rebound to a borrowed result: a call's, a
-        conditional's, or another holder's referent."""
-        f = self.fragment()
-        source = f.splice(value)
-        if declare:
-            f.adopt(slot)
-        f.borrow_operation(operation)
-        f.write(slot, MIRAlias(source), loc)
+        with f.full_expression(value):
+            written = f.splice(value)
+            f.borrow_operation(operation)
+            f.write(slot, written, loc)
         return f
 
     def put_assign(self, loc: object, target: Fragment, value: Fragment, mode: MIRStorageWriteMode | None) -> Fragment:
@@ -2060,11 +2049,11 @@ class _Lowering:
 
     def alias_local(self, stmt: th.THIRStmt, *, declaration: bool = False) -> Fragment:
         """A record or container holder bound or rebound to a place or a
-        borrowed result, one path chosen by the source: a name by its
-        holding (a holder's referent aliased, owned storage borrowed in
-        place), a field or a parameter's tuple member (borrowed in place),
-        a container element (`element_binding`), a call's or a
-        conditional's borrowed result."""
+        borrowed result: a name by its holding (a holder's referent
+        aliased), any other source by the one classification a borrowed
+        result takes (`borrowed_source`; a tuple member only a parameter
+        captures), its operands evaluated within the binding's full
+        expression."""
         facts = {"alias_binding", "storage_borrow"}
         if declaration:
             _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "cpp_local_representation"
@@ -2099,30 +2088,16 @@ class _Lowering:
                 held = self.bound(source_name)
                 _require(stmt, held.cls is holder.cls and held.type == holder.type, "alias source mismatch")
                 _require(stmt, not held.readonly or holder.readonly, "alias increases access")
-                value = self.valued(MIRValue(self.slot_of(source_name), loc=source.loc))
-                return self.put_borrowed_binding(stmt.loc, bound_slot(), declaration, value, stmt)
-            case th.THIRFieldAccess() | th.THIRSubscript() if (isinstance(source, th.THIRFieldAccess)
-                                                               or source.tuple_index is not None):
-                tuple_member = isinstance(source, th.THIRSubscript)
-                if tuple_member:
-                    _require(source, declaration and isinstance(source.receiver, th.THIRName)
-                             and source.receiver.name in self.parameters, "tuple borrow needs parameter capture")
-                    reference, place = self.projection(source, capture=True)
-                else:
-                    _require(source, not source.narrowed_deref, "borrow of an Optional field's payload")
-                    _require(source, source.form is th.Form.STORAGE, "storage borrow needs record field")
-                    reference, place = self.field(source)
-                _require(source, reference.cls is holder.cls and reference.type == holder.type,
-                         "storage borrow type mismatch")
-                _require(stmt, not reference.readonly or holder.readonly, "alias increases access")
-                # A tuple member a parameter captures points at its value.
-                return self.put_borrow_binding(stmt.loc, bound_slot(), declaration, place, tuple_member, stmt)
-            case th.THIRSubscript() if self.container_receiver(source.receiver):
-                return self.element_binding(stmt, source, holder, bound_slot, declaration)
-            case _ if _user_call(source) or isinstance(source, th.THIRIfExpr):
-                value = self.borrowed_expression(source, holder)
-                return self.put_borrowed_binding(stmt.loc, bound_slot(), declaration, value, stmt)
-        raise MIRUnsupported(stmt, "missing alias binding")
+                value = self.valued(MIRValue(MIRAlias(self.slot_of(source_name)), holder, source.loc))
+                return self.put_borrow_binding(stmt.loc, bound_slot(), declaration, value, stmt)
+        if isinstance(source, th.THIRSubscript) and source.tuple_index is not None:
+            # A parameter's tuple member points at the parameter's own referent.
+            _require(source, declaration and isinstance(source.receiver, th.THIRName)
+                     and source.receiver.name in self.parameters, "tuple borrow needs parameter capture")
+        elif isinstance(source, th.THIRFieldAccess):
+            _require(source, not source.narrowed_deref, "borrow of an Optional field's payload")
+        value = self.full_expression(source, check=lambda: self.borrowed_source(source, holder).view(holder))
+        return self.put_borrow_binding(stmt.loc, bound_slot(), declaration, value, stmt)
 
     def optional_declaration(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl, shape: MIRShape) -> Fragment:
         """An Optional local of `shape` (its layout fact's): from its source,
@@ -2233,25 +2208,6 @@ class _Lowering:
         f.value = MIRValue(f.materialize(built, expr), loc=expr.loc)
         return f
 
-    def element_binding(self, stmt: th.THIRStmt, source: th.THIRSubscript, holder: MIRShape,
-                        bound_slot: Callable[[], MIRSlotId], declaration: bool) -> Fragment:
-        """An aggregate holder bound or rebound to one element in place (`p =
-        ps[0]`): a borrow of the container's element region, its index
-        evaluated within the binding's full expression."""
-        def check() -> Fragment:
-            element = self.element_access(source)
-            member = element.shape_of()
-            _require(stmt, member.cls in AGGREGATE_CLASSES and member.type == holder.type
-                     and source.form is th.Form.BORROW and (not member.readonly or holder.readonly),
-                     "element binding type or access mismatch")
-            v = element.value
-            element.value = MIRValue(MIRBorrow(v.value, v.raises), holder, v.loc)
-            return element
-        value = self.full_expression(source, check=check)
-        if declaration:
-            return self.put_declare(stmt.loc, bound_slot(), value, None)
-        return self.put_assign(stmt.loc, self.valued(MIRValue(MIRPlace(bound_slot()), loc=stmt.loc)), value, None)
-
     def span_local(self, stmt: th.THIRVarDecl) -> Fragment:
         """A container view local: a holder of the region its source views, readonly
         when its element is or when that region is."""
@@ -2270,7 +2226,8 @@ class _Lowering:
         a Span of the holder's own type (`target`, the outermost holder's)
         is aliased, any other view's region borrowed, an unstepped slice
         borrows its receiver's whole element region after its bounds are
-        read (Python slices clamp, so it does not raise)."""
+        read (Python slices clamp, so it does not raise), and a call's view
+        result borrows what the call lends."""
         target = holder if target is None else target
         element = self.register_container(expr, holder)[0].type
         match expr:
@@ -2319,12 +2276,31 @@ class _Lowering:
                 root = f.splice(place)
                 value = MIRBorrow(MIRPlace(root.root, (*root.projections, MIRContainerElements())))
                 writing = any(self.writes[b] for b in bounds)
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
+                f, readonly, writing = self.view_call(expr, holder)
+                loc = expr.loc
+                if holder == target:
+                    value = f.value.value
+                else:
+                    # At another view type: held at its own first, as a Span name is, its region borrowed.
+                    call, f = f, self.fragment()
+                    value = MIRBorrow(MIRPlace(f.lend(call), (MIRContainerElements(),)))
             case _:
                 raise MIRUnsupported(expr, "unsupported view source")
         f.value = MIRValue(value, value_shape(holder, access=loan_access(
             holder, MIRClass.CONTAINER_VIEW, Declared(readonly)), role=MIRRole.LOAN), loc)
         self.writes[expr] = writing
         return f
+
+    def view_call(self, expr: Invocation, typ: NominalType) -> tuple[Fragment, bool, bool]:
+        """A user call whose borrowed view result a view or container view
+        holder takes, at its declared result type `typ` (a conversion to
+        another view type reads it from a holder of that type); with the
+        result's access and whether the call writes."""
+        f = self.call(expr)
+        result = self.calls[expr].borrowed_result
+        _require(expr, result is not None and result.type == typ, "call view result mismatch")
+        return f, result.readonly, self.call_writes(expr)
 
     def view_local(self, stmt: th.THIRVarDecl) -> Fragment:
         typ = stmt.resolved_type
@@ -2410,10 +2386,7 @@ class _Lowering:
                                            for other in operands), "order-sensitive eager operands")
                 writing = any(self.writes[o] for o in operands)
             case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
-                f = self.call(expr)
-                result = self.calls[expr].borrowed_result
-                _require(expr, result is not None and result.type == typ, "call view result mismatch")
-                writing = self.call_writes(expr)
+                f, _, writing = self.view_call(expr, typ)
             case _:
                 raise MIRUnsupported(expr, "unsupported view source")
         self.types[expr] = typ
@@ -3288,49 +3261,29 @@ class _Lowering:
         # A name's own holder points at it and lends it.
         return self.place(expr)
 
-    def borrowed_expression(self, expr: th.THIRExpr, result: MIRShape) -> Fragment:
-        """A borrowed result, as the holder slot it is; `result` is the shape
-        of a holder of it."""
-        with self.argument_order(expr):
-            if isinstance(expr, th.THIRFieldAccess):
-                # A member the result reaches, borrowed in place (a record's
-                # in STORAGE form, as a storage borrow's source); never lent
-                # with more access than its path has.
-                self.reference(expr, result, expr.result_type)
-                source = self.member_source(expr, result.cls)
-                shape = source.shape_of()
-                _require(expr, shape.type == result.type and (not shape.readonly or result.readonly),
-                         "return increases access")
-                f = self.fragment()
-                # A member place: the result holder borrows it.
-                f.value = MIRValue(f.lend(source, result), loc=expr.loc)
-                return f
-            return self._borrowed_expression(expr, result)
-
-    def _borrowed_expression(self, expr: th.THIRExpr, result: MIRShape) -> Fragment:
-        _require(expr, expr.form is (th.Form.VALUE if _user_call(expr) else th.Form.BORROW),
-                 "unsupported borrowed expression form")
+    def borrowed_source(self, expr: th.THIRExpr, result: MIRShape) -> Fragment:
+        """What a borrowed result of a holder of shape `result` reaches, as
+        the place it borrows in place or the holder whose referent it
+        takes; never lent with more access than its path has. A member, a
+        container element and a user call are told apart by the one
+        aggregate classification (`aggregate_place`); a tuple member, a
+        conditional (each arm through this same classification) and a
+        select arm's emplacement by their nodes; any other source needs a
+        holder's name."""
         self.reference(expr, result, expr.result_type)
         match expr:
             case th.THIRSlotEmplace():
+                _require(expr, expr.form is th.Form.BORROW, "unsupported borrowed expression form")
                 # The emplacement is the select arm itself: its storage is built where it is chosen.
                 temporary = self.select_temporary(expr, result)
                 return self.anchored(expr, self.valued(MIRValue(temporary.holder, loc=expr.loc)))
-            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
-                call = self.call(expr)
-                actual = self.call_results[expr]
-                _require(expr, actual is not None and actual.type == result.type
-                         and (not actual.readonly or result.readonly), "call result increases access")
-                # Held at the result's access, which may narrow the call's.
-                f = self.fragment()
-                f.value = MIRValue(f.lend(call, result), loc=expr.loc)
-                return f
             case th.THIRIfExpr():
+                _require(expr, expr.form is th.Form.BORROW, "unsupported borrowed expression form")
                 _plain(expr, {"cond", "then", "orelse"})
                 cond = self.expr(expr.cond)
                 _require(expr, cond.shape_of().type == BOOL, "condition requires bool")
-                then = self.anchored(expr.then, self._borrowed_expression(expr.then, result))
-                orelse = self.anchored(expr.orelse, self._borrowed_expression(expr.orelse, result))
+                then = self.anchored(expr.then, self.borrowed_source(expr.then, result))
+                orelse = self.anchored(expr.orelse, self.borrowed_source(expr.orelse, result))
                 f = self.fragment()
                 condition = f.splice(cond)
                 dest = f.slot(result)
@@ -3339,18 +3292,48 @@ class _Lowering:
                 for block, arm in ((yes, then), (no, orelse)):
                     f.current = block
                     loc = arm.value.loc
-                    f.write(dest, MIRAlias(f.splice(arm)), loc)
+                    f.write(dest, MIRAlias(f.lend(arm, result)), loc)
                     f.end(MIRGoto(join.id, loc))
                 f.current = join
                 f.value = MIRValue(dest, loc=expr.loc)
                 return f
-            case _:
-                # A name: its holder's referent, as an alias's name source.
-                name = self.reference_name(expr)
-                source = self.bound(name)
-                _require(expr, source.cls is result.cls, "borrowed source needs a holder")
-                _require(expr, not source.readonly or result.readonly, "return increases access")
-                return self.valued(MIRValue(self.slot_of(name), loc=expr.loc))
+            case th.THIRSubscript() if expr.tuple_index is not None:
+                # A tuple's pointer member, captured: the place it points at.
+                member, place = self.projection(expr, capture=True)
+                _require(expr, member.cls is result.cls and member.type == result.type,
+                         "storage borrow type mismatch")
+                _require(expr, not member.readonly or result.readonly, "alias increases access")
+                at = place.value.value
+                place.value = MIRValue(MIRPlace(at.root, (*at.projections, MIRDeref())), loc=place.value.loc)
+                return place
+        found = self.aggregate_place(expr)
+        kind = found[0] if found is not None else None
+        if kind is _Source.CALL:
+            _require(expr, expr.form is th.Form.VALUE, "unsupported borrowed expression form")
+            call = self.call(expr)
+            actual = self.call_results[expr]
+            _require(expr, actual is not None and actual.type == result.type
+                     and (not actual.readonly or result.readonly), "call result increases access")
+            # Held at the result's access, which may narrow the call's.
+            f = self.fragment()
+            f.value = MIRValue(f.lend(call, result), loc=expr.loc)
+            return f
+        if kind in (_Source.MEMBER, _Source.ELEMENT):
+            # A member or an element, borrowed in place (a record member in
+            # STORAGE form, as a storage borrow's source).
+            _require(expr, kind is _Source.MEMBER or expr.form is th.Form.BORROW, "unsupported borrowed expression form")
+            source = self.aggregate_source(expr, result.cls)
+            shape = source.shape_of()
+            _require(expr, shape.type == result.type and (not shape.readonly or result.readonly),
+                     "return increases access")
+            return source
+        # A name: its holder's referent, as an alias's name source.
+        _require(expr, expr.form is th.Form.BORROW, "unsupported borrowed expression form")
+        name = self.reference_name(expr)
+        source = self.bound(name)
+        _require(expr, source.cls is result.cls, "borrowed source needs a holder")
+        _require(expr, not source.readonly or result.readonly, "return increases access")
+        return self.valued(MIRValue(self.slot_of(name), loc=expr.loc))
 
     def laid_out(self, node: object, typ: TpyType, *, holder: object = None, others: tuple[str, ...] = (),
                  allow_owned: bool = False) -> MIRShape | None:
@@ -4542,11 +4525,10 @@ class _Lowering:
             _require(stmt, not value.shape_of().readonly or result.readonly, "return increases access")
             return self.holder_return(f, _loan(result), value, loc)
         if result is not None:
-            value = f.splice(self.borrowed_expression(stmt.value, _loan(result)))
+            shape = _loan(result)
+            value = self.full_expression(stmt.value, check=lambda: self.borrowed_source(stmt.value, shape).view(shape))
             # The return a borrow operation is published under.
-            f.borrow_operation(stmt)
-            f.end(MIRReturn(value, loc))
-            return f
+            return self.holder_return(f, shape, value, loc, stmt)
         moved: list[MIRSlotId | None] = [None]
         if (typ := self.owned_aggregate_result) is not None:
             value = self.full_expression(stmt.value, check=lambda: self.owned_aggregate_source(stmt.value, typ, moved))
@@ -4560,12 +4542,17 @@ class _Lowering:
         f.end(MIRReturn(f.full_expression_value(value), loc))
         return f
 
-    def holder_return(self, f: Fragment, shape: MIRShape, value: Fragment, loc: object) -> Fragment:
-        """A returned view or container view, written into a result holder
-        that outlives the full expression, whose temporaries it must not reach."""
+    def holder_return(self, f: Fragment, shape: MIRShape, value: Fragment, loc: object,
+                      operation: object = None) -> Fragment:
+        """A returned view, container view or borrowed aggregate, written
+        into a result holder that outlives the full expression, whose
+        temporaries it must not reach; `operation` is the borrow operation
+        the return is published under."""
         holder = f.slot(shape)
         with f.full_expression(value):
             f.write(holder, f.splice(value), loc)
+        if operation is not None:
+            f.borrow_operation(operation)
         f.end(MIRReturn(holder, loc))
         return f
 

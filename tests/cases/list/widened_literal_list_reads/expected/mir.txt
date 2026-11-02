@@ -22,7 +22,7 @@ main::seeded_local@168:0: uncovered (container element type mismatch), summary: 
 main::typed_seeded@178:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::generic_call@191:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::typed_slots@207:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
-main::select_operands@229:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::select_operands@229:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::raise_arg@284:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen@294:0: uncovered (loop across a suspension)
 main::gen_lists@303:0: uncovered (unsupported hoisted value)

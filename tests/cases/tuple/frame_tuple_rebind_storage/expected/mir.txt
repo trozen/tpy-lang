@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::make_mixed@100:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_owned@104:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_pair@108:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::first@112:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::first@112:0: certified, summary: known
 main::mkbox@116:0: uncovered (async body)
 main::read@120:0: covered (storage: no_proof_required), summary: known
 main::bump_later@125:0: uncovered (async body)

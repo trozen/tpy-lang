@@ -2,8 +2,8 @@ main::__tpy_init: uncovered (module initialization)
 main::new_list@70:0: covered (storage: no_proof_required), summary: known
 main::new_set@74:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::free_function@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::receivers@106:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
-main::ro_reader@138:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::receivers@106:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::ro_reader@138:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::ro_records@147:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::walk@181:0: uncovered (unsupported parameter type)
 main::with_closure@187:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -11,13 +11,13 @@ main::main@194:0: uncovered (call needs finalized known summary), summary: opaqu
 main::DefaultDict.__getitem__@18:4: uncovered (generic body)
 main::DefaultDict.__setitem__@23:4: uncovered (generic body)
 main::DefaultDict.__len__@26:4: uncovered (generic body)
-main::Rows.__getitem__@36:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
-main::Rows.__getitem__@36:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Rows.__getitem__@36:4: covered (storage: no_proof_required), summary: known
+main::Rows.__getitem__@36:4#2: covered (storage: no_proof_required), summary: known
 main::Box.add@46:4: uncovered (generic body)
 main::Box.__getitem__@49:4: uncovered (generic body)
 main::Box.__getitem__@49:4#2: uncovered (generic body)
-main::Pts.__getitem__@66:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
-main::Pts.__getitem__@66:4#2: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Pts.__getitem__@66:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Pts.__getitem__@66:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Grouper.add@160:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::Grouper.size@163:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::Holder.first@174:4: uncovered (generic body)

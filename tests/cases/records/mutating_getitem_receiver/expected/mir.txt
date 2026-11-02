@@ -26,7 +26,7 @@ main::Counts.__contains__@23:4: uncovered (unsupported expression), summary: opa
 main::Counts.peek_self@27:4: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
 main::DefaultDict.__getitem__@41:4: uncovered (generic body)
 main::Slots.__getitem__@62:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::PtRows.__getitem__@77:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::PtRows.__getitem__@77:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Plain.__getitem__@89:4: covered (storage: no_proof_required), summary: known
 main::Tally.__getitem__@100:4: covered (storage: no_proof_required), summary: known
 main::Two.__getitem__@115:4: uncovered (no body to lower)

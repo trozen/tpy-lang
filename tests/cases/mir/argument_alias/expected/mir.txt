@@ -32,7 +32,7 @@ main::negative_index@222:0: covered (storage: no_proof_required), conflicts: arg
 main::unspelled@241:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::renamed@246:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::line_copy@251:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::pick@263:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: replacement, alias_obligation, summary: known
+main::pick@263:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
 main::caller@270:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::put@284:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::put_int@289:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known

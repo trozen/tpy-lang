@@ -26,7 +26,12 @@ from .testutil import (
     tuple_shape, union_shape, prepared,
 )
 from ..thir.scalar_leaves import MIRClass
-from .reach import reaches
+from .reach import MIRStorageEventKind, reaches, storage_events
+from .collect import call_definitions
+from .testutil import compiled_definitions, workspace_functions
+from ..compilation_context import activate_compiler
+from ..mir_workspace import analyze_call_workspace
+from ..thir.testutil import _compile, _entry
 
 
 B = MIRBodyId("retention", "loop")
@@ -528,3 +533,105 @@ def test_an_elements_step_may_reach_one_element_under_one_origin() -> None:
     # Under another origin the two are not one object.
     elsewhere = MIRReferent(MIRPlace(other, (MIRDeref(), MIRContainerElements())), external=True)
     assert not _one_object(MIRRetentionConflict(MIRPoint(A, 0), written, MIRPlace(other), elsewhere, obligation))
+
+
+OWN_WRITE_SOURCE = '''
+from tpy import int32
+
+
+class P:
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+
+class G:
+    items: list[P]
+
+    def __init__(self) -> None:
+        self.items = [P(1), P(2)]
+
+    def first(self) -> P:
+        return self.items[0]
+
+    def push_first(self) -> P:
+        self.items.append(P(0))
+        return self.items[0]
+
+
+def rebind(g: G) -> int32:
+    a = g.first()
+    a = g.push_first()
+    return a.x
+
+
+def rebind_other(g: G) -> int32:
+    b = g.first()
+    a = g.push_first()
+    return b.x + a.x
+'''
+
+
+@pytest.fixture(scope="module")
+def own_write_bodies():
+    compiler, modules = _compile(OWN_WRITE_SOURCE)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+    bodies = {key.declaration.split("@", 1)[0]: body for key, body in workspace_functions(workspace).items()}
+    for name in ("rebind", "rebind_other"):
+        assert isinstance(bodies[name], MIRFunction), bodies[name]
+    return compiler, bodies
+
+
+def _growing_call(fn: MIRFunction) -> tuple[MIRPoint, MIRAssign]:
+    return next((MIRPoint(block.id, i), stmt) for block in fn.blocks for i, stmt in enumerate(block.statements)
+                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                and stmt.value.summary.callee.identity.name == "push_first")
+
+
+def test_a_calls_writes_rebind_only_the_slot_its_result_binds(own_write_bodies) -> None:
+    # `a = g.push_first()`: the call's writes precede the borrow it returns,
+    # so its call-write events rebind the slot the result is bound to (a
+    # temporary `a` then aliases), which holds nothing they replace.
+    compiler, bodies = own_write_bodies
+    # The analyses read the TypeDefs of the compilation that lowered the bodies.
+    with activate_compiler(compiler):
+        _rebinds_only_the_result(bodies)
+
+
+def _rebinds_only_the_result(bodies: dict[str, MIRFunction]) -> None:
+    rebind = bodies["rebind"]
+    point, call = _growing_call(rebind)
+    slots = {slot.id: slot for slot in rebind.slots}
+    present = prepared(rebind).presence.calls[point]
+    events = [e for e in storage_events(call, present.writes, slots) if e.kind is MIRStorageEventKind.CALL_WRITE]
+    assert events and all(e.rebind_owner == call.target.root for e in events)
+    assert not analyze(rebind).conflicts
+    # A holder of the earlier call is no slot the call binds: it conflicts.
+    other = analyze(bodies["rebind_other"]).conflicts
+    assert other and {c.point for c in other} == {_growing_call(bodies["rebind_other"])[0]}
+
+
+def test_an_old_referent_of_the_result_slot_conflicts_where_the_call_does_not_bind_it(own_write_bodies) -> None:
+    # `a = g.push_first()` lowers as the call into a temporary, then `a`
+    # aliasing it. Without that rebinding `a` keeps the element of the
+    # first call across the growing call: only the slot the call binds is
+    # exempt, never a holder whose old referent stays live.
+    compiler, bodies = own_write_bodies
+    rebind = bodies["rebind"]
+    point, call = _growing_call(rebind)
+    block = next(b for b in rebind.blocks if b.id == point.block)
+    rebinding = block.statements[point.index + 1]
+    assert isinstance(rebinding, MIRAssign) and rebinding.value == MIRAlias(call.target.root)
+    kept = rebinding.target.root
+    statements = block.statements[:point.index + 1] + block.statements[point.index + 2:]
+    unbound = replace(rebind, blocks=tuple(replace(b, statements=statements) if b.id == point.block else b
+                                           for b in rebind.blocks))
+    with activate_compiler(compiler):
+        conflicts = analyze(unbound).conflicts
+    assert conflicts and {c.holder.root for c in conflicts} == {kept}
+    assert {c.point for c in conflicts} == {point}

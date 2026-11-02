@@ -90,7 +90,7 @@ main::Props.rec@239:4: covered (storage: not_covered: borrow evidence: demanded 
 main::Props.rec@239:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
 main::Props.rec_m@243:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
 main::Props.index@248:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::Grid.__getitem__@262:4: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::Grid.__getitem__@262:4: covered (storage: no_proof_required), summary: known
 main::Token.use@321:4: uncovered (missing receiver fact)
 main::Shelf.get@366:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Reader.__add__@381:4: covered (storage: no_proof_required)

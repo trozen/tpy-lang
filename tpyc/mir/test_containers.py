@@ -830,7 +830,7 @@ def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None
     # The view holds the dict's region, typed by its own declared member (the
     # key); its cursor walks the keys, viewed by the loop variable.
     assert "%3: dict_keys[str, int32] readonly-ref element=str:owned_leaf:readonly temporary" in lines
-    assert "%3 = call stub builtins.dict.keys[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
+    assert "%3 = call stub builtins.dict.keys[dict[str, int32]](%0) [pure, reader, returns={param0[elements]}, may-raise]" in lines
     assert "%4: dict_keys[str, int32] native-iterator readonly element=str:owned_leaf:readonly temporary" in lines
     assert "%4 = iterator-init %3" in lines and "%6 = iterator-read %4" in lines
     lines = _lines(_fn(fresh, "values_total"))
@@ -840,7 +840,7 @@ def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None
 
 def test_a_pure_stub_reads_a_dict_view_whole(active) -> None:
     lines = _lines(_fn(active, "values_len"))
-    assert "%1 = call stub builtins.dict.values[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
+    assert "%1 = call stub builtins.dict.values[dict[str, int32]](%0) [pure, reader, returns={param0[elements]}, may-raise]" in lines
     assert "%2 = call stub tpy._builtins._funcs.len[Sized](%1) [pure, reader, may-raise]" in lines
 
 
@@ -965,7 +965,7 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
         assert ("%0: dict[str, int32] readonly-ref element=str:owned_leaf:readonly "
                 "value=int32:leaf:readonly parameter d") in lines, name
         assert any(line.startswith("%1 = call stub builtins.dict.values[dict[str, int32]](%0) "
-                                   "[pure, reader, returns={param0}, may-raise]") for line in lines), name
+                                   "[pure, reader, returns={param0[elements]}, may-raise]") for line in lines), name
     # The const-inferred receiver reaches the @auto_readonly mutable clone: a
     # pure stub binding its receiver mutably, which reads the readonly holder.
     assert any(line.startswith("%1: dict_values[str, int32] readonly-ref") for line in dumps["inferred_values"])

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@13:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::first@20:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@13:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::first@20:0: certified, summary: known
 main::drop@24:0: covered (storage: no_proof_required), summary: known
 main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

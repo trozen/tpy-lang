@@ -552,17 +552,18 @@ def test_the_contract_records_a_walk_of_every_path_with_a_field(program: _Progra
 
 
 def _checked_walks(program: _Program, summary) -> dict:
-    """The walks `summary_problem` records for `summary`, asserted to be
-    exactly the summary's paths with a field, of every kind."""
+    """The walks `summary_problem` records for `summary` by end and path,
+    asserted to be exactly the summary's paths with a field, of every kind
+    (a return's walk apart from the others')."""
     walks: dict = {}
     assert summary_problem(summary, program.definitions.layouts, walks) is None
-    paths = {(w.parameter, w.path) for w in summary.writes}
-    paths |= {(r.parameter, r.path) for r in summary.returns}
-    paths |= {(t.holder, t.path) for t in summary.transfers}
-    paths |= {(t.source, t.source_path) for t in summary.transfers if t.source_path}
-    paths |= {(o.parameter, o.path) for o in summary.obligations}
-    assert set(walks) == {(end, path) for end, path in paths if path}
-    return walks
+    paths = {(w.parameter, w.path, False) for w in summary.writes}
+    paths |= {(r.parameter, r.path, True) for r in summary.returns}
+    paths |= {(t.holder, t.path, False) for t in summary.transfers}
+    paths |= {(t.source, t.source_path, False) for t in summary.transfers if t.source_path}
+    paths |= {(o.parameter, o.path, False) for o in summary.obligations}
+    assert set(walks) == {key for key in paths if key[1]}
+    return {(end, path): walked for (end, path, _), walked in walks.items()}
 
 
 def _retyped_field(layouts: MIRRecords, field: MIRField, typ) -> tuple[MIRField, MIRRecords]:
