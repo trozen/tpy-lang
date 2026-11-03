@@ -1,0 +1,12 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@49:0: uncovered (unsupported parameter type)
+main::make@55:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@60:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::H.get@22:4: uncovered (generic body)
+main::User.touch@43:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@19:4: uncovered (generic constructor)
+main::S.__init__@30:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Owner.__init__@37:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+objs::__tpy_init: uncovered (module initialization)
+objs::Ext.__init__@4:4: covered (storage: no_proof_required), summary: known

@@ -1,0 +1,11 @@
+inferred 7
+spelled 9
+readonly 7
+readonly_scalar True
+cross_module 4
+box 11
+field 12
+method 30
+generator 12
+returned 13
+spelled_field 14

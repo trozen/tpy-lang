@@ -2946,8 +2946,9 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     resolver's. The resolver recurses args via `type_to_cpp`, lowering via each
     arg's own `to_cpp()`; the two coincide on this slice -- a raw INT type param, an
     eligible value scalar, a (recursively) F1-renderable record, and the arms
-    below: str/container/None, spelling-equal enums, element-wise-admitted
-    tuples, and alias-registered unions. The genuinely divergent leftovers
+    below: str/container/None, value-slot pointers over an in-slice pointee,
+    spelling-equal enums, element-wise-admitted tuples, and alias-registered
+    unions. The genuinely divergent leftovers
     reject the outer generic: PendingView args (`to_cpp()` raises),
     LOCAL plain union aliases (registered mid-emission AFTER lowering), and
     resolver-only-qualified @dynamic-protocol / enum spellings. A
@@ -2988,6 +2989,14 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         # resolves to the default double under both.
         if isinstance(u, (NoneType, FloatLiteralType)):
             return True
+        # Ptr arg (`H[Ptr[A]]` -> `H<A*>`) renders as `<pointee>*`, so it is
+        # in this slice only when THIR takes the pointer as a value and the
+        # pointee is itself in the slice (`Ptr[list[Fn[...]]]` has no C++
+        # spelling). A record pointee's own type args are not checked here,
+        # as for a bare record arg (BUGS.md#nested-type-arg-unrenderable-ice).
+        if isinstance(u, PtrType):
+            return (_eligible_ptr_value(u, analyzer)
+                    and _f1_record_type_arg_ok(u.inner_pointee, analyzer))
         # Enum arg (`Box[Color]`): the resolver spells via `enum_cpp_name`,
         # THIR via `to_cpp()`'s native-name lookup; both maps are populated
         # before lowering, so admit exactly the measured-equal slice. A bare
