@@ -647,7 +647,7 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
 from .convert import (Effect, Refuse, _existing_object, _lendable, as_base,
-                      convert, landing, spelled)
+                      convert, held_object_type, landing, spelled)
 
 
 # The coercion tag of a literal pinned at its overload's slot
@@ -15918,19 +15918,6 @@ def _empty_container_rvalue(a: TpyExpr, node: THIRExpr) -> bool:
     return _constructs_type(a) and not a.args and not a.kwargs
 
 
-def _fresh_held_type(a: TpyExpr, slot_t: TpyType, lc: '_LowerCtx') -> TpyType:
-    """The type a held fresh argument is declared at: its own record type
-    (a subclass binds the base slot), else the slot's."""
-    at = lc.analyzer.get_expr_type(_peel_coerce(a))
-    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    if (isinstance(at, NominalType) and at != slot_t
-            and record_like(at, lc.analyzer)
-            and lc.analyzer.registry.is_subclass_of(at, slot_t)):
-        return at
-    return slot_t
-
-
 def _reference_arg_form(a: TpyExpr, slot: Slot, ptype: TpyType,
                         lc: '_LowerCtx', declared: dict[str, TpyType], *,
                         temps: bool) -> 'THIRExpr | None':
@@ -16192,7 +16179,8 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                                  const=slot.const, record_t=slot.type)):
         # A fresh object this position holds in statement storage rather
         # than binding it in place: it outlives a callee that lends it back.
-        t = _fresh_held_type(a, slot.type, lc)
+        t = (plan.storage_request.type if plan.storage_request is not None
+             else held_object_type(read, slot.type, lc.analyzer))
         _witness("argtemp.arg_hold")
         return _hoisted(THIRArgTemp(result_type=t, cpp_type=lc.render_type(t),
                                     init=expr, form=Form.BORROW,
@@ -16230,10 +16218,15 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
             # A union built from its member is no object a callee binds.
             and not isinstance(request.type, UnionType)
             and (_names_reference(_peel_coerce(a), lc)
-                 or contract.declared_only)):
+                 or (contract.declared_only
+                     and (read.source.temporary is False
+                          or not contract.signature_only)))):
         # A call handing back a reference is the object it names, and a
         # callee with no analyzed body declares its own signature, which
-        # binds what it is handed: the parameter takes it in place.
+        # binds what it is handed: the parameter takes it in place. A
+        # protocol method's signature is the TPy one, whose mutable
+        # reference binds no temporary: it takes the storage held for the
+        # call.
         return expr
     if not temps:
         # No statement here hosts the storage: the call's form refuses it.

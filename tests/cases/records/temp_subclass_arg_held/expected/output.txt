@@ -1,0 +1,27 @@
+method chrome1
+kwarg chrome1
+ctor chrome1
+nested_ctor chrome1+chrome1
+nested_call <chrome1>
+gen ['chrome1', 'frame chrome1']
+async chrome1
+comp ['chrome1', 'chrome1']
+with chrome1
+try chrome1
+call_result chrome1
+gen_method ['chrome1']
+generic chrome1
+dyn_receiver chrome1
+structural_receiver chrome1
+list_literal 3
+copy chrome1 0
+free chrome1
+static chrome1
+optional chrome1
+union chrome1
+protocol chrome
+readonly chrome
+const_method chrome
+const_free chrome
+box chrome
+module chrome1

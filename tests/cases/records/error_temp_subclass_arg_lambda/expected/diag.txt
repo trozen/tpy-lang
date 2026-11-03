@@ -1,0 +1,2 @@
+main.py:41: warning: lambda at line 41 copies the object 't' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:41: error: in function 'main': this construct is not yet supported by C++ code generation (expr.lambda:lambda.body:expr.method_call:method.arg_shape)

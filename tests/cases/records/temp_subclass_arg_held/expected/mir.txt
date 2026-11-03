@@ -1,0 +1,36 @@
+main::__tpy_init: uncovered (module initialization)
+main::use@50:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::wrap@135:0: covered (storage: no_proof_required), summary: known
+main::make@139:0: covered (storage: no_proof_required), summary: known
+main::gen@143:0: uncovered (argument held across a suspension)
+main::coro@151:0: uncovered (async body)
+main::dyn_call@157:0: uncovered (unsupported parameter type)
+main::s_call@162:0: uncovered (unsupported parameter type)
+main::fill_call@167:0: uncovered (unsupported parameter type)
+main::opt_free@172:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::union_free@176:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::proto_free@182:0: uncovered (unsupported parameter type)
+main::peek_free@186:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::box_free@190:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@194:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Mat.tag@28:4: covered (storage: no_proof_required)
+main::Mat.hit@33:4: uncovered (unsupported owned-leaf expression)
+main::Chrome.tag@40:4: covered (storage: no_proof_required)
+main::Tracer.run@58:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Tracer.gen_m@61:4: uncovered (call needs finalized known summary)
+main::Tracer.peek@64:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tracer.ro@67:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Tracer.st@71:4: uncovered (call needs finalized known summary)
+main::Tracer.__enter__@74:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Tracer.__exit__@77:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Reader.run@99:4: uncovered (generic body)
+main::DynTracer.run@113:4: uncovered (call needs finalized known summary)
+main::LFill.fill@130:4: uncovered (unsupported owned-leaf expression type)
+main::Mat.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Tracer.__init__@55:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@84:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Pair.__init__@91:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Reader.__init__@96:4: uncovered (generic constructor)
+main::DynTracer.__init__@110:4: covered (storage: no_proof_required), summary: known
+main::LFill.__init__@127:4: covered (storage: no_proof_required), summary: known

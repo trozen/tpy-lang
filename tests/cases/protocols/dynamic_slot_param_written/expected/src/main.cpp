@@ -78,9 +78,7 @@ __gen_gen gen(Mat& m, Ray& ray) {
 //     print("readonly_slot", peek_of(Mat(1.0), r))
 //     print("plain", plain_of(Plain(), r))
 //     t = Tracer()
-//     # a named local: a temporary here is sliced (BUGS.md#method-temp-subclass-arg-sliced)
-//     ch = Chrome(1.0)
-//     print("method", t.run(ch), t.ray.d)
+//     print("method", t.run(Chrome(1.0)), t.ray.d)
 //     for v in gen(Chrome(1.0), r):
 //         print("generator", v, r.d)
 //     # closure body, the argument an element
@@ -116,11 +114,11 @@ void main() {
     Plain __tmp_9 = Plain();
     std::cout << "plain" << " " << ::tpy::print_float(::tpyapp::main::plain_of(__tmp_9, r)) << "\n" << ::tpy::check_signals;
     Tracer t = Tracer();
-    Chrome ch = Chrome(1.0);
-    std::cout << "method" << " " << ::tpy::print_float(t.run(ch)) << " " << ::tpy::print_float(t.ray.d) << "\n" << ::tpy::check_signals;
+    Chrome __tmp_10 = Chrome(1.0);
+    std::cout << "method" << " " << ::tpy::print_float(t.run(__tmp_10)) << " " << ::tpy::print_float(t.ray.d) << "\n" << ::tpy::check_signals;
     {
-        Chrome __tmp_10 = Chrome(1.0);
-        auto __src_0 = ::tpyapp::main::gen(__tmp_10, r);
+        Chrome __tmp_11 = Chrome(1.0);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_11, r);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -131,8 +129,8 @@ void main() {
     }
     std::array<Ray, 2> rays = {Ray(5.0), Ray(6.0)};
     auto inner = [&rays]() -> double {
-        Chrome __tmp_11 = Chrome(1.0);
-        return ::tpyapp::main::trace(__tmp_11, ::tpy::__getitem__(rays, 0));
+        Chrome __tmp_12 = Chrome(1.0);
+        return ::tpyapp::main::trace(__tmp_12, ::tpy::__getitem__(rays, 0));
     };
     std::cout << "closure" << " " << ::tpy::print_float(inner()) << " " << ::tpy::print_float(::tpy::__getitem__(rays, 0).d) << "\n" << ::tpy::check_signals;
     std::cout << "comp" << " " << ::tpy::ListPrinter(({
@@ -143,8 +141,8 @@ void main() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& x = *__beg_2;
-            Chrome __tmp_12 = Chrome(1.0);
-            __result.push_back(::tpyapp::main::trace(__tmp_12, x));
+            Chrome __tmp_13 = Chrome(1.0);
+            __result.push_back(::tpyapp::main::trace(__tmp_13, x));
         }
         std::move(__result);
     })) << " " << ::tpy::print_float(::tpy::__getitem__(rays, 1).d) << "\n" << ::tpy::check_signals;

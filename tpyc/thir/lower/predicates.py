@@ -9682,8 +9682,7 @@ def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
 
 def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                              analyzer, *,
-                             frame_capturing: bool = False,
-                             upcast_ok: bool = False) -> 'NominalType | None':
+                             frame_capturing: bool = False) -> 'NominalType | None':
     """The one-object rvalue arg-temp row (the free-call `is_ref_param() +
     is_temporary_expr` cascade arm): a record or container RVALUE -- a ctor
     `A(7)` or a by-value call `make(7)` -- into a SAME-nominal reference
@@ -9692,13 +9691,8 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     alike (the hoist is mutation-blind). A readonly (`readonly[A]`) slot
     hoists only for a frame-capturing callee (`frame_capturing`) -- a sync
     callee binds the rvalue inline on the const ref (statement lifetime).
-    A SUBCLASS-typed rvalue declares the CHILD's type (`Dog __tmp_1
-    = Dog();` into a `const Animal&` slot -- the `temps.create(arg_type,
-    ..)` upcast temp; C++'s implicit derived-to-base binding does the
-    rest), so the CHILD type is returned -- but ONLY on the FREE-call row
-    (`upcast_ok`): the ctor mutated-slot row spells the SLOT type instead
-    (`Base __tmp_1 = Child();`), so the ctor consumers keep the
-    same-nominal slice. A borrow-returning call is not an rvalue source (it
+    A subclass-typed rvalue is not this row's: the argument conversion holds
+    it at its own type (`held_object_type`). A borrow-returning call is not an rvalue source (it
     binds or copies without this temp) and rejects. Shared by the local
     slot classifier and `_lower_call_arg`; recursive lowering validates the
     source call's arguments."""
@@ -9723,14 +9717,7 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # stamped a fresh value): a sync callee binds it in place
         # (`record_borrow_call`), and only a sink that holds it copies.
         return None
-    at = analyzer.get_expr_type(a)
-    if at == pt:
-        return pt
-    if (upcast_ok
-            and isinstance(at, NominalType) and record_like(at, analyzer)
-            and analyzer.registry.is_subclass_of(at, pt)):
-        return at
-    return None
+    return pt if analyzer.get_expr_type(a) == pt else None
 
 def _strview_coerce_name(a: TpyExpr) -> 'TpyName | None':
     """The `strview_to_str` coerce over a bare NAME, peeled -- the SHAPE

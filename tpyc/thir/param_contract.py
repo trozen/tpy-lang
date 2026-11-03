@@ -30,6 +30,9 @@ the argument or the call's kind:
   instantiation's own storage, not a borrow pointer at it.
 - declared_only: the callee's signature is declared rather than inferred
   from an analyzed body, so a reference parameter binds what it is handed.
+- signature_only: no def stands behind the declared signature (a protocol
+  method's call info): it is the TPy one, whose mutable reference binds no
+  temporary.
 - written: the callee writes through the parameter.
 """
 
@@ -44,6 +47,7 @@ from ..typesys import (
     CONST_PARAMS_METHODS, FunctionInfo, PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
     TpyType, TypeParamRef, contains_type_param, is_bodyless_binding, is_dyn_protocol,
     is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
+    signature_only,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..value_category import (ValueCategoryAnalyzer, frame_factory_callee,
@@ -94,6 +98,7 @@ class ParamContract:
     adapts: Adapts | None
     instantiation_storage: bool = False
     declared_only: bool = False
+    signature_only: bool = False
     written: bool = False
 
 
@@ -385,6 +390,7 @@ def param_contract(fi: FunctionInfo | None, index: int, ptype: TpyType | None, *
         adapts=adapts(ptype),
         instantiation_storage=instantiation_storage(fi, index),
         declared_only=declared_only(fi),
+        signature_only=fi is not None and signature_only(fi),
         written=writes)
 
 

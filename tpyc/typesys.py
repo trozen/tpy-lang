@@ -9128,6 +9128,14 @@ def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:
     return not declares_no_writes(fi)
 
 
+def signature_only(fi: 'FunctionInfo') -> bool:
+    """A signature with no def behind it (a protocol method's call info):
+    no binding's own C++ spelling stands behind its parameters."""
+    root = fi.root
+    return (root.body is None and root.declaration is None
+            and not root.is_callable_value)
+
+
 def declares_no_writes(fi: 'FunctionInfo') -> bool:
     """Whether a call to `fi` writes nothing BY DECLARATION: a callee with no
     body sema analyzes, marked `@readonly` or `@pure`, where the
@@ -9138,9 +9146,7 @@ def declares_no_writes(fi: 'FunctionInfo') -> bool:
     its implementation's -- answers through them instead: a bodied
     callee's `is_readonly` speaks for its receiver only."""
     root = fi.root
-    signature_only = (root.body is None and root.declaration is None
-                      and not root.is_callable_value)
-    return ((root.special_handling or signature_only
+    return ((root.special_handling or signature_only(fi)
              or is_declaration_only(fi))
             and (fi.is_readonly or root.is_readonly or fi.is_pure
                  or root.is_pure)

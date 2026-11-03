@@ -139,9 +139,7 @@ def main() -> None:
     print("readonly_slot", peek_of(Mat(1.0), r))
     print("plain", plain_of(Plain(), r))
     t = Tracer()
-    # a named local: a temporary here is sliced (BUGS.md#method-temp-subclass-arg-sliced)
-    ch = Chrome(1.0)
-    print("method", t.run(ch), t.ray.d)
+    print("method", t.run(Chrome(1.0)), t.ray.d)
     for v in gen(Chrome(1.0), r):
         print("generator", v, r.d)
     # closure body, the argument an element

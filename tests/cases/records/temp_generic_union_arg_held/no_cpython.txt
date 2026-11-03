@@ -1,0 +1,3 @@
+The subject is an explicit instantiation of a generic function
+(`held[Mat | Other](...)`); CPython functions have no __class_getitem__, so
+the call raises TypeError, and no argument infers a union `T` here.

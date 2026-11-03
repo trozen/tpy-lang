@@ -127,6 +127,17 @@ class Plan:
     copied: tuple[tuple[ElemPath, TpyType], ...] = ()
 
 
+def held_object_type(expr: THIRExpr, slot_t: TpyType, types) -> TpyType:
+    """The type storage holding the argument's own object is declared at:
+    at a record slot, the object's own type before any upcast
+    (`Source.copy_type`), so a subclass held for a base parameter is not
+    sliced. Any other slot (a union, an Optional) holds a value built
+    from the argument, declared at the slot's type."""
+    own = expr.uncoerced.source.copy_type
+    return (own if own is not None
+            and _record_slice_upcast_ok(own, slot_t, types) else slot_t)
+
+
 def spelled(plan: Plan, render) -> THIRExpr:
     """The plan's expression with its copy's type spelled by the sink's
     type renderer: the conversion decides the copy, the sink knows how its
@@ -1512,7 +1523,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             # by mutable reference, which binds no temporary: it is lent
             # storage held for the call.
             return Plan(expr, Effect.MATERIALIZE,
-                        storage_request=StorageRequest(st))
+                        storage_request=StorageRequest(
+                            held_object_type(expr, st, types)))
         if (not explicit_copy and under.movable and not implicit
                 and slot.construct is SlotConstruct.RETURN):
             # The frame's own value at its last use, read through a deref:
@@ -1546,7 +1558,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             if slot.const:
                 return Plan(expr, Effect.PASS)
             return Plan(expr, Effect.MATERIALIZE,
-                        storage_request=StorageRequest(st))
+                        storage_request=StorageRequest(
+                            held_object_type(expr, st, types)))
         if not _lendable(s):
             # Only storage known to outlive the statement binds: a value
             # that dies with it -- or whose lifetime nothing states --

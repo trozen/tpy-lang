@@ -112,7 +112,7 @@
  "array_i__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__mut__copy_call__static": [
   "ok",
@@ -192,7 +192,7 @@
  "array_i__mut__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[Array]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){container_literal[Array]([lit(3), lit(4)])}])"
  ],
  "array_i__mut__literal__static": [
   "ok",
@@ -472,7 +472,7 @@
  "array_i__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__mut__own_call__static": [
   "ok",
@@ -552,7 +552,7 @@
  "array_i__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__mut__prop_own__static": [
   "ok",
@@ -672,7 +672,7 @@
  "array_i__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk_b, [])._v [storage]}])"
  ],
  "array_i__mut__temp_field__static": [
   "ok",
@@ -712,7 +712,7 @@
  "array_i__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "array_i__mut__ternary_calls__static": [
   "ok",
@@ -832,7 +832,7 @@
  "array_i__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ro__copy_call__static": [
   "ok",
@@ -912,7 +912,7 @@
  "array_i__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[Array]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){container_literal[Array]([lit(3), lit(4)])}])"
  ],
  "array_i__ro__literal__static": [
   "ok",
@@ -1192,7 +1192,7 @@
  "array_i__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__ro__own_call__static": [
   "ok",
@@ -1272,7 +1272,7 @@
  "array_i__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__ro__prop_own__static": [
   "ok",
@@ -1392,7 +1392,7 @@
  "array_i__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk_b, [])._v [storage]}])"
  ],
  "array_i__ro__temp_field__static": [
   "ok",
@@ -1432,7 +1432,7 @@
  "array_i__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::array<int32_t, 2>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "array_i__ro__ternary_calls__static": [
   "ok",
@@ -2472,7 +2472,7 @@
  "bytearray__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ByteArray({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__mut__copy_call__static": [
   "ok",
@@ -2512,7 +2512,7 @@
  "bytearray__mut__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__mut__ctor_rvalue__static": [
   "ok",
@@ -2632,7 +2632,7 @@
  "bytearray__mut__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(bytearray [template '::tpy::ByteArray()'], [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__mut__empty_literal__static": [
   "ok",
@@ -2992,7 +2992,7 @@
  "bytearray__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__mut__own_call__static": [
   "ok",
@@ -3072,7 +3072,7 @@
  "bytearray__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__mut__prop_own__static": [
   "ok",
@@ -3152,7 +3152,7 @@
  "bytearray__mut__slice_expr__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [form_convert[storage](%s0[lit(0):lit(1)])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){form_convert[storage](%s0[lit(0):lit(1)])}])"
  ],
  "bytearray__mut__slice_expr__static": [
   "ok",
@@ -3272,7 +3272,7 @@
  "bytearray__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(mk_b, [])._v [storage]}])"
  ],
  "bytearray__mut__temp_field__static": [
   "ok",
@@ -3312,7 +3312,7 @@
  "bytearray__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "bytearray__mut__ternary_calls__static": [
   "ok",
@@ -3472,7 +3472,7 @@
  "bytearray__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ByteArray({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ro__copy_call__static": [
   "ok",
@@ -3512,7 +3512,7 @@
  "bytearray__ro__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__ro__ctor_rvalue__static": [
   "ok",
@@ -3632,7 +3632,7 @@
  "bytearray__ro__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(bytearray [template '::tpy::ByteArray()'], [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__ro__empty_literal__static": [
   "ok",
@@ -3992,7 +3992,7 @@
  "bytearray__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__ro__own_call__static": [
   "ok",
@@ -4072,7 +4072,7 @@
  "bytearray__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__ro__prop_own__static": [
   "ok",
@@ -4152,7 +4152,7 @@
  "bytearray__ro__slice_expr__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [form_convert[storage](%s0[lit(0):lit(1)])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){form_convert[storage](%s0[lit(0):lit(1)])}])"
  ],
  "bytearray__ro__slice_expr__static": [
   "ok",
@@ -4272,7 +4272,7 @@
  "bytearray__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){call(mk_b, [])._v [storage]}])"
  ],
  "bytearray__ro__temp_field__static": [
   "ok",
@@ -4312,7 +4312,7 @@
  "bytearray__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ByteArray){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "bytearray__ro__ternary_calls__static": [
   "ok",
@@ -6032,7 +6032,7 @@
  "deref_list__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[DL](%s0)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__mut__copy_call__static": [
   "ok",
@@ -6072,7 +6072,7 @@
  "deref_list__mut__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(DL, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){ctor(DL, [])}])"
  ],
  "deref_list__mut__ctor_rvalue__static": [
   "ok",
@@ -6512,7 +6512,7 @@
  "deref_list__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){call(mk, [])}])"
  ],
  "deref_list__mut__own_call__static": [
   "ok",
@@ -6592,7 +6592,7 @@
  "deref_list__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__mut__prop_own__static": [
   "ok",
@@ -6752,7 +6752,7 @@
  "deref_list__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){call(mk_b, [])._v [storage]}])"
  ],
  "deref_list__mut__temp_field__static": [
   "ok",
@@ -6952,7 +6952,7 @@
  "deref_list__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[DL](%s0)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__ro__copy_call__static": [
   "ok",
@@ -6992,7 +6992,7 @@
  "deref_list__ro__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(DL, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){ctor(DL, [])}])"
  ],
  "deref_list__ro__ctor_rvalue__static": [
   "ok",
@@ -7432,7 +7432,7 @@
  "deref_list__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){call(mk, [])}])"
  ],
  "deref_list__ro__own_call__static": [
   "ok",
@@ -7512,7 +7512,7 @@
  "deref_list__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__ro__prop_own__static": [
   "ok",
@@ -7672,7 +7672,7 @@
  "deref_list__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(DL){call(mk_b, [])._v [storage]}])"
  ],
  "deref_list__ro__temp_field__static": [
   "ok",
@@ -7872,7 +7872,7 @@
  "deref_rec__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[DR](%s0)]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__mut__copy_call__static": [
   "ok",
@@ -7912,7 +7912,7 @@
  "deref_rec__mut__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(DR, [coerce(lit(7) -> int32)])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){ctor(DR, [coerce(lit(7) -> int32)])}])"
  ],
  "deref_rec__mut__ctor_rvalue__static": [
   "ok",
@@ -8352,7 +8352,7 @@
  "deref_rec__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){call(mk, [])}])"
  ],
  "deref_rec__mut__own_call__static": [
   "ok",
@@ -8432,7 +8432,7 @@
  "deref_rec__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__mut__prop_own__static": [
   "ok",
@@ -8592,7 +8592,7 @@
  "deref_rec__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){call(mk_b, [])._v [storage]}])"
  ],
  "deref_rec__mut__temp_field__static": [
   "ok",
@@ -8792,7 +8792,7 @@
  "deref_rec__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[DR](%s0)]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__ro__copy_call__static": [
   "ok",
@@ -8832,7 +8832,7 @@
  "deref_rec__ro__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(DR, [coerce(lit(7) -> int32)])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){ctor(DR, [coerce(lit(7) -> int32)])}])"
  ],
  "deref_rec__ro__ctor_rvalue__static": [
   "ok",
@@ -9272,7 +9272,7 @@
  "deref_rec__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){call(mk, [])}])"
  ],
  "deref_rec__ro__own_call__static": [
   "ok",
@@ -9352,7 +9352,7 @@
  "deref_rec__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__ro__prop_own__static": [
   "ok",
@@ -9512,7 +9512,7 @@
  "deref_rec__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(DR){call(mk_b, [])._v [storage]}])"
  ],
  "deref_rec__ro__temp_field__static": [
   "ok",
@@ -9712,7 +9712,7 @@
  "dict_si__mut__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: coerce(lit(1) -> int3"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array](["
  ],
  "dict_si__mut__comprehension__static": [
   "ok",
@@ -9752,7 +9752,7 @@
  "dict_si__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__mut__copy_call__static": [
   "ok",
@@ -9792,7 +9792,7 @@
  "dict_si__mut__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[dict]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]([])}])"
  ],
  "dict_si__mut__empty_literal__static": [
   "ok",
@@ -9872,7 +9872,7 @@
  "dict_si__mut__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[dict]({str('b'): lit(2)})])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]({str('b'): lit(2)})}])"
  ],
  "dict_si__mut__literal__static": [
   "ok",
@@ -10192,7 +10192,7 @@
  "dict_si__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__mut__own_call__static": [
   "ok",
@@ -10272,7 +10272,7 @@
  "dict_si__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__mut__prop_own__static": [
   "ok",
@@ -10432,7 +10432,7 @@
  "dict_si__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "dict_si__mut__temp_field__static": [
   "ok",
@@ -10472,7 +10472,7 @@
  "dict_si__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "dict_si__mut__ternary_calls__static": [
   "ok",
@@ -10632,7 +10632,7 @@
  "dict_si__ro__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: coerce(lit(1) -> int3"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array](["
  ],
  "dict_si__ro__comprehension__static": [
   "ok",
@@ -10672,7 +10672,7 @@
  "dict_si__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ro__copy_call__static": [
   "ok",
@@ -10712,7 +10712,7 @@
  "dict_si__ro__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[dict]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]([])}])"
  ],
  "dict_si__ro__empty_literal__static": [
   "ok",
@@ -10792,7 +10792,7 @@
  "dict_si__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[dict]({str('b'): lit(2)})])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]({str('b'): lit(2)})}])"
  ],
  "dict_si__ro__literal__static": [
   "ok",
@@ -11112,7 +11112,7 @@
  "dict_si__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__ro__own_call__static": [
   "ok",
@@ -11192,7 +11192,7 @@
  "dict_si__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__ro__prop_own__static": [
   "ok",
@@ -11352,7 +11352,7 @@
  "dict_si__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "dict_si__ro__temp_field__static": [
   "ok",
@@ -11392,7 +11392,7 @@
  "dict_si__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "dict_si__ro__ternary_calls__static": [
   "ok",
@@ -11552,7 +11552,7 @@
  "gen_rec__mut__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}])"
  ],
  "gen_rec__mut__ctor_rvalue__static": [
   "ok",
@@ -11912,7 +11912,7 @@
  "gen_rec__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){call(mk, [])}])"
  ],
  "gen_rec__mut__own_call__static": [
   "ok",
@@ -11992,7 +11992,7 @@
  "gen_rec__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__mut__prop_own__static": [
   "ok",
@@ -12152,7 +12152,7 @@
  "gen_rec__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){call(mk_b, [])._v [storage]}])"
  ],
  "gen_rec__mut__temp_field__static": [
   "ok",
@@ -12352,7 +12352,7 @@
  "gen_rec__ro__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}])"
  ],
  "gen_rec__ro__ctor_rvalue__static": [
   "ok",
@@ -12712,7 +12712,7 @@
  "gen_rec__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){call(mk, [])}])"
  ],
  "gen_rec__ro__own_call__static": [
   "ok",
@@ -12792,7 +12792,7 @@
  "gen_rec__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__ro__prop_own__static": [
   "ok",
@@ -12952,7 +12952,7 @@
  "gen_rec__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){call(mk_b, [])._v [storage]}])"
  ],
  "gen_rec__ro__temp_field__static": [
   "ok",
@@ -14072,7 +14072,7 @@
  "list_i__mut__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__mut__comprehension__static": [
   "ok",
@@ -14112,7 +14112,7 @@
  "list_i__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__static": [
   "ok",
@@ -14232,7 +14232,7 @@
  "list_i__mut__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([])}])"
  ],
  "list_i__mut__empty_literal__static": [
   "ok",
@@ -14312,7 +14312,7 @@
  "list_i__mut__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i__mut__literal__static": [
   "ok",
@@ -14632,7 +14632,7 @@
  "list_i__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__mut__own_call__static": [
   "ok",
@@ -14712,7 +14712,7 @@
  "list_i__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__mut__prop_own__static": [
   "ok",
@@ -14872,7 +14872,7 @@
  "list_i__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "list_i__mut__temp_field__static": [
   "ok",
@@ -14912,7 +14912,7 @@
  "list_i__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "list_i__mut__ternary_calls__static": [
   "ok",
@@ -15072,7 +15072,7 @@
  "list_i__ro__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__ro__comprehension__static": [
   "ok",
@@ -15112,7 +15112,7 @@
  "list_i__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__static": [
   "ok",
@@ -15232,7 +15232,7 @@
  "list_i__ro__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([])}])"
  ],
  "list_i__ro__empty_literal__static": [
   "ok",
@@ -15312,7 +15312,7 @@
  "list_i__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i__ro__literal__static": [
   "ok",
@@ -15632,7 +15632,7 @@
  "list_i__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__ro__own_call__static": [
   "ok",
@@ -15712,7 +15712,7 @@
  "list_i__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__ro__prop_own__static": [
   "ok",
@@ -15872,7 +15872,7 @@
  "list_i__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "list_i__ro__temp_field__static": [
   "ok",
@@ -15912,7 +15912,7 @@
  "list_i__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "list_i__ro__ternary_calls__static": [
   "ok",
@@ -19072,7 +19072,7 @@
  "list_r__mut__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__mut__comprehension__static": [
   "ok",
@@ -19112,7 +19112,7 @@
  "list_r__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__static": [
   "ok",
@@ -19232,7 +19232,7 @@
  "list_r__mut__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){container_literal[list]([])}])"
  ],
  "list_r__mut__empty_literal__static": [
   "ok",
@@ -19312,7 +19312,7 @@
  "list_r__mut__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])}])"
  ],
  "list_r__mut__literal__static": [
   "ok",
@@ -19592,7 +19592,7 @@
  "list_r__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__mut__own_call__static": [
   "ok",
@@ -19672,7 +19672,7 @@
  "list_r__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__mut__prop_own__static": [
   "ok",
@@ -19792,7 +19792,7 @@
  "list_r__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(mk_b, [])._v [storage]}])"
  ],
  "list_r__mut__temp_field__static": [
   "ok",
@@ -19832,7 +19832,7 @@
  "list_r__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "list_r__mut__ternary_calls__static": [
   "ok",
@@ -19992,7 +19992,7 @@
  "list_r__ro__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__ro__comprehension__static": [
   "ok",
@@ -20032,7 +20032,7 @@
  "list_r__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__static": [
   "ok",
@@ -20152,7 +20152,7 @@
  "list_r__ro__empty_literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){container_literal[list]([])}])"
  ],
  "list_r__ro__empty_literal__static": [
   "ok",
@@ -20232,7 +20232,7 @@
  "list_r__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])}])"
  ],
  "list_r__ro__literal__static": [
   "ok",
@@ -20512,7 +20512,7 @@
  "list_r__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__ro__own_call__static": [
   "ok",
@@ -20592,7 +20592,7 @@
  "list_r__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__ro__prop_own__static": [
   "ok",
@@ -20712,7 +20712,7 @@
  "list_r__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){call(mk_b, [])._v [storage]}])"
  ],
  "list_r__ro__temp_field__static": [
   "ok",
@@ -20752,7 +20752,7 @@
  "list_r__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<R>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "list_r__ro__ternary_calls__static": [
   "ok",
@@ -22082,7 +22082,7 @@
  "rec__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[R](%s0)]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__mut__copy_call__static": [
   "ok",
@@ -22122,7 +22122,7 @@
  "rec__mut__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(R, [coerce(lit(7) -> int32)])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){ctor(R, [coerce(lit(7) -> int32)])}])"
  ],
  "rec__mut__ctor_rvalue__static": [
   "ok",
@@ -22562,7 +22562,7 @@
  "rec__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){call(mk, [])}])"
  ],
  "rec__mut__own_call__static": [
   "ok",
@@ -22642,7 +22642,7 @@
  "rec__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__mut__prop_own__static": [
   "ok",
@@ -22842,7 +22842,7 @@
  "rec__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(R){call(mk_b, [])._v [storage]}])"
  ],
  "rec__mut__temp_field__static": [
   "ok",
@@ -23042,7 +23042,7 @@
  "rec__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [copy[R](%s0)]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__ro__copy_call__static": [
   "ok",
@@ -23082,7 +23082,7 @@
  "rec__ro__ctor_rvalue__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ctor(R, [coerce(lit(7) -> int32)])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){ctor(R, [coerce(lit(7) -> int32)])}])"
  ],
  "rec__ro__ctor_rvalue__static": [
   "ok",
@@ -23522,7 +23522,7 @@
  "rec__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){call(mk, [])}])"
  ],
  "rec__ro__own_call__static": [
   "ok",
@@ -23602,7 +23602,7 @@
  "rec__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__ro__prop_own__static": [
   "ok",
@@ -23802,7 +23802,7 @@
  "rec__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(R){call(mk_b, [])._v [storage]}])"
  ],
  "rec__ro__temp_field__static": [
   "ok",
@@ -27882,7 +27882,7 @@
  "set_i__mut__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__mut__comprehension__static": [
   "ok",
@@ -27922,7 +27922,7 @@
  "set_i__mut__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__mut__copy_call__static": [
   "ok",
@@ -28082,7 +28082,7 @@
  "set_i__mut__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[set]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){container_literal[set]([lit(3), lit(4)])}])"
  ],
  "set_i__mut__literal__static": [
   "ok",
@@ -28402,7 +28402,7 @@
  "set_i__mut__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__mut__own_call__static": [
   "ok",
@@ -28482,7 +28482,7 @@
  "set_i__mut__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__mut__prop_own__static": [
   "ok",
@@ -28642,7 +28642,7 @@
  "set_i__mut__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "set_i__mut__temp_field__static": [
   "ok",
@@ -28682,7 +28682,7 @@
  "set_i__mut__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "set_i__mut__ternary_calls__static": [
   "ok",
@@ -28842,7 +28842,7 @@
  "set_i__ro__comprehension__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__ro__comprehension__static": [
   "ok",
@@ -28882,7 +28882,7 @@
  "set_i__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__copy_call__static": [
   "ok",
@@ -29042,7 +29042,7 @@
  "set_i__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [container_literal[set]([lit(3), lit(4)])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){container_literal[set]([lit(3), lit(4)])}])"
  ],
  "set_i__ro__literal__static": [
   "ok",
@@ -29362,7 +29362,7 @@
  "set_i__ro__own_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__ro__own_call__static": [
   "ok",
@@ -29442,7 +29442,7 @@
  "set_i__ro__prop_own__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [method_call(%b, v_own, [])])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__ro__prop_own__static": [
   "ok",
@@ -29602,7 +29602,7 @@
  "set_i__ro__temp_field__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk_b, [])._v [storage]}])"
  ],
  "set_i__ro__temp_field__static": [
   "ok",
@@ -29642,7 +29642,7 @@
  "set_i__ro__ternary_calls__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))])"
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "set_i__ro__ternary_calls__static": [
   "ok",
