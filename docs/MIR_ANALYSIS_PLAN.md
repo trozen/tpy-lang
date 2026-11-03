@@ -1797,8 +1797,8 @@ definitions, with structural module/name identity and ordered semantic
 signature types. Registration retains the unique ordinary source declaration;
 overloads and repeated definitions remain absent even when the registry has
 collapsed them to one binding. Both producers require agreement with the
-finalized declaration signature; stale cycle enum signatures remain absent
-(`BUGS.md#cycle-enum-stale-reference-signature`). Declaration matching does not consult C++ names; the
+finalized declaration signature (a cycle peer's enum agrees since its skeleton
+carries the enum's facts, 2026-11-02). Declaration matching does not consult C++ names; the
 existing MIRBodyId and call exclusion remain unchanged. The synthetic tuple
 unit fixture that adds a parameter clears its original declaration fact,
 since it no longer represents that emitted function's signature.

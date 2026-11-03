@@ -1,0 +1,1 @@
+a_user.py:7: error: 'Z' is not a member of enum 'z_peer.E'

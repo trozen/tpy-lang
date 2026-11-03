@@ -1,5 +1,8 @@
 # Native modules are no C++ cycle peers: an import cycle through a native
 # module keeps only its regular members as C++ peers (none when one is left).
+# Sections native_enum (a cycle member's @native enum, plain enum and record,
+# named by its peer) and native_enum_dep (a @native enum declared by an
+# imported native module's includes): a member's _fwd.hpp carries them.
 from nat_a import LIMIT, Inner, peek
 from nat_b import Outer
 from holder import Holder, Garage, Turbo, Msg
@@ -8,6 +11,10 @@ from left import Left
 from right import Right
 from hub import Hub
 from owner import RelaySlot, relay_seven, bump
+import gauge
+import sig
+import tint
+import tint_peer
 
 def native_pair() -> None:
     o = Outer()
@@ -47,6 +54,17 @@ def self_reexport() -> None:
     bump(s)
     print("self_reexport:", s.v, relay_seven())
 
+def native_enum() -> None:
+    g = gauge.Gauge(3)
+    gauge.show("native_enum:", g)
+    r = sig.Reading(6)
+    # The record is borrowed: a write after construction shows in the read.
+    r.v = 8
+    print("native_enum:", g.n, sig.gauge_n(), gauge.reading_v(r))
+
+def native_enum_dep() -> None:
+    print("native_enum_dep:", tint.pick(), tint.Col.RED, tint_peer.paint())
+
 def main() -> None:
     native_pair()
     regular_native()
@@ -54,5 +72,7 @@ def main() -> None:
     regular_native_base()
     through_native()
     self_reexport()
+    native_enum()
+    native_enum_dep()
 
 main()

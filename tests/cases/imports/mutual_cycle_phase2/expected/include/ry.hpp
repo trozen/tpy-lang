@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "ry_fwd.hpp"
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "rz_fwd.hpp"

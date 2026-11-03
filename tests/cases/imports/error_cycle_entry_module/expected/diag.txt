@@ -1,0 +1,1 @@
+a_user.py:3: error: Cyclic import: module 'main' is the program's entry point and cannot be part of an import cycle (imported here by 'a_user'); move the shared declarations into a separate module. Cycle: a_user <-> main

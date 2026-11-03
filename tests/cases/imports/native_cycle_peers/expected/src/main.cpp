@@ -78,6 +78,27 @@ void self_reexport() {
     std::cout << "self_reexport:" << " " << s.v << " " << ::tpyapp::owner::seven() << "\n" << ::tpy::check_signals;
 }
 
+// def native_enum() -> None:
+//     g = gauge.Gauge(3)
+//     gauge.show("native_enum:", g)
+//     r = sig.Reading(6)
+//     # The record is borrowed: a write after construction shows in the read.
+//     r.v = 8
+//     print("native_enum:", g.n, sig.gauge_n(), gauge.reading_v(r))
+void native_enum() {
+    ::tpyapp::gauge::Gauge g = ::tpyapp::gauge::Gauge(3, ::signs::Level::HIGH, ::tpyapp::sig::Mode::ON);
+    ::tpyapp::gauge::show<std::string>("native_enum:", g);
+    ::tpyapp::sig::Reading r = ::tpyapp::sig::Reading(6);
+    r.v = 8;
+    std::cout << "native_enum:" << " " << g.n << " " << ::tpyapp::sig::gauge_n() << " " << ::tpyapp::gauge::reading_v(r) << "\n" << ::tpy::check_signals;
+}
+
+// def native_enum_dep() -> None:
+//     print("native_enum_dep:", tint.pick(), tint.Col.RED, tint_peer.paint())
+void native_enum_dep() {
+    std::cout << "native_enum_dep:" << " " << ::tpyapp::tint::pick() << " " << ::tpy::__str__(::tints::Col::RED) << " " << ::tpy::__str__(::tpyapp::tint_peer::paint()) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     native_pair()
 //     regular_native()
@@ -85,6 +106,8 @@ void self_reexport() {
 //     regular_native_base()
 //     through_native()
 //     self_reexport()
+//     native_enum()
+//     native_enum_dep()
 void main() {
     ::tpyapp::main::native_pair();
     ::tpyapp::main::regular_native();
@@ -92,10 +115,15 @@ void main() {
     ::tpyapp::main::regular_native_base();
     ::tpyapp::main::through_native();
     ::tpyapp::main::self_reexport();
+    ::tpyapp::main::native_enum();
+    ::tpyapp::main::native_enum_dep();
 }
 
 // # Native modules are no C++ cycle peers: an import cycle through a native
 // # module keeps only its regular members as C++ peers (none when one is left).
+// # Sections native_enum (a cycle member's @native enum, plain enum and record,
+// # named by its peer) and native_enum_dep (a @native enum declared by an
+// # imported native module's includes): a member's _fwd.hpp carries them.
 // from nat_a import LIMIT, Inner, peek
 // from nat_b import Outer
 // from holder import Holder, Garage, Turbo, Msg
@@ -104,6 +132,10 @@ void main() {
 // from right import Right
 // from hub import Hub
 // from owner import RelaySlot, relay_seven, bump
+// import gauge
+// import sig
+// import tint
+// import tint_peer
 //
 // main()
 void __tpy_init() {

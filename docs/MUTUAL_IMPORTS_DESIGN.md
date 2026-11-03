@@ -1537,9 +1537,12 @@ The work landed across 8 commits, one per phase of the plan:
   specifically.
 - A standalone-doc-worthy follow-up: cycle-peer enum re-exports
   remain suppressed by codegen (records get cycle-peer `using`
-  emissions through `<peer>_fwd.hpp`, enums do not). Forward-
-  declared enums could in principle be `using`'d safely
-  (`_fwd.hpp` declares them with underlying type); the filter
+  emissions through `<peer>_fwd.hpp`, enums do not). A cycle
+  member's top-level enums could in principle be `using`'d safely
+  (`_fwd.hpp` defines them in full, with their `EnumUtil` and
+  `operator<<`, and carries a `@native` one's include and
+  `EnumUtil`; nested enums are not declared
+  there, as they need their enclosing record); the filter
   is documented in `codegen_cpp/generator.py` as revisitable
   once a concrete use case arises.
 - `_normalize_function_info_refs` order-dependence (the

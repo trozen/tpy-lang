@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "cycle_types.hpp"
 
+#include "left_fwd.hpp"
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "right_fwd.hpp"

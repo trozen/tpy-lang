@@ -2,35 +2,12 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "b_fwd.hpp"
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "a_fwd.hpp"
 
 namespace tpyapp::b {
-
-enum class Color : int32_t {
-    RED = 1,
-    BLUE = 2,
-};
-
-} // namespace tpyapp::b
-
-template<>
-struct tpy::EnumUtil<::tpyapp::b::Color> {
-    static constexpr std::string_view type_name = "Color";
-    static constexpr bool str_is_value = false;
-    static std::string_view name(::tpyapp::b::Color e);
-    static const std::array<::tpyapp::b::Color, 2> members;
-    static ::tpyapp::b::Color from_value(int32_t v);
-    static ::tpyapp::b::Color from_name(std::string_view s);
-    static std::optional<::tpyapp::b::Color> try_parse(std::string_view s);
-};
-
-namespace tpyapp::b {
-
-inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return ::tpy::detail::write_enum_str(__os, __e);
-}
 
 inline constexpr std::string_view __name__ = "b";
 

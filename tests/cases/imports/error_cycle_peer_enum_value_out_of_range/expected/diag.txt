@@ -1,0 +1,1 @@
+z_peer.py:9: error: Enum member 'B' value 300 is out of range for int8 (-128..127)

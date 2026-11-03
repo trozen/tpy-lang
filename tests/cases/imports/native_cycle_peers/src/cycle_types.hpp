@@ -25,3 +25,7 @@ struct Hub {
     int32_t read_tag(const Tag& t) { return t.k + bias; }
 };
 }
+
+namespace signs {
+enum class Level : int32_t { LOW = 1, HIGH = 2 };
+}

@@ -6,9 +6,13 @@
 #include "tpystd/typing/_typing.hpp"
 #include "cycle_types.hpp"
 #include "holder.hpp"
+#include "gauge.hpp"
+#include "sig.hpp"
 #include "left.hpp"
 #include "right.hpp"
 #include "owner.hpp"
+#include "tint.hpp"
+#include "tint_peer.hpp"
 
 namespace tpyapp::main {
 
@@ -36,6 +40,10 @@ void regular_native_base();
 void through_native();
 // def self_reexport() -> None:
 void self_reexport();
+// def native_enum() -> None:
+void native_enum();
+// def native_enum_dep() -> None:
+void native_enum_dep();
 // def main() -> None:
 void main();
 

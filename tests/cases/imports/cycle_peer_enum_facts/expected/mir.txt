@@ -1,0 +1,23 @@
+a_user::__tpy_init: uncovered (module initialization)
+a_user::param_default@65:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+a_user::match_arm@70:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+a_user::show@80:0: uncovered (generic body)
+a_user::DC.__eq__: uncovered (uncertified binary operation)
+a_user::DC.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+a_user::DC.__init__: covered (storage: no_proof_required), summary: known
+a_user::PC.__init__@20:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+a_user::VR.__init__@29:4: uncovered (missing record layout)
+a_user::OP.__init__@44:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+a_user::LV.__init__@52:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+a_user::TN.__init__@60:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::__tpy_init: uncovered (module initialization)
+main::retarget@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::main@13:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+z_peer::__tpy_init: uncovered (module initialization)
+z_peer::tag_of@44:0: uncovered (unsupported parameter type)
+z_peer::nested@59:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+z_peer::peer_call@64:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+z_peer::Tone.label@26:4: uncovered (unsupported view source)
+z_peer::Leaf.tag@40:4: covered (storage: no_proof_required)
+z_peer::Leaf.__init__@37:4: covered (storage: no_proof_required), summary: known
+z_peer::Outer.Inner.__init__@54:8: covered (storage: no_proof_required), summary: known

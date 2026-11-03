@@ -1,0 +1,1 @@
+a_user.py:37: warning: TypedDict field 'e' has a default value which is ignored by CPython at runtime; consider using total=False for optional fields

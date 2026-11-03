@@ -262,7 +262,9 @@ def run() -> int32:
     assert calls(run)[0].resolved_callee is None
 
 
-def test_cycle_signature_must_agree_with_final_declaration(tmp_path: Path) -> None:
+def test_cycle_signature_agrees_with_final_declaration(tmp_path: Path) -> None:
+    # A cycle peer's enum is a value type from its skeleton on, so `a` registers
+    # `lookup() -> Color` with the signature its finalized body declares.
     folder = tmp_path
     (folder / "a.py").write_text("from b import Color\ndef lookup() -> Color:\n    return Color.RED\n")
     (folder / "b.py").write_text("from a import lookup\nfrom enum import Enum\n"
@@ -270,12 +272,16 @@ def test_cycle_signature_must_agree_with_final_declaration(tmp_path: Path) -> No
                                "def get() -> Color:\n    return lookup()\n")
     compiler, modules = _compile("from a import lookup\ndef run():\n    print(lookup())\n",
                                  extra_lib_dirs=[folder])
+    definitions: list[th.THIRResolvedCallee] = []
+    call_facts: list[th.THIRResolvedCallee | None] = []
     for module in modules:
         if module.name in ("a", "b", "main"):
             _, ctx = compiler.generate_code_and_thir(module)
             for fn in ctx.thir_functions.values():
                 if fn.name == "lookup":
-                    assert fn.resolved_callee is None
-                for call in calls(fn):
-                    if call.callee == "lookup":
-                        assert call.resolved_callee is None
+                    assert fn.resolved_callee is not None
+                    definitions.append(fn.resolved_callee)
+                call_facts.extend(call.resolved_callee for call in calls(fn)
+                                  if call.callee == "lookup")
+    assert len(definitions) == 1 and len(call_facts) == 2
+    assert all(fact == definitions[0] for fact in call_facts)

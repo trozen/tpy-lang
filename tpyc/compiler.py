@@ -26,6 +26,7 @@ from .sema.analyzer import analyze_component_bodies
 from .diagnostics import insert_in_source_order
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.own_copy import OwnCopyVerdicts
+from .sema.registration import attach_enum_type_def, enum_info_of_ast, enum_qname
 from .modules.resolver import ModuleResolver, ResolvedModule, resolution_drift
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
@@ -2591,10 +2592,39 @@ class Compiler:
                 return stmt.loc.line if stmt.loc else None
         return None
 
+    def _reject_entry_module_in_cycle(self, members: list[str]) -> None:
+        """The entry module is compiled as `__main__`, so a cycle peer
+        naming its declarations would see a second identity for them;
+        the program keeps the entry module outside every cycle."""
+        entry = next((m for m in members
+                      if (c := self.modules.get(m)) is not None
+                      and c.is_entry_point), None)
+        if entry is None:
+            return
+        importer, lineno = entry, None
+        for name in members:
+            if name == entry:
+                continue
+            lineno = self._first_cycle_import_line(self.modules[name], {entry})
+            if lineno is not None:
+                importer = name
+                break
+        else:
+            lineno = self._first_cycle_import_line(self.modules[entry], {entry})
+        raise CompileError(
+            f"Cyclic import: module '{entry}' is the program's entry point "
+            f"and cannot be part of an import cycle (imported here by "
+            f"'{importer}'); move the shared declarations into a separate "
+            f"module. Cycle: {' <-> '.join(members)}",
+            importer, self.modules[importer].path, lineno=lineno,
+        )
+
     def _reject_unsupported_cycle(self, component: list[str]) -> None:
         """Conservative reject gate for cycle members.
 
-        Three rejection categories:
+        The entry module may not be a member at all
+        (`_reject_entry_module_in_cycle`). Three rejection categories
+        for the rest:
 
         1. **Top-level statements not in the allowlist.** Cycle
            members must consist of declarations and imports only --
@@ -2633,6 +2663,7 @@ class Compiler:
         # stdlib facades sit inside cycles without breaking the C++
         # build. The order-independent body sema invariant is
         # protected by Category 1 below (no executable top-level code).
+        self._reject_entry_module_in_cycle(members)
         # Category 1: top-level statements that run code
         # (`is_module_declaration` is the allowlist). The synthetic
         # `__name__` Final[str] is injected later (sub-phase 3); at this
@@ -2671,7 +2702,9 @@ class Compiler:
         `ctx.module_decl_exports` (set in `_finalize_declarations`) and
         mutates its fields in place rather than allocating a new object,
         so peer registries that captured a reference at bind-imports
-        time stay live.
+        time stay live. An enum skeleton carries its full `EnumInfo` from
+        the start, and a protocol skeleton its TypeDef, so a peer
+        registering first reads them complete.
         """
         ast = compiled.ast
         if ast is None:
@@ -2744,22 +2777,18 @@ class Compiler:
                 compiled.module_attributes, protocol.name,
                 protocol_kind_for(protocol.is_dynamic), skel,
             )
-        # Enums: pre-mint a NominalType (enum-kind) so peers can find
-        # the enum by name during bind_imports. The qname matches what
-        # `register_enum` will emit so the TypeDef-registry lookup
-        # (`type_def_of(typ)`) finds the same `EnumInfo` regardless of
-        # which analyzer's NominalType reference is used. The
-        # NominalType itself is essentially an immutable identity --
-        # peer references stay valid; the EnumInfo payload that
-        # register_enum attaches to TypeDef is the per-qname source of
-        # truth for member lists, underlying type, etc.
+        # Enums: pre-mint the NominalType under the qname `register_enum`
+        # uses and attach the enum's facts now, so a cycle peer registering
+        # first sees the members, underlying type and value-type-ness
+        # (field defaults, value-record fields, class macros). register_enum
+        # validates and re-attaches the same facts.
+        enum_module = None if compiled.is_entry_point else module_name
         for enum in ast.all_enums():
             if enum.name in compiled.exports.enums:
                 continue
-            enum_nominal = NominalType(
-                enum.name, type_args=(),
-                _module_qname=f"{public}.{enum.name}",
-            )
+            qname = enum_qname(enum_module, ast.directives.cpp_namespace, enum.name)
+            enum_nominal = NominalType(enum.name, type_args=(), _module_qname=qname)
+            attach_enum_type_def(qname, enum_info_of_ast(enum, enum_module))
             compiled.exports.enums[enum.name] = enum_nominal
             install_binding(
                 compiled.module_attributes, enum.name,

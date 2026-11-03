@@ -81,7 +81,7 @@ from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
-    get_type_def, NativeMembers, latch_native_members,
+    get_type_def, NativeMembers, latch_native_members, TypeDef,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
     is_str_type, is_borrowing_view_type,
 )
@@ -109,6 +109,56 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from .. import qnames
+
+INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
+    "int": INT32,
+    "int8": INT8, "int16": INT16, "int32": INT32, "int64": INT64,
+    "uint8": UINT8, "uint16": UINT16, "uint32": UINT32, "uint64": UINT64,
+}
+
+
+def enum_qname(module_name: str | None, cpp_namespace: str | None, name: str) -> str:
+    """The TypeDef qname of an enum. `module_name` None is the entry module
+    (EnumInfo.module_name stays None there, so codegen emits no namespace
+    prefix), whose qname prefix is `__main__`."""
+    raw = module_name if module_name is not None else "__main__"
+    return f"{public_module_name(raw, cpp_namespace)}.{name}"
+
+
+def enum_info_of_ast(enum: TpyEnum, module_name: str | None) -> EnumInfo:
+    """The facts of an enum, all known from its parse. The skeleton minted
+    for a cycle peer and `register_enum` attach the same facts, so a peer's
+    registration-time reads (field defaults, value-type fields, class macros)
+    see the members before the defining module registers. Validation stays
+    in `register_enum`: an unknown underlying type falls back to INT32 here."""
+    underlying = INT32
+    if enum.is_int_enum and enum.underlying_type_name:
+        underlying = INT_ENUM_UNDERLYING_MAP.get(enum.underlying_type_name, INT32)
+    # @native: normalize native_name to canonical global-scope form
+    # (always ::-prefixed). Bare @native -> "::<short>"; explicit
+    # @native("ns::E") -> "::ns::E"; already-prefixed left alone.
+    native_name: str | None = None
+    if enum.is_native:
+        raw = enum.native_name or enum.name
+        native_name = raw if raw.startswith("::") else f"::{raw}"
+    return EnumInfo(
+        members=tuple(m for m, _, _ in enum.members),
+        member_values=tuple((m, v) for m, v, _ in enum.members),
+        underlying_type=underlying,
+        is_int_enum=enum.is_int_enum,
+        module_name=module_name,
+        str_is_value=enum.str_is_value,
+        is_native=enum.is_native,
+        native_name=native_name,
+        cpp_member_names=tuple(enum.cpp_member_names.items()),
+        has_explicit_values=enum.has_explicit_values,
+    )
+
+
+def attach_enum_type_def(qname: str, info: EnumInfo) -> TypeDef:
+    """Attach (or re-attach) an enum's facts."""
+    return attach_dynamic_type_def(qname, TypeCategory.ENUM, enum=info, is_value_type=True)
+
 
 def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     """Build the sema-level body-view type for a *args parameter.
@@ -1205,35 +1255,25 @@ class TypeRegistrar:
                 )
             seen_values[value] = name
 
-        # Determine underlying type
-        underlying = INT32  # default
+        if (enum.is_int_enum and enum.underlying_type_name
+                and enum.underlying_type_name not in INT_ENUM_UNDERLYING_MAP):
+            raise SemanticError(
+                f"Unknown IntEnum underlying type: '{enum.underlying_type_name}'")
+        module_name = self.ctx.module_name if self.ctx.module_name != "__main__" else None
+        info = enum_info_of_ast(enum, module_name)
         if enum.is_int_enum and enum.underlying_type_name:
-            underlying = self._resolve_int_enum_underlying(enum.underlying_type_name)
-            # Validate member values fit in underlying type range
-            underlying_tr = int_traits_of(underlying)
+            underlying_tr = int_traits_of(info.underlying_type)
             if underlying_tr is not None:
                 for name, value, loc in enum.members:
                     if value < underlying_tr.min_value or value > underlying_tr.max_value:
                         raise SemanticError(
                             f"Enum member '{name}' value {value} is out of range "
-                            f"for {underlying} ({underlying_tr.min_value}..{underlying_tr.max_value})",
+                            f"for {info.underlying_type} "
+                            f"({underlying_tr.min_value}..{underlying_tr.max_value})",
                             loc=loc or enum.loc,
                         )
 
-        module_name = self.ctx.module_name if self.ctx.module_name != "__main__" else None
-        members = tuple(m for m, _, _ in enum.members)
-        member_values = tuple((m, v) for m, v, _ in enum.members)
-        # Every enum gets a qname so it can be looked up in the TypeDef
-        # registry.  For __main__ entry-point enums the `module_name`
-        # field on EnumInfo stays None (codegen uses that to decide
-        # whether to emit a namespace prefix) but the qname uses
-        # "__main__" as its prefix so `type_def_of(t)` always finds the
-        # entry.  `public_module_name` collapses private submodules
-        # (e.g. `tpy._core._X` -> `tpy`) so the qname matches the
-        # parser-side enum placeholder's qname for same-module refs.
-        qname_module_raw = module_name if module_name is not None else "__main__"
-        qname_module = public_module_name(qname_module_raw, self.ctx.module_cpp_namespace)
-        qname = f"{qname_module}.{enum.name}"
+        qname = enum_qname(module_name, self.ctx.module_cpp_namespace, enum.name)
         enum_type = NominalType(name=enum.name, type_args=(), _module_qname=qname)
         self.ctx.registry.register_enum(enum_type)
         self.ctx.global_ns.bind_enum(enum_type)
@@ -1241,53 +1281,13 @@ class TypeRegistrar:
             self.ctx.module_attributes, enum.name,
             SymbolKind.ENUM, enum_type,
         )
-        # @native: normalize native_name to canonical global-scope form
-        # (always ::-prefixed). Bare @native -> "::<short>"; explicit
-        # @native("ns::E") -> "::ns::E"; already-prefixed left alone.
-        native_name: str | None = None
-        if enum.is_native:
-            raw = enum.native_name or enum.name
-            native_name = raw if raw.startswith("::") else f"::{raw}"
-
-        cpp_member_names = tuple(
-            (k, v) for k, v in enum.cpp_member_names.items()
-        )
-        enum_td = attach_dynamic_type_def(
-            qname,
-            TypeCategory.ENUM,
-            enum=EnumInfo(
-                members=members,
-                member_values=member_values,
-                underlying_type=underlying,
-                is_int_enum=enum.is_int_enum,
-                module_name=module_name,
-                str_is_value=enum.str_is_value,
-                is_native=enum.is_native,
-                native_name=native_name,
-                cpp_member_names=cpp_member_names,
-                has_explicit_values=enum.has_explicit_values,
-            ),
-            is_value_type=True,
-        )
+        enum_td = attach_enum_type_def(qname, info)
         # An `@export` enum crosses the CPython boundary as a value (its member's
         # int round-trips through the module's enum type); mark its TypeDef so
         # is_boundary_marshallable admits it as an @export param/return, the same
         # per-type fact exposed classes and scalars use.
         if enum.exposed_to_host:
             enum_td.boundary_marshal = True
-
-    _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
-        "int": INT32,
-        "int8": INT8, "int16": INT16, "int32": INT32, "int64": INT64,
-        "uint8": UINT8, "uint16": UINT16, "uint32": UINT32, "uint64": UINT64,
-    }
-
-    def _resolve_int_enum_underlying(self, type_name: str) -> TpyType:
-        """Resolve IntEnum underlying type name to TpyType."""
-        result = self._INT_ENUM_UNDERLYING_MAP.get(type_name)
-        if result is None:
-            raise SemanticError(f"Unknown IntEnum underlying type: '{type_name}'")
-        return result
 
     def _check_class_constant_conflicts(
         self, record: TpyRecord, class_constants: dict[str, FieldInfo],

@@ -2,35 +2,12 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "z_peer_fwd.hpp"
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "a_user_fwd.hpp"
 
 namespace tpyapp::z_peer {
-
-enum class E : int32_t {
-    A = 1,
-    B = 2,
-};
-
-} // namespace tpyapp::z_peer
-
-template<>
-struct tpy::EnumUtil<::tpyapp::z_peer::E> {
-    static constexpr std::string_view type_name = "E";
-    static constexpr bool str_is_value = false;
-    static std::string_view name(::tpyapp::z_peer::E e);
-    static const std::array<::tpyapp::z_peer::E, 2> members;
-    static ::tpyapp::z_peer::E from_value(int32_t v);
-    static ::tpyapp::z_peer::E from_name(std::string_view s);
-    static std::optional<::tpyapp::z_peer::E> try_parse(std::string_view s);
-};
-
-namespace tpyapp::z_peer {
-
-inline std::ostream& operator<<(std::ostream& __os, E __e) {
-    return ::tpy::detail::write_enum_str(__os, __e);
-}
 
 inline constexpr std::string_view __name__ = "z_peer";
 
