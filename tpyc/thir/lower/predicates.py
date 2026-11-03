@@ -6286,15 +6286,14 @@ def _container_storage_copy_elem(t: TpyType | None, analyzer) -> bool:
                                   dict_key_ok=_any_dict_key)
 
 
-def _container_value_record_elem(t: TpyType | None, analyzer) -> bool:
-    """A container whose element is a ValueType record: it has no borrow
-    form, so the checked element lvalue copies into a by-value slot."""
-    def elem_ok(a: 'TpyType | int') -> bool:
-        eb = _elem_bare(a)
-        return (isinstance(eb, NominalType) and eb.is_record
-                and eb.is_value_type() and record_like(eb, analyzer))
-    return _container_elem_family(t, analyzer, elem_ok,
-                                  dict_key_ok=_any_dict_key)
+def getitem_result_by_value(e: TpySubscript, analyzer) -> bool:
+    """A subscript read is the `__getitem__` call it renders, so its result
+    is by value exactly when that explicit call's is (`is_rvalue_source`'s
+    method-call arm): the resolved variant does not hand back a C++
+    reference. A list of ValueType records reads its element by value; a
+    list of reference records hands back the element's `T&`."""
+    fi = e.dunder(SubscriptDunder.GET)
+    return fi is not None and not call_returns_cpp_ref(analyzer, fi)
 
 
 def _container_tuple_source_elem(t: TpyType | None, analyzer) -> bool:

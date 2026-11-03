@@ -218,6 +218,9 @@ def written() -> None:
     print("written field", rebind(b.v))  # tpyc: ok
     # a fresh value.
     print("written fresh", rebind(V(3)))  # tpyc: ok
+    vs = [V(5), V(6)]
+    # a list element: the `__getitem__` call's by-value result, copied for the callee.
+    print("written element", rebind(vs[0]), vs[0].n)  # tpyc: ok
     # a record-method callee.
     print("written callee method", b.take(v))  # tpyc: ok
     k = K(v)

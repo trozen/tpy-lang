@@ -172,7 +172,7 @@ int32_t readonly_iteration(const Pair& p) {
 //     # `in` falling back to a mutating `__iter__`.
 //     return x in b  # tpyc: ok
 bool in_by_iteration(Bag& b, int32_t x) {
-    return ({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == x) { __found = true; break; } } __found; });
+    return ({ int32_t __in_lhs_0 = x; auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; });
 }
 
 // async def async_read(c: Counts, k: str) -> int32:

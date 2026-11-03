@@ -1,0 +1,58 @@
+plain:
+  needle
+  iter
+plain: True
+not_in:
+  needle
+  iter
+not_in: False
+empty:
+  needle
+  iter
+empty: False
+enum:
+  color
+enum: True
+enum_const: True
+gen:
+  needle
+  iter
+gen: True
+async:
+  needle
+  iter
+async: False
+lambda:
+  needle
+  iter
+lambda: True
+while:
+  needle
+  iter
+  needle
+  iter
+while: 1
+comp:
+  needle
+  iter
+  needle
+  iter
+comp: [0]
+ternary:
+  needle
+  iter
+ternary: True
+and:
+  needle
+  iter
+and: True
+field: True
+element: True 2
+temporary:
+  make
+temporary: True
+bool: True
+global: True
+shadow:
+  iter
+shadow: True

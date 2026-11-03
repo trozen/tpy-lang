@@ -1303,7 +1303,7 @@ __gen_produce produce() {
 void in_pull() {
     __gen_produce g = ::tpyapp::main::produce();
     int32_t r = 0;
-    if (((o_glob.has_value()) && ({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 1) { __found = true; break; } } __found; }))) {
+    if (((o_glob.has_value()) && ({ int32_t __in_lhs_0 = 1; auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; }))) {
         r = (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1));
     }
     std::cout << "in" << " " << r << "\n" << ::tpy::check_signals;

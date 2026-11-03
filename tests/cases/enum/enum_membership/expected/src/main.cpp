@@ -179,7 +179,7 @@ void main() {
     Bag b = Bag();
     std::cout << "user_contains" << " " << ::tpy::print_bool(b.__contains__(Color::Green)) << " " << ::tpy::print_bool(b.__contains__(Color::Red)) << "\n" << ::tpy::check_signals;
     ColorIter it = ColorIter();
-    std::cout << "user_iter" << " " << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(it); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == Color::Green) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
+    std::cout << "user_iter" << " " << ::tpy::print_bool(({ Color __in_lhs_0 = Color::Green; auto&& __itr = ::tpy::__iter__(it); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
     std::cout << "not_in" << " " << ::tpy::print_bool(!::tpy::seq_contains(xs, Color::Green)) << " " << ::tpy::print_bool(!::tpy::seq_contains(xs, Color::Red)) << "\n" << ::tpy::check_signals;
     std::cout << "intenum" << " " << ::tpy::print_bool(::tpy::seq_contains(std::array<Prio, 2>{Prio::Low, Prio::High}, Prio::Low)) << "\n" << ::tpy::check_signals;
     std::cout << "call_list" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, ::tpyapp::main::get_color())) << "\n" << ::tpy::check_signals;
@@ -191,12 +191,12 @@ void main() {
     std::cout << "nested" << " " << ::tpy::print_bool(::tpy::seq_contains(ks, Outer::Kind::B)) << " " << ::tpy::print_bool(::tpy::seq_contains(ks, Outer::Kind::A)) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(({
         std::vector<bool> __result;
-        auto __obj_0 = {Color::Red, Color::Green};
-        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            Color k = *__beg_0;
+        auto __obj_1 = {Color::Red, Color::Green};
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            Color k = *__beg_1;
             __result.push_back(::tpy::seq_contains(xs, k));
         }
         std::move(__result);

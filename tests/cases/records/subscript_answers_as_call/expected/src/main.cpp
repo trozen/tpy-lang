@@ -1709,7 +1709,7 @@ void facts() {
     Keys gk = Keys();
     __gen_counted g = ::tpyapp::main::counted(gk);
     {
-        auto __tmp_12 = ({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 1) { __found = true; break; } } __found; });
+        auto __tmp_12 = ({ int32_t __in_lhs_0 = 1; auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; });
         ::tpy::__setitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_12))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_12))).to_fixed_check<int32_t>()), 1));
     }
     std::cout << "generator_in:" << " " << ::tpy::ListPrinter(xs) << " " << gk.calls << "\n" << ::tpy::check_signals;

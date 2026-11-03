@@ -40,15 +40,15 @@ void main() {
     std::cout << ::tpy::print_bool(a.__contains__(20)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(a.__contains__(99)) << "\n" << ::tpy::check_signals;
     SimpleBuffer b = SimpleBuffer();
-    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ int32_t __in_lhs_0 = 20; auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ int32_t __in_lhs_1 = 99; auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_1) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
-        auto& __obj_0 = a;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t x = *__beg_0;
+        auto& __obj_2 = a;
+        auto __beg_2 = __obj_2.begin();
+        auto __end_2 = __obj_2.end();
+        for (; __beg_2 != __end_2; ++__beg_2) {
+            int32_t x = *__beg_2;
             __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
         }
         std::move(__result);
@@ -56,23 +56,23 @@ void main() {
     std::cout << ::tpy::ListPrinter(doubled) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
-        auto& __obj_1 = a;
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            int32_t x = *__beg_1;
+        auto& __obj_3 = a;
+        auto __beg_3 = __obj_3.begin();
+        auto __end_3 = __obj_3.end();
+        for (; __beg_3 != __end_3; ++__beg_3) {
+            int32_t x = *__beg_3;
             __result.insert((::tpy::div_floor<int32_t>(x, 10)));
         }
         std::move(__result);
     });
     std::cout << ::tpy::__len__(unique) << "\n" << ::tpy::check_signals;
     int32_t total = 0;
-    auto& __src_2 = a;
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
+    auto& __src_4 = a;
+    auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+        auto __r_5 = __itr_4.__next__();
+        if (!__r_5.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_5);
         total = ::tpy::add_check<int32_t>(total, x);
     }
     std::cout << total << "\n" << ::tpy::check_signals;

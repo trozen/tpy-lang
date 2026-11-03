@@ -1,0 +1,26 @@
+free literal 3 3
+free param 3 3
+dict float key 6
+user getitem 21 21
+optional param 1 1
+own param 101 102 1 2
+return 1 1
+field store 2
+push_back 1
+compare False True 2
+comprehension [2, 4]
+method 6
+generator 3
+async 3
+own element 5
+own element call 7
+own element mutate 2
+bag element mutate 3
+bag own result 50
+bag own call result 60
+bag local 9
+bag return 11
+bag tuple 12
+bag ternary 13
+plain bag mutate 2
+reference element 2

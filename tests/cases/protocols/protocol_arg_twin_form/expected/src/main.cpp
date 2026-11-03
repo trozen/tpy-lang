@@ -242,6 +242,9 @@ void aliasing() {
 //     print("written field", rebind(b.v))  # tpyc: ok
 //     # a fresh value.
 //     print("written fresh", rebind(V(3)))  # tpyc: ok
+//     vs = [V(5), V(6)]
+//     # a list element: the `__getitem__` call's by-value result, copied for the callee.
+//     print("written element", rebind(vs[0]), vs[0].n)  # tpyc: ok
 //     # a record-method callee.
 //     print("written callee method", b.take(v))  # tpyc: ok
 //     k = K(v)
@@ -259,6 +262,8 @@ void written() {
     VBox b = VBox();
     std::cout << "written field" << " " << ::tpyapp::main::rebind(auto(b.v)) << "\n" << ::tpy::check_signals;
     std::cout << "written fresh" << " " << ::tpyapp::main::rebind(auto(V(3))) << "\n" << ::tpy::check_signals;
+    std::array<V, 2> vs = {V(5), V(6)};
+    std::cout << "written element" << " " << ::tpyapp::main::rebind(auto(::tpy::__getitem__(vs, 0))) << " " << ::tpy::__getitem__(vs, 0).n << "\n" << ::tpy::check_signals;
     std::cout << "written callee method" << " " << b.take(auto(v)) << "\n" << ::tpy::check_signals;
     K k = K(v);
     std::cout << "written ctor" << " " << k.b << " " << k.m << "\n" << ::tpy::check_signals;

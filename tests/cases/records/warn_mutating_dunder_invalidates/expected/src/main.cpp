@@ -161,7 +161,7 @@ void in_by_iteration() {
     Bag g = Bag();
     Pt& a = g.at(0);
     std::cout << "in iter:" << " " << a.x << "\n" << ::tpy::check_signals;
-    std::cout << "in iter:" << " " << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 2) { __found = true; break; } } __found; })) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
+    std::cout << "in iter:" << " " << ::tpy::print_bool(({ int32_t __in_lhs_0 = 2; auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; })) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def close_it(g: Closer) -> None:

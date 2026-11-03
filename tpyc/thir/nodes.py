@@ -899,13 +899,15 @@ class THIRMembership(THIRExpr):
       universal `__iter__`+`__next__` protocol -- the fixed
       statement-expression loop (`({ auto&& __itr = ::tpy::__iter__(recv);
       ... __found; })`), negation the same bare `!` prefix; `method_cpp`
-      unused."""
+      unused. The needle is bound once ahead of the loop, as the local
+      `needle_local_cpp __in_lhs_N` it converted into."""
     receiver: THIRExpr
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
     free_function: bool = False
     iter_loop: bool = False
+    needle_local_cpp: str | None = None
 
 
 @dataclass(frozen=True)

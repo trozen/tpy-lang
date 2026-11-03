@@ -2,6 +2,7 @@ written local 1 1
 written global 1 9
 written field 1
 written fresh 3
+written element 5 5
 written callee method 2
 written ctor 1 1
 written method 1

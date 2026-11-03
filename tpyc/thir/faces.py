@@ -2252,8 +2252,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.btuple_storage_name",      # storage-form or mixed tuple LOCAL (loop
                                     # var / storage-bound / mixed-call local)
                                     # through the wrap
-    "subscript.value_record_elem",  # ValueType-record element read copied
-                                    # into a by-value storage slot
+    "subscript.value_record_elem",  # ValueType-record element read: the
+                                    # getitem call's by-value result
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
     "subscript.open_t_tuple_source",  # its open-T flavor inside a generic
                                     # body -- same self-contained element

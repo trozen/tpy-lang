@@ -100,7 +100,7 @@ int32_t nested_iteration(T_outer&& outer, T_inner&& inner) {
 //     return target in items
 template<::tpystd::typing::Iterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target) {
-    return ({ auto&& __itr = ::tpy::__iter__(items); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == target) { __found = true; break; } } __found; });
+    return ({ int32_t __in_lhs_0 = target; auto&& __itr = ::tpy::__iter__(items); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == __in_lhs_0) { __found = true; break; } } __found; });
 }
 
 void __tpy_init();

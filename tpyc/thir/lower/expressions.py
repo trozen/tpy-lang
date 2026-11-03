@@ -370,7 +370,7 @@ from .predicates import (
     _container_record_elem,
     _container_storage_copy_elem,
     _container_tuple_source_elem,
-    _container_value_record_elem,
+    getitem_result_by_value,
     _container_ref_alias_elem,
     _union_storage_val_cpp,
     _container_scalar_read,
@@ -4266,14 +4266,24 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # The universal loop over the bare receiver name; the scalar needle
         # renders bare (view_key_target is None for a user record haystack).
         _witness("binop.iter_membership")
+        # Python evaluates the needle once, before `__iter__`, and the loop
+        # compares every element against that one value: the needle binds
+        # as a local `n = <needle>` does, so a needle the iteration writes
+        # (`a.k in a`) or a global it rebinds keeps the value read first.
+        # The gate admits by-value needles only (`_by_value_needle`), whose
+        # local is the value itself.
+        needle = _lower_expr(e.left, lc, declared, use=_ExprUse())
+        # A literal needle binds at the type its target-less literal is.
+        needle_t = _literal_render_type(needle, lc)
+        needle = to_local(needle, needle_t, BindingForm.VALUE, analyzer)
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared, use=_MEMBERSHIP_RECV),
-            needle=_lower_expr(e.left, lc, declared,
-                               use=_operand_use_of(e, e.left, analyzer)),
+            needle=needle,
             method_cpp="",
             negate=e.op == "not in",
             iter_loop=True,
+            needle_local_cpp=lc.render_type(needle_t),
             loc=loc)
     if e.op in _MEMBERSHIP_OPS and user_contains:
         # `x in h` is the call `h.__contains__(x)`, so admission, receiver
@@ -5848,6 +5858,24 @@ def _viewfam_of(t: 'TpyType | None', analyzer) -> 'TpyType | None':
             or _resolved_bytes_value(t, analyzer))
 
 
+def _value_record_result(e: TpySubscript, rtype: 'TpyType | None',
+                         analyzer) -> bool:
+    """A read whose `__getitem__` call hands back a ValueType record by
+    value: a prvalue that lands in every value sink as a scalar does."""
+    return (_value_record_slot(rtype)
+            and getitem_result_by_value(e, analyzer))
+
+
+def _subscript_record_form(e: TpySubscript, rtype: 'TpyType | None',
+                           analyzer) -> Form:
+    """The form of a record read `e`, which is its `__getitem__` call: a
+    by-value result is a VALUE, as the explicit call's is; a reference
+    result is the element's `T&` BORROW."""
+    if not record_like(rtype, analyzer):
+        return Form.VALUE
+    return Form.VALUE if getitem_result_by_value(e, analyzer) else Form.BORROW
+
+
 def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
                      declared: dict[str, TpyType]) -> Held:
     """`Source.held`, from what the expression is: a name from its binding,
@@ -5887,8 +5915,12 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
                 return Held.STORAGE
             return Held.BORROWED
         if record_like(t, an):
-            # A record element (or a record `__getitem__` result) is the
-            # `T&` of the element.
+            # A record read is the `__getitem__` call it renders: a by-value
+            # result (a ValueType element) is a value, as the explicit
+            # call's is; a reference result is the `T&` of the element.
+            if (isinstance(e, TpySubscript)
+                    and getitem_result_by_value(e, an)):
+                return Held.VALUE if t.is_value_type() else Held.FRESH
             return Held.BORROWED
         if node.record_getitem:
             return Held.VALUE
@@ -7714,6 +7746,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           or _resolved_bytes_value(rtype, analyzer) is not None
                           or _eligible_ptr_value(rtype, analyzer)
                           or opt_ptr_ret
+                          # A by-value ValueType record result: the call's
+                          # prvalue, as the explicit `p.__getitem__(i)` is.
+                          or _value_record_result(e, rtype, analyzer)
                           # A BY-VALUE F1-record result bound at a
                           # BORROW_BIND sink (the protocol arg-temp init
                           # `auto __tmp_N = container[1];`): the raw
@@ -7875,7 +7910,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # (`pet = pets["rex"]` -- to_ptr_variant wraps the whole
                 # variant lvalue): the read is the same checked getitem.
                 or (use.result is _ExprResultUse.BORROW_BIND
-                    and _eligible_ptr_union(rtype, analyzer) is not None))
+                    and _eligible_ptr_union(rtype, analyzer) is not None)
+                # A ValueType record element: the `__getitem__` call's
+                # by-value result, landing as a scalar does.
+                or _value_record_result(e, rtype, analyzer))
             container_ok = (
                 recv_t is not None
                 and (_container_value_leaf_read(recv_peeled, analyzer)
@@ -7895,6 +7933,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      # ... and the value-TUPLE element family's half.
                      or (_value_tuple(rtype, analyzer) is not None
                          and bool(_witness("subscript.value_tuple_elem")))
+                     # The by-value ValueType record result (its ret_ok
+                     # row): the resolved call decides, not the family.
+                     or (_value_record_result(e, rtype, analyzer)
+                         and bool(_witness("subscript.value_record_elem")))
                      # The RECORD-member union element family (the
                      # BORROW-lift ret_ok row's container half).
                      or (use.result is _ExprResultUse.BORROW_BIND
@@ -8105,15 +8147,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 use.admits(SinkForm.RECORD_COPY)
                 and _container_storage_copy_elem(recv_peeled, analyzer)
                 and bool(_witness("subscript.storage_elem_copy")))
-            # A VALUE-record element read copied into a by-value slot
-            # (`w = self._waiters[fd]` at `dict[int32, Waker]`): a ValueType
-            # record has no borrow form, so the checked element lvalue
-            # copies straight into the storage slot -- unlike the reference
-            # records the BORROW_BIND row above aliases.
-            value_record_elem_ok = (
-                use.result is _ExprResultUse.STORAGE
-                and _container_value_record_elem(recv_peeled, analyzer)
-                and bool(_witness("subscript.value_record_elem")))
             # A VALUE-tuple element read consumed whole by the standalone
             # unpack capture (`a, b = addrs[0]` -> `auto __tup_N =
             # ::tpy::__getitem__(addrs, 0);`): the element is a
@@ -8142,7 +8175,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or tuple_elem_src_ok or tuple_elem_borrow_ok
                     or record_recv_ok or tuple_elem_recv or proto_ok
                     or varargs_ok or record_elem_ok
-                    or value_record_elem_ok or storage_elem_copy_ok):
+                    or storage_elem_copy_ok):
                 if recv_t is None:
                     detail = "subscript." + _subscript_recv_reject(
                         e.obj, declared, analyzer)
@@ -8191,8 +8224,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                       rec_fi, rec_recv, use, analyzer,
                                       store_signature)),
                 **_record_read_fields(e, rec_fi, use, lc, declared),
-                form=(Form.BORROW if record_like(rtype, analyzer)
-                      else Form.VALUE),
+                form=_subscript_record_form(e, rtype, analyzer),
                 loc=loc)
         # Container or str subscript -> the checked dunder
         # `::tpy::__getitem__(c, i)` (str's __getitem__ @cpp_template spells the
@@ -8221,7 +8253,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # A record element (`ps[i]`) is a `T&` borrow, consumed by field
             # access / the REF_ALIAS alias bind (mirrors the tuple record
             # element's BORROW tag).
-            form = Form.BORROW
+            form = _subscript_record_form(e, rtype, analyzer)
             _witness("subscript.record_elem")
         elif tuple_elem_recv:
             # The storage-tuple element lvalue: elements held by value, so
@@ -8249,7 +8281,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if narrowed_recv_u is not None and record_like(rtype, analyzer) and (
                 is_dict(idx_obj_type) or is_list(idx_obj_type)
                 or is_array(idx_obj_type) or is_span(idx_obj_type)):
-            form = Form.BORROW
+            form = _subscript_record_form(e, rtype, analyzer)
             _witness("subscript.ru_narrowed_recv")
         _optrecv_deref = (opt_recv is None
                           and _ptr_opt_binding_name(e.obj, declared,
@@ -12902,6 +12934,8 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
             members = []
             for member, mt in zip(e.elements, su.element_types):
+                # No grant: a member temporary would run before the members
+                # to its left (BUGS.md#subexpression-right-to-left-eval).
                 members.append(_lower_container_elem(
                     member, mt, lc, declared, tuple_elem=True))
             inner = THIRTupleLiteral(
@@ -15968,7 +16002,7 @@ def _reference_arg_form(a: TpyExpr, slot: Slot, ptype: TpyType,
 def _container_literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                                callee_fi: 'FunctionInfo | None',
                                lc: '_LowerCtx',
-                               declared: dict[str, TpyType]
+                               declared: dict[str, TpyType], *, temps: bool
                                ) -> 'THIRExpr | None':
     """A container literal or comprehension built at its reference
     parameter's container: a typed prvalue where an owned parameter or a
@@ -15994,7 +16028,8 @@ def _container_literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
         # its elements moved in where they must be.
         return _spell_brace(_lower_expr(
             a, lc, declared, use=replace(_NESTED_ARG_USE,
-                                         pos=SinkPos.CALL_ARG)), st, lc)
+                                         pos=SinkPos.CALL_ARG,
+                                         allow_temps=temps)), st, lc)
     lowered = _lower_literal_arg(a, st, lc, declared,
                                  "container-literal arg on the make path")
     if (slot.materializer is Materializer.CALLEE
@@ -16037,10 +16072,11 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                                          temps=temps)
             if shaped is not None:
                 return shaped
-            read = (_literal_at_slot(a, slot, ptype, inst, lc, declared)
+            read = (_literal_at_slot(a, slot, ptype, inst, lc, declared,
+                                     temps=temps)
                     if slot.type.is_value_type() else
                     _container_literal_at_slot(a, slot, ptype, callee_fi, lc,
-                                               declared))
+                                               declared, temps=temps))
             if (isinstance(read, THIRLiteral) and read.result_type == slot.type
                     # A deduced slot takes it as its twin does (`convert`).
                     and slot.materializer is not Materializer.DEDUCED):
@@ -16067,14 +16103,16 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     else:
         read = None
     if not reference:
-        read = _literal_at_slot(a, slot, ptype, inst, lc, declared)
+        read = _literal_at_slot(a, slot, ptype, inst, lc, declared,
+                                temps=temps)
     if (read is None and cls is ParamSlotClass.POINTER
             and isinstance(slot.type, OptionalType)):
         # A container built for an Optional's pointer is built at its
         # pointee, typed: the storage held for the call is declared so.
         inner = unwrap_readonly(slot.type.inner)
         built = _container_literal_at_slot(a, replace(slot, type=inner),
-                                           inner, callee_fi, lc, declared)
+                                           inner, callee_fi, lc, declared,
+                                           temps=temps)
         if built is not None:
             read = _spell_brace(built, inner, lc)
     if (isinstance(read, (THIRLiteral, THIRUnionArgLift, THIROptionalPtrArg))
@@ -16335,7 +16373,8 @@ def _call_arg_result(a: TpyExpr, lc: '_LowerCtx') -> _ExprResultUse:
 
 def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                      inst: TpyType, lc: '_LowerCtx',
-                     declared: dict[str, TpyType]) -> 'THIRExpr | None':
+                     declared: dict[str, TpyType], *, temps: bool
+                     ) -> 'THIRExpr | None':
     """A literal argument built at its parameter (of declared type `ptype`,
     holding `inst`): its type and spelling come from the slot, not from the
     literal. None for any other source."""
@@ -16347,7 +16386,8 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                                         TpySetLiteral)):
             lowered = _lower_expr(a, lc, declared,
                                   use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                               slot_target=slot.type))
+                                               slot_target=slot.type,
+                                               allow_temps=temps))
             # An owned open parameter's literal is a typed prvalue of its
             # container: a bare brace names no type to deduce from.
             return (_spell_brace(lowered, slot.type, lc) if owned
@@ -16406,6 +16446,7 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
         return None
     lowered = _lower_expr(a, lc, declared,
                           use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
+                                      allow_temps=temps,
                                       slot_target=(
                                           slot_u if isinstance(a, TpyBinOp)
                                           and is_fixed_int_type(slot_u)

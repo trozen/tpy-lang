@@ -648,8 +648,10 @@ def getitem_call_of(expr: TpyExpr) -> 'FunctionInfo | None':
     if not isinstance(expr, TpySubscript):
         return None
     fi = expr.dunder(SubscriptDunder.GET)
+    # The sync-call classifier, not the bare shape: a `Ref[T]` result at
+    # `T = Own[X]` is still the stored `X&`, as the explicit call reads it.
     if (fi is None or element_access(expr, SubscriptDunder.GET) is not None
-            or return_type_is_cpp_ref(unwrap_readonly(fi.return_type))):
+            or call_returns_cpp_ref(None, fi)):
         return None
     return fi.root
 

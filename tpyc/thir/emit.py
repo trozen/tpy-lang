@@ -1864,15 +1864,20 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"!{call}" if e.negate else call
         if e.iter_loop:
             # The universal `__iter__`+`__next__` statement-expression loop
-            # (no `__contains__`, not native-iterable); fixed temp names,
-            # negation a `!` prefix.
-            recv = _emit_expr(e.receiver, state)
+            # (no `__contains__`, not native-iterable); negation a `!` prefix.
+            # The needle is emitted first: its own statement-expression
+            # temporaries number ahead of the receiver's, in Python's order.
             needle = _emit_expr(e.needle, state)
-            loop = (f"({{ auto&& __itr = ::tpy::__iter__({recv}); "
+            recv = _emit_expr(e.receiver, state)
+            # Numbered: the needle's own render may read a user local named
+            # like a fixed binding, which its declaration would shadow.
+            lhs = f"__in_lhs_{state.next_loop_index()}"
+            loop = (f"({{ {e.needle_local_cpp} {lhs} = {needle}; "
+                    f"auto&& __itr = ::tpy::__iter__({recv}); "
                     f"bool __found = false; "
                     f"for (;;) {{ auto __r = __itr.__next__(); "
                     f"if (!__r.has_value()) break; "
-                    f"if (::tpy::unwrap_ref(*__r) == {needle}) "
+                    f"if (::tpy::unwrap_ref(*__r) == {lhs}) "
                     f"{{ __found = true; break; }} }} "
                     f"__found; }})")
             return f"!{loop}" if e.negate else loop

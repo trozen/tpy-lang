@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::vopt@47:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::first@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::opt@56:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::own_ints@67:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::own_set@72:0: covered (storage: no_proof_required), summary: known
+main::uni@76:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::take_i@80:0: covered (storage: no_proof_required), summary: known
+main::take_open_own@84:0: uncovered (generic body)
+main::own_nested@88:0: covered (storage: no_proof_required), summary: known
+main::gen@92:0: uncovered (call needs finalized known summary)
+main::main@97:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::V3.opt_m@15:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::V3.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Material.__init__@22:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Body.__init__@29:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Scene.__init__@36:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::C.__init__@43:4: uncovered (missing record layout)
+main::Keep.__init__@63:4: covered (storage: no_proof_required), summary: known

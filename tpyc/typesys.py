@@ -3159,6 +3159,21 @@ def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
             and not is_protocol_type(rt))
 
 
+def _type_arg_own_peeled(ret_type: TpyType | None,
+                         fi: FunctionInfo) -> TpyType | None:
+    """A declared `Ref[T]` result instantiated at `T = Own[X]` (a container
+    type argument's insertion marker, `list[Own[A]]`) is still the C++
+    reference to the stored `X` (`val_or_ref_t<X>`): `make_ref` keeps an
+    `Own` whole, so the substituted type would otherwise read as an owned
+    result. A declared `Own[T]` (`pop`) is not a `Ref` and keeps it."""
+    root_rt = unwrap_readonly(fi.root.return_type)
+    if not (isinstance(root_rt, RefType)
+            and isinstance(unwrap_readonly(root_rt.wrapped), TypeParamRef)):
+        return ret_type
+    rt = unwrap_readonly(ret_type)
+    return rt.wrapped if isinstance(rt, OwnType) else ret_type
+
+
 def classify_result_representation(
         ret_type: TpyType | None, *, position: ResultPosition,
         fi: FunctionInfo | None = None,
@@ -3202,7 +3217,8 @@ def classify_result_representation(
                 and not fi.root.borrow_declared):
             return ResultRepresentation.STORAGE
         return (ResultRepresentation.CPP_REFERENCE
-                if returns_cpp_reference_shape(ret_type)
+                if returns_cpp_reference_shape(_type_arg_own_peeled(ret_type,
+                                                                    fi))
                 else ResultRepresentation.STORAGE)
     if position is ResultPosition.ASYNC_PAYLOAD:
         rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
