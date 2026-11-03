@@ -158,7 +158,9 @@ __gen_gen gen(const std::vector<Color>& cs) {
 //     print("generator", list(gen(xs)))
 //     print("method", p.has(Color.Red), p.has(Color.Green))
 //     # Inverse: the other enum operators keep their rules.
-//     print("eq", Color.Red == Color.Red, Color.Red != Color.Green)  # tpyc: ok
+//     # a local, not `Color.Red == Color.Red`: BUGS.md#self-comparison-strict-clang
+//     r = Color.Red
+//     print("eq", r == Color.Red, r != Color.Green)  # tpyc: ok
 //     print("intenum_lt", Prio.Low < Prio.High)  # tpyc: ok
 void main() {
     std::vector<Color> xs = {Color::Red};
@@ -201,7 +203,8 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpyapp::main::gen(xs))) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << ::tpy::print_bool(p.has(Color::Red)) << " " << ::tpy::print_bool(p.has(Color::Green)) << "\n" << ::tpy::check_signals;
-    std::cout << "eq" << " " << ::tpy::print_bool((Color::Red == Color::Red)) << " " << ::tpy::print_bool((Color::Red != Color::Green)) << "\n" << ::tpy::check_signals;
+    Color r = Color::Red;
+    std::cout << "eq" << " " << ::tpy::print_bool((r == Color::Red)) << " " << ::tpy::print_bool((r != Color::Green)) << "\n" << ::tpy::check_signals;
     std::cout << "intenum_lt" << " " << ::tpy::print_bool((static_cast<int32_t>(Prio::Low) < static_cast<int32_t>(Prio::High))) << "\n" << ::tpy::check_signals;
 }
 

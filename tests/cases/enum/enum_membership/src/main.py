@@ -100,7 +100,9 @@ def main() -> None:
     print("generator", list(gen(xs)))
     print("method", p.has(Color.Red), p.has(Color.Green))
     # Inverse: the other enum operators keep their rules.
-    print("eq", Color.Red == Color.Red, Color.Red != Color.Green)  # tpyc: ok
+    # a local, not `Color.Red == Color.Red`: BUGS.md#self-comparison-strict-clang
+    r = Color.Red
+    print("eq", r == Color.Red, r != Color.Green)  # tpyc: ok
     print("intenum_lt", Prio.Low < Prio.High)  # tpyc: ok
 
 
