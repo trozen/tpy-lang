@@ -8760,6 +8760,11 @@ class FunctionInfo:
     # method readonly (a `@readonly(False)` opt-out, a `@dynamic` protocol
     # override), set before Phase 2: a const receiver cannot call it.
     const_withheld: bool = False
+    # Parameters the method's @dynamic protocol slot declares writable: a
+    # call of the member dispatches through the slot, so it may write them
+    # whatever this body does. Set before body analysis, which joins them
+    # into the method's direct write facts.
+    slot_written_params: frozenset[int] = frozenset()
     self_mutated: bool = True  # conservative default until Phase 2 resolves
     # Back-pointer to the canonical registry FunctionInfo. Set on a VIEW --
     # a call site's copy of the signature (type-param substitution,

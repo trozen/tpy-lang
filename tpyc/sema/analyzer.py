@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
-from typing import Callable, Optional, Sequence
+from typing import Callable, Iterator, Optional, Sequence
 
 from ..typesys import is_value_type_bound, resolve_int_literals
 from ..typesys import (
@@ -18,9 +18,10 @@ from ..typesys import (
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     body_function_info, body_method_info, analyzes_body,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
+    ReadonlyType, param_has_mutable_borrow_surface,
     TypeAliasInfo,
     is_void_like_type,
-    span_as_const, span_is_readonly, varargs_as_const, varargs_is_readonly,
+    span_as_const, varargs_as_const, varargs_is_readonly,
     _contains_self_reference,
     contains_type_param,
     BaseInitDuty,
@@ -28,7 +29,7 @@ from ..typesys import (
     PendingNumType,
 )
 from ..coercions import CoercionContext
-from ..type_def_registry import is_span, is_varargs, is_spanlike_view
+from ..type_def_registry import is_span, is_varargs
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -1251,20 +1252,34 @@ class SemanticAnalyzer:
                 method.is_readonly = True
 
     def _decide_const_withheld(self, module: TpyModule) -> None:
-        """Mark the methods whose C++ member stays non-const even when
-        inference proves them readonly (`FunctionInfo.const_withheld`).
+        """Decide what a method's declaration fixes before its body is
+        analyzed: whether its C++ member stays non-const even when inference
+        proves it readonly (`FunctionInfo.const_withheld`), and which
+        parameters its @dynamic slot declares writable
+        (`FunctionInfo.slot_written_params`).
 
-        Decided before Phase 2, which reads it: a receiver edge into such a
-        method must keep the caller's receiver mutable.
+        Decided before the bodies are analyzed: Phase 2 reads `const_withheld`
+        (a receiver edge into such a method keeps the caller's receiver
+        mutable), and `_analyze_record_methods` joins the slot-written
+        parameters into the method's direct write facts, so a caller keeps
+        its argument mutable.
         """
         for record in module.all_records():
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is None:
                 continue
+            const_clones = IdentitySet(m.clone_of for m in record.methods
+                                       if m.is_auto_readonly_mutable_clone)
             for method in record.methods:
-                if (method.is_readonly
-                        or method.overload_form is OverloadForm.OVERLOAD
-                        or method.is_auto_readonly_mutable_clone):
+                if method.overload_form is OverloadForm.OVERLOAD:
+                    continue
+                written = self._dynamic_slot_written_params(
+                    record_info, method, const_clone=method in const_clones)
+                if written:
+                    fi = body_method_info(record_info, method)
+                    if fi is not None:
+                        fi.root.slot_written_params = written
+                if method.is_readonly or method.is_auto_readonly_mutable_clone:
                     continue
                 # @readonly(False) is an explicit opt-out -- respect it.
                 # For @dynamic protocol overrides, the const-ness of the concrete
@@ -1277,40 +1292,40 @@ class SemanticAnalyzer:
                     if fi is not None:
                         fi.root.const_withheld = True
 
-    def _dynamic_proto_requires_nonconst(self, record_info: RecordInfo, method_name: str) -> bool:
-        """Return True if method_name must remain non-const due to a @dynamic protocol override.
-
-        A @dynamic protocol generates C++ pure virtual methods that concrete implementations
-        must override with matching (non-const) signatures. The method may be declared in a
-        non-dynamic ancestor, but still ends up in the dynamic vtable.
-
-        Walks the MRO so a class inheriting a @dynamic protocol transitively (via a
-        concrete-class parent) still has its overrides pinned to the protocol's
-        const-ness -- otherwise auto-readonly inference would emit a const signature
-        that mismatches the virtual slot.
-        """
-        visited: set[str] = set()
+    def _dynamic_slots(self, record_info: RecordInfo,
+                       method_name: str) -> 'Iterator[MethodSignature]':
+        """The @dynamic protocol slots `method_name` of `record_info` fills:
+        the method of that name in every @dynamic protocol the record or an
+        ancestor implements, the protocol's parents included (dynamic or
+        not -- the C++ vtable holds them all)."""
         for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
-            # Search this dynamic protocol and ALL its ancestors for method_name,
-            # regardless of whether ancestors are themselves dynamic.
-            if self._proto_hierarchy_has_nonconst(proto_info, method_name, visited):
-                return True
-        return False
+            for sig in self.protocols.collect_protocol_methods(proto_info):
+                if sig.name == method_name:
+                    yield sig
 
-    def _proto_hierarchy_has_nonconst(self, proto_info: 'ProtocolInfo | None',
-                                      method_name: str, visited: set[str]) -> bool:
-        """Search method_name in this protocol and all ancestors (ignoring dynamic flag)."""
-        if proto_info is None or proto_info.qualified_name() in visited:
-            return False
-        visited.add(proto_info.qualified_name())
-        for sig in proto_info.methods:
-            if sig.name == method_name and not sig.is_readonly:
-                return True
-        for parent in proto_info.parent_protocols:
-            if self._proto_hierarchy_has_nonconst(
-                    protocol_info_of(parent), method_name, visited):
-                return True
-        return False
+    def _dynamic_slot_written_params(self, record_info: RecordInfo,
+                                     method: TpyFunction, *,
+                                     const_clone: bool) -> frozenset[int]:
+        """The parameters of `method` its @dynamic slots declare writable: a
+        call of the member dispatches through the slot, so it may write
+        them whatever this body does. The slot's parameter is not
+        `readonly[...]`; the override's own type (the slot's, substituted)
+        has a mutable borrow surface. Of an `@auto_readonly` pair, each
+        clone fills the slots of its own receiver const-ness."""
+        paired = method.is_auto_readonly_mutable_clone or const_clone
+        return frozenset(
+            i for sig in self._dynamic_slots(record_info, method.name)
+            if not paired or sig.is_readonly == const_clone
+            for i, ((_, slot_t), (_, own_t)) in enumerate(zip(sig.params, method.params))
+            if (not isinstance(unwrap_ref_type(slot_t), ReadonlyType)
+                and param_has_mutable_borrow_surface(own_t)))
+
+    def _dynamic_proto_requires_nonconst(self, record_info: RecordInfo, method_name: str) -> bool:
+        """Whether a @dynamic slot `method_name` fills is non-const: the C++
+        override must match the pure virtual, so inference must not make
+        the member const."""
+        return any(not sig.is_readonly
+                   for sig in self._dynamic_slots(record_info, method_name))
 
     def _sync_inferred_vararg_readonly(self, module: TpyModule) -> None:
         """Flip vararg slots `Span[T]` -> `Span[readonly[T]]` for bodies that
@@ -1320,8 +1335,8 @@ class SemanticAnalyzer:
         inference to the vararg case so non-mutating callees collapse to
         `varargs<const T>` and accept const arg sources without caller-side
         marking workarounds. Skip rules mirror `_sync_inferred_const`: explicit
-        readonly slot, @native, overload stubs, and @dynamic-protocol overrides
-        whose virtual slot is non-const.
+        readonly slot, @native, overload stubs; a @dynamic slot's writable
+        vararg is in `mutated_params` (`FunctionInfo.slot_written_params`).
         """
         for func in module.functions:
             if func.overload_form is OverloadForm.OVERLOAD or func.native_function:
@@ -1331,7 +1346,7 @@ class SemanticAnalyzer:
             func_info = body_function_info(self.ctx.registry, func)
             if func_info is None:
                 continue
-            self._maybe_flip_vararg_readonly(func, func_info, dyn_pin_nonconst=False)
+            self._maybe_flip_vararg_readonly(func, func_info)
 
         for record in module.all_records():
             rec_info = self.ctx.registry.get_record(record.name)
@@ -1352,13 +1367,10 @@ class SemanticAnalyzer:
                 method_fi = body_method_info(rec_info, method)
                 if method_fi is None:
                     continue
-                pin_nonconst = self._dynamic_proto_pins_vararg_nonconst(
-                    rec_info, method.name)
-                self._maybe_flip_vararg_readonly(method, method_fi,
-                                                 dyn_pin_nonconst=pin_nonconst)
+                self._maybe_flip_vararg_readonly(method, method_fi)
 
     def _maybe_flip_vararg_readonly(
-        self, func: TpyFunction, fi: 'FunctionInfo', *, dyn_pin_nonconst: bool,
+        self, func: TpyFunction, fi: 'FunctionInfo',
     ) -> None:
         """Apply the slot flip when body analysis shows the vararg isn't
         mutated. Mutates both `fi.params` and `func.params` so codegen
@@ -1377,8 +1389,6 @@ class SemanticAnalyzer:
         # don't infer-flip what the user (or C++ binding) declared.
         if fi.mutated_params is None or va_idx in fi.mutated_params:
             return
-        if dyn_pin_nonconst:
-            return
         new_span = varargs_as_const(bare_va)
         new_param_type = make_ref(new_span) if isinstance(va_param.type, RefType) else new_span
         fi.params[va_idx] = ParamInfo(
@@ -1394,47 +1404,6 @@ class SemanticAnalyzer:
             if pname == func.vararg_name:
                 func.params[i] = (pname, new_param_type)
                 break
-
-    def _dynamic_proto_pins_vararg_nonconst(
-        self, record_info: 'RecordInfo', method_name: str,
-    ) -> bool:
-        """Parallel to `_dynamic_proto_requires_nonconst`, but for the vararg
-        slot: an override of a @dynamic protocol method must keep the vararg
-        mutable when the protocol declares it mutable, since the C++ vtable
-        slot is monomorphized to `varargs<T>` vs `varargs<const T>`.
-
-        Reachable but unexercised today: `MethodSignature` (typesys.py:4127)
-        does not carry `is_variadic`, so protocol methods can't declare a
-        `*args` slot; `_proto_hierarchy_has_vararg_nonconst` therefore never
-        finds a mutable-vararg sig. Kept as a forward-compat guard so the
-        invariant is in place the day protocols gain vararg method support.
-        """
-        visited: set[str] = set()
-        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
-            if self._proto_hierarchy_has_vararg_nonconst(
-                    proto_info, method_name, visited):
-                return True
-        return False
-
-    def _proto_hierarchy_has_vararg_nonconst(
-        self, proto_info: 'ProtocolInfo | None', method_name: str, visited: set[str],
-    ) -> bool:
-        if proto_info is None or proto_info.qualified_name() in visited:
-            return False
-        visited.add(proto_info.qualified_name())
-        for sig in proto_info.methods:
-            if sig.name != method_name:
-                continue
-            for _, ptype in sig.params:
-                bare = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
-                if (bare is not None and is_spanlike_view(bare)
-                        and not (span_is_readonly(bare) or varargs_is_readonly(bare))):
-                    return True
-        for parent in proto_info.parent_protocols:
-            if self._proto_hierarchy_has_vararg_nonconst(
-                    protocol_info_of(parent), method_name, visited):
-                return True
-        return False
 
     def _is_type_nocopy(self, typ: TpyType) -> bool:
         """Delegate to canonical is_type_nocopy on context."""
@@ -3103,7 +3072,8 @@ class SemanticAnalyzer:
                     self._stamp_frame_materials(method, method_fi)
                     stamp_may_interrupt(self.ctx, method, method_fi)
                     param_list = [pname for pname, _ in method.params]
-                    direct = frozenset(
+                    slot_written = method_fi.root.slot_written_params
+                    direct = slot_written | frozenset(
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.func.current_mutated_param_names
                     )
@@ -3117,7 +3087,7 @@ class SemanticAnalyzer:
                     (method_fi.own_copy_obligations,
                      method_fi.own_copy_forwards) = self.ctx.own_copy_drain(own_copy_mark)
                     # Structural mutation facts (append/insert/clear/del/etc.)
-                    direct_struct = frozenset(
+                    direct_struct = slot_written | frozenset(
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.func.current_struct_mutated_param_names
                     )
@@ -3125,7 +3095,7 @@ class SemanticAnalyzer:
                         direct_struct = direct_struct | frozenset({-1})
                     method_fi.direct_structural_mutated_params = direct_struct
                     method_fi.structural_mutated_params = direct_struct
-                    direct_elem = frozenset(
+                    direct_elem = slot_written | frozenset(
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.func.current_elem_mutated_param_names
                     )

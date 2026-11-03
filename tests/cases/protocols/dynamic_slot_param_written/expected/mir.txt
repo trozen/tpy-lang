@@ -1,0 +1,24 @@
+main::__tpy_init: uncovered (module initialization)
+main::trace@75:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::trace_box@79:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::trace_ptr@83:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::count_of@87:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::maybe_of@91:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::tilt_of@95:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::peek_of@100:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::plain_of@105:0: covered (storage: no_proof_required), summary: known
+main::gen@121:0: uncovered (unsupported expression)
+main::main@126:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Mat.bounce@38:4: covered (storage: no_proof_required)
+main::Mat.count@41:4: covered (storage: no_proof_required)
+main::Mat.maybe@44:4: covered (storage: no_proof_required)
+main::Mat.peek@49:4: covered (storage: no_proof_required)
+main::Mat.tilt@52:4: covered (storage: no_proof_required)
+main::Chrome.bounce@58:4: covered (storage: no_proof_required)
+main::Chrome.count@62:4: covered (storage: no_proof_required)
+main::Plain.bounce@71:4: covered (storage: no_proof_required), summary: known
+main::Tracer.run@116:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::Ray.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Mat.__init__@34:4: covered (storage: no_proof_required), summary: known
+main::Plain.__init__@68:4: covered (storage: no_proof_required), summary: known
+main::Tracer.__init__@113:4: covered (storage: no_proof_required), summary: known
