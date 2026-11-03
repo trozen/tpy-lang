@@ -1,0 +1,2 @@
+main.py:31: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:31: error: in function 'gen': this construct is not yet supported by C++ code generation (res.alias_bind)

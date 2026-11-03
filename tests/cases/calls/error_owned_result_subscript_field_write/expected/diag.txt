@@ -1,0 +1,1 @@
+main.py:23: error: the result of '[...]' is a new object dropped after this statement; a write into it is lost -- bind it to a name first

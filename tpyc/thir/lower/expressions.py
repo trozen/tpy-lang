@@ -412,6 +412,7 @@ from .predicates import (
     _f1_container_ref,
     _f1_record,
     record_like,
+    _call_lends_held_storage,
     _f1_tuple,
     frame_temp_arg_slot,
     frame_temp_elem_slots,
@@ -11174,16 +11175,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     use=use)
                 stub_recv = fam.stub_recv
             elif recv_type is not None and (
-                    recv_type.is_pointer()
-                    # A @cpp_template method OR a function=True native on a
-                    # @native record receiver (`v.count` ->
-                    # `static_cast<int32_t>(v.size())`; `v.pop_last()` ->
-                    # `::tpy::pop_back(v)`) expands like the Ptr arm's;
-                    # @native member renames keep the record path below.
-                    or ((fi.cpp_template is not None
-                         or (fi.native_function and bool(fi.native_name)))
-                        and _native_record_recv(recv_type, analyzer))
-                    or record_template):
+                    recv_type.is_pointer() or record_template):
                 shape_ok = _ptr_template_method_supported(
                     e, fi, recv_type, analyzer, declared,
                     stmt_position=stmt_position,
@@ -19167,6 +19159,21 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
         return THIROptionalPtrArg(
             result_type=popt, form=Form.BORROW,
             value=_lower_expr(arm, lc, declared, subscript_prechecked=True),
+            addr_of=True, loc=loc)
+    elif (isinstance(arm, (TpyCall, TpyMethodCall))
+          and record_like(at, analyzer)
+          and call_returns_cpp_ref(analyzer, arm.resolved_function_info)
+          and _call_lends_held_storage(arm, analyzer)):
+        # A record REFERENCE call arm (`c.at(0) if f else None`): the
+        # address of the storage the call lends, which a holder may keep
+        # past the statement as the element arm's address. The call node's
+        # form stays VALUE: MIR's call consumers read a call as VALUE.
+        _witness("ifexpr.optptr_call_addr")
+        return THIROptionalPtrArg(
+            result_type=popt, form=Form.BORROW,
+            value=_lower_expr(arm, lc, declared,
+                              use=_ExprUse(
+                                  result=_ExprResultUse.BORROW_BIND)),
             addr_of=True, loc=loc)
     note_detail("ifexpr.optptr_arm")
     raise ThirUnsupported("expr.ifexpr")

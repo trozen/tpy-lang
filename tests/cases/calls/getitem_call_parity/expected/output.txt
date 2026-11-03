@@ -1,0 +1,23 @@
+match ten other ten other
+gen 30
+gen 32
+gen 11 21
+async 45 33 12
+ternary True
+ternary 100 300
+ternary 23
+gen_match hundred
+agen_match a1300 1300
+capture 12 24
+open_t 1 1
+open_t 9
+capture_read 12
+write_neighbours 5 6 3
+reach property setter 9
+reach 7 5
+reach await 5
+capture_nested 2 8
+capture_then_clear 1
+capture_then_clear 0
+plain_getter match twelve
+plain_getter 13

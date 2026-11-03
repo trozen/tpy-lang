@@ -558,7 +558,7 @@ existing loan machinery (a reference), never by the binding site:
   An `ArrayList` / span loop variable is the element itself (the `SpanIter` step lends it), so
   a write through it reaches the container and demotes the iterated source like any loop write.
 - **A reference** (the whole result, a tuple element): the call loans its receiver to whatever
-  binds the result (`_register_call_result_borrow` files the storage walk's `call_loans` under
+  binds the result (`register_call_result_borrow` files the storage walk's `call_loans` under
   the MAY call policy, `sema/call_lends.py`; a `for` over the call files it as the iteration's
   loan), so a write through any place derived from it -- a local, a walrus, a rebind, an unpack,
   a return, a loop variable -- climbs that loan; a read-only alias leaves the receiver const and

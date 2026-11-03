@@ -56,7 +56,7 @@ from ..parse import (
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith, TryTier,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
-    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
+    TpyAwait, TpyCall, TpyCallLike, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
     TpyListRepeat, TpyDictLiteral, TpySetLiteral,
     TpySubscript, SubscriptDunder, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
@@ -86,6 +86,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import (
+    is_property_getter_read,
     SourceLocation, VarLinkage, op_spelling, name_path, DeferredCapture,
     method_call_through,
 )
@@ -480,7 +481,7 @@ def note_binding_provenance(an: 'StatementAnalyzer | ExpressionAnalyzer',
         an.init.mark_non_null_ptr(name, init.non_null)
 
 
-def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
+def register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
                                  expr: TpyExpr, *,
                                  frame_only: bool = False) -> None:
     """File the loans a binding of a call's result takes (`call_loans`
@@ -629,7 +630,7 @@ def _register_tuple_binding_borrows(
     else:
         if isinstance(inner, (TpyName, TpySubscript, TpyFieldAccess)):
             register_binding_borrow(ctx, borrower, source)
-        _register_call_result_borrow(ctx, borrower, inner)
+        register_call_result_borrow(ctx, borrower, inner)
 
 
 def register_binding_loans(ctx: SemanticContext, holder: Holder,
@@ -652,11 +653,11 @@ def register_binding_loans(ctx: SemanticContext, holder: Holder,
     if isinstance(bare, PendingViewType):
         return
     if not bound_type.is_value_type() or is_borrowing_view_type(bare):
-        _register_call_result_borrow(ctx, holder, peel_coerce(source.value))
+        register_call_result_borrow(ctx, holder, peel_coerce(source.value))
     elif not unwrap_own(bound_type).is_value_type():
         # An owned result is a value, but a coroutine handle's frame still
         # keeps its reference arguments.
-        _register_call_result_borrow(ctx, holder, peel_coerce(source.value),
+        register_call_result_borrow(ctx, holder, peel_coerce(source.value),
                                      frame_only=True)
 
 
@@ -2156,6 +2157,11 @@ class StatementAnalyzer:
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.update_variable_type(name, typ)
 
+    # The call-result loans of a binder that is not a declaration (a
+    # `match` capture of a call subject), reached through the analyzer
+    # because the match module cannot import this one.
+    register_call_result_borrow = staticmethod(register_call_result_borrow)
+
     def _merge_arm_readonly(self, arms: list[dict[str, TpyType]]) -> None:
         """Keep a local readonly after sibling arms join when ANY arm left it
         readonly: the one slot may hold that arm's readonly reference."""
@@ -2268,6 +2274,21 @@ class StatementAnalyzer:
                 check.fields_rebound_outside_init.add(field_name)
                 return
 
+    @staticmethod
+    def _write_root_display(target: TpyFieldAccess) -> str:
+        """How the message names the expression a field write lands in: the
+        first node under `target`'s receiver past its field reads."""
+        node = target.obj
+        while isinstance(node, (TpyCoerce, TpyFieldAccess)):
+            node = node.expr if isinstance(node, TpyCoerce) else node.obj
+        if isinstance(node, TpyAwait):
+            node = node.value
+        if is_property_getter_read(node):
+            return f"'{node.method}'"
+        if isinstance(node, TpyCallLike):
+            return node.call_display
+        return "'[...]'" if isinstance(node, TpySubscript) else "the expression"
+
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
         """Reject assignments through readonly references, frozen fields, and readonly field declarations."""
         # ClassVar writes always go to class-scoped `static inline` storage,
@@ -2298,6 +2319,17 @@ class StatementAnalyzer:
             lost = copy_result_under_write(target.obj)
             if lost is not None:
                 raise self.ctx.error(lost_write_message(lost), target)
+            # A property setter and a dynamic `__setattr__` / `__delattr__`
+            # are method calls on the object, not stores into it.
+            if (isinstance(target, TpyFieldAccess)
+                    and target.property_setter_call is None
+                    and target.dyn_setattr_call is None
+                    and target.dyn_delattr_call is None
+                    and self.compat.new_value(target)):
+                raise self.ctx.error(
+                    f"the result of {self._write_root_display(target)} is a "
+                    f"new object dropped after this statement; a write into "
+                    f"it is lost -- bind it to a name first", target)
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:
                 check_type = obj_type

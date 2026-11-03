@@ -1,0 +1,7 @@
+str_key 20 20 20
+opt_bind 7 8
+opt_bind_named 70
+opt_bind_named True
+opt_ret 9 True True
+bytes_ret b'AB' b'A' b'ABC'
+template_args 3 4 72

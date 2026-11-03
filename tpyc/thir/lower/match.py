@@ -77,6 +77,7 @@ from ..nodes import (
 )
 from .convert import to_local
 from .predicates import (
+    _call_lends_held_storage,
     _tuple_opt_elem_subscript,
     overload_match_fold,
     _container_scalar_read,
@@ -1069,16 +1070,21 @@ class _MatchRoute:
 def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
                            pointers: AbstractSet[str],
                            narrowed: AbstractSet[str],
-                           storage_tuple_locals: AbstractSet[str]) -> bool:
+                           storage_tuple_locals: AbstractSet[str],
+                           analyzer) -> bool:
     """A non-name subject the storage-form tiers admit: a field/subscript
     LVALUE chain (the shared `match_subject_is_lvalue` fact -- `auto&`
     binds the storage) rooted at `self` or a declared name that renders
-    direct (pointer/narrowed/tuple-alias roots spell indirect). Method-call
-    lvalue roots (accessor chains) are their own rung."""
+    direct (pointer/narrowed/tuple-alias roots spell indirect). A method
+    call in the chain climbs to its receiver when a holder may keep its
+    reference result past the statement (`_call_lends_held_storage`), as the
+    `auto&` bind does."""
     if not match_subject_is_lvalue(subj):
         return False
     e = subj
-    while isinstance(e, (TpyFieldAccess, TpySubscript)):
+    while (isinstance(e, (TpyFieldAccess, TpySubscript))
+           or (isinstance(e, TpyMethodCall)
+               and _call_lends_held_storage(e, analyzer))):
         e = e.obj
     if not isinstance(e, TpyName):
         return False
@@ -1242,7 +1248,7 @@ def _match_route(
                     and not match_subject_is_lvalue(subj)):
                 return None
         if not _match_expr_subject_ok(subj, declared, pointers, narrowed,
-                                      storage_tuple_locals):
+                                      storage_tuple_locals, analyzer):
             # Call/ctor F1-record RVALUE subjects admit on the unguarded
             # record tier: the subject materializes into an owned
             # dispatch-local (`auto __match_subject_N = <call>;`), captures

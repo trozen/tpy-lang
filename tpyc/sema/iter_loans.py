@@ -8,7 +8,7 @@ question has one answer whatever spells the loop.
 
 It also owns the call-operand questions a borrow off a call result asks
 (`is_dangling_temporary_arg`, `temp_arg_kept_alive`, `hold_whole`), shared
-with the call-result binding (`_register_call_result_borrow` in
+with the call-result binding (`register_call_result_borrow` in
 `statements.py`).
 """
 

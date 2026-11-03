@@ -1132,7 +1132,7 @@ def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
         return
     lk = loan_key(source_expr)
     if lk is Unkeyed.NOT_A_PLACE:
-        # A call result's loans are the call's (`_register_call_result_borrow`).
+        # A call result's loans are the call's (`register_call_result_borrow`).
         return
     if lk is Unkeyed.UNPLACEABLE:
         add_prefix(source_expr, kind or BorrowKind.FIELD)

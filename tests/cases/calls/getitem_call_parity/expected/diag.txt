@@ -1,0 +1,2 @@
+main.py:117: warning: Mutation of 'd' while borrowed ('clear' may invalidate references)
+main.py:281: warning: Mutation of 'c' while borrowed (field assignment may invalidate references)

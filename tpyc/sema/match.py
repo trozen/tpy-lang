@@ -40,7 +40,8 @@ from ..parse.nodes import (
     name_path,
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
-from ..value_category import is_rvalue_source, peel_coerce
+from ..value_category import (is_rvalue_source, lends_pointer_form_result,
+                              peel_coerce)
 from .call_lends import borrow_declared_sources
 from .alias_rebind import stamp_capture_rebind
 from .scope_tracker import register_binder, unregister_binder
@@ -480,6 +481,19 @@ class MatchAnalyzer:
                             binding_source(self.stmts, stmt.subject))
                         self.ctx.func.nonstmt_borrow_bindings.add(node.name)
                         register_capture_alias_borrow(
+                            self.ctx, node.name, stmt.subject)
+                        # A call subject's storage is what its result points
+                        # into: the capture holds it as a binding of the
+                        # call would, so a write through it reaches there.
+                        self.stmts.register_call_result_borrow(
+                            self.ctx, node.name, stmt.subject)
+            elif (aliasing_bindings
+                    and lends_pointer_form_result(self.ctx, stmt.subject)):
+                # A pointer-form result held by value (`Item* | Other*`)
+                # still points into the storage the call lends.
+                for node in iter_capture_bindings(case.pattern):
+                    if not node.bind_by_value:
+                        self.stmts.register_call_result_borrow(
                             self.ctx, node.name, stmt.subject)
             # Analyze guard expression (pattern bindings are in scope)
             if case.guard is not None:

@@ -9631,14 +9631,29 @@ def _ptr_template_call_recv_ok(e: TpyMethodCall, analyzer) -> bool:
 
 def _native_record_recv(t: 'TpyType | None', analyzer) -> bool:
     """A @native record receiver (`Vec[int32]` over std::vector): its
-    @cpp_template methods expand over the bare receiver render exactly like
-    a Ptr's (`v.count` -> `static_cast<int32_t>(v.size())`)."""
+    methods take the record method-call row, its `@cpp_template` ones
+    included, so the explicit user-dunder template arm leaves it out."""
     u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
          if isinstance(t, TpyType) else None)
     if not isinstance(u, NominalType):
         return False
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and ri.is_native
+
+
+def _binding_shape_ok(e: TpyMethodCall, fi) -> bool:
+    """A `@cpp_template` or `@native(..., function=True)` method binding the
+    method-call render expands (`_emit_bound_call`): no `{cpp}` type slot
+    and no method type parameters, which the expansion does not spell; a
+    template that is not also a native symbol, since the emit would expand
+    the template and silently drop the symbol; a function-form native takes
+    positional arguments only."""
+    if fi.type_params or e.inferred_type_args:
+        return False
+    if fi.cpp_template is not None:
+        return ("{cpp}" not in fi.cpp_template
+                and not (fi.native_function or fi.native_name))
+    return bool(fi.native_function and fi.native_name and not e.kwargs)
 
 
 def _ptr_template_method_supported(
@@ -9656,7 +9671,6 @@ def _ptr_template_method_supported(
     (`.span(n)`) rejects. The result rides the plain-method THIRMethodCall's
     `cpp_template` arm; its value set mirrors the container arm's."""
     if recv_type is None or not (recv_type.is_pointer()
-                                 or _native_record_recv(recv_type, analyzer)
                                  # An EXPLICITLY spelled dunder on a user
                                  # record (`self.__eq__(other)` inside
                                  # `__ne__`): sema stamps every user dunder
@@ -9669,19 +9683,8 @@ def _ptr_template_method_supported(
                                  or record_like(recv_type, analyzer)):
         return note_detail("method.ptr_template.recv_shape")
     if fi.cpp_template is not None:
-        if "{cpp}" in fi.cpp_template or fi.type_params:
+        if not _binding_shape_ok(e, fi):
             return note_detail("method.ptr_template.template_shape")
-        if fi.native_function or fi.native_name or e.inferred_type_args:
-            return note_detail("method.ptr_template.template_kind")
-    elif (fi.native_function and fi.native_name
-          and not recv_type.is_pointer()):
-        # `@native("sym", function=True)` on a @native-record receiver
-        # (`v.pop_last()` -> `::tpy::pop_back(v)`): the general
-        # THIRMethodCall's receiver-prepend arm, the view family's
-        # spelling on a record receiver. Scalar positional args only
-        # (the shared check below); generics reject.
-        if fi.type_params or e.inferred_type_args or e.kwargs:
-            return note_detail("method.ptr_template.native_generic")
     else:
         # A plain member through a `Ptr` (a `@native` rename, a property
         # getter) is the Ptr deref arm's (`_ptr_deref_method_call`).
@@ -9718,7 +9721,7 @@ def _ptr_template_method_supported(
 def _ptr_template_arg_ok(a: TpyExpr, ptype: 'TpyType | None', analyzer,
                          locals_: dict[str, TpyType], *,
                          record_template: bool = False) -> bool:
-    """One positional arg of the ptr / @native-record template family.
+    """One positional arg of the Ptr / user-record-dunder template family.
 
     The arg interpolates into the template's positional slot (or the
     prepended-receiver native call), so only shapes that render as a
@@ -9740,14 +9743,12 @@ def _ptr_template_arg_ok(a: TpyExpr, ptype: 'TpyType | None', analyzer,
                 # bare name. NAME only -- a str literal at a
                 # template slot leaves the `param_view_t` pin question open,
                 # which no template expansion answers here. Off for
-                # the Ptr / @native-record receivers: their view-family args
-                # respell through the view rows, which this bare interpolation
-                # does not build.
+                # a Ptr receiver: its view-family args respell through the
+                # view rows, which this bare interpolation does not build.
                 or (record_template and isinstance(a, TpyName)
                     and _resolved_str_value(at, analyzer) is not None
                     and _witness("method.ptr_template_str_name_arg"))
-                # A RECORD NAME (`a.__add__(b)` -> `(a) + (b)`, a @native
-                # value type `k` into `{self}.at(static_cast<int>({0}))`).
+                # A RECORD NAME (`a.__add__(b)` -> `(a) + (b)`).
                 or (_record_pass_through_arg(a, ptype, locals_, analyzer)
                     and _witness("method.ptr_template_record_arg")))
 
@@ -11999,8 +12000,9 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     clone pair under the plain name C++ keeps apart by the receiver. The
     arguments read the variant sema bound (`bound_method_overload`). A native_name RENAME on an actually-native
     record IS admitted (the file-handle `fh.write` shape -- member = native_name,
-    a plain member call); a native_function (free-function form) / cpp_template
-    each takes a different method-call arm and stays rejected.
+    a plain member call), and so is a `@cpp_template` / function-form
+    `@native` binding on one (`_binding_shape_ok`), which the
+    method-call render expands over the receiver and arguments.
 
     Args: the free-call pass-through set minus bytes (a bytes-view result /
     arg form is not threaded through the method node) -- eligible scalars
@@ -12109,12 +12111,15 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     # A @native record's instance method (the file-handle `fh.write(...)` /
     # `r.read(n)` shape) renders `recv.native_name(args)` -- the member name
     # resolves to `fi.native_name` in the method-call emit, exactly like a
-    # plain member call. Only native_name on an actually-native record is
-    # admitted; a native_function (free-function form, `::sym(recv, args)`) or
-    # cpp_template rejects. The `inline_template=is_native_stub`
+    # plain member call. The `inline_template=is_native_stub`
     # threaded for these args only affects Own[T] slots (a
     # redundant-copy skip); the admitted arg rows carry none.
     native_method = bool(fi.native_name) and ri.is_native and not fi.native_function
+    # A @native record's `@cpp_template` / `@native(..., function=True)`
+    # binding: the method call renders through that binding over the
+    # receiver and the converted arguments, exactly as the subscript's
+    # dunder call does, so the arguments and result take this gate's rows.
+    native_binding = ri.is_native and _binding_shape_ok(e, fi)
     # A generic method is a plain member call with the method_targs suffix
     # when sema inferred args (`b.transform<::tpy::BigInt>(42)`) and a bare
     # member call when it did not (`c.duplicate()` -- a class-T shadow bind,
@@ -12129,8 +12134,9 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     # evaluates the receiver expression and calls the static member), so
     # both ride this arm despite the parser's `is_staticmethod` bit.
     static_member = fi.is_classmethod or fi.is_staticmethod
-    if (fi.cpp_template is not None or fi.native_function
-            or (fi.native_name and not native_method)
+    if (((fi.cpp_template is not None or fi.native_function
+          or (fi.native_name and not native_method))
+         and not native_binding)
             or (fi.type_params and not generic_method_ok)
             or not (fi.is_method or static_member)):
         return note_detail("method.fi_kind")
@@ -12166,6 +12172,11 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # (subscript read, decl slot, arg, unpack source) gates its own
             # family, so admitting it here only opens those gated sinks.
             or _value_tuple_nested(ret, analyzer) is not None
+            # ... and an OPEN-T tuple result (`tuple[bool, T]` off a CAS):
+            # borrow and storage coincide at the tuple level, so it lands as
+            # the plain spelled copy.
+            or (_open_t_tuple_slot(ret, analyzer) is not None
+                and _witness("method.open_t_tuple_ret"))
             # ... and a value-form record result (`c = c.swapped()`), the
             # same by-value prvalue.
             or _value_record_slot(ret)

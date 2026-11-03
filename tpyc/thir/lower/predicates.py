@@ -64,7 +64,7 @@ from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
-from ...typesys import NONE, protocol_param_alternatives
+from ...typesys import NONE, protocol_param_alternatives, result_follows_receiver_root
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -166,7 +166,7 @@ from ...coercions import (BIGINT_NARROW, OPTIONAL_STR_TO_STRVIEW,
 from ...value_category import (
     CONTAINER_LITERAL_NODES, open_type_param_call_result,
     call_hands_back_value, call_value_optional,
-    call_result_is_reference,
+    call_result_is_reference, call_result_holdable,
     call_returns_cpp_ref, getitem_call_of,
     const_place, deref_step_const,
     receiver_const, call_result_const,
@@ -9132,15 +9132,32 @@ def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
     `is_storage_form_source` keys owning tuple slots on it)."""
     return _declared_own_return(call, under_optional=False) is not None
 
-def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
+def _call_lends_held_storage(init: TpyExpr, analyzer) -> bool:
     """A call whose result is a borrow of storage that outlives the
-    statement: a borrow-declared call (free or method) by sema's stamp, any
-    other free call by the same allow-list (`expr_lends_storage`) -- a
-    temporary or merely-lvalue argument fails closed, since the result could
-    be that temporary. An undeclared method keeps its own routes."""
+    statement (`expr_lends_storage`) -- a temporary or merely-lvalue operand
+    fails closed, since the result could point into that temporary: a
+    borrow-declared method call by sema's stamp, any other call whose
+    reference result a holder may keep (`call_result_holdable`)."""
     if isinstance(init, TpyMethodCall):
-        return init.result_form is ResultForm.BORROW
-    return isinstance(init, TpyCall) and expr_lends_storage(analyzer, init)
+        if init.result_form is ResultForm.BORROW:
+            return True
+        if not call_result_holdable(analyzer, init):
+            return False
+    elif not isinstance(init, TpyCall):
+        return False
+    return expr_lends_storage(analyzer, init)
+
+
+def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
+    """`_call_lends_held_storage` for a frame alias slot, which takes its
+    const from the call's receiver: an undeclared method's result must
+    follow its receiver's access (`result_follows_receiver_root`) -- one
+    pointing at an argument or a global does not share it."""
+    if not _call_lends_held_storage(init, analyzer):
+        return False
+    return (not isinstance(init, TpyMethodCall)
+            or init.result_form is ResultForm.BORROW
+            or result_follows_receiver_root(init.resolved_function_info))
 
 
 def _call_storage_optional_return(call: 'TpyCall | TpyMethodCall',

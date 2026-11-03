@@ -443,6 +443,10 @@ _UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
      "expr.method_call:method.ret_type"):
         ("test_stamped_generic_lending_call_hedges_each_leaf",
          "BUGS.md#open-t-tuple-generic-only-rejects"),
+    ("def fld[T](bag: Bag[tuple[T, int32]]", "fld",
+     "stmt.assign:field_write.lift.borrow"):
+        ("test_stamped_generic_lending_call_hedges_each_leaf",
+         "BUGS.md#open-t-tuple-generic-only-rejects"),
     ("def comp(a: A) -> list[tuple[A, A]]:", "comp",
      "expr.list_comprehension"):
         ("test_every_position_publishes_the_record",

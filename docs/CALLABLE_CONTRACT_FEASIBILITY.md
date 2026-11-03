@@ -250,7 +250,7 @@ schedule.
 | A12: child widget callback | Constructor sinks and A2 capture metadata | Conservative rejection follows A2; safe receiver lifetime proof is intentionally absent. Existing lowering rejects cannot count as new losses. |
 
 Code authorities: `sema/statements.py` return-root collection and
-`_register_call_result_borrow`; `sema/analyzer.py` body-summary finalization;
+`register_call_result_borrow`; `sema/analyzer.py` body-summary finalization;
 `sema/calls.py` callable synthetic FIs and borrow-conflict checks;
 `sema/mutation_propagation.py` call-graph propagation; `sema/frame_traits.py`
 capture classification; `sema/flow_facts.py` joins and `scope_tracker.py` exits.

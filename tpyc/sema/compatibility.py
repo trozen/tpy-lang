@@ -7332,6 +7332,9 @@ class TypeCompatibility:
         if isinstance(inner, TpyFieldAccess):
             obj = peel_coerce(inner.obj)
             return (inner.hidden_call is None
+                    # A member reached through `__deref__` (an `Rc`
+                    # payload's) is the pointee's storage.
+                    and inner.deref_depth == 0
                     and not isinstance(unwrap_qualifiers(
                         self.ctx.get_expr_type(obj)), PtrType)
                     and (not isinstance(obj, TpyCallLike)

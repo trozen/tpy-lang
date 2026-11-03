@@ -1547,6 +1547,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # receiver landing bare at a storage sink
     "method.scalar_tuple_ret",      # scalar-receiver stub's value-tuple
                                     # result at a storage/statement sink
+    "method.open_t_tuple_ret",      # open-T tuple method result (`tuple[bool,
+                                    # T]` off a CAS): the plain spelled copy
     "method.span_ret",              # Span-view method result renders bare
     "method.ru_wrapper_ret",        # recursive-union WRAPPER borrow method
                                     # result binding a wrapper slot inline
@@ -2835,6 +2837,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # a plain record container element
     "ifexpr.optptr_elem_lift",      # ... optional_to_ptr off an Optional
                                     # container element
+    "ifexpr.optptr_call_addr",      # ... `&(call)` off a record reference
+                                    # call a holder may keep
     "walrus.optptr_ternary_src",    # ptr-Optional walrus source rung: a
                                     # ternary whose arms are already `T*`
     "walrus.optptr_subscript_src",  # ptr-Optional walrus source rung: a

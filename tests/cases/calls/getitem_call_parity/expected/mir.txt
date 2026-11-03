@@ -1,0 +1,48 @@
+main::__tpy_init: uncovered (module initialization)
+main::capture_read@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::capture_nested@94:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::capture_union@101:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::capture_then_clear@110:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::pair_count@131:0: uncovered (generic body)
+main::gen@137:0: uncovered (unsupported hoisted value)
+main::agen@147:0: uncovered (async body)
+main::gen_match@157:0: uncovered (match across a suspension)
+main::agen_match@166:0: uncovered (async body)
+main::capture@178:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::make_item@202:0: covered (storage: no_proof_required), summary: known
+main::write_neighbours@206:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::shell_ptr@247:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::make_shell@251:0: covered (storage: no_proof_required), summary: known
+main::borrow_item@255:0: uncovered (async body)
+main::await_write@259:0: uncovered (async body)
+main::reach_existing@266:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::capture_dangle@276:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::plain_getter@285:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::classify@298:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::classify_sub@307:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::pick@315:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::main@327:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.__getitem__@24:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.__getitem__@24:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.get@27:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.classify@30:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.classify_sub@38:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.pick@45:4: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::Shelf.wrap@77:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Shelf.__getitem__@80:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Shelf.__getitem__@80:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::Pair.pair@127:4: uncovered (generic body)
+main::Builder.add@197:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Picker.__getitem__@221:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Picker.__getitem__@221:4#2: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Shell.size@235:4: covered (storage: no_proof_required), summary: known
+main::Shell.size@239:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Item.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Other.__init__@58:4: covered (storage: no_proof_required), summary: known
+main::Wrap.__init__@65:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@73:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Pair.__init__@124:4: uncovered (generic constructor)
+main::Builder.__init__@194:4: covered (storage: no_proof_required), summary: known
+main::Picker.__init__@218:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Shell.__init__@230:4: covered (storage: no_proof_required), summary: known
