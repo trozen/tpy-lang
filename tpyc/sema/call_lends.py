@@ -78,7 +78,7 @@ from ..value_category import (
     ValueCategoryAnalyzer, borrowing_ctor_arg, call_operands,
     call_returns_cpp_ref, declared_result_is_value, frame_factory_callee,
     DeclaredOf, frame_param_lends, getitem_call_of, param_type_can_lend,
-    param_written, protocol_twin_slot,
+    is_generic_protocol, param_written, protocol_twin_slot,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
     holds_no_pointer, may_hold_pointer, peel_coerce,
@@ -383,7 +383,7 @@ def call_lend_sources(ops: CallOperands,
             # would: it lends only where that twin's would.
             twin = protocol_twin_slot(
                 slot, arg, analyzer, declared_of, frame=True,
-                writes=param_written(fi, idx), callee=fi)
+                writes=param_written(fi, idx))
             if twin is not slot:
                 if not frame_param_lends(twin):
                     continue
@@ -691,11 +691,15 @@ def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
             return type_of(arg) or slot
         # Asked by the lowering of a runtime binding's call (no frame), which
         # has no sema binding scope; a named argument's storage outlives the
-        # statement, so its retention decides no temporary's.
-        twin = protocol_twin_slot(slot, arg, analyzer, None, frame=False,
-                                  writes=param_written(fi, index), callee=fi)
-        if twin is not slot:
-            return twin
+        # statement, so its retention decides no temporary's. At a generic
+        # protocol the object binds in place: what the binding may copy out
+        # of it is an element, which the slot's type arguments name, never
+        # the object's own storage.
+        if not is_generic_protocol(slot):
+            twin = protocol_twin_slot(slot, arg, analyzer, None, frame=False,
+                                      writes=param_written(fi, index))
+            if twin is not slot:
+                return twin
     if slot is None or owner is None or not contains_type_param(slot):
         return slot
     bare = unwrap_qualifiers(owner)

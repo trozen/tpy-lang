@@ -9721,8 +9721,7 @@ def _strview_coerce_name(a: TpyExpr) -> 'TpyName | None':
     return None
 
 def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
-                        analyzer, callee: 'FunctionInfo | None'
-                        ) -> 'TpyType | None':
+                        analyzer) -> 'TpyType | None':
     """The OWNED storage type to hoist for a TEMPORARY argument at a
     generator/coroutine factory call -- `frame_temp_arg_source`'s shape verdict
     plus the type the hoisted local is spelled with. None when no hoist is
@@ -9735,7 +9734,7 @@ def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
     by now); an UNRESOLVED one is returned as-is so the render arm rejects on
     it rather than fall through to the inline prvalue this row exists to
     remove."""
-    src = frame_temp_arg_source(a, ptype, analyzer, callee)
+    src = frame_temp_arg_source(a, ptype, analyzer)
     if src is None:
         return None
     st = analyzer.get_expr_type(src)
@@ -9755,14 +9754,12 @@ def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
     return st
 
 def frame_temp_elem_slots(a: TpyExpr, ptype: 'TpyType | None',
-                          analyzer, callee: 'FunctionInfo | None'
-                          ) -> tuple[FrameTempElem, ...]:
+                          analyzer) -> tuple[FrameTempElem, ...]:
     """`frame_temp_elem_plan`'s entries for argument `a`, each with the
     OWNED storage type `frame_temp_arg_slot` spells for its local."""
     out: list[FrameTempElem] = []
-    for entry in frame_temp_elem_plan(a, ptype, analyzer, callee):
-        owned = frame_temp_arg_slot(entry.source, entry.slot, analyzer,
-                                    callee)
+    for entry in frame_temp_elem_plan(a, ptype, analyzer):
+        owned = frame_temp_arg_slot(entry.source, entry.slot, analyzer)
         if owned is not None:
             out.append(entry._replace(owned=owned))
     return tuple(out)
@@ -10551,43 +10548,6 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     # -- the BytesView coerce, which arrives as its own node -- stays out.
     return _f1_container_ref(pt)
 
-def _container_ternary_arg(a: TpyExpr, ptype: 'TpyType | None',
-                           locals_: dict[str, TpyType], analyzer) -> bool:
-    """A container-typed ternary of declared container NAMES at a native
-    protocol slot (`len(a if flag else b)` -> `::tpy::__len__(((flag) ?
-    ((*a)) : ((*b))))`): the ifexpr's container arm renders the lvalue
-    ternary and the template binds it bare, like the single-name rows."""
-    if not isinstance(a, TpyIfExpr):
-        return False
-    if not (isinstance(a.then_expr, TpyName) and a.then_expr.name in locals_
-            and isinstance(a.else_expr, TpyName)
-            and a.else_expr.name in locals_):
-        return False
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(a))))
-    if not _f1_container_ref(at):
-        return False
-    return _protocol_binding(ptype) is not None
-
-
-def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                   locals_: dict[str, TpyType]) -> bool:
-    """A `_native_iterable_source` NAME into a NATIVE builtin's structural
-    `Iterable[T]` (or `Sequence[T]` -- `reversed(xs)`) protocol param
-    (`all(xs)` / `any(xs)` / `sum(xs)` -> `::tpy::builtin_all(xs)`):
-    the runtime overload is a C++ template that binds the range BARE, so no
-    adapter/span conversion runs -- unlike a plain-TPy `Iterable` param, which
-    `_container_pass_through_arg` rejects for exactly that
-    conversion. Native/@cpp_template loop ONLY (the caller gates the branch); in
-    the plain loop the same slot would need the adapter wrap."""
-    if not isinstance(a, TpyName) or a.name not in locals_:
-        return False
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    if not _native_iterable_source(at):
-        return False
-    pb = _protocol_binding(ptype)
-    return pb is not None and pb.name in ("Iterable", "Sequence")
-
 def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
                           declared: dict[str, TpyType], analyzer) -> bool:
     """A member-typed arg into a VALUE-repr Optional slot (`std::optional<T>`
@@ -10641,35 +10601,17 @@ def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
     return isinstance(peeled, (TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp))
 
 
-def _native_iterable_field_arg(a: TpyExpr, ptype: 'TpyType | None',
-                               declared: dict[str, TpyType], analyzer) -> bool:
-    """The FIELD sibling of `_native_iterable_container_arg`: a
-    `_native_iterable_source` member read at a native builtin's structural
-    `Iterable[T]` / `Sequence[T]` slot (`",".join(self._parts)` ->
-    `::tpy::str_join(",", this->_parts)`). The member read renders bare exactly
-    like the name row, and the runtime overload is the same
-    binding-by-template, so no adapter conversion runs."""
-    if not _field_receiver_ok(a, declared, analyzer):
-        return False
-    at = analyzer.get_expr_type(a)
-    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    if not _native_iterable_source(at):
-        return False
-    pb = _protocol_binding(ptype)
-    return pb is not None and pb.name in ("Iterable", "Sequence")
-
-
 def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                               analyzer) -> bool:
     """A `_native_iterable_source`-returning CALL rvalue into a NATIVE
     builtin's structural `Iterable[T]` / `Sequence[T]` slot
     (`zip(get_names(), get_scores())` ->
-    `::tpy::builtin_zip(get_names(), get_scores())`): the call-branch twin
-    of `_native_iterable_container_arg`'s bare-name row. The runtime overload
-    is a C++ template that binds the container BARE, so an `Own[list]`-returning
-    free/method call renders in place with no move temp -- the Iterable slot is
-    not `Own[T]`, so no ownership cascade fires. Native/@cpp_template loop ONLY
+    `::tpy::builtin_zip(get_names(), get_scores())`); an existing object
+    converts at its concrete twin's slot instead (`protocol_twin_slot`).
+    The runtime overload is a C++ template that binds the container BARE,
+    so an `Own[list]`-returning free/method call renders in place with no
+    move temp -- the Iterable slot is not `Own[T]`, so no ownership cascade
+    fires. Native/@cpp_template loop ONLY
     (the caller gates the branch); the inner call is re-validated by its own
     value-position lowering, so an unroutable source rejects."""
     if not isinstance(a, (TpyCall, TpyMethodCall)):

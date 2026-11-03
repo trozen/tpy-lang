@@ -1361,7 +1361,9 @@ def test_native_arg_container_is_not_labelled_a_record():
            "    print(len(m[0:2][0]))\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
-    assert any(k.endswith("call.native_arg.container")
+    # The element converts at its twin's slot, so the reject names the read
+    # that blocks it.
+    assert any(k.endswith("subscript.recv.subscript")
                for k in reasons), reasons
     assert not any("record_nonf1" in k for k in reasons), reasons
 

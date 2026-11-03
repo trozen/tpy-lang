@@ -10,8 +10,8 @@ main::bwalk@60:0: uncovered (unsupported parameter type)
 main::gsize@65:0: uncovered (unsupported parameter type)
 main::apush@69:0: uncovered (async body)
 main::main@102:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
-main::amain@170:0: uncovered (async body)
-main::warn@177:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::amain@172:0: uncovered (async body)
+main::warn@179:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Bag.add@18:4: covered (storage: no_proof_required), summary: known
 main::H.items@88:4: covered (storage: no_proof_required), summary: known
 main::H.items@88:4#2: covered (storage: no_proof_required), summary: known

@@ -364,7 +364,7 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
         return False
     if not frame_factory_callee(fi):
         return iterator_source_callee(fi)
-    return frame_temp_arg_source(arg, slot, ctx, fi) is not None
+    return frame_temp_arg_source(arg, slot, ctx) is not None
 
 
 def temp_arg_spelling(fi: FunctionInfo, idx: int) -> str:
@@ -568,7 +568,8 @@ def _provenance_storage(ctx: SemanticContext,
             continue
         borrowed.append(_BorrowedOperand(src.idx, src.expr, keys, src.slot))
         kind = BorrowKind.FIELD if receiver_declared else BorrowKind.ITER
-        loans.extend((key, LoanInfo(kind)) for key in keys)
+        loans.extend((key, LoanInfo(kind, loan.on_element, loan.elem_index))
+                     for key in keys)
     loans.extend(frame_capture_loans(iterable))
     return IteratedStorage(loans, held_whole, fi_iter, borrowed)
 

@@ -1943,7 +1943,7 @@ def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
     # keeps it past the statement whatever its slot does with it, so
     # it hoists to a named local too.
     return _frame_temp_arg(
-        a, ptype, lc, lc.analyzer, active=frame_factory, callee=fi,
+        a, ptype, lc, lc.analyzer, active=frame_factory,
         temp_args=temp_args,
         no_flush_reason=("factory-method temp arg outside a "
                          "flush position"),
@@ -10853,19 +10853,21 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 e, analyzer, generator_ok=iterable_gen,
                 coro_factory_ok=use.admits(SinkForm.FRAME_FACTORY),
                 error_return_ok=error_return_raw)
-            # An F1-record result renders bare under a postfix member
-            # (RECEIVER) and, when it is an RVALUE source, directly into the
-            # owned-record decl / storage slot (`Rc<A> r = Rc.new_(...);`) --
-            # the free-call value-position mirror. A borrow-returning callee
-            # is not an rvalue source and rejects (the decl sink copies it
+            # A record or container result renders bare under a postfix
+            # member (RECEIVER) and at a position binding it by reference
+            # (BORROW_BIND), as the record-method ladder admits it; when it
+            # is an RVALUE source, also directly into the owned-record decl
+            # / storage slot (`Rc<A> r = Rc.new_(...);`) -- the free-call
+            # value-position mirror. A borrow-returning callee is not an
+            # rvalue source there and rejects (the decl sink copies it
             # through machinery this arm does not spell).
-            record_ret = (result_use is _ExprResultUse.RECEIVER
+            record_ret = (result_use in (_ExprResultUse.RECEIVER,
+                                         _ExprResultUse.BORROW_BIND)
                           # A with-manager rvalue (`with io.StringIO(s) as f:`):
                           # the record lands in the owned `auto __ctx_N` capture
                           # -- the record-method ladder's ctx_manager twin.
                           or use.admits(SinkForm.CTX_MANAGER)
-                          or (result_use in (_ExprResultUse.BORROW_BIND,
-                                             _ExprResultUse.STORAGE,
+                          or (result_use in (_ExprResultUse.STORAGE,
                                              # A for-source capture
                                              # (`async for v in svc.Ticker(3)`)
                                              # consumes the record rvalue
@@ -15050,7 +15052,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     # The frame-capturing TEMPORARY argument: the free-call twin of the
     # factory-METHOD row.
     return _frame_temp_arg(
-        a, ptype, lc, analyzer, active=frame_capturing, callee=_callee_fi,
+        a, ptype, lc, analyzer, active=frame_capturing,
         temp_args=temp_args,
         no_flush_reason="frame temp arg outside a flush position",
         lower=lambda: _lower_call_arg(
@@ -15069,7 +15071,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
 
 def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                     lc: '_LowerCtx', analyzer, *, active: bool,
-                    callee: 'FunctionInfo | None',
                     temp_args: bool, no_flush_reason: str,
                     lower: 'Callable[[], THIRExpr]',
                     lower_owned: 'Callable[[TpyType], THIRExpr]') -> THIRExpr:
@@ -15086,7 +15087,7 @@ def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     `no_flush_reason` is the seam's own reject text: the row NEEDS a hoist
     position, and with none the honest answer is a reject rather than the
     inline prvalue whose dangle this row exists to remove."""
-    slot = frame_temp_arg_slot(a, ptype, analyzer, callee) if active else None
+    slot = frame_temp_arg_slot(a, ptype, analyzer) if active else None
     if slot is None:
         return lower()
     # Inside a resumable body this row's flush point is the state's `case`
@@ -15706,8 +15707,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     hoist_t = ptype if twin is not None else inst
     frame_kept = (contract.frame_captured
                   and cls is not ParamSlotClass.TRAIT
-                  and frame_temp_arg_slot(a, hoist_t, lc.analyzer,
-                                          callee_fi) is None)
+                  and frame_temp_arg_slot(a, hoist_t, lc.analyzer) is None)
 
     def lower() -> THIRExpr:
         pinned = _pinned_literal_arg(a, inst, callee_fi, lc, declared)
@@ -15735,7 +15735,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     return _frame_temp_arg(
         a, hoist_t, lc, lc.analyzer,
         active=(contract.frame_captured
-                and cls is not ParamSlotClass.TRAIT), callee=callee_fi,
+                and cls is not ParamSlotClass.TRAIT),
         temp_args=temps,
         no_flush_reason="frame temp arg outside a flush position",
         lower=lower,
@@ -15773,7 +15773,7 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
     an = lc.analyzer
     twin = protocol_twin_slot(ptype, a, an, declared.get,
                               frame=contract.frame_captured,
-                              writes=contract.written, callee=callee_fi)
+                              writes=contract.written)
     if twin is ptype:
         return None
     src = _peel_coerce(a)
@@ -16804,7 +16804,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # expression, so every temporary element it borrows is owed a
             # named local (the element half of the frame-temp rule).
             frame_elems = ({e.path: e.owned for e in frame_temp_elem_slots(
-                               a, ptype, lc.analyzer, callee_fi)}
+                               a, ptype, lc.analyzer)}
                            if frame_capturing else None)
             if (pslot.has_pointer_repr_element()
                     # A nested tuple borrowing a level down (`tuple[int32,

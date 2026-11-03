@@ -563,9 +563,13 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
         # An iterator-returning callee hands back a HANDLE into its sources (a
         # combinator object, a generator frame): advancing it touches nothing
         # it points at, which is what the ITER kind tells the mutation climb.
+        # Several operands may lend one storage (`zip(ll[0], ll[1])`): the
+        # merge keeps every leg rather than the last.
         bt.add_borrow(key, borrower, BorrowKind.FIELD if loan.declared_only
                       else BorrowKind.ITER if iterator_source_callee(fi)
-                      else BorrowKind.ELEMENT, holds_root=holds)
+                      else BorrowKind.ELEMENT, holds_root=holds,
+                      on_element=loan.on_element,
+                      elem_index=loan.elem_index, merge=True)
     for leaf in receiver_leaves(expr):
         for key, info in frame_capture_loans(peel_value_wrappers(leaf)):
             bt.add_borrow(key, borrower, info.kind, on_element=info.on_element,

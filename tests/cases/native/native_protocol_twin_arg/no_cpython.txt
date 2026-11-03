@@ -1,0 +1,1 @@
+The bindings are user C++ (a @native function in native_types.hpp and a @cpp_template expression), which CPython cannot call.

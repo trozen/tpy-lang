@@ -4561,7 +4561,7 @@ class CallAnalyzer:
         twin = protocol_twin_slot(
             slot, arg, self.ctx, self.ctx.declared_type,
             frame=fi.is_async or frame_factory_callee(fi),
-            writes=True, callee=fi)
+            writes=True)
         if twin is slot or twin is None:
             return None
         members = self.protocols.protocol_members_on(

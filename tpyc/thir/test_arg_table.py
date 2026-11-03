@@ -114,9 +114,7 @@ class TestNativeSinkShape:
             "func_ref",
             "lambda",
             "callable_value_pass",
-            "native_iterable_container",
             "inst_slice",
-            "container_ternary",
             "native_iterable_call",
             "native_iterable_range",
             "native_iterable_iterator_call",
@@ -195,7 +193,7 @@ class TestMethodArgSinkShape:
 
     # Where the record-only rows start. Named once, so the split-point pins
     # below read as facts about the merge rather than magic offsets.
-    STUB_ROWS = 20
+    STUB_ROWS = 19
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
@@ -209,7 +207,6 @@ class TestMethodArgSinkShape:
             "enum_pass_through",
             "own_record_rvalue",
             "native_iterable_literal",
-            "native_iterable_field",
             "native_iterable_call",
             "native_iterable_range",
             "native_iterable_iterator_call",
@@ -248,7 +245,7 @@ class TestMethodArgSinkShape:
         # callable, recursive-union and cycle-placeholder slots reach these
         # rows; the record half opens at `lambda`.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 36
+        assert len(rows) == 35
         assert rows[self.STUB_ROWS] == "lambda"
 
     def test_the_view_rows_keep_their_relative_order(self):
@@ -258,7 +255,7 @@ class TestMethodArgSinkShape:
         view = ["protocol_bare_name",
                 "enum_pass_through",
                 "native_iterable_literal",
-                "native_iterable_field", "native_iterable_call",
+                "native_iterable_call",
                 "native_iterable_comp"]
         assert [r for r in rows if r in view] == view
 
@@ -294,7 +291,7 @@ class TestMethodArgSinkShape:
         rows = {r.row for r in _METHOD_ARG_SINK.rows}
         assert not rows & {
             "str_pass_through", "scalar_at_template_slot",
-            "own_element_pass", "native_iterable_container",
+            "own_element_pass",
             "float_literal_pass_through", "int_literal_bigint",
             "slice_ctor_pass_through", "value_array_call",
             "value_opt_view_whole", "value_opt_callable_pass",
@@ -338,7 +335,6 @@ class TestMethodArgSinkShape:
             "protocol_bare_name",
             "copy_iter_own_elem",
             "enum_pass_through",
-            "native_iterable_field",
             "own_iter_special",
             "own_container_comp",
             "callable_slot",

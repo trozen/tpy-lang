@@ -137,9 +137,10 @@ def main() -> None:
     for b in bg:
         bt += b
     print("ba_gen", bt)
-    # Sized generator over an element, the element grown before it is driven
+    # Sized generator over an element, the element grown before it is driven;
+    # warned though not driven yet (BUGS.md#frame-held-element-grows-unwarned)
     sg = gsize(ll[1])  # tpyc: ok
-    ll[1].append(4)
+    ll[1].append(4)  # tpyc: warning(/Mutation of 'll\[...\]' while borrowed/)
     for n in sg:
         print("gen_sized", n)
     # borrowed property: the getter's list is the field itself; no warning
@@ -150,9 +151,10 @@ def main() -> None:
     for v in pg:
         pt += v
     print("getter", pt)
-    # generator over an element, the element mutated before it is driven
+    # generator over an element, the element mutated before it is driven;
+    # warned as the twin shape above
     it = walk(ll[1])  # tpyc: ok
-    ll[1].append(7)
+    ll[1].append(7)  # tpyc: warning(/Mutation of 'll\[...\]' while borrowed/)
     t = 0
     for v in it:
         t += v

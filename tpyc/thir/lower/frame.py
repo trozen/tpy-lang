@@ -828,8 +828,8 @@ class FrameBuilder:
         )
 
 
-    def _frame_temp_slot(self, ptype: 'TpyType', arg: 'TpyExpr',
-                         callee: 'FunctionInfo') -> 'TpyType | None':
+    def _frame_temp_slot(self, ptype: 'TpyType',
+                         arg: 'TpyExpr') -> 'TpyType | None':
         """The OWNED type a TEMPORARY argument of the awaited sub-coro hoists
         into a slot of THIS frame, or None when nothing is owed.
 
@@ -838,7 +838,7 @@ class FrameBuilder:
         `frame_temp_arg_slot` decides. `param_borrows` cannot answer for a
         borrowing-VIEW slot: the view's frame field is a VALUE-kind capture,
         so the kind cascade says by-value while the aliasing says borrow."""
-        return frame_temp_arg_slot(arg, ptype, self.analyzer, callee)
+        return frame_temp_arg_slot(arg, ptype, self.analyzer)
 
     def _seat_frame_temp_elems(self, func: TpyFunction, fi, i: int,
                                arg: TpyExpr, pre: list[TpyStmt], *,
@@ -850,7 +850,7 @@ class FrameBuilder:
         slots`). The tuple stays in place: the callee's frame copies its
         pointers, and what they point at is now storage this frame holds."""
         for entry in frame_temp_elem_slots(arg, fi.params[i].type,
-                                           self.analyzer, fi):
+                                           self.analyzer):
             k = entry.path[-1]
             source = entry.holder.elements[k]
             if shared:
@@ -862,8 +862,8 @@ class FrameBuilder:
             entry.holder.elements[k] = self._frame_local_for(
                 func, source, entry.owned, pre, binds=binds)
 
-    def _view_backing_coerce(self, ptype: 'TpyType', arg: 'TpyExpr',
-                             callee: 'FunctionInfo') -> 'TpyCoerce | None':
+    def _view_backing_coerce(self, ptype: 'TpyType',
+                             arg: 'TpyExpr') -> 'TpyCoerce | None':
         """The coerce node the lift re-seats when a hoisted temporary argument
         arrived through one (`::tpy::as_mut_span(<source>)`): the coerce keeps
         its render and only its SOURCE moves onto the frame slot.
@@ -876,7 +876,7 @@ class FrameBuilder:
         that capture, not pinned by a case."""
         if not isinstance(arg, TpyCoerce):
             return None
-        return (arg if self._frame_temp_slot(ptype, arg, callee) is not None
+        return (arg if self._frame_temp_slot(ptype, arg) is not None
                 else None)
 
     def _effective_body(self, func: TpyFunction) -> list[TpyStmt]:
@@ -1166,8 +1166,8 @@ class FrameBuilder:
             # suspension is then the STORAGE the view aliases, so the lift
             # targets the coerce's source and leaves the view built over the
             # hoisted local (`::tpy::as_mut_span((*__coro_arg_0))`).
-            host = self._view_backing_coerce(fi.params[i].type, arg, fi)
-            temp_slot = self._frame_temp_slot(fi.params[i].type, arg, fi)
+            host = self._view_backing_coerce(fi.params[i].type, arg)
+            temp_slot = self._frame_temp_slot(fi.params[i].type, arg)
             if (host is None and temp_slot is None
                     and not param_borrows(fi.params[i].type,
                                           self.deps.is_static_protocol_param)):
@@ -1447,7 +1447,7 @@ class FrameBuilder:
                 self._seat_frame_temp_elems(func, fi, i, arg, pre,
                                             shared=shared,
                                             binds=_bound_local(stmt))
-                temp_slot = self._frame_temp_slot(ptype, arg, fi)
+                temp_slot = self._frame_temp_slot(ptype, arg)
                 if temp_slot is None:
                     continue
                 inner = peel_coerce(arg)
@@ -1460,7 +1460,7 @@ class FrameBuilder:
                     # would hand the outer a reference instead. The inner's
                     # own arguments were visited on their own.
                     continue
-                host = self._view_backing_coerce(ptype, arg, fi)
+                host = self._view_backing_coerce(ptype, arg)
                 source = host.expr if host is not None else arg
                 if shared:
                     self._reject_shared_loop_seat(

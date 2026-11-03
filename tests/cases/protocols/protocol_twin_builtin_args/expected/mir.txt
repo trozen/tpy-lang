@@ -1,0 +1,49 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@12:0: covered (storage: no_proof_required), summary: known
+main::dbl@46:0: covered (storage: no_proof_required), summary: known
+main::pos@50:0: covered (storage: no_proof_required), summary: known
+main::folds@55:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::lazy@78:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::joins@96:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::write_through@112:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::gen@126:0: uncovered (loop across a suspension)
+main::co@135:0: uncovered (async body)
+main::comprehension@147:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::closure@155:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::qualified@195:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::count_flags@212:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ptr_param@216:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::other_objects@222:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::make@230:0: covered (storage: no_proof_required), summary: known
+main::warn_loop@236:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::warn_gen@260:0: uncovered (unsupported hoisted value)
+main::warn_stored@268:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::warn_two_hop@283:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::sets_and_keys@311:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::user_iterable@351:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+main::bump@387:0: certified, summary: known
+main::big@392:0: covered (storage: no_proof_required), summary: known
+main::ref_elements@396:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ref_gen@420:0: uncovered (unsupported native container element)
+main::main@427:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.p@29:4: covered (storage: no_proof_required), summary: known
+main::H.p@29:4#2: covered (storage: no_proof_required), summary: known
+main::H.m@33:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::G.get@170:4: uncovered (generic body)
+main::K.via@179:4: uncovered (unsupported expression type)
+main::K.recv@183:4: uncovered (container source needs a place)
+main::K.bind@188:4: uncovered (call needs resolved ordinary callee)
+main::Bag.__iter__@332:4: uncovered (loop across a suspension)
+main::Words.__iter__@346:4: uncovered (loop across a suspension)
+main::Row.__repr__@373:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Row.__lt__@376:4: covered (storage: no_proof_required)
+main::H.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@42:4: covered (storage: no_proof_required), summary: known
+main::G.__init__@167:4: uncovered (generic constructor)
+main::K.__init__@175:4: uncovered (missing record layout)
+main::Sector.__init__@207:4: covered (storage: no_proof_required), summary: known
+main::SH.__init__@305:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@328:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Words.__init__@343:4: covered (storage: no_proof_required), summary: known
+main::Row.__init__@370:4: covered (storage: no_proof_required), summary: known
+main::RH.__init__@383:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

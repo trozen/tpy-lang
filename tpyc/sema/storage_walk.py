@@ -1204,9 +1204,10 @@ class LoanSource:
     operand of it the loan comes from (its index, -1 the receiver, and
     slot). `operand` is the lent operand of the innermost call, `key` its
     loan key -- or, for a path too deep to key that ends at a name, the
-    name (`root`) -- or `Unkeyed` when it names no storage: a temporary
-    (`fresh`: a call lending nothing, a literal) or a call the policy
-    cannot answer. The flags are the policy's, joined along the climb:
+    name, with `elem_index` the index of the root's element the path
+    leaves through (`lll[0]` of `lll[0][0]`) -- or `Unkeyed` when it names
+    no storage: a temporary (`fresh`: a call lending nothing, a literal)
+    or a call the policy cannot answer. The flags are the policy's, joined along the climb:
     `assumed` (a pending callee: a guess), `held_whole` (the result keeps
     only a whole-object reference), `declared_only` (a receiver lent only
     by its declaration, whose shape is unknown), `temp_backed` (storage a
@@ -1221,6 +1222,9 @@ class LoanSource:
     held_whole: bool = False
     declared_only: bool = False
     temp_backed: bool = False
+    # The lent operand is an ELEMENT of `key`'s storage: its index key.
+    on_element: bool = False
+    elem_index: 'tuple[str, int | str] | None' = None
 
 
 def _climb_to_call(t: Trace, i: int, policy: CallPolicy
@@ -1252,9 +1256,12 @@ def call_loans(expr: TpyExpr, policy: CallPolicy) -> list[LoanSource]:
 
     def emit(top: Top, operand: TpyExpr, key: 'StorageKey | Unkeyed',
              flags: Flags, *, fresh: bool = False,
-             temp_backed: bool = False) -> None:
-        out.append(LoanSource(top[0], top[1], operand, key, fresh, *flags,
-                              temp_backed))
+             temp_backed: bool = False,
+             index: 'TpySubscript | None' = None) -> None:
+        out.append(LoanSource(
+            top[0], top[1], operand, key, fresh, *flags, temp_backed,
+            index is not None,
+            element_index_key(index.index) if index is not None else None))
 
     def visit(t: Trace, i: int, top: Top | None, flags: Flags) -> None:
         j = _past_transparent(t, i, policy)
@@ -1284,10 +1291,13 @@ def call_loans(expr: TpyExpr, policy: CallPolicy) -> list[LoanSource]:
             return
         lk = _loan_key(Trace(t.steps[i:], t.end, t.arms))
         if isinstance(lk, LoanKey):
-            emit(top, node, lk.key, flags)
+            emit(top, node, lk.key, flags, index=lk.index)
         elif k == len(t.steps) and isinstance(t.end, TpyName):
-            # A path too deep to key still lends its root.
-            emit(top, node, StorageKey.of_name(t.end.name), flags)
+            # A path too deep to key still lends its root, at the element
+            # it leaves the root through (`lll[0]` of `lll[0][0]`).
+            adj = _loan_key(Trace(t.steps[-1:], t.end, t.arms))
+            emit(top, node, StorageKey.of_name(t.end.name), flags,
+                 index=adj.index if isinstance(adj, LoanKey) else None)
         else:
             emit(top, node, lk, flags, fresh=True)
 

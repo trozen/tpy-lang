@@ -437,9 +437,9 @@ def _loan_mutation_warning(place: str | StorageKey, cause: str, *,
     wrong -- but it may not claim the mutation hits the borrowed element,
     since that is exactly what was not proven. Only the element-hop callers
     pass it. The fourth wording (a named holder, uncertain index) needs a
-    named element loan, which only a generator expression bound to a name
-    files (`frame_capture_loans`); such a binding does not lower yet, so
-    sema emits it but no compiling program shows it.
+    named element loan, which a generator expression bound to a name
+    (`frame_capture_loans`) and a call result over an element
+    (`e = enumerate(ll[i])`, `call_loans`) file.
     """
     if iterating:
         if certain:
@@ -612,9 +612,12 @@ class BorrowTracker:
         ``holds_root``, whether a write through it writes a member key's
         root -- `LoanInfo.holds_root`).
 
-        The for-each ITER registration is the only site that sets
-        ``on_element`` directly, but it is not the only way a loan acquires
-        the hop: `combine_loan_info` carries it onto whichever kind wins a
+        The sites that set ``on_element`` directly are the ones whose
+        source is an element read: the for-each ITER registration, a
+        generator expression's captures (`frame_capture_loans`) and a call
+        lending an element operand (`call_loans`: `enumerate(ll[0])`,
+        `zip(ll[0], ll[1])`). A loan also acquires the hop through
+        `combine_loan_info`, which carries it onto whichever kind wins a
         merge, so an ELEMENT or PTR loan can be on an element too, and with
         no index when the merged legs named different ones.
 

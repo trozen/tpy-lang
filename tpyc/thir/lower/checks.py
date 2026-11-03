@@ -194,7 +194,6 @@ from .predicates import (
     _enum_prop_wrap,
     _rvalue_ref_init,
     _select_node,
-    _container_ternary_arg,
     _inst_slice_arg_ok,
     _protocol_union_arg,
     _nullable_static_protocol_param,
@@ -225,8 +224,6 @@ from .predicates import (
     _SPAN_METHOD_COERCIONS,
     _const_exact_field_receiver_ok,
     _container_pass_through_arg,
-    _native_iterable_container_arg,
-    _native_iterable_field_arg,
     _native_iterable_call_arg,
     _native_iterable_range_arg,
     _native_iterable_genexpr_arg,
@@ -5401,10 +5398,10 @@ def _native_iterable_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     `::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{300})`): the
     literal's RESOLVED container renders inline, bare into the template slot
     (array aggregates incl. BigInt / str / expr elements, and
-    the spelled `::tpy::ordered_set<T>({..})`) -- the literal twin of
-    `_native_iterable_container_arg`'s bare-name row. The shape check keys on
-    the resolved type (sema's PendingListType decision, final before
-    lowering); a make_container element rejects at the lowering arm.
+    the spelled `::tpy::ordered_set<T>({..})`); an existing object converts
+    at its concrete twin's slot instead (`protocol_twin_slot`). The shape
+    check keys on the resolved type (sema's PendingListType decision, final
+    before lowering); a make_container element rejects at the lowering arm.
     Lives here rather than beside its `_native_iterable_*` siblings in
     predicates.py because `_container_literal_shape_ok` is checks.py-local
     (predicates cannot import checks)."""
@@ -10562,15 +10559,6 @@ def _r_native_iterable_literal(req: _ArgReq) -> bool:
     return _native_iterable_literal_arg(req.a, req.ptype, req.analyzer)
 
 
-def _r_native_iterable_container(req: _ArgReq) -> bool:
-    return _native_iterable_container_arg(req.a, req.ptype, req.locals_)
-
-
-def _r_native_iterable_field(req: _ArgReq) -> bool:
-    return _native_iterable_field_arg(req.a, req.ptype, req.locals_,
-                                      req.analyzer)
-
-
 def _r_native_iterable_call(req: _ArgReq) -> bool:
     return _native_iterable_call_arg(req.a, req.ptype, req.analyzer)
 
@@ -10616,10 +10604,6 @@ def _r_own_move(req: _ArgReq) -> bool:
 
 def _r_inst_slice(req: _ArgReq) -> bool:
     return _inst_slice_arg_ok(req.a, req.analyzer)
-
-
-def _r_container_ternary(req: _ArgReq) -> bool:
-    return _container_ternary_arg(req.a, req.ptype, req.locals_, req.analyzer)
 
 
 def _r_native_iterable_range(req: _ArgReq) -> bool:
@@ -11510,17 +11494,12 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         # -> `::tpy::builtin_map<..>(h, ..)`): the std::function converts
         # implicitly into the template's Fn slot, bare on both loops.
         _ArgRow("callable_value_pass", _r_callable_value_pass),
-        _ArgRow("native_iterable_container", _r_native_iterable_container),
         # A list/Span-yielding SLICE subscript (`len(items[1:1])` ->
         # `__len__(::tpy::list_slice(items, BasicSlice{1, 1}))`): the
         # inline rvalue render is position-independent, same row the
         # container-instantiation arg takes.
         _ArgRow("inst_slice", _r_inst_slice,
                 face="arg.native_slice_subscript"),
-        # A container ternary of declared names at a protocol slot
-        # (`len(a if flag else b)`): the ifexpr container arm renders
-        # the lvalue ternary, bound bare like the single-name row.
-        _ArgRow("container_ternary", _r_container_ternary),
         _ArgRow("native_iterable_call", _r_native_iterable_call),
         _ArgRow("native_iterable_range", _r_native_iterable_range),
         _ArgRow("native_iterable_iterator_call",
@@ -11599,10 +11578,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # binds the container bare; a movable last-use name takes the
         # consuming `::tpy::own_iter(std::move(b))` wrap at lowering).
         _ArgRow("native_iterable_literal", _r_native_iterable_literal),
-        # ... and the container FIELD read at the same slot
-        # (`",".join(self._parts)` -> `::tpy::str_join(",", this->_parts)`):
-        # the member read binds the template bare like the NAME row.
-        _ArgRow("native_iterable_field", _r_native_iterable_field),
         _ArgRow("native_iterable_call", _r_native_iterable_call),
         _ArgRow("native_iterable_range", _r_native_iterable_range),
         _ArgRow("native_iterable_iterator_call",

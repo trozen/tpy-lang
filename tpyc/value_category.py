@@ -1527,12 +1527,18 @@ def param_written(fi: 'FunctionInfo | None', index: int) -> bool:
     return param_may_be_written(fi, index)
 
 
+def is_generic_protocol(slot: TpyType | None) -> bool:
+    """Whether `slot` names a protocol (`protocol_slot`) with type arguments
+    (`Iterable[T]`, a user `Adder[T]`)."""
+    proto = protocol_slot(slot)
+    return proto is not None and bool(proto.type_args)
+
+
 def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
                        analyzer: 'ValueCategoryAnalyzer | None',
                        declared_of: 'DeclaredOf | None', *,
-                       frame: bool, writes: bool,
-                       callee: 'FunctionInfo | None') -> TpyType | None:
-    """The type a structural protocol parameter `slot` of `callee` holds at
+                       frame: bool, writes: bool) -> TpyType | None:
+    """The type a structural protocol parameter `slot` holds at
     argument `arg`: its concrete twin, the argument's own held type -- a
     literal as its base type, a `str` / `bytes` local's pending view as the
     owned type its declaration names. Any other slot, or an argument with
@@ -1551,10 +1557,10 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
     A generic protocol (`Iterable[T]`, a user `Adder[T]`) is the slot
     itself too, but for a reference-type object read in place
     (`_twin_in_place`), which binds every protocol, generic or not, as its
-    twin does -- at a callee with a body only: a runtime binding's rows
-    bind its arguments themselves. Whether the callee is a binding is
-    known from its registration, before any body is analyzed, so the
-    answer does not depend on which body sema reached first.
+    twin does. The answer is the same for every callee -- a TPy body, a
+    runtime binding or a user's `@native` / `@cpp_template` declaration --
+    so it reads nothing of the callee and does not depend on which body
+    sema reached first.
 
     The one answer sema's loans, the frame hoist and the lowering's slot
     read: the lowering only refines it with the facts it alone has (a
@@ -1580,21 +1586,24 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
     if not isinstance(at, TpyType):
         return slot
     at = _held_type(at)
-    in_place = ((callee is None or not is_bodyless_binding(callee))
-                and _twin_in_place(proto, arg, at, analyzer))
+    name = peel_coerce(arg)
+    whole = (declared_of(name.name) if declared_of is not None
+             and isinstance(name, TpyName) else None)
+    if isinstance(at, PendingContainerType) and isinstance(whole, TpyType):
+        # A literal-seeded local's read is still typed by its literal; the
+        # binding holds the container its declaration settled on.
+        at = _held_type(whole)
+    in_place = _twin_in_place(proto, arg, at, analyzer)
     if not in_place and (
-            getattr(proto, "type_args", None) or not _has_twin(at, frame) or (
+            is_generic_protocol(proto) or not _has_twin(at, frame) or (
             writes and not frame and at.is_value_type()
             # No TypeDef fact says a type's C++ spells its methods as
             # members; a user record's class is the one that does.
             and not (isinstance(at, NominalType) and at.is_user_record))):
         return slot
-    name = peel_coerce(arg)
-    if declared_of is not None and isinstance(name, TpyName):
-        whole = declared_of(name.name)
-        if isinstance(whole, TpyType) and isinstance(
-                peel_binding(whole), (OptionalType, UnionType)):
-            at = peel_binding(whole)
+    if isinstance(whole, TpyType) and isinstance(
+            peel_binding(whole), (OptionalType, UnionType)):
+        at = peel_binding(whole)
     return at
 
 
@@ -1602,10 +1611,12 @@ def _twin_in_place(proto: NominalType, arg: TpyExpr, t: TpyType,
                    analyzer: 'ValueCategoryAnalyzer') -> bool:
     """Argument `arg` of held type `t` binds protocol `proto` in place, as
     its twin's reference parameter binds it: a reference-type object
-    (`_reference_object`) the argument does not build (`is_rvalue_source`).
-    Not at a protocol whose elements the callee takes over
+    (`_reference_object`) the argument does not build (`is_rvalue_source`),
+    whatever the callee (a runtime binding's parameter binds the lvalue as
+    a TPy body's twin does). Not at a protocol whose elements the callee
+    takes over
     (`Iterable[Own[T]]`): its consuming rows hand them over."""
-    if any(isinstance(a, OwnType) for a in getattr(proto, "type_args", ())):
+    if any(isinstance(a, OwnType) for a in proto.type_args):
         return False
     return (_reference_object(t, records=True)
             and not is_rvalue_source(analyzer, arg))
@@ -1679,8 +1690,7 @@ def _bound_by_iteration(t: TpyType, frame: bool) -> bool:
 
 
 def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
-                          analyzer, callee: 'FunctionInfo | None'
-                          ) -> 'TpyExpr | None':
+                          analyzer) -> 'TpyExpr | None':
     """The SOURCE expression a TEMPORARY argument to a generator/coroutine
     factory materializes, and which must therefore be hoisted to a named local
     of the block that owns the handle -- or None when nothing is owed.
@@ -1715,10 +1725,10 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     same argument. `frame_temp_elem_plan` applies this same rule to the
     elements of a tuple-literal argument.
 
-    A structural protocol parameter of `callee` holds its concrete twin
+    A structural protocol parameter holds its concrete twin
     (`protocol_twin_slot`): the twin's slot answers, and a twin the frame
     holds by value (`frame_param_lends`) takes the prvalue itself."""
-    ptype = _frame_twin(a, ptype, analyzer, callee)
+    ptype = _frame_twin(a, ptype, analyzer)
     pt = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -1737,13 +1747,13 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _frame_twin(a: TpyExpr, ptype: 'TpyType | None',
-                analyzer, callee: 'FunctionInfo | None') -> 'TpyType | None':
-    """The slot `callee`'s frame holds argument `a` of parameter `ptype` at:
+                analyzer) -> 'TpyType | None':
+    """The slot a frame holds argument `a` of parameter `ptype` at:
     a structural protocol's concrete twin (`protocol_twin_slot`), None
     where that twin is held by value; any other slot as it is."""
     # A temporary names no binding: no declared type refines it.
     twin = protocol_twin_slot(ptype, a, analyzer, None,
-                              frame=True, writes=False, callee=callee)
+                              frame=True, writes=False)
     if twin is ptype:
         return ptype
     return twin if frame_param_lends(twin) else None
@@ -1770,8 +1780,7 @@ class FrameTempElem(NamedTuple):
 
 
 def frame_temp_elem_plan(a: TpyExpr, ptype: 'TpyType | None',
-                         analyzer, callee: 'FunctionInfo | None'
-                         ) -> tuple[FrameTempElem, ...]:
+                         analyzer) -> tuple[FrameTempElem, ...]:
     """Every temporary element of tuple-literal argument `a` that a
     generator/coroutine factory keeps past the statement:
     `frame_temp_arg_source`'s rule applied to each element the tuple only
@@ -1780,10 +1789,10 @@ def frame_temp_elem_plan(a: TpyExpr, ptype: 'TpyType | None',
     element at a nested tuple slot has no hoist render, so it owes none."""
     out: list[FrameTempElem] = []
     for leaf in tuple_literal_elems(
-            a, _frame_twin(a, ptype, analyzer, callee)) or ():
+            a, _frame_twin(a, ptype, analyzer)) or ():
         if not TupleType.element_borrows(_bare_slot(leaf.slot)):
             continue
-        src = frame_temp_arg_source(leaf.elem, leaf.slot, analyzer, callee)
+        src = frame_temp_arg_source(leaf.elem, leaf.slot, analyzer)
         if src is not None:
             out.append(FrameTempElem(leaf.path, leaf.holder, src, leaf.slot))
     return tuple(out)

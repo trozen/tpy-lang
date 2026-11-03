@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::total@10:0: uncovered (no body to lower)
+main::count@14:0: uncovered (no body to lower)
+main::main@24:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+main::H.__init__@20:4: covered (storage: no_proof_required), summary: known

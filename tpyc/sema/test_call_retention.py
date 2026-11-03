@@ -550,3 +550,59 @@ def test_coerced_field_of_dying_storage() -> None:
                for a in args if isinstance(a, TpyCoerce)]
     assert got == [("str_to_strview", True), ("into_any", False),
                    ("into_any", False)]
+
+
+_ITERABLE_SRC = '''
+from typing import Iterator
+from tpy import Ptr, StrView, int32
+
+
+class Bag:
+    xs: list[int32]
+    p: Ptr[int32]
+
+    def __init__(self) -> None:
+        self.xs = [1, 2]
+        self.p = Ptr[int32]()
+
+    def __iter__(self) -> Iterator[int32]:
+        for x in self.xs:
+            yield x
+
+
+class Words:
+    ws: list[StrView]
+
+    def __init__(self) -> None:
+        self.ws = ["a"]
+
+    def __iter__(self) -> Iterator[StrView]:
+        for w in self.ws:
+            yield w
+
+
+def subject(bags: list[Bag], words: list[Words]) -> None:
+    enumerate(bags[0])
+    enumerate(words[0])
+'''
+
+
+def test_binding_retention_at_a_generic_protocol_reads_the_elements() -> None:
+    # What a binding copies out of an iterable is an element, which the
+    # slot's type argument names: a pointer field of the iterable record is
+    # not copied, a pointer element is.
+    compiler, modules = _compile(_ITERABLE_SRC)
+    entry = _entry(modules)
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    found: list[TpyExpr] = []
+
+    def keep(s: object) -> None:
+        if isinstance(s, TpyExprStmt) and isinstance(
+                s.expr, (TpyCall, TpyMethodCall)):
+            found.append(s.expr)
+    walk_body_stmts(fn.body, lambda e: None, keep)
+    ctx = entry.analyzer.ctx
+    with activate_compiler(compiler):
+        got = [retention_channel(c.resolved_function_info, 0, c, ctx)
+               for c in found]
+    assert got == [Retention.RESULT, Retention.RESULT | Retention.COPIES]

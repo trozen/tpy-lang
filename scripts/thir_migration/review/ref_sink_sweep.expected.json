@@ -5340,14 +5340,14 @@
   ""
  ],
  "deref_list__async__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%"
  ],
  "deref_list__async__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__],"
  ],
  "deref_list__async__subscript__field_write": [
   "ok",
@@ -5465,14 +5465,14 @@
   ""
  ],
  "deref_list__ctor__dict_subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %d[str('k')] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%d[str('k')] [borrow]])]) [raw])"
  ],
  "deref_list__ctor__dict_subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], ["
  ],
  "deref_list__ctor__dict_subscript__field_write": [
   "ok",
@@ -5480,9 +5480,9 @@
   "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__dict_subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::d"
  ],
  "deref_list__ctor__dict_subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -5825,14 +5825,14 @@
   ""
  ],
  "deref_list__ctor__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%xs[coerce(lit(0) -> int32)] [borro"
  ],
  "deref_list__ctor__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy:"
  ],
  "deref_list__ctor__subscript__field_write": [
   "ok",
@@ -5840,9 +5840,9 @@
   "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [ca"
  ],
  "deref_list__ctor__subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6015,14 +6015,14 @@
   ""
  ],
  "deref_list__fn__dict_subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %d[str('k')] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%d[str('k')] [borrow]])]) [raw])"
  ],
  "deref_list__fn__dict_subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], ["
  ],
  "deref_list__fn__dict_subscript__field_write": [
   "ok",
@@ -6030,9 +6030,9 @@
   "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__dict_subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::d"
  ],
  "deref_list__fn__dict_subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6410,14 +6410,14 @@
   ""
  ],
  "deref_list__fn__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%xs[coerce(lit(0) -> int32)] [borro"
  ],
  "deref_list__fn__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy:"
  ],
  "deref_list__fn__subscript__field_write": [
   "ok",
@@ -6425,9 +6425,9 @@
   "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [ca"
  ],
  "deref_list__fn__subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6750,14 +6750,14 @@
   "yield_values: [0] %pv"
  ],
  "deref_list__gen__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%"
  ],
  "deref_list__gen__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__],"
  ],
  "deref_list__gen__subscript__field_write": [
   "ok",
@@ -6885,14 +6885,14 @@
   ""
  ],
  "deref_list__meth__dict_subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %d[str('k')] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%d[str('k')] [borrow]])]) [raw])"
  ],
  "deref_list__meth__dict_subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], ["
  ],
  "deref_list__meth__dict_subscript__field_write": [
   "ok",
@@ -6900,9 +6900,9 @@
   "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__dict_subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::d"
  ],
  "deref_list__meth__dict_subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -7280,14 +7280,14 @@
   ""
  ],
  "deref_list__meth__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%xs[coerce(lit(0) -> int32)] [borro"
  ],
  "deref_list__meth__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy:"
  ],
  "deref_list__meth__subscript__field_write": [
   "ok",
@@ -7295,9 +7295,9 @@
   "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__subscript__match_capture": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [ca"
  ],
  "deref_list__meth__subscript__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -7455,14 +7455,14 @@
   ""
  ],
  "deref_list__nested__dict_subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %d[str('k')] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%d[str('k')] [borrow]])]) [raw]) call(nested_inner,"
  ],
  "deref_list__nested__dict_subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], ["
  ],
  "deref_list__nested__dict_subscript__field_write": [
   "ok",
@@ -7850,14 +7850,14 @@
   ""
  ],
  "deref_list__nested__subscript__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "%x: DL = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%xs[coerce(lit(0) -> int32)] [borro"
  ],
  "deref_list__nested__subscript__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy:"
  ],
  "deref_list__nested__subscript__field_write": [
   "ok",

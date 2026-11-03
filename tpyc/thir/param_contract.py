@@ -240,7 +240,7 @@ def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
             # name's twin is asked at.
             and protocol_twin_slot(ptype, arg, analyzer, None,
                                    frame=frame_captured(fi),
-                                   writes=written, callee=fi) is not ptype):
+                                   writes=written) is not ptype):
         return Materializer.DEDUCED
     if not isinstance(ptype, TpyType) or not param_takes_ownership(ptype):
         return None
