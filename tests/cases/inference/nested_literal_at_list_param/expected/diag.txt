@@ -1,0 +1,7 @@
+main.py:121: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:126: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:131: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:203: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:208: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:212: warning: copies list[Row] into owned storage; use copy() to make this explicit
+main.py:229: warning: copies dict[str, list[Row]] into owned storage; use copy() to make this explicit

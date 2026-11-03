@@ -1450,7 +1450,9 @@ every element and every row -- not from the joined element, which keeps one
 row only -- and classifies each leaf literal or typed as a scalar birth
 does; the rows met on the way take their part of the tree. Rows at one
 position are one C++ type, so the records of the rows at one position form
-a REPRESENTATION group (`ListLiteralInfo.row_group`, `join_rows`): a row
+a REPRESENTATION group (`ListLiteralInfo.row_group`, `join_rows`); rows
+that hold no number join it where the literal's sibling elements unify
+(`TypeCompatibility._demote_pending_pair`, the peer-unify pair hook): a row
 appended or stored later joins it, and every requirement for a vector on
 one member -- a mutation through `g[0]`, a list context on one row, a
 differing size, an empty row, an alias that needs one -- is closed over the

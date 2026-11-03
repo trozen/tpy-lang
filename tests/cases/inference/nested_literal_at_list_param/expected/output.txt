@@ -1,0 +1,36 @@
+elem 1
+dict 1
+bind 2 2 42
+grow 2 9 1
+loop 2 3
+comp [2, 3]
+readonly 3
+readonly_name 1
+readonly_int 2
+readonly_tuples 1
+optional 2 2
+optional_name 2 2
+span 1
+dict_of_dict 2
+list_of_set 2
+nocopy 1
+moved 1
+closure 2
+items 2
+copy 2 1
+own 2
+named_row 1 1
+dict_rows 1 1
+append_row 2 1
+deep 1
+tuple_rows 1
+dicts_in_list 1
+named_dict_row 2 1
+replaced_rows 1
+copy_int 2 1
+int_rows 1
+generator 2
+gen_rows 2
+gen_rows_after 2
+return 1 2
+return_optional 1

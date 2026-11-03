@@ -79,6 +79,8 @@ void user_iterable();
 Row& bump(Row& r);
 // def big(r: Row) -> bool:
 bool big(const Row& r);
+// def grow_rows(xs: list[Row]) -> None:
+void grow_rows(std::vector<Row>& xs);
 // def ref_elements() -> None:
 void ref_elements();
 // def ref_gen(ll: list[list[Row]]) -> Iterator[int32]:

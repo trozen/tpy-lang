@@ -1420,11 +1420,12 @@ Context-dependent inference for Python-first semantics:
 | Module-level (global) | `list` | `std::vector` | Cross-module safety - other modules might import and mutate |
 | Function local, no mutation | `Array` | `std::array` | Stack performance, no heap allocation |
 | Function local + `.append()`/`.pop()`/etc | `list` | `std::vector` | Explicit mutation requires growable container |
-| Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
+| Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list; the slot may be `readonly[list[T]]`, `Own[list[T]]` or `list[T] \| None`, and the literal may be reached through its name, an element read (`ll[0]`, `d["k"]`), a captured local, a `dict.items()` value or `copy(...)` |
+| Rows of one nested literal | one type | -- | `ll = [[Row(5)], [Row(6)]]; ns(ll[0])` makes every row of `ll` a `std::vector` (`std::array<std::vector<Row>, 2>`); the outer level stays `Array` |
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is a view, array stays on stack |
 | Function local, different-size reassignment | `list` | `std::vector` | `x = [1,2,3]; x = [4,5]` -- sizes differ, must be dynamic |
 | Function local, jagged nested literal | inner `list` | `std::vector` | `[[1,2],[3,4,5]]` -- the variable-length level demotes to `list`, uniform levels stay `Array` |
-| Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable |
+| Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable, through the same wrappers (`Own[...]`, `readonly[...]`, `\| None`) and borrow sources (`return ll[0]`) as at a parameter; a generator's `yield` the same |
 | Function local, alias mutated | `list` | `std::vector` | `b = a; b.append(4)` -- both `a` and `b` become list |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
@@ -1819,9 +1820,7 @@ Current limitations:
   `BUGS.md#overload-container-nested-in-argument`). Sema applies the rule
   on every path, but some shapes stop at code generation whatever the
   argument: a `typing.overload` set whose stubs narrow a container
-  parameter (`BUGS.md#overload-stub-narrows-container-param`); a `copy()`
-  of a literal-seeded list local passed to a method's container slot the body
-  mutates (`BUGS.md#copy-array-local-at-mutated-list-param`); and
+  parameter (`BUGS.md#overload-stub-narrows-container-param`); and
   a non-empty list literal as the default of `d.get` / `d.pop` compiles
   to C++ the C++ compiler refuses
   (`BUGS.md#dict-get-list-literal-default-bare-brace`); bind the value

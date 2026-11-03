@@ -393,6 +393,10 @@ def big(r: Row) -> bool:
     return r.n > 1
 
 
+def grow_rows(xs: list[Row]) -> None:
+    xs.append(Row(0))
+
+
 def ref_elements() -> None:
     ll = [[Row(5), Row(4)], [Row(6)]]
     h = RH()
@@ -413,6 +417,10 @@ def ref_elements() -> None:
     m.n += 1
     min(h.rs).n += 2  # tpyc: ok
     print("ref-elements", ll[0], ll[1], h.rs, d["k"])
+    # a list parameter takes the element in place: the append lands in ll
+    grow_rows(ll[0])  # tpyc: ok
+    grow_rows(d["k"])  # tpyc: ok
+    print("ref-elements-list-param", len(ll[0]), len(ll[1]), len(d["k"]))
 
 
 # generator body: the loop variable is the element; its field read is copied

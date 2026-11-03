@@ -14000,44 +14000,44 @@
   "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "list_i__mut__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i__mut__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__mut__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__mut__comprehension__ctor": [
   "ok",
@@ -14080,29 +14080,29 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -14110,14 +14110,14 @@
   ""
  ],
  "list_i__mut__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__copy_call__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__mut__dict_items_value__ctor": [
   "ok",
@@ -15000,44 +15000,44 @@
   "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "list_i__ro__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__ro__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i__ro__comprehension__ctor": [
   "ok",
@@ -15080,44 +15080,44 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) -> Own[DynP])])]) print(met"
  ],
  "list_i__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__copy_call__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(copy [template 'std::vector<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ro__dict_items_value__ctor": [
   "ok",
@@ -16000,29 +16000,29 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t> move){method_call(%b, v_m, [])}])"
  ],
  "list_i_own__mut__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -16030,14 +16030,14 @@
   ""
  ],
  "list_i_own__mut__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__mut__comprehension__ctor": [
   "ok",
@@ -16080,44 +16080,44 @@
   "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [copy[std::vector<int32_t>](%s0)]) -> Own[DynP])])]) print(method_call(method_call(meth"
  ],
  "list_i_own__mut__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__copy_call__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__dict_items_value__ctor": [
   "ok",
@@ -17000,29 +17000,29 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t> move){method_call(%b, v_m, [])}])"
  ],
  "list_i_own__ro__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -17030,14 +17030,14 @@
   ""
  ],
  "list_i_own__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) call(inner, [])"
  ],
  "list_i_own__ro__comprehension__ctor": [
   "ok",
@@ -17080,44 +17080,44 @@
   "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [copy[std::vector<int32_t>](%s0)]) -> Own[DynP])])]) print(method_call(method_call(meth"
  ],
  "list_i_own__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__copy_call__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [copy[std::vector<int32_t>](%s0)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__dict_items_value__ctor": [
   "ok",
@@ -18000,44 +18000,44 @@
   "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "list_i_ro__ro__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i_ro__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i_ro__ro__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_i_ro__ro__comprehension__ctor": [
   "ok",
@@ -18080,44 +18080,44 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i_ro__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) -> Own[DynP])])]) print(met"
  ],
  "list_i_ro__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__copy_call__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [call(copy [template 'std::vector<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__dict_items_value__ctor": [
   "ok",
@@ -18320,84 +18320,84 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i_ro__ro__local__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i_ro__ro__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_ro__ro__local_last__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_i_ro__ro__local_last__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i_ro__ro__local_last__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_i_ro__ro__local_last__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__local_last__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__local_last__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i_ro__ro__local_last__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__local_last__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i_ro__ro__loop_var__ctor": [
   "ok",
@@ -19000,44 +19000,44 @@
   "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "list_r__mut__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__mut__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__mut__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__mut__comprehension__ctor": [
   "ok",
@@ -19080,29 +19080,29 @@
   "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -19110,94 +19110,94 @@
   ""
  ],
  "list_r__mut__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__copy_call__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__mut__dict_items_value__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_r__mut__dict_items_value__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_r__mut__dict_items_value__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__mut__dict_items_value__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__mut__dict_subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%d[str('k')] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_r__mut__dict_subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__mut__dict_subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %d[str('k')] [borrow]])"
  ],
  "list_r__mut__dict_subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__mut__dict_subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__mut__dict_subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%d[str('k')] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "list_r__mut__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__mut__dict_subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__mut__empty_literal__ctor": [
   "ok",
@@ -19920,44 +19920,44 @@
   "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "list_r__ro__closure_capture__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__ro__closure_capture__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "list_r__ro__comprehension__ctor": [
   "ok",
@@ -20000,124 +20000,124 @@
   "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) -> Own[DynP])])]) print(method_ca"
  ],
  "list_r__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [call(copy [template 'std::vector<R>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__copy_call__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(copy [template 'std::vector<R>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_r__ro__dict_items_value__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_r__ro__dict_items_value__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_r__ro__dict_items_value__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__ro__dict_items_value__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__ro__dict_subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%d[str('k')] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_r__ro__dict_subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__ro__dict_subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %d[str('k')] [borrow]])"
  ],
  "list_r__ro__dict_subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__ro__dict_subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__ro__dict_subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%d[str('k')] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "list_r__ro__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__ro__dict_subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_r__ro__empty_literal__ctor": [
   "ok",

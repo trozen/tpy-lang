@@ -111,7 +111,7 @@ from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
 from .slot_hint import SlotHint
-from .pending_num import (literal_entries, pending_leaves, receives_pending,
+from .pending_num import (bare_slot, literal_entries, pending_leaves, receives_pending,
                           strip_int, value_family)
 from .type_join import user_type_name
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -3869,7 +3869,7 @@ class CallAnalyzer:
         """
         if not self.ctx.slot_step_commits():
             return
-        if isinstance(arg_type, PENDING_CONTAINER_TYPES):
+        if isinstance(bare_slot(arg_type), PENDING_CONTAINER_TYPES):
             self.deduction.mark_container_param_context(arg, arg_type, ptype)
         if isinstance(arg_type, PendingViewType):
             self.deduction.mark_view_param_context(arg, ptype, arg_type.family)

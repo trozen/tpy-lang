@@ -1,0 +1,26 @@
+main::__tpy_init: uncovered (module initialization)
+main::ns@31:0: covered (storage: no_proof_required), summary: known
+main::grow@35:0: covered (storage: no_proof_required), summary: known
+main::ro@39:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::total@43:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::pairs@47:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::maybe@51:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::sp@58:0: covered (storage: no_proof_required), summary: known
+main::pins@62:0: covered (storage: no_proof_required), summary: known
+main::keep@66:0: covered (storage: no_proof_required), summary: known
+main::fd@70:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::fs@74:0: covered (storage: no_proof_required), summary: known
+main::nsi@78:0: covered (storage: no_proof_required), summary: known
+main::gen@104:0: uncovered (unsupported hoisted value)
+main::gen_rows@111:0: uncovered (reference yield)
+main::first@118:0: covered (storage: no_proof_required), summary: known
+main::first_ro@124:0: uncovered (unsupported native container type), summary: opaque (unsupported native container type)
+main::first_opt@129:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@134:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::Filler.fill@88:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::K.take@99:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::Row.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Pin.__init__@20:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@27:4: covered (storage: no_proof_required), summary: known
+main::Filler.__init__@85:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@96:4: covered (storage: no_proof_required), summary: known

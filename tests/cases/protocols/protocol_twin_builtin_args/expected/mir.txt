@@ -23,9 +23,10 @@ main::sets_and_keys@311:0: uncovered (print argument needs a scalar leaf), summa
 main::user_iterable@351:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
 main::bump@387:0: certified, summary: known
 main::big@392:0: covered (storage: no_proof_required), summary: known
-main::ref_elements@396:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::ref_gen@420:0: uncovered (unsupported native container element)
-main::main@427:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::grow_rows@396:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ref_elements@400:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::ref_gen@428:0: uncovered (unsupported native container element)
+main::main@435:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::H.p@29:4: covered (storage: no_proof_required), summary: known
 main::H.p@29:4#2: covered (storage: no_proof_required), summary: known
 main::H.m@33:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

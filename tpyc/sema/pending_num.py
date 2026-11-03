@@ -833,17 +833,24 @@ class PendingNums:
     def join_rows(self, *infos: ListLiteralInfo | None) -> None:
         """The lists of `infos` are rows at one position of one list: one
         C++ type, so one representation (`ListLiteralInfo.row_group`)."""
-        group: list[int] = []
-        for info in infos:
-            if info is None:
+        present = [info for info in infos if info is not None]
+        if not present:
+            return
+        # Groups are disjoint: merge each smaller one into the largest in
+        # place, so a literal of k rows joins in O(k), not O(k^2).
+        group = max((info.row_group for info in present if info.row_group),
+                    key=len, default=None)
+        if group is None:
+            group = [present[0].literal_id]
+            present[0].row_group = group
+        for info in present:
+            if info.row_group is group:
                 continue
             for lid in info.row_group or [info.literal_id]:
-                if lid not in group:
+                rec = self.ctx.list_literal(lid)
+                if rec is not None and rec.row_group is not group:
                     group.append(lid)
-        for lid in group:
-            rec = self.ctx.list_literal(lid)
-            if rec is not None:
-                rec.row_group = group
+                    rec.row_group = group
 
     def _connected(self, info: ContainerRecord) -> list[ContainerRecord]:
         """The records of the names bound to the list of `info` so far:

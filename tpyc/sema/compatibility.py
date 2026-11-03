@@ -3308,7 +3308,9 @@ class TypeCompatibility:
         different sizes, or either already forced to `list` -- and give an
         empty unbound peer (`[[], ["a"]]`) its sibling's element, the record
         side of unify answering the pair with the non-empty one. That copies
-        the element as it is now; it links nothing.
+        the element as it is now; it links nothing. The pair is one row
+        group (`PendingNums.join_rows`): rows at one position are one C++
+        type whatever they hold.
 
         `unify_literal_types` fires this at every pending pair it matches on its
         traversal (inner pairs first), so a jagged level propagates to its
@@ -3326,6 +3328,8 @@ class TypeCompatibility:
             self.deduction.mark_list_different_size(a.literal_id)
             self.deduction.mark_list_different_size(b.literal_id)
         if isinstance(a, PendingListType) and isinstance(b, PendingListType):
+            self.pend.join_rows(self.ctx.list_literal(a.literal_id),
+                                self.ctx.list_literal(b.literal_id))
             for empty, full in ((a, b), (b, a)):
                 info = self.ctx.list_literal(empty.literal_id)
                 if (info is not None and info.elem_cells is None

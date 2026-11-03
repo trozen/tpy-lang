@@ -599,6 +599,12 @@ bool big(const Row& r) {
     return (r.n > 1);
 }
 
+// def grow_rows(xs: list[Row]) -> None:
+//     xs.append(Row(0))
+void grow_rows(std::vector<Row>& xs) {
+    xs.push_back(Row(0));
+}
+
 // def ref_elements() -> None:
 //     ll = [[Row(5), Row(4)], [Row(6)]]
 //     h = RH()
@@ -619,10 +625,14 @@ bool big(const Row& r) {
 //     m.n += 1
 //     min(h.rs).n += 2  # tpyc: ok
 //     print("ref-elements", ll[0], ll[1], h.rs, d["k"])
+//     # a list parameter takes the element in place: the append lands in ll
+//     grow_rows(ll[0])  # tpyc: ok
+//     grow_rows(d["k"])  # tpyc: ok
+//     print("ref-elements-list-param", len(ll[0]), len(ll[1]), len(d["k"]))
 void ref_elements() {
     std::array<std::vector<Row>, 2> ll = {{{Row(5), Row(4)}, {Row(6)}}};
     RH h = RH();
-    ::tpy::ordered_map<std::string, std::array<Row, 2>> d = ::tpy::ordered_map<std::string, std::array<Row, 2>>({{"k", {Row(7), Row(8)}}});
+    ::tpy::ordered_map<std::string, std::vector<Row>> d = ::tpy::ordered_map<std::string, std::vector<Row>>({{"k", {Row(7), Row(8)}}});
     {
         auto __src_0 = ::tpy::builtin_enumerate(::tpy::__getitem__(ll, 0));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -694,6 +704,9 @@ void ref_elements() {
         __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 2);
     }
     std::cout << "ref-elements" << " " << ::tpy::ListPrinter(::tpy::__getitem__(ll, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(ll, 1)) << " " << ::tpy::ListPrinter(h.rs) << " " << ::tpy::ListPrinter(::tpy::__getitem__(d, "k")) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::grow_rows(::tpy::__getitem__(ll, 0));
+    ::tpyapp::main::grow_rows(::tpy::__getitem__(d, "k"));
+    std::cout << "ref-elements-list-param" << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 1)) << " " << ::tpy::__len__(::tpy::__getitem__(d, "k")) << "\n" << ::tpy::check_signals;
 }
 
 

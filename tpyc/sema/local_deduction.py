@@ -83,7 +83,7 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         python_type_name, rebind_mix_message, usage_mix_message,
                         wider_store_message)
 from .numeric_lattice import numeric_info, same_width_family, widen_numeric_types
-from .pending_num import (Entry, container_parts, is_pending_num,
+from .pending_num import (Entry, bare_slot, container_parts, is_pending_num,
                           numeric_container, pairs_as, pending_leaves,
                           pending_list_of)
 from ..parse.nodes import is_parse_node
@@ -347,8 +347,9 @@ def mark_pending_list_mutated(ctx: 'SemanticContext', expr: 'TpyExpr | None',
     and a name bound to a tracked literal (alias). One home for the
     expression-rooted mutation routes: mutating method receivers, binary
     concat operands, and aug-assign targets."""
-    if isinstance(expr_type, PendingListType):
-        info = ctx.list_literal(expr_type.literal_id)
+    pending = pending_list_of(expr_type)
+    if pending is not None:
+        info = ctx.list_literal(pending.literal_id)
         if info:
             info.is_mutated = True
         return
@@ -910,19 +911,11 @@ class LocalTypeDeduction:
         argument was analyzed (`PendingNums.elem_context`) -- its parts.
         """
         self.ctx.assert_slot_effect("a container's parameter context")
-        if isinstance(arg_expr, TpyCoerce):
-            arg_expr = arg_expr.expr
-        if not isinstance(arg_expr, TpyName):
-            return
-        param_type = unwrap_ref_type(param_type)
-        # Own[list[T]] consumes by value but still requires vector storage --
-        # without the unwrap the literal resolves to std::array and the
-        # call site fails the C++ build (mirrors mark_container_return_context).
-        if isinstance(param_type, OwnType):
-            param_type = param_type.wrapped
-        info = self._named_record(arg_expr.name, arg_type)
+        info = self._literal_record(arg_expr, arg_type)
         if info is None:
             return
+        # readonly, Own, a borrow and `| None` decide nothing about storage.
+        param_type, _ = peel_value(param_type)
         if isinstance(info, ListLiteralInfo):
             if is_list(param_type):
                 info.passed_to_list_param = True
@@ -1188,22 +1181,42 @@ class LocalTypeDeduction:
         resolves its element/key/value from the declared return type, just as
         passing it to a typed parameter does.
         """
-        return_type = unwrap_ref_type(return_type)
-        if isinstance(return_type, OwnType):
-            return_type = return_type.wrapped
-
-        if isinstance(return_expr, TpyCoerce):
-            return_expr = return_expr.expr
-        if not isinstance(return_expr, TpyName):
-            return
-        info = self._named_record(return_expr.name, None, return_type)
+        return_type, _ = peel_value(return_type)
+        info = self._literal_record(
+            return_expr, self.ctx.expr_types.get(return_expr), return_type)
         if info is None:
             return
         if isinstance(info, ListLiteralInfo):
+            if not is_list(return_type):
+                return
             info.passed_to_list_param = True
         # Cells meet the return type where the value is coerced to it.
         if info.elem_cells is None:
             self._learn_parts(info, return_type)
+
+    def _literal_record(self, expr: TpyExpr, value_type: TpyType | None,
+                        returned: TpyType | None = None,
+                        ) -> 'ContainerLiteralInfo | None':
+        """The record of the container literal `expr` holds: the one its
+        name is bound to, else the literal its type is under a borrow, an
+        `Own` or `readonly` -- an element read (`ll[0]`), a capture,
+        `copy(xs)`."""
+        if isinstance(expr, TpyCoerce):
+            expr = expr.expr
+            value_type = self.ctx.expr_types.get(expr, value_type)
+        if isinstance(expr, TpyName):
+            info = self._named_record(expr.name, bare_slot(value_type),
+                                      returned)
+            if info is not None:
+                return info
+        pending = bare_slot(value_type)
+        if not isinstance(pending, PENDING_CONTAINER_TYPES):
+            return None
+        info = self.ctx.container_record(pending.literal_id)
+        # The literal itself meets its slot where it is coerced to it.
+        if info is None or info.expr is expr:
+            return None
+        return info
 
     def _named_record(self, name: str, t: TpyType | None,
                       returned: TpyType | None = None,
