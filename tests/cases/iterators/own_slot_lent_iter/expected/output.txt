@@ -1,0 +1,48 @@
+free copy_iter [1, 99]
+free copy_iter [2, 99]
+free copy_iter G [[1], [2]]
+free Own generator [1, 99]
+free Own generator [2, 99]
+free copy() of a list [5, 99]
+free copy() of a list nl [[5]]
+free int32 iterator 3
+free generic step [7, 99]
+free Own type arg [8, 99]
+free Own type arg ob 0
+free clones_own [1, 99]
+free clones_own [2, 99]
+free clones_own G [[1], [2]]
+free clones named [15, 99]
+free clones named cl [[15]]
+free SubBag [14, 99]
+free Own __next__ [1, 99]
+free Own __next__ [2, 99]
+free Own separate __next__ [1, 99]
+free Own separate __next__ [2, 99]
+free Ptr step 2
+free drain [9, 99]
+free drain d []
+free Bag.drain [10, 99]
+free filter drain [11, 99]
+free from_param [12, 99]
+free genexpr [13, 99]
+nocopy Own generator 100
+nocopy Own generator 101
+nocopy Own __next__ 100
+nocopy Own __next__ 101
+nocopy list() 1 2
+method copy_iter [1, 99]
+method copy_iter [2, 99]
+method Own generator [1, 99]
+method Own generator [2, 99]
+method G [[1], [2]]
+generator copy_iter [1, 99]
+generator copy_iter [2, 99]
+generator Own generator [1, 99]
+generator Own generator [2, 99]
+generator G [[1], [2]]
+async copy_iter [1, 99]
+async copy_iter [2, 99]
+async Own generator [1, 99]
+async Own generator [2, 99]
+async G [[1], [2]]

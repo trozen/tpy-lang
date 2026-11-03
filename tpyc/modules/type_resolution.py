@@ -287,8 +287,10 @@ def get_extends_protocol_type_arg(
     return None
 
 
-def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
-    """If type has __next__() with @error_return(StopIteration), return element type T."""
+def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
+                                       keep_own: bool = False) -> "TpyType | None":
+    """If type has __next__() with @error_return(StopIteration), return element type T
+    (with `keep_own`, an `Own[T]` return as declared)."""
     from tpyc.typesys import NominalType, OwnType, TypeParamRef, unwrap_ref_type
 
     tpy_type = unwrap_ref_type(tpy_type)
@@ -301,7 +303,7 @@ def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegis
     for method in owner.get_method_overloads("__next__"):
         if method.error_return_type == "builtins.StopIteration" and len(method.params) == 0:
             inner = unwrap_ref_type(method.return_type)
-            if isinstance(inner, OwnType):
+            if isinstance(inner, OwnType) and not keep_own:
                 inner = inner.wrapped
             if isinstance(inner, TypeParamRef) and inner.name in type_subst:
                 return type_subst[inner.name]
@@ -309,7 +311,8 @@ def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegis
     return None
 
 
-def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
+                          keep_own: bool = False) -> "TpyType | None":
     """If type has __iter__() returning a concrete iterator, return element type T.
 
     A readonly container is iterable through its inner type; callers that need
@@ -337,7 +340,8 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     # receiver's own type (used by SpanIter and similar self-iterator types).
     type_subst["Self"] = tpy_type
     return _find_iter_method_element(owner.get_method_overloads("__iter__"), type_subst,
-                                     registry, allow_protocol_return=True)
+                                     registry, allow_protocol_return=True,
+                                     keep_own=keep_own)
 
 
 def _ancestor_iter_element(
@@ -389,7 +393,8 @@ def _ancestor_iter_element(
     return None
 
 
-def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
+                              keep_own: bool = False) -> "TpyType | None":
     """Unified element-type accessor for any iterable type.
 
     Single source of truth for "what element type does iterating this produce?"
@@ -413,13 +418,14 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     if isinstance(base, OwnType):
         base = base.wrapped
     if isinstance(base, ReadonlyType):
-        elem = _iterable_element_type_inner(base.wrapped, registry)
+        elem = _iterable_element_type_inner(base.wrapped, registry, keep_own)
         return make_readonly(elem) if elem is not None else None
-    elem = _iterable_element_type_inner(base, registry)
+    elem = _iterable_element_type_inner(base, registry, keep_own)
     return canonical_readonly(elem) if elem is not None else None
 
 
-def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
+                                 keep_own: bool = False) -> "TpyType | None":
     tpy_type = unwrap_ref_type(tpy_type)
     if isinstance(tpy_type, OwnType):
         tpy_type = tpy_type.wrapped
@@ -448,12 +454,13 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") 
         return CHAR
 
     # error_return __next__ (user-defined iterators)
-    er_elem = get_error_return_next_element_type(tpy_type, registry)
+    er_elem = get_error_return_next_element_type(tpy_type, registry,
+                                                 keep_own=keep_own)
     if er_elem is not None:
         return er_elem
 
     # __iter__() method (built-in containers + user records)
-    iter_elem = get_iter_element_type(tpy_type, registry)
+    iter_elem = get_iter_element_type(tpy_type, registry, keep_own=keep_own)
     if iter_elem is not None:
         return iter_elem
 
@@ -462,7 +469,7 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") 
 
 def _find_iter_method_element(
     methods: "list[MethodDef | FunctionInfo]", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
-    *, allow_protocol_return: bool = False,
+    *, allow_protocol_return: bool = False, keep_own: bool = False,
 ) -> "TpyType | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
     from tpyc.typesys import FunctionInfo, NominalType, OwnType, SelfType, TypeParamRef, is_protocol_type, unwrap_ref_type
@@ -527,7 +534,8 @@ def _find_iter_method_element(
                 ret = NominalType(ret.name, tuple(
                     type_subst.get(a.name, a) if isinstance(a, TypeParamRef) else a
                     for a in ret.type_args), False, ret._module_qname)
-            elem = get_error_return_next_element_type(ret, registry)
+            elem = get_error_return_next_element_type(ret, registry,
+                                                      keep_own=keep_own)
             if elem is not None:
                 return elem
 

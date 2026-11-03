@@ -1,0 +1,40 @@
+main::__tpy_init: uncovered (module initialization)
+main::reset@11:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::passthru@33:0: uncovered (generic body)
+main::clones@38:0: uncovered (generic body)
+main::gen@43:0: uncovered (reference yield)
+main::nth@48:0: uncovered (reference yield)
+main::gen_l@52:0: uncovered (reference yield)
+main::gen_gt@57:0: uncovered (generic body)
+main::view_of@114:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::bump@185:0: uncovered (unsupported parameter type)
+main::bump_pt@190:0: uncovered (unsupported parameter type)
+main::bump_pairs@195:0: uncovered (unsupported parameter type)
+main::take@200:0: covered (storage: no_proof_required), summary: known
+main::keep@205:0: covered (storage: no_proof_required), summary: known
+main::free_function@209:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen_body@322:0: uncovered (call needs finalized known summary)
+main::async_body@330:0: uncovered (async body)
+main::main@338:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::View.__iter__@18:4: uncovered (reference yield)
+main::GV.__iter__@28:4: uncovered (generic body)
+main::Cursor.__iter__@68:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cursor.__next__@71:4: uncovered (error-return body)
+main::It.__next__@84:4: uncovered (error-return body)
+main::Separate.__iter__@92:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::PView.__iter__@109:4: uncovered (reference yield)
+main::Own2.__iter__@124:4: uncovered (reference yield)
+main::PtView.__iter__@149:4: uncovered (reference yield)
+main::SpanView.__iter__@155:4: uncovered (view of container storage), summary: opaque (view of container storage)
+main::Key.__eq__@165:4: covered (storage: no_proof_required)
+main::Key.__hash__@168:4: covered (storage: no_proof_required), summary: known
+main::KeyView.__iter__@176:4: uncovered (reference yield)
+main::Driver.run@315:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Cursor.__init__@65:4: covered (storage: no_proof_required), summary: known
+main::It.__init__@81:4: covered (storage: no_proof_required), summary: known
+main::Rows.__init__@99:4: covered (storage: no_proof_required), summary: known
+main::PView.__init__@106:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Own2.__init__@121:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@133:4: covered (storage: no_proof_required), summary: known
+main::Pt.__init__@140:4: covered (storage: no_proof_required), summary: known
+main::Key.__init__@162:4: covered (storage: no_proof_required), summary: known

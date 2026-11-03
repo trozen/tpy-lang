@@ -46,11 +46,6 @@ release commit (annotated; the build hook bakes `git describe`), then
   keyword arguments (landed), then iterator provenance, in that order
   (user, 2026-10-05) -- TODO: "Per-instantiation result form for a
   generic body", "Iterator provenance"
-- Regression from the lent-element move fix (2026-10-10): a user iterable
-  or generator lending storage it does not own, at an owning element slot,
-  copies silently where master aliased -- BUGS.md
-  `own-slot-user-iterable-lend-unwarned` (fix: TODO "Iterator provenance",
-  after the freeze; a narrow stopgap is recorded there)
 - The 0.6.0 known limitations, silent miscompiles first
 - Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
   `str-field-write-through-subscript-rejects`

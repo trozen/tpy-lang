@@ -1,0 +1,36 @@
+free record [[1], [2]]
+free generator [[1], [2]]
+free generator(arg) [[1], [2]]
+free generator(list arg) [[1], [2]]
+free generic generator, closed step [[1], [2]]
+free generic generator list() [[1], [2]]
+free pass-through generic [[1], [2]]
+free pass-through generic list() [[1], [2]]
+free copying generic [[1], [2]]
+free next [[1], [2]]
+free separate iterator [[1], [2]]
+free inherited [[1], [2]]
+free list() [[1], [2]]
+free set() 1 6
+free map [[1], [2]] 2
+free zip [[1], [2]]
+free filter [[1], [2]]
+  pair 0
+  pair 1
+free iter [[1], [2]]
+free dead local [[1], [2]]
+free live local [[1, 1], [2, 1]]
+free branch-bound [[1, 1], [2, 1]]
+free reassigned [[1, 1], [2, 1]]
+free if-expression [[1, 1], [2, 1]]
+free Own factory [[1], [2]]
+free copy() [[1, 1], [2, 1]]
+free Own type arg [[1, 1], [2, 1]]
+free own field
+free SpanIter 1
+free zip nocopy half 7 1
+free zip nocopy half mirrored 8 1
+free PList 1
+method [[1], [2]]
+generator [[1], [2]]
+async [[1], [2]]

@@ -1,0 +1,1 @@
+warned divergence: TPy copies where CPython aliases, so the output differs by design

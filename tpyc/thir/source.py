@@ -18,14 +18,14 @@ from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from ..sema.alias_rebind import bare_tuple
+from ..sema.elem_paths import bare_tuple
 from ..typesys import (OwnType, ReadonlyType, TpyType, TupleType, UnionType,
                        pointer_variant_union, unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync)
 
 if TYPE_CHECKING:
     from ..codegen_cpp.forms import LoopBinding
-    from ..sema.context import ElemPath
+    from ..sema.elem_paths import ElemPath
     from ..sema.source_records import SourceRecord
     from .lower.context import FrameLocalClass, ValueOptKind
     from .nodes import THIRTupleLayout

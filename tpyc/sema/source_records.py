@@ -39,7 +39,7 @@ from ..typesys import TpyType
 from ..value_category import peel_value_wrappers
 
 if TYPE_CHECKING:
-    from .alias_rebind import ElemPath
+    from .elem_paths import ElemPath
     from .compatibility import TupleSink
     from .context import SemanticContext
 

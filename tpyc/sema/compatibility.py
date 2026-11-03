@@ -49,12 +49,14 @@ from ..value_category import (
     accessor_returns_ref, returns_borrow, holds_no_pointer, value_may_point,
     finalized_on_path, place_dies)
 from . import own_copy
-from .alias_rebind import (ElemPath, bare_tuple, declared_call_paths,
-                           is_reference_leaf,
-                           leaf_paths, owned_slot_paths,
-                           pointer_tuple_names, reference_paths,
-                           top_level, tuple_borrowed_paths, tuple_elem_owned,
-                           tuple_source_elem_owned)
+from .alias_rebind import (
+    declared_call_paths, pointer_tuple_names, top_level, tuple_borrowed_paths,
+    tuple_elem_owned, tuple_source_elem_owned,
+)
+from .elem_paths import (
+    ElemPath, bare_tuple, declared_lent_paths, is_reference_leaf, leaf_paths,
+    owned_slot_paths, reference_paths,
+)
 from .binding_ownership import (CompMove, ReadKind, bound_name,
                                 owned_head_targets,
                                 read_ownership, record_body_ownership,
@@ -122,7 +124,8 @@ from .pending_num import (ContainerCells, at_path, container_parts,
                           map_leaves,
                           pending_leaves, pending_list_of, root_of, strip_int,
                           value_family, value_leaves, with_container)
-from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
+from .iter_loans import (handle_owns_elements, iteration_copied_leaves,
+                         iteration_lend_pending)
 
 
 def _literal_value_from_source(
@@ -736,15 +739,20 @@ class TempRoot(NamedTuple):
     in_tuple: bool = False
 
 
-def _handle_lends_elements(t: TpyType) -> bool:
-    """Whether a value of type `t` is a handle that hands out elements it
-    does not own: an iterator (a combinator, a generator frame or
-    expression, a Span/view iterator) or a dict view.
+def _handle_lends_elements(ctx: SemanticContext, expr: TpyExpr,
+                           t: TpyType) -> bool:
+    """Whether `expr`, a value of type `t`, is a handle that hands out
+    elements it does not own: an iterator (a combinator, a generator frame
+    or expression, a Span/view iterator), a dict view, or a user type
+    whose step user code lends (`handle_owns_elements`), whatever its
+    binding.
 
     An allow-list: every such handle lends unless its type PROVES the
     elements owned (`iter_yields_owned_elements`, an `Own[T]` element). A
     handle whose provenance is temporaries only is answered by its
     binding's init, not here (`_dead_handle_value`)."""
+    if not handle_owns_elements(ctx, expr, t):
+        return True
     bare = unwrap_ref_type(unwrap_readonly(unwrap_own(unwrap_send_sync(t))))
     if isinstance(bare, GenExprType):
         elem: TpyType | None = bare.element_type
@@ -812,18 +820,20 @@ class TypeCompatibility:
         that every body's borrow facts are final -- so the verdict does not
         depend on whether the generator is defined above or below its use."""
         for check in self.pending_iter_copy_checks:
-            if iteration_copies_lent_reference(
-                    self.ctx, check.source_expr, check.elem_type):
-                self._element_copy(check.elem_type, check.display_type,
+            copied = iteration_copied_leaves(
+                self.ctx, check.source_expr, check.elem_type)
+            if copied:
+                self._element_copy(copied, check.display_type,
                                    check.hint, check.loc, check.copied)
         self.pending_iter_copy_checks.clear()
 
-    def _element_copy(self, elem_type: TpyType, display_type: TpyType,
+    def _element_copy(self, copied: Sequence[TpyType], display_type: TpyType,
                       hint: str, loc: SourceLocation | None,
                       source: TpyExpr | None) -> None:
-        """An owning element slot copies each element of `source`, which
-        lends them: warned, or refused for a non-copyable element."""
-        if self.ctx.is_type_non_copyable(elem_type):
+        """An owning element slot copies the `copied` leaves of each element
+        of `source`, which lends them: warned, or refused when a copied leaf
+        is non-copyable (a `zip` half it moves may be)."""
+        if any(self.ctx.is_type_non_copyable(t) for t in copied):
             _, msg = own_copy.slot_message(
                 display_type, display_type, "owned storage",
                 own_copy.KIND_ELEMENTS, hint, non_copyable=True)
@@ -1901,12 +1911,17 @@ class TypeCompatibility:
                 # Own[T] from explicit return/param means caller acknowledged
                 # ownership -- skip warning.  Own[T] from name lookup (owned
                 # local) is implicit and still needs the warning.
-                explicit_own = (isinstance(actual, OwnType)
-                                and not isinstance(source_expr, TpyName))
+                # An explicit Own handle, an Own type argument on it or a
+                # copy() / copy_iter() of it owns its elements -- unless user
+                # code lends its step: then the elements are still checked.
+                elements_owned = (source_expr is not None and (
+                    (isinstance(actual, OwnType)
+                     and not isinstance(source_expr, TpyName))
+                    or actual_provides_own
+                    or self.is_copy_call(source_expr))
+                    and handle_owns_elements(self.ctx, source_expr, actual))
                 if (source_expr is not None
-                        and not explicit_own
-                        and not actual_provides_own
-                        and not self.is_copy_call(source_expr)
+                        and not elements_owned
                         and self.ctx.slot_step_commits()):
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
@@ -1965,6 +1980,7 @@ class TypeCompatibility:
                             # Rvalue iterators that yield Ref elements (e.g.
                             # map(identity, pts)) copy on materialization.
                             # RefType in the Own-wrapped element is the proof.
+                            copied: list[TpyType] = [elem_type]
                             if not (is_lvalue_src or _contains_semantic_ref(elem_type)):
                                 # A combinator, view or generator lends its
                                 # sources' elements with no Ref marker: the
@@ -1982,9 +1998,11 @@ class TypeCompatibility:
                                                 hint, self.ctx._resolve_loc(source_expr),
                                                 copied_src))
                                         continue
-                                elif not iteration_copies_lent_reference(
-                                        self.ctx, prov_src, elem_type):
-                                    continue
+                                else:
+                                    copied = iteration_copied_leaves(
+                                        self.ctx, prov_src, elem_type)
+                                    if not copied:
+                                        continue
                             if self.ctx.defer_own_copy_verdict(
                                     display_type, display_type,
                                     "owned storage", source_expr,
@@ -1992,7 +2010,7 @@ class TypeCompatibility:
                                     source=copied_src):
                                 continue
                             self._element_copy(
-                                elem_type, display_type, hint,
+                                copied, display_type, hint,
                                 self.ctx._resolve_loc(source_expr),
                                 copied_src)
                 return None
@@ -3436,7 +3454,7 @@ class TypeCompatibility:
         per-element provenance of the direct call carries over; otherwise
         the name itself, which lends every element."""
         t = self.ctx.get_expr_type(name)
-        if t is None or not _handle_lends_elements(t):
+        if t is None or not _handle_lends_elements(self.ctx, name, t):
             return None
         cur = name
         seen: set[str] = set()
@@ -7633,7 +7651,7 @@ class TypeCompatibility:
               if declared is not None else None)
         if not isinstance(dt, TupleType) or len(dt.element_types) != arity:
             return frozenset()
-        return reference_paths(dt) - owned_slot_paths(dt)
+        return declared_lent_paths(dt)
 
     def check_captured_tuple_read(self, name: str, tuple_type: TupleType,
                                   expr: TpyExpr, slot: TpyType,

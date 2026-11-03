@@ -26,9 +26,10 @@ from ..parse import (TpyAssign, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
 from ..parse.nodes import (SourceLocation, TpyNestedDef, walk_body_stmts,
                           walk_expr_tree)
 from ..sema import alias_rebind
-from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
-                                 tuple_borrowed_paths,
-                                 tuple_source_elem_owned)
+from ..sema.alias_rebind import (
+    direct_elements, tuple_borrowed_paths, tuple_source_elem_owned,
+)
+from ..sema.elem_paths import bare_tuple, owned_slot_paths
 from ..sema.binding_ownership import ReadKind, local_ownership
 from ..sema.compatibility import TupleSink, TypeCompatibility
 from ..sema.context import NonOwningBind, SemanticContext

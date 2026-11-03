@@ -43,7 +43,7 @@ the tables live on the module's `SemanticContext` (`body_ownership`,
 from __future__ import annotations
 
 from collections.abc import Iterable, Set as AbstractSet
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping
 
@@ -68,9 +68,9 @@ from ..typesys import (FunctionInfo, NominalType, OptionalType, OwnType,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
 from ..value_category import peel_coerce, peel_value_wrappers
-from .alias_rebind import (ElemPath, bare_tuple, leaf_paths,
-                           owned_leaf_paths, tuple_name_bindings)
-from .iter_loans import IterElementSource, iter_element_source
+from .alias_rebind import tuple_name_bindings
+from .elem_paths import ElemPath, bare_tuple, leaf_paths, owned_leaf_paths
+from .iter_loans import IterElementSource, declared_class, iter_element_source
 from .context import NonOwningBind, fold_nonowning
 from .call_lends import callee_lend_fact
 from .decl_types import declared_bound_type
@@ -250,10 +250,7 @@ def _declared_iterator(ctx: 'SemanticContext', e: TpyExpr, bare: TpyType
     if isinstance(bare, NominalType) and not is_protocol_type(bare):
         record = ctx.registry.get_record_for_type(bare)
         if record is not None:
-            # The class's own declaration: its type parameters unsubstituted.
-            return (replace(bare, type_args=tuple(
-                TypeParamRef(p) for p in record.type_params))
-                if record.type_params else bare)
+            return declared_class(bare, record)
     if isinstance(e, TpyName):
         return bare if _unreassigned_param(ctx, e.name) else None
     if isinstance(e, TpyFieldAccess):

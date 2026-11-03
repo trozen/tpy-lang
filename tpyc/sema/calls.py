@@ -100,7 +100,7 @@ from .receiver_calls import (call_mutates_receiver,
 from .narrowing import truthy_operands
 from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
-from .alias_rebind import owned_slot_paths
+from .elem_paths import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
 from .protocols import (
     dynamic_dispatch_type_conforms, handle_payload_may_be, is_runtime_checkable,

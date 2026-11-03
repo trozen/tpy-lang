@@ -20,6 +20,7 @@ from ..parse.nodes import SourceLocation, TryTier, bound_callee, name_path
 from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
+from .elem_paths import ElemPath
 
 if TYPE_CHECKING:
     from ..parse import TpyGeneratorExpression
@@ -1238,7 +1239,6 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
     note_nonowning_bind(ctx, name, at, source_path=source_path)
 
 
-ElemPath = tuple[int, ...]
 # A place read's steps from its root out: a field name or a constant tuple
 # index (`ElemPath` addresses a tuple's leaves only).
 ReadPath = tuple['int | str', ...]

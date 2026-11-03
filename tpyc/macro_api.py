@@ -2056,7 +2056,7 @@ class TypeBuilder:
         a `Ptr` / `Span` / `Callable` is a value handle the slot holds as is,
         while the copy question looks through it to what it reaches."""
         # Deferred: tpyc.sema imports this module at load time.
-        from .sema.alias_rebind import reference_paths
+        from .sema.elem_paths import reference_paths
         return not typ.is_value_type() or bool(reference_paths(typ))
 
     def optional(self, inner: TpyType) -> TpyType:

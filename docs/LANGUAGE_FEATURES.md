@@ -2729,7 +2729,9 @@ No warning is emitted for:
 - **Rvalues that own their result** (constructor calls, `Own[T]`-returning
   functions, factories) -- no existing owner. A call that returns a BORROW
   (`-> T` on a reference type) does warn: the reference it hands back
-  aliases the callee's storage, so the owning slot copies
+  aliases the callee's storage, so the owning slot copies. A user iterator
+  object owns itself, not what it lends (see "A user iterator lends at an
+  owning element slot" below)
 - **`copy()` wrapped** -- intent already explicit
 - **`copy_iter()` wrapped** -- intent already explicit (element-by-element copy)
 - **Last use** of a container -- source is dead after this point, no observable
@@ -2751,6 +2753,35 @@ holds for an iterable whose elements a callable argument takes as `Own[X]`:
 `map(take, keys, rows)` with `def take(k: int32, row: Own[list[int32]])` warns
 `copies list[int32] elements` for a live `rows`, moves a dead one, and copies
 what a dict view or a generator lends.
+
+**A user iterator lends at an owning element slot.** A user class's
+`__iter__` (own or inherited), a self-iterator's `__next__` and a generator
+whose declared step is a reference not spelled `Own[...]` (and names no type
+parameter) LEND their steps, even when nothing the call names backs them -- a
+global, a `Ptr` target, the iterator's own fields, a temporary argument
+(the signature cannot say a generator does not yield a global); a `Ptr[T]`
+step is a value and is handed over. At an `Iterable[Own[T]]`
+argument, a builtin collector (`list(View())`) or an `Own` callback's feed
+(`map(take, keys, View())`), and through `zip` / `filter` / `enumerate` /
+`iter` over one, TPy copies each lent element where CPython aliases it, and
+warns (`copies list[int32] elements; use copy_iter() to make this explicit`):
+for a temporary, a dead local however it was bound, an `Own[...]` factory's
+result, a `copy()` of the iterator object (it copies the object, not what
+it lends) and an `Own` type argument on the class alike. The escapes:
+`copy_iter(View())` makes the copy explicit (and copies under CPython too),
+and a generator declared `Iterator[Own[T]]` that yields `copy(x)` hands over
+owned elements (a class `__iter__` declared `Iterator[Own[T]]` is refused at
+that slot today: BUGS.md#own-yield-generator-refused-at-iterable-slot). A
+`@nocopy` element lent there is a compile error (*cannot copy non-copyable
+type 'N' into owned storage*), a documented restriction: without shared
+ownership the slot cannot take an element the iterator only lends. A `zip`
+half that IS handed over is not copied, so `list(zip([N(7)], View()))` moves
+the `@nocopy` `N` and warns for the copied half only. A generic generator
+declared `Iterator[T]` forwards what its source lends, temporary or named
+(`passthru(View())`, and a `clones` that yields `copy(x)` too: the signature
+says the step lends; declare `Iterator[Own[T]]` to hand it over). A generic
+producer over its own storage (`Bag[T]` popping its items) keeps the rule
+its instantiation gives it, and `for` loops and comprehensions are unaffected.
 The builtin collectors -- `list()`, `set()`, `dict()`, `extend` and slice
 assignment -- consume a handed-over source and a generator's fresh values the
 same way: each element is moved in, and only a lent one is copied (a set

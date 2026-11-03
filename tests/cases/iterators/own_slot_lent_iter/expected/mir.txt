@@ -1,0 +1,38 @@
+main::__tpy_init: uncovered (module initialization)
+main::fresh@16:0: uncovered (reference yield)
+main::drain@83:0: uncovered (generic body)
+main::clones@88:0: uncovered (generic body)
+main::clones_own@93:0: uncovered (generic body)
+main::from_param@98:0: uncovered (reference yield)
+main::bump@123:0: uncovered (unsupported parameter type)
+main::total@129:0: uncovered (unsupported parameter type)
+main::take_ptrs@136:0: uncovered (unsupported parameter type)
+main::keep@141:0: covered (storage: no_proof_required), summary: known
+main::fresh_toks@153:0: uncovered (reference yield)
+main::bump_toks@174:0: uncovered (unsupported parameter type)
+main::nocopy_handover@180:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::free_function@188:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::gen_body@249:0: uncovered (call needs resolved ordinary callee)
+main::async_body@257:0: uncovered (async body)
+main::main@265:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@238:25: uncovered (generator expression)
+main::View.__iter__@11:4: uncovered (reference yield)
+main::Ints.__iter__@22:4: covered (storage: no_facts: storage facts have not been published)
+main::Bag.push@33:4: uncovered (generic body)
+main::Bag.__iter__@36:4: uncovered (generic body)
+main::Bag.drain@40:4: uncovered (generic body)
+main::OwnCursor.__iter__@55:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::OwnCursor.__next__@58:4: uncovered (error-return body)
+main::OwnIt.__next__@71:4: uncovered (error-return body)
+main::OwnSeparate.__iter__@79:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::PtrView.__iter__@119:4: uncovered (reference yield)
+main::TokCursor.__iter__@164:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::TokCursor.__next__@167:4: uncovered (error-return body)
+main::Driver.run@242:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Bag.__init__@30:4: uncovered (generic constructor)
+main::OwnCursor.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::OwnIt.__init__@68:4: covered (storage: no_proof_required), summary: known
+main::Rows.__init__@106:4: covered (storage: no_proof_required), summary: known
+main::PtrView.__init__@116:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Tok.__init__@149:4: covered (storage: no_proof_required), summary: known
+main::TokCursor.__init__@161:4: covered (storage: no_proof_required), summary: known

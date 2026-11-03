@@ -31,8 +31,9 @@ from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
                                  iter_yields_owned_elements, protocol_info_of)
 from ..typesys import (
-    contains_reference_type, FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
-    ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
+    contains_reference_type, FunctionInfo, GenExprType, NominalType,
+    PendingDictType, PendingListType, ReadonlyType, PendingSetType, RecordInfo,
+    TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_always_borrows,
     is_callable_type, is_dyn_protocol, is_fn_type, is_protocol_type,
     type_param_names,
@@ -48,6 +49,7 @@ from .call_lends import (
 )
 from ..holders import Holder, IterHolder
 from .context import BorrowKind, LoanInfo, element_index_key
+from .elem_paths import ElemPath, declared_lent_paths, leaves_at
 from .storage_walk import (LoanKey, MarkRequest, StorageKey, call_loans,
                            loan_key, mark_roots)
 from .receiver_calls import (
@@ -145,8 +147,7 @@ def iteration_runs_code(ctx: 'SemanticContext', iterable: TpyExpr | None,
     if isinstance(t, NominalType) and not t.is_protocol:
         # A record's own `__iter__` / `__next__` is TPy code even when it
         # hands out a view of its storage.
-        rec = ctx.registry.get_record_for_type(t)
-        return rec is not None and not rec.is_native
+        return user_record(ctx, t) is not None
     if iter_element_source(t, ctx.registry) is IterElementSource.CONTAINER:
         return False
     call = iterable.expr if isinstance(iterable, TpyCoerce) else iterable
@@ -183,6 +184,121 @@ def _operand_runs_code(ctx: 'SemanticContext', operand: TpyExpr) -> bool:
             bare, registry=ctx.registry) is None:
         return False
     return iteration_runs_code(ctx, operand, t)
+
+
+def _is_user_code(fi: FunctionInfo) -> bool:
+    return not (fi.native_function or fi.cpp_template or fi.is_stub)
+
+
+def user_record(ctx: 'SemanticContext', t: TpyType) -> RecordInfo | None:
+    """The non-native user record `t` names, or None."""
+    if not isinstance(t, NominalType) or t.is_protocol:
+        return None
+    rec = ctx.registry.get_record_for_type(t)
+    return rec if rec is not None and not rec.is_native else None
+
+
+def declared_class(t: NominalType, record: RecordInfo) -> NominalType:
+    """The class `record` (of type `t`) as its declaration spells it: its
+    type parameters unsubstituted."""
+    if not record.type_params:
+        return t
+    return replace(t, type_args=tuple(TypeParamRef(p)
+                                      for p in record.type_params))
+
+
+class StepProducer(NamedTuple):
+    """The user code a step of iterating a value runs (`step_producer`) and
+    the step it DECLARES (`Own` markers kept, type parameters
+    unsubstituted); `step` is None when no declaration says (a record
+    inheriting a native container's iteration)."""
+    step: TpyType | None
+
+
+def step_producer(ctx: 'SemanticContext', iterable: TpyExpr | None,
+                  iterable_type: 'TpyType | None') -> StepProducer | None:
+    """The user code that produces a step of iterating `iterable` (of
+    `iterable_type`): a non-native user record whose own or inherited
+    `__iter__` is user code, or -- for a call iterable -- a generator
+    factory. None for anything else: a native container, view or
+    combinator, a protocol. The declared step is the iteration protocol's
+    element (`get_iterable_element_type`) of the class declaration or of
+    the generator's declared return."""
+    t = (unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
+         if iterable_type is not None else None)
+    rec = user_record(ctx, t) if t is not None else None
+    if rec is not None:
+        assert isinstance(t, NominalType)
+        found = ctx.registry.mro_method_definer(rec, "__iter__")
+        if found is None:
+            return StepProducer(None)
+        # The declaring class's own declaration: a subclass binding an
+        # inherited `__iter__`'s `T` does not close its step.
+        owner_t, owner = (t, found[1]) if found[0] is None else found
+        iter_fi = next((fi for fi in owner.get_method_overloads("__iter__")
+                        if not fi.is_consuming), None)
+        if iter_fi is None or not _is_user_code(iter_fi):
+            return StepProducer(None)
+        assert isinstance(owner_t, NominalType)
+        return StepProducer(builtin_modules.get_iterable_element_type(
+            declared_class(owner_t, owner), registry=ctx.registry,
+            keep_own=True))
+    call = iterable.expr if isinstance(iterable, TpyCoerce) else iterable
+    if isinstance(call, (TpyCall, TpyMethodCall)):
+        fi = call.resolved_function_info
+        if fi is not None and frame_factory_callee(fi):
+            ret = fi.root.return_type
+            return StepProducer(
+                builtin_modules.get_iterable_element_type(
+                    ret, registry=ctx.registry, keep_own=True)
+                if ret is not None else None)
+    return None
+
+
+def _lent_leaves(step: TpyType) -> frozenset[ElemPath]:
+    """The leaves of a declared step that are lent references: those the
+    declaration does not mark `Own` (`declared_lent_paths`), minus an open
+    type parameter's, whose handling its instantiation keeps."""
+    lent = declared_lent_paths(step)
+    return frozenset(p for p, e in leaves_at(step, ())
+                     if p in lent and not type_param_names(e))
+
+
+def _user_step(ctx: 'SemanticContext', iterable: TpyExpr | None,
+               iterable_type: 'TpyType | None'
+               ) -> tuple[StepProducer | None, frozenset[ElemPath]]:
+    """`step_producer` and its lent leaves (`user_step_lends`)."""
+    producer = step_producer(ctx, iterable, iterable_type)
+    if producer is None or producer.step is None:
+        return producer, frozenset()
+    return producer, _lent_leaves(producer.step)
+
+
+def user_step_lends(ctx: 'SemanticContext', iterable: TpyExpr | None,
+                    iterable_type: 'TpyType | None' = None
+                    ) -> frozenset[ElemPath]:
+    """The leaves of a step that user code (`step_producer`) lends rather
+    than hands over: its declared step leaf is a reference not marked
+    `Own` that names no open type parameter. An owning element slot copies
+    each such leaf even when no named storage backs it (a global, a `Ptr`
+    target, the receiver's fields).
+
+    Invariant: it reads declared signatures and the MRO only -- never
+    `generic_yield_borrows` or any other body fact -- so the verdict does
+    not depend on whether the producer is defined above or below its use.
+    `iterable_type` defaults to `iterable`'s; with no `iterable` only the
+    type answers (a generator is recognized by its call)."""
+    if iterable_type is None and iterable is not None:
+        iterable_type = ctx.get_expr_type(iterable)
+    return _user_step(ctx, iterable, iterable_type)[1]
+
+
+def handle_owns_elements(ctx: 'SemanticContext', expr: TpyExpr | None,
+                         t: 'TpyType | None') -> bool:
+    """Whether owning a handle `expr` (of type `t`) owns the elements it
+    hands out: true unless its step comes from user code with lent leaves
+    (`user_step_lends`). Native types are never reclassified."""
+    return not user_step_lends(ctx, expr, t)
 
 
 def _yield_elem_sources(fi: FunctionInfo,
@@ -229,16 +345,46 @@ def _elem_param_indices(root: FunctionInfo, et: TpyType) -> list[int]:
             if names & type_param_names(p.type)]
 
 
+class UnnamedLend(Enum):
+    """A provenance leaf whose step user code lends from storage no name
+    at the iteration reaches (a global, a `Ptr` target, the receiver's
+    fields): `user_step_lends` says the leaf is lent, the walk names
+    nothing it is lent from. UNKNOWN is never a StorageKey: it says THAT a
+    leaf is lent, not where, so a reader that files loans asserts against
+    it."""
+    UNKNOWN = "unknown"
+
+
 # Per element of an iteration's yield, the named storage the element is a
-# reference into: a flat root list for a whole element, or one entry per
+# reference into: a flat root list for a whole element, `UnnamedLend.UNKNOWN`
+# for one user code lends from storage nothing names, or one entry per
 # element of a tuple yield.
-ElemProvenance = Union[list[StorageKey], tuple["ElemProvenance", ...]]
+ElemProvenance = Union[list[StorageKey], UnnamedLend,
+                       tuple["ElemProvenance", ...]]
 
 
-def _flat_provenance(prov: ElemProvenance) -> list[StorageKey]:
+def _flat_provenance(prov: ElemProvenance
+                     ) -> list[StorageKey | UnnamedLend]:
+    """Every leaf's lenders, flattened."""
     if isinstance(prov, tuple):
         return [root for p in prov for root in _flat_provenance(p)]
+    if isinstance(prov, UnnamedLend):
+        return [prov]
     return prov
+
+
+def _merge_provenance(a: ElemProvenance,
+                      b: ElemProvenance) -> ElemProvenance:
+    """Per leaf, what either of two sources lends (a select's arms)."""
+    if (isinstance(a, tuple) and isinstance(b, tuple)
+            and len(a) == len(b)):
+        return tuple(_merge_provenance(x, y) for x, y in zip(a, b))
+    fa, fb = _flat_provenance(a), _flat_provenance(b)
+    if not fa or not fb:
+        return a if fa else b
+    if UnnamedLend.UNKNOWN in fa or UnnamedLend.UNKNOWN in fb:
+        return UnnamedLend.UNKNOWN
+    return [k for k in [*fa, *fb] if isinstance(k, StorageKey)]
 
 
 def _iterates_type_param(param_type: TpyType, et: TpyType) -> bool:
@@ -250,51 +396,126 @@ def _iterates_type_param(param_type: TpyType, et: TpyType) -> bool:
     return bool(args) and is_protocol_type(p) and args[0] == et
 
 
+def _yields_owned(ctx: SemanticContext, iterable: TpyExpr) -> bool:
+    it_type = ctx.get_expr_type(iterable)
+    return it_type is not None and iter_yields_owned_elements(
+        unwrap_ref_type(unwrap_readonly(unwrap_own(it_type))))
+
+
 def iteration_elem_provenance(ctx: SemanticContext,
                               iterable: TpyExpr) -> ElemProvenance:
     """Per element of what iterating `iterable` yields, the named storage it
     points into. Strict about the callee's generic signature: a type-param
     element comes only from the operands whose parameter mentions that
     param (and the receiver), so `zip(ns, [C(5)])` blames nothing for its
-    `C`; an element spelled without one keeps whole-call attribution."""
-    it_type = ctx.get_expr_type(iterable)
-    if it_type is not None and iter_yields_owned_elements(
-            unwrap_ref_type(unwrap_readonly(unwrap_own(it_type)))):
+    `C`; an element spelled without one keeps whole-call attribution. A
+    leaf user code lends (`user_step_lends`) that no named storage backs is
+    UNKNOWN."""
+    if _yields_owned(ctx, iterable):
         return []
     storage = iterated_storage(ctx, iterable)
     fi = storage.callee
     if fi is None:
-        return [key.root_key for key, _ in storage.loans]
+        roots: ElemProvenance = [key.root_key for key, _ in storage.loans]
+        return roots or _unnamed_provenance(ctx, iterable)
     by_idx = _sources_by_idx(storage.operands)
     every = [src for op in storage.operands for src in op.sources]
+    return _callee_provenance(ctx, iterable, fi, by_idx, every)
+
+
+def _unnamed_provenance(ctx: SemanticContext,
+                        iterable: TpyExpr) -> ElemProvenance:
+    """What iterating `iterable` lends that no named storage backs: the
+    leaves user code lends, UNKNOWN; either arm of a select, per leaf; what
+    a call's open-`T` yield forwards from an operand (`zip(ns, View())`,
+    `passthru(View())`)."""
+    if _yields_owned(ctx, iterable):
+        return []
+    if isinstance(iterable, TpyIfExpr):
+        return _merge_provenance(
+            iteration_elem_provenance(ctx, iterable.then_expr),
+            iteration_elem_provenance(ctx, iterable.else_expr))
+    producer, leaves = _user_step(ctx, iterable, ctx.get_expr_type(iterable))
+    if producer is not None and leaves:
+        return _unknown_leaves(producer.step, leaves)
+    call = iterable.expr if isinstance(iterable, TpyCoerce) else iterable
+    fi = call_callee(call)
+    if fi is None:
+        return []
+    return _callee_provenance(ctx, call, fi, {}, [])
+
+
+def _unknown_leaves(step: TpyType | None, leaves: frozenset[ElemPath],
+                    prefix: ElemPath = ()) -> ElemProvenance:
+    """`step`'s provenance with each of `leaves` UNKNOWN, every other leaf
+    lending nothing."""
+    if prefix in leaves:
+        return UnnamedLend.UNKNOWN
+    s = unwrap_ref_type(unwrap_readonly(step)) if step is not None else None
+    if isinstance(s, TupleType):
+        return tuple(_unknown_leaves(et, leaves, prefix + (i,))
+                     for i, et in enumerate(s.element_types))
+    return []
+
+
+def _callee_provenance(ctx: SemanticContext, call: TpyExpr,
+                       fi: FunctionInfo, by_idx: dict[int, _BorrowedOperand],
+                       every: list[StorageKey]) -> ElemProvenance:
+    """`iteration_elem_provenance` of a call iterable to `fi`, whose lending
+    operands are `by_idx` (`every`: all their roots). A closed leaf a
+    user-code producer (`step_producer`) lends that nothing named backs is
+    UNKNOWN; an open-`T` leaf takes what its operand lends, named or not,
+    as the signature says (`Iterator[T]` lends; `Iterator[Own[T]]` hands
+    over)."""
+    producer, leaves = _user_step(ctx, call, ctx.get_expr_type(call))
     root = fi.root
     ret = unwrap_ref_type(unwrap_readonly(root.return_type))
     args = getattr(ret, "type_args", None)
     if not args or not is_protocol_type(ret):
         # A view or container result (`d.items()`, a borrowed `list[C]`):
         # its signature does not spell the yield, so the whole call lends.
-        return every
-
-    def elem(et: TpyType) -> ElemProvenance:
-        if isinstance(et, TupleType):
-            return tuple(elem(e) for e in et.element_types)
-        if not type_param_names(et):
+        if every or producer is None or not leaves:
             return every
+        return _unknown_leaves(producer.step, leaves)
+    ops = call_operands(call)
+    args_by_idx = dict(ops.indexed()) if ops is not None else {}
+
+    def elem(et: TpyType, path: ElemPath) -> ElemProvenance:
+        if isinstance(et, TupleType):
+            return tuple(elem(e, path + (i,))
+                         for i, e in enumerate(et.element_types))
+        if not type_param_names(et):
+            return UnnamedLend.UNKNOWN if not every and path in leaves else every
         idxs = [i for i in _elem_param_indices(root, et) if i in by_idx]
         if -1 in by_idx:
             idxs.append(-1)
         if (isinstance(et, TypeParamRef) and len(idxs) == 1 and idxs[0] >= 0
                 and _iterates_type_param(root.params[idxs[0]].type, et)):
             op = by_idx[idxs[0]]
+            if not op.sources:
+                unnamed = _unnamed_provenance(ctx, op.arg)
+                if _flat_provenance(unnamed):
+                    return unnamed
             # Only a nested lending call has a yield structure of its own; a
             # named operand's roots are already `sources`, deep chains included.
             lend = callee_lend_fact(op.arg)
             if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
                 return op.sources
             return iteration_elem_provenance(ctx, op.arg)
-        return [src for i in idxs for src in by_idx[i].sources]
+        lent = [src for i in idxs for src in by_idx[i].sources]
+        if lent or not isinstance(et, TypeParamRef):
+            return lent
+        # An operand naming no storage still hands over what it lends
+        # (`zip(ns, View())`, `passthru(View())`).
+        for i in _elem_param_indices(root, et):
+            if (i not in by_idx and i in args_by_idx
+                    and _iterates_type_param(root.params[i].type, et)):
+                unnamed = _unnamed_provenance(ctx, args_by_idx[i])
+                if _flat_provenance(unnamed):
+                    return unnamed
+        return lent
 
-    return elem(args[0])
+    return elem(args[0], ())
 
 
 def iteration_lend_pending(ctx: SemanticContext, iterable: TpyExpr) -> bool:
@@ -304,21 +525,24 @@ def iteration_lend_pending(ctx: SemanticContext, iterable: TpyExpr) -> bool:
     return any(r.assumed for r in lend_places(ctx, iterable))
 
 
-def iteration_copies_lent_reference(ctx: SemanticContext, iterable: TpyExpr,
-                                    elem_type: TpyType) -> bool:
-    """Whether materializing `iterable` into owned storage of `elem_type`
-    copies a reference-typed element out of named storage it lends from --
-    the copy CPython's shallow `list(...)` would alias instead. Per tuple
-    element: `zip(ns, cs)`'s `int` half lends from `ns` but copies no
-    reference, its `C` half lends from `cs`."""
-    def copies(t: TpyType, prov: ElemProvenance) -> bool:
+def iteration_copied_leaves(ctx: SemanticContext, iterable: TpyExpr,
+                            elem_type: TpyType) -> list[TpyType]:
+    """The reference-typed leaves of `elem_type` that materializing
+    `iterable` into owned storage copies out of storage it lends from --
+    the copies CPython's shallow `list(...)` would alias instead; empty
+    when it copies none. Per tuple element: `zip(ns, cs)`'s `int` half
+    lends from `ns` but copies no reference, its `C` half lends from
+    `cs`."""
+    def copied(t: TpyType, prov: ElemProvenance) -> list[TpyType]:
         bare = unwrap_ref_type(unwrap_readonly(t))
         if (isinstance(prov, tuple) and isinstance(bare, TupleType)
                 and len(prov) == len(bare.element_types)):
-            return any(copies(e, p) for e, p in zip(bare.element_types, prov))
-        return bool(_flat_provenance(prov)) and contains_reference_type(t)
+            return [leaf for e, p in zip(bare.element_types, prov)
+                    for leaf in copied(e, p)]
+        return ([t] if _flat_provenance(prov) and contains_reference_type(t)
+                else [])
 
-    return copies(elem_type, iteration_elem_provenance(ctx, iterable))
+    return copied(elem_type, iteration_elem_provenance(ctx, iterable))
 
 
 def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
@@ -596,15 +820,16 @@ def genexpr_iterated_roots(func: TpyFunction) -> set[str]:
     return {key.root for key, _ in func.genexpr_inner_loans}
 
 
-def iter_receiver_callee(ctx: 'SemanticContext',
-                         iterable_type: 'TpyType') -> FunctionInfo | None:
-    """The user `__iter__` a `for` over `iterable_type` calls (MRO walk:
-    an inherited one mutates the receiver too), or None."""
+def iter_receiver_callee(ctx: 'SemanticContext', iterable_type: 'TpyType',
+                         method: str = "__iter__") -> FunctionInfo | None:
+    """The user `__iter__` (or `method`: a self-iterator's `__next__`) a
+    `for` over `iterable_type` calls (MRO walk: an inherited one mutates
+    the receiver too), or None."""
     record_info = ctx.registry.get_record_for_type(iterable_type)
     if record_info is None:
         return None
     return next((fi for fi in ctx.registry.get_method_overloads_with_parents(
-                     record_info, "__iter__") if not fi.is_consuming), None)
+                     record_info, method) if not fi.is_consuming), None)
 
 
 def _loop_var_climbs(ctx: 'SemanticContext', iterable_expr: TpyExpr,
