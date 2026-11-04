@@ -28,7 +28,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
-    ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
+    ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants, stamp_overload_facts,
     unique_cpp_name,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
@@ -1101,6 +1101,20 @@ def returns_borrow_rooted_at_self(func: 'TpyFunction') -> bool:
     return not all(is_external(root, external) for root in return_roots)
 
 
+def readonly_reason(name: str, causes: 'frozenset[ReadonlyCause]') -> str:
+    """Why method `name` is readonly, from registration's causes
+    (`strongest_readonly_cause`), for a diagnostic that names only a
+    readonly-ness the user wrote."""
+    why = strongest_readonly_cause(causes)
+    if why in (ReadonlyCause.DUNDER, ReadonlyCause.PAIR):
+        return f"{name} is implicitly readonly"
+    if why is ReadonlyCause.PURE:
+        return f"{name} is readonly as @pure"
+    if why is ReadonlyCause.FROZEN:
+        return f"{name} is readonly in a frozen class"
+    return f"{name} takes a readonly receiver"
+
+
 class TypeRegistrar:
     """Registers builtin types, records, protocols, and functions."""
 
@@ -2141,17 +2155,28 @@ class TypeRegistrar:
             # auto_readonly pair -- the clone hands out a mutable borrow, so
             # its receiver must stay non-const (same reason as the
             # implicit_readonly exemption).
-            implicit_result: ImplicitReadonly | None = None
-            resolved_readonly = (method.is_readonly
-                or (method.is_pure and not is_mutable_propagate_clone)
-                or is_implicit_readonly
-                or (record.is_frozen and method.name != "__init__"
-                    and not method.readonly_opt_out and not is_mutable_propagate_clone))
+            frozen_readonly = (record.is_frozen and method.name != "__init__"
+                               and not method.readonly_opt_out
+                               and not is_mutable_propagate_clone)
+            pure_readonly = method.is_pure and not is_mutable_propagate_clone
+            resolved_readonly = (method.is_readonly or frozen_readonly
+                                 or is_implicit_readonly or pure_readonly)
+            # An implicit pair's readonly half is readonly as the clone,
+            # spelled only when the user wrote the pair as well.
+            spelled = method.is_readonly and implicit_pairs.get(method, True)
+            causes = frozenset(cause for cause, holds in (
+                (ReadonlyCause.FROZEN, frozen_readonly),
+                (ReadonlyCause.DUNDER, is_implicit_readonly),
+                (ReadonlyCause.PURE, pure_readonly),
+                (ReadonlyCause.SPELLED, spelled),
+                (ReadonlyCause.PAIR, method in implicit_pairs)) if holds)
+            method.readonly_causes = causes
             # A readonly the user did not spell (an implicitly-readonly
             # dunder, `@pure`, a frozen record) declares what the result
             # borrows readonly with it -- in the declared type, which every
             # reader of the result takes its access from. An explicit
             # `@readonly` leaves the return type as written.
+            implicit_result: ReadonlyCause | None = None
             if (resolved_readonly and not method.is_readonly and not method.is_generator
                     and not method.is_staticmethod and not method.is_classmethod
                     # `copy()` hands out what `__copy__` returns: a fresh
@@ -2159,9 +2184,8 @@ class TypeRegistrar:
                     and method.name != COPY_HOOK):
                 implied = readonly_result(method_return)
                 if not isinstance(unwrap_ref_type(implied), OwnType):
-                    implicit_result = (ImplicitReadonly.PURE if method.is_pure
-                                       else ImplicitReadonly.FROZEN if record.is_frozen
-                                       else ImplicitReadonly.DUNDER)
+                    implicit_result = strongest_readonly_cause(
+                        causes, READONLY_RESULT_CAUSE_RANK)
                 method_return = implied
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
@@ -2311,9 +2335,7 @@ class TypeRegistrar:
                 variant_decl=method,
             )
             func_info.following_components = method.following_components
-            func_info.implicit_readonly_result = (
-                ImplicitReadonly.DUNDER_PAIR if method in implicit_pairs
-                else implicit_result)
+            func_info.implicit_readonly_result = implicit_result
             compiler = get_current_compiler()
             if compiler is not None and not method.is_stub:
                 compiler.method_bodies.setdefault(
@@ -2936,9 +2958,14 @@ class TypeRegistrar:
                     record.loc
                 )
 
-        # Update RecordInfo with classified bases.
-        record_info.parents = parents_collected
-        record_info.implemented_protocols = implemented_protocols
+        # Update RecordInfo with classified bases, bounded where declared so
+        # a base's signature substituted at the reference keeps
+        # `T: ValueType`, which the one-slot rule reads.
+        bounds = record_info.type_param_bounds
+        record_info.parents = [attach_type_param_bounds(p, bounds)
+                               for p in parents_collected]
+        record_info.implemented_protocols = [
+            attach_type_param_bounds(p, bounds) for p in implemented_protocols]
         # Invalidate the lazy `_is_polymorphic_class` cache: it may have
         # been computed during early validation (register_record's
         # validate_type call) when `implemented_protocols` was empty,
@@ -3617,7 +3644,7 @@ class TypeRegistrar:
                              if fam[0].variant_decl is not None), None)
                 raise SemanticError(
                     f"'{record.name}.{name}' implements @dynamic protocol "
-                    f"method '{slot.name}.{name}' and cannot be a @dispatch set; "
+                    f"method '{slot}.{name}' and cannot be a @dispatch set; "
                     f"give the other variants different names",
                     (decl.loc if decl is not None else None) or record.loc)
             named = []
@@ -4344,7 +4371,7 @@ class TypeRegistrar:
                     raise SemanticError(
                         f"element_access= on {where} names {twin}, which "
                         f"does not accept a readonly receiver: "
-                        f"{TypeRegistrar._readonly_variant(name, info)} "
+                        f"{readonly_reason(name, node.readonly_causes)} "
                         f"(declare the twin @readonly)",
                         node.loc or record.loc)
                 # A variant with no twin of its own access (a mutable
@@ -4357,19 +4384,6 @@ class TypeRegistrar:
                      if t.is_readonly == info.is_readonly
                      and (declared_result_readonly(info)
                           or not declared_result_readonly(t))), None)
-
-    @staticmethod
-    def _readonly_variant(name: str, info: FunctionInfo) -> str:
-        """Why the subscript variant `info` is readonly, for a diagnostic
-        that names only a readonly-ness the user wrote."""
-        why = info.implicit_readonly_result
-        if why in (ImplicitReadonly.DUNDER, ImplicitReadonly.DUNDER_PAIR):
-            return f"{name} is implicitly readonly"
-        if why is ImplicitReadonly.PURE:
-            return f"{name} is readonly as @pure"
-        if why is ImplicitReadonly.FROZEN:
-            return f"{name} is readonly in a frozen class"
-        return f"{name} takes a readonly receiver"
 
     def _keep_measured_twins(self, record_info: RecordInfo) -> None:
         """Drop the element-access twins of `record_info`'s variants when

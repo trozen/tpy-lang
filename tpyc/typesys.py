@@ -3415,16 +3415,40 @@ def canonical_readonly(t: 'TpyType') -> 'TpyType':
     return t
 
 
-class ImplicitReadonly(Enum):
-    """Why a method is readonly without the user spelling it; decided at
-    registration. PURE, FROZEN and DUNDER make its borrowed result readonly
-    (`readonly_result`); DUNDER_PAIR is the readonly half of the
-    mutable / readonly pair a reference-returning dunder gets implicitly,
-    whose result follows the receiver."""
+class ReadonlyCause(Enum):
+    """One reason a method is readonly, recorded at registration as the
+    full set that applies (`TpyFunction.readonly_causes`): a frozen class,
+    an implicitly readonly dunder, `@pure`, a spelled `@readonly` /
+    `@auto_readonly` (SPELLED), or the readonly half of the mutable /
+    readonly pair a property getter or a reference-returning dunder gets
+    whatever is spelled (PAIR). PURE, FROZEN and DUNDER also make a
+    borrowed result readonly when nothing readonly is spelled
+    (`readonly_result`, `FunctionInfo.implicit_readonly_result`)."""
     PURE = "pure"
     FROZEN = "frozen"
     DUNDER = "dunder"
-    DUNDER_PAIR = "dunder_pair"
+    SPELLED = "spelled"
+    PAIR = "pair"
+
+
+# The order a diagnostic names why a method is readonly in: what the class
+# or the decorators say before what the dunder rule implies.
+READONLY_CAUSE_RANK = (ReadonlyCause.FROZEN, ReadonlyCause.PURE,
+                       ReadonlyCause.SPELLED, ReadonlyCause.PAIR,
+                       ReadonlyCause.DUNDER)
+# The order the readonly-result hint names the cause that made a borrowed
+# result readonly in (`FunctionInfo.implicit_readonly_result`): the
+# decorator the user can drop before the class or the dunder rule.
+READONLY_RESULT_CAUSE_RANK = (ReadonlyCause.PURE, ReadonlyCause.FROZEN,
+                              ReadonlyCause.DUNDER)
+
+
+def strongest_readonly_cause(causes: 'Iterable[ReadonlyCause]',
+                             rank: 'tuple[ReadonlyCause, ...]' = READONLY_CAUSE_RANK,
+                             ) -> 'ReadonlyCause | None':
+    """The first of `causes` in ``rank``."""
+    present = set(causes)
+    return next((c for c in rank if c in present), None)
 
 
 def settled_substitution(declared: 'TpyType', substituted: 'TpyType') -> 'TpyType':
@@ -4184,11 +4208,8 @@ def _c_abi_subject(typ: 'TpyType') -> 'TpyType':
     not change its C spelling."""
     t = unwrap_readonly(typ)
     if isinstance(t, OwnType) and t.wrapped.is_value_type():
-        # Own selects the owned C++ form over the borrowed one; on a value
-        # type every form this gate admits is the same spelling, so the
-        # wrapper says nothing about the ABI -- as `readonly` does not.
-        # Over a reference type Own is `T&&` (and forces the value form of an
-        # Optional), which is why the unwrap stops at value types.
+        # On a value type every admitted form has one C spelling; over a
+        # reference type `Own` is `T&&`, so the unwrap stops there.
         t = unwrap_readonly(t.wrapped)
     return t
 
@@ -8765,7 +8786,7 @@ class FunctionInfo:
     # Why the method is readonly though the user did not spell it, which
     # makes its borrowed result readonly (`readonly_result`); None for any
     # other method. Read through `root`.
-    implicit_readonly_result: 'ImplicitReadonly | None' = None
+    implicit_readonly_result: 'ReadonlyCause | None' = None
     # One of SEVERAL callable signatures bound under one name (a @dispatch /
     # @overload group, a method's auto_readonly pair), set where the group
     # is formed. A `str` literal argument then has to be pinned to its view
@@ -10264,9 +10285,7 @@ class TypeRegistry:
     ) -> Iterator[tuple['NominalType', 'ProtocolInfo']]:
         """Yield ``(proto, proto_info)`` for every ``@dynamic`` protocol
         ``record`` or its MRO ancestor records declare in
-        ``implemented_protocols``. No dedupe; consumers that care (e.g.
-        ``_get_dynamic_override_info``'s first-wins map) dedupe at
-        their own granularity. Diamond inheritance is rejected at sema
+        ``implemented_protocols``. No dedupe. Diamond inheritance is rejected at sema
         so a protocol reachable via multiple MRO paths is rare.
         """
         from .type_def_registry import protocol_info_of

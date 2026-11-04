@@ -106,7 +106,7 @@ template<typename T> requires tpyapp::main::__Speakable_Concept__<std::remove_co
 struct tpy::RefAdapter<tpyapp::main::Speakable, T> : tpyapp::main::Speakable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() const override { return std::string(inner.speak()); }
+    std::string speak() const override { return std::string(std::as_const(inner).speak()); }
 };
 
 namespace tpyapp::main {

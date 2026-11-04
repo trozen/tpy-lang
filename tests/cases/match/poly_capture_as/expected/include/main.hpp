@@ -84,7 +84,7 @@ template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() const override { return std::string(inner.speak()); }
+    std::string speak() const override { return std::string(std::as_const(inner).speak()); }
 };
 
 namespace tpyapp::main {

@@ -1,0 +1,1 @@
+main.py:24: error: 'Mat.bounce' has a readonly form, but the 'bounce' it fills in @dynamic protocol 'Surface' is not readonly -- drop auto_readonly

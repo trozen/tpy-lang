@@ -80,8 +80,8 @@ template<typename T, typename __tpy_Impl> requires tpyapp::main::__Cloneable_Con
 struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
-    T value() const override { return inner.value(); }
+    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return std::as_const(inner).replicate(); }
+    T value() const override { return std::as_const(inner).value(); }
 };
 
 namespace tpyapp::main {

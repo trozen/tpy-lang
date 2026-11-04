@@ -250,7 +250,7 @@ _CELL = '@native("my::Cell")\nclass Cell:\n    n: int32\n\n'
 ], ids=["implicit-pair", "pure", "frozen"])
 def test_a_readonly_twin_rejection_names_why_the_variant_is_readonly(source, why):
     """The variant's readonly-ness is one the user did not spell: the
-    diagnostic says where it comes from (`ImplicitReadonly`)."""
+    diagnostic says where it comes from (`ReadonlyCause`)."""
     with pytest.raises(SemanticError,
                        match=r"which does not accept a readonly receiver: "
                              + why + r" \(declare the twin @readonly\)"):

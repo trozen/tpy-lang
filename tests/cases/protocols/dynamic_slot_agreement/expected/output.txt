@@ -1,0 +1,21 @@
+plain: 2.0 3.0 3.0
+inferred: 3.0 1.0
+static_parent: 20 2
+generic_parent: 7
+same_form_redecl: 3.0 3.0
+identical_parents: 1.0 2.0 3.0 3.0
+identical_parents: 10.0 20.0 30.0 30.0
+own_scalar_slots: 1 2 2
+structural_readonly_fills_mutable: 5 9
+generic_parent_record: 1 2 2
+own_bounded_record: 7 7 2
+structural_readonly_converting: a b
+own_stub: 1 2 2
+own_value_combiner: x1 x2 x3 3
+own_value_combiner: y1 y2 y3 3
+own_result_bound: y4! y5? 5
+plain_bridge_agree: 38 12 7
+plain_bridge_agree: 101 103 103
+keyword_order: 21 31 14 3
+redecl_own_value: b1 b2 2
+redecl_own_value: s s

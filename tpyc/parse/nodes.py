@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind, LiteralValue, FunctionLinkage,
-    param_takes_ownership,
+    ReadonlyCause, param_takes_ownership,
 )
 
 # Source location for error reporting and source mapping
@@ -2169,6 +2169,9 @@ class TpyFunction:
     # at (`typesys.auto_readonly_components`).
     marked_return_type: Any = field(default=None, compare=False, repr=False)
     following_components: frozenset = frozenset()
+    # Every reason the method is readonly, recorded by registration beside
+    # `is_readonly` (which it then overwrites); empty for a mutable one.
+    readonly_causes: frozenset[ReadonlyCause] = frozenset()
     # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).

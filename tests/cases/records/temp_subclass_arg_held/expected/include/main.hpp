@@ -300,7 +300,7 @@ template<typename T> requires tpyapp::main::__Surface_Concept__<std::remove_cons
 struct tpy::RefAdapter<tpyapp::main::Surface, T> : tpyapp::main::Surface {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string tag() const override { return std::string(inner.tag()); }
+    std::string tag() const override { return std::string(std::as_const(inner).tag()); }
     std::string hit() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else return std::string(inner.hit()); }
 };
 

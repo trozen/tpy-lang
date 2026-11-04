@@ -41,9 +41,10 @@ from .context import (
 from ..parse import TpyNoneLiteral
 from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp, type_member_default_cpp
 from .protocols import (
-    EmittedMember, MemberDef, MemberKind, MemberSignature, Shim, ShimKind,
-    has_method_or_field, member_def, record_emitted_members,
+    MemberDef, Shim, ShimKind, has_method_or_field, member_def,
+    record_emission,
 )
+from ..emitted_members import EmittedMember, MemberKind, MemberSignature
 from .int_literals import render_int_literal_value
 from ..resumable_shape import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
@@ -119,8 +120,8 @@ def _split_readonly_clone_pair(
     """
     if len(targets) != 2:
         return None
-    const = next((t for t in targets if t.func.is_readonly), None)
-    mutable = next((t for t in targets if not t.func.is_readonly), None)
+    const = next((t for t in targets if t.readonly), None)
+    mutable = next((t for t in targets if not t.readonly), None)
     if const is None or mutable is None:
         return None
     return const, mutable
@@ -1064,6 +1065,13 @@ class RecordGenerator:
             plan = self._def_plans[record] = self._record_def_plan(record)
         return plan
 
+    def emitted_member(self, record: TpyRecord,
+                       func: TpyFunction) -> EmittedMember:
+        """The member of `record`'s C++ that `func` declares."""
+        plan = self._def_plan(record)
+        assert plan is not None
+        return plan.members[func]
+
     def _record_def_plan(self, record: TpyRecord) -> _RecordDefPlan:
         generic = bool(record.type_params)
         # The synthesized members' signature: the class's template head only.
@@ -1076,7 +1084,7 @@ class RecordGenerator:
         ctor = None
         destructor_small: bool | None = None
         twins = self.ctx.analyzer.overload_twins
-        emission = record_emitted_members(
+        emission = record_emission(
             record, self.ctx.analyzer.overload_groups, twins)
         for entry in emission.members:
             members[entry.func] = entry
@@ -1187,11 +1195,12 @@ class RecordGenerator:
         self._gen_record_methods(out, record, want)
         self._gen_shims(out, record, want)
 
-    def _gen_resumable_method_decl(self, out: TextIO, method: TpyFunction,
+    def _gen_resumable_method_decl(self, out: TextIO, member: EmittedMember,
                                    record: TpyRecord) -> None:
         """In-struct declaration of a generator / async method; the factory
         body and the frame struct land in `generator.py`'s post-struct emit
         pass."""
+        method = member.func
         if method.is_generator:
             # The resumable emitter's templated struct name, so a method on a
             # generic class spells the return type `__gen_Box_items<T>`.
@@ -1202,7 +1211,7 @@ class RecordGenerator:
             struct_name = self.gen_async._struct_name_templated(method, record.name)
         params = self.gen_async._emit_method_params_decl(
             method, record.name, emit_defaults=True)
-        const_suffix = " const" if method.is_readonly else ""
+        const_suffix = " const" if member.readonly else ""
         out.write("\n")
         # No record_name: the enclosing class template's `[T1, ...]` are in
         # scope here, so emit only the method's own type params /
@@ -1224,23 +1233,22 @@ class RecordGenerator:
             member = plan.members.get(method)
             if (want is None and member is not None
                     and member.kind is MemberKind.RESUMABLE):
-                self._gen_resumable_method_decl(out, method, record)
+                self._gen_resumable_method_decl(out, member, record)
                 continue
             entry = plan.methods.get(method)
             if entry is None:
                 continue
             stubs = self.ctx.analyzer.overload_groups.get(method)
             if stubs:
-                literal_only = self.functions._overload_stubs_are_literal_only(
-                    stubs, method)
-                emit_variant = (self.functions._gen_literal_specialized_method
-                                if literal_only else
-                                self.functions._gen_overload_specialized_method)
                 for stub in stubs:
+                    variant = plan.members[stub]
+                    emit_variant = (self.functions._gen_literal_specialized_method
+                                    if variant.literal_only else
+                                    self.functions._gen_overload_specialized_method)
                     mode = self._emit_mode(plan.variants[stub], want)
                     if mode is not None:
                         emit_variant(
-                            out, method, stub, record.name,
+                            out, variant, record.name,
                             record_type_param_bounds=(
                                 record.type_param_bounds or None),
                             dynamic_overrides=dynamic_overrides, mode=mode)
@@ -1252,7 +1260,7 @@ class RecordGenerator:
                 mode = self._emit_mode(entry, want)
                 if mode is not None:
                     self.functions.gen_method_def(
-                        out, method, record.name, dynamic_overrides,
+                        out, method, member, record.name, dynamic_overrides,
                         record_type_param_bounds=(
                             record.type_param_bounds or None),
                         mode=mode)
@@ -1651,7 +1659,7 @@ class RecordGenerator:
             return
         for target in shim.targets:
             method = target.func
-            if method.is_readonly:
+            if target.readonly:
                 self._gen_subscript_operator(out, record, target, want,
                                              const=True)
                 # Non-const overload only when return could be a reference
@@ -1769,7 +1777,7 @@ class RecordGenerator:
         # inferred param const-ness (a mutated param stays T& in the
         # method; a const shim param wouldn't bind to it).
         ret_cpp = self.functions.shim_return_cpp(method)
-        const_suffix = " const" if method.is_readonly else ""
+        const_suffix = " const" if target.readonly else ""
         params_cpp = self.functions.gen_shim_params(method, record.name)
         arg_names = ", ".join(forward_param(escape_cpp_name(p_name), p_type)
                               for p_name, p_type in method.params)

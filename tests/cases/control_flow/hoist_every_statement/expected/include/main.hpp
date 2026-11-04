@@ -321,7 +321,7 @@ struct tpy::RefAdapter<tpyapp::main::Grower, T> : tpyapp::main::Grower {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     void grow() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.grow(); }
-    int32_t size() const override { return inner.size(); }
+    int32_t size() const override { return std::as_const(inner).size(); }
 };
 
 namespace tpyapp::main {

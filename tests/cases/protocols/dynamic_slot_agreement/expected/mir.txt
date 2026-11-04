@@ -1,0 +1,84 @@
+main::__tpy_init: uncovered (module initialization)
+main::plain_trace@35:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::inferred_trace@62:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::static_parent_area@98:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::generic_parent_read@129:0: uncovered (unsupported parameter type)
+main::same_form_redecl_push@154:0: uncovered (unsupported parameter type)
+main::via_pusher@193:0: uncovered (unsupported parameter type)
+main::via_shover@197:0: uncovered (unsupported parameter type)
+main::identical_parents_trace@201:0: uncovered (unsupported parameter type)
+main::own_scalar_a@231:0: uncovered (unsupported parameter type)
+main::own_scalar_b@235:0: uncovered (unsupported parameter type)
+main::structural_readonly_trace@257:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::via_gauge@300:0: uncovered (unsupported parameter type)
+main::via_int_gauge@304:0: uncovered (unsupported parameter type)
+main::via_peek@333:0: uncovered (unsupported parameter type)
+main::via_own_peek@337:0: uncovered (unsupported parameter type)
+main::structural_readonly_converting_trace@360:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+main::own_stub_tick@389:0: uncovered (unsupported parameter type)
+main::via_own_name@437:0: uncovered (unsupported parameter type)
+main::via_plain_name@441:0: uncovered (unsupported parameter type)
+main::via_own_first@445:0: uncovered (unsupported parameter type)
+main::via_plain_first@449:0: uncovered (unsupported parameter type)
+main::bound_own_name@459:0: uncovered (unsupported parameter type)
+main::bound_own_label@464:0: uncovered (generic body)
+main::via_steer@529:0: uncovered (unsupported parameter type)
+main::via_helm@533:0: uncovered (unsupported parameter type)
+main::via_rudder@537:0: uncovered (unsupported parameter type)
+main::via_bridges@543:0: uncovered (generic body)
+main::via_swap_mixer@570:0: uncovered (unsupported parameter type)
+main::via_swap_bound@575:0: uncovered (generic body)
+main::via_mixer@579:0: uncovered (unsupported parameter type)
+main::via_caption@613:0: uncovered (unsupported parameter type)
+main::via_own_caption@617:0: uncovered (unsupported parameter type)
+main::main@621:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Flat.reflect@24:4: covered (storage: no_proof_required)
+main::Bent.reflect@30:4: covered (storage: no_proof_required)
+main::Convex.focus@53:4: covered (storage: no_proof_required)
+main::Concave.focus@58:4: covered (storage: no_proof_required)
+main::Square.grow@84:4: covered (storage: no_proof_required)
+main::Square.area@88:4: covered (storage: no_proof_required)
+main::Big.area@94:4: covered (storage: no_proof_required)
+main::Tank.fill@121:4: covered (storage: no_proof_required)
+main::Tank.read@125:4: covered (storage: no_proof_required)
+main::Piston.push@149:4: covered (storage: no_proof_required)
+main::Cart.push@179:4: covered (storage: no_proof_required), summary: known
+main::Wagon.push@188:4: covered (storage: no_proof_required)
+main::Metronome.ticks@226:4: uncovered (unsupported return type)
+main::Sensor.sample@253:4: covered (storage: no_proof_required), summary: known
+main::Dial.gauge@287:4: uncovered (generic body)
+main::TickDial.gauge@295:4: uncovered (missing receiver fact)
+main::Cell.peek@328:4: uncovered (generic body)
+main::Tag.text@356:4: covered (storage: no_proof_required), summary: known
+main::Clock.tick@383:4: uncovered (no body to lower)
+main::Clock.tick@384:4: uncovered (overloaded callable)
+main::Named.name@421:4: covered (storage: no_proof_required)
+main::Titled.name@432:4: covered (storage: no_proof_required)
+main::Boat.turn@507:4: covered (storage: no_proof_required)
+main::Boat.trim@511:4: covered (storage: no_proof_required)
+main::Boat.keel@514:4: covered (storage: no_proof_required)
+main::Raft.turn@524:4: covered (storage: no_proof_required), summary: known
+main::Blender.mix@565:4: covered (storage: no_proof_required)
+main::Banner.text@603:4: covered (storage: no_proof_required)
+main::Sign.text@609:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Ray.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::Flat.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Convex.__init__@49:4: covered (storage: no_proof_required), summary: known
+main::Square.__init__@81:4: covered (storage: no_proof_required), summary: known
+main::Tank.__init__@118:4: covered (storage: no_proof_required), summary: known
+main::Piston.__init__@146:4: covered (storage: no_proof_required), summary: known
+main::Cart.__init__@176:4: covered (storage: no_proof_required), summary: known
+main::Wagon.__init__@185:4: covered (storage: no_proof_required), summary: known
+main::Metronome.__init__@223:4: covered (storage: no_proof_required), summary: known
+main::Sensor.__init__@249:4: covered (storage: no_proof_required), summary: known
+main::Dial.__init__@282:4: uncovered (generic constructor)
+main::TickDial.__init__@292:4: uncovered (missing record layout)
+main::Cell.__init__@324:4: uncovered (generic constructor)
+main::Tag.__init__@352:4: covered (storage: no_proof_required), summary: known
+main::Clock.__init__@379:4: covered (storage: no_proof_required), summary: known
+main::Named.__init__@418:4: covered (storage: no_proof_required), summary: known
+main::Titled.__init__@429:4: covered (storage: no_proof_required), summary: known
+main::Boat.__init__@504:4: covered (storage: no_proof_required), summary: known
+main::Raft.__init__@521:4: covered (storage: no_proof_required), summary: known
+main::Blender.__init__@562:4: covered (storage: no_proof_required), summary: known
+main::Banner.__init__@600:4: covered (storage: no_proof_required), summary: known

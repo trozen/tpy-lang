@@ -309,7 +309,7 @@ template<typename T> requires tpyapp::main::__Shape_Concept__<std::remove_const_
 struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t area() const override { return inner.area(); }
+    int32_t area() const override { return std::as_const(inner).area(); }
     void grow() override { if constexpr (std::is_const_v<T>) ::tpy::unreachable_override(); else inner.grow(); }
 };
 
@@ -325,7 +325,7 @@ template<typename T> requires tpyapp::main::__Area_Concept__<std::remove_const_t
 struct tpy::RefAdapter<tpyapp::main::Area, T> : tpyapp::main::Area {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t area() const override { return inner.area(); }
+    int32_t area() const override { return std::as_const(inner).area(); }
 };
 
 namespace tpyapp::main {

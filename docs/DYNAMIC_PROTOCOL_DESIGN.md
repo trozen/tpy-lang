@@ -10,7 +10,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 2 | Abstract base + adapter codegen (base class + `tpy::Adapter`, `tpy::RefAdapter`) | Done |
 | 3 | Protocol-typed locals (stack slot + pointer-local) | Done |
 | 4 | Protocol-typed function params (`Base&`, call-site dispatch) | Done |
-| 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : Pet`) | Done. A method filling a `@dynamic` slot may write every parameter the slot declares writable (not `readonly[...]`, with a mutable borrow surface), whatever its own body does: a call of it dispatches through the slot. The fact is decided once, before the body is analyzed (`FunctionInfo.slot_written_params`, beside the receiver's `const_withheld`), and joins the method's own write facts, so the override renders the slot's non-const `T&` (`protocols._dynamic_param_list`) and its callers keep the argument mutable, as a call through the protocol does. Of an `@auto_readonly` pair, each clone fills the slots of its own receiver const-ness. Tests: `dyn_inherit_ref_param`, `dynamic_slot_param_written`. |
+| 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : Pet`) | Done. A method filling a `@dynamic` slot may write every parameter the slot declares writable (not `readonly[...]`, with a mutable borrow surface), whatever its own body does: a call of it dispatches through the slot. The fact is decided once, before the body is analyzed (`FunctionInfo.slot_written_params`, beside the receiver's `const_withheld`), and joins the method's own write facts, so the override renders the slot's non-const `T&` (`protocols._dynamic_param_list`) and its callers keep the argument mutable, as a call through the protocol does. A method name is one slot with one receiver form, so the filler emits exactly that form: an `@auto_readonly` pair never fills an inherited slot (its other form would not dispatch). Tests: `dyn_inherit_ref_param`, `dynamic_slot_param_written`. |
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods/constructors | Done for the bare and `readonly` forms. **Not** for `Optional[Pet]`: as of 2026-09-09 a method or constructor param spelled `s: Pet | None` is still rejected (the Phase 8 pointer-repr allowance is threaded from the free-function registration path only) -- `BUGS.md#opt-dyn-protocol-method-param`. |
@@ -505,6 +505,48 @@ on matching methods. This eliminates adapter wrapping entirely -- the object IS-
 `Speakable` and can be passed directly. The adapters are only used for structural
 conformance (types that satisfy the protocol without explicit inheritance).
 
+Each override emits exactly the receiver form of the slot it fills: a method name
+is one virtual with one const-ness, and a form with no slot would be a non-virtual
+sibling that callers reach without dispatch (`ProtocolChecker.statically_hidden`
+assumes a `@dynamic` member dispatches). `SemanticAnalyzer._check_dynamic_slot_agreement`
+compares the receiver form of each member the record's C++ emits
+(`EmittedMember.readonly` / `.ref` from `record_emitted_members`,
+`tpyc/emitted_members.py`, which codegen's placement plan and method emitter read
+too) against the virtual of its name the class inherits
+(`ProtocolChecker.record_vtable`) after Phase 2 settles const inference, and rejects
+any other form. `LANGUAGE_FEATURES.md` lists the diagnostics.
+
+**The vtable.** One function, `dynamic_vtable` (`tpyc/sema/protocols.py`),
+builds the virtuals of a `@dynamic` protocol's C++ class, keyed by method name: one
+`VtableSlot` per name (signature in the protocol's type-parameter scope, receiver
+form, declaring protocol). Each level is built from its `@dynamic` parents' memoized
+vtables, substituted at the parent reference, and its own declarations
+(`merge_vtables`); a plain parent's methods fold into the own ones, shadowed by a
+redeclaration, only where no `@dynamic` parent has the name. Every declaration of a
+name must agree in parameter types, return type (one `Own[...]` around a value
+type at a return not counting, `_return_modulo_own`) and readonly-ness; the first pair that does not is
+the level's `SlotConflict`. A name only the protocol declares is its own slot, one a
+single parent has is that parent's (a redeclaration names it), and one two or more
+parents have is declared again in the protocol's class (`VtableSlot.combined`,
+rendered `virtual ... override = 0;`), so member lookup through it is not ambiguous.
+`ProtocolChecker.record_vtable` merges a class's parent classes' vtables with its own
+protocols' the same way (a class resolves a doubly inherited slot through its own
+override). Both memoize per protocol and per record once the import component's
+declarations are registered (a cycle peer's protocol is a skeleton before that), so
+a chain of n protocols costs n merges. `SemanticAnalyzer._check_dynamic_slot_conflicts`
+asks every `@dynamic` protocol and every class of a module for its conflict when its
+bodies phase starts, whether or not anything reads its vtable, and reports it at the
+protocol or class that combines the declarations.
+`gen_dynamic_base_class` emits a protocol's own and combined slots, the `Adapter` /
+`RefAdapter` specializations override every slot, `_get_dynamic_override_info` marks
+a member `override` by name, and sema's slot readers (`_dynamic_slot_written_params`,
+const withholding, `dynamic_protocol_of_member`) read the same dict through
+`record_vtable`. The ref adapter's const override forwards through
+`std::as_const(inner)` -- a const member function does not make its `T&` member
+const -- so a conformer with a mutable and a readonly overload of one name runs the
+readonly one from a `@readonly` slot; the owning adapter's `inner` is already const
+there.
+
 **Naming convention**: The base class gets the protocol's clean name (e.g., `Pet`),
 making it natural for C++ interop. The concept uses a dunder name (`__Pet_Concept__`)
 since it's internal. Adapters live in the `tpy::` namespace as partial specializations
@@ -555,6 +597,25 @@ Covariant return wrapping (e.g. `inner.foo()` -> `std::string(inner.foo())`
 for protocol returns `str`) fires per the concrete return type, so a method
 returning a generic `T` is not auto-wrapped: users should spell `StrView`
 consistently if the instantiation is `T = str`.
+
+Two `@dynamic` declarations of one name that a generic protocol combines agree
+as the language-level "One name, one slot" rule in `docs/LANGUAGE_FEATURES.md`
+says: `-> Own[T]` and `-> T` agree only when `T` is a value type
+(`TpyType.is_value_type()`, so a class type parameter bounded `ValueType` counts
+while a protocol's bound does not yet, BUGS.md#protocol-type-param-bound-ignored);
+around a reference type or an unbounded `T`, `Own` selects the by-value virtual
+over the reference one, so the two declarations disagree. Parameter names,
+kinds and defaults are not compared (`_slot_disagreement`). Where they agree the
+merged vtable slot keeps the plain side (`_plain_side`), whose C++ virtual is
+the same as the `Own` one's. A protocol's method list (`protocol_methods`),
+plain or `@dynamic`, keeps the first parent's declaration of a name it only
+inherits, which is what a call binds to, as in CPython. The two may differ in
+`Own` at the return without a dangle: an `Own[...]` result of a call through a
+protocol or type-parameter receiver is a temporary (`_builtin_own_result`), as a
+concrete method's is, so a `StrView` of it is rejected either way. Known limits at a reference type: the
+by-value return of a single slot copies
+(BUGS.md#dynamic-slot-reference-return-copies) and a field-returning filler fails
+the C++ build (BUGS.md#dynamic-override-borrow-return-conflicting).
 
 ## Object Safety
 

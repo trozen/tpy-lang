@@ -54,7 +54,8 @@ from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
 from . import emit_prims
 from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext)
-from .protocols import protocol_param_template_name, fn_param_template_name, signature_is_template
+from .protocols import protocol_param_template_name, fn_param_template_name
+from ..emitted_members import signature_is_template
 from .functions import default_to_cpp, default_emittable
 from ..resumable_shape import ResumableShape
 from ..thir.frame import (

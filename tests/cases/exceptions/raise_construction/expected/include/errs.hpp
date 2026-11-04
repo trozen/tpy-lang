@@ -112,7 +112,7 @@ template<typename T> requires tpyapp::errs::__Shows_Concept__<std::remove_const_
 struct tpy::RefAdapter<tpyapp::errs::Shows, T> : tpyapp::errs::Shows {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string show() const override { return std::string(inner.show()); }
+    std::string show() const override { return std::string(std::as_const(inner).show()); }
 };
 
 namespace tpyapp::errs {

@@ -183,7 +183,7 @@ template<typename T> requires tpyapp::main::__RoSrc_Concept__<std::remove_const_
 struct tpy::RefAdapter<tpyapp::main::RoSrc, T> : tpyapp::main::RoSrc {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t get() const override { return inner.get(); }
+    int32_t get() const override { return std::as_const(inner).get(); }
 };
 
 template<typename T, tpyapp::main::__Src2_Concept__<T> __tpy_Impl>

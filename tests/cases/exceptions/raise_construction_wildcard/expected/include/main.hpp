@@ -140,7 +140,7 @@ template<typename T> requires tpyapp::main::__Shows_Concept__<std::remove_const_
 struct tpy::RefAdapter<tpyapp::main::Shows, T> : tpyapp::main::Shows {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string show() const override { return std::string(inner.show()); }
+    std::string show() const override { return std::string(std::as_const(inner).show()); }
 };
 
 namespace tpyapp::main {

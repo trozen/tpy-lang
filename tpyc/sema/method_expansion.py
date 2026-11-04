@@ -55,17 +55,18 @@ from ..typesys import (
     strip_auto_readonly,
 )
 from ..diagnostics import SemanticError
-from ..identity_map import IdentitySet
+from ..identity_map import IdentityMap
 
 
 _SELF_BARRED_METHODS = ("__init__", "__del__")
 
 
-def expand_methods_for_record(record: TpyRecord) -> IdentitySet[TpyFunction]:
+def expand_methods_for_record(record: TpyRecord) -> IdentityMap[TpyFunction, bool]:
     """Expand methods on a single record in place, and return the readonly
-    halves of the pairs the user did not write (a reference-returning
-    dunder's, `_apply_implicit_auto_readonly`), which registration records
-    as `ImplicitReadonly.DUNDER_PAIR`.
+    halves of the pairs a method gets whatever is spelled -- a property
+    getter's and a reference-returning dunder's
+    (`_apply_implicit_auto_readonly`), which registration records as
+    `ReadonlyCause.PAIR` -- each with whether the user spelled the pair too.
 
     Safe to call after macros have added methods: `_expand_one` is
     idempotent on already-expanded clones (their `self_annotation` is
@@ -73,20 +74,20 @@ def expand_methods_for_record(record: TpyRecord) -> IdentitySet[TpyFunction]:
     already False), so methods added by the module-level run are left
     untouched when the per-record run visits them again.
     """
-    implicit: IdentitySet[TpyFunction] = IdentitySet()
+    implicit: IdentityMap[TpyFunction, bool] = IdentityMap()
     record.methods = list(_expand_record_methods(record, implicit))
     return implicit
 
 
 def _expand_record_methods(record: TpyRecord,
-                           implicit: IdentitySet[TpyFunction]
+                           implicit: IdentityMap[TpyFunction, bool]
                            ) -> Iterator[TpyFunction]:
     for method in record.methods:
         yield from _expand_one(method, implicit)
 
 
 def _expand_one(method: TpyFunction,
-                implicit: IdentitySet[TpyFunction]) -> list[TpyFunction]:
+                implicit: IdentityMap[TpyFunction, bool]) -> list[TpyFunction]:
     """Expand a single method into one or more TpyFunction entries.
 
     Order matters:
@@ -105,7 +106,7 @@ def _expand_one(method: TpyFunction,
 
     _derive_self_flags(method)
     _validate_self_annotation(method)
-    implicit_pair = _apply_implicit_auto_readonly(method)
+    pair_spelled = _apply_implicit_auto_readonly(method)
     _apply_auto_readonly_decorator_wrapping(method)
     _detect_per_param_auto_readonly(method)
     _check_auto_readonly_generic_method(method)
@@ -114,8 +115,8 @@ def _expand_one(method: TpyFunction,
 
     if method.auto_readonly:
         clones = _clone_auto_readonly(method)
-        if implicit_pair:
-            implicit.add(clones[1])
+        if pair_spelled is not None:
+            implicit[clones[1]] = pair_spelled
         return clones
     if method.auto_own:
         return _clone_auto_own(method)
@@ -211,7 +212,7 @@ def _validate_self_annotation(method: TpyFunction) -> None:
         return
 
 
-def _apply_implicit_auto_readonly(method: TpyFunction) -> bool:
+def _apply_implicit_auto_readonly(method: TpyFunction) -> bool | None:
     """Reference-returning dunders (`__deref__`, `__getitem__`, `__span__`)
     with a *reference-typed* return implicitly get dual mutable/const
     overloads. Wrapping the return type with `AutoReadonlyType` reuses the
@@ -223,30 +224,46 @@ def _apply_implicit_auto_readonly(method: TpyFunction) -> bool:
     class with `def __deref__(self) -> SomeRecord:` would be const-only,
     and mutation through the wrapper would silently miscompile at C++
     ("assignment of member in read-only object"). Explicit `@readonly` opts
-    back out. True when it gives `method` the pair.
+    back out. A property getter gets the pair from the parser.
+
+    None when `method` gets no pair whatever is spelled; otherwise whether
+    the user spelled the pair as well (`@auto_readonly`, or an
+    `auto_readonly[...]` marker anywhere in the signature).
     """
+    # A getter's `auto_readonly` flag is the parser's, not the user's.
+    spelled = (method.has_auto_readonly_decorator
+               or (method.auto_readonly and not method.is_property_getter)
+               or (method.return_type is not None
+                   and has_auto_readonly(method.return_type))
+               or any(has_auto_readonly(t) for _, t in method.params))
+    if method.is_property_getter:
+        return spelled
     if method.name not in IMPLICIT_AUTO_READONLY_METHODS:
-        return False
+        return None
     # Idempotency: a mutable clone of a prior auto_readonly expansion already
     # has the return type stripped to T; a second pass would re-wrap and
     # re-clone, multiplying the overload count.
     if method.is_auto_readonly_mutable_clone:
-        return False
+        return None
     if method.is_readonly or method.readonly_opt_out:
-        return False
+        return None
     rtype = method.return_type
-    if rtype is None or isinstance(rtype, (AutoReadonlyType, ReadonlyType)):
-        return False
-    if method.has_auto_readonly_decorator or method.auto_readonly:
-        return False
+    if rtype is None or isinstance(rtype, ReadonlyType):
+        return None
+    # The pair is already asked for: nothing to rewrite.
+    asked = (isinstance(rtype, AutoReadonlyType)
+             or method.has_auto_readonly_decorator or method.auto_readonly)
+    if isinstance(rtype, AutoReadonlyType):
+        rtype = rtype.wrapped
     # A returned copy carries no aliasing risk, and a tuple's elements are
     # marked one by one (`readonly_result`): the IMPLICIT_READONLY path
     # handles both (single const overload).
     if not _whole_borrow(rtype):
-        return False
-    method.return_type = AutoReadonlyType(rtype)
-    method.has_auto_readonly_decorator = True
-    return True
+        return None
+    if not asked:
+        method.return_type = AutoReadonlyType(rtype)
+        method.has_auto_readonly_decorator = True
+    return spelled
 
 
 def _apply_auto_readonly_decorator_wrapping(method: TpyFunction) -> None:

@@ -73,8 +73,8 @@ template<typename T> requires tpyapp::main::__Cloneable_Concept__<std::remove_co
 struct tpy::RefAdapter<tpyapp::main::Cloneable, T> : tpyapp::main::Cloneable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return inner.replicate(); }
-    std::string name() const override { return std::string(inner.name()); }
+    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return std::as_const(inner).replicate(); }
+    std::string name() const override { return std::string(std::as_const(inner).name()); }
 };
 
 namespace tpyapp::main {

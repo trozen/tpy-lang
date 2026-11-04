@@ -43,9 +43,9 @@ from .type_def_registry import (
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import ThirRejectError
 from .codegen_cpp.protocols import (
-    MemberKind, ReturnSlot, group_is_template, member_def,
-    record_emitted_members, return_slot_kind,
+    ReturnSlot, member_def, record_emission, return_slot_kind,
 )
+from .emitted_members import MemberKind, group_is_template
 from .codegen_cpp.context import (
     cpp_module_path, default_module_namespace, get_include_path,
     import_init_targets, module_init_candidates, module_to_include_path,
@@ -2413,7 +2413,7 @@ class Compiler:
                 # Every member the record's C++ declares, as codegen places
                 # it; a member shim (`operator[]`, ...) is placed with its
                 # member.
-                emission = record_emitted_members(
+                emission = record_emission(
                     ast_record, overload_groups,
                     compiled.analyzer.overload_twins)
                 for entry in emission.members:

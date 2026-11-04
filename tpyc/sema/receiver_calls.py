@@ -26,7 +26,7 @@ from ..parse import (
 from ..value_category import peel_coerce
 from ..type_def_registry import protocol_info_of
 from ..typesys import (
-    FunctionInfo, ImplicitReadonly, MutationCallEdge, NominalType,
+    FunctionInfo, ReadonlyCause, MutationCallEdge, NominalType,
     ReadonlyType, RecordInfo, TpyType,
     is_bodyless_binding, is_dyn_protocol, is_protocol_type, unwrap_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -416,12 +416,12 @@ def implicit_readonly_result_hint(ctx: SemanticContext, obj: TpyExpr) -> str:
           if isinstance(obj, TpyUnaryOp) and obj.resolved_unaryop is not None
           else None)
     reason = fi.root.implicit_readonly_result if fi is not None else None
-    if reason is ImplicitReadonly.PURE:
+    if reason is ReadonlyCause.PURE:
         how = f"'@pure' method '{fi.name}' returns it readonly; drop @pure"
-    elif reason is ImplicitReadonly.FROZEN:
+    elif reason is ReadonlyCause.FROZEN:
         how = (f"method '{fi.name}' of a frozen record returns it readonly; "
                f"mark it @readonly(False)")
-    elif reason is ImplicitReadonly.DUNDER:
+    elif reason is ReadonlyCause.DUNDER:
         how = (f"'{fi.name}' returns it readonly; declare '-> Own[...]' "
                f"to return a fresh value")
     else:

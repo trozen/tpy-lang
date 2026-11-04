@@ -52,15 +52,16 @@ from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
 from ..sema.literal_utils import literal_value_from_expr
-from .protocols import (
-    ReturnSlot, group_is_template, protocol_return, return_is_deduced,
-    return_slot_kind,
+from ..emitted_members import (
+    EmittedMember, ProtocolParamInfo, RefQualifier, group_is_template,
+    overload_stubs_are_literal_only, protocol_return, return_is_deduced,
 )
+from .protocols import ReturnSlot, return_slot_kind
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
-    from .protocols import ProtocolGenerator, ProtocolParamInfo
+    from .protocols import ProtocolGenerator
     from ..sema import SemanticAnalyzer
 
 
@@ -170,31 +171,6 @@ def build_overload_narrowing(
         if narrow is not None:
             narrowing[pname] = narrow
     return narrowing
-
-
-def overload_stubs_are_literal_only(
-    stubs: 'list', impl: TpyFunction,
-) -> bool:
-    """Check if overload stubs differ from the impl only by Literal annotations.
-
-    When all stubs have the same C++ parameter types as the implementation
-    (because they only differ by LiteralType vs base type), per-stub
-    specialization would produce duplicate C++ definitions. In that case,
-    emit just the implementation function. Shared with THIR's per-stub gate
-    (a literal-only group emits through the mangled-name path, which never
-    sets the per-stub interception key).
-    """
-    for stub in stubs:
-        for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(stub_ptype, LiteralType):
-                continue
-            if stub_ptype != impl_ptype:
-                return False
-    return any(
-        isinstance(ptype, LiteralType)
-        for stub in stubs
-        for _, ptype in stub.params
-    )
 
 
 # Zero-arg scalar constructors that codegen to `0` (as opposed to
@@ -1333,10 +1309,9 @@ class FunctionGenerator:
         return specs
 
     def _gen_overload_specialized_method(
-        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
-        record_name: str, *,
+        self, out: TextIO, member: EmittedMember, record_name: str, *,
         record_type_param_bounds: dict[str, TpyType] | None = None,
-        dynamic_overrides: dict[str, bool] | None = None,
+        dynamic_overrides: set[str] | None = None,
         mode: MethodEmitMode = "inline",
     ) -> None:
         """Generate a specialized C++ method for one @overload stub.
@@ -1344,14 +1319,13 @@ class FunctionGenerator:
         Delegates to _gen_method_overload with stub's signature but impl's body,
         with the overload context set for dead branch elimination.
         """
+        impl, stub = member.body, member.func
         impl_defaults = impl.defaults if impl.defaults else []
         missing_params = impl.params[len(stub.params):]
         overload_types = self._build_overload_narrowing(
             impl, stub, missing_params, impl_defaults)
 
         # Create a synthetic TpyFunction with stub's types but impl's body.
-        # Method const-ness (is_readonly) comes from the stub, since the stub's
-        # decorators (@readonly, @auto_readonly) define the overload's const contract.
         # With parser cloning, @auto_readonly stubs are already split into separate
         # mutable/const clones before codegen runs.
         synth = TpyFunction(
@@ -1362,8 +1336,8 @@ class FunctionGenerator:
             is_method=impl.is_method,
             is_staticmethod=impl.is_staticmethod,
             is_classmethod=impl.is_classmethod,
-            is_readonly=stub.is_readonly,
-            readonly_opt_out=stub.readonly_opt_out,
+            is_readonly=member.readonly,
+            readonly_opt_out=member.form_source.readonly_opt_out,
             is_pure=impl.is_pure,
             is_consuming=impl.is_consuming,
             type_params=list(impl.type_params),
@@ -1408,7 +1382,7 @@ class FunctionGenerator:
             missing_params, impl_defaults, start_idx=len(stub.params))
         try:
             per_stub = self.ctx.thir_overload_functions.get(impl)
-            self.gen_method_def(out, synth, record_name, dynamic_overrides,
+            self.gen_method_def(out, synth, member, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
                                 mode=mode,
                                 variant_of=stub,
@@ -1419,10 +1393,9 @@ class FunctionGenerator:
             self.ctx.literal_overload_facts = {}
 
     def _gen_literal_specialized_method(
-        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
-        record_name: str, *,
+        self, out: TextIO, member: EmittedMember, record_name: str, *,
         record_type_param_bounds: dict[str, TpyType] | None = None,
-        dynamic_overrides: dict[str, bool] | None = None,
+        dynamic_overrides: set[str] | None = None,
         mode: MethodEmitMode = "inline",
     ) -> None:
         """Generate a per-literal specialized C++ method.
@@ -1431,6 +1404,7 @@ class FunctionGenerator:
         a mangled method name. Injects literal narrowing facts for dead
         branch elimination.
         """
+        impl, stub = member.body, member.func
         synth = TpyFunction(
             name=impl.name,
             params=list(impl.params),
@@ -1439,8 +1413,8 @@ class FunctionGenerator:
             is_method=impl.is_method,
             is_staticmethod=impl.is_staticmethod,
             is_classmethod=impl.is_classmethod,
-            is_readonly=impl.is_readonly,
-            readonly_opt_out=impl.readonly_opt_out,
+            is_readonly=member.readonly,
+            readonly_opt_out=member.form_source.readonly_opt_out,
             is_pure=impl.is_pure,
             is_consuming=impl.is_consuming,
             type_params=list(impl.type_params),
@@ -1485,38 +1459,23 @@ class FunctionGenerator:
 
         try:
             per_stub = self.ctx.thir_overload_functions.get(impl)
-            self.gen_method_def(out, synth, record_name, dynamic_overrides,
+            self.gen_method_def(out, synth, member, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
                                 mode=mode, variant_of=stub,
                                 lowered=per_stub.get(stub) if per_stub is not None else None)
         finally:
             self.ctx.literal_overload_facts = {}
 
-    def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
-        """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.
-
-        Walks the MRO so that a record inheriting a @dynamic protocol transitively
-        (via a concrete-class parent) still emits `override` on its method
-        redefinitions, not non-virtual hiding methods. Direct + transitive both
-        contribute -- the C++ base class emits pure virtuals for the inherited
-        protocol slot in either case.
-        """
+    def _get_dynamic_override_info(self, record_name: str) -> set[str]:
+        """The name of every @dynamic virtual the record's class inherits
+        (`ProtocolChecker.record_vtable`), so a member of that name is
+        emitted `override` -- sema's slot check makes its receiver form the
+        slot's. A protocol reached through a concrete parent counts: the
+        base class holds its pure virtuals."""
         record_info = self.ctx.analyzer.registry.get_record(record_name)
         if not record_info:
-            return {}
-        result: dict[str, bool] = {}
-        for proto, proto_info in self.ctx.analyzer.registry.iter_dynamic_protocols(record_info):
-            for method_sig in self.protocols.collect_concept_methods(proto_info):
-                # First-wins (MRO is nearest-first; most-derived protocol
-                # decides the slot's const-ness). Diamond hierarchies with
-                # conflicting const-ness across sibling protocols for the
-                # same method name are latent -- the first visited may not
-                # match a sibling's declaration and would silently emit an
-                # override that doesn't satisfy the sibling's virtual slot.
-                # See TODO.md (multi-protocol diamond const-merge).
-                if method_sig.name not in result:
-                    result[method_sig.name] = method_sig.is_readonly or proto_info.is_readonly
-        return result
+            return set()
+        return set(self.ctx.analyzer.protocols.record_vtable(record_info))
 
     def gen_shim_params(self, method: TpyFunction, record_name: str) -> str:
         """Param list for a delegating operator shim (operator(), the mutable
@@ -1584,8 +1543,9 @@ class FunctionGenerator:
         infos = ri.get_method_overloads(decl.name) or ()
         return len({fi.variant_cpp_name for fi in infos}) > 1
 
-    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
-                       dynamic_overrides: dict[str, bool] | None = None,
+    def gen_method_def(self, out: TextIO, method: TpyFunction,
+                       member: EmittedMember, record_name: str,
+                       dynamic_overrides: set[str] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None,
                        mode: MethodEmitMode = "inline",
                        variant_of: TpyFunction | None = None,
@@ -1593,7 +1553,8 @@ class FunctionGenerator:
         """Generate a method definition for a record. ``mode`` is
         forwarded to ``_gen_method_overload``. ``variant_of`` is the def
         `method` specializes (a `typing.overload` stub), when it is not
-        `method` itself.
+        `method` itself. ``member`` is the record's member `method` emits:
+        its receiver form is the one declared.
 
         A named variant of a set is defined under its name, followed by a
         plain-name forwarder with the variant's own signature
@@ -1608,35 +1569,25 @@ class FunctionGenerator:
         if method.is_property_setter:
             cpp_name = f"set_{escape_cpp_name(method.property_name or method.name)}"
 
-        is_const = method.is_readonly
+        is_const = member.readonly
         is_static = method.is_staticmethod
 
-        # Determine if this method overrides a @dynamic protocol virtual
-        override_const: bool | None = None
-        if dynamic_overrides and method.name in dynamic_overrides:
-            override_const = dynamic_overrides[method.name]
+        overrides = dynamic_overrides or set()
 
         passings = self.published_passings(method, lowered)
         names = [(cpp_name, None)]
         if forward_to is not None:
             names.append((plain_name, forward_to))
+        is_override = method.name in overrides and not is_static
         for name, target in names:
-            if is_const and not is_static:
-                # @readonly: single const overload. C++ allows calling const methods
-                # on non-const objects, so no non-const duplicate needed.
-                is_override = override_const is True
-                self._gen_method_overload(out, method, record_name, name, cpp_return_type,
-                                          const=True, override=is_override,
-                                          record_type_param_bounds=record_type_param_bounds,
-                                          mode=mode, forward_to=target, passings=passings,
-                                          lowered=lowered)
-            else:
-                is_override = override_const is False and not is_static  # base is non-const
-                self._gen_method_overload(out, method, record_name, name, cpp_return_type,
-                                          const=False, static=is_static, override=is_override,
-                                          record_type_param_bounds=record_type_param_bounds,
-                                          mode=mode, forward_to=target, passings=passings,
-                                          lowered=lowered)
+            # @readonly: single const overload. C++ allows calling const methods
+            # on non-const objects, so no non-const duplicate needed.
+            self._gen_method_overload(out, method, record_name, name, cpp_return_type,
+                                      const=is_const, ref=member.ref, static=is_static,
+                                      override=is_override,
+                                      record_type_param_bounds=record_type_param_bounds,
+                                      mode=mode, forward_to=target, passings=passings,
+                                      lowered=lowered)
 
     def method_return_cpp(self, method: TpyFunction, record_name: str,
                           cpp_return_type: TpyType | None = None, *,
@@ -1682,14 +1633,16 @@ class FunctionGenerator:
 
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
-        cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
+        cpp_name: str, cpp_return_type: TpyType, *, const: bool,
+        ref: RefQualifier, static: bool = False,
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
         mode: MethodEmitMode = "inline", forward_to: str | None = None,
         passings: 'dict[str, ParamPassing] | None' = None,
         lowered=None,
     ) -> None:
         """Emit a single method overload. See ``MethodEmitMode`` for the
-        contract of ``mode``. With ``forward_to``, the member is a
+        contract of ``mode``. ``const`` / ``ref`` are the receiver's
+        const-ness and ref-qualifier. With ``forward_to``, the member is a
         forwarder: the same signature, its body the call of the named
         variant ``forward_to`` with its own arguments.
         """
@@ -1753,10 +1706,7 @@ class FunctionGenerator:
                                          defaults=dfl, emit_defaults=emit_defaults,
                                          class_type_params=ctp, func=method)
         const_suffix = " const" if const else ""
-        # auto_own borrowing clone needs & qualifier so C++ can distinguish
-        # f() & from f() && (both must have ref-qualifiers or neither).
-        lvalue_suffix = " &" if method.is_auto_own_borrowing_clone else ""
-        rvalue_suffix = " &&" if method.is_consuming else ""
+        ref_suffix = f" {ref.value}" if ref is not RefQualifier.NONE else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
 
@@ -1826,7 +1776,6 @@ class FunctionGenerator:
             else:
                 template_header = base_header
             out.write(f"{sig_indent}{template_header}")
-        ref_suffix = rvalue_suffix or lvalue_suffix
         sig_line = (f"{sig_indent}{inline_prefix}{sig_static_prefix}{ret_type} "
                     f"{qualified_name}({params}){const_suffix}{ref_suffix}"
                     f"{sig_override_suffix}{requires_clause}")

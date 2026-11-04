@@ -80,7 +80,7 @@ template<typename T> requires tpyapp::main::__Pet_Concept__<std::remove_const_t<
 struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() const override { return std::string(inner.name()); }
+    std::string name() const override { return std::string(std::as_const(inner).name()); }
 };
 
 namespace tpyapp::main {

@@ -2204,7 +2204,7 @@ template<typename T> requires tpyapp::main::__SupAddable_Concept__<std::remove_c
 struct tpy::RefAdapter<tpyapp::main::SupAddable, T> : tpyapp::main::SupAddable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t __add__(int32_t o) const override { return inner + o; }
+    int32_t __add__(int32_t o) const override { return std::as_const(inner) + o; }
 };
 
 namespace tpyapp::main {

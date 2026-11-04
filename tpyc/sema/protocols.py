@@ -21,6 +21,7 @@ from ..typesys import (
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
     is_dynamic_dispatch_inner, ptr_text_pointee,
 )
+from ..identity_map import IdentityMap
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
 if TYPE_CHECKING:
@@ -91,7 +92,7 @@ def handle_payload_may_be(
 
 
 def _build_parent_protocol_subst(
-    parent: NominalType, parent_info: 'ProtocolInfo | None',
+    parent: NominalType, parent_info: 'ProtocolInfo | RecordInfo | None',
 ) -> dict[str, TpyType]:
     """Build a substitution map from a parent protocol's type parameters
     to the type arguments supplied in the inheritance reference.
@@ -115,12 +116,16 @@ def _build_parent_protocol_subst(
 
 def protocol_methods(protocol_info: 'ProtocolInfo | None',
                      type_ops: 'TypeOperations | None' = None,
-                     visited: set[str] | None = None) -> list[MethodSignature]:
+                     visited: set[str] | None = None,
+                     parent_methods: 'Callable[[ProtocolInfo], list[MethodSignature]] | None' = None,
+                     ) -> list[MethodSignature]:
     """The methods a protocol requires, its parents' included; a method
     shadows a same-named one it inherits. With `type_ops`, an inherited
     method's parent type parameters are substituted with the parent
     reference's type arguments, so a child of `Iterable[T]` sees
-    `__iter__(self) -> Iterator[T]` in its own type-parameter scope."""
+    `__iter__(self) -> Iterator[T]` in its own type-parameter scope.
+    ``parent_methods`` answers for a parent instead of the recursion, so a
+    caller memoizing per protocol walks each one once."""
     if protocol_info is None:
         return []
     if visited is None:
@@ -132,14 +137,180 @@ def protocol_methods(protocol_info: 'ProtocolInfo | None',
         m.name: m for m in protocol_info.methods}
     for parent in protocol_info.parent_protocols:
         parent_info = protocol_info_of(parent)
-        type_subst = (_build_parent_protocol_subst(parent, parent_info)
-                      if type_ops is not None else {})
-        for method in protocol_methods(parent_info, type_ops, visited):
+        inherited = (parent_methods(parent_info)
+                     if parent_methods is not None and parent_info is not None
+                     else protocol_methods(parent_info, type_ops, visited))
+        if type_ops is not None and parent_info is not None:
+            inherited = at_reference(inherited, parent, parent_info, type_ops)
+        for method in inherited:
             if method.name not in methods_by_name:
-                methods_by_name[method.name] = (
-                    _substitute_method_signature(method, type_subst, type_ops)
-                    if type_ops is not None else method)
+                methods_by_name[method.name] = method
     return list(methods_by_name.values())
+
+
+@dataclasses.dataclass(frozen=True)
+class VtableSlot:
+    """The one virtual of a method name in a @dynamic protocol's C++ class:
+    ``sig`` in the queried protocol's type-parameter scope, ``readonly`` its
+    receiver form (const), ``owner`` the @dynamic protocol whose class
+    declares it. ``combined``: the owner inherits the slot from two or more
+    @dynamic parents and declares it again, so a call through its class
+    names one member, not one per base."""
+    sig: MethodSignature
+    readonly: bool
+    owner: 'ProtocolInfo' = dataclasses.field(compare=False, hash=False)
+    combined: bool = False
+
+    @property
+    def name(self) -> str:
+        return self.sig.name
+
+
+# A protocol's or a record's virtuals, by method name, in declaration order.
+Vtable = dict[str, VtableSlot]
+
+
+@dataclasses.dataclass(frozen=True)
+class SlotConflict:
+    """Two @dynamic declarations of one method name that do not agree:
+    ``first`` and ``second`` with the protocols declaring them, and what
+    they disagree in."""
+    first: VtableSlot
+    second: VtableSlot
+    aspect: str
+
+
+def _slot_disagreement(a: VtableSlot, b: VtableSlot) -> str | None:
+    """What two declarations of one slot disagree in, or None. Types are
+    compared as the language sees them: the signatures are already
+    substituted into one scope, and `Own[...]` at a return does not count
+    for a value type (`_return_modulo_own`); at a parameter it does."""
+    if a.readonly != b.readonly:
+        return "readonly-ness"
+    if [t for _, t in a.sig.params] != [t for _, t in b.sig.params]:
+        return "parameter types"
+    if _return_modulo_own(a.sig) != _return_modulo_own(b.sig):
+        return "return type"
+    return None
+
+
+def _return_modulo_own(sig: MethodSignature) -> TpyType:
+    """A declaration's return type without one `Own[...]` around a value
+    type: a returned value is the caller's either way. Around a reference
+    type, or a type parameter not known to be a value type, `Own` selects
+    the by-value virtual over the reference one, so it stays and the two
+    declarations disagree."""
+    ret = unwrap_ref_type(sig.return_type)
+    if isinstance(ret, OwnType) and ret.wrapped.is_value_type():
+        return ret.wrapped
+    return ret
+
+
+def _plain_side(slots: list[VtableSlot]) -> VtableSlot:
+    """The declaration a combined slot keeps: the first without `Own[...]`
+    at the return, else the first. Slots agree modulo `Own` only around a
+    value type, where the virtual's C++ is the same either way, so the
+    choice is independent of parent order."""
+    for slot in slots:
+        if not isinstance(unwrap_ref_type(slot.sig.return_type), OwnType):
+            return slot
+    return slots[0]
+
+
+def merge_vtables(sources: 'list[Vtable]', own: 'Vtable | None' = None,
+                  combiner: 'ProtocolInfo | None' = None,
+                  ) -> tuple[Vtable, SlotConflict | None]:
+    """One slot per name over ``own`` (the combiner's own declarations) and
+    the inherited ``sources``, with the first disagreement found. A name
+    only ``own`` declares is the combiner's; one a single source has is
+    that source's slot, a redeclaration in ``own`` naming it; one two or
+    more sources have is declared again by ``combiner`` (``combined``),
+    when there is one -- a record's class resolves it through its own
+    override -- with the plain side's signature (`_plain_side`)."""
+    own = own or {}
+    decls: dict[str, list[VtableSlot]] = {name: [slot] for name, slot in own.items()}
+    inherited: dict[str, list[VtableSlot]] = {}
+    for source in sources:
+        for name, slot in source.items():
+            decls.setdefault(name, []).append(slot)
+            inherited.setdefault(name, []).append(slot)
+    conflict: SlotConflict | None = None
+    out: Vtable = {}
+    for name, slots in decls.items():
+        for other in slots[1:]:
+            aspect = _slot_disagreement(slots[0], other)
+            if aspect is not None and conflict is None:
+                conflict = SlotConflict(slots[0], other, aspect)
+        from_parents = inherited.get(name, [])
+        if not from_parents:
+            out[name] = slots[0]
+        elif len(from_parents) == 1:
+            out[name] = from_parents[0]
+        elif combiner is None:
+            out[name] = _plain_side(from_parents)
+        else:
+            kept = _plain_side(slots)
+            out[name] = VtableSlot(kept.sig, kept.readonly, combiner,
+                                   combined=True)
+    return out, conflict
+
+
+def at_reference(members: 'Vtable | list[MethodSignature]', parent: NominalType,
+                 parent_info: 'ProtocolInfo | RecordInfo',
+                 type_ops: 'TypeOperations') -> 'Vtable | list[MethodSignature]':
+    """A parent's ``members`` -- its vtable or its method list, in the
+    parent's type-parameter scope -- substituted at its inheritance
+    reference ``parent``: `Base[int32]` turns `get(self) -> T` into
+    `get(self) -> int32`."""
+    subst = _build_parent_protocol_subst(parent, parent_info)
+    if not subst or not members:
+        return members
+    if isinstance(members, dict):
+        return {name: dataclasses.replace(
+                    slot, sig=_substitute_method_signature(slot.sig, subst, type_ops))
+                for name, slot in members.items()}
+    return [_substitute_method_signature(m, subst, type_ops) for m in members]
+
+
+def dynamic_vtable(protocol_info: 'ProtocolInfo',
+                   type_ops: 'TypeOperations',
+                   parent_vtable: 'Callable[[ProtocolInfo], Vtable]',
+                   parent_methods: 'Callable[[ProtocolInfo], list[MethodSignature]]',
+                   ) -> tuple[Vtable, SlotConflict | None]:
+    """The virtuals of @dynamic `protocol_info`'s C++ class, inherited ones
+    included, one per method name, built from its parents' vtables
+    (``parent_vtable``, substituted at the parent reference), its plain
+    parents' methods (``parent_methods``) and its own declarations, with
+    the first pair of them that disagrees. A plain (non-dynamic) protocol
+    declares no slot: in a @dynamic child its methods fold into the
+    child's own, shadowed by a same-named redeclaration, and only where no
+    @dynamic parent has the name; a plain child passes on only the slots
+    its @dynamic ancestors declare. Either way every @dynamic declaration
+    of a name the protocol combines must agree in parameter types, return
+    type and readonly-ness."""
+    own: Vtable = {}
+    for sig in (protocol_info.methods if protocol_info.is_dynamic else ()):
+        own[sig.name] = VtableSlot(sig, sig.is_readonly or protocol_info.is_readonly,
+                                   protocol_info)
+    sources: list[Vtable] = []
+    folded: list[MethodSignature] = []
+    for parent in protocol_info.parent_protocols:
+        parent_info = protocol_info_of(parent)
+        if parent_info is None:
+            continue
+        if parent_info.is_dynamic or not protocol_info.is_dynamic:
+            sources.append(at_reference(
+                parent_vtable(parent_info), parent, parent_info, type_ops))
+        else:
+            folded.extend(at_reference(
+                parent_methods(parent_info), parent, parent_info, type_ops))
+    dynamic_names = {name for source in sources for name in source}
+    for sig in folded:
+        if sig.name not in own and sig.name not in dynamic_names:
+            own[sig.name] = VtableSlot(sig, sig.is_readonly or protocol_info.is_readonly,
+                                       protocol_info)
+    return merge_vtables(sources, own,
+                         protocol_info if protocol_info.is_dynamic else None)
 
 
 def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
@@ -330,6 +501,16 @@ class ProtocolChecker:
         # otherwise-unbounded recursion when a protocol references itself
         # (directly or mutually) in a method signature.
         self._conformance_in_progress: set[tuple[TpyType, NominalType]] = set()
+        # Set once every module of this one's import component has
+        # registered its declarations: before that a cycle peer's protocol
+        # may still be an empty skeleton, so a vtable is computed uncached.
+        self.declarations_settled = False
+        self._protocol_vtables: dict[str, tuple[Vtable, SlotConflict | None]] = {}
+        self._vtables_in_progress: set[str] = set()
+        self._protocol_method_lists: dict[str, list[MethodSignature]] = {}
+        self._method_lists_in_progress: set[str] = set()
+        self._record_vtables: IdentityMap[
+            RecordInfo, tuple[Vtable, SlotConflict | None]] = IdentityMap()
 
     def is_all_readonly(self, proto_info: 'ProtocolInfo') -> bool:
         """Check if all methods (including inherited) are readonly."""
@@ -1033,14 +1214,11 @@ class ProtocolChecker:
         matched: list[FunctionInfo] = []
         for _method, resolved in self._substituted_overloads(actual,
                                                              method_name):
-            # Allow non-readonly methods when the return type has a
-            # protocol-safe coercion to the expected return (e.g. __span__()
-            # -> Span[T] satisfies a readonly protocol expecting
-            # Span[readonly[T]], since the compiler auto-generates a const
-            # overload).
+            # A readonly requirement takes a readonly method whatever its
+            # return converts to: a call through a readonly receiver runs
+            # only that one.
             if require_readonly and not resolved.is_readonly:
-                if not is_protocol_safe_coercion(resolved.return_type, expected_return):
-                    continue
+                continue
             # Check return type (Own[T] in impl matches T in protocol)
             if not self._protocol_type_matches(resolved.return_type, expected_return):
                 continue
@@ -1200,6 +1378,8 @@ class ProtocolChecker:
         # Add inherited fields (only if not already defined directly)
         for parent in protocol_info.parent_protocols:
             parent_info = protocol_info_of(parent)
+            # The substitution `at_reference` makes, on bare field types
+            # rather than on method signatures and vtable slots.
             type_subst = _build_parent_protocol_subst(parent, parent_info)
             for field_name, field_type in self.collect_protocol_fields(parent_info, visited):
                 if field_name not in fields_by_name:
@@ -1449,15 +1629,102 @@ class ProtocolChecker:
         dynamically."""
         return self.dynamic_protocol_of_member(record_info, method_name) is not None
 
+    def protocol_vtable(self, protocol_info: 'ProtocolInfo | None') -> Vtable:
+        """The virtuals of @dynamic `protocol_info`'s C++ class
+        (`dynamic_vtable`), memoized per protocol once
+        `declarations_settled`."""
+        return self._protocol_vtable(protocol_info)[0]
+
+    def protocol_slot_conflict(self, protocol_info: 'ProtocolInfo'
+                               ) -> SlotConflict | None:
+        """The first two @dynamic declarations `protocol_info` combines
+        that disagree, or None."""
+        return self._protocol_vtable(protocol_info)[1]
+
+    def _protocol_vtable(self, protocol_info: 'ProtocolInfo | None'
+                         ) -> tuple[Vtable, SlotConflict | None]:
+        if protocol_info is None:
+            return {}, None
+        qname = protocol_info.qualified_name()
+        cached = self._protocol_vtables.get(qname)
+        if cached is not None:
+            return cached
+        # A malformed parent cycle (rejected elsewhere) must terminate.
+        if qname in self._vtables_in_progress:
+            return {}, None
+        self._vtables_in_progress.add(qname)
+        try:
+            result = dynamic_vtable(protocol_info, self.type_ops,
+                                    self.protocol_vtable, self.protocol_method_list)
+        finally:
+            self._vtables_in_progress.discard(qname)
+        if self.declarations_settled:
+            self._protocol_vtables[qname] = result
+        return result
+
+    def protocol_method_list(self, protocol_info: 'ProtocolInfo') -> list[MethodSignature]:
+        """`protocol_methods(protocol_info, type_ops)`, each parent's answer
+        memoized, so folding plain parents into the vtables of a deep
+        hierarchy walks each protocol once. Memoized once
+        `declarations_settled`."""
+        qname = protocol_info.qualified_name()
+        cached = self._protocol_method_lists.get(qname)
+        if cached is not None:
+            return cached
+        # A malformed parent cycle (rejected elsewhere) must terminate.
+        if qname in self._method_lists_in_progress:
+            return []
+        self._method_lists_in_progress.add(qname)
+        try:
+            result = protocol_methods(protocol_info, self.type_ops,
+                                      parent_methods=self.protocol_method_list)
+        finally:
+            self._method_lists_in_progress.discard(qname)
+        if self.declarations_settled:
+            self._protocol_method_lists[qname] = result
+        return result
+
+    def record_vtable(self, record_info: RecordInfo) -> Vtable:
+        """The @dynamic virtuals `record_info`'s C++ class inherits, one per
+        method name: its parent classes' and those of the @dynamic
+        protocols it implements, each at the class's type arguments.
+        Memoized per record once `declarations_settled`."""
+        return self._record_vtable(record_info)[0]
+
+    def record_slot_conflict(self, record_info: RecordInfo) -> SlotConflict | None:
+        """The first two @dynamic declarations `record_info` combines that
+        disagree and that no parent class already combines, or None."""
+        return self._record_vtable(record_info)[1]
+
+    def _record_vtable(self, record_info: RecordInfo
+                       ) -> tuple[Vtable, SlotConflict | None]:
+        cached = self._record_vtables.get(record_info)
+        if cached is not None:
+            return cached
+        sources: list[Vtable] = []
+        for proto in record_info.implemented_protocols:
+            proto_info = protocol_info_of(proto)
+            if proto_info is None or not proto_info.is_dynamic:
+                continue
+            sources.append(at_reference(
+                self.protocol_vtable(proto_info), proto, proto_info, self.type_ops))
+        for parent in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent)
+            if parent_info is not None and parent_info is not record_info:
+                sources.append(at_reference(
+                    self.record_vtable(parent_info), parent, parent_info,
+                    self.type_ops))
+        result = merge_vtables(sources)
+        if self.declarations_settled:
+            self._record_vtables[record_info] = result
+        return result
+
     def dynamic_protocol_of_member(self, record_info: RecordInfo,
-                                   method_name: str) -> NominalType | None:
-        """The first @dynamic protocol implemented by the record or any
-        ancestor (transitively) that declares method_name, or None."""
-        for proto, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
-            for sig in self.collect_protocol_methods(proto_info):
-                if sig.name == method_name:
-                    return proto
-        return None
+                                   method_name: str) -> str | None:
+        """The name of the @dynamic protocol declaring the virtual
+        `method_name` of the record's class (`record_vtable`), or None."""
+        slot = self.record_vtable(record_info).get(method_name)
+        return slot.owner.name if slot is not None else None
 
     def statically_hidden(self, cls: RecordInfo, name: str,
                           base: RecordInfo) -> RecordInfo | None:

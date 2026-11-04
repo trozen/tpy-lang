@@ -441,6 +441,11 @@ in `tpyc/sema/method_expansion.py`):
 After cloning, both clones have `auto_readonly=False` and are treated as
 ordinary methods by all subsequent compiler passes (sema, codegen).
 
+A pair cannot fill a `@dynamic` slot: a method name is one slot of one
+const-ness, so the pair's other clone would be a non-virtual sibling, and a caller
+reaching it would skip the override. It is a compile error
+(`DYNAMIC_PROTOCOL_DESIGN.md`, the C++ inheritance section).
+
 ### Explicit return type annotations
 
 The const variant's return type is controlled entirely by explicit

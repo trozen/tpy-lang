@@ -37,7 +37,7 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from ..parse.nodes import RecordLinkage, OverloadForm, value_capture_lambdas
 from .registration import (
     receiver_self_type, referent_type, _vararg_span_type, skipped_base_ctor_error,
-    skipped_base_init_warning, skipped_base_inits,
+    skipped_base_init_warning, skipped_base_inits, readonly_reason,
 )
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
@@ -107,7 +107,10 @@ from .capture_copies import CopyReason, warn_closure_captures
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
 from .pending_num import PendingNums
-from .protocols import ProtocolChecker
+from .protocols import ProtocolChecker, SlotConflict, Vtable, VtableSlot
+from ..emitted_members import (
+    EmittedMember, MemberKind, RefQualifier, record_emitted_members,
+)
 from .registration import TypeRegistrar
 from .narrowing import NarrowingTracker
 from .expressions import ExpressionAnalyzer
@@ -132,7 +135,7 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     protocol_info_of,
 )
-from ..typesys import RefType, ProtocolInfo, protocol_param_alternatives
+from ..typesys import RefType, ProtocolInfo, ReadonlyCause, protocol_param_alternatives
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -225,6 +228,41 @@ def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
                 if _body_has_raise(case.body, exception_type):
                     return True
     return False
+
+
+def _slot_declaration(slot: VtableSlot) -> str:
+    """A @dynamic declaration as the user wrote it, for a diagnostic."""
+    params = "".join(f", {name}: {t}" for name, t in slot.sig.params)
+    readonly = "@readonly " if slot.readonly else ""
+    return (f"{readonly}'{slot.owner.name}.{slot.name}(self{params}) -> "
+            f"{slot.sig.return_type}'")
+
+
+def _slot_conflict_message(combiner: str, conflict: SlotConflict) -> str:
+    return (f"'{combiner}' combines @dynamic declarations of "
+            f"'{conflict.first.name}' that disagree in {conflict.aspect}: "
+            f"{_slot_declaration(conflict.first)} and "
+            f"{_slot_declaration(conflict.second)} -- in the @dynamic "
+            f"protocols a class or protocol combines, a method name is one "
+            f"slot")
+
+
+def _readonly_remedy(causes: frozenset[ReadonlyCause],
+                     pair: bool = False) -> str | None:
+    """The edit removing every cause that keeps a readonly form readonly
+    (``pair``: a spelled `@auto_readonly` pair's half), or None if one cannot be."""
+    if ReadonlyCause.FROZEN in causes or ReadonlyCause.PAIR in causes:
+        return None
+    drops = ["@pure"] if ReadonlyCause.PURE in causes else []
+    if pair:
+        drops.append("auto_readonly")
+    elif ReadonlyCause.SPELLED in causes and ReadonlyCause.DUNDER not in causes:
+        # On a dunder, @readonly(False) replaces the spelled @readonly.
+        drops.append("@readonly")
+    edits = [f"drop {' and '.join(drops)}"] if drops else []
+    if ReadonlyCause.DUNDER in causes:
+        edits.append("mark it @readonly(False)")
+    return " and ".join(edits) or None
 
 
 class _GenexprTypeSlot:
@@ -1001,6 +1039,9 @@ class SemanticAnalyzer:
         """Body phase 1: class-constant initializers, function-macro and
         builder-trace expansion.
         """
+        # Every member of the component has registered its declarations.
+        self.protocols.declarations_settled = True
+        self._check_dynamic_slot_conflicts(module)
         # Runs after `_analyze_top_level` so module-level Final globals are
         # in scope, and before the method bodies so they see typed constants.
         for record in module.all_records():
@@ -1040,6 +1081,7 @@ class SemanticAnalyzer:
         component's propagation has completed.
         """
         self._sync_inferred_const(module)
+        self._check_dynamic_slot_agreement(module)
         self._sync_inferred_vararg_readonly(module)
         self._advance_phase(
             self._PHASE_ANALYZE_BODIES,
@@ -1267,13 +1309,11 @@ class SemanticAnalyzer:
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is None:
                 continue
-            const_clones = IdentitySet(m.clone_of for m in record.methods
-                                       if m.is_auto_readonly_mutable_clone)
+            vtable = self.protocols.record_vtable(record_info)
             for method in record.methods:
                 if method.overload_form is OverloadForm.OVERLOAD:
                     continue
-                written = self._dynamic_slot_written_params(
-                    record_info, method, const_clone=method in const_clones)
+                written = self._dynamic_slot_written_params(vtable, method)
                 if written:
                     fi = body_method_info(record_info, method)
                     if fi is not None:
@@ -1286,45 +1326,144 @@ class SemanticAnalyzer:
                 # declares the method as non-const, don't infer const here --
                 # it would produce a different C++ signature and break the override.
                 if (method.readonly_opt_out
-                        or self._dynamic_proto_requires_nonconst(record_info, method.name)):
+                        or self._dynamic_proto_requires_nonconst(vtable, method.name)):
                     fi = body_method_info(record_info, method)
                     if fi is not None:
                         fi.root.const_withheld = True
 
-    def _dynamic_slots(self, record_info: RecordInfo,
-                       method_name: str) -> 'Iterator[MethodSignature]':
-        """The @dynamic protocol slots `method_name` of `record_info` fills:
-        the method of that name in every @dynamic protocol the record or an
-        ancestor implements, the protocol's parents included (dynamic or
-        not -- the C++ vtable holds them all)."""
-        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
-            for sig in self.protocols.collect_protocol_methods(proto_info):
-                if sig.name == method_name:
-                    yield sig
-
-    def _dynamic_slot_written_params(self, record_info: RecordInfo,
-                                     method: TpyFunction, *,
-                                     const_clone: bool) -> frozenset[int]:
-        """The parameters of `method` its @dynamic slots declare writable: a
-        call of the member dispatches through the slot, so it may write
-        them whatever this body does. The slot's parameter is not
-        `readonly[...]`; the override's own type (the slot's, substituted)
-        has a mutable borrow surface. Of an `@auto_readonly` pair, each
-        clone fills the slots of its own receiver const-ness."""
-        paired = method.is_auto_readonly_mutable_clone or const_clone
+    @staticmethod
+    def _dynamic_slot_written_params(vtable: Vtable,
+                                     method: TpyFunction) -> frozenset[int]:
+        """The parameters of `method` the @dynamic slot it fills (of the
+        record's `vtable`) declares writable: a call of the member
+        dispatches through the slot, so it may write them whatever this
+        body does. The slot's parameter is not `readonly[...]`; the
+        override's own type (the slot's, substituted) has a mutable borrow
+        surface."""
+        slot = vtable.get(method.name)
+        if slot is None:
+            return frozenset()
         return frozenset(
-            i for sig in self._dynamic_slots(record_info, method.name)
-            if not paired or sig.is_readonly == const_clone
-            for i, ((_, slot_t), (_, own_t)) in enumerate(zip(sig.params, method.params))
+            i for i, ((_, slot_t), (_, own_t)) in enumerate(zip(slot.sig.params, method.params))
             if (not isinstance(unwrap_ref_type(slot_t), ReadonlyType)
                 and param_has_mutable_borrow_surface(own_t)))
 
-    def _dynamic_proto_requires_nonconst(self, record_info: RecordInfo, method_name: str) -> bool:
-        """Whether a @dynamic slot `method_name` fills is non-const: the C++
-        override must match the pure virtual, so inference must not make
-        the member const."""
-        return any(not sig.is_readonly
-                   for sig in self._dynamic_slots(record_info, method_name))
+    @staticmethod
+    def _dynamic_proto_requires_nonconst(vtable: Vtable,
+                                         method_name: str) -> bool:
+        """Whether the @dynamic virtual `method_name` fills (of the record's
+        `vtable`) is non-const: the C++ override must match the pure
+        virtual, so inference must not make the member const."""
+        slot = vtable.get(method_name)
+        return slot is not None and not slot.readonly
+
+    def _check_dynamic_slot_conflicts(self, module: TpyModule) -> None:
+        """In the @dynamic protocols a protocol or a class combines, a
+        method name is one slot: every declaration of it must agree
+        (`ProtocolChecker.protocol_slot_conflict` /
+        `record_slot_conflict`). Asked of every protocol and every class of
+        the module, whether or not anything reads its vtable, once
+        `declarations_settled` -- an import-cycle peer's protocol is a
+        skeleton before. A plain protocol declares no slot, but the @dynamic
+        parents it combines still hold it to one per name."""
+        for protocol in module.protocols:
+            info = self.ctx.registry.scan_by_short_name(protocol.name)
+            if info is None:
+                continue
+            conflict = self.protocols.protocol_slot_conflict(info)
+            if conflict is not None:
+                raise SemanticError(_slot_conflict_message(protocol.name, conflict),
+                                    protocol.loc)
+        for record in module.all_records():
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is None:
+                continue
+            conflict = self.protocols.record_slot_conflict(record_info)
+            if conflict is not None:
+                raise SemanticError(_slot_conflict_message(record.name, conflict),
+                                    record.loc)
+
+    def _check_dynamic_slot_agreement(self, module: TpyModule) -> None:
+        """Each receiver form a method emits must be the form of the
+        @dynamic virtual of its name: a form that matches none is a
+        non-virtual sibling, so a call through it bypasses dispatch
+        (`ProtocolChecker.statically_hidden` assumes a @dynamic member
+        dispatches). Reads the members codegen emits
+        (`record_emitted_members`) against the virtuals the record's class
+        inherits (`ProtocolChecker.record_vtable`), once
+        `_sync_inferred_const` has settled each method's `is_readonly`."""
+        for record in module.all_records():
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is None:
+                continue
+            vtable = self.protocols.record_vtable(record_info)
+            if not vtable:
+                continue
+            by_name: dict[str, list[EmittedMember]] = {}
+            for member in record_emitted_members(
+                    record, self.overload_groups, self.overload_twins):
+                if (member.kind not in (MemberKind.CTOR, MemberKind.DESTRUCTOR)
+                        and not member.func.is_staticmethod
+                        and member.func.name in vtable):
+                    by_name.setdefault(member.func.name, []).append(member)
+            for name, members in by_name.items():
+                self._check_slot_forms(record, record_info, members, vtable[name])
+
+    @staticmethod
+    def _check_slot_forms(record: TpyRecord, record_info: RecordInfo,
+                          members: list[EmittedMember],
+                          slot: VtableSlot) -> None:
+        name = slot.name
+        who = f"'{record.name}.{name}'"
+        proto = slot.owner.name
+        for member in members:
+            if member.ref is not RefQualifier.NONE:
+                body = member.body
+                spelled = ("auto_own[Self]" if (body.is_auto_own_borrowing_clone
+                                                or body.is_auto_own_consuming_clone)
+                           else "Own[Self]")
+                raise SemanticError(
+                    f"{who} takes self as {spelled}, but the '{name}' it "
+                    f"fills in @dynamic protocol '{proto}' takes a plain self",
+                    member.func.loc)
+        of_form: dict[bool, EmittedMember] = {}
+        for member in members:
+            of_form.setdefault(member.readonly, member)
+        if of_form.keys() == {slot.readonly}:
+            return
+        if len(of_form) == 2:
+            # A pair, which the user spelled unless it is the one a property
+            # getter or a reference dunder always gets. Its other form fills
+            # nothing: the name is one slot.
+            member = of_form[not slot.readonly]
+            causes = of_form[True].form_source.readonly_causes
+            if slot.readonly:
+                remedy = ("" if ReadonlyCause.PAIR in causes
+                          else " -- drop auto_readonly")
+                raise SemanticError(
+                    f"{who} has a mutable form, but the '{name}' it fills in "
+                    f"@dynamic protocol '{proto}' is @readonly{remedy}",
+                    member.func.loc)
+            edit = _readonly_remedy(causes, pair=True)
+            raise SemanticError(
+                f"{who} has a readonly form, but the '{name}' it fills in "
+                f"@dynamic protocol '{proto}' is not readonly"
+                + (f" -- {edit}" if edit else ""),
+                member.func.loc)
+        if slot.readonly:
+            member = of_form[False]
+            fi = body_method_info(record_info, member.body)
+            what = ("writes self" if fi is not None and fi.self_mutated
+                    else "is not readonly")
+            raise SemanticError(
+                f"{who} {what}, but it fills the @readonly '{name}' of "
+                f"@dynamic protocol '{proto}'", member.func.loc)
+        source = of_form[True].form_source
+        remedy = _readonly_remedy(source.readonly_causes)
+        raise SemanticError(
+            f"{readonly_reason(who, source.readonly_causes)}, but the "
+            f"'{name}' it fills in @dynamic protocol '{proto}' is not readonly"
+            + (f" -- {remedy}" if remedy else ""), source.loc)
 
     def _sync_inferred_vararg_readonly(self, module: TpyModule) -> None:
         """Flip vararg slots `Span[T]` -> `Span[readonly[T]]` for bodies that

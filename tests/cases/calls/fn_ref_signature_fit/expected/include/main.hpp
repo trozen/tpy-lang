@@ -541,7 +541,7 @@ template<typename T> requires tpyapp::main::__Speaker_Concept__<std::remove_cons
 struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t speak() const override { return inner.speak(); }
+    int32_t speak() const override { return std::as_const(inner).speak(); }
 };
 
 namespace tpyapp::main {

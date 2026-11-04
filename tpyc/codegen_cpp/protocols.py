@@ -5,28 +5,31 @@ C++20 concept generation from TurboPython protocols and template header utilitie
 """
 
 from __future__ import annotations
-from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
-    OwnType, MethodSignature, is_protocol_type,
+    MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_ref_type, shadowed_local_cpp_name,
-    ConcreteCoroType, is_dyn_protocol, unwrap_send_sync,
-    is_fn_type, unwrap_qualifiers, error_return_uses_borrow_slot,
+    ConcreteCoroType, unwrap_send_sync,
+    unwrap_qualifiers, error_return_uses_borrow_slot,
     protocol_param_alternatives, NONE,
 )
 from ..parse import TpyCall, TpyFunction, TpyMethodCall, TpyProtocol, TpyRecord
-from ..parse.nodes import DEL_HOOK, INIT_METHOD, MOVE_HOOK
 from .. import qnames
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, qualified_cpp_name, expand_cpp_template, forward_param,
 )
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
-from ..sema.protocols import protocol_is_const
+from ..sema.protocols import Vtable, protocol_is_const
+from ..emitted_members import (
+    EmittedMember, MemberKind, MemberSignature, ProtocolParamInfo,
+    protocol_return, record_emitted_members, resolve_protocol_type,
+    static_protocol_params,
+)
 from ..sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_forward_ok,
                                 record_inherits_dynamic)
 from ..symbol_binding import lookup_imported, SymbolKind
@@ -37,9 +40,6 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .functions import MethodEmitMode
     from ..typesys import ProtocolInfo
-
-# Unified protocol parameter info: name, list of protocol types (1+), nullable flag
-ProtocolParamInfo = namedtuple('ProtocolParamInfo', ['name', 'protocols', 'has_none'])
 
 # Adapter/RefAdapter template parameter name for the concrete impl type.
 # `_GENERIC` is used inside the partial-spec template that's parameterized
@@ -235,82 +235,6 @@ def _adapter_cast_base(check_type: TpyType, source_inner: 'TpyType | None',
     return None
 
 
-def resolve_protocol_type(typ: TpyType) -> TpyType:
-    """Resolve a type, setting is_protocol flag if it's actually a protocol.
-
-    During parsing, some types may be classified as records when they're
-    actually protocols (e.g., imported protocols). This fixes that for codegen.
-    """
-    if isinstance(typ, NominalType) and not typ.is_protocol:
-        # Probe with the protocol flag set so `protocol_info_of`'s
-        # qname-derived TypeDef lookup matches the authoritative
-        # `{module}.{name}` key.
-        probe = typ.with_protocol_flag(is_protocol=True)
-        if protocol_info_of(probe) is not None:
-            return probe
-    return typ
-
-
-def static_protocol_params(
-        params: list[tuple[str, TpyType]]) -> list[ProtocolParamInfo]:
-    """Every static (non-@dynamic) protocol parameter of a signature:
-    single protocols (bare or Optional) and protocol unions, each as
-    ProtocolParamInfo(name, protocols, has_none). Reads signatures only, so
-    the import-cycle gate can ask it before any body is analyzed."""
-    result: list[ProtocolParamInfo] = []
-    for pname, ptype in params:
-        alts = protocol_param_alternatives(ptype, resolve_protocol_type)
-        if alts is not None:
-            result.append(ProtocolParamInfo(
-                pname, [a for a in alts if a is not NONE], NONE in alts))
-    return result
-
-
-def signature_is_template(func: TpyFunction) -> bool:
-    """Does `func`'s own signature render a C++ template head: declared type
-    params, a static-protocol param (`T_<p>`) or an `Fn` param (`__F<i>`)?
-    Signature-only, so codegen's placement and the import-cycle gate (which
-    runs before body analysis) ask the same question."""
-    if func.type_params:
-        return True
-    if static_protocol_params(func.params):
-        return True
-    return any(is_fn_type(pt) for _, pt in func.params)
-
-
-def group_is_template(func: TpyFunction, stubs: list[TpyFunction]) -> bool:
-    """An @overload group renders a template when ANY stub's signature does,
-    even if the implementation's does not: a template stub must stay
-    instantiable in the header, so the whole group is header-only."""
-    return (signature_is_template(func)
-            or any(signature_is_template(s) for s in stubs))
-
-
-def protocol_return(return_type: TpyType) -> NominalType | None:
-    """The protocol a return type renders through, or None. Unwraps
-    Own[Protocol] so a consuming __iter__ returning Own[Iterator[T]] gets
-    `auto` in C++; an abstract @dynamic P stays wrapped -- Own[P] lowers to
-    std::unique_ptr<P> via OwnType.to_cpp(), and the protocol path would
-    emit `P&` to a temporary."""
-    unwrapped = unwrap_readonly(unwrap_ref_type(return_type))
-    if (isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped)
-            and not is_dyn_protocol(unwrapped.wrapped)):
-        unwrapped = unwrapped.wrapped
-    if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
-        return unwrapped
-    return None
-
-
-def return_is_deduced(return_type: TpyType) -> bool:
-    """The return renders `auto`: a non-@dynamic protocol return
-    (`-> Iterator[T]`), whose C++ type is the return expression's."""
-    proto = protocol_return(return_type)
-    if proto is None:
-        return False
-    pi = protocol_info_of(proto)
-    return not (pi and pi.is_dynamic)
-
-
 class ReturnSlot(Enum):
     """What a function's C++ return holds (`_resolve_return_type` spells it)."""
     PROTOCOL = "protocol"   # the @dynamic base by reference, or deduced `auto`
@@ -328,19 +252,6 @@ def return_slot_kind(return_type: TpyType, *, error_return: bool) -> ReturnSlot:
     if error_return_uses_borrow_slot(return_type):
         return ReturnSlot.EXPECTED_BORROW
     return ReturnSlot.EXPECTED
-
-
-@dataclass(frozen=True)
-class MemberSignature:
-    """What a member's signature says about where its body can be defined.
-    ``template``: it has a C++ template head (its class's, its own, or its
-    @overload group's), so the body must be visible wherever it is
-    instantiated -- the header. ``deduced``: its return renders `auto`, which
-    C++ needs before the member's first use. Signature-only: codegen's
-    placement (`member_def`) and the import-cycle gate (which runs before
-    body analysis) both read it."""
-    template: bool
-    deduced: bool
 
 
 @dataclass(frozen=True)
@@ -376,51 +287,6 @@ def member_def(sig: MemberSignature, *, cycle_member: bool,
     if cycle_member or not (small or sig.deduced):
         return MemberDef("def_cpp", False)
     return MemberDef("def_hpp", False)
-
-
-def member_signature(func: TpyFunction, *, class_generic: bool,
-                     group_template: bool = False) -> MemberSignature:
-    """`MemberSignature` of a member of a class that is generic or not, or of
-    one @overload variant (`func` being its stub); ``group_template`` is the
-    variant's group's `group_is_template`, which every variant shares."""
-    return MemberSignature(
-        template=(class_generic or group_template
-                  or signature_is_template(func)),
-        deduced=return_is_deduced(func.return_type))
-
-
-_CTOR_DTOR_NAMES = (INIT_METHOD, DEL_HOOK, MOVE_HOOK)
-
-
-class MemberKind(Enum):
-    # A body emitted as itself (a `@dispatch` variant too).
-    METHOD = auto()
-    # One `@overload` stub's specialization of its group's implementation.
-    VARIANT = auto()
-    CTOR = auto()
-    # `__del__` and its `__move__`: one partition.
-    DESTRUCTOR = auto()
-    # A generator / async method: declared in the struct, defined with its
-    # frame.
-    RESUMABLE = auto()
-    # `@cpp_template`: no declaration, expanded at each call site -- a
-    # use-site requirement rather than an emitted signature.
-    EXPANDED = auto()
-
-
-@dataclass(frozen=True)
-class EmittedMember:
-    """One member of a record's C++: ``func`` owns the signature it declares
-    (a variant's stub), ``body`` the body defined for it (the variant's
-    implementation)."""
-    func: TpyFunction
-    body: TpyFunction
-    kind: MemberKind
-    sig: MemberSignature
-
-    @property
-    def variant(self) -> bool:
-        return self.kind is MemberKind.VARIANT
 
 
 DUNDER_TO_UNARY_OP = {method: op for op, method in UNARYOP_TO_METHOD.items()}
@@ -462,57 +328,19 @@ class Shim:
 
 @dataclass(frozen=True)
 class RecordEmission:
-    """`record_emitted_members`' result: every emitted member of a record
+    """`record_emission`'s result: every emitted member of a record
     and the shims delegating to them, in their struct order."""
     members: list[EmittedMember]
     shims: list[Shim]
 
 
-def record_emitted_members(record: TpyRecord, overload_groups: IdentityMap,
-                           overload_twins: IdentityMap) -> RecordEmission:
-    """Every member of a (non-native) record's C++ whose signature repeats a
-    def's, with its signature facts, and the shims delegating to them -- the
-    one list codegen's placement plan and the import-cycle gate (which runs
-    before body analysis) both walk. Signature-only: `member_def`'s
-    ``small`` is the caller's to apply. An `@overload` implementation is
-    emitted as its stubs' specializations (``overload_groups``), its clone
-    twin (``overload_twins``) not at all."""
-    generic = bool(record.type_params)
-    out: list[EmittedMember] = []
-    for method in record.methods:
-        # The ctor and destructor family are entered once, below.
-        if (method.name in _CTOR_DTOR_NAMES
-                or (method.is_overload_stub and method.is_stub)):
-            continue
-        stubs = overload_groups.get(method)
-        if method.is_generator or method.is_async:
-            kind = MemberKind.RESUMABLE
-        elif method.cpp_template is not None:
-            kind = MemberKind.EXPANDED
-        elif stubs:
-            template = group_is_template(method, stubs)
-            out.extend(
-                EmittedMember(stub, method, MemberKind.VARIANT,
-                              member_signature(stub, class_generic=generic,
-                                               group_template=template))
-                for stub in stubs)
-            continue
-        elif method in overload_twins:
-            continue
-        else:
-            kind = MemberKind.METHOD
-        out.append(EmittedMember(method, method, kind,
-                                 member_signature(method,
-                                                  class_generic=generic)))
-    init, del_, move = record.init_method, record.del_method, record.move_method
-    if init is not None:
-        out.append(EmittedMember(init, init, MemberKind.CTOR,
-                                 member_signature(init, class_generic=generic)))
-    if del_ is not None:
-        class_sig = MemberSignature(template=generic, deduced=False)
-        out.extend(EmittedMember(h, h, MemberKind.DESTRUCTOR, class_sig)
-                   for h in (del_, move) if h is not None)
-    return RecordEmission(out, _record_shims(record, out))
+def record_emission(record: TpyRecord, overload_groups: IdentityMap,
+                    overload_twins: IdentityMap) -> RecordEmission:
+    """`record_emitted_members` with the shims delegating to them -- the
+    one list codegen's placement plan and the import-cycle gate (which
+    runs before body analysis) both walk."""
+    members = record_emitted_members(record, overload_groups, overload_twins)
+    return RecordEmission(members, _record_shims(record, members))
 
 
 def has_method_or_field(record: TpyRecord, name: str) -> bool:
@@ -1050,20 +878,14 @@ class ProtocolGenerator:
         if protocol_info is None:
             return
 
-        all_methods = self.collect_concept_methods(protocol_info)
-
-        # Collect @dynamic parent bases and their already-declared methods
-        dynamic_parent_bases: list[str] = []
-        parent_dynamic_methods: set[str] = set()
-        for parent in protocol_info.parent_protocols:
-            parent_info = protocol_info_of(parent)
-            if parent_info and parent_info.is_dynamic:
-                dynamic_parent_bases.append(self.get_dynamic_base_name(parent))
-                for m in self.collect_concept_methods(parent_info):
-                    parent_dynamic_methods.add(m.name)
-
-        # Methods to declare in this base class (exclude those in @dynamic parents)
-        base_methods = [m for m in all_methods if m.name not in parent_dynamic_methods]
+        dynamic_parent_bases = [
+            self.get_dynamic_base_name(parent)
+            for parent in protocol_info.parent_protocols
+            if (parent_info := protocol_info_of(parent)) and parent_info.is_dynamic]
+        # A @dynamic parent's class declares its own virtuals.
+        own_slots = [slot for slot in self.ctx.analyzer.protocols.protocol_vtable(
+                         protocol_info).values()
+                     if slot.owner is protocol_info]
 
         if protocol.type_params:
             out.write(self.gen_record_template_header(protocol.type_params, {}) + "\n")
@@ -1073,11 +895,16 @@ class ProtocolGenerator:
             out.write(f"struct {base_name} : {bases_str} {{\n")
         else:
             out.write(f"struct {base_name} {{\n")
-        for method_sig in base_methods:
+        for slot in own_slots:
+            method_sig = slot.sig
             ret_cpp = self._dynamic_return_type(method_sig)
-            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            const_qual = " const" if slot.readonly else ""
             params_cpp = self._dynamic_param_list(method_sig)
-            out.write(f"{INDENT}virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
+            # A slot inherited from several bases, declared once here so a
+            # call through this class names one member.
+            override = " override" if slot.combined else ""
+            out.write(f"{INDENT}virtual {ret_cpp} {method_sig.name}({params_cpp})"
+                      f"{const_qual}{override} = 0;\n")
         out.write(f"{INDENT}virtual ~{base_name}() = default;\n")
         out.write("};\n")
 
@@ -1162,7 +989,7 @@ class ProtocolGenerator:
         if protocol_info.cpp_concept:
             return
 
-        all_methods = self.collect_concept_methods(protocol_info)
+        vtable = self.ctx.analyzer.protocols.protocol_vtable(protocol_info)
         qbase_name = f"{module_namespace}::{protocol.name}"
         qconcept = f"{module_namespace}::__{protocol.name}_Concept__"
 
@@ -1201,8 +1028,8 @@ class ProtocolGenerator:
         out.write(f"{INDENT}{impl} inner;\n")
         out.write(f"{INDENT}template<typename... Args>\n")
         out.write(f"{INDENT}Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, protocol_info,
-                                    module_namespace, user_type_names)
+        self._gen_adapter_overrides(out, vtable, module_namespace,
+                                    user_type_names, held=True)
         out.write("};\n\n")
 
         # -- Ref adapter (an lvalue source, zero-copy; const for a const one) --
@@ -1210,30 +1037,37 @@ class ProtocolGenerator:
         out.write(f"struct tpy::RefAdapter<{qbase}, {impl}> : {qbase} {{\n")
         out.write(f"{INDENT}{impl}& inner;\n")
         out.write(f"{INDENT}RefAdapter({impl}& ref) : inner(ref) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, protocol_info,
-                                    module_namespace, user_type_names,
-                                    const_impl_guard=impl)
+        self._gen_adapter_overrides(out, vtable, module_namespace,
+                                    user_type_names, const_impl_guard=impl)
         out.write("};\n")
 
-    def _gen_adapter_overrides(self, out: TextIO, all_methods: list[MethodSignature],
-                               protocol_info: 'ProtocolInfo',
+    def _gen_adapter_overrides(self, out: TextIO, vtable: Vtable,
                                module_namespace: str = "",
                                user_type_names: set[str] | None = None,
-                               const_impl_guard: str | None = None) -> None:
+                               const_impl_guard: str | None = None,
+                               held: bool = False) -> None:
         """Emit method override bodies shared by owning and ref adapters.
 
         `const_impl_guard` names the ref adapter's impl parameter: a const
         impl only ever sits behind a `const Base*` (the source is const), so
         a mutating override is unreachable there, and its forward -- a
         non-const call on a const reference -- must not be instantiated; it
-        panics instead, so a broken invariant is a diagnosed failure."""
-        for method_sig in all_methods:
+        panics instead, so a broken invariant is a diagnosed failure.
+        ``held``: the adapter holds ``inner`` by value, so a const override
+        already sees it const."""
+        for slot in vtable.values():
+            method_sig = slot.sig
             ret_cpp = self._dynamic_return_type(method_sig)
-            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            const_qual = " const" if slot.readonly else ""
             params_cpp = self._dynamic_param_list(method_sig)
             is_void = isinstance(method_sig.return_type, VoidType)
             ret_kw = "" if is_void else "return "
-            call_expr = self._dynamic_forward_call(method_sig)
+            # A const override reaches the conformer's const overload, the
+            # one a readonly receiver would call; a const member function
+            # does not make the ref adapter's `T&` member const.
+            call_expr = self._dynamic_forward_call(
+                method_sig, "std::as_const(inner)" if slot.readonly and not held
+                else "inner")
             # Covariant str: inner may return string_view but vtable returns string;
             # explicit construction handles the conversion.
             if is_str_type(method_sig.return_type):
@@ -1268,10 +1102,6 @@ class ProtocolGenerator:
             )
         return cpp_str
 
-    def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
-        from ..typesys import ProtocolInfo as _PI
-        return method_sig.is_readonly or protocol_info.is_readonly
-
     def _dynamic_return_type(self, method_sig: MethodSignature) -> str:
         """C++ return type for a dynamic dispatch method."""
         if isinstance(method_sig.return_type, VoidType):
@@ -1285,19 +1115,21 @@ class ProtocolGenerator:
             parts.append(ptype.to_cpp_param(pname))
         return ", ".join(parts)
 
-    def _dynamic_forward_call(self, method_sig: MethodSignature) -> str:
-        """Generate the forwarding call expression for an adapter method."""
+    def _dynamic_forward_call(self, method_sig: MethodSignature,
+                              inner: str) -> str:
+        """Generate the forwarding call expression for an adapter method,
+        on the conformer spelled ``inner``."""
         arg_names = [forward_param(pname, ptype)
                      for pname, ptype in method_sig.params]
         args_str = ", ".join(arg_names)
 
         # Dunder methods with ::tpy:: free function equivalents
         if method_sig.name == "__len__":
-            return f"::tpy::__len__(inner)"
+            return f"::tpy::__len__({inner})"
         if method_sig.name == "__getitem__" and len(method_sig.params) == 1:
-            return f"::tpy::__getitem__(inner, {args_str})"
+            return f"::tpy::__getitem__({inner}, {args_str})"
         if method_sig.name == "__setitem__" and len(method_sig.params) == 2:
-            return f"::tpy::__setitem__(inner, {args_str})"
+            return f"::tpy::__setitem__({inner}, {args_str})"
         if (method_sig.name in DUNDER_TO_BINARY_OP
                 and method_sig.name not in ("__floordiv__", "__rfloordiv__")
                 and len(method_sig.params) == 1):
@@ -1305,9 +1137,9 @@ class ProtocolGenerator:
             # call below (matches the sema DUNDER_CPP_TEMPLATES lowering) rather
             # than `/`, which would invoke __truediv__'s operator.
             cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
-            return f"inner {cpp_op} {arg_names[0]}"
+            return f"{inner} {cpp_op} {arg_names[0]}"
 
-        return f"inner.{method_sig.name}({args_str})"
+        return f"{inner}.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
         """Recursively collect all record type names from a type.

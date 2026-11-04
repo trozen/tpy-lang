@@ -1343,8 +1343,9 @@ def _through_expression(call: TpyExpr) -> bool:
 
 def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     """An `Own[T]` result of a callee that is no user function (a free
-    call) or of a method on no user record: the durability readers do not
-    call it a temporary (BUGS.md#user-own-factory-exempt-as-builtin)."""
+    call) or of a method on no user record, protocol or type parameter:
+    the durability readers do not call it a temporary
+    (BUGS.md#user-own-factory-exempt-as-builtin)."""
     # Returned at an open `-> T` it copies at a value T and fails the C++
     # build at a record T (BUGS.md#generic-return-val-or-ref-rvalue).
     if isinstance(call, TpyCallLike) and call.result_form.is_fresh:
@@ -1355,7 +1356,14 @@ def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     if fi is None or not isinstance(fi.return_type, OwnType):
         return False
     if isinstance(call, TpyMethodCall):
-        recv = ctx.get_expr_type(call.obj)
+        # The receiver the method resolved on: a `Ptr`, `Box` or `Rc`
+        # receiver reaches its pointee's method through `__deref__`.
+        recv = unwrap_qualifiers(call.deref_receiver_type
+                                 or ctx.get_expr_type(call.obj))
+        # Through a protocol or a type parameter the call may reach a user
+        # filler, whose `Own[T]` result is fresh like a concrete method's.
+        if isinstance(recv, TypeParamRef) or is_protocol_type(recv):
+            return False
         return not (isinstance(recv, NominalType) and recv.is_user_record)
     return (call.call_type is None and isinstance(call.func, TpyName)
             and call.func_name not in ctx.registry.records

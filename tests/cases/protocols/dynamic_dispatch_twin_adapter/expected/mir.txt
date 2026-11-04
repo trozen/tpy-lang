@@ -1,0 +1,9 @@
+main::__tpy_init: uncovered (module initialization)
+main::read@46:0: uncovered (unsupported parameter type)
+main::step@51:0: uncovered (unsupported parameter type)
+main::main@56:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Needle.peek@25:4: uncovered (no body to lower)
+main::Needle.peek@31:4: uncovered (no body to lower)
+main::Needle.tick@36:4: uncovered (no body to lower)
+main::Needle.tick@42:4: uncovered (no body to lower)
+main::Needle.__init__@20:4: covered (storage: no_proof_required), summary: known

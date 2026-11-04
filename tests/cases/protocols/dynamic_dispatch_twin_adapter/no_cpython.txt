@@ -1,0 +1,2 @@
+CPython keeps only the last @dispatch def of a name, so it cannot run the
+mutable and the @readonly variant side by side.

@@ -171,7 +171,7 @@ template<typename T> requires tpyapp::main::__Sizes_Concept__<std::remove_const_
 struct tpy::RefAdapter<tpyapp::main::Sizes, T> : tpyapp::main::Sizes {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    int32_t size() const override { return inner.size(); }
+    int32_t size() const override { return std::as_const(inner).size(); }
 };
 
 namespace tpyapp::main {

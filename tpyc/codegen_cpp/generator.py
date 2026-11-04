@@ -1169,15 +1169,20 @@ class CodeGenerator:
                     loc=units[stuck][0].loc)
             raise recursive_delegation_error(units[stuck][0].name,
                                              loc=units[stuck][0].loc)
+        records = {r.name: r for r in module.all_records()}
         for i in order:
             func, rn, is_async = units[i]
+            # The out-of-class factory must repeat the in-struct
+            # declaration's receiver form, which its member decides.
+            const = (rn is not None
+                     and self.records.emitted_member(records[rn], func).readonly)
             if is_async:
-                self._emit_async_coro_unit(hpp, func, rn)
+                self._emit_async_coro_unit(hpp, func, rn, const=const)
             else:
-                self._emit_generator_unit(hpp, func, rn)
+                self._emit_generator_unit(hpp, func, rn, const=const)
 
     def _emit_generator_unit(self, hpp: TextIO, func: TpyFunction,
-                             record_name: str | None) -> None:
+                             record_name: str | None, *, const: bool) -> None:
         """Emit one generator's struct plus the inline definitions
         its shape requires (templated __next__/finally-top/factory; the
         inline out-of-class factory for methods). Non-templated bodies are
@@ -1214,10 +1219,11 @@ class CodeGenerator:
                     self.gen_async.gen_coro_finally_top_def(
                         hpp, func, record_name=record_name)
                     hpp.write("\n")
-                self._emit_resumable_method_factory(hpp, func, record_name)
+                self._emit_resumable_method_factory(hpp, func, record_name,
+                                                    const=const)
 
     def _emit_async_coro_unit(self, hpp: TextIO, func: TpyFunction,
-                              record_name: str | None) -> None:
+                              record_name: str | None, *, const: bool) -> None:
         """Emit one async coro's struct plus the inline definitions its shape
         requires (templated poll/finally; the inline factory for methods and
         for templated free functions). Non-templated free-function poll +
@@ -1248,10 +1254,11 @@ class CodeGenerator:
             hpp.write("\n")
         # The struct's poll body for a non-templated method goes in the .cpp
         # pass.
-        self._emit_resumable_method_factory(hpp, func, record_name)
+        self._emit_resumable_method_factory(hpp, func, record_name,
+                                            const=const)
 
     def _emit_resumable_method_factory(self, hpp: TextIO, func: TpyFunction,
-                                       record_name: str) -> None:
+                                       record_name: str, *, const: bool) -> None:
         """The inline out-of-class factory of a generator or async method
         (`_factory_args_forwarded` moves Own[T] / protocol params in), under
         its C++ name and, for a named variant of a set, the plain-name
@@ -1263,7 +1270,7 @@ class CodeGenerator:
         params = self.gen_async._emit_method_params_decl(func, record_name)
         args = self.gen_async._factory_args_forwarded(
             func, receiver=(record_name, "*this"))
-        const_suffix = " const" if func.is_readonly else ""
+        const_suffix = " const" if const else ""
         names = self.functions.method_cpp_names(func, record_name)
         for name in names:
             self.gen_async._emit_member_template_headers(
