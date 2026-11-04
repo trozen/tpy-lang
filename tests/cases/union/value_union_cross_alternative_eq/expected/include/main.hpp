@@ -536,8 +536,7 @@ inline Circle::Circle(int32_t r) : r(r) {}
 //         return False
 //     return self.r == other.r
 inline bool Circle::__eq__(const Circle& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->r == other.r);
 }
@@ -551,8 +550,7 @@ inline Square::Square(int32_t side) : side(side) {}
 //         return False
 //     return self.side == other.side
 inline bool Square::__eq__(const Square& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->side == other.side);
 }
@@ -596,8 +594,7 @@ inline Tagged::Tagged(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Tagged::__eq__(Tagged other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -607,8 +604,7 @@ inline bool Tagged::__eq__(Tagged other) const {
 //         return True
 //     return self.n == other.n
 inline bool Tagged::__ne__(Tagged other) const {
-    if ((!(true))) {
-        return true;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -622,8 +618,7 @@ inline Marked::Marked(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Marked::__eq__(Marked other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }

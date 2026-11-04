@@ -41,7 +41,7 @@ from ..typesys import (FrameType, OptionalType, TpyType,
                        is_ptr_variant_union, param_takes_ownership,
                        pointer_repr_optional, unwrap_qualifiers,
                        unwrap_ref_type, unwrap_send_sync)
-from .binding_ownership import ReadBinding, ReadKind
+from .read_binding import ReadBinding, ReadKind
 
 if TYPE_CHECKING:
     from .context import FunctionTrackingState, SemanticContext

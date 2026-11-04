@@ -90,7 +90,7 @@ std::function<int32_t()> make_if_arm_sibling() {
     auto size = [data]() -> int32_t {
         return ::tpy::__len__(data);
     };
-    if (flag) {
+    if (true) {
         auto grow = [&data]() {
             data.push_back(7);
             std::cout << "if_arm:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
@@ -203,11 +203,7 @@ std::function<int32_t()> make_two_arms_same_name() {
     auto size = [data]() -> int32_t {
         return ::tpy::__len__(data);
     };
-    if (flag) {
-        auto h = []() {
-            std::cout << "arms: noop" << "\n" << ::tpy::check_signals;
-        };
-        h();
+    if (false) {
     } else {
         auto h = [&data]() {
             data.push_back(18);

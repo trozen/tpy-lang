@@ -609,6 +609,17 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "full-expression storage disagrees with its record rvalue")
     if isinstance(node, (THIRIf, THIRWhile, THIRForRange, THIRForEach)):
         _check_hoists(owner, node)
+    if isinstance(node, THIRIf) and node.decided is not None:
+        if node.else_body if node.decided else node.then_body:
+            _fail(owner, node, "decided if keeps its ruled-out arm")
+    if isinstance(node, THIRWhile) and node.decided is not None:
+        if node.orelse if node.decided else node.body:
+            _fail(owner, node, "decided while keeps its ruled-out arm")
+    if isinstance(node, THIRMatch):
+        for entry in (*(e for arm in node.arms for e in arm.entries),
+                      *node.str_guarded, *node.str_trailing):
+            if entry.decided is False and (entry.body or entry.guard is None):
+                _fail(owner, node, "decided match guard keeps its ruled-out arm")
     if isinstance(node, THIRIf):
         # The emitter prints only the chain head's predecls: a flattened
         # `else if` link has no block of its own to hold one.

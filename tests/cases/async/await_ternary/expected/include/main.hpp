@@ -116,12 +116,10 @@ struct __coro_main {
     bool __await_lift_1;
     std::optional<__coro_one> __sub_0;
     std::optional<__coro_two> __sub_1;
-    std::optional<__coro_one> __sub_2;
-    std::optional<__coro_two> __sub_3;
-    std::optional<__coro_pick> __sub_4;
-    std::optional<__coro_one> __sub_5;
-    std::optional<__coro_two> __sub_6;
-    std::optional<__coro_pick> __sub_7;
+    std::optional<__coro_pick> __sub_2;
+    std::optional<__coro_one> __sub_3;
+    std::optional<__coro_two> __sub_4;
+    std::optional<__coro_pick> __sub_5;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -131,12 +129,10 @@ struct __coro_main {
         S_RESUME_3 = 4,
         S_RESUME_4 = 5,
         S_RESUME_5 = 6,
-        S_RESUME_6 = 7,
-        S_RESUME_7 = 8,
-        S_JOIN_0 = 9,
-        S_JOIN_1 = 10,
-        S_JOIN_2 = 11,
-        S_DONE = 12,
+        S_JOIN_0 = 7,
+        S_JOIN_1 = 8,
+        S_JOIN_2 = 9,
+        S_DONE = 10,
     };
 
     __coro_main()

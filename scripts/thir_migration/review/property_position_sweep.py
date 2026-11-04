@@ -323,7 +323,8 @@ POS: list[tuple[str, list[str], list[str], list[str] | None]] = [
     ("kwarg", VAL, ["def kw(v: int32) -> int32:", "    return v", ""],
      ["    print(kw(v=@E@))"]),
     ("walrus", VAL, [], ["    if (v := @E@) > 0:", "        print(v)"]),
-    ("ternary", SCAL, [], ["    v = @E@ if True else @E@", "    @USE@"]),
+    # An opaque test: a decided one would leave only its live arm.
+    ("ternary", SCAL, [], ["    v = @E@ if len('t') > 0 else @E@", "    @USE@"]),
     ("try_finally", SCAL, [],
      ["    try:", "        print(@E@)", "    finally:", "        print(0)"]),
     # The RECORD flavour is in this row deliberately: at the PARAMETER

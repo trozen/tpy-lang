@@ -15,8 +15,7 @@ def helper(x: int32) -> int32:
     return x + 1
 
 
-def main() -> None:
-    flag = True
+def main(flag: bool) -> None:  # a parameter: sema does not decide `flag`
     if flag:
         def helper(x: int32) -> int32:
             return x + 100
@@ -28,4 +27,4 @@ def main() -> None:
     print(helper(1))  # tpyc: error(/'helper' is not readable after the 'if' block/)
 
 
-main()
+main(True)

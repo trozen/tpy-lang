@@ -84,7 +84,7 @@ def show[T](xs: list[int32], tag: T) -> int32:
 
 
 def steps() -> None:
-    c = True
+    c = len("c") > 0  # opaque to sema: a literal would decide the tests on `c`
     n: int = 120
     # an unhinted tuple the winner's tuple[int8] converts
     print("tuple-narrow:", t8((n,), 1))  # tpyc: ok

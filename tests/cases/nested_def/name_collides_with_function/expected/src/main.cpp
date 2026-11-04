@@ -251,7 +251,7 @@ void match_capture_position() {
 //         print("branch_body:", tally(data), data)
 void branch_body_position() {
     bool flag = true;
-    if (flag) {
+    if (true) {
         auto tally = [](std::vector<int32_t>& xs) -> int32_t {
             xs.push_back(11);
             return ::tpy::__len__(xs);
@@ -414,7 +414,7 @@ void scope_above_block_position() {
         return ::tpy::__len__(xs);
     };
     bool flag = true;
-    if (flag) {
+    if (true) {
         std::vector<int32_t> inner = {7};
         std::cout << "scope_above_block inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n" << ::tpy::check_signals;
     }
@@ -443,7 +443,7 @@ void scope_above_block_position() {
 //     print("block_then_scope:", tally(data), data)  # tpyc: ok
 void block_then_scope_position() {
     bool flag = true;
-    if (flag) {
+    if (true) {
         auto tally = [](std::vector<int32_t>& xs) -> int32_t {
             xs.push_back(18);
             return ::tpy::__len__(xs);
@@ -483,7 +483,7 @@ void block_then_scope_position() {
 //     print("two_block_defs:", tally(data), data)  # tpyc: ok
 void two_block_defs_position() {
     bool flag = true;
-    if (flag) {
+    if (true) {
         auto tally = [](std::vector<int32_t>& xs) -> int32_t {
             xs.push_back(20);
             return ::tpy::__len__(xs);

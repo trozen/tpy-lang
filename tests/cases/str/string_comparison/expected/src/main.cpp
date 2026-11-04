@@ -184,10 +184,10 @@ void test_comparison_in_function() {
 //         print("Alice < Bob: yes")
 void test_comparison_with_literals() {
     std::string_view name = "Alice";
-    if ((name == "Alice")) {
+    if (true) {
         std::cout << "name is Alice" << "\n" << ::tpy::check_signals;
     }
-    if ((name != "Bob")) {
+    if (true) {
         std::cout << "name is not Bob" << "\n" << ::tpy::check_signals;
     }
     if ((name < "Bob")) {

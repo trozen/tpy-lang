@@ -1136,7 +1136,7 @@ inline int32_t H::scalar_kinds_ok() && {
     bool f = true;
     char c = ::tpy::char_from_str("x");
     Color k = Color::RED;
-    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), 10)), ((f) ? (1) : (0)))), (((c == 'x')) ? (1) : (0)))), (((k == Color::RED)) ? (1) : (0))));
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), 10)), 1)), (((c == 'x')) ? (1) : (0)))), (((k == Color::RED)) ? (1) : (0))));
 }
 
 // # scalar_field_twice_ok: a second field read twice stays borrowed, but a

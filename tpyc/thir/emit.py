@@ -2192,9 +2192,17 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
         # Per-node keyword choice: a protocol-isinstance condition compiles
         # `if constexpr`.
         if_kw = "if constexpr" if node.is_constexpr else "if"
+        # A decided test that runs code: the C++ compiler cannot see that its
+        # ruled-out side is dead (a live `return` would leave the function
+        # end reachable to it), so the test runs for its effects and the
+        # live arm follows as a plain block.
+        effects_only = _runs_for_effects(node)
         if i == 0:
             cond = _emit_expr(node.condition, state)
             state.temps.flush(out, indent)
+            if effects_only:
+                _emit_decided_if(out, node, cond, indent_level, state)
+                break
             out.write(f"{indent}{if_kw} ({cond}) {{\n")
         else:
             cp = state.temps.checkpoint()
@@ -2204,6 +2212,13 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
                 planned = state.temp_plan.scope(node, "condition") is not None
                 assert planned == nested, "temporary plan and elif placement disagree"
                 nested = planned
+            if effects_only:
+                if nested and state.temp_plan is not None:
+                    state.temps.enter_scope(node, "condition")
+                out.write(f"{indent}}} else {{\n")
+                state.temps.flush(out, indent + INDENT)
+                _emit_decided_if(out, node, cond, indent_level + 1, state)
+                break
             if nested:
                 if state.temp_plan is not None:
                     state.temps.enter_scope(node, "condition")
@@ -2217,15 +2232,38 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
             else:
                 out.write(f"{indent}}} else {if_kw} ({cond}) {{\n")
         _emit_stmts(out, node.then_body, indent_level + 1, state, scope_owner=node, scope_role="then")
-    last = chain[-1]
-    if last.else_body:
-        out.write(f"{indent}}} else {{\n")
-        _emit_stmts(out, last.else_body, indent_level + 1, state, scope_owner=last, scope_role="else")
-    out.write(f"{indent}}}\n")
+    else:
+        last = chain[-1]
+        if last.else_body:
+            out.write(f"{indent}}} else {{\n")
+            _emit_stmts(out, last.else_body, indent_level + 1, state, scope_owner=last, scope_role="else")
+    if not (effects_only and i == 0):
+        out.write(f"{indent}}}\n")
     for ind in reversed(extra_closes):
         out.write(f"{ind}}}\n")
     if state.temp_plan is not None:
         state.temps.scope = parent_scope
+
+
+def _runs_for_effects(node: THIRIf) -> bool:
+    """A decided `if` whose test did not fold to a literal."""
+    cond = node.condition
+    return (node.decided is not None and not node.is_constexpr
+            and not (isinstance(cond, THIRLiteral) and isinstance(cond.value, bool)))
+
+
+def _emit_decided_if(out: TextIO, node: THIRIf, cond: str, indent_level: int,
+                     state: _EmitState) -> None:
+    """`node`'s test evaluated once, for its effects, then its live arm as a
+    block (none for a decided-False test without an `else`)."""
+    indent = INDENT * indent_level
+    out.write(f"{indent}(void)({cond});\n")
+    live, role = ((node.then_body, "then") if node.decided
+                  else (node.else_body, "else"))
+    if live:
+        out.write(f"{indent}{{\n")
+        _emit_stmts(out, live, indent_level + 1, state, scope_owner=node, scope_role=role)
+        out.write(f"{indent}}}\n")
 
 
 def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
@@ -2390,6 +2428,14 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
         planned = state.temp_plan.scope(stmt, "iteration") is not None
         assert planned == repeated, "temporary plan and while placement disagree"
         repeated = planned
+    # A head decided True that runs code: the C++ compiler cannot see that
+    # it never fails (a `return` in the body would leave the function end
+    # reachable to it), so it runs for its effects before every pass.
+    effects_only = (stmt.decided is True
+                    and not (isinstance(stmt.condition, THIRLiteral)
+                             and isinstance(stmt.condition.value, bool)))
+    head_test = (f"(void)({cond});" if effects_only
+                 else f"if (!({cond})) break;")
     if repeated:
         if state.temp_plan is not None:
             state.temps.enter_scope(stmt, "iteration")
@@ -2407,7 +2453,11 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
             state.temps.enter_scope(stmt, "iteration")
         out.write(f"{indent}while (true) {{\n")
         out.write(cond_temps.getvalue())
-        out.write(f"{indent}{INDENT}if (!({cond})) break;\n")
+        out.write(f"{indent}{INDENT}{head_test}\n")
+    elif effects_only:
+        state.temps.flush(out, indent)
+        out.write(f"{indent}while (true) {{\n")
+        out.write(f"{indent}{INDENT}{head_test}\n")
     else:
         state.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
@@ -3250,12 +3300,17 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     _emit_hoist_decls(out, indent, stmt, state)
     state.match_counter += 1
     subject = f"__match_subject_{state.match_counter}"
-    binding = "auto&" if stmt.subject_ref else "auto"
-    subject_cpp = _emit_expr(stmt.subject, state)
-    # Subject arg temps flush before the bind line; admitted subjects rarely
-    # carry any, but a call-rooted rvalue subject can.
-    state.temps.flush(out, indent)
-    out.write(f"{indent}{binding} {subject} = {subject_cpp};\n")
+    if stmt.subject is None:
+        # A `None` subject: nothing to bind, its effects run here.
+        if stmt.subject_effect is not None:
+            _emit_stmt(out, stmt.subject_effect, indent_level, state)
+    else:
+        binding = "auto&" if stmt.subject_ref else "auto"
+        subject_cpp = _emit_expr(stmt.subject, state)
+        # Subject arg temps flush before the bind line; admitted subjects
+        # rarely carry any, but a call-rooted rvalue subject can.
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{binding} {subject} = {subject_cpp};\n")
     if stmt.strategy == "if_elif":
         _emit_match_if_elif(out, stmt, indent_level, state, subject)
     elif stmt.strategy == "if_elif_guarded":
@@ -3615,7 +3670,8 @@ def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
             _emit_poly_whole_binding(out, entry, subject, inner)
         _emit_stmts(out, entry.body, indent_level + 1, state)
-    out.write(f"{indent}}}\n")
+    if stmt.arms:
+        out.write(f"{indent}}}\n")
 
 
 def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
@@ -3771,7 +3827,8 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_opt_arm_bindings(out, entry, subject, inner)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
-    out.write(f"{indent}}}\n")
+    if stmt.arms:
+        out.write(f"{indent}}}\n")
 
 
 def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
@@ -3911,7 +3968,8 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
-    out.write(f"{indent}}}\n")
+    if stmt.arms:
+        out.write(f"{indent}}}\n")
 
 
 def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
@@ -3995,7 +4053,8 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
             _emit_match_binding(out, fb, subject, inner, bases)
         _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
-    out.write(f"{indent}}}\n")
+    if stmt.arms:
+        out.write(f"{indent}}}\n")
 
 
 def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
@@ -4341,6 +4400,8 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                   f"std::any_cast<const {stmt.member_cpp}&>"
                   f"({stmt.subject_cpp}.value);\n")
     elif isinstance(stmt, THIRAssert):
+        if stmt.always_holds:
+            return
         # The narrowing alias (if any) follows as its own THIRNarrowAlias.
         if stmt.message is None:
             throw = "::tpy::raise_assertion_error()"
@@ -4350,9 +4411,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         else:
             throw = None
         if (stmt.fold_constant and isinstance(stmt.condition, THIRLiteral)
-                and stmt.condition.value in (True, False, None)):
-            if stmt.condition.value is True:
-                return
+                and stmt.condition.value in (False, None)):
             if throw is None:
                 throw = ("::tpy::raise_assertion_error("
                          f"{_emit_expr(stmt.message, state)})")

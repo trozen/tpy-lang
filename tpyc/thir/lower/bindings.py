@@ -3550,7 +3550,10 @@ class _Planner:
     def function_scope(self, func: TpyFunction, parent: ScopeNode,
                        nonlocal_names: 'AbstractSet[str]') -> None:
         params = [n for n, _t in func.params]
-        own = frozenset(scope_bound_names(func.body, params))
+        # Sema's `nonlocal` set: a declaration in an arm sema emptied is
+        # still one.
+        own = frozenset(scope_bound_names(func.body, params)
+                        - set(nonlocal_names))
         outer_pre = self.prescan or self.inp.prescan
         site = _Site("nested_param", in_branch=self.in_branch, func=func,
                      prescan=outer_pre, nested=True)

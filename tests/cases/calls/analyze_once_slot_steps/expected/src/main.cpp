@@ -168,7 +168,7 @@ __genexpr_steps_1_frame<std::invoke_result_t<F_make>> __genexpr_steps_1(std::in_
 }  // namespace
 
 // def steps() -> None:
-//     c = True
+//     c = len("c") > 0  # opaque to sema: a literal would decide the tests on `c`
 //     n: int = 120
 //     # an unhinted tuple the winner's tuple[int8] converts
 //     print("tuple-narrow:", t8((n,), 1))  # tpyc: ok
@@ -190,7 +190,7 @@ __genexpr_steps_1_frame<std::invoke_result_t<F_make>> __genexpr_steps_1(std::in_
 //     # a generator expression argument the probe met: one frame
 //     print("genexpr:", twice(sum(v * 1.0 for v in [n, 2])))  # tpyc: ok
 void steps() {
-    bool c = true;
+    bool c = (::tpy::__len__("c") > 0);
     ::tpy::BigInt n = ::tpy::BigInt(120);
     std::cout << "tuple-narrow:" << " " << static_cast<int>(::tpyapp::main::t8<int32_t>(std::tuple<int8_t>((n).to_fixed_check<int8_t>()), 1)) << "\n" << ::tpy::check_signals;
     std::cout << "loser-first:" << " " << ::tpyapp::main::w8__int64(((c) ? (300) : (1))) << "\n" << ::tpy::check_signals;

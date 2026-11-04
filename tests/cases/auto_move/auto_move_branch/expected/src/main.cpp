@@ -26,9 +26,7 @@ void main() {
     p.x = 10;
     p.y = 20;
     bool cond = true;
-    if (cond) {
-        std::cout << ::tpyapp::main::consume(std::move(p)) << "\n" << ::tpy::check_signals;
-    } else {
+    if (true) {
         std::cout << ::tpyapp::main::consume(std::move(p)) << "\n" << ::tpy::check_signals;
     }
 }

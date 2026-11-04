@@ -26,6 +26,7 @@ from .sema.analyzer import analyze_component_bodies
 from .diagnostics import insert_in_source_order
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.own_copy import OwnCopyVerdicts
+from .sema.dead_arms import DisjointCheck, resolve_disjoint_checks
 from .sema.registration import attach_enum_type_def, enum_info_of_ast, enum_qname
 from .modules.resolver import ModuleResolver, ResolvedModule, resolution_drift
 from .modules import get_builtin_module_names
@@ -803,6 +804,9 @@ class Compiler:
         # (sema/receiver_calls.py record_implicit_call), read across modules
         # by the frame rules.
         self.implicit_calls: IdentityMap = IdentityMap()
+        # The tests answered False for two unrelated classes, warned on once
+        # every module's classes are known (sema/dead_arms.py).
+        self.pending_disjoint_checks: list[DisjointCheck] = []
         # The builtin each call's callee resolved to (`range`; "" for any
         # other callee), decided by sema (`SemanticContext.calls_builtin`)
         # and read by the lowering's builtin-shaped routes.
@@ -1239,6 +1243,10 @@ class Compiler:
         resolution follows because it reads mutation facts that are final
         only once every module's propagation has run.
         """
+        resolve_disjoint_checks(
+            self.pending_disjoint_checks,
+            [self.modules[n].analyzer.registry for n in self.compile_order
+             if self.modules[n].analyzer is not None])
         # One seen-set across the whole workspace, so a generic imported by
         # N modules is walked once rather than N times; one verdict table,
         # since the module that composes a verdict is not the one that gave it.

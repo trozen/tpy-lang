@@ -233,7 +233,7 @@ def escaping_copy(t: tuple[Own[P], int32]) -> Callable[[], int32]:  # tpyc: warn
     # true: the body only borrows t's element, never moves it out
     a, n = t
     c, m = t
-    if True:
+    if n >= 0:  # opaque to sema: `if True:` would be spliced
         a2 = copy(a)
 
         # a2 is not used after g: the "used after" warning is false

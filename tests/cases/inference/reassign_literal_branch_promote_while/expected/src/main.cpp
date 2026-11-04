@@ -27,20 +27,12 @@ namespace tpyapp::main {
 //         ip += 1
 //     print(ip)
 void test_augassign_in_while() {
-    ::tpy::BigInt ip = ::tpy::BigInt(0);
+    int32_t ip = 0;
     while ((ip < 10)) {
         std::string_view c = ">";
-        if ((c == ">")) {
-        } else if ((c == "[")) {
-            if (true) {
-                ip = ::tpyapp::main::get_big();
-            }
-        } else if ((c == "]")) {
-            if (true) {
-                ip = ::tpyapp::main::get_big();
-            }
+        if (true) {
         }
-        ip = (ip) + (::tpy::BigInt(1));
+        ip = ::tpy::add_check<int32_t>(ip, 1);
     }
     std::cout << ip << "\n" << ::tpy::check_signals;
 }

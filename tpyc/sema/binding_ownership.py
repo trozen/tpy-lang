@@ -78,7 +78,6 @@ from .scope_tracker import binds_module_storage
 from .read_binding import ReadBinding, ReadKind, resolve_read
 
 if TYPE_CHECKING:
-    from ..diagnostics import Scope
     from .context import FunctionTrackingState, SemanticContext
 
 

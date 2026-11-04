@@ -323,7 +323,7 @@ class THIRAwaitSuspension:
     bind_target: str | None       # variable name for ASSIGN / VARDECL
     return_stmt: TpyReturn | None # the original return for RETURN-kind
     host_stmt: TpyStmt | None     # source-level statement containing the await
-    # The TpyAwait node itself (sema attaches awaited_async_func_name /
+    # The TpyAwait node itself (sema attaches awaited_inline /
     # awaited_task_inner here; emit consults them).
     await_node: TpyAwait
     # Prebuilt-slot await: the operand is a bound coroutine handle whose

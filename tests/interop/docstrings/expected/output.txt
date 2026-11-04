@@ -1,6 +1,8 @@
 'Documented extension module.\n\nMulti-line, with the closing quotes at column 0 -- so the text ends with a\nbare newline, unlike `incr` below whose indented close leaves trailing\nspaces. The two shapes render through different branches of the docstring\nemitter, so both are pinned here.\n'
 'Return `x` unchanged.'
 None
+'Add `n` to the call count.' 2
+None 3
 'Non-ASCII: naïve résumé, 10°, 中文.'
 'A counter with a documented surface.'
 None

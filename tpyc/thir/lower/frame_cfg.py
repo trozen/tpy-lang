@@ -376,7 +376,22 @@ class CFGBuilder:
             self._finish(resume_bb, THIRFrameReturn(
                 slot=THIRLeafSlot(LeafRole.RETURN, return_stmt)))
             return None
+        if isinstance(stmt, TpyMatch):
+            return self._build_match_after_subject(resume_bb, stmt)
         return resume_bb
+
+    def _build_match_after_subject(self, cur: int,
+                                   stmt: TpyMatch) -> int | None:
+        """The rest of a match whose subject the frame already suspended on
+        (`subject_effect_await`): decomposed when an arm suspends or jumps
+        out of an enclosing decomposed loop, else one leaf."""
+        if ((self._loop_stack and _stmt_has_unbound_loop_transfer(stmt))
+                or any(_stmts_have_any_suspension(c.body)
+                       for c in stmt.cases)):
+            self._decomposed.add(stmt)
+            return self._build_match(cur, stmt)
+        self._blocks[cur].stmts.append(THIRLeafSlot(LeafRole.STMT, stmt))
+        return cur
 
     def _build_yield_stmt(self, cur: int, stmt: TpyYield) -> int | None:
         """Convert a `yield` statement into a THIRSuspend terminator. Unlike an
@@ -1429,9 +1444,12 @@ def _top_level_await_in(stmt: TpyStmt) -> TpyAwait | None:
     """Return the TpyAwait if `stmt` is one of the top-level
     statement-position await shapes: assign with await RHS, vardecl
     with await init, return with await value, or expression-statement
-    with bare await. Returns None otherwise.
+    with bare await, or a match subject nothing binds (`subject_effect_await`).
+    Returns None otherwise.
     """
     value: TpyExpr | None
+    if isinstance(stmt, TpyMatch):
+        return subject_effect_await(stmt)
     if isinstance(stmt, TpyAssign):
         value = stmt.value
     elif isinstance(stmt, TpyVarDecl):
@@ -1444,6 +1462,16 @@ def _top_level_await_in(stmt: TpyStmt) -> TpyAwait | None:
         value = None
     if isinstance(value, TpyAwait):
         return value
+    return None
+
+
+def subject_effect_await(stmt: TpyMatch) -> TpyAwait | None:
+    """The `await` a match runs only for its effects
+    (`TpyMatch.subject_effect_only`). The frame suspends on it as on an
+    expression statement's, ahead of the match's dispatch, and the match
+    lowering leaves it out of its subject effect."""
+    if stmt.subject_effect_only and isinstance(stmt.subject, TpyAwait):
+        return stmt.subject
     return None
 
 
@@ -1465,6 +1493,8 @@ def _classify_await_position(
     if isinstance(stmt, TpyReturn) and stmt.value is await_node:
         return (AwaitKind.RETURN, None, stmt)
     if isinstance(stmt, TpyExprStmt) and stmt.expr is await_node:
+        return (AwaitKind.DISCARD, None, None)
+    if isinstance(stmt, TpyMatch) and stmt.subject is await_node:
         return (AwaitKind.DISCARD, None, None)
     raise _CFGNotYetSupported(
         "internal: _classify_await_position called on unsupported stmt.",

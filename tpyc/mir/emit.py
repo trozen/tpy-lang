@@ -622,11 +622,16 @@ class Fragment:
         self.value = MIRValue(value, want, v.loc, held=held)
         return self
 
-    def branch(self, cond: MIRSlotId, yes: MIRBlockId, no: MIRBlockId, loc: object) -> None:
+    def branch(self, cond: MIRSlotId, yes: MIRBlockId, no: MIRBlockId, loc: object,
+               decided: bool | None = None) -> None:
+        """`decided`: the value sema proved `cond` always has (THIRIf /
+        THIRWhile `decided`) -- evaluated, then one edge, as a constant."""
         constants = self.root.constant_bools
-        if cond in constants:
+        if decided is None and cond in constants:
+            decided = constants[cond]
+        if decided is not None:
             block = self.current
-            self.end(MIRGoto(yes if constants[cond] else no, loc))
+            self.end(MIRGoto(yes if decided else no, loc))
             block.arms = (yes, no)
         else:
             self.end(MIRBranch(cond, yes, no, loc))

@@ -8,8 +8,7 @@ async def add_one(n: int) -> int:
     return n + 1
 
 
-def main() -> None:
-    flag = True
+def main(flag: bool) -> None:  # a parameter: sema does not decide `flag`
     if flag:
         c = add_one(41)
     else:
@@ -17,4 +16,4 @@ def main() -> None:
     print(asyncio.run(c))
 
 
-main()
+main(True)

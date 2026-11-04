@@ -13,6 +13,7 @@
 | - | Method overloads | Done |
 | - | Generic function/method overloads | Done |
 | - | `slice` type integration (`__getitem__` with `int32 \| slice`) | Done |
+| - | Dead branch elimination in every body: a test sema decides leaves its dead arm unanalyzed and unemitted, with or without `@overload` (`LANGUAGE_FEATURES.md` "Statically decided branches") | Done |
 
 ## Future Extensions
 
@@ -21,7 +22,6 @@
 | Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Call resolution takes a member at a union stub parameter (a union injection, "Call resolution"); the stub's specialization does not lower yet (`sig.overload_set.narrow_param`, and an `isinstance` over the stub's union `if.cond_facts_unmirrored`). |
 | Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. A free function's variants get distinct C++ names (`f__int32`, `f__int32__int32`, see "C++ names of variants"); a method's map to C++ overloads with different parameter counts. |
-| Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
 | `register`-style `@dispatch` variants; `singledispatch` | A `@area.variant` registration form (variants named `_`, as in `functools.singledispatch`) is the only spelling type checkers accept for self-contained variants; `singledispatch` itself maps onto a first-argument-only `@dispatch` set with a generic fallback variant. Low priority; tracked in TODO.md. |
 | Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
 
@@ -160,8 +160,34 @@ and two constrained templates over unrelated protocols are unordered).
   general stub under the plain name). Two variants whose C++ parameters
   coincide (`str` / `StrView`) with the same receiver const-ness are
   refused in sema with the identical-parameters diagnostic, since their
-  forwarders would clash. Generator and coroutine variants keep the plain
-  name (as for free sets).
+  forwarders would clash.
+- Generator and coroutine variants are named like every other variant,
+  free and method alike. Their frame struct is spelled from
+  `FunctionInfo.frame_cpp_name` -- the variant name, plus `__mut` for the
+  mutable member of a receiver pair (an `@auto_readonly` clone or an
+  explicit `@readonly` twin), whose frame captures `C&` where its twin's
+  captures `const C&`. The name is assigned once, when the record's
+  variants are named, and suffixed with `_` where it would collide with a
+  frame name already given or a member or variant name of the record or
+  its bases. The definition, the frame type's identity
+  (`ConcreteFrameType.frame_func_name`) and every embedding (an inline
+  await, a bound handle, a delegated `for` source, an `async with` /
+  `async for` sub-coroutine) read the name off the callee sema resolved: `struct __gen_rep__int32` / `__gen_rep__int32 rep__int32(...)`.
+  A method variant's plain-name forwarder builds the same frame. A
+  delegated `for` over a method orders against the frame of every member
+  of the callee's clone family, since C++ deduces the field from the
+  receiver it sees.
+- The dunder calls a statement makes implicitly (`__enter__()`,
+  `__aenter__()`, `__aiter__()`, `__anext__()`) and the `__contains__`
+  call of `x in h` rank through one resolver
+  (`ExpressionAnalyzer.resolve_implicit_dunder`), over the set at the
+  receiver's type arguments as the written call does, so a genuine tie
+  is the ordinary ambiguity error. An `__exit__` / `__aexit__` set is
+  refused at registration (*__aexit__ cannot be overloaded*): CPython
+  picks the variant from the exception the block raised, and the one
+  exit call a `with` / `async with` makes serves every way out of the
+  block; lifting it needs a variant per exit path
+  (BUGS.md#aexit-lacks-exit-checks).
 - A method implementing a slot of a `@dynamic` protocol (the record's or
   an ancestor's) may not be a set: the slot is one virtual, chosen by its
   name. *'C.m' implements @dynamic protocol method 'DP.m' and cannot be a

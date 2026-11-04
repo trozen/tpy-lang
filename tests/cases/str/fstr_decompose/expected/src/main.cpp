@@ -81,7 +81,7 @@ void main() {
     ::mylog::log_dispatch(m._logger, "s={} i={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));
     ::mylog::log_dispatch(m._logger, "status={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str("ok"))));
     bool flag = true;
-    ::mylog::log_dispatch(m._logger, "result={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? (std::string_view("yes")) : (std::string_view("no")))))));
+    ::mylog::log_dispatch(m._logger, "result={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str("yes"))));
     std::string_view tag = "world";
     ::mylog::log_dispatch(m._logger, "tag={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
     m.log_explicit(5);

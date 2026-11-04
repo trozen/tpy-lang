@@ -1698,9 +1698,11 @@ void __tpy_init() {
     pt = std::tuple<std::string, int32_t>{(::tpy::str_repeat("w", 30)), 5};
     std::cout << "unpack_name_str:" << " " << us << " " << un << " " << std::get<1>(pt) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_unpack_name_str();
+    std::string bks;
+    int32_t blk;
     if (true) {
-        int32_t blk = 5;
-        std::string bks = (::tpy::str_repeat("b", 30));
+        blk = 5;
+        bks = (::tpy::str_repeat("b", 30));
         auto block_capture = [&bks, &blk]() {
             std::cout << "block_capture:" << " " << blk << " " << bks << "\n" << ::tpy::check_signals;
         };

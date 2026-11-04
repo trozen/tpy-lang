@@ -43,9 +43,9 @@ void main() {
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"k", 2}});
     bool flag = false;
-    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d2, "k") << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d2, "k", 8);
-    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d2, "k") << "\n" << ::tpy::check_signals;
 }
 
 // main()

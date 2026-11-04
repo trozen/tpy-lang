@@ -82,7 +82,7 @@ void main() {
     int32_t x = 7;
     std::cout << (((x > 5)) ? (x) : (0)) << "\n" << ::tpy::check_signals;
     bool flag = true;
-    int32_t val = ((flag) ? (100) : (200));
+    int32_t val = 100;
     std::cout << val << "\n" << ::tpy::check_signals;
 }
 

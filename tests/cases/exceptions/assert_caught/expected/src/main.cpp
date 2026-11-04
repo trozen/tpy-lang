@@ -37,7 +37,7 @@ void main() {
     {
         try {
             int32_t x = 0;
-            if (!(x)) ::tpy::raise_assertion_error("x is falsy");
+            ::tpy::raise_assertion_error("x is falsy");
         } catch (const ::tpy::AssertionError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }

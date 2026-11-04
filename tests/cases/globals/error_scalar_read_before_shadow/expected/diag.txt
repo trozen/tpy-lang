@@ -1,0 +1,2 @@
+main.py:6: warning: ALL_CAPS variable 'COUNT' without Final annotation; use Final[int32] if this is a constant
+main.py:10: error: 'COUNT' is read before it is bound on line 11: a name bound anywhere in a function is local to the whole function, so this read does not see the module's 'COUNT'; rename one of them

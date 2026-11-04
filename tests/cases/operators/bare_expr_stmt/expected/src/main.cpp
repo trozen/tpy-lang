@@ -50,8 +50,8 @@ void main() {
     (void)(p.x);
     (void)(7);
     (void)(n);
-    (void)((ok && (::tpyapp::main::peek(n) > 0)));
-    (void)(((ok) ? (::tpyapp::main::peek(n)) : (0)));
+    (void)((::tpyapp::main::peek(n) > 0));
+    ::tpyapp::main::peek(n);
     int32_t z = 0;
     {
         try {

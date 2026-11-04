@@ -114,7 +114,6 @@ void nested_outer_else() {
 //         print("false else")
 void false_condition() {
     while (false) {
-        goto __after_else_0;
     }
     {
         std::cout << "false else" << "\n" << ::tpy::check_signals;

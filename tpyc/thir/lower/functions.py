@@ -890,11 +890,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     if stub is not None and literal_group:
         # Literal-only specialization: impl params bind as-is; the stub
         # contributes its return type + the literal facts driving the
-        # if-chain dead-branch fold. The facts also merge into the live
-        # literal_facts map at entry, so expression-level consumers (the
-        # compare-fold fence) see them too.
+        # if-chain dead-branch fold.
         lc.overload_literal_facts = _literal_stub_facts(func, stub)
-        lc.literal_facts.update(lc.overload_literal_facts)
         lc.overload_stub_return = (stub.return_type
                                    if isinstance(stub.return_type, TpyType)
                                    else None)

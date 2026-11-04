@@ -1041,7 +1041,7 @@ void temp_optional() {
 //     keep(xs, A(80))
 //     print("container", xs[0][0].v, xs[0][1].v)
 //     a = A(90)
-//     c = True
+//     c = len("x") > 0  # opaque to sema: a literal would decide the selects on `c`
 //     # conditional operand: the call runs only where the guard lets it
 //     r1 = c or take(mkb(a))  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 //     print("or", r1)
@@ -1209,7 +1209,7 @@ void main() {
     ::tpyapp::main::keep(xs, __tmp_3);
     std::cout << "container" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
     A a = A(90);
-    bool c = true;
+    bool c = (::tpy::__len__("x") > 0);
     bool r1 = (c || ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mkb(a))));
     std::cout << "or" << " " << ::tpy::print_bool(r1) << "\n" << ::tpy::check_signals;
     bool r2 = (c && ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mkb(a))));
@@ -1295,7 +1295,7 @@ void main() {
     int32_t n1 = ::tpyapp::main::read_loud([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Loud*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<int32_t, Loud>{::tpyapp::main::first_n(), Loud(2)}));
     std::cout << "arg.order" << " " << n1 << "\n" << ::tpy::check_signals;
     bool off = false;
-    bool n2 = (off || (::tpyapp::main::read_loud([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Loud*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<int32_t, Loud>{::tpyapp::main::first_n(), Loud(3)})) > 0));
+    bool n2 = (::tpyapp::main::read_loud([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Loud*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<int32_t, Loud>{::tpyapp::main::first_n(), Loud(3)})) > 0);
     std::cout << "arg.or" << " " << ::tpy::print_bool(n2) << "\n" << ::tpy::check_signals;
     int32_t n3 = ::tpyapp::main::read_mortal([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Mortal*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Mortal, int32_t>{Mortal(1), 2}));
     std::cout << "arg.life" << " " << n3 << "\n" << ::tpy::check_signals;

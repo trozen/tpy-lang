@@ -37,7 +37,6 @@ bool tuple_miss(int32_t x) {
     if (true) {
         return a.x;
     }
-    return ::tpy::BigInt(-1);
 }
 
 // def record_other(a: A) -> int:
@@ -46,7 +45,6 @@ bool tuple_miss(int32_t x) {
 //     return a.x
 ::tpy::BigInt record_other(const A& a) {
     if (false) {
-        return ::tpy::BigInt(-1);
     }
     return a.x;
 }
@@ -54,13 +52,13 @@ bool tuple_miss(int32_t x) {
 // def negate(x: int32) -> bool:
 //     return not isinstance(x, A)
 bool negate(int32_t x) {
-    return (!(false));
+    return true;
 }
 
 // def compound(x: int32, flag: bool) -> bool:
 //     return isinstance(x, int32) and flag
 bool compound(int32_t x, bool flag) {
-    return (true && flag);
+    return flag;
 }
 
 // def match_guard(x: int32) -> str:
@@ -75,9 +73,8 @@ std::string match_guard(int32_t x) {
     default: {
         if (true) {
             return "int32";
-        } else {
-            return "other";
         }
+        break;
     }
     }
     ::std::unreachable();

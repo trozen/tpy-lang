@@ -1887,7 +1887,7 @@ _FUNCTION_SCOPED_STATE = (
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "inline_narrowed",
-    "forwarded_map", "literal_facts",
+    "forwarded_map",
     "frame_local_types",
     # An enclosing `@overload` stub's facts about ITS params: an inner param
     # of the same spelling must not fold against them.
@@ -2042,7 +2042,7 @@ class _LowerCtx:
                  "in_container_elem",
                  "nested_returns", "in_finally_helper",
                  "frame_local_types",
-                 "unhandled_hoists", "narrow", "literal_facts",
+                 "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "error_return_cpp",
                  "overload_narrowing", "overload_stub_return",
@@ -2115,12 +2115,6 @@ class _LowerCtx:
         # position.
         self.pre_decl_import_cpp: dict[str, tuple[int, str]] = {}
         self.top_level_line: int = 0
-        # Arm-scoped LiteralType facts (a Literal-subject match narrows the
-        # subject per arm). The dead-branch FOLDS over these (compare /
-        # membership / bool-chain) are not lowered yet, so expression
-        # lowering RAISES on a fact-name compare instead of silently
-        # emitting the unfolded form -- the fence at the consumer.
-        self.literal_facts: dict[str, TpyType] = {}
         self.render_type = render_type or (lambda t: t.to_cpp())
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))

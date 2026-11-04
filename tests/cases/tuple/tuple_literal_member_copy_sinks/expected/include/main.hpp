@@ -46,8 +46,8 @@ void walrus_member();
 C walrus_return(const C& c);
 // def takel(x: Own[list[int32]]) -> int32:
 int32_t takel(std::vector<int32_t>&& x);
-// def container_ternary() -> None:
-void container_ternary();
+// def container_ternary(k: bool) -> None:
+void container_ternary(bool k);
 // def getter_member() -> None:
 void getter_member();
 // def dict_setitem() -> None:

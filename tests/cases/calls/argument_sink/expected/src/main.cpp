@@ -1043,8 +1043,8 @@ void positions() {
 //     print("nocopy_box_move", eat_box(bx))  # tpyc: ok
 void once() {
     bool flag = true;
-    std::optional<A> __tmp_1;
-    std::cout << "once_and" << " " << ::tpy::print_bool((flag && (__tmp_1.emplace(::tpyapp::main::mk()), ::tpyapp::main::flag_f((*__tmp_1))))) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
+    A __tmp_1 = ::tpyapp::main::mk();
+    std::cout << "once_and" << " " << ::tpy::print_bool(::tpyapp::main::flag_f(__tmp_1)) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     int32_t lim = (::tpy::add_check<int32_t>(::tpy::__getitem__((*calls), 0), 3));
     while (true) {

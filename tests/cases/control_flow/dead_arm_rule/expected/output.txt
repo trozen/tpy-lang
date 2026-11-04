@@ -1,0 +1,146 @@
+if other
+elif 1
+ternary hello
+and_or False
+while w-else
+assert asserted
+comprehension 2
+match dog cat
+match_record animal
+match_optional none dog
+match_literal A other
+after r
+bound b!
+loop FS
+try tf
+gen [7]
+async async
+method k
+mutate 2 [1, 2, 3]
+impure kept ['i']
+impure_checked checked ['i', 'c']
+impure_await awaited ['i', 'c', 'w']
+non_member member
+ternary_types hello
+literal_truth truthy
+while_literal 3 0
+match_membership rw append
+literal eq
+local 5
+none some
+multi bat
+range_loop negative
+range_walrus live 1
+comp_shadow 1
+nested_local right
+nonlocal right
+second right
+ptr_range 5
+user_bool or ['b', 'b']
+user_eq live
+value True True
+guard_impure live ['guard']
+match_covered none dog
+match_none none
+match_none_call none ['nothing']
+keyword kw
+loop_narrowed NaDb
+comp_ternary p q
+ctor 1
+closure inner lam
+with with
+literal_zero eq
+not_none some
+own_arg 2 1 own
+alias_binding [1, 2, 9, 7]
+frame_arg [3] [1, 2, 5]
+async_frame_arg 3 [1, 2, 6]
+protocol_arg [4, 4]
+kept_and F ['a1', 'a2']
+kept_ternary F ['t1']
+kept_or T ['o1', 'o2']
+kept_while W ['w1', 'w2']
+kept_not N ['n1', 'n2', 'n1']
+kept_len L ['len']
+nested_decided [1, 3] [2] s
+builtin_ctor [1] [1, 3] [1]
+typed_dict 7
+overloaded list [1, 9]
+field_none some live
+coverage covered
+false_and skipped
+call_and_none pinged ['ping']
+builtin_truth g ['g']
+impure_isinstance made ['make m']
+value_undecided False
+live_binding 3
+dead_local 9
+dead_global 5
+lambda_walrus_global 5
+closure_local 3 4
+decided_return 1
+gen_dead_only []
+coro_dead_only coro
+walrus_scalar 1
+match_none_or or guard empty
+own_read_after 2 2
+non_member_call ran ['either']
+elif_impure after ['e']
+false_head_chain big small none
+walrus_live 4 ['n']
+comp_impure 2 ['c1', 'c2']
+while_impure 2
+while_true_return W ['wr']
+while_true_call 1 ['wc']
+while_true_passes 3 ['wp', 'wp', 'wp']
+gen_impure [1] ['gy']
+coro_impure coro ['ca']
+while_dead_local s
+dead_capture_after rebound
+guard_capture 5
+guard_true 6
+arm_local 2
+ternary_arm_value yes no
+dead_global_decl 7 7
+dead_nonlocal_decl 7
+inner_scope_nonlocal 2
+dead_match_global 9 9
+decl_ctor 11 11
+match_no_arm none ['no_arm']
+no_arm_checked raised after
+fold_checked raised after
+del_after deleted
+del_rebind 1
+del_cond_walrus 0 2
+finally_arm 1
+capture_rebind 3 q
+none_call_once after ['effect', 'arm']
+none_then_dead none
+none_no_arm after ['effect']
+none_del deleted
+none_gen [1, 2] ['effect']
+none_guard none other
+none_guard_call none other ['effect', 'guard', 'effect', 'guard']
+none_print subject
+none_print arm
+none_print_no_arm subject
+none_print_no_arm after
+none_er ok after ['good', 'good']
+none_er fault ['good', 'good', 'bad']
+none_await aw after ['awaited', 'awaited']
+none_await_arm_awaits aa ['awaited', 'arm', 'arm2']
+none_await_arm_jumps aj ['awaited', 'arm1', 'awaited', 'arm2']
+none_await_in_if if else ['awaited', 'arm']
+walrus 4 5
+none_tail none
+none_field fnone other
+guard_dead_chain one other ['chain']
+guard_dead_union int str ['union']
+guard_dead_switch k one other ['switch']
+guard_dead_str A E other ['str']
+mi fin fin other
+module bat
+module_none live
+module_assert live
+module_no_arm ['module_no_arm']
+module_none_call arm ['effect']

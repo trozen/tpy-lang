@@ -40,8 +40,8 @@ void test_elif_branch() {
     Box* b = nullptr;
     int32_t x = 1;
     std::optional<Box> __slot_1;
-    if ((x == 0)) {
-    } else if ((x == 1)) {
+    if (false) {
+    } else if (true) {
         b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
     if ((b != nullptr)) {

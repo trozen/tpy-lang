@@ -30,7 +30,8 @@ from ..sema.alias_rebind import (
     direct_elements, tuple_borrowed_paths, tuple_source_elem_owned,
 )
 from ..sema.elem_paths import bare_tuple, owned_slot_paths
-from ..sema.binding_ownership import ReadKind, local_ownership
+from ..sema.binding_ownership import local_ownership
+from ..sema.read_binding import ReadKind
 from ..sema.compatibility import TupleSink, TypeCompatibility
 from ..sema.context import NonOwningBind, SemanticContext
 from ..sema.source_records import (Disposition, Leaf, LeafPermission,

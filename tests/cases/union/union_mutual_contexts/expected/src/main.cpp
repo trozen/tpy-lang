@@ -20,9 +20,6 @@ std::string describe_expr(const Expr& e) {
         if (true) {
             const auto& __e = std::get<BinOp>(e.value);
             return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpyapp::main::describe_expr(__e.left.get()))), "+")), ::tpyapp::main::describe_expr(__e.right.get()))), ")"));
-        } else {
-            const auto& __e = std::get<Lit>(e.value);
-            return "?";
         }
     }
 }

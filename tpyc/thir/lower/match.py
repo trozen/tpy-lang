@@ -7,6 +7,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyMatchCase,
+    TpyExprStmt,
     TpyAsPattern,
     TpyCall,
     TpyCapturePattern,
@@ -65,8 +66,10 @@ from ..nodes import (
     HoistDecl,
     Form,
     THIRFoldedBlock,
+    THIREvalThen,
     THIRMatchFoldBind,
     THIRExpr,
+    THIRStmt,
     THIRFormConvert,
     THIRLiteral,
     THIRMatch,
@@ -105,6 +108,7 @@ from .context import (
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
+    _LowerScope,
     _NO_FORMS,
     _Prescan,
     SinkPos,
@@ -118,6 +122,7 @@ from .expressions import (
     _lower_truthy,
     _narrow_subject_is_ptr,
 )
+from .frame_cfg import subject_effect_await
 from . import bindings as _bindings
 from . import statements as _statements
 
@@ -132,10 +137,8 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     at or above the switch-dispatch threshold, which routes to the
     discriminator switch REGARDLESS of guards (switch_str; the
     threshold counts only unguarded literal alternatives). A `Literal[...]`
-    subject dispatches on its BASE type (the arm below), its per-arm
-    LiteralType narrowing (`case.type_facts`) registering as arm-scope
-    literal facts; dead-branch folds over them are not lowered, fenced at
-    the compare/membership lowering (`match.literal_fold`).
+    subject dispatches on its BASE type (the arm below); a test its per-arm
+    narrowing decides was decided by sema (`sema.dead_arms`).
     Union guard/shared-index/field-condition routing is
     `_match_union_route`; a user-record subject takes the record tiers
     (if_elif_record, or guarded_record when any arm has a guard) --
@@ -146,14 +149,17 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     if stmt.subject_type is None:
         return None
     t = unwrap_readonly(stmt.subject_type)
+    if stmt.subject_effect_only:
+        # Every arm sema kept matches None: the chain's label-free arms.
+        return _chain_kind(stmt.cases)
     if isinstance(t, LiteralType):
         # A Literal subject dispatches on the BASE type (LiteralType
         # delegates every codegen method): str base -> the discriminator
         # switch or the `==` chain, fixed-int base -> the primitive switch,
         # anything else (bool) -> the chain. Sema's per-arm narrowing
         # (`case.type_facts`) registers as arm-scope literal facts in
-        # `_lower_scalar_arms`; dead-branch folds over them are
-        # fenced at the compare/membership lowering instead of here.
+        # `_lower_scalar_arms`; a test those facts decide was decided by
+        # sema (`sema.dead_arms`), at a test and at a value position.
         base = unwrap_readonly(t.base_type)
         if _resolved_str_value(base, analyzer) is not None:
             if _str_switch_count(stmt) >= STRING_SWITCH_THRESHOLD:
@@ -207,6 +213,19 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         return _chain_kind(stmt.cases, guarded_kind="guarded_record",
                            unguarded_kind="if_elif_record")
     return None
+
+def _lower_subject_effect(stmt: TpyMatch, scope: _LowerScope,
+                          loc=None) -> 'THIRStmt | None':
+    """The subject evaluated once for its effects
+    (`TpyMatch.subject_effect_only`): the expression statement it is. None
+    when sema found it only reads (`TpyMatch.subject_pure`), and for the
+    `await` the frame suspends on ahead of the match (the same
+    `subject_effect_await` the frame reads)."""
+    if stmt.subject_pure or subject_effect_await(stmt) is not None:
+        return None
+    return _statements._lower_expr_stmt(
+        TpyExprStmt(expr=stmt.subject, loc=loc), scope)
+
 
 def _optional_inner_kind(inner_type: TpyType, inner_cases,
                          analyzer) -> 'str | None':
@@ -296,19 +315,32 @@ def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
 
 def _case_entry(case, lc: _LowerCtx, **fields) -> THIRMatchArmEntry:
     """Every arm entry is built here, so none can miss the terminates fact
-    of its source case body, nor its captures their case's records."""
+    of its source case body, its guard's decided value, nor its captures
+    their case's records."""
     _bindings.require_entered(lc, case)
+    guard = fields.get("guard")
+    tail = guard.value if isinstance(guard, THIREvalThen) else guard
+    if (case.decided is False and guard is not None
+            and not (isinstance(tail, THIRLiteral) and tail.value is False)):
+        # A guard ruled out but run for its effects: an ordinary guard that
+        # is false, so every tier falls on to the next arm. (A static
+        # answer already lowers so.)
+        fields["guard"] = THIREvalThen(
+            result_type=guard.result_type, init=guard,
+            value=THIRLiteral(result_type=guard.result_type, value=False),
+            loc=guard.loc)
     entry = THIRMatchArmEntry(body_terminates=stmts_terminate(case.body),
-                              **fields)
+                              decided=case.decided, **fields)
     _statements.stamp_case_bindings(entry, case, lc)
     return entry
 
 def _unreachable_tail(stmt: TpyMatch, arms,
                       *extra: 'THIRMatchArmEntry | None') -> bool:
     """An exhaustive match whose every arm entry terminates never falls
-    out, so the emit closes it with an unreachable tail."""
-    entries = [e for arm in arms for e in arm.entries]
-    entries += [e for e in extra if e is not None]
+    out, so the emit closes it with an unreachable tail. An entry whose
+    guard sema decided False is never entered: it leads on to a later arm."""
+    entries = [e for arm in arms for e in arm.entries if e.decided is not False]
+    entries += [e for e in extra if e is not None and e.decided is not False]
     tail = (stmt.is_exhaustive and bool(entries)
             and all(e.body_terminates for e in entries))
     if tail:
@@ -1243,9 +1275,11 @@ def _match_route(
             # lvalue subject a guard mutates diverges from CPython, which
             # snapshots the subject once
             # (BUGS.md#match-subject-alias-under-guard-mutation); the
-            # exclusion stands until a scalar subject binds by value.
+            # exclusion stands until a scalar subject binds by value. A
+            # `None` subject binds no alias to re-read.
             if not (kind in ("if_elif_guarded", "switch_str")
-                    and not match_subject_is_lvalue(subj)):
+                    and (not match_subject_is_lvalue(subj)
+                         or stmt.subject_effect_only)):
                 return None
         if not _match_expr_subject_ok(subj, declared, pointers, narrowed,
                                       storage_tuple_locals, analyzer):
@@ -1561,10 +1595,17 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     subj_type = (declared.get(stmt.subject.name)
                  if isinstance(stmt.subject, TpyName)
                  else lc.analyzer.get_expr_type(stmt.subject))
+    subject_effect = None
+    if stmt.subject_effect_only:
+        # Lowered ahead of the arms: it runs before them.
+        _witness("match.none_subject")
+        subject_effect = _lower_subject_effect(
+            stmt, _LowerScope(lc, declared, loop_depth=loop_depth))
     arms, default_goto, has_defaults = _lower_scalar_arms(
         stmt.cases, kind, lc, declared, pointers, subj_type,
         allow_facts=False, chain_guards_ok=True, bind_from_case_var=False,
-        loop_depth=loop_depth, arm_body_hooks=arm_body_hooks)
+        loop_depth=loop_depth, arm_body_hooks=arm_body_hooks,
+        subject_effect_only=stmt.subject_effect_only)
     is_chain = kind in ("if_elif", "if_elif_guarded")
     synthetic_default = (not is_chain and not has_defaults
                          and not stmt.is_exhaustive)
@@ -1573,16 +1614,20 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     emit_unreachable = _unreachable_tail(stmt, arms)
     if route.subject_rvalue:
         _witness("match.scalar_rvalue_subject")
-    # `forms=_NO_FORMS` restates the MATCH_SUBJECT row rather than narrowing
-    # it: the subject is bound for the whole match, so a borrow of storage the
-    # statement kills is refused here on purpose.
+    subject = None
+    if not stmt.subject_effect_only:
+        # `forms=_NO_FORMS` restates the MATCH_SUBJECT row rather than
+        # narrowing it: the subject is bound for the whole match, so a
+        # borrow of storage the statement kills is refused here on purpose.
+        subject = _lower_expr(stmt.subject, lc, declared,
+                              use=_ExprUse(pos=SinkPos.MATCH_SUBJECT,
+                                           forms=_NO_FORMS),
+                              field_prechecked=isinstance(stmt.subject,
+                                                          TpyFieldAccess))
     return THIRMatch(
         strategy=kind,
-        subject=_lower_expr(stmt.subject, lc, declared,
-                            use=_ExprUse(pos=SinkPos.MATCH_SUBJECT,
-                                         forms=_NO_FORMS),
-                            field_prechecked=isinstance(stmt.subject,
-                                                        TpyFieldAccess)),
+        subject=subject,
+        subject_effect=subject_effect,
         subject_ref=not route.subject_rvalue,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
@@ -1599,6 +1644,7 @@ def _lower_scalar_arms(
         allow_facts: bool, chain_guards_ok: bool, bind_from_case_var: bool,
         loop_depth: int = 0,
         arm_body_hooks: bool = False,
+        subject_effect_only: bool = False,
         ) -> 'tuple[list[THIRMatchArm], bool, bool]':
     """The scalar-tier arm walk shared by the top-level switch/chain tiers
     and the O2 optional inner dispatch: label rendering (or-patterns as
@@ -1646,6 +1692,9 @@ def _lower_scalar_arms(
         test, or_ok = _or_group_as_always(test, scalar_shape=True)
         if not or_ok:
             raise ThirUnsupported("stmt.match")
+        if (subject_effect_only and isinstance(test, TpyLiteralPattern)
+                and test.value is None):
+            test = None
         if test is None or isinstance(test, TpyWildcardPattern):
             # A wildcard under `as` (`case _ as y:`) is the always arm with
             # a whole-subject binding.
@@ -1719,23 +1768,12 @@ def _lower_scalar_arms(
                 case, lc, body=(), loc=case.loc, binding=binding,
                 guard=guard, arm_case=case)
         else:
-            # Literal-subject arms register the facts for the body walk:
-            # dead-branch folds over them are not lowered -- the
-            # compare/membership fence in expression lowering rejects the
-            # foldable reads instead.
-            saved_lf = lc.literal_facts
-            if lit_facts:
-                _witness("match.literal_facts")
-                lc.literal_facts = {**saved_lf, **lit_facts}
-            try:
-                entry = _case_entry(
-                    case, lc, body=_statements._lower_scoped_stmts(
-                        case.body, lc, arm_declared,
-                        branch_decls_ok=True, loop_depth=loop_depth),
-                    loc=case.loc, binding=binding, guard=guard,
-                    pre_bindings=pre_bindings)
-            finally:
-                lc.literal_facts = saved_lf
+            entry = _case_entry(
+                case, lc, body=_statements._lower_scoped_stmts(
+                    case.body, lc, arm_declared,
+                    branch_decls_ok=True, loop_depth=loop_depth),
+                loc=case.loc, binding=binding, guard=guard,
+                pre_bindings=pre_bindings)
         if is_chain:
             # Source order, one entry per group (the always-match arm is
             # the plain chain's final `} else {` / a guarded standalone

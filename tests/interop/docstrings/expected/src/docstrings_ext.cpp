@@ -102,6 +102,40 @@ PyObject *docstrings__undocumented_pywrap(PyObject *self, PyObject *args, PyObje
     }
 }
 
+PyObject *docstrings__counted_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:counted", __kwlist, &a0)) return nullptr;
+    try {
+        int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
+        return ::tpy::interop::to_py(::tpyapp::docstrings::counted(__p0));
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, docstrings__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *docstrings__counted_late_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:counted_late", __kwlist, &a0)) return nullptr;
+    try {
+        int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
+        return ::tpy::interop::to_py(::tpyapp::docstrings::counted_late(__p0));
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, docstrings__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
 PyObject *docstrings__reject_pywrap(PyObject *self, PyObject *unused) {
     try {
         ::tpyapp::docstrings::reject();
@@ -415,6 +449,7 @@ const char docstrings__indented_doc_pywrap__doc[] =
     "\n"
     "Relative depth between the remaining lines survives:\n"
     "  this one stays two columns deeper.\n";
+const char docstrings__counted_pywrap__doc[] = "Add `n` to the call count.";
 const char docstrings__reject_pywrap__doc[] = "Always raise.";
 const char docstrings__module__doc[] =
     "Documented extension module.\n"
@@ -429,6 +464,8 @@ PyMethodDef docstrings__methods[] = {
     {"empty_doc", as_pycfunction(docstrings__empty_doc_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__empty_doc_pywrap__doc},
     {"indented_doc", as_pycfunction(docstrings__indented_doc_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__indented_doc_pywrap__doc},
     {"undocumented", as_pycfunction(docstrings__undocumented_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"counted", as_pycfunction(docstrings__counted_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__counted_pywrap__doc},
+    {"counted_late", as_pycfunction(docstrings__counted_late_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"reject", docstrings__reject_pywrap, METH_NOARGS, docstrings__reject_pywrap__doc},
     {nullptr, nullptr, 0, nullptr},
 };

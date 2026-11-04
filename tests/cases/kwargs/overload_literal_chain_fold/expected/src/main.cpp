@@ -11,13 +11,13 @@ namespace tpyapp::main {
 // @overload
 // def isrw(m: Literal["r", "w"]) -> bool: ...
 bool isrw__lit_r__w(std::string_view m) {
-    return true;
+    return ((m == "r") || (m == "w"));
 }
 
 // @overload
 // def isrw(m: Literal["x", "y"]) -> bool: ...
 bool isrw__lit_x__y(std::string_view m) {
-    return false;
+    return ((m == "r") || (m == "w"));
 }
 
 

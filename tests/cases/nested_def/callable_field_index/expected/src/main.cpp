@@ -224,7 +224,7 @@ void main() {
     std::cout << "generic" << " " << generic.invoke(6) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> events = std::vector<int32_t>{};
     std::cout << "order" << " " << (::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
-    std::cout << "guard" << " " << ::tpy::print_bool((false && ((::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) > 0))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
+    std::cout << "guard" << " " << ::tpy::print_bool(false) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> values = std::vector<int32_t>{};
     std::cout << "mutation" << " " << (::tpy::__getitem__(app.writers, "touch"))(values) << " " << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_then_read(app, values);
@@ -248,10 +248,9 @@ void main() {
     ::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>& writers = app.writers;
     std::vector<int32_t> __tmp_6 = {1};
     std::cout << "computed-local-arg" << " " << (::tpy::__getitem__(writers, "touch"))(__tmp_6) << "\n" << ::tpy::check_signals;
-    std::optional<std::vector<int32_t>> __tmp_7;
-    std::cout << "temp-skipped" << " " << ::tpy::print_bool((false && (__tmp_7.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_7)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
-    std::optional<std::vector<int32_t>> __tmp_8;
-    std::cout << "temp-taken" << " " << ::tpy::print_bool((true && (__tmp_8.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_8)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
+    std::cout << "temp-skipped" << " " << ::tpy::print_bool(false) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_7 = {::tpyapp::main::arg(events)};
+    std::cout << "temp-taken" << " " << ::tpy::print_bool(((::tpy::__getitem__(app.writers, "touch"))(__tmp_7) > 0)) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_1) -> int32_t {
         int32_t x = int32_t(__i_1);
         return (::tpy::__getitem__(app.callbacks, 0))(x);

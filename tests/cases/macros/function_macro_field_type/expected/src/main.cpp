@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return armed and gate.flag
 bool check(const Gate& gate) {
     bool armed = true;
-    return (armed && gate.flag);
+    return gate.flag;
 }
 
 // def main() -> None:

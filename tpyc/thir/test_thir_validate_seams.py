@@ -26,14 +26,15 @@ from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
     THIRResumableReturn, THIRReturn,
     THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
     THIRTupleUnpack, THIRUnionArgLift, THIREvalThen, THIRIsinstance,
-    THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti)
+    THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti, THIRWhile,
+    THIRMatch, THIRMatchArm, THIRMatchArmEntry)
 from . import validate as _validate
 from .lower import iter_module_callables, iter_module_constructors, lower_constructor, lower_function
 from .lower import resumable as _lower_resumable_mod
 from .testutil import _compile, _entry, _lower_fn
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
-    validate_resumable_leaves,
+    validate_resumable_leaves, validate_stmts,
 )
 from .frame import LeafRole, THIRLeafSlot
 from ..identity_map import IdentityMap
@@ -859,3 +860,59 @@ class TestNodeStructuralRules:
                            match="eval-then needs an operand and a value"):
             validate_function(self._fn(self._eval_then(
                 THIRLiteral(result_type=INT32, value=1), None)))
+
+
+class TestDecidedBranch:
+    """A branch whose test sema decided keeps its test and an EMPTY arm on
+    the ruled-out side: the emitter renders the test for its effects and
+    the live arm alone, so a statement left there would be dropped."""
+
+    @staticmethod
+    def _stmt():
+        return THIRExprStmt(expr=THIRCall(result_type=INT32, callee="f", args=()))
+
+    @staticmethod
+    def _cond():
+        return THIRCall(result_type=BOOL, callee="g", args=())
+
+    @pytest.mark.parametrize("decided", [True, False])
+    def test_if_with_empty_dead_arm_passes(self, decided):
+        live = (self._stmt(),)
+        validate_stmts("f", (THIRIf(
+            condition=self._cond(), decided=decided,
+            then_body=live if decided else (),
+            else_body=() if decided else live),))
+
+    @pytest.mark.parametrize("decided", [True, False])
+    def test_if_keeping_its_dead_arm_raises(self, decided):
+        with pytest.raises(THIRValidationError, match="ruled-out arm"):
+            validate_stmts("f", (THIRIf(
+                condition=self._cond(), decided=decided,
+                then_body=(self._stmt(),), else_body=(self._stmt(),)),))
+
+    @pytest.mark.parametrize("decided", [True, False])
+    def test_while_with_empty_dead_arm_passes(self, decided):
+        live = (self._stmt(),)
+        validate_stmts("f", (THIRWhile(
+            condition=self._cond(), decided=decided,
+            body=live if decided else (),
+            orelse=() if decided else live),))
+
+    @pytest.mark.parametrize("decided", [True, False])
+    def test_while_keeping_its_dead_arm_raises(self, decided):
+        with pytest.raises(THIRValidationError, match="ruled-out arm"):
+            validate_stmts("f", (THIRWhile(
+                condition=self._cond(), decided=decided,
+                body=(self._stmt(),), orelse=(self._stmt(),)),))
+
+    def _match(self, body):
+        entry = THIRMatchArmEntry(body=body, guard=self._cond(), decided=False)
+        return THIRMatch(strategy="if_elif_guarded",
+                         arms=(THIRMatchArm(entries=(entry,)),))
+
+    def test_match_guard_decided_false_with_empty_arm_passes(self):
+        validate_stmts("f", (self._match(()),))
+
+    def test_match_guard_decided_false_keeping_its_arm_raises(self):
+        with pytest.raises(THIRValidationError, match="ruled-out arm"):
+            validate_stmts("f", (self._match((self._stmt(),)),))

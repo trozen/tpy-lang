@@ -12,7 +12,8 @@ from ..parse.nodes import (TpyDictComprehension, TpyForEach, TpyFunction,
                            TpyNestedDef, TpyTupleUnpack, walk_body_stmts,
                            walk_expr_tree)
 from ..thir.testutil import _compile, _entry
-from .binding_ownership import (Acquired, CompMove, ReadKind,
+from .read_binding import ReadKind
+from .binding_ownership import (Acquired, CompMove,
                                 frame_field_ownership,
                                 lambda_param_ownership, local_ownership,
                                 param_ownership, read_ownership,

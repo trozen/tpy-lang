@@ -10,7 +10,7 @@ def test_ternary(a: str, b: str) -> None:
     print(z)
 
     # One operand owned: falls back to std::string
-    w = a if True else str(42)  # tpyc: type(str)
+    w = a if b else str(42)  # tpyc: type(str)
     print(w)
 
 def test_or(a: str, b: str) -> None:

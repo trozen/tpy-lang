@@ -94,7 +94,6 @@ from ...typesys import (
     INT32,
     FloatLiteralType,
     IntLiteralType,
-    LiteralType,
     ListRepeatType,
     NominalType,
     NoneType,
@@ -4879,7 +4878,10 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction,
     module global, an enclosing param or a frame field reads and writes its
     own binding. `nonlocal` names stay inherited: they ARE the enclosing
     binding."""
-    own = scope_bound_names(func.body, (p for p, _t in func.params))
+    # Sema's `nonlocal` set: a declaration in an arm sema emptied is still
+    # one.
+    own = (scope_bound_names(func.body, (p for p, _t in func.params))
+           - set(nonlocal_names))
     with lc.shadow_scope(own, declared) as body_declared:
         body_declared.update(func.params)
         with _nested_def_state_scope(lc, func, self_captured=self_captured,
@@ -5492,30 +5494,6 @@ def _append_post_narrow(s: TpyStmt, out: list[THIRStmt], lc: _LowerCtx,
         _witness("narrow.union_post_if")
 
 
-def _seed_literal_facts(facts: dict, lc: _LowerCtx) -> 'dict | None':
-    """LiteralType branch facts -> the flow-sensitive `lc.literal_facts`
-    (the isinstance extractions' LiteralType row; ==/!= narrowing folds
-    against these). Returns the saved map to restore at branch exit, or None
-    when no literal fact applies."""
-    lits = {k: v for k, v in facts.items() if isinstance(v, LiteralType)}
-    if not lits:
-        return None
-    saved = dict(lc.literal_facts)
-    lc.literal_facts = {**saved, **lits}
-    _witness("narrow.literal_branch_facts")
-    return saved
-
-
-def _literal_fact_fence(facts: dict, stmt, tag: str) -> None:
-    """Reject a statement whose LiteralType facts would seed at a site this
-    lowering does not model (assert's persistent seed, the while-body seed)
-    -- a compare under the fact would then render plain instead of
-    folding."""
-    if any(isinstance(v, LiteralType) for v in facts.values()):
-        note_detail(tag)
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-
-
 def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',
                           lc: _LowerCtx,
                           declared: dict[str, TpyType]) -> None:
@@ -5527,7 +5505,6 @@ def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',
     suffix-bumped alias against the original union
     (`lc.narrow.subject_union`)."""
     loc = getattr(stmt, "loc", None)
-    _literal_fact_fence(stmt.then_type_facts, stmt, "assert.literal_fact")
     ai = _assert_narrow_info(stmt, declared, lc.analyzer)
     if ai is not None:
         var, u, m = ai
@@ -5987,7 +5964,8 @@ def _lower_narrow_if_shape(stmt: TpyIf, cond: THIRExpr, fact_of, branch_of,
                 stmt.else_body, else_fact,
                 getattr(stmt.else_body[0], "loc", None))
     return THIRIf(condition=cond, then_body=then_stmts,
-                  else_body=else_stmts, else_is_nested=else_is_nested, loc=loc)
+                  else_body=else_stmts, else_is_nested=else_is_nested,
+                  decided=stmt.decided, loc=loc)
 
 
 def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
@@ -6043,7 +6021,7 @@ def _lower_multi_narrow_if(stmt: TpyIf, hits, lc: _LowerCtx,
                                 loop_depth=loop_depth))
     _witness("narrow.multi_var")
     return THIRIf(condition=cond, then_body=tuple(out), else_body=(),
-                  else_is_nested=False, loc=loc)
+                  else_is_nested=False, decided=stmt.decided, loc=loc)
 
 
 def _folded_narrow_info(
@@ -10519,8 +10497,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         return THIRImportInit(calls=calls, loc=loc)
     if isinstance(stmt, TpyVarDecl):
         begin_stmt()
-        # Any write clears the flow-sensitive literal fact for the name.
-        lc.literal_facts.pop(stmt.name, None)
         if stmt.name in lc.forwarded_map:
             # A forwarded proto-param alias (`xs = it`): a compile-time
             # rename -- the binding emits nothing (leading trivia only)
@@ -11558,9 +11534,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             loc=loc)
     if isinstance(stmt, TpyAssign):
         begin_stmt()
-        if isinstance(stmt.target, TpyName):
-            # A reassign clears the flow-sensitive literal fact.
-            lc.literal_facts.pop(stmt.target.name, None)
         pointers = scope.admission_pointers()
         narrowed = lc.narrow.narrowed.keys()
         er_fi = _error_return_stmt_fi(stmt.value, analyzer)
@@ -12242,9 +12215,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             loc=loc,
         )
     if isinstance(stmt, TpyAugAssign):
-        if isinstance(stmt.target, TpyName):
-            # An augmented write clears the flow-sensitive literal fact.
-            lc.literal_facts.pop(stmt.target.name, None)
         narrowed = lc.narrow.narrowed.keys()
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
@@ -12899,38 +12869,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             loop_depth=scope.loop_depth),)
         else:
             else_is_nested = inner is not None
-            saved_else_lf = _seed_literal_facts(stmt.else_type_facts, lc)
-            try:
-                if else_fact is not None:
-                    _witness("if.cond_facts_alias")
-                    else_stmts = _lower_narrowed_branch(
-                        stmt.else_body, else_fact[2], else_fact[0],
-                        else_fact[1], lc, declared,
-                        getattr(stmt.else_body[0], "loc", loc),
-                        loop_depth=scope.loop_depth)
-                else:
-                    else_stmts = _lower_scoped_stmts(
-                        stmt.else_body, lc, dict(declared),
-                        branch_decls_ok=True,
-                        loop_depth=scope.loop_depth)
-            finally:
-                if saved_else_lf is not None:
-                    lc.literal_facts = saved_else_lf
-        saved_then_lf = _seed_literal_facts(stmt.then_type_facts, lc)
-        try:
-            if then_fact is not None:
+            if else_fact is not None:
                 _witness("if.cond_facts_alias")
-                then_stmts = _lower_narrowed_branch(
-                    stmt.then_body, then_fact[2], then_fact[0], then_fact[1],
-                    lc, declared, loc, loop_depth=scope.loop_depth)
+                else_stmts = _lower_narrowed_branch(
+                    stmt.else_body, else_fact[2], else_fact[0],
+                    else_fact[1], lc, declared,
+                    getattr(next(iter(stmt.else_body), None), "loc", loc),
+                    loop_depth=scope.loop_depth)
             else:
-                then_stmts = _lower_scoped_stmts(
-                    stmt.then_body, lc, dict(declared),
+                else_stmts = _lower_scoped_stmts(
+                    stmt.else_body, lc, dict(declared),
                     branch_decls_ok=True,
                     loop_depth=scope.loop_depth)
-        finally:
-            if saved_then_lf is not None:
-                lc.literal_facts = saved_then_lf
+        if then_fact is not None:
+            _witness("if.cond_facts_alias")
+            then_stmts = _lower_narrowed_branch(
+                stmt.then_body, then_fact[2], then_fact[0], then_fact[1],
+                lc, declared, loc, loop_depth=scope.loop_depth)
+        else:
+            then_stmts = _lower_scoped_stmts(
+                stmt.then_body, lc, dict(declared),
+                branch_decls_ok=True,
+                loop_depth=scope.loop_depth)
         return THIRIf(
             condition=condition,
             then_body=then_stmts,
@@ -12938,6 +12898,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             else_is_nested=else_is_nested,
             hoist_decls=tuple(hoist_decls),
             hoisted_bindings=tuple(hoisted_bindings),
+            decided=stmt.decided,
             loc=loc,
         )
     if isinstance(stmt, TpyBreak):
@@ -13196,8 +13157,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # The mixed shape needs the legacy single-eval flush --
                 # reject rather than restructure it here.
                 raise ThirUnsupported("stmt.while:while.mixed_walrus_temps")
-            _literal_fact_fence(stmt.then_type_facts, stmt,
-                                "while.literal_fact")
             wfact = (_single_fact_narrow(stmt.then_type_facts, declared, lc)
                      if _facts_have_concrete(stmt.then_type_facts) else None)
             if _facts_have_concrete(stmt.then_type_facts) and wfact is None:
@@ -13228,6 +13187,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                       "loop.while_else"),
             hoist_decls=while_hoist_decls,
             hoisted_bindings=tuple(while_bindings),
+            decided=stmt.decided,
             loc=loc,
         )
     if isinstance(stmt, TpyAssert):
@@ -13578,423 +13538,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             loc=loc,
         )
     if isinstance(stmt, TpyExprStmt):
-        begin_stmt()
-        if (isinstance(stmt.expr, TpyCall)
-                and stmt.expr.compile_time_assert):
-            # assert_send/assert_sync: checked in sema, no emission.
-            _witness("stmt.compile_time_assert")
-            return THIRNoOpStmt(loc=None)
-        er_fi = _error_return_stmt_fi(stmt.expr, analyzer)
-        if er_fi is not None:
-            # A discarded @error_return call: the `__try_tmp_N` block.
-            # Bare free/method calls only; the coerce-wrapped shapes
-            # reject.
-            if not isinstance(stmt.expr, (TpyCall, TpyMethodCall)):
-                note_detail("error_return.stmt_shape")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _reject_nested_error_return_arg(stmt, stmt.expr, analyzer)
-            return THIRErrorReturnDiscard(
-                call=_lower_expr(stmt.expr, lc, declared,
-                                 use=_ExprUse(result=_ExprResultUse.DISCARD,
-                                              allow_temps=True),
-                                 error_return_raw=True),
-                staged=lc.exit_staged, loc=loc)
-        if _is_builtin_print(stmt.expr, declared, lc.analyzer):
-            e = stmt.expr
-            narrowed = lc.narrow.narrowed.keys()
-            pointers = scope.admission_pointers()
-            if e.double_star_unpack is not None:
-                note_detail("print.kwargs")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            sep_expr = end_expr = sink_expr = None
-            sep_value: 'str | None' = " "
-            end_value: 'str | None' = "\n"
-            print_flush = False
-            if e.kwargs:
-                # sep=/end= (str literal or resolved str-value name), file=
-                # (an ostream / stream-pointer sink read in value position, so
-                # `sys.stderr` derefs), and a LITERAL flush= (True appends
-                # `<< std::flush`, False is a no-op). With no args the chain
-                # is just the end token, which `end=""` suppresses entirely
-                # (the emitter's empty-parts arm writes nothing, which is
-                # what `print(end="")` does); a sep with nothing to separate
-                # never reaches the chain. Runtime flush values and
-                # non-str-slice sep/end shapes reject.
-                file_val = e.kwargs.get("file")
-                rest = {k: v for k, v in e.kwargs.items() if k != "file"}
-                flush_val = rest.pop("flush", None)
-                if flush_val is not None:
-                    # Sema pins flush= to a bool LITERAL (a runtime value is
-                    # a SemanticError), so the isinstance restates a proven
-                    # fact rather than a reachable reject.
-                    if not isinstance(flush_val, TpyBoolLiteral):
-                        note_detail("print.kwargs")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
-                    print_flush = bool(flush_val.value)
-                    if print_flush:
-                        _witness("print.kw_flush")
-                if any(k not in ("sep", "end") for k in rest):
-                    note_detail("print.kwargs")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                if not e.args and rest:
-                    _witness("print.kw_no_args")
-                evaluated_kws: list[str] = []
-                for kw, kv in rest.items():
-                    token = _print_kwarg_token(
-                        kv, declared, pointers, narrowed, analyzer)
-                    if token is None:
-                        note_detail("print.kwargs")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
-                    kind, value = token
-                    if kind == "expr":
-                        if not _expr_evaluation_inert(e.args, declared, analyzer):
-                            note_detail("print.kwarg_expr_arg_order")
-                            raise ThirUnsupported(stmt_reject_reason(stmt))
-                        if evaluated_kws and kw == "sep":
-                            # The chain renders sep ahead of end, so a source
-                            # that spells them the other way round would swap
-                            # two evaluations CPython orders by source.
-                            note_detail("print.kwarg_expr_order")
-                            raise ThirUnsupported(stmt_reject_reason(stmt))
-                        evaluated_kws.append(kw)
-                        _witness("print.kw_expr")
-                        # Bound by reference: an lvalue source is not copied
-                        # and a prvalue's lifetime extends to the end of the
-                        # enclosing block, so the token stays valid through
-                        # the chain.
-                        lowered_kw = _hoisted(THIRArgTemp(
-                            result_type=analyzer.get_expr_type(kv),
-                            init=_lower_expr(kv, lc, declared,
-                                             use=_ExprUse(allow_temps=True)),
-                            cpp_type="const auto&",
-                            movable=False), lc)
-                    else:
-                        lowered_kw = (_lower_expr(kv, lc, declared)
-                                      if kind == "name" else None)
-                    if kw == "sep":
-                        sep_expr, sep_value = lowered_kw, value
-                    else:
-                        end_expr, end_value = lowered_kw, value
-                if rest:
-                    _witness("print.kw_sep_end")
-                if file_val is not None:
-                    sink_expr = lower_print_sink(file_val, lc, declared)
-                    _witness("print.file_sink")
-            lowered_args = []
-            for arg in e.args:
-                star: 'TpyStarUnpack | None' = None
-                if isinstance(arg, TpyStarUnpack):
-                    # The admission below asks about the unpacked SOURCE,
-                    # which `_lower_print_arg` lowers as the positional
-                    # `print(xs)` would.
-                    star, arg = arg, arg.expr
-                    if isinstance(arg, TpyName) and arg.name in narrowed:
-                        note_detail("print.star_narrowed_source")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
-                if (isinstance(arg, (TpyCall, TpyMethodCall))
-                        and isinstance(getattr(arg, "macro_expansion", None),
-                                       TpyTupleLiteral)
-                        and _wrap_print_form(arg, declared, analyzer, pointers)
-                        is None):
-                    # A TUPLE-producing call-macro arg (`print(astuple(x))`)
-                    # whose CALL node does not classify (`_wrap_print_form`
-                    # None -- e.g. a non-value tuple result outside
-                    # `_value_tuple_nested`): the sema-synthesized expansion
-                    # renders in place and the print arg classifies by TYPE,
-                    # so fall through to the EXPANSION.
-                    # When the call node DOES classify, keep the call path
-                    # -- it lowers the expansion as an expression and its
-                    # element admissions differ (a swap here rejected
-                    # dataclass_asdict_mixed's str-field elements). Tuple
-                    # literals ONLY: other expansion kinds
-                    # (hasattr's probe synth, getattr) already ride the
-                    # call-typed rows.
-                    arg = arg.macro_expansion
-                if isinstance(arg, TpyName) and arg.name in narrowed:
-                    if arg.name in lc.narrow.any_narrowed:
-                        # An Any-narrowed alias: print args classify by the
-                        # DECLARED type (the pre-narrow binding), so an Any
-                        # subject streams the alias RAW -- including the
-                        # narrowed-float face (no print_float wrap; that
-                        # formatting gap is filed in BUGS.md).
-                        lowered_args.append(THIRPrintArg(
-                            expr=_lower_expr(arg, lc, declared),
-                            print_form=PrintForm.RAW))
-                        continue
-                    # A print arg classifies a NAME by its DECLARED binding
-                    # (which narrowing never rewrites) -- so every
-                    # U3-narrowed alias streams
-                    # through the union-typed `::tpy::__str__` visitor arm,
-                    # extraction alias notwithstanding.
-                    if lc.narrow.subject_union.get(arg.name) is None:
-                        note_detail("print.narrowed_arg")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
-                    _witness("print.union_narrowed_arg")
-                    lowered_args.append(THIRPrintArg(
-                        expr=_lower_expr(arg, lc, declared),
-                        print_form=PrintForm.STR))
-                    continue
-                if type(arg) in _comprehensions._COMP_KINDS:
-                    ok = True
-                elif _optional_ptr_borrow_wide_name(
-                        arg, declared, analyzer) is not None:
-                    # A ptr-repr Optional NAME prints through
-                    # `::tpy::print_optional(v)` -- DECLARED-type keyed
-                    # (a None-narrowed occurrence still wraps); the
-                    # OPT_PTR row in _lower_print_arg renders it, adding
-                    # the kind-keyed template args for a pointee with no
-                    # plain operator<< (`print_optional<ListPrinter<..>,
-                    # ..>(lst)`).
-                    ok = True
-                elif (isinstance(arg, (TpyCall, TpyMethodCall))
-                        and _optional_ptr_borrow_wide(
-                            analyzer.get_expr_type(arg),
-                            analyzer) is not None):
-                    # A ptr-repr Optional-returning CALL prints through
-                    # `::tpy::print_optional(call(..))` -- the OPT_PTR
-                    # call row in _lower_print_arg renders it.
-                    ok = True
-                else:
-                    ok = (_print_arg_ok(arg, declared, analyzer)
-                          or (isinstance(arg, TpyName)
-                              and arg.name not in pointers
-                              and (_wpf_arg := _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers)) is not None
-                              # The union STR row stays out of RESUMABLE
-                              # bodies: a persistent assert-narrow alias
-                              # would leak past its branch in the flat CFG
-                              # (`__str__(__a)` in the else arm), while the
-                              # BB snapshot restores it. Keyed on
-                              # the flat-CFG lane flag. is_async is
-                              # belt-and-braces (always resumable).
-                              and not (_wpf_arg is PrintForm.STR
-                                       and (lc.resumable_leaf_mode
-                                            or lc.func.is_async))
-                              and _witness("print.wrap_arg"))
-                          or (isinstance(arg, TpyName)
-                              and (lc.binding(arg.name).optional_storage
-                                   or lc.binding(arg.name).lazy_rebind_slot
-                                   or lc.binding(arg.name).rebind_slot
-                                   or lc.frame_storage_name(arg.name)
-                                   or lc.binding(arg.name).global_slot)
-                              and not isinstance(
-                                  unwrap_readonly(unwrap_ref_type(
-                                      unwrap_send_sync(
-                                          declared.get(arg.name)))),
-                                  OptionalType)
-                              and _wrap_print_form(
-                                  arg, declared, analyzer, pointers)
-                              in (PrintForm.LIST, PrintForm.DICT,
-                                  PrintForm.SET, PrintForm.BYTEARRAY)
-                              # A branch-hoisted container pointer-local --
-                              # or a pointer-SLOT container global at top
-                              # level -- streams its deref inside the same
-                              # kind-keyed wrap (`ListPrinter((*nums))`);
-                              # pointer-repr Optional bindings stay out
-                              # (their whole-name print is a different
-                              # render).
-                              and _witness("print.hoisted_container_arg"))
-                          # `print(self)` streams the record raw via its
-                          # emitted operator<<. The receiver renders
-                          # `(*this)`, which is exactly what `THIRSelf.deref`
-                          # spells in a value position.
-                          or (isinstance(arg, TpyName)
-                              and lc.self_receiver is not None
-                              and arg.name == lc.self_receiver
-                              and lc.record_name is not None
-                              and record_like(
-                                  analyzer.get_expr_type(arg), analyzer)
-                              and _witness("print.self_arg"))
-                          # A POINTER-bound F1-record/range NAME (the RAW
-                          # wrap class) streams its deref through the same
-                          # raw operator<< (`(*al)`) -- the wrap render
-                          # lowers with the full-deref use.
-                          or (isinstance(arg, TpyName)
-                              and arg.name != lc.self_receiver
-                              and arg.name in pointers
-                              and _wrap_print_form(
-                                  arg, declared, analyzer, pointers)
-                              is PrintForm.RAW)
-                          or (isinstance(arg, TpyFieldAccess)
-                              and _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers) is not None
-                              and _witness("print.wrap_field_arg"))
-                          or _print_tuple_record_elem(arg, declared,
-                                                      analyzer)
-                          or (isinstance(arg, TpySubscript)
-                              and _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers) is not None
-                              and _witness(
-                                  "print.container_slice_arg"
-                                  if arg.slice_function_info is not None
-                                  else "print.tuple_subscript_arg"))
-                          or (isinstance(arg, (TpyCall, TpyMethodCall))
-                              and _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers) is not None
-                              and _witness("print.container_call_arg"))
-                          # A list/Array LITERAL arg (the typed brace-init
-                          # inside ListPrinter -- CTAD needs the type), a
-                          # DICT literal (self-describing ordered_map render
-                          # inside DictPrinter -- the asdict expansion), a
-                          # pointer-repr tuple LITERAL (the borrow-form
-                          # render inside TuplePrinter), or a
-                          # container-result BINOP (the kind wrap over the
-                          # operator render).
-                          or (isinstance(arg, (TpyArrayLiteral,
-                                               TpyDictLiteral,
-                                               TpyTupleLiteral, TpyBinOp))
-                              and _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers) is not None)
-                          # A container WALRUS arg (`print((cols := [..]))`):
-                          # the kind-keyed wrap composes over the walrus
-                          # render (`ListPrinter((cols = .., *cols))`); the
-                          # walrus arm validates its own target class.
-                          or (isinstance(arg, TpyNamedExpr)
-                              and _wrap_print_form(
-                                  arg, declared, analyzer,
-                                  pointers) is not None
-                              and _witness("print.walrus_arg")))
-                if not ok:
-                    fam = _type_family_tag(
-                        analyzer.get_expr_type(arg), analyzer)
-                    _kind_detail(f"print.arg.{fam}_", arg)
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                try:
-                    lowered_args.append(
-                        _lower_print_arg(star if star is not None else arg,
-                                         lc, declared, pointers))
-                except ThirUnsupported as exc:
-                    # The inner reject already names the blocker, but it
-                    # travels in the exception -- the detail slot is
-                    # first-wins, so a shape tag composed here would win by
-                    # default and hide it.
-                    note_detail(exc.reason)
-                    raise exc.with_context(stmt_reject_reason(stmt)) from None
-            return THIRPrint(args=tuple(lowered_args), sep_expr=sep_expr,
-                             end_expr=end_expr, sep_value=sep_value,
-                             end_value=end_value, sink_expr=sink_expr,
-                             flush=print_flush, loc=loc)
-        narrowed = lc.narrow.narrowed.keys()
-        # A `@call_macro` whose expansion is itself a macro call -- peel
-        # the macro_expansion chain so the renderer below is reached at
-        # STATEMENT position. Without the peel the inner markers lower
-        # through the expression ladders, which drop the DISCARD use.
-        macro_src = stmt.expr
-        chain_peeled = False
-        while (isinstance(macro_src, TpyCall)
-                and isinstance(macro_src.macro_expansion, TpyCall)):
-            macro_src = macro_src.macro_expansion
-            chain_peeled = True
-        if (isinstance(macro_src, TpyCall)
-                and isinstance(macro_src.macro_expansion, TpyMethodCall)):
-            rt = analyzer.get_expr_type(stmt.expr)
-            if rt is None or isinstance(rt, VoidType):
-                # A void statement-position macro expansion (the setattr /
-                # delattr builtins): the expansion renders in place, but
-                # the expression macro arm drops the DISCARD use (a void
-                # method call rejects in value position), so the expansion
-                # dispatches here in statement position instead.
-                if chain_peeled:
-                    _witness("expr_stmt.marker_chain")
-                exp = macro_src.macro_expansion
-                if (exp.method == "__setattr__" and len(exp.args) == 2
-                        and isinstance(exp.args[0], TpyStrLiteral)
-                        and isinstance(exp.args[1], TpyCoerce)):
-                    # `setattr(obj, "name", <coerced literal>)` synthesizes
-                    # the SAME `obj.__setattr__(...)` call the dynamic-attr
-                    # WRITE lowers -- delegate to its narrow arm (the Any
-                    # value slot is outside the generic method-arg slice).
-                    # ONLY the literal-name + coerced-value shape: a runtime
-                    # name / uncoerced value (`setattr(h, name, value)` on a
-                    # str-slotted __setattr__) already routes through the
-                    # general method arm and must keep doing so.
-                    lowered_sa = _lower_dyn_setattr_call(exp, lc, declared)
-                    _witness("expr_stmt.macro_discard")
-                    return THIRExprStmt(
-                        expr=_flush_witness("flush.expr_stmt", lowered_sa),
-                        loc=loc)
-                _witness("expr_stmt.macro_discard")
-                return THIRExprStmt(
-                    expr=_flush_witness(
-                        "flush.expr_stmt",
-                        _lower_expr(
-                            macro_src.macro_expansion, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.DISCARD,
-                                         allow_temps=True))),
-                    loc=loc)
-        void_cast = False
-        if isinstance(stmt.expr, TpyCall):
-            eligible = True
-        elif isinstance(stmt.expr, TpyMethodCall):
-            eligible = True
-        elif isinstance(stmt.expr, TpyBinOp) and record_like(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(stmt.expr)))), analyzer):
-            # A DISCARDED record-result dunder binop (`timedelta(seconds=1)
-            # / 0` evaluated for its ZeroDivisionError): the template render
-            # + `;`, identical to its expression form.
-            eligible = bool(_witness("expr_stmt.record_binop"))
-        elif isinstance(stmt.expr, (TpyBinOp, TpyUnaryOp, TpyChainedCompare,
-                                    TpyIfExpr, TpyFieldAccess)):
-            # A DISCARDED operator/ternary/field read (`n + 1`, `-n`,
-            # `0 < n < 5`, `n if c else 0`, `p.x`). Python evaluates and
-            # discards these too, and the checked render is the effect
-            # worth keeping (`add_check` raises on overflow, a field read
-            # off a property calls the getter), so the statement form is
-            # the expression render plus `;`. The operand ladders
-            # re-validate their own shapes.
-            # The cast to void is what keeps the PURE forms (`n < 2;`,
-            # `p.x;`) buildable under -Wunused-value + -Werror; it discards
-            # the value without suppressing the evaluation the row exists
-            # for. Decided here, not re-derived from the shape at emit.
-            eligible = bool(_witness("expr_stmt.value_discard"))
-            void_cast = True
-        elif (isinstance(stmt.expr, TpySubscript)
-                and not isinstance(stmt.expr.index, TpySlice)
-                and stmt.expr.slice_function_info is None):
-            # A DISCARDED element read (`c, _ = (items[2], items[0])`
-            # desugars the `_` half to a bare subscript statement evaluated
-            # for its effect/bounds check): `::tpy::__getitem__(recv, i);`
-            # -- the subscript arm re-validates receiver/index shapes.
-            eligible = bool(_witness("expr_stmt.subscript_discard"))
-        elif isinstance(stmt.expr, TpyName):
-            # A bare NAME statement (`x`): the name's own read render,
-            # exactly its expression form. Python evaluates and discards it
-            # too, so nothing is dropped; the name arm re-validates the
-            # binding. Cast to void for the same reason the pure operator
-            # forms are -- a bare `x;` is what -Wunused-value rejects under
-            # -Werror.
-            eligible = bool(_witness("expr_stmt.name"))
-            void_cast = True
-        elif isinstance(stmt.expr, TpyIntLiteral):
-            # A bare int-literal statement -- the `0` the REPL appends to
-            # every compile so `main()` is always emitted. Discarding a
-            # literal has no effect to sequence, so the render is the
-            # literal itself, cast to void so -Wunused-value does not reject
-            # it under -Werror.
-            eligible = True
-            void_cast = True
-        else:
-            eligible = _kind_detail("expr_stmt.", stmt.expr)
-        if not eligible:
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        discarded = _lower_expr(
-            stmt.expr, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.DISCARD, allow_temps=True))
-        discarded = full_expression_record(discarded, lc.analyzer)
-        # A discarded CONSTRUCTION renders a functional cast, and `T(name);`
-        # in statement position is a DECLARATION of `name` -- a build error
-        # in the name's own block, a silently default-constructed shadow in a
-        # nested one. Read off the LOWERED node: a macro expansion and a
-        # module-qualified spelling both arrive there.
-        return THIRExprStmt(expr=_flush_witness("flush.expr_stmt", discarded),
-                            void_cast=void_cast or _constructs_value(discarded),
-                            loc=loc)
+        return _lower_expr_stmt(stmt, scope)
     if isinstance(stmt, TpyWith):
         begin_stmt()
         return _lower_with(stmt, lc, declared, loc,
@@ -14007,6 +13551,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                           loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyMatch):
         begin_stmt()
+        if not stmt.cases:
+            # Sema decided every arm dead: the match runs only its subject.
+            _witness("match.no_arm")
+            effect = _match._lower_subject_effect(stmt, scope, loc)
+            return effect if effect is not None else THIRNoOpStmt(loc=loc)
         folded = _match._lower_overload_folded_match(
             stmt, lc, declared, loc, in_branch=scope.in_branch,
             loop_depth=scope.loop_depth)
@@ -14022,6 +13571,434 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
     if isinstance(stmt, TpyRaise):
         return _lower_raise(stmt, lc, declared, loc)
     raise ThirUnsupported(f"stmt.unhandled:{type(stmt).__name__}")
+
+def _lower_expr_stmt(stmt: TpyExprStmt, scope: _LowerScope) -> THIRStmt:
+    """An expression evaluated for its effects: the statement `expr`, and
+    a subject nothing binds (a `match` on a `None` value, or one sema left
+    with no arm)."""
+    lc = scope.lc
+    declared = scope.declared
+    analyzer = lc.analyzer
+    loc = getattr(stmt, "loc", None)
+    begin_stmt()
+    if (isinstance(stmt.expr, TpyCall)
+            and stmt.expr.compile_time_assert):
+        # assert_send/assert_sync: checked in sema, no emission.
+        _witness("stmt.compile_time_assert")
+        return THIRNoOpStmt(loc=None)
+    er_fi = _error_return_stmt_fi(stmt.expr, analyzer)
+    if er_fi is not None:
+        # A discarded @error_return call: the `__try_tmp_N` block.
+        # Bare free/method calls only; the coerce-wrapped shapes
+        # reject.
+        if not isinstance(stmt.expr, (TpyCall, TpyMethodCall)):
+            note_detail("error_return.stmt_shape")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _reject_nested_error_return_arg(stmt, stmt.expr, analyzer)
+        return THIRErrorReturnDiscard(
+            call=_lower_expr(stmt.expr, lc, declared,
+                             use=_ExprUse(result=_ExprResultUse.DISCARD,
+                                          allow_temps=True),
+                             error_return_raw=True),
+            staged=lc.exit_staged, loc=loc)
+    if _is_builtin_print(stmt.expr, declared, lc.analyzer):
+        e = stmt.expr
+        narrowed = lc.narrow.narrowed.keys()
+        pointers = scope.admission_pointers()
+        if e.double_star_unpack is not None:
+            note_detail("print.kwargs")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        sep_expr = end_expr = sink_expr = None
+        sep_value: 'str | None' = " "
+        end_value: 'str | None' = "\n"
+        print_flush = False
+        if e.kwargs:
+            # sep=/end= (str literal or resolved str-value name), file=
+            # (an ostream / stream-pointer sink read in value position, so
+            # `sys.stderr` derefs), and a LITERAL flush= (True appends
+            # `<< std::flush`, False is a no-op). With no args the chain
+            # is just the end token, which `end=""` suppresses entirely
+            # (the emitter's empty-parts arm writes nothing, which is
+            # what `print(end="")` does); a sep with nothing to separate
+            # never reaches the chain. Runtime flush values and
+            # non-str-slice sep/end shapes reject.
+            file_val = e.kwargs.get("file")
+            rest = {k: v for k, v in e.kwargs.items() if k != "file"}
+            flush_val = rest.pop("flush", None)
+            if flush_val is not None:
+                # Sema pins flush= to a bool LITERAL (a runtime value is
+                # a SemanticError), so the isinstance restates a proven
+                # fact rather than a reachable reject.
+                if not isinstance(flush_val, TpyBoolLiteral):
+                    note_detail("print.kwargs")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                print_flush = bool(flush_val.value)
+                if print_flush:
+                    _witness("print.kw_flush")
+            if any(k not in ("sep", "end") for k in rest):
+                note_detail("print.kwargs")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            if not e.args and rest:
+                _witness("print.kw_no_args")
+            evaluated_kws: list[str] = []
+            for kw, kv in rest.items():
+                token = _print_kwarg_token(
+                    kv, declared, pointers, narrowed, analyzer)
+                if token is None:
+                    note_detail("print.kwargs")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                kind, value = token
+                if kind == "expr":
+                    if not _expr_evaluation_inert(e.args, declared, analyzer):
+                        note_detail("print.kwarg_expr_arg_order")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                    if evaluated_kws and kw == "sep":
+                        # The chain renders sep ahead of end, so a source
+                        # that spells them the other way round would swap
+                        # two evaluations CPython orders by source.
+                        note_detail("print.kwarg_expr_order")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                    evaluated_kws.append(kw)
+                    _witness("print.kw_expr")
+                    # Bound by reference: an lvalue source is not copied
+                    # and a prvalue's lifetime extends to the end of the
+                    # enclosing block, so the token stays valid through
+                    # the chain.
+                    lowered_kw = _hoisted(THIRArgTemp(
+                        result_type=analyzer.get_expr_type(kv),
+                        init=_lower_expr(kv, lc, declared,
+                                         use=_ExprUse(allow_temps=True)),
+                        cpp_type="const auto&",
+                        movable=False), lc)
+                else:
+                    lowered_kw = (_lower_expr(kv, lc, declared)
+                                  if kind == "name" else None)
+                if kw == "sep":
+                    sep_expr, sep_value = lowered_kw, value
+                else:
+                    end_expr, end_value = lowered_kw, value
+            if rest:
+                _witness("print.kw_sep_end")
+            if file_val is not None:
+                sink_expr = lower_print_sink(file_val, lc, declared)
+                _witness("print.file_sink")
+        lowered_args = []
+        for arg in e.args:
+            star: 'TpyStarUnpack | None' = None
+            if isinstance(arg, TpyStarUnpack):
+                # The admission below asks about the unpacked SOURCE,
+                # which `_lower_print_arg` lowers as the positional
+                # `print(xs)` would.
+                star, arg = arg, arg.expr
+                if isinstance(arg, TpyName) and arg.name in narrowed:
+                    note_detail("print.star_narrowed_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+            if (isinstance(arg, (TpyCall, TpyMethodCall))
+                    and isinstance(getattr(arg, "macro_expansion", None),
+                                   TpyTupleLiteral)
+                    and _wrap_print_form(arg, declared, analyzer, pointers)
+                    is None):
+                # A TUPLE-producing call-macro arg (`print(astuple(x))`)
+                # whose CALL node does not classify (`_wrap_print_form`
+                # None -- e.g. a non-value tuple result outside
+                # `_value_tuple_nested`): the sema-synthesized expansion
+                # renders in place and the print arg classifies by TYPE,
+                # so fall through to the EXPANSION.
+                # When the call node DOES classify, keep the call path
+                # -- it lowers the expansion as an expression and its
+                # element admissions differ (a swap here rejected
+                # dataclass_asdict_mixed's str-field elements). Tuple
+                # literals ONLY: other expansion kinds
+                # (hasattr's probe synth, getattr) already ride the
+                # call-typed rows.
+                arg = arg.macro_expansion
+            if isinstance(arg, TpyName) and arg.name in narrowed:
+                if arg.name in lc.narrow.any_narrowed:
+                    # An Any-narrowed alias: print args classify by the
+                    # DECLARED type (the pre-narrow binding), so an Any
+                    # subject streams the alias RAW -- including the
+                    # narrowed-float face (no print_float wrap; that
+                    # formatting gap is filed in BUGS.md).
+                    lowered_args.append(THIRPrintArg(
+                        expr=_lower_expr(arg, lc, declared),
+                        print_form=PrintForm.RAW))
+                    continue
+                # A print arg classifies a NAME by its DECLARED binding
+                # (which narrowing never rewrites) -- so every
+                # U3-narrowed alias streams
+                # through the union-typed `::tpy::__str__` visitor arm,
+                # extraction alias notwithstanding.
+                if lc.narrow.subject_union.get(arg.name) is None:
+                    note_detail("print.narrowed_arg")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                _witness("print.union_narrowed_arg")
+                lowered_args.append(THIRPrintArg(
+                    expr=_lower_expr(arg, lc, declared),
+                    print_form=PrintForm.STR))
+                continue
+            if type(arg) in _comprehensions._COMP_KINDS:
+                ok = True
+            elif _optional_ptr_borrow_wide_name(
+                    arg, declared, analyzer) is not None:
+                # A ptr-repr Optional NAME prints through
+                # `::tpy::print_optional(v)` -- DECLARED-type keyed
+                # (a None-narrowed occurrence still wraps); the
+                # OPT_PTR row in _lower_print_arg renders it, adding
+                # the kind-keyed template args for a pointee with no
+                # plain operator<< (`print_optional<ListPrinter<..>,
+                # ..>(lst)`).
+                ok = True
+            elif (isinstance(arg, (TpyCall, TpyMethodCall))
+                    and _optional_ptr_borrow_wide(
+                        analyzer.get_expr_type(arg),
+                        analyzer) is not None):
+                # A ptr-repr Optional-returning CALL prints through
+                # `::tpy::print_optional(call(..))` -- the OPT_PTR
+                # call row in _lower_print_arg renders it.
+                ok = True
+            else:
+                ok = (_print_arg_ok(arg, declared, analyzer)
+                      or (isinstance(arg, TpyName)
+                          and arg.name not in pointers
+                          and (_wpf_arg := _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers)) is not None
+                          # The union STR row stays out of RESUMABLE
+                          # bodies: a persistent assert-narrow alias
+                          # would leak past its branch in the flat CFG
+                          # (`__str__(__a)` in the else arm), while the
+                          # BB snapshot restores it. Keyed on
+                          # the flat-CFG lane flag. is_async is
+                          # belt-and-braces (always resumable).
+                          and not (_wpf_arg is PrintForm.STR
+                                   and (lc.resumable_leaf_mode
+                                        or lc.func.is_async))
+                          and _witness("print.wrap_arg"))
+                      or (isinstance(arg, TpyName)
+                          and (lc.binding(arg.name).optional_storage
+                               or lc.binding(arg.name).lazy_rebind_slot
+                               or lc.binding(arg.name).rebind_slot
+                               or lc.frame_storage_name(arg.name)
+                               or lc.binding(arg.name).global_slot)
+                          and not isinstance(
+                              unwrap_readonly(unwrap_ref_type(
+                                  unwrap_send_sync(
+                                      declared.get(arg.name)))),
+                              OptionalType)
+                          and _wrap_print_form(
+                              arg, declared, analyzer, pointers)
+                          in (PrintForm.LIST, PrintForm.DICT,
+                              PrintForm.SET, PrintForm.BYTEARRAY)
+                          # A branch-hoisted container pointer-local --
+                          # or a pointer-SLOT container global at top
+                          # level -- streams its deref inside the same
+                          # kind-keyed wrap (`ListPrinter((*nums))`);
+                          # pointer-repr Optional bindings stay out
+                          # (their whole-name print is a different
+                          # render).
+                          and _witness("print.hoisted_container_arg"))
+                      # `print(self)` streams the record raw via its
+                      # emitted operator<<. The receiver renders
+                      # `(*this)`, which is exactly what `THIRSelf.deref`
+                      # spells in a value position.
+                      or (isinstance(arg, TpyName)
+                          and lc.self_receiver is not None
+                          and arg.name == lc.self_receiver
+                          and lc.record_name is not None
+                          and record_like(
+                              analyzer.get_expr_type(arg), analyzer)
+                          and _witness("print.self_arg"))
+                      # A POINTER-bound F1-record/range NAME (the RAW
+                      # wrap class) streams its deref through the same
+                      # raw operator<< (`(*al)`) -- the wrap render
+                      # lowers with the full-deref use.
+                      or (isinstance(arg, TpyName)
+                          and arg.name != lc.self_receiver
+                          and arg.name in pointers
+                          and _wrap_print_form(
+                              arg, declared, analyzer, pointers)
+                          is PrintForm.RAW)
+                      or (isinstance(arg, TpyFieldAccess)
+                          and _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers) is not None
+                          and _witness("print.wrap_field_arg"))
+                      or _print_tuple_record_elem(arg, declared,
+                                                  analyzer)
+                      or (isinstance(arg, TpySubscript)
+                          and _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers) is not None
+                          and _witness(
+                              "print.container_slice_arg"
+                              if arg.slice_function_info is not None
+                              else "print.tuple_subscript_arg"))
+                      or (isinstance(arg, (TpyCall, TpyMethodCall))
+                          and _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers) is not None
+                          and _witness("print.container_call_arg"))
+                      # A list/Array LITERAL arg (the typed brace-init
+                      # inside ListPrinter -- CTAD needs the type), a
+                      # DICT literal (self-describing ordered_map render
+                      # inside DictPrinter -- the asdict expansion), a
+                      # pointer-repr tuple LITERAL (the borrow-form
+                      # render inside TuplePrinter), or a
+                      # container-result BINOP (the kind wrap over the
+                      # operator render).
+                      or (isinstance(arg, (TpyArrayLiteral,
+                                           TpyDictLiteral,
+                                           TpyTupleLiteral, TpyBinOp))
+                          and _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers) is not None)
+                      # A container WALRUS arg (`print((cols := [..]))`):
+                      # the kind-keyed wrap composes over the walrus
+                      # render (`ListPrinter((cols = .., *cols))`); the
+                      # walrus arm validates its own target class.
+                      or (isinstance(arg, TpyNamedExpr)
+                          and _wrap_print_form(
+                              arg, declared, analyzer,
+                              pointers) is not None
+                          and _witness("print.walrus_arg")))
+            if not ok:
+                fam = _type_family_tag(
+                    analyzer.get_expr_type(arg), analyzer)
+                _kind_detail(f"print.arg.{fam}_", arg)
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            try:
+                lowered_args.append(
+                    _lower_print_arg(star if star is not None else arg,
+                                     lc, declared, pointers))
+            except ThirUnsupported as exc:
+                # The inner reject already names the blocker, but it
+                # travels in the exception -- the detail slot is
+                # first-wins, so a shape tag composed here would win by
+                # default and hide it.
+                note_detail(exc.reason)
+                raise exc.with_context(stmt_reject_reason(stmt)) from None
+        return THIRPrint(args=tuple(lowered_args), sep_expr=sep_expr,
+                         end_expr=end_expr, sep_value=sep_value,
+                         end_value=end_value, sink_expr=sink_expr,
+                         flush=print_flush, loc=loc)
+    narrowed = lc.narrow.narrowed.keys()
+    # A `@call_macro` whose expansion is itself a macro call -- peel
+    # the macro_expansion chain so the renderer below is reached at
+    # STATEMENT position. Without the peel the inner markers lower
+    # through the expression ladders, which drop the DISCARD use.
+    macro_src = stmt.expr
+    chain_peeled = False
+    while (isinstance(macro_src, TpyCall)
+            and isinstance(macro_src.macro_expansion, TpyCall)):
+        macro_src = macro_src.macro_expansion
+        chain_peeled = True
+    if (isinstance(macro_src, TpyCall)
+            and isinstance(macro_src.macro_expansion, TpyMethodCall)):
+        rt = analyzer.get_expr_type(stmt.expr)
+        if rt is None or isinstance(rt, VoidType):
+            # A void statement-position macro expansion (the setattr /
+            # delattr builtins): the expansion renders in place, but
+            # the expression macro arm drops the DISCARD use (a void
+            # method call rejects in value position), so the expansion
+            # dispatches here in statement position instead.
+            if chain_peeled:
+                _witness("expr_stmt.marker_chain")
+            exp = macro_src.macro_expansion
+            if (exp.method == "__setattr__" and len(exp.args) == 2
+                    and isinstance(exp.args[0], TpyStrLiteral)
+                    and isinstance(exp.args[1], TpyCoerce)):
+                # `setattr(obj, "name", <coerced literal>)` synthesizes
+                # the SAME `obj.__setattr__(...)` call the dynamic-attr
+                # WRITE lowers -- delegate to its narrow arm (the Any
+                # value slot is outside the generic method-arg slice).
+                # ONLY the literal-name + coerced-value shape: a runtime
+                # name / uncoerced value (`setattr(h, name, value)` on a
+                # str-slotted __setattr__) already routes through the
+                # general method arm and must keep doing so.
+                lowered_sa = _lower_dyn_setattr_call(exp, lc, declared)
+                _witness("expr_stmt.macro_discard")
+                return THIRExprStmt(
+                    expr=_flush_witness("flush.expr_stmt", lowered_sa),
+                    loc=loc)
+            _witness("expr_stmt.macro_discard")
+            return THIRExprStmt(
+                expr=_flush_witness(
+                    "flush.expr_stmt",
+                    _lower_expr(
+                        macro_src.macro_expansion, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.DISCARD,
+                                     allow_temps=True))),
+                loc=loc)
+    void_cast = False
+    if isinstance(stmt.expr, TpyCall):
+        eligible = True
+    elif isinstance(stmt.expr, TpyMethodCall):
+        eligible = True
+    elif isinstance(stmt.expr, TpyBinOp) and record_like(
+            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                analyzer.get_expr_type(stmt.expr)))), analyzer):
+        # A DISCARDED record-result dunder binop (`timedelta(seconds=1)
+        # / 0` evaluated for its ZeroDivisionError): the template render
+        # + `;`, identical to its expression form.
+        eligible = bool(_witness("expr_stmt.record_binop"))
+    elif isinstance(stmt.expr, (TpyBinOp, TpyUnaryOp, TpyChainedCompare,
+                                TpyIfExpr, TpyFieldAccess, TpyNamedExpr)):
+        # A DISCARDED operator/ternary/field read or walrus (`n + 1`, `-n`,
+        # `0 < n < 5`, `n if c else 0`, `p.x`, `(n := 4)`; the walrus arm
+        # writes its binding as in any other position). Python evaluates and
+        # discards these too, and the checked render is the effect
+        # worth keeping (`add_check` raises on overflow, a field read
+        # off a property calls the getter), so the statement form is
+        # the expression render plus `;`. The operand ladders
+        # re-validate their own shapes.
+        # The cast to void is what keeps the PURE forms (`n < 2;`,
+        # `p.x;`) buildable under -Wunused-value + -Werror; it discards
+        # the value without suppressing the evaluation the row exists
+        # for. Decided here, not re-derived from the shape at emit.
+        eligible = bool(_witness("expr_stmt.value_discard"))
+        void_cast = True
+    elif (isinstance(stmt.expr, TpySubscript)
+            and not isinstance(stmt.expr.index, TpySlice)
+            and stmt.expr.slice_function_info is None):
+        # A DISCARDED element read (`c, _ = (items[2], items[0])`
+        # desugars the `_` half to a bare subscript statement evaluated
+        # for its effect/bounds check): `::tpy::__getitem__(recv, i);`
+        # -- the subscript arm re-validates receiver/index shapes.
+        eligible = bool(_witness("expr_stmt.subscript_discard"))
+    elif isinstance(stmt.expr, TpyName):
+        # A bare NAME statement (`x`): the name's own read render,
+        # exactly its expression form. Python evaluates and discards it
+        # too, so nothing is dropped; the name arm re-validates the
+        # binding. Cast to void for the same reason the pure operator
+        # forms are -- a bare `x;` is what -Wunused-value rejects under
+        # -Werror.
+        eligible = bool(_witness("expr_stmt.name"))
+        void_cast = True
+    elif isinstance(stmt.expr, TpyIntLiteral):
+        # A bare int-literal statement -- the `0` the REPL appends to
+        # every compile so `main()` is always emitted. Discarding a
+        # literal has no effect to sequence, so the render is the
+        # literal itself, cast to void so -Wunused-value does not reject
+        # it under -Werror.
+        eligible = True
+        void_cast = True
+    else:
+        eligible = _kind_detail("expr_stmt.", stmt.expr)
+    if not eligible:
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    discarded = _lower_expr(
+        stmt.expr, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.DISCARD, allow_temps=True))
+    discarded = full_expression_record(discarded, lc.analyzer)
+    # A discarded CONSTRUCTION renders a functional cast, and `T(name);`
+    # in statement position is a DECLARATION of `name` -- a build error
+    # in the name's own block, a silently default-constructed shadow in a
+    # nested one. Read off the LOWERED node: a macro expansion and a
+    # module-qualified spelling both arrive there.
+    return THIRExprStmt(expr=_flush_witness("flush.expr_stmt", discarded),
+                        void_cast=void_cast or _constructs_value(discarded),
+                        loc=loc)
+
 
 def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
                loc, *, in_branch: bool = False,

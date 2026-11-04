@@ -3,7 +3,8 @@ holder outside the function.
 
 A loan's holder is a binding name (`str`), an `IterHolder`, the running
 iterator of ONE `for` statement or ONE comprehension clause, or `External`,
-a holder the function does not see end. The kind of a
+a holder the function does not see end; a liveness live set also carries
+`DelReach`, a pending `del`'s demand that the name stay bound. The kind of a
 synthetic holder is its type, never decoded from a spelling, so no program
 name can stand for an iterator and two loops never share one. A binding
 holder stays a name because the borrow tracker's chain walks read a binding
@@ -15,6 +16,7 @@ A leaf module: liveness and sema both key on the same holders.
 from __future__ import annotations
 
 from enum import Enum
+from typing import NamedTuple
 
 
 class IterHolder:
@@ -63,6 +65,15 @@ class IterHolder:
         return f"IterHolder({type(self._node).__name__} at {where})"
 
 
+class DelReach(NamedTuple):
+    """In a liveness live set: a later `del` of `name` is reached from here
+    with no binding of it in between. Not a read (no last use sees it), but
+    the name must still be bound here (`TpyIf.live_names_after`). It joins
+    and is killed by a binding of the name like a read. The borrow tracker
+    never holds one."""
+    name: str
+
+
 class External(Enum):
     """A holder outside the function, which keeps what it holds for as long
     as it likes: nothing in the body ends its loans -- no loop exit, no
@@ -73,4 +84,4 @@ class External(Enum):
 
 
 # Who holds a loan in the borrow tracker, and what a live set holds.
-Holder = str | IterHolder | External
+Holder = str | IterHolder | External | DelReach

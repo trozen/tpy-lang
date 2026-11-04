@@ -58,9 +58,9 @@ from ...modules.defs import (BINOP_TO_METHOD, UNCHECKED_GETITEM_CPP_TEMPLATE,
                              get_dunder_cpp_template)
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
-                                   literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
+from ...sema.dead_arms import fact_values, literal_chain, literal_test
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
@@ -621,9 +621,7 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     suffix, the BigInt ctor wraps) ride `_slot_literal_retype` at the slot
     sites plus the literal coerce arms, which retype the literal so the
     emitter picks the wrapped render. A `LiteralType` over a scalar base
-    classifies as the base (it delegates every render to it; the
-    dead-branch constant folds are decided separately at the compare
-    lowering via `lc.literal_facts`).
+    classifies as the base (it delegates every render to it).
     """
     if isinstance(t, LiteralType):
         t = t.base_type
@@ -2007,8 +2005,7 @@ def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
         # A str-based Literal binding is VIEW-form everywhere: its values
         # are static-lifetime string literals, so view-safety inference
         # gives locals AND params `std::string_view` storage (pinned by
-        # `calls/literal_local_from_literal_call`). The dead-branch folds
-        # are decided at the compare lowering via `lc.literal_facts`.
+        # `calls/literal_local_from_literal_call`).
         b = unwrap_readonly(t.base_type)
         if isinstance(b, NominalType) and (is_str_type(b)
                                            or is_str_view_type(b)):
@@ -11338,39 +11335,17 @@ def _overload_fold_facts(narrowing, literal_facts: dict) -> dict:
     return facts
 
 
-def _fold_literal_comparison(e: TpyBinOp,
-                             literal_facts: dict) -> 'bool | None':
-    """Fold ==/!= when a name operand carries a LiteralType fact.
-    Single-value: decided either way; multi-value: decided only when the
-    compared value is NOT in the set."""
-    for var_side, lit_side in ((e.left, e.right), (e.right, e.left)):
-        if not isinstance(var_side, TpyName):
-            continue
-        lit_type = literal_facts.get(var_side.name)
-        if not isinstance(lit_type, LiteralType):
-            continue
-        lit_val = literal_value_from_expr(lit_side)
-        if lit_val is None:
-            continue
-        in_set = lit_val in lit_type.values
-        if len(lit_type.values) == 1:
-            return in_set if e.op == "==" else not in_set
-        if not in_set:
-            return False if e.op == "==" else True
-    return None
-
-
 def _overload_resolve_static(cond: TpyExpr,
                              narrowing: 'dict[str, TpyType] | None',
                              lit_facts: dict) -> 'bool | None':
     """Resolve an isinstance condition statically for the per-stub fold,
     plus its literal half over `lit_facts` (the stub-narrowing-derived
     facts, plus a literal-only group's injected map): equality, bool
-    truthiness, membership (`check_literal_in`), and the
-    or-coverage/and-contradiction chain fold (`check_literal_chain`)."""
+    truthiness, membership, and the or-coverage/and-contradiction chain
+    fold -- sema's Literal verdicts (`dead_arms`) over the stub's facts."""
     if lit_facts:
         if isinstance(cond, TpyBinOp) and cond.op in ("==", "!="):
-            decided = _fold_literal_comparison(cond, lit_facts)
+            decided = literal_test(cond, fact_values(lit_facts))
             if decided is not None:
                 return decided
         if isinstance(cond, TpyName):
@@ -11416,11 +11391,11 @@ def _overload_resolve_static(cond: TpyExpr,
         # Coverage / contradiction on unresolved operands (the chain
         # fold's fallthrough).
         if lit_facts and left is None and right is None:
-            return emit_prims.check_literal_chain(cond, lit_facts)
+            return literal_chain(cond, fact_values(lit_facts))
         return None
     if (isinstance(cond, TpyBinOp) and cond.op in ("in", "not in")
             and lit_facts):
-        result = emit_prims.check_literal_in(cond, lit_facts)
+        result = literal_test(cond, fact_values(lit_facts))
         if result is not None:
             return result
     if isinstance(cond, TpyUnaryOp) and cond.op == "!":

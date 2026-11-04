@@ -44,7 +44,7 @@ void test_set_inferred() {
 //     print(y)
 void test_ternary_float_literal() {
     float x = 1.0f;
-    float y = ((true) ? (x) : (2.0f));
+    float y = x;
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n" << ::tpy::check_signals;
 }
 

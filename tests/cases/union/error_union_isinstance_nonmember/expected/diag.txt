@@ -1,1 +1,0 @@
-main.py:18: error: Type 'C' is not a member of union 'A | B'

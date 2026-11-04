@@ -505,8 +505,7 @@ inline Dog::Dog(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Dog::__eq__(const Dog& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -544,8 +543,7 @@ inline Cat::Cat(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Cat::__eq__(const Cat& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -583,8 +581,7 @@ inline Tag::Tag(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Tag::__eq__(const Tag& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -594,8 +591,7 @@ inline bool Tag::__eq__(const Tag& other) const {
 //         return True
 //     return self.n == other.n
 inline bool Tag::__ne__(const Tag& other) const {
-    if ((!(true))) {
-        return true;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -609,8 +605,7 @@ inline Mark::Mark(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Mark::__eq__(const Mark& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -624,8 +619,7 @@ inline OnlyNe::OnlyNe(int32_t n) : n(n) {}
 //         return True
 //     return self.n != other.n
 inline bool OnlyNe::__ne__(const OnlyNe& other) const {
-    if ((!(true))) {
-        return true;
+    if (false) {
     }
     return (this->n != other.n);
 }
@@ -647,8 +641,7 @@ inline Locked::Locked(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Locked::__eq__(const Locked& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }
@@ -662,8 +655,7 @@ inline Sealed::Sealed(int32_t n) : n(n) {}
 //         return False
 //     return self.n == other.n
 inline bool Sealed::__eq__(const Sealed& other) const {
-    if ((!(true))) {
-        return false;
+    if (false) {
     }
     return (this->n == other.n);
 }

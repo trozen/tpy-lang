@@ -48,7 +48,7 @@ namespace tpyapp::main {
 //     return armed and gate.flag and lamp.lit
 bool check(const Gate& gate, const ::tpyapp::lampmod::Lamp& lamp) {
     bool armed = true;
-    return ((armed && gate.flag) && lamp.lit);
+    return (gate.flag && lamp.lit);
 }
 
 // def main() -> None:

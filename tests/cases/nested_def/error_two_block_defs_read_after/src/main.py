@@ -10,8 +10,7 @@ def scale(x: int32) -> int32:
     return x + 1
 
 
-def main() -> None:
-    flag = True
+def main(flag: bool) -> None:  # a parameter: sema does not decide `flag`
     if flag:
         def scale(x: int32) -> int32:
             return x + 100
@@ -33,4 +32,4 @@ def main() -> None:
     print(scale(1))  # tpyc: error(/'scale' is not readable after the 'if' block/)
 
 
-main()
+main(True)

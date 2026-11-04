@@ -16,16 +16,16 @@ namespace tpyapp::main {
 //     print(z)
 //
 //     # One operand owned: falls back to std::string
-//     w = a if True else str(42)  # tpyc: type(str)
+//     w = a if b else str(42)  # tpyc: type(str)
 //     print(w)
 void test_ternary(std::string_view a, std::string_view b) {
-    std::string_view x = ((true) ? (a) : (b));
+    std::string_view x = a;
     std::cout << x << "\n" << ::tpy::check_signals;
-    std::string_view y = ((false) ? (a) : (b));
+    std::string_view y = b;
     std::cout << y << "\n" << ::tpy::check_signals;
-    std::string_view z = ((true) ? (std::string_view("literal_a")) : (std::string_view("literal_b")));
+    std::string_view z = "literal_a";
     std::cout << z << "\n" << ::tpy::check_signals;
-    std::string w = ((true) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
+    std::string w = (((!b.empty())) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
     std::cout << w << "\n" << ::tpy::check_signals;
 }
 

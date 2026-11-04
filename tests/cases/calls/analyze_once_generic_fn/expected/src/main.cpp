@@ -53,7 +53,7 @@ void main() {
     std::cout << "binop:" << " " << ::tpyapp::main::g<int32_t>((::tpy::add_check<int32_t>(std::move(*c).take().v, 1))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     c = &*(__slot_4 = B(4));
-    std::cout << "select-arm:" << " " << ::tpyapp::main::g<int32_t>(((flag) ? (std::move(*c).take().v) : (0))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << ::tpyapp::main::g<int32_t>(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_5;
     c = &*(__slot_5 = B(6));
     std::cout << "fstring:" << " " << ::tpyapp::main::g<std::string>(std::format("{}", std::move(*c).take().v)) << "\n" << ::tpy::check_signals;

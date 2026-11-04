@@ -1084,7 +1084,7 @@ workaround rather than claiming the program is wrong.
 
 | Condition | Message |
 |-----------|---------|
-| Class pattern on non-member of union | `'Triangle' is not a member of union 'Circle \| Rect'` |
+| Builtin class pattern on non-member of union (a record class no member is an instance of is a dead arm, `LANGUAGE_FEATURES.md` "Statically decided branches") | `'str' is not a member of union 'Cat \| int32'` |
 | Duplicate case for same type | `duplicate case for 'Circle' in match statement` |
 | Incompatible literal type | `str literal pattern not valid for subject type 'int32'` |
 | Literal kind not renderable against an otherwise-compatible subject | `<kind> literal pattern against subject type '<T>' is not yet implemented; ...` |
@@ -1135,7 +1135,8 @@ Tests go in `tests/cases/match/` (new directory).
 | `guard_fallthrough` | guard fails, next case matches |
 | `field_value_match` | `case Point(x=0, y=0):` on concrete record |
 | `nested_match` | match inside match (legal Python) |
-| `error_not_member` | class pattern for non-union-member |
+| `error_match_primitive_not_member` | builtin class pattern for non-union-member |
+| `control_flow/dead_arm_rule` | record class patterns that cannot match: dead arms |
 | `error_or_var_mismatch` | or-pattern with inconsistent bindings |
 | `error_unreachable` | case after wildcard |
 | `error_incompatible_literal` | wrong literal type for subject |

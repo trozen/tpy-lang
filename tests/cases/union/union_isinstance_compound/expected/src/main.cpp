@@ -25,6 +25,7 @@ namespace tpyapp::main {
         auto& __v = *std::get<const A*>(v);
         return __v.x;
     }
+    auto& __v = *std::get<const B*>(v);
     return ::tpy::BigInt(-1);
 }
 

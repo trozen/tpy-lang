@@ -191,11 +191,11 @@ void nested_select() {
 void int_widen_or() {
     int32_t a = 0;
     int64_t b = static_cast<int64_t>(5000000000);
-    int64_t x = (a ? int64_t(a) : b);
+    int64_t x = b;
     std::cout << "int_widen_or:" << " " << x << "\n" << ::tpy::check_signals;
     uint8_t u = 0;
-    uint8_t z = (u ? u : uint8_t(200));
-    std::cout << "int_literal_fits:" << " " << static_cast<int>(z) << "\n" << ::tpy::check_signals;
+    int32_t z = 200;
+    std::cout << "int_literal_fits:" << " " << z << "\n" << ::tpy::check_signals;
 }
 
 // def int_literal_pair(c: bool) -> None:

@@ -8,7 +8,7 @@ main::empty_literal_arm@66:0: uncovered (unsupported record initializer), summar
 main::method_result_arm@85:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::literal_left@95:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::nested_select@103:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
-main::int_widen_or@116:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
+main::int_widen_or@116:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::int_literal_pair@129:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::float_literal_elem@138:0: uncovered (select storage needs complete temporary plan), summary: opaque (select storage needs complete temporary plan)
 main::float_or@146:0: uncovered (unsupported value select), summary: opaque (unsupported value select)

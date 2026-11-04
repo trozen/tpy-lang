@@ -34,9 +34,6 @@ void main() {
     if (true) {
         auto& __c = *std::get<Circle*>(c);
         std::cout << "yes circle" << "\n" << ::tpy::check_signals;
-    } else {
-        auto& __c = *std::get<Rect*>(c);
-        std::cout << "no" << "\n" << ::tpy::check_signals;
     }
     std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
 }

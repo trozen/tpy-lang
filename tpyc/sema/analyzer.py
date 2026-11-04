@@ -2041,6 +2041,7 @@ class SemanticAnalyzer:
         self.post_stmt_facts.update(self.ctx.post_stmt_facts)
         self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
+        self.function_global_decls.update(self.ctx.nested_def_global_decls)
         self.function_escape_hoisted_vars.update(
             self.ctx.nested_def_hoisted_vars)
 

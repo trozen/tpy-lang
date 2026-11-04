@@ -22,7 +22,6 @@ std::string get_pet_name(const Zoo& z) {
         auto& __p = *std::get<const Cat*>(p);
         return __p.name;
     }
-    return "";
 }
 
 // @readonly
@@ -44,7 +43,6 @@ std::string get_pet_name_ro(const Zoo& z) {
         auto& __p = *std::get<const Cat*>(p);
         return __p.name;
     }
-    return "";
 }
 
 // @readonly

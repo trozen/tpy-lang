@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void test_if_not_zero_floordiv() {
     int32_t a = 10;
     int32_t b = 3;
-    if ((b != 0)) {
+    if (true) {
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
         std::cout << x << "\n" << ::tpy::check_signals;
     }
@@ -30,7 +30,7 @@ void test_if_not_zero_floordiv() {
 void test_if_not_zero_mod() {
     int32_t a = 10;
     int32_t b = 3;
-    if ((b != 0)) {
+    if (true) {
         int32_t x = (::tpy::mod_floor<int32_t>(a, b));
         std::cout << x << "\n" << ::tpy::check_signals;
     }
@@ -61,7 +61,6 @@ void test_no_elision_unchecked() {
 void test_assert_not_zero() {
     int32_t a = 17;
     int32_t b = 5;
-    if (!((b != 0))) ::tpy::raise_assertion_error();
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
     int32_t y = (::tpy::mod_floor<int32_t>(a, b));
     std::cout << x << "\n" << ::tpy::check_signals;
@@ -112,8 +111,7 @@ void test_no_elision_after_reassign() {
 void test_else_of_eq_zero() {
     int32_t a = 10;
     int32_t b = 3;
-    if ((b == 0)) {
-        std::cout << "zero" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
         std::cout << x << "\n" << ::tpy::check_signals;

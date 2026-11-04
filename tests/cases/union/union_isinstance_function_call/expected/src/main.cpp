@@ -33,9 +33,6 @@ void main() {
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
         ::tpyapp::main::greet_dog(__pet);
-    } else {
-        auto& __pet = *std::get<Cat*>(pet);
-        ::tpyapp::main::greet_cat(__pet);
     }
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     __slot_2.emplace(Cat("Whiskers"));

@@ -12,10 +12,9 @@ async def a_str() -> str:
     return "x"
 
 
-async def main() -> None:
-    cond = True
+async def main(cond: bool) -> None:  # a parameter: sema does not decide `cond`
     x = await an_int() if cond else await a_str()  # tpyc: error(/mismatch|differ|type/)
     print(x)
 
 
-asyncio.run(main())
+asyncio.run(main(True))

@@ -1,0 +1,1 @@
+main.py:8: error: 'g' is read before it is bound on line 10: a name bound anywhere in a function is local to the whole function, so this read does not see the module's 'g'; rename one of them

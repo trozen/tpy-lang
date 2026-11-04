@@ -18,11 +18,11 @@ namespace tpyapp::main {
 void test_or_int() {
     int32_t a = 0;
     int32_t b = 42;
-    int32_t x = (a ? a : b);
+    int32_t x = b;
     std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
-    int32_t y = (c ? c : d);
+    int32_t y = c;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
 
@@ -39,11 +39,11 @@ void test_or_int() {
 void test_and_int() {
     int32_t a = 0;
     int32_t b = 42;
-    int32_t x = (a ? b : a);
+    int32_t x = a;
     std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
-    int32_t y = (c ? d : c);
+    int32_t y = d;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
 
@@ -59,10 +59,10 @@ void test_and_int() {
 void test_or_str() {
     std::string_view empty = "";
     std::string_view fallback = "default";
-    std::string_view x = ((!empty.empty()) ? empty : fallback);
+    std::string_view x = fallback;
     std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view name = "alice";
-    std::string_view y = ((!name.empty()) ? name : fallback);
+    std::string_view y = name;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
 
@@ -78,10 +78,10 @@ void test_or_str() {
 void test_and_str() {
     std::string_view empty = "";
     std::string_view fallback = "world";
-    std::string_view x = ((!empty.empty()) ? fallback : empty);
+    std::string_view x = empty;
     std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view name = "hello";
-    std::string_view y = ((!name.empty()) ? fallback : name);
+    std::string_view y = fallback;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
 
@@ -135,7 +135,7 @@ void test_and_float() {
 void test_or_bigint() {
     ::tpy::BigInt a = ::tpy::BigInt(0);
     ::tpy::BigInt b = ::tpy::BigInt(100);
-    ::tpy::BigInt x = (a ? a : b);
+    ::tpy::BigInt x = b;
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
@@ -155,14 +155,12 @@ void test_chained() {
     int32_t a = 0;
     int32_t b = 0;
     int32_t c = 3;
-    auto&& __tmp_1 = (a ? a : b);
-    int32_t x = (__tmp_1 ? __tmp_1 : c);
+    int32_t x = c;
     std::cout << x << "\n" << ::tpy::check_signals;
     int32_t d = 1;
     int32_t e = 2;
     int32_t f = 3;
-    auto&& __tmp_2 = (d ? e : d);
-    int32_t y = (__tmp_2 ? f : __tmp_2);
+    int32_t y = f;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
 
@@ -172,7 +170,7 @@ void test_chained() {
 //     print(x)
 void test_or_with_literal() {
     int32_t a = 0;
-    int32_t x = (a ? a : 99);
+    int32_t x = 99;
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
@@ -196,7 +194,7 @@ int32_t returns_int(int32_t a, int32_t b) {
 void test_as_arg_and_return() {
     int32_t a = 0;
     int32_t b = 7;
-    ::tpyapp::main::accepts_int((a ? a : b));
+    ::tpyapp::main::accepts_int(b);
     std::cout << ::tpyapp::main::returns_int(0, 5) << "\n" << ::tpy::check_signals;
 }
 
@@ -216,7 +214,7 @@ bool test_bool_operands(bool flag, bool other) {
 void test_mixed_returns_bool() {
     int32_t a = 1;
     double b = 2.0;
-    if ((a && b)) {
+    if (b) {
         std::cout << "mixed condition ok" << "\n" << ::tpy::check_signals;
     }
 }
@@ -231,10 +229,10 @@ void test_mixed_returns_bool() {
 void test_condition_context() {
     int32_t a = 1;
     int32_t b = 2;
-    if ((a && b)) {
+    if (true) {
         std::cout << "both truthy" << "\n" << ::tpy::check_signals;
     }
-    if ((a || b)) {
+    if (true) {
         std::cout << "at least one truthy" << "\n" << ::tpy::check_signals;
     }
 }
@@ -322,7 +320,7 @@ void test_record_or_constructor() {
 //
 //     empty: str = ""
 //     fallback: str = "default"
-//     s: str = empty or fallback  # tpyc: type(str)
+//     s: str = empty or fallback  # tpyc: type(StrView)
 //     print(s)
 //
 //     fa: float = 0.0
@@ -332,15 +330,15 @@ void test_record_or_constructor() {
 void test_annotated() {
     int32_t a = 0;
     int32_t b = 42;
-    int32_t x = (a ? a : b);
+    int32_t x = b;
     std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
-    int32_t y = (c ? d : c);
+    int32_t y = d;
     std::cout << y << "\n" << ::tpy::check_signals;
     std::string_view empty = "";
     std::string_view fallback = "default";
-    std::string s = std::string(((!empty.empty()) ? empty : fallback));
+    std::string_view s = fallback;
     std::cout << s << "\n" << ::tpy::check_signals;
     double fa = 0.0;
     double fb = 3.14;

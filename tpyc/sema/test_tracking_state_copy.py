@@ -82,10 +82,13 @@ def _populated() -> FunctionTrackingState:
     gates[N.TpyPassStmt()] = frozenset({'p'})
     frame_rebinds: IdentityMap = IdentityMap()
     frame_rebinds[N.TpyVarDecl("g", None, None)] = None
+    rewrites: IdentityMap = IdentityMap()
+    rewrites[expr] = (stmt, N.TpyBoolLiteral(True))
     return FunctionTrackingState(
         current_function=func,
         body_root=func,
         compound_stack=[stmt],
+        decided_rewrites=rewrites,
         base_init_calls=[(N.TpyMethodCall(N.TpyName("Base"), "__init__", []),
                           "Base.__init__(self, ...)")],
         super_del_call=N.TpyMethodCall(N.TpyName("super"), "__del__", []),
@@ -164,7 +167,7 @@ def _namespace_with_function() -> Namespace:
 # The equality below turns a new field that could hold one into a test
 # failure, so it cannot start being cloned unnoticed.
 _FIXTURE_FIELDS = {
-    'current_function', 'body_root', 'compound_stack',
+    'current_function', 'body_root', 'compound_stack', 'decided_rewrites',
     'base_init_calls',
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
     'nested_def_block_defs', 'pending_yield_root_checks',
@@ -197,7 +200,7 @@ _LEAF_VALUE_NAMES = {
     'str', 'int', 'float', 'bool', 'bytes', 'None',
     'SourceLocation',   # a position, the one non-node record nodes carry
     'TpyType',          # deliberately not carried by identity; see the seeder
-    'TryTier', 'ValueRange', '_ClassConstantSentinel',
+    'TryTier', 'ValueRange', '_ClassConstantSentinel', 'LiteralValue',
     'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
     'StorageKey',       # a name and member names

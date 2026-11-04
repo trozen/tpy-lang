@@ -19,7 +19,6 @@ int32_t describe(::tpy::Union<A, B>&& u) {
         const auto& __u = std::get<B>(u);
         return __u.y;
     }
-    return 0;
 }
 
 // def pick(flag: bool) -> Own[A | B]:
@@ -49,7 +48,6 @@ int32_t borrow_union(::tpy::Union<const A*, const B*> u) {
         auto& __u = *std::get<const B*>(u);
         return __u.y;
     }
-    return 0;
 }
 
 // def forward_to_borrow(u: Own[A | B]) -> int32:

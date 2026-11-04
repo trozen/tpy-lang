@@ -15,14 +15,13 @@ int32_t call_count{};
 //         print("should not print")
 void test_int_membership() {
     int32_t x = 17;
-    if (((x == 1) || (x == 17) || (x == 42))) {
+    if (true) {
         std::cout << "found 17" << "\n" << ::tpy::check_signals;
     }
-    if ((!((x == 1) || (x == 2) || (x == 3)))) {
+    if (true) {
         std::cout << "17 not in small set" << "\n" << ::tpy::check_signals;
     }
-    if ((!((x == 17) || (x == 42)))) {
-        std::cout << "should not print" << "\n" << ::tpy::check_signals;
+    if (false) {
     }
 }
 
@@ -34,10 +33,10 @@ void test_int_membership() {
 //         print("hello not in foo/bar")
 void test_str_membership() {
     std::string_view s = "hello";
-    if (((s == "hello") || (s == "world"))) {
+    if (true) {
         std::cout << "found hello" << "\n" << ::tpy::check_signals;
     }
-    if ((!((s == "foo") || (s == "bar")))) {
+    if (true) {
         std::cout << "hello not in foo/bar" << "\n" << ::tpy::check_signals;
     }
 }
@@ -50,10 +49,10 @@ void test_str_membership() {
 //         print("single non-match")
 void test_single_element() {
     int32_t x = 5;
-    if (((x == 5))) {
+    if (true) {
         std::cout << "single match" << "\n" << ::tpy::check_signals;
     }
-    if ((!(x == 3))) {
+    if (true) {
         std::cout << "single non-match" << "\n" << ::tpy::check_signals;
     }
 }

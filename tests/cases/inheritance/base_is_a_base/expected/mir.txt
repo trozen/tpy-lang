@@ -13,7 +13,7 @@ main::local@128:0: uncovered (unsupported local type or form), summary: opaque (
 main::multi@136:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::builtin@143:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::isinst@160:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
-main::desc@170:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::desc@170:0: covered (storage: no_proof_required), summary: known
 main::matching@175:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::opt_len@186:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::optional@194:0: uncovered (missing alias binding), summary: opaque (missing alias binding)

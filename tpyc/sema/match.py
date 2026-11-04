@@ -12,7 +12,8 @@ from ..typesys import (
     make_readonly,
     TpyType,
     NominalType, AliasRef, RecursiveAliasInstanceType, ReadonlyType,
-    NoneType, OptionalType, UnionType, PendingStrType, TupleType,
+    NONE, NoneType, OptionalType, UnionType, PendingStrType, TupleType,
+    VoidType, none_identity_of,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
     is_any_str_type, is_numeric_type, is_protocol_type,
@@ -21,6 +22,8 @@ from ..typesys import (
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
+from .dead_arms import (Relation, class_relation, is_pure,
+                        queue_disjoint_check)
 from .protocols import dynamic_dispatch_type_conforms, handle_payload_may_be
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
@@ -216,8 +219,14 @@ class MatchAnalyzer:
         # subject like any other (the arms test the handle, as in CPython).
         poly_inner = self._poly_dispatch_source(effective_type)
         is_polymorphic = poly_inner is not None
+        # A subject typed `None`: its arms are decided as an Optional's
+        # None side is, and every value side is vacuously covered.
+        if isinstance(effective_type, VoidType):
+            # The value of a call returning None.
+            effective_type = NONE
+        is_none_subject = isinstance(effective_type, NoneType)
         if not (is_union or is_enum or is_primitive or is_record
-                or is_optional or is_polymorphic):
+                or is_optional or is_polymorphic or is_none_subject):
             raise self.ctx.error(
                 f"match subject must be a union, enum, primitive, record, "
                 f"or Optional type, got '{effective_type}'", stmt
@@ -258,7 +267,7 @@ class MatchAnalyzer:
         # every non-None value but never None, while wildcard/capture match
         # both. Exhaustiveness and unreachable-arm checks track each side.
         covers_none = False
-        covers_value = False
+        covers_value = is_none_subject
         seen_types: set[PatternKey] = set()
         seen_values: set[object] = set()
         # Polymorphic dispatch: resolved arm types, in source order, for the
@@ -283,10 +292,24 @@ class MatchAnalyzer:
         capture_bind_types: dict[str, list[TpyType | None]] = {}
         prev_arm_captures: set[str] = set()
         arm_carried: list[set[str]] = []
+        # The arms so far matched every value without a written catch-all
+        # (an unguarded class pattern on a record subject; `None` and a class
+        # pattern on an Optional): the arms after them cannot match (unlike
+        # after a written `case _`, which is an error).
+        covered_by_class = False
+        live_cases: list[TpyMatchCase] = []
+        guard_dead_cases: list[TpyMatchCase] = []
 
         for case in stmt.cases:
             # A read of a capture in its arm resolves to the case.
             pushed: list[tuple[str, Scope, object]] = []
+            if (not had_wildcard and not saw_irrefutable_arm
+                    and (covered_by_class or self._case_cannot_match(
+                        case.pattern, effective_type, stmt,
+                        is_polymorphic=is_polymorphic))):
+                # The arm's pattern cannot match the subject's type: neither
+                # analyzed nor kept (`dead_arms`).
+                continue
             if had_wildcard or saw_irrefutable_arm:
                 raise self.ctx.error(
                     "unreachable case after wildcard pattern", case.pattern
@@ -496,12 +519,32 @@ class MatchAnalyzer:
                         self.stmts.register_call_result_borrow(
                             self.ctx, node.name, stmt.subject)
             # Analyze guard expression (pattern bindings are in scope)
+            # A guard decided False: the arm never runs. The guard stays, its
+            # pure decided parts folded to literals, over an empty body; a
+            # case whose guard folds to False is dropped only when its
+            # pattern binds nothing, since a capture binds before the guard
+            # fails. One that folds to True is no guard, but not a written
+            # catch-all: the arms after it are dead, no error.
+            guard_dead = guard_dropped = False
+            written_unguarded = unguarded = case.guard is None
             if case.guard is not None:
                 fall_through.leave(
                     self.expr.analyze_branch(case.guard).on_false)
+                decided = self.expr.decide(case.guard)
+                folded = self.expr.fold(case.guard)
+                guard_dead = decided is False
+                guard_dropped = folded is False and not any(
+                    True for _ in iter_capture_bindings(case.pattern))
+                unguarded = folded is True
+                if not self.ctx.trial_depth:
+                    case.decided = decided
+                    if guard_dead:
+                        case.body.clear()
+            if not self.ctx.trial_depth:
+                case.unguarded = unguarded
 
-            for s in case.body:
-                self.stmts.analyze_stmt(s)
+            if not guard_dead:
+                self.stmts.analyze_block(case.body)
 
             # Stays AFTER the body: the scan reads the arm's cached expression
             # types to tell an invalidating receiver method from one whose
@@ -513,6 +556,11 @@ class MatchAnalyzer:
 
             for name, scope, prev in reversed(pushed):
                 unregister_binder(scope, name, prev)
+            if guard_dead:
+                self.stmts.init.mark_terminated()
+            if guard_dropped:
+                guard_dead_cases.append(case)
+            live_cases.append(case)
             prev_arm_captures = set(pattern_bindings)
             arm_carried.append(carried - prev_arm_captures)
             arm_states.append(self.stmts.init.save())
@@ -522,10 +570,13 @@ class MatchAnalyzer:
             pat = case.pattern
             if isinstance(pat, TpyAsPattern):
                 pat = pat.pattern
-            if case.guard is None and _matches_every_value(pat):
-                saw_irrefutable_arm = True
-            if is_optional:
-                if case.guard is None:
+            if unguarded and _matches_every_value(pat):
+                if written_unguarded:
+                    saw_irrefutable_arm = True
+                else:
+                    covered_by_class = True
+            if is_optional or is_none_subject:
+                if unguarded:
                     if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)):
                         covers_none = True
                         covers_value = True
@@ -553,34 +604,43 @@ class MatchAnalyzer:
                                       for _, sub in alt.keywords)):
                                 covers_value = True
                 if covers_none and covers_value:
+                    # None and every value are covered: the later arms are
+                    # dead, an error only after a written catch-all
+                    # (`saw_irrefutable_arm`).
+                    covered_by_class = True
+            elif isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and unguarded:
+                if written_unguarded:
                     had_wildcard = True
-            elif isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
-                had_wildcard = True
+                else:
+                    covered_by_class = True
             # Class pattern on concrete record with no conditions is always-matching.
             # Excludes polymorphic dispatch -- there `case Sub()` is a runtime
             # type test, not an always-true field match, so only a root-type arm
             # (handled below) is a catch-all.
             elif (not is_polymorphic
                   and is_record and isinstance(pat, TpyClassPattern)
-                  and case.guard is None
+                  and unguarded
                   and not any(self._is_constraining_sub_pattern(sub)
                               for _, sub in pat.keywords)):
-                had_wildcard = True
+                covered_by_class = True
             # Polymorphic dispatch: a bare class pattern naming the subject's
             # own (concrete) root type matches every value -- `dynamic_cast` to
             # the root always succeeds -- so it acts as a catch-all.
             elif (is_polymorphic and isinstance(pat, TpyClassPattern)
-                  and case.guard is None and pat.resolved_type == poly_inner
+                  and written_unguarded and pat.resolved_type == poly_inner
                   and not any(self._is_constraining_sub_pattern(sub)
                               for _, sub in pat.keywords)):
                 had_wildcard = True
 
+        if not self.ctx.trial_depth:
+            stmt.cases[:] = live_cases
+        had_wildcard = had_wildcard or covered_by_class
         # Exhaustiveness check for finite-valued types. A polymorphic subject
         # ranges over an open set of subclasses, so it is exhaustive only with
         # an unconditional catch-all (wildcard or root-type arm).
         if is_polymorphic:
             missing = [] if had_wildcard else [None]  # type: ignore[list-item]
-        elif is_optional:
+        elif is_optional or is_none_subject:
             # Each side must be covered independently: a class/literal arm
             # never matches None, and a None arm never matches a value.
             missing = []
@@ -692,8 +752,24 @@ class MatchAnalyzer:
         self.ctx.block_locals_of[stmt] = arm_new - predecl
         self.stmts._declare_carried_in_arms(
             [(case.body, carried, bindings) for case, carried, bindings
-             in zip(stmt.cases, arm_carried, arm_bindings)],
+             in zip(live_cases, arm_carried, arm_bindings)],
             predecl)
+        if not self.ctx.trial_depth:
+            stmt.cases[:] = [c for c in live_cases
+                             if not any(c is d for d in guard_dead_cases)]
+            stmt.subject_pure = is_pure(stmt.subject)
+            stmt.subject_effect_only = is_none_subject or not stmt.cases
+            stmt.decided = (True if is_none_subject and len(stmt.cases) == 1
+                            and stmt.cases[0].unguarded else None)
+            # A capture of a `None` subject has no binding to lower
+            # (BUGS.md#match-none-subject-capture-rejects).
+            if is_none_subject and any(
+                    any(True for _ in iter_capture_bindings(c.pattern))
+                    for c in stmt.cases):
+                raise self.ctx.error(
+                    "a capture pattern on a value that is always None is "
+                    "not supported yet: use `case None:` or `case _:` and "
+                    "read the subject directly", stmt)
 
     def _reject_nested_capture_retype(
         self, stmt: TpyMatch, hoistable: set[str],
@@ -1502,6 +1578,70 @@ class MatchAnalyzer:
                 f"a guard", pattern,
             )
 
+    def _case_cannot_match(self, pattern: TpyPattern, subject: TpyType,
+                           stmt: TpyMatch, *, is_polymorphic: bool) -> bool:
+        """Whether arm `pattern` can match no value of the subject's type:
+        a class pattern of a class no alternative is an instance of (a
+        descendant of one warns, as the static `isinstance` does), `case
+        None` where the subject is never None, a literal outside a Literal
+        subject's values. A class pattern a `__deref__` handle may hold keeps its error and hint."""
+        if isinstance(pattern, TpyAsPattern):
+            pattern = pattern.pattern
+        if is_polymorphic or isinstance(stmt.subject_type,
+                                        RecursiveAliasInstanceType):
+            return False
+        if isinstance(pattern, TpyOrPattern):
+            return all(self._case_cannot_match(
+                alt, subject, stmt, is_polymorphic=is_polymorphic)
+                for alt in pattern.patterns)
+        if isinstance(pattern, TpyLiteralPattern):
+            if pattern.value is None:
+                return none_identity_of(subject) is False
+            if isinstance(subject, NoneType):
+                return True
+            if isinstance(subject, LiteralType):
+                # A literal pattern compares by `==` (a conservative reading
+                # of True / False, which CPython compares by `is`).
+                return all(v.value != pattern.value for v in subject.values)
+            return False
+        if not isinstance(pattern, TpyClassPattern):
+            return False
+        if isinstance(subject, UnionType):
+            members = [m for m in subject.members
+                       if not isinstance(m, NoneType)]
+        elif isinstance(subject, OptionalType):
+            members = [subject.inner]
+        elif isinstance(subject, NominalType) and subject.is_user_record:
+            members = [subject]
+        elif isinstance(subject, NoneType):
+            members = []
+        else:
+            return False
+        _name, record, named = self._pattern_class(pattern)
+        if (record is None or named is None
+                or not (isinstance(named, NominalType)
+                        and named.is_user_record)):
+            return False
+        if any(self._is_instance_of(m, record) for m in members):
+            return False
+        if self._handle_hint(subject, named, self._subject_spelling(stmt)):
+            return False
+        if any(getattr(m, "name", None) == record.name for m in members):
+            # Another class of the same name (an alias import) keeps its
+            # "different type, same name" error.
+            return False
+        for m in members:
+            relation = class_relation(self.ctx.registry, m, named)
+            if relation is Relation.DESCENDANT:
+                self.ctx.warning(
+                    f"class pattern '{named}' on '{m}' never matches "
+                    f"(static dispatch; use @dynamic for runtime type "
+                    f"checks)", pattern)
+            elif relation is Relation.UNRELATED:
+                queue_disjoint_check(self.ctx, m, named, pattern,
+                                     pattern=True)
+        return True
+
     def _analyze_pattern_nonunion(
         self, pattern: TpyPattern, subject_type: TpyType,
         seen_values: set[object], bindings: dict[str, TpyType], stmt: TpyMatch,
@@ -1792,6 +1932,8 @@ class MatchAnalyzer:
                 break
             check_type = stripped
         val = pattern.value
+        if val is None and isinstance(check_type, NoneType):
+            return
         if val is None:
             raise self.ctx.error(
                 "None literal pattern requires an Optional subject", pattern

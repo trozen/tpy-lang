@@ -1207,8 +1207,10 @@ class RecordGenerator:
         # No record_name: the enclosing class template's `[T1, ...]` are in
         # scope here, so emit only the method's own type params /
         # proto-typed-param template args (or nothing).
-        self.gen_async._emit_template_header(out, method, indent=INDENT)
-        out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
+        names = self.functions.method_cpp_names(method, record.name)
+        for name in names:
+            self.gen_async._emit_template_header(out, method, indent=INDENT)
+            out.write(f"{INDENT}{struct_name} {name}({params}){const_suffix};\n")
 
     def _gen_record_methods(self, out: TextIO, record: TpyRecord,
                             want: MemberDef | None) -> None:

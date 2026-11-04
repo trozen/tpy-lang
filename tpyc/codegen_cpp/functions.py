@@ -913,14 +913,14 @@ class FunctionGenerator:
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
                     self._gen_function_forward_decl_single(
-                        out, func, cpp_name=self._emitted_name(stub),
+                        out, func, cpp_name=self.emitted_name(stub),
                         return_type_override=stub.return_type,
                     )
             else:
                 per_stub = self.ctx.thir_overload_functions.get(func)
                 for stub in overload_stubs:
                     self._gen_function_forward_decl_single(
-                        out, stub, cpp_name=self._emitted_name(stub),
+                        out, stub, cpp_name=self.emitted_name(stub),
                         lowered=per_stub.get(stub) if per_stub is not None else None)
             return True
         if func.is_stub and not func.is_overload_stub:
@@ -931,7 +931,7 @@ class FunctionGenerator:
             return False
 
         self._gen_function_forward_decl_single(
-            out, func, cpp_name=self._emitted_name(func))
+            out, func, cpp_name=self.emitted_name(func))
         return True
 
     def _gen_function_forward_decl_single(
@@ -1151,7 +1151,7 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            addr_escapes_params=ae, func=func))
-            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(func))}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self.emitted_name(func))}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
                                                   error_return=func.error_return)
@@ -1161,7 +1161,7 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            addr_escapes_params=ae, func=func))
-            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(func))}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self.emitted_name(func))}({params}) {{\n")
 
         self.gen_body(out, func, return_cpp=ret_type)
 
@@ -1169,7 +1169,7 @@ class FunctionGenerator:
 
     _overload_stubs_are_literal_only = staticmethod(overload_stubs_are_literal_only)
 
-    def _emitted_name(self, decl: TpyFunction) -> str:
+    def emitted_name(self, decl: TpyFunction) -> str:
         """The C++ name a free function -- or one variant of a free overload
         set, by the def it was registered from -- is defined and declared
         under."""
@@ -1188,7 +1188,7 @@ class FunctionGenerator:
         """
         self.ctx.emit_declaration_echo(out, stub.loc)
 
-        mangled = self._emitted_name(stub)
+        mangled = self.emitted_name(stub)
         rp = self._get_reassigned_params(impl)
         mp = self._get_func_mutated_params(impl)
 
@@ -1264,7 +1264,7 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
-            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(stub))}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self.emitted_name(stub))}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
             params = (self.gen_params_with_protocols(
@@ -1276,7 +1276,7 @@ class FunctionGenerator:
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
             inline_kw = "inline " if in_header else ""
-            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(self._emitted_name(stub))}({params}) {{\n")
+            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(self.emitted_name(stub))}({params}) {{\n")
 
         # Request synthetic locals for missing impl params at the top of the body.
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
@@ -1548,6 +1548,33 @@ class FunctionGenerator:
             return None
         return variant_cpp_name_of(ri.get_method_overloads(decl.name), decl)
 
+    def method_emitted_names(self, decl: TpyFunction,
+                             record_name: str) -> tuple[str, bool]:
+        """The C++ name the method registered from `decl` is defined under,
+        and whether a forwarder under the plain name follows it: a named
+        variant of a set keeps one for C++'s own callers (protocol concepts,
+        operator shims, `@dynamic` adapters, runtime helpers), which reach
+        the plain name and see exactly the overload set they always did. A
+        `Literal` variant has no plain-name member to forward from: it was
+        only ever reached by its own name."""
+        variant = self.method_variant_name(decl, record_name)
+        # escape_cpp_name handles names that collide with C++ keywords
+        # (e.g. `def double` -> `double_`); call sites apply the same escape.
+        if variant is None:
+            return escape_cpp_name(decl.name), False
+        return variant, (not any(isinstance(t, LiteralType)
+                                 for _, t in decl.params)
+                         and self._names_a_set(decl, record_name))
+
+    def method_cpp_names(self, decl: TpyFunction,
+                         record_name: str) -> list[str]:
+        """Every C++ name the method registered from `decl` is declared
+        under: its own (`method_emitted_names`), then the plain-name
+        forwarder when it has one."""
+        cpp_name, plain_forwarder = self.method_emitted_names(decl, record_name)
+        return [cpp_name] + ([escape_cpp_name(decl.name)] if plain_forwarder
+                             else [])
+
     def _names_a_set(self, decl: TpyFunction, record_name: str) -> bool:
         """Whether the members named `decl.name` are a set's named
         variants, which keep the plain name for their forwarders."""
@@ -1568,23 +1595,13 @@ class FunctionGenerator:
         `method` specializes (a `typing.overload` stub), when it is not
         `method` itself.
 
-        A named variant of a set (`method_variant_name`) is defined under
-        its name, followed by a forwarder under the plain name with the
-        variant's own signature: C++'s own callers (protocol concepts,
-        operator shims, `@dynamic` adapters, runtime helpers) reach the
-        plain name and see exactly the overload set they always did. A
-        `Literal` variant has no plain-name member to forward from: it was
-        only ever reached by its own name."""
+        A named variant of a set is defined under its name, followed by a
+        plain-name forwarder with the variant's own signature
+        (`method_emitted_names`)."""
         decl = variant_of if variant_of is not None else method
-        variant = self.method_variant_name(decl, record_name)
-        # escape_cpp_name handles names that collide with C++ keywords
-        # (e.g. `def double` -> `double_`); call sites apply the same escape.
+        cpp_name, plain_forwarder = self.method_emitted_names(decl, record_name)
         plain_name = escape_cpp_name(method.name)
-        cpp_name = variant if variant is not None else plain_name
-        forward_to = (variant if variant is not None
-                      and not any(isinstance(t, LiteralType)
-                                  for _, t in decl.params)
-                      and self._names_a_set(decl, record_name) else None)
+        forward_to = cpp_name if plain_forwarder else None
         cpp_return_type = method.return_type
 
         # Property setter: rename to set_<name> in C++

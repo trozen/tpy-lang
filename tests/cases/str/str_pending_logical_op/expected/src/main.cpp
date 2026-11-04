@@ -37,32 +37,28 @@ void test_literal_or() {
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
-// def test_or_right_promotes() -> None:
+// def test_or_right_promotes(a: str) -> None:  # `a` a parameter: a literal would decide `or`
 //     # When the right-hand operand later promotes to std::string (via augassign),
 //     # the result x must also promote -- it might point to b's buffer at runtime.
-//     a = "hello"
 //     b = "world"
 //     x = a or b  # tpyc: type(str)
 //     b += "!"
 //     print(x)
-void test_or_right_promotes() {
-    std::string_view a = "hello";
+void test_or_right_promotes(std::string_view a) {
     std::string b = "world";
-    std::string x = std::string(((!a.empty()) ? a : std::string_view(b)));
+    std::string x = ((!a.empty()) ? std::string(a) : b);
     b += "!";
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
-// def test_ternary_right_promotes() -> None:
-//     a = "hello"
+// def test_ternary_right_promotes(a: str) -> None:
 //     b = "world"
-//     x = a if True else b  # tpyc: type(str)
+//     x = a if a else b  # tpyc: type(str)
 //     b += "!"
 //     print(x)
-void test_ternary_right_promotes() {
-    std::string_view a = "hello";
+void test_ternary_right_promotes(std::string_view a) {
     std::string b = "world";
-    std::string x = std::string(((true) ? (a) : (b)));
+    std::string x = (((!a.empty())) ? (std::string(a)) : (b));
     b += "!";
     std::cout << x << "\n" << ::tpy::check_signals;
 }
@@ -87,20 +83,18 @@ void test_literal_or_chain() {
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
-// def test_or_chain_third_promotes() -> None:
+// def test_or_chain_third_promotes(a: str) -> None:
 //     # Promotion must propagate from the third operand too, not just left/right.
-//     a = "hello"
 //     b = "world"
 //     c = "!"
 //     x = a or b or c  # tpyc: type(str)
 //     c += "?"
 //     print(x)
-void test_or_chain_third_promotes() {
-    std::string_view a = "hello";
+void test_or_chain_third_promotes(std::string_view a) {
     std::string_view b = "world";
     std::string c = "!";
     auto&& __tmp_1 = ((!a.empty()) ? a : b);
-    std::string x = std::string(((!__tmp_1.empty()) ? __tmp_1 : std::string_view(c)));
+    std::string x = ((!__tmp_1.empty()) ? std::string(__tmp_1) : c);
     c += "?";
     std::cout << x << "\n" << ::tpy::check_signals;
 }
@@ -109,11 +103,11 @@ void test_or_chain_third_promotes() {
 // test_and("hello", "world")
 // test_ternary("hello", "world", True)
 // test_literal_or()
-// test_or_right_promotes()
-// test_ternary_right_promotes()
+// test_or_right_promotes("hello")
+// test_ternary_right_promotes("hello")
 // test_or_chain("hello", "world", "!")
 // test_literal_or_chain()
-// test_or_chain_third_promotes()
+// test_or_chain_third_promotes("hello")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -123,11 +117,11 @@ void __tpy_init() {
     ::tpyapp::main::test_and("hello", "world");
     ::tpyapp::main::test_ternary("hello", "world", true);
     ::tpyapp::main::test_literal_or();
-    ::tpyapp::main::test_or_right_promotes();
-    ::tpyapp::main::test_ternary_right_promotes();
+    ::tpyapp::main::test_or_right_promotes("hello");
+    ::tpyapp::main::test_ternary_right_promotes("hello");
     ::tpyapp::main::test_or_chain("hello", "world", "!");
     ::tpyapp::main::test_literal_or_chain();
-    ::tpyapp::main::test_or_chain_third_promotes();
+    ::tpyapp::main::test_or_chain_third_promotes("hello");
 }
 
 } // namespace tpyapp::main

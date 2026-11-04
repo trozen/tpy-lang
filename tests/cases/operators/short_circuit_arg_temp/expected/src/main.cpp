@@ -13,37 +13,34 @@ bool take(const Probe* p) {
 
 // def and_skips_rhs(c: Counter) -> bool:
 //     return False and take(Probe(c, 1))  # LHS false -> Probe must NOT be built
-bool and_skips_rhs(Counter& c) {
-    std::optional<Probe> __tmp_1;
-    return (false && (__tmp_1.emplace(Probe(c, 1)), ::tpyapp::main::take(&((*__tmp_1)))));
+bool and_skips_rhs(const Counter& c) {
+    return false;
 }
 
 // def and_runs_rhs(c: Counter) -> bool:
 //     return True and take(Probe(c, 2))  # LHS true -> Probe IS built
 bool and_runs_rhs(Counter& c) {
-    std::optional<Probe> __tmp_1;
-    return (true && (__tmp_1.emplace(Probe(c, 2)), ::tpyapp::main::take(&((*__tmp_1)))));
+    Probe __tmp_1 = Probe(c, 2);
+    return ::tpyapp::main::take(&(__tmp_1));
 }
 
 // def or_skips_rhs(c: Counter) -> bool:
 //     return True or take(Probe(c, 3))  # LHS true -> Probe must NOT be built
-bool or_skips_rhs(Counter& c) {
-    std::optional<Probe> __tmp_1;
-    return (true || (__tmp_1.emplace(Probe(c, 3)), ::tpyapp::main::take(&((*__tmp_1)))));
+bool or_skips_rhs(const Counter& c) {
+    return true;
 }
 
 // def or_runs_rhs(c: Counter) -> bool:
 //     return False or take(Probe(c, 4))  # LHS false -> Probe IS built
 bool or_runs_rhs(Counter& c) {
-    std::optional<Probe> __tmp_1;
-    return (false || (__tmp_1.emplace(Probe(c, 4)), ::tpyapp::main::take(&((*__tmp_1)))));
+    Probe __tmp_1 = Probe(c, 4);
+    return ::tpyapp::main::take(&(__tmp_1));
 }
 
 // def ternary_skips_else(c: Counter) -> bool:
 //     return True if True else take(Probe(c, 5))  # else arm must NOT be built
-bool ternary_skips_else(Counter& c) {
-    std::optional<Probe> __tmp_1;
-    return ((true) ? (true) : (__tmp_1.emplace(Probe(c, 5)), ::tpyapp::main::take(&((*__tmp_1)))));
+bool ternary_skips_else(const Counter& c) {
+    return true;
 }
 
 // def ternary_skips_then(c: Counter, cond: bool) -> bool:
@@ -59,7 +56,7 @@ bool ternary_skips_then(Counter& c, bool cond) {
 //     return True and (inner and take(Probe(c, 7)))
 bool nested_and(Counter& c, bool inner) {
     std::optional<Probe> __tmp_1;
-    return (true && (inner && (__tmp_1.emplace(Probe(c, 7)), ::tpyapp::main::take(&((*__tmp_1))))));
+    return (inner && (__tmp_1.emplace(Probe(c, 7)), ::tpyapp::main::take(&((*__tmp_1)))));
 }
 
 // def nested_mixed(c: Counter, first: bool, deep: bool) -> bool:
@@ -72,16 +69,16 @@ bool nested_and(Counter& c, bool inner) {
 //     return True and ((take(Probe(c, 8)) and first)
 //                      or (deep and take(Probe(c, 9))))
 bool nested_mixed(Counter& c, bool first, bool deep) {
-    std::optional<Probe> __tmp_1;
+    Probe __tmp_1 = Probe(c, 8);
     std::optional<Probe> __tmp_2;
-    return (true && (__tmp_1.emplace(Probe(c, 8)), ((::tpyapp::main::take(&((*__tmp_1))) && first) || (deep && (__tmp_2.emplace(Probe(c, 9)), ::tpyapp::main::take(&((*__tmp_2))))))));
+    return ((::tpyapp::main::take(&(__tmp_1)) && first) || (deep && (__tmp_2.emplace(Probe(c, 9)), ::tpyapp::main::take(&((*__tmp_2))))));
 }
 
 // def nested_ternary(c: Counter, inner: bool) -> bool:
 //     return (take(Probe(c, 10)) if inner else False) if True else False
 bool nested_ternary(Counter& c, bool inner) {
     std::optional<Probe> __tmp_1;
-    return ((true) ? (((inner) ? (__tmp_1.emplace(Probe(c, 10)), ::tpyapp::main::take(&((*__tmp_1)))) : (false))) : (false));
+    return ((inner) ? (__tmp_1.emplace(Probe(c, 10)), ::tpyapp::main::take(&((*__tmp_1)))) : (false));
 }
 
 // def unconditional(c: Counter) -> bool:

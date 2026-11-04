@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Iterable, NamedTuple
 
-from .holders import Holder, IterHolder
+from .holders import DelReach, Holder, IterHolder
 from .identity_map import IdentityMap, IdentitySet
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
@@ -29,7 +29,8 @@ from .parse import (
     TpyListComprehension, TpySetComprehension, TpyDictComprehension,
     TpyGeneratorExpression,
 )
-from .parse.nodes import (comp_clause_children, stmts_have_any_suspension,
+from .parse.nodes import (comp_clause_children, iter_capture_bindings,
+                          stmts_have_any_suspension,
                           written_names)
 from .prescan import local_names_of
 
@@ -95,6 +96,19 @@ class _Walk:
     # may run again and the enclosing frame may read them after it, so no
     # read of one in this body is a last use.
     captured: frozenset[str] = frozenset()
+
+
+def _holders(live: set[Holder]) -> frozenset[Holder]:
+    """`live` without its `DelReach` entries: a stamp's readers ask about
+    reads and loans, which a pending `del` is neither."""
+    return frozenset(h for h in live if not isinstance(h, DelReach))
+
+
+def _kill(name: str, live: set[Holder]) -> None:
+    """A binding of `name`: neither a read nor a `del` after it reaches
+    above it."""
+    live.discard(name)
+    live.discard(DelReach(name))
 
 
 def _live_only(w: _Walk, ex: _Exits) -> _Walk:
@@ -325,7 +339,8 @@ def _compute_alias_detachment(
 # -- Termination check --------------------------------------------------------
 
 def while_head_always_true(stmt: TpyWhile) -> bool:
-    """Whether the head can never be false -- `while True:`.
+    """Whether the head can never be false -- `while True:`, or a head sema
+    decided True on every evaluation (`sema.dead_arms`).
 
     Distinct from "the head is true on entry", which the value ranges can
     prove for `i = 0; while i < 3` and which the body may then falsify: this
@@ -333,8 +348,8 @@ def while_head_always_true(stmt: TpyWhile) -> bool:
     Nothing falls out of its head, which is why its `else` clause never runs
     and why the statement after it is reached only from a `break`.
     """
-    return (isinstance(stmt.condition, TpyBoolLiteral)
-            and stmt.condition.value is True)
+    return stmt.decided is True or (isinstance(stmt.condition, TpyBoolLiteral)
+                                    and stmt.condition.value is True)
 
 
 def stmts_terminate(stmts: list[TpyStmt], *,
@@ -359,13 +374,21 @@ def stmts_terminate(stmts: list[TpyStmt], *,
         return stmts_terminate(body, any_with_suppresses=any_with_suppresses)
 
     if isinstance(last, TpyIf):
+        # A test sema decided runs one arm only (`sema.dead_arms`).
+        if last.decided is not None:
+            return term(last.then_body if last.decided else last.else_body)
         return term(last.then_body) and term(last.else_body)
     if isinstance(last, TpyMatch):
+        # A match sema decided runs its one arm (`sema.dead_arms`).
+        if last.decided:
+            return term(last.cases[0].body)
         # A non-exhaustive match can fall through with no arm taken, so
         # all-arms-terminate alone is not termination.
+        # An arm whose guard sema decided False never runs.
         return (bool(last.cases)
                 and last.is_exhaustive
-                and all(term(case.body) for case in last.cases))
+                and all(case.decided is False or term(case.body)
+                        for case in last.cases))
     if isinstance(last, TpyTry):
         # A finally body that itself terminates (return/raise) runs last on
         # every exit path, so the whole statement terminates regardless of
@@ -390,8 +413,9 @@ def stmts_terminate(stmts: list[TpyStmt], *,
     if isinstance(last, TpyAssert):
         # `assert False` lowers to an unconditional raise (TPy asserts are
         # never compiled out), so it terminates like a raise statement.
-        return (isinstance(last.condition, TpyBoolLiteral)
-                and last.condition.value is False)
+        return last.decided is False or (
+            isinstance(last.condition, TpyBoolLiteral)
+            and last.condition.value is False)
     return False
 
 
@@ -507,7 +531,7 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
         # check asks of a rebind site, and the same question _analyze_with
         # answers for `target_read_after`. Stamped before the kill below.
         if w.mark:
-            stmt.live_names_after = frozenset(live)
+            stmt.live_names_after = _holders(live)
         # Reads from the init expression
         if stmt.init:
             hidden = _hide_new_aliases([stmt.name], stmt.init, live, w)
@@ -520,7 +544,7 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
 
     elif isinstance(stmt, TpyTupleUnpack):
         if w.mark:
-            stmt.live_names_after = frozenset(live)
+            stmt.live_names_after = _holders(live)
         hidden = _hide_new_aliases(stmt.targets, stmt.value, live, w)
         _process_reads(stmt.value, live, w)
         live |= hidden
@@ -530,7 +554,7 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
 
     elif isinstance(stmt, TpyAssign):
         if w.mark and isinstance(stmt.target, TpyName):
-            stmt.live_names_after = frozenset(live)
+            stmt.live_names_after = _holders(live)
         # Value and target sub-expression reads form one C++ full-expression;
         # process them together so the multi-occurrence suppression sees both.
         exprs: list[TpyExpr] = [stmt.value]
@@ -592,10 +616,11 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
     elif isinstance(stmt, TpyDelVar):
         for name in stmt.names:
             live.discard(name)
+            live.add(DelReach(name))
 
     elif isinstance(stmt, TpyNestedDef):
         # Its captures are pinned for the whole body (analyze_last_uses).
-        live.discard(stmt.func.name)
+        _kill(stmt.func.name, live)
 
     else:
         # Non-terminating, non-defining statements (yield, expr-stmt, assert,
@@ -617,7 +642,17 @@ def _jump(stmt: TpyBreak | TpyContinue, live: set[Holder],
 
 
 def _analyze_if(stmt: TpyIf, live: set[Holder], w: _Walk) -> None:
-    """Analyze if/else with branch merging."""
+    """Analyze if/else with branch merging. `live` on entry is liveness
+    after the statement, which `TpyIf.live_names_after` records (a jump out
+    of an arm, a return and an exception leave the statement too, and a
+    `del` no binding comes before names its target)."""
+    if w.mark:
+        after = (live | _jump_targets([stmt.then_body, stmt.else_body],
+                                      w.ex.loops)
+                 | w.ex.ret | w.ex.exc)
+        stmt.live_names_after = (
+            _holders(after)
+            | {h.name for h in after if isinstance(h, DelReach)})
     then_terminates = stmts_terminate(stmt.then_body, any_with_suppresses=True)
     else_terminates = stmts_terminate(stmt.else_body, any_with_suppresses=True)
 
@@ -662,8 +697,12 @@ def _analyze_match(stmt: TpyMatch, live: set[Holder], w: _Walk) -> None:
         if case.guard is not None:
             _process_reads(case.guard, arm_live, w)
         if w.mark:
-            case.live_names_after = frozenset(arm_live)
-        fall = arm_live | held
+            case.live_names_after = _holders(arm_live)
+        # The pattern binds its captures before the guard runs; a pattern
+        # that fails hands `fall` on unchanged.
+        for cap in iter_capture_bindings(case.pattern):
+            _kill(cap.name, arm_live)
+        fall = arm_live | fall | held
 
     live.clear()
     live.update(fall)
@@ -713,7 +752,7 @@ def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[Holder],
     _analyze_stmts_backward(
         stmt.body, body_live, _live_only(w, _in_loop(w.ex, after, header)))
     if isinstance(stmt, TpyForEach):
-        body_live.discard(stmt.var)
+        _kill(stmt.var, body_live)
     return header | body_live
 
 
@@ -760,13 +799,10 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[Holder],
         _analyze_stmts_backward(stmt.orelse, live, w)
     exit_live = frozenset(live)
     if w.mark and isinstance(stmt, TpyForEach):
-        # OR-ed in: a body the walk marks twice (a `finally` copy) keeps the
-        # live verdict of either walk. An unpacking head's variables are its
-        # targets.
+        # An unpacking head's variables are its targets.
         names = _loop_head_names(stmt)
-        stmt.var_live_after = (bool(stmt.var_live_after)
-                               or any(n in after or n in exit_live
-                                      for n in names))
+        stmt.var_live_after = any(n in after or n in exit_live
+                                  for n in names)
     header = _loop_header(stmt, exit_live, after, w)
     if not w.mark:
         live.clear()
@@ -785,7 +821,7 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[Holder],
     # the head either enters the body or takes the normal exit straight away.
     # Its iterator is made by the loop statement itself.
     if isinstance(stmt, TpyForEach):
-        live.discard(stmt.var)
+        _kill(stmt.var, live)
         live.discard(loop_iterator(stmt))
     live |= _loop_zero_trip_live(stmt, exit_live)
     _process_reads(_loop_head(stmt), live, w)
@@ -1033,7 +1069,7 @@ def _analyze_with(stmt: TpyWith, live: set[Holder], w: _Walk) -> None:
                 w.last_uses.discard(node)
     for item in reversed(stmt.items):
         if item.target is not None:
-            live.discard(item.target)
+            _kill(item.target, live)
         _process_reads(item.context_expr, live, w)
 
 
@@ -1151,7 +1187,7 @@ def _analyze_try(stmt: TpyTry, live: set[Holder], w: _Walk) -> None:
         h_live = normal.copy()
         _analyze_stmts_backward(h.body, h_live, w)
         if h.binding is not None:
-            h_live.discard(h.binding)
+            _kill(h.binding, h_live)
         handler_union |= h_live
 
     else_live = normal.copy()
@@ -1182,6 +1218,7 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
     this call), so which sites auto-move is unchanged -- only what the
     statements above see.
     """
+    live.discard(DelReach(name))
     if any(n.name == name
            for expr in read_exprs
            for n in _collect_reads_expr(expr)):
@@ -1243,8 +1280,10 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
 
     live.update(_read_names(reads))
 
-    # Walrus targets are definitions -- kill them from live set
-    live -= walrus_defs
+    # Walrus targets are definitions. A pending `del` survives one: liveness
+    # runs before analysis, so it cannot tell whether a walrus surely runs.
+    for name in walrus_defs:
+        live.discard(name)
 
 
 def _read_names(reads: list[TpyName]) -> set[str]:

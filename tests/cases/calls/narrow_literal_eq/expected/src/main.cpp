@@ -141,8 +141,7 @@ void dispatch_or(std::string_view mode) {
 //     else:
 //         print("ok")
 void dispatch_out_of_range(std::string_view mode) {
-    if ((mode == "rb")) {
-        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         std::cout << "ok" << "\n" << ::tpy::check_signals;
     }
@@ -163,7 +162,6 @@ void nested_fold(std::string_view mode) {
             std::cout << "always" << "\n" << ::tpy::check_signals;
         }
         if (false) {
-            std::cout << "never" << "\n" << ::tpy::check_signals;
         }
     } else {
         std::cout << "text" << "\n" << ::tpy::check_signals;

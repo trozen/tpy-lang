@@ -23,15 +23,12 @@ namespace tpyapp::main {
 void test_not_with_bool_literals() {
     bool a = true;
     bool b = false;
-    if ((!(a))) {
-        std::cout << "not True: yes" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         std::cout << "not True: no" << "\n" << ::tpy::check_signals;
     }
-    if ((!(b))) {
+    if (true) {
         std::cout << "not False: yes" << "\n" << ::tpy::check_signals;
-    } else {
-        std::cout << "not False: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -89,19 +86,17 @@ void test_not_with_comparisons() {
 void test_not_in_conditions() {
     bool a = true;
     bool b = false;
-    if (((!(a)) && b)) {
-        std::cout << "not True and False: yes" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         std::cout << "not True and False: no" << "\n" << ::tpy::check_signals;
     }
-    if (((!(b)) || a)) {
+    if (true) {
         std::cout << "not False or True: yes" << "\n" << ::tpy::check_signals;
     }
-    if ((!((a && b)))) {
+    if (true) {
         std::cout << "not (True and False): yes" << "\n" << ::tpy::check_signals;
     }
-    if ((!((a || b)))) {
-        std::cout << "not (True or False): yes" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         std::cout << "not (True or False): no" << "\n" << ::tpy::check_signals;
     }
@@ -120,11 +115,10 @@ void test_not_in_conditions() {
 //         print("not not False: no")
 void test_double_negation() {
     bool flag = true;
-    if ((!((!(flag))))) {
+    if (true) {
         std::cout << "not not True: yes" << "\n" << ::tpy::check_signals;
     }
-    if ((!((!(false))))) {
-        std::cout << "not not False: yes" << "\n" << ::tpy::check_signals;
+    if (false) {
     } else {
         std::cout << "not not False: no" << "\n" << ::tpy::check_signals;
     }

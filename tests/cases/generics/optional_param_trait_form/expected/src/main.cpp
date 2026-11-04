@@ -329,7 +329,7 @@ void main() {
     });
     std::cout << "comprehension" << " " << ::tpy::print_bool(::tpy::__getitem__(flags, 0)) << " " << ::tpy::print_bool(::tpy::__getitem__(flags_twin, 0)) << "\n" << ::tpy::check_signals;
     bool ready = false;
-    std::cout << "cond_operand" << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1))))) << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1))))) << "\n" << ::tpy::check_signals;
+    std::cout << "cond_operand" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
     std::vector<bool> gen_flags = ({
         std::vector<bool> __result;
         auto __obj_2 = ::tpyapp::main::gen_body(n);

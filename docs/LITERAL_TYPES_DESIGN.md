@@ -149,38 +149,27 @@ def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
 ## Phase 3a: Dead Branch Elimination (Done)
 
 When a variable has been narrowed to a single-value `LiteralType`,
-equality checks on it fold to `true`/`false` in the generated C++.
+equality checks on it are decided statically.
 
 ```python
 def f(mode: Literal["r", "rb"]) -> None:
     if mode == "rb":
-        if mode == "rb":  # -> if (true)
+        if mode == "rb":  # always true: `if (true) { ... }`
             ...
-        if mode == "r":   # -> if (false)
+        if mode == "r":   # always false: `if (false) {}`, the arm empty
             ...
 ```
 
 ### What was implemented
 
-**Sema** (`statements.py`): `_filter_union_codegen_facts` extended to pass
-`LiteralType` narrowing facts through to codegen (alongside `UnionType`).
-
-**Codegen context** (`context.py`): Added `literal_facts: dict[str, TpyType]`
-tracking active literal narrowing. Save/restore at branch boundaries.
-
-**Codegen statements** (`statements.py`): `_emit_isinstance_extractions`
-skips `LiteralType` (no `std::get` needed) but pushes them into
-`literal_facts`. Literal facts are saved before entering a branch body
-and restored after.
-
-**Codegen expressions** (`expressions.py`): `_try_fold_literal_comparison`
-checks if one side of `==`/`!=` is a variable with a single-value
-`LiteralType` and the other is a matching literal. Emits `true`/`false`.
-
-**Future**: Emit only the then-body when condition folds to `true`, skip
-the branch entirely when `false` (same pattern as
-`_gen_if_overload_specialized` for union isinstance). Low priority since
-the C++ compiler already optimizes away constant branches.
+The test is decided in sema (`sema/dead_arms.py`, `decided_truth`) from the
+name's narrowed `LiteralType`; the arm it rules out is neither analyzed nor
+emitted. The statement keeps its test as written: a decided part of it that
+only reads becomes its bool literal (`folded_truth`), so the C++ is
+`if (true) { ... }` / `if (false) {}`, and a test that runs code stays and
+runs for its effects, the live arm after it as a block
+(`(void)((ping() && false));`) (`LANGUAGE_FEATURES.md` "Statically decided
+branches"). Phase 3c below lists the verdicts.
 
 
 ## Phase 3b: Literal Overload Flattening (Done)
@@ -270,50 +259,41 @@ operators, and `not` wrapping.
 
 ### What was implemented
 
-**Shared helpers** (`codegen_cpp/emit_prims.py`): module-level functions
-used by statement-level folding, expression-level folding and THIR lowering
-alike -- one table of verdicts, so the paths cannot drift:
+The verdicts live in sema (`sema/dead_arms.py`), one table for every reader:
 
 - `literal_value_from_expr(expr)` (`sema/literal_utils.py`): extracts
   `LiteralValue` from AST nodes.
-- `check_literal_chain(expr, literal_facts)`: flattens a `&&`/`||` chain,
-  extracts `(var_name, LiteralValue)` from each `var == lit` operand.
-  For `||`: returns True if collected values cover the full `LiteralType` set.
-  For `&&`: returns False if the same variable must equal two different values.
-- `check_literal_in(expr, literal_facts)`: checks `in`/`not in` with
-  tuple/set literal RHS against `LiteralType` value sets.
+- `literal_test`: `==` / `!=` / `in` / `not in` (tuple, list or set literal
+  right side) over the values a name may hold, with Python equality
+  (`Literal[1] == True`, `Literal[0] == False`).
+- `literal_chain`: flattens a `&&` / `||` chain of builtin `==` tests (no user
+  `__eq__`). For `||`: True if the values compared cover every value of the
+  name's `LiteralType`. For `&&`: False if one name must equal two different
+  values.
+- `decided_truth`: the one decider, combining those with `not` / `and` / `or`.
 
-**Statement-level** (`codegen_cpp/statements.py`): `_resolve_isinstance_statically`
-extended with three new resolution paths:
-
-- **`&&`/`||` chains**: Recursively resolves both operands. Short-circuits
-  when possible (`||` any True -> True, `&&` any False -> False). When both
-  operands are unresolved, delegates to `check_literal_chain`.
-- **`in`/`not in`**: Delegates to `check_literal_in`.
-- **`not` fix**: Pre-existing bug fixed -- the negation handler compared
-  `op == "not"` but the parser emits `"!"`. Now correctly recurses through
-  negation.
-
-**Expression-level** (`codegen_cpp/expressions.py`): Thin wrappers that
-convert `bool | None` results from the shared helpers to `"true"/"false"/None`
-strings for C++ output:
-- `_try_fold_literal_chain`: `&&`/`||` chains with short-circuit + delegation.
-- `_try_fold_literal_in`: `in`/`not in` delegation.
-- `_try_fold_literal_operand`: recursive resolver for `==`/`!=`, `&&`/`||`,
-  `in`/`not in`, and `!` (negation).
+A test it decides makes its dead arm unanalyzed and empty at every position
+(`LANGUAGE_FEATURES.md` "Statically decided branches"). Every maximal decided
+part of a test whose evaluated part only reads is replaced by its bool
+literal (`folded_truth`), and so is a pure decided compare at a value
+position; a ternary or an `and` / `or` value is decided only when its test
+folds that way, and is then its live part. The
+per-stub copy of an `@overload` implementation is still lowered by THIR from
+the one analyzed body, so its statement-level tests are folded there over the
+stub's facts with the same `dead_arms` verdicts, and a value-position compare
+in such a body renders as a run-time compare until each stub is analyzed as a
+variant of its own (TODO.md "`@overload` becomes `@dispatch` variants").
 
 ### Limitations
 
-- **Whole-expression only**: no partial folding. `(mode == "r" or mode == "w")
-  and flag` does not fold unless `flag` also resolves to a constant.
+- **Partial folding** applies: a decided operand of `and` / `or` that only
+  reads gives way to the live one, so `(mode == "r" or mode == "w") and flag`
+  over `mode: Literal["r", "w"]` is `if (flag)` (`return flag` at a value
+  position).
 - **Same variable**: `mode == "r" or other == "w"` cannot do coverage analysis
   across different variables (individual operand folding still applies).
 - **`==` only for coverage**: `!=` chains do not participate in set-coverage
   analysis (individual `!=` already folds for out-of-set values).
-- **No tuple `in`**: `mode in ("r", "w")` with tuple literal is not supported
-  by sema (tuple `in` not implemented). Use set literals: `mode in {"r", "w"}`.
-- **Ternary conditions**: `TpyIfExpr` does not go through
-  `_resolve_isinstance_statically`, so ternary condition folding is not covered.
 
 ### Example
 

@@ -16,10 +16,9 @@ class Shape:
 G = Shape(7)
 
 
-def main() -> None:
+def main(c: bool) -> None:  # a parameter: sema does not decide `c`
     b = Shape(2)
-    c = True
     print((G if c else b).area())  # tpyc: error(/method.recv.other/)
 
 
-main()
+main(True)

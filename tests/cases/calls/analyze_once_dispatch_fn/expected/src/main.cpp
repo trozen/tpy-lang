@@ -143,7 +143,7 @@ void carriers() {
     std::cout << "select-cond:" << " " << ::tpyapp::main::f__str((((std::move(*b).take().v > 0)) ? (std::string_view("a")) : (std::string_view("b")))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_5;
     b = &*(__slot_5 = B(7));
-    std::cout << "select-arm:" << " " << ::tpyapp::main::f__str(((flag) ? (std::format("{}", std::move(*b).take().v)) : ("none"))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << ::tpyapp::main::f__str(std::format("{}", std::move(*b).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_6;
     b = &*(__slot_6 = B(8));
     std::cout << "fstring:" << " " << ::tpyapp::main::f__str(std::format("{}", std::move(*b).take().v)) << "\n" << ::tpy::check_signals;

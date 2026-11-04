@@ -281,16 +281,14 @@ std::string union_nested_match(::tpy::Union<const Cat*, const Dog*> a, Color c) 
 //         case _:
 //             return 0
 ::tpy::BigInt union_while_true(::tpy::Union<const Cat*, const Dog*> a) {
-    int32_t i;
-    std::string n;
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         {
-            n = __case_1.name;
+            auto& n = __case_1.name;
             if ((n == "Rex")) {
-                i = 0;
+                int32_t i = 0;
                 while (true) {
                     i = ::tpy::add_check<int32_t>(i, 1);
                     if ((i == 3)) {
@@ -322,13 +320,12 @@ std::string union_nested_match(::tpy::Union<const Cat*, const Dog*> a, Color c) 
 //         case _:
 //             return "other"
 std::string union_assert_false(::tpy::Union<const Cat*, const Dog*> a) {
-    std::string n;
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         {
-            n = __case_1.name;
+            auto& n = __case_1.name;
             if ((n == "Rex")) {
                 ::tpy::raise_assertion_error();
             }

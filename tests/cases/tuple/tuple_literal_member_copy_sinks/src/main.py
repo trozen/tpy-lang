@@ -115,11 +115,10 @@ def takel(x: Own[list[int32]]) -> int32:
     return len(x)
 
 
-def container_ternary() -> None:
-    # Own argument: a mixed ternary of a list name and a fresh list lowers,
-    # and the name arm is copied into the owned argument.
+def container_ternary(k: bool) -> None:
+    # Own argument: a ternary decided at run time between a list name and a
+    # fresh list lowers, and the name arm is copied into the owned argument.
     xs = [1, 2]
-    k = True
     print("container_ternary", takel(xs if k else [3]), len(xs))  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
@@ -200,7 +199,7 @@ def main() -> None:
     wr = walrus_return(wc)
     wr.v = 55
     print("walrus_return", wc.v)
-    container_ternary()
+    container_ternary(True)
     dict_setitem()
     list_setitem()
     match_arm(1)

@@ -69,7 +69,7 @@ def extend_motto() -> None:
 
 # A nested-def rebind is its own scope and is counted the same way, but a
 # `global X` write inside a nested def does not lower yet
-# (stmt.global:global.unseeded), so no section can hold it.
+# (nesteddef.global_decl), so no section can hold it.
 
 
 # free function: a VALUE element copied out of a rebound global is not a

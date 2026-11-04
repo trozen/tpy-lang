@@ -26,7 +26,6 @@ std::string get_name(::tpy::Union<const Cat*, const Dog*> pet) {
         auto& __pet = *std::get<const Cat*>(pet);
         return __pet.name;
     }
-    return "";
 }
 
 // def main() -> None:

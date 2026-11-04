@@ -43,7 +43,7 @@ void main() {
     std::cout << "field:" << " " << o.m__int32(std::move(*b).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     b = &*(__slot_3 = B(5));
-    std::cout << "select-arm:" << " " << o.m__str(((flag) ? (std::format("{}", std::move(*b).take().v)) : ("none"))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << o.m__str(std::format("{}", std::move(*b).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     b = &*(__slot_4 = B(7));
     std::cout << "dict:" << " " << o.m__dict_str_int32(::tpy::ordered_map<std::string, int32_t>({{"k", std::move(*b).take().v}})) << "\n" << ::tpy::check_signals;

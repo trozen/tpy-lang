@@ -12,28 +12,26 @@ Box take(Box&& b) {
     return b;
 }
 
-// def main() -> None:
+// def main(flag: bool) -> None:
 //     a = Box(10)
 //     other = Box(20)
-//     flag = True
 //     r = take(a if flag else other)   # tpyc: warning(/copies Box into owned storage/)
 //     print(r.val)                     # 11 (owned value, bumped)
-void main() {
+void main(bool flag) {
     Box a = Box(::tpy::BigInt(10));
     Box other = Box(::tpy::BigInt(20));
-    bool flag = true;
     Box __tmp_1 = ((flag) ? (a) : (other));
     Box r = ::tpyapp::main::take(std::move(__tmp_1));
     std::cout << r.val << "\n" << ::tpy::check_signals;
 }
 
-// main()
+// main(True)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::main::main();
+    ::tpyapp::main::main(true);
 }
 
 } // namespace tpyapp::main

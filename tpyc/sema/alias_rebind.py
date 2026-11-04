@@ -1383,6 +1383,8 @@ def global_write_facts(
              owner: str) -> None:
         for s in stmts:
             if isinstance(s, TpyGlobal):
+                # Before any body is analyzed: no dead arm is emptied yet,
+                # so this scan is the whole-body declaration set.
                 declared.update(s.names)
             elif isinstance(s, TpyNestedDef):
                 scope(s.func.body, owner)

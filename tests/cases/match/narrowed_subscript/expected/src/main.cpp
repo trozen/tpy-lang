@@ -461,8 +461,8 @@ void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& cou
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "and" << " " << ::tpy::print_bool((false && (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n" << ::tpy::check_signals;
-        std::cout << "or" << " " << ::tpy::print_bool((true || (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n" << ::tpy::check_signals;
+        std::cout << "and" << " " << ::tpy::print_bool(false) << "\n" << ::tpy::check_signals;
+        std::cout << "or" << " " << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
         std::cout << "ternary" << " " << (((counter.calls == 0)) ? (::tpy::__getitem__(__case_0, counter.index())) : (::tpy::__getitem__(__case_0, 99))) << "\n" << ::tpy::check_signals;
         std::cout << "index-calls" << " " << counter.calls << "\n" << ::tpy::check_signals;
         break;

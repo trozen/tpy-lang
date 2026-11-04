@@ -1,0 +1,1 @@
+main.py:6: error: a capture pattern on a value that is always None is not supported yet: use `case None:` or `case _:` and read the subject directly

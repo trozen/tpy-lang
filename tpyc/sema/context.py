@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
 
 from ..typesys import (
-    is_value_type_bound,
+    is_value_type_bound, LiteralValue,
     global_tuple_binding_type, disambiguated_pair,
     TpyType, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewTypeFamily, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, TupleType,
@@ -2213,6 +2213,19 @@ class FunctionTrackingState:
     loop_bound_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
     narrowed_types: dict[str, TpyType] = field(default_factory=dict)
+    # While a `while` head is analyzed: the names its body rebinds, whose
+    # flow facts decide no test of the head (`dead_arms.decided_truth`).
+    head_kills: frozenset[str] = frozenset()
+    # The locals bound exactly once, to a literal: the value each holds
+    # wherever it is bound (`dead_arms.name_values`).
+    constant_locals: dict[str, LiteralValue] = field(default_factory=dict)
+    # The decided ternaries, `and` / `or` and value-position tests of the
+    # statements under analysis, each with the expression or statement
+    # holding it and the node taking its place: its live part, or its bool
+    # literal (`ExpressionAnalyzer.queue_live_part`, read back by
+    # `live_part`). Keyed by the decided node: every argument receive asks
+    # it; insertion order is what a statement's exit rolls back by.
+    decided_rewrites: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Reassignment inference tracking ---
     unresolved_none_vars: set[str] = field(default_factory=set)
@@ -3251,6 +3264,8 @@ class SemanticContext:
     # scope exit, so they wait here for the analyzer to harvest them into
     # `function_hoisted_vars` with the enclosing function's results.
     nested_def_hoisted_vars: IdentityMap = field(default_factory=IdentityMap)
+    # Likewise a nested def's `global` names, for `function_global_decls`.
+    nested_def_global_decls: IdentityMap = field(default_factory=IdentityMap)
     # Per loop statement: the names a pass of it binds
     # (`prescan.LoopBindings`), walked once per outermost loop and shared
     # with the frame layout.

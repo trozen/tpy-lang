@@ -19,11 +19,7 @@ std::string classify(int32_t x) {
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
     case 1: {
-        if (false) {
-            return "never";
-        } else {
-            return "one (fallthrough)";
-        }
+        return "one (fallthrough)";
     }
     case 2: {
         return "two";

@@ -57,10 +57,11 @@ from .elem_paths import (
     ElemPath, bare_tuple, declared_lent_paths, is_reference_leaf, leaf_paths,
     owned_slot_paths, reference_paths,
 )
-from .binding_ownership import (CompMove, ReadKind, bound_name,
+from .binding_ownership import (CompMove, bound_name,
                                 owned_head_targets,
                                 read_ownership, record_body_ownership,
-                                resolve_read, site_ownership)
+                                site_ownership)
+from .read_binding import ReadKind, resolve_read
 from .source_records import (Leaf as TupleLeaf, LeafPermission,
                              SinkRead, SourceRecord, read_record, verdict,
                              publish_source_record)
@@ -853,6 +854,11 @@ class TypeCompatibility:
         could mutate via the resulting pointer.
         """
         self.ctx.assert_slot_effect("an address-taken mark")
+        name = peel_coerce(expr)
+        if isinstance(name, TpyName):
+            # The pointer may write the name: a range proven for its value
+            # no longer holds (BUGS.md#global-range-facts-survive-calls).
+            self.ctx.func.value_ranges.pop(name.name, None)
         mark_roots(self.ctx, storage_roots(expr, Use.PLACE,
                                            self.ctx.get_expr_type,
                                            MayLend(self.ctx)),

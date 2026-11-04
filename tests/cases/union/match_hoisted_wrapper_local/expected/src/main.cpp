@@ -4,8 +4,7 @@
 namespace tpyapp::main {
 
 
-// def grow(src: Tree[int32]) -> None:
-//     flag = True
+// def grow(src: Tree[int32], flag: bool) -> None:  # `flag` a parameter: sema does not decide it
 //     if flag:
 //         v = src
 //     else:
@@ -15,8 +14,7 @@ namespace tpyapp::main {
 //             b.append(9)    # mutate through the arm -- must reach src
 //         case _:
 //             pass
-void grow(Tree<int32_t>& src) {
-    bool flag = true;
+void grow(Tree<int32_t>& src, bool flag) {
     Tree<int32_t>* v;
     if (flag) {
         v = &(src);
@@ -38,7 +36,7 @@ void grow(Tree<int32_t>& src) {
 
 // def main() -> None:
 //     tree: Tree[int32] = [1, 2, 3]
-//     grow(tree)
+//     grow(tree, True)
 //     match tree:            # aliasing: tree grew to [1, 2, 3, 9]
 //         case list() as t:
 //             print(len(t))
@@ -46,7 +44,7 @@ void grow(Tree<int32_t>& src) {
 //             print(0)
 void main() {
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2, 3};
-    ::tpyapp::main::grow(tree);
+    ::tpyapp::main::grow(tree, true);
     auto& __match_subject_1 = tree;
     switch (__match_subject_1.value.index()) {
     case 1: {

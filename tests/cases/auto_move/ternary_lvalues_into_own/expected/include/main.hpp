@@ -13,8 +13,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def take(b: Own[Box]) -> Own[Box]:
 Box take(Box&& b);
-// def main() -> None:
-void main();
+// def main(flag: bool) -> None:
+void main(bool flag);
 
 // class Box:
 struct Box {

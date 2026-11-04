@@ -38,6 +38,7 @@ from ...typesys import (
     varargs_is_readonly, is_readonly_ptr, is_dyn_protocol,
     body_function_info, body_method_info,
     pointer_repr_optional, is_protocol_type, ConcreteFrameType,
+    coro_struct_owner,
 )
 from ...value_category import (
     const_indirect_local, const_storage_source, unpack_source_const_slots,
@@ -265,11 +266,12 @@ def _close_frame_const(state: FrameBuildState,
                 work.append(target)
 
 
-def same_module_dep_unit(owner: 'NominalType | None', method: str,
+def same_module_dep_unit(owner: 'NominalType | None', frame_name: str,
                          current_module: 'str | None',
                          ) -> 'tuple[str, str | None] | None':
-    """The embedding-edge entry for embedding `owner.method`'s frame, or
-    None when it is not an ordering edge.
+    """The embedding-edge entry for embedding the frame of `owner`'s method
+    named `frame_name` (its `FunctionInfo.frame_cpp_name`), or None when it
+    is not an ordering edge.
 
     Only a callee defined in the module being emitted is one. A cross-module
     struct is already complete via its included header, and the unit index is
@@ -289,7 +291,7 @@ def same_module_dep_unit(owner: 'NominalType | None', method: str,
         return None
     if qname.rsplit(".", 1)[0] != current_module:
         return None
-    return (method, owner.name)
+    return (frame_name, owner.name)
 
 
 def returns_void(func: TpyFunction) -> bool:
@@ -381,6 +383,10 @@ class _DelegatedGenerator:
     # not a spelling input.
     defining_module: str
     call: TpyExpr
+    # The callee frames the field may hold (`FunctionInfo.frame_cpp_name`),
+    # the keys of its emit-ordering edges: every frame of the clone family
+    # for a method, since C++ deduces the field from the receiver it sees.
+    frame_names: tuple[str, ...]
 
 
 def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
@@ -501,6 +507,14 @@ def frame_function_info(analyzer, func: TpyFunction,
     return body_function_info(analyzer.registry, func)
 
 
+def frame_name_of(analyzer, func: TpyFunction, record_name: 'str | None') -> str:
+    """The name the frame struct of generator / coroutine `func` is spelled
+    from (`FunctionInfo.frame_cpp_name`), the same one a call site that
+    embeds the frame reads off the callee it resolved."""
+    fi = frame_function_info(analyzer, func, record_name)
+    return fi.frame_cpp_name if fi is not None else func.name
+
+
 def frame_capture_const_names(
         analyzer, is_static_protocol_param: 'Callable[[TpyType], bool]',
         func: TpyFunction, record_name: 'str | None') -> 'tuple[set[str], set[str], set[str]]':
@@ -588,6 +602,12 @@ def param_borrows(ptype: 'TpyType',
     return classify_param_kind(ptype, is_static_protocol_param) in (
         FrameCaptureKind.REF, FrameCaptureKind.POINTER,
         FrameCaptureKind.OWNED_TUPLE)
+
+
+def awaited_frame_name(await_node: TpyAwait) -> str:
+    """The frame name (`FunctionInfo.frame_cpp_name`) of the coroutine an
+    inline await embeds: the callee sema resolved the operand call to."""
+    return await_node.value.resolved_function_info.frame_cpp_name
 
 
 def bound_frame_targets(
@@ -1144,7 +1164,7 @@ class FrameBuilder:
         place to reference the hoisted names). Returns [preceding vardecls...,
         stmt]; [stmt] when nothing to hoist."""
         await_node = _top_level_await_in(stmt)
-        if await_node is None or await_node.awaited_async_func_name is None:
+        if await_node is None or not await_node.awaited_inline:
             return [stmt]
         call = await_node.value
         if not isinstance(call, (TpyCall, TpyMethodCall)):
@@ -2089,10 +2109,11 @@ class FrameBuilder:
                                 "async-for missing resolved aiter type "
                                 "(internal: sema didn't populate "
                                 "stmt.async_aiter_type)", loc=s.loc)
+                        anext_frame = s.async_anext_fi.frame_cpp_name
                         struct_names_out[cur_uid] = self._sub_struct_qualname(
-                            s.async_aiter_type, "__anext__", loc=s.loc)
+                            s.async_aiter_type, anext_frame, loc=s.loc)
                         _anext_dep = same_module_dep_unit(
-                            s.async_aiter_type, "__anext__",
+                            s.async_aiter_type, anext_frame,
                             self.analyzer.ctx.module_name)
                         if _anext_dep is not None:
                             dep_units_out.append(_anext_dep)
@@ -2822,16 +2843,18 @@ class FrameBuilder:
                             # type for own methods (owner == ctx_inner).
                             aenter_owner = item.aenter_owner_type or ctx_inner
                             aexit_owner = item.aexit_owner_type or ctx_inner
+                            aenter_frame = item.aenter_fi.frame_cpp_name
+                            aexit_frame = item.aexit_fi.frame_cpp_name
                             struct_names_out[cur_n] = (
                                 self._sub_struct_qualname(
-                                    aenter_owner, "__aenter__", loc=s.loc),
+                                    aenter_owner, aenter_frame, loc=s.loc),
                                 self._sub_struct_qualname(
-                                    aexit_owner, "__aexit__", loc=s.loc),
+                                    aexit_owner, aexit_frame, loc=s.loc),
                             )
-                            for _dunder, _owner in (("__aenter__", aenter_owner),
-                                                    ("__aexit__", aexit_owner)):
+                            for _frame, _owner in ((aenter_frame, aenter_owner),
+                                                   (aexit_frame, aexit_owner)):
                                 _dep = same_module_dep_unit(
-                                    _owner, _dunder,
+                                    _owner, _frame,
                                     self.analyzer.ctx.module_name)
                                 if _dep is not None:
                                     dep_units_out.append(_dep)
@@ -2983,8 +3006,9 @@ class FrameBuilder:
             )
         dep_unit: 'tuple[str, str | None] | None' = None
         module_qual: str | None = None
-        if await_node.awaited_async_func_name is not None:
+        if await_node.awaited_inline:
             mode = AwaitMode.INLINE
+            frame_name = awaited_frame_name(await_node)
             inferred_type_args = getattr(
                 await_node.value, "inferred_type_args", None)
             # Cross-module free-function await spelled `mod.func(...)`:
@@ -3013,7 +3037,7 @@ class FrameBuilder:
             # build. Struct emit re-spells the name with them.
             sub_cpp = self._sub_struct_qualname(
                 await_node.awaited_method_owner_type,
-                await_node.awaited_async_func_name,
+                frame_name,
                 inferred_type_args,
                 module_qual=module_qual,
                 loc=await_node.loc)
@@ -3026,10 +3050,9 @@ class FrameBuilder:
             _owner = await_node.awaited_method_owner_type
             if _owner is not None:
                 dep_unit = same_module_dep_unit(
-                    _owner, await_node.awaited_async_func_name,
-                    self.analyzer.ctx.module_name)
+                    _owner, frame_name, self.analyzer.ctx.module_name)
             elif module_qual is None:
-                dep_unit = (await_node.awaited_async_func_name, None)
+                dep_unit = (frame_name, None)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.get_expr_type(await_node.value)
             if operand_type is None:
@@ -3392,25 +3415,28 @@ class FrameBuilder:
     def _iter_source_dep_units(
             self, iterable_type: 'TpyType | None',
     ) -> tuple[tuple[str, str | None], ...]:
-        """The `("__iter__", record)` emit-ordering dep for an `iter_next`
-        source, or empty when the source has no same-module generator
-        `__iter__`.
+        """The emit-ordering deps for an `iter_next` source: the frames of
+        the record's same-module generator `__iter__`, or empty.
 
         A protocol-typed source resolves to no record and yields nothing; its
         field renders against a deduced template arg, so completeness is
         settled at instantiation rather than at the field declaration.
 
-        The same-module test is the OWNER'S module, not membership in
-        `same_module_generators`: that map is keyed on the bare
-        `(method, record)` pair, so a cross-module type whose name collides
-        with a local record matches the local entry and fabricates a cycle.
+        The same-module test is the OWNER'S module, settled before
+        `same_module_generators` is read: that map is keyed on the bare
+        `(frame name, record)` pair, so a cross-module type whose name
+        collides with a local record would match the local entries and
+        fabricate a cycle.
         """
         inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
         dep = same_module_dep_unit(inner, "__iter__",
                                    self.analyzer.ctx.module_name)
-        if dep is None or dep not in self.deps.same_module_generators:
+        if dep is None:
             return ()
-        return (dep,)
+        # C++ picks among the `__iter__` frames (a receiver-clone pair, a
+        # set's variants) by the plain name, so each is a dependency.
+        return tuple(key for key, f in self.deps.same_module_generators.items()
+                     if key[1] == dep[1] and f.name == "__iter__")
 
     @staticmethod
     def _module_generator(module: str, name: str,
@@ -3454,10 +3480,37 @@ class FrameBuilder:
         while isinstance(e, TpyCoerce):
             e = e.expr
         cur = self.analyzer.ctx.module_name
+        fi = (e.resolved_function_info
+              if isinstance(e, (TpyCall, TpyMethodCall)) else None)
+        body = fi.root.body if fi is not None else None
+        if body is not None:
+            # The callee sema resolved the call to -- a set's variant
+            # included -- wherever it is defined.
+            # Read off the root: a generic owner's substituted view does not
+            # carry the defining module.
+            mod = fi.root.originating_module
+            if not body.is_generator or mod is None:
+                return None
+            owner = None
+            frame_names: tuple[str, ...] = (fi.frame_cpp_name,)
+            if (isinstance(e, TpyMethodCall)
+                    and (e.user_module_call or e.builtin_module_call) is None):
+                recv = unwrap_ref_type(self.env.get_resolved_type(e.obj))
+                if not isinstance(recv, NominalType):
+                    return None
+                # The frame struct exists only for the defining record.
+                owner = coro_struct_owner(fi.root.owning_type_qname, recv,
+                                          self.analyzer.registry)
+                frame_names = fi.receiver_twin_frame_names
+            module_qual = None if owner is not None or mod == cur else mod
+            return _DelegatedGenerator(body, owner, module_qual, mod, e,
+                                       frame_names)
+        # A `typing.overload` stub has no body; its implementation's one
+        # frame is named by the source name.
         if isinstance(e, TpyCall) and isinstance(e.func, TpyName):
             f = self.deps.same_module_generators.get((e.func_name, None))
             if f is not None:
-                return _DelegatedGenerator(f, None, None, cur, e)
+                return _DelegatedGenerator(f, None, None, cur, e, (f.name,))
             # `from m import g; ... for x in g():` -- the attribute table's
             # binding is chain-flattened and shadow-correct, and carries the
             # name the callee is defined under in its own module.
@@ -3466,7 +3519,7 @@ class FrameBuilder:
             if qual is None or qual[0] == cur:
                 return None
             f = self._module_generator(qual[0], qual[1], None)
-            return (_DelegatedGenerator(f, None, qual[0], qual[0], e)
+            return (_DelegatedGenerator(f, None, qual[0], qual[0], e, (f.name,))
                     if f is not None else None)
         if isinstance(e, TpyMethodCall):
             mod = e.user_module_call or e.builtin_module_call
@@ -3477,14 +3530,14 @@ class FrameBuilder:
                 if f is None:
                     return None
                 return _DelegatedGenerator(
-                    f, None, None if mod == cur else mod, mod, e)
+                    f, None, None if mod == cur else mod, mod, e, (f.name,))
             recv = unwrap_ref_type(self.env.get_resolved_type(e.obj))
             owner_name = getattr(recv, "name", None)
             if owner_name is None:
                 return None
             f = self.deps.same_module_generators.get((e.method, owner_name))
             if f is not None:
-                return _DelegatedGenerator(f, recv, None, cur, e)
+                return _DelegatedGenerator(f, recv, None, cur, e, (f.name,))
             qname = recv.qualified_name() if isinstance(recv, NominalType) \
                 else None
             if not qname or "." not in qname:
@@ -3493,7 +3546,7 @@ class FrameBuilder:
             if owner_mod == cur:
                 return None
             f = self._module_generator(owner_mod, e.method, owner_name)
-            return (_DelegatedGenerator(f, recv, None, owner_mod, e)
+            return (_DelegatedGenerator(f, recv, None, owner_mod, e, (f.name,))
                     if f is not None else None)
         return None
 
@@ -3552,7 +3605,7 @@ class FrameBuilder:
                                 self.analyzer.ctx.module_name):
                             owner = r.owner.name if r.owner is not None \
                                 else None
-                            targets.append((r.func.name, owner))
+                            targets.extend((n, owner) for n in r.frame_names)
                 for b in (s.sub_bodies() if hasattr(s, "sub_bodies") else ()):
                     walk(b)
 

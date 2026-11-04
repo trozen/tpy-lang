@@ -24,7 +24,7 @@ void main() {
     std::cout << "fstring:" << " " << t.__getitem____str(std::format("{}", std::move(*c).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
-    std::cout << "select-arm:" << " " << t.__getitem____int32(((flag) ? (std::move(*c).take().v) : (0))) << "\n" << ::tpy::check_signals;
+    std::cout << "select-arm:" << " " << t.__getitem____int32(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -1,0 +1,1 @@
+CPython has no pointer to an int local: the stub of unsafe_store cannot write `e` back, so only the compiled program shows the write.

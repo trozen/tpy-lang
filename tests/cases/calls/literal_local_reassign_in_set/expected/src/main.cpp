@@ -40,7 +40,7 @@ void main() {
     std::cout << ::tpyapp::main::pick__lit_r__w(m) << "\n" << ::tpy::check_signals;
     bool cond = true;
     std::string_view n = "r";
-    if (cond) {
+    if (true) {
         n = "w";
     }
     std::cout << ::tpyapp::main::pick__lit_r__w(n) << "\n" << ::tpy::check_signals;

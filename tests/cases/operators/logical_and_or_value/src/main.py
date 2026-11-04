@@ -184,7 +184,7 @@ def test_annotated() -> None:
 
     empty: str = ""
     fallback: str = "default"
-    s: str = empty or fallback  # tpyc: type(str)
+    s: str = empty or fallback  # tpyc: type(StrView)
     print(s)
 
     fa: float = 0.0

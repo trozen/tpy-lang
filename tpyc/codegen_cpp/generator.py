@@ -20,6 +20,7 @@ from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from ..toolchain import PLATFORMS
 from ..resumable_shape import ResumableShape
 from .frame_names import recursive_delegation_error
+from ..thir.lower.frame import frame_name_of
 
 from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, cpp_string_literal_expr, enum_cpp_name
 from .types import TypeResolver
@@ -1059,15 +1060,17 @@ class CodeGenerator:
 
     def _collect_module_generators(self, module: TpyModule) -> None:
         """Populate the same-module generator map the `__for_src` embedding
-        resolves callees through, keyed (name, owner_record)."""
+        resolves callees through, keyed (frame name, owner_record) as the
+        embedding edges are (`frame_name_of`)."""
+        analyzer = self.ctx.analyzer
         gens: dict[tuple[str, str | None], TpyFunction] = {}
         for record in module.all_records():
             for m in record.methods:
                 if m.is_generator:
-                    gens[(m.name, record.name)] = m
+                    gens[(frame_name_of(analyzer, m, record.name), record.name)] = m
         for f in module.functions:
             if f.is_generator:
-                gens[(f.name, None)] = f
+                gens[(frame_name_of(analyzer, f, None), None)] = f
         self.gen_async.same_module_generators = gens
 
     def _emit_resumable_structs(self, hpp: TextIO, module: TpyModule) -> None:
@@ -1113,7 +1116,8 @@ class CodeGenerator:
         n = len(units)
         if n == 0:
             return
-        index = {(f.name, rn): i for i, (f, rn, _) in enumerate(units)}
+        index = {(frame_name_of(self.ctx.analyzer, f, rn), rn): i
+                 for i, (f, rn, _) in enumerate(units)}
         # deps[i] = same-module units whose struct unit i embeds by value (so
         # their definition must precede i's). Cross-module / builtin targets
         # resolve to no index entry and are already complete via their
@@ -1210,24 +1214,7 @@ class CodeGenerator:
                     self.gen_async.gen_coro_finally_top_def(
                         hpp, func, record_name=record_name)
                     hpp.write("\n")
-                # Inline factory method (mirrors the async-method factory:
-                # _factory_args_forwarded moves Own[T] / protocol params in
-                # correctly).
-                struct_name = self.gen_async._struct_name_templated(
-                    func, record_name)
-                cpp_record = self.protocols.record_cpp_qualifier(record_name)
-                # No defaults here: the in-class declaration carries them and
-                # C++ rejects the same default on both declarations.
-                params = self.gen_async._emit_method_params_decl(
-                    func, record_name)
-                args = self.gen_async._factory_args_forwarded(
-                    func, receiver=(record_name, "*this"))
-                const_suffix = " const" if func.is_readonly else ""
-                self.gen_async._emit_member_template_headers(
-                    hpp, func, record_name=record_name)
-                hpp.write(f"inline {struct_name} {cpp_record}::{func.name}({params}){const_suffix} {{\n")
-                hpp.write(f"    return {struct_name}({args});\n")
-                hpp.write(f"}}\n\n")
+                self._emit_resumable_method_factory(hpp, func, record_name)
 
     def _emit_async_coro_unit(self, hpp: TextIO, func: TpyFunction,
                               record_name: str | None) -> None:
@@ -1259,8 +1246,16 @@ class CodeGenerator:
             self.gen_async.gen_coro_finally_top_def(
                 hpp, func, record_name=record_name)
             hpp.write("\n")
-        # Inline out-of-class factory definition (the struct's poll body for a
-        # non-templated method goes in the .cpp pass).
+        # The struct's poll body for a non-templated method goes in the .cpp
+        # pass.
+        self._emit_resumable_method_factory(hpp, func, record_name)
+
+    def _emit_resumable_method_factory(self, hpp: TextIO, func: TpyFunction,
+                                       record_name: str) -> None:
+        """The inline out-of-class factory of a generator or async method
+        (`_factory_args_forwarded` moves Own[T] / protocol params in), under
+        its C++ name and, for a named variant of a set, the plain-name
+        forwarder (`method_cpp_names`), which builds the same frame."""
         struct_name = self.gen_async._struct_name_templated(func, record_name)
         cpp_record = self.protocols.record_cpp_qualifier(record_name)
         # No defaults here: the in-class declaration carries them and C++
@@ -1269,11 +1264,13 @@ class CodeGenerator:
         args = self.gen_async._factory_args_forwarded(
             func, receiver=(record_name, "*this"))
         const_suffix = " const" if func.is_readonly else ""
-        self.gen_async._emit_member_template_headers(
-            hpp, func, record_name=record_name)
-        hpp.write(f"inline {struct_name} {cpp_record}::{func.name}({params}){const_suffix} {{\n")
-        hpp.write(f"    return {struct_name}({args});\n")
-        hpp.write(f"}}\n\n")
+        names = self.functions.method_cpp_names(func, record_name)
+        for name in names:
+            self.gen_async._emit_member_template_headers(
+                hpp, func, record_name=record_name)
+            hpp.write(f"inline {struct_name} {cpp_record}::{name}({params}){const_suffix} {{\n")
+            hpp.write(f"    return {struct_name}({args});\n")
+            hpp.write(f"}}\n\n")
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
                                     global_decls: list, final_decls: list,

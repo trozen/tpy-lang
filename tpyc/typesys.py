@@ -4157,6 +4157,20 @@ def is_union_or_optional_type(t: 'TpyType | None') -> bool:
     return isinstance(t, (UnionType, OptionalType))
 
 
+def none_identity_of(t: 'TpyType') -> bool | None:
+    """Whether a value of type `t` is None: True for `None` and for the
+    value of a call returning None, False for a type no None test admits,
+    None for one whose values may be (an Optional, a Ptr, Any, a union with
+    a None member)."""
+    shape = repr_shape(t)
+    if isinstance(shape, (NoneType, VoidType)):
+        return True
+    if (isinstance(shape, (OptionalType, PtrType, AnyType))
+            or isinstance(shape, UnionType) and shape.has_none_member()):
+        return None
+    return False
+
+
 def is_any_bytes_type(typ: 'TpyType') -> bool:
     """Check if a type is any bytes type (bytes, bytearray, BytesView, PendingBytes)."""
     from .type_def_registry import is_bytes_category
@@ -8440,6 +8454,16 @@ def overload_variant_cpp_name(base_name: str, params: 'Sequence') -> str:
     return f"{base_name}__{'__'.join(type_parts) if type_parts else 'noargs'}"
 
 
+def unique_cpp_name(base: str, taken: 'set[str]') -> str:
+    """`base`, suffixed with `_` until it is not in `taken`; the name
+    returned is added to `taken`."""
+    name = base
+    while name in taken:
+        name += "_"
+    taken.add(name)
+    return name
+
+
 def name_overload_variants(variants: list['FunctionInfo'],
                            reserved: 'frozenset[str]' = frozenset()) -> None:
     """Give each variant of one overload set its own C++ name, so a call
@@ -8455,10 +8479,7 @@ def name_overload_variants(variants: list['FunctionInfo'],
     for idx, (fi, base) in enumerate(zip(variants, bases)):
         name = base
         if bases.count(base) > 1 or base in reserved:
-            name = f"{base}__v{idx}"
-            while name in taken:
-                name += "_"
-            taken.add(name)
+            name = unique_cpp_name(f"{base}__v{idx}", taken)
         fi.root._variant_cpp_name = name
 
 
@@ -8823,6 +8844,17 @@ class FunctionInfo:
     # spells it, so C++ never re-resolves sema's pick. Stored on the RAW fi,
     # read through `root` (`variant_cpp_name`).
     _variant_cpp_name: str | None = field(default=None, compare=False)
+    # The frame name of the mutable member of a receiver pair -- a mutable
+    # and a readonly method sharing one C++ name (an `@auto_readonly` clone
+    # pair, an explicit `@readonly` twin): its frame captures `C&` where the
+    # twin's captures `const C&`, so a resumable one needs a struct of its
+    # own. Named with the variants, clear of every member name
+    # (`name_record_method_variants`); None = the C++ name. Read through
+    # `root`.
+    _twin_frame_cpp_name: str | None = field(default=None, compare=False)
+    # The frame names of every member of this method's clone family
+    # (`frame_cpp_name` of each); () = only its own. Read through `root`.
+    _family_frame_names: tuple[str, ...] = field(default=(), compare=False)
     # The `cpp_template` is not a binding's text but the compiler's
     # spelling of a user operator dunder: the C++ operator a single
     # definition is reached by (`({self}) + ({0})`), or the member call of
@@ -8941,6 +8973,27 @@ class FunctionInfo:
     @property
     def variant_cpp_name(self) -> str | None:
         return self.root._variant_cpp_name
+
+    @property
+    def frame_cpp_name(self) -> str:
+        """The name a generator's or coroutine's frame struct and its
+        identity (`ConcreteFrameType.frame_func_name`) are spelled from:
+        the body's C++ name, a set variant's own (`variant_cpp_name`), the
+        mutable member of a receiver pair its own (`_twin_frame_cpp_name`),
+        since C++ tells the pair apart by the receiver but the two capture
+        it differently."""
+        root = self.root
+        return (root._twin_frame_cpp_name or root.variant_cpp_name
+                or root.name)
+
+    @property
+    def receiver_twin_frame_names(self) -> tuple[str, ...]:
+        """The frame names of every member of this method's clone family,
+        itself included. A site whose struct C++ deduces from the receiver
+        it sees -- possibly readonly only after Phase 2 inference -- orders
+        against all of them, so the edge does not depend on which member
+        sema picked."""
+        return self.root._family_frame_names or (self.frame_cpp_name,)
 
     @property
     def reresolved_by_cpp(self) -> bool:

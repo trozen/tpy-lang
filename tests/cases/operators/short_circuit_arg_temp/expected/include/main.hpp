@@ -15,15 +15,15 @@ inline constexpr std::string_view __name__ = "__main__";
 // def take(p: Probe | None) -> bool:
 bool take(const Probe* p);
 // def and_skips_rhs(c: Counter) -> bool:
-bool and_skips_rhs(Counter& c);
+bool and_skips_rhs(const Counter& c);
 // def and_runs_rhs(c: Counter) -> bool:
 bool and_runs_rhs(Counter& c);
 // def or_skips_rhs(c: Counter) -> bool:
-bool or_skips_rhs(Counter& c);
+bool or_skips_rhs(const Counter& c);
 // def or_runs_rhs(c: Counter) -> bool:
 bool or_runs_rhs(Counter& c);
 // def ternary_skips_else(c: Counter) -> bool:
-bool ternary_skips_else(Counter& c);
+bool ternary_skips_else(const Counter& c);
 // def ternary_skips_then(c: Counter, cond: bool) -> bool:
 bool ternary_skips_then(Counter& c, bool cond);
 // def nested_and(c: Counter, inner: bool) -> bool:

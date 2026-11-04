@@ -3314,6 +3314,9 @@ class THIRIf(THIRStmt):
     # keyword renders `if constexpr`. Per-node -- an
     # elif chain can mix constexpr and runtime members.
     is_constexpr: bool = False
+    # The value sema proved the condition always has (`TpyIf.decided`):
+    # it is still evaluated, and the arm it rules out is empty.
+    decided: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -3331,6 +3334,8 @@ class THIRWhile(THIRStmt):
     orelse: tuple[THIRStmt, ...] = ()
     hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
+    # The value sema proved the head always has (`TpyWhile.decided`).
+    decided: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -3375,6 +3380,12 @@ class THIRAssert(THIRStmt):
     condition: THIRExpr
     message: str | THIRExpr | None = None
     fold_constant: bool = False
+
+    @property
+    def always_holds(self) -> bool:
+        """A constant-true assert: it emits nothing."""
+        return (self.fold_constant and isinstance(self.condition, THIRLiteral)
+                and self.condition.value is True)
 
 
 @dataclass(frozen=True)
@@ -4111,6 +4122,10 @@ class THIRMatchArmEntry:
     # `goto __match_end_N`, the switch tiers no `break;`, after a body
     # that never falls out.
     body_terminates: bool = False
+    # The value sema proved the guard always has (`TpyMatchCase.decided`):
+    # a guard decided False never enters the arm, so it runs for its
+    # effects alone and the next arm follows.
+    decided: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -4174,6 +4189,9 @@ class THIRMatch(THIRStmt):
     strategy: str = "switch_enum"
     subject: 'THIRExpr | None' = None
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
+    # A `None` subject binds nothing (`subject` is None): what it runs, if
+    # anything, is this statement, evaluated once before the first arm.
+    subject_effect: 'THIRStmt | None' = None
     arms: tuple[THIRMatchArm, ...] = ()
     hoist_decls: tuple[HoistDecl, ...] = ()
     is_exhaustive: bool = False

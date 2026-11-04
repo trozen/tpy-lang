@@ -80,30 +80,29 @@ __coro_pick pick(std::string_view tag, bool b) {
 
 // async def main() -> None:
 //     cond = True
-//     x = await one("then-run") if cond else await two("else-skipped")                          # -> S_RESUME_0, S_RESUME_1
+//     x = await one("then-run") if cond else await two("else-skipped")                          # -> S_RESUME_0
 //     print("x", x)
 //     cond2 = False
-//     y = await one("then-skipped") if cond2 else await two("else-run")                         # -> S_RESUME_2, S_RESUME_3
+//     y = await one("then-skipped") if cond2 else await two("else-run")                         # -> S_RESUME_1
 //     print("y", y)
 //     # await in the condition AND both branches: condition runs once, only
 //     # the taken branch is awaited.
-//     z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")  # -> S_RESUME_4, S_RESUME_5, S_RESUME_6
+//     z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")  # -> S_RESUME_2, S_RESUME_3, S_RESUME_4
 //     print("z", z)
 //     # await only in the condition, plain branches.
-//     w = 10 if await pick("w-cond", True) else 20                                              # -> S_RESUME_7
+//     w = 10 if await pick("w-cond", True) else 20                                              # -> S_RESUME_5
 //     print("w", w)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         cond = true;
-        if (cond) {
+        if (true) {
             __sub_0.emplace("then-run");
             __state = S_RESUME_0;
             continue;
         } else {
-            __sub_1.emplace("else-skipped");
-            __state = S_RESUME_1;
+            __state = S_JOIN_0;
             continue;
         }
     }
@@ -115,66 +114,50 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: x = await one("then-run") if cond else await two("else-skipped")
+    case S_RESUME_1: {  // after: y = await one("then-skipped") if cond2 else await two("else-run")
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_ternary_0 = std::move(__r1).value();
+        __await_ternary_1 = std::move(__r1).value();
         __sub_1.reset();
-        __state = S_JOIN_0;
+        __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {  // after: y = await one("then-skipped") if cond2 else await two("else-run")
+    case S_RESUME_2: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_ternary_1 = std::move(__r2).value();
+        __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
-        __state = S_JOIN_1;
-        continue;
+        if (__await_lift_0) {
+            __sub_3.emplace("z-then-skip");
+            __state = S_RESUME_3;
+            continue;
+        } else {
+            __sub_4.emplace("z-else-run");
+            __state = S_RESUME_4;
+            continue;
+        }
     }
-    case S_RESUME_3: {  // after: y = await one("then-skipped") if cond2 else await two("else-run")
+    case S_RESUME_3: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_ternary_1 = std::move(__r3).value();
+        __await_ternary_2 = std::move(__r3).value();
         __sub_3.reset();
-        __state = S_JOIN_1;
+        __state = S_JOIN_2;
         continue;
     }
     case S_RESUME_4: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_lift_0 = std::move(__r4).value();
+        __await_ternary_2 = std::move(__r4).value();
         __sub_4.reset();
-        if (__await_lift_0) {
-            __sub_5.emplace("z-then-skip");
-            __state = S_RESUME_5;
-            continue;
-        } else {
-            __sub_6.emplace("z-else-run");
-            __state = S_RESUME_6;
-            continue;
-        }
+        __state = S_JOIN_2;
+        continue;
     }
-    case S_RESUME_5: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
+    case S_RESUME_5: {  // after: w = 10 if await pick("w-cond", True) else 20
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_ternary_2 = std::move(__r5).value();
+        __await_lift_1 = std::move(__r5).value();
         __sub_5.reset();
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_6: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
-        auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
-        if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_ternary_2 = std::move(__r6).value();
-        __sub_6.reset();
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_7: {  // after: w = 10 if await pick("w-cond", True) else 20
-        auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
-        if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        __await_lift_1 = std::move(__r7).value();
-        __sub_7.reset();
         w = ((__await_lift_1) ? (10) : (20));
         std::cout << "w" << " " << w << "\n" << ::tpy::check_signals;
         __state = S_DONE;
@@ -184,28 +167,27 @@ __coro_pick pick(std::string_view tag, bool b) {
         x = std::move(__await_ternary_0);
         std::cout << "x" << " " << x << "\n" << ::tpy::check_signals;
         cond2 = false;
-        if (cond2) {
-            __sub_2.emplace("then-skipped");
-            __state = S_RESUME_2;
+        if (false) {
+            __state = S_JOIN_1;
             continue;
         } else {
-            __sub_3.emplace("else-run");
-            __state = S_RESUME_3;
+            __sub_1.emplace("else-run");
+            __state = S_RESUME_1;
             continue;
         }
     }
     case S_JOIN_1: {
         y = std::move(__await_ternary_1);
         std::cout << "y" << " " << y << "\n" << ::tpy::check_signals;
-        __sub_4.emplace("z-cond", false);
-        __state = S_RESUME_4;
+        __sub_2.emplace("z-cond", false);
+        __state = S_RESUME_2;
         continue;
     }
     case S_JOIN_2: {
         z = std::move(__await_ternary_2);
         std::cout << "z" << " " << z << "\n" << ::tpy::check_signals;
-        __sub_7.emplace("w-cond", true);
-        __state = S_RESUME_7;
+        __sub_5.emplace("w-cond", true);
+        __state = S_RESUME_5;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

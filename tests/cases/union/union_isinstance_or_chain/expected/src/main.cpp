@@ -9,11 +9,9 @@ namespace tpyapp::main {
 //         return "hit"
 //     return "miss"
 std::string two_member(::tpy::Union<const A*, const B*> v) {
-    if ((std::holds_alternative<const A*>(v) || true)) {
+    if (true) {
         return "hit";
     }
-    auto& __v = *std::get<const A*>(v);
-    return "miss";
 }
 
 // def three_member(v: A | B | C) -> str:
@@ -52,9 +50,7 @@ std::string and_chain(::tpy::Union<const A*, const B*> v, bool flag) {
 //         return "impossible"
 //     return "reachable"
 std::string negated_or(::tpy::Union<const A*, const B*> v) {
-    if ((!((std::holds_alternative<const A*>(v) || true)))) {
-        auto& __v = *std::get<const A*>(v);
-        return "impossible";
+    if (false) {
     }
     return "reachable";
 }

@@ -1202,13 +1202,15 @@ class TpyAwait(TpyExpr):
     Sema rejects awaits outside an async def body.
 
     Sema attaches one of two resolution shapes:
-    - `awaited_async_func_name`: inline mode -- the operand is a direct
-      call to a known async def. Codegen emits the sub-coroutine struct
-      as a frame field via `std::optional<__<name>Coro>` and constructs
-      it in place from the call's args.
+    - `awaited_inline`: inline mode -- the operand is a direct call to a
+      known async def, the one its `resolved_function_info` names.
+      Codegen emits the sub-coroutine struct (named by that callee's
+      `frame_cpp_name`) as a frame field via `std::optional<__coro_...>`
+      and constructs it in place from the call's args.
       For async methods, `awaited_method_owner_type` carries the
       receiver's NominalType (including its type args) so the sub-coro
-      struct can be uniquely named (`__coro_<Record>_<method>`) and
+      struct can be uniquely named (`__coro_<Record>_<frame name>`, the
+      frame name a set variant's own, e.g. `__coro_C_bump__str`) and
       qualified with the receiver's class-level template args.
     - `awaited_task_inner`: erased mode -- the operand has type
       `Task[T]`. Codegen emits the sub-future field as
@@ -1218,7 +1220,7 @@ class TpyAwait(TpyExpr):
     For generic async defs (`async def f[T](...) -> T`), codegen reads
     the inferred type args off the operand call node directly
     (`value.inferred_type_args`) to qualify the sub-coro struct name as
-    `__coro_<name><A, B>`. The await expression's substituted result
+    `__coro_<frame name><A, B>`. The await expression's substituted result
     type is recorded via the standard expression-type table.
 
     `suspension_index` is the ordinal (in source order) within the
@@ -1226,7 +1228,7 @@ class TpyAwait(TpyExpr):
     S_AFTER_AWAIT_<i> states.
     """
     value: TpyExpr
-    awaited_async_func_name: str | None = field(default=None, kw_only=True)
+    awaited_inline: bool = field(default=False, kw_only=True)
     awaited_method_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
     awaited_task_inner: 'TpyType | None' = field(default=None, kw_only=True)
     # Prebuilt-slot mode: the operand is a bound coroutine handle
@@ -1524,6 +1526,9 @@ class TpyAssert(TpyStmt):
     message: TpyExpr | None = None
     # Set by sema: isinstance union narrowing facts that hold after a passing assert
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    # Set by sema: the value its test always has (`sema.dead_arms`), None
+    # when it varies; the arm it rules out is neither analyzed nor kept.
+    decided: bool | None = None
 
     def exprs(self) -> list[TpyExpr]:
         result = [self.condition]
@@ -1541,6 +1546,13 @@ class TpyIf(TpyStmt):
     # Set by sema: isinstance union narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
     else_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    # Set by sema: the value its test always has (`sema.dead_arms`), None
+    # when it varies; the arm it rules out is neither analyzed nor kept.
+    decided: bool | None = None
+    # Stamped by liveness -- see TpyVarDecl.live_names_after; a later `del`
+    # of a name counts too. A decided test's live arm declares a name in
+    # front of the `if` only when something after it names it.
+    live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.condition]
@@ -1557,6 +1569,9 @@ class TpyWhile(TpyStmt):
     orelse: list[TpyStmt] = field(default_factory=list)
     # Set by sema: isinstance union narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    # Set by sema: the value its test always has (`sema.dead_arms`), None
+    # when it varies; the arm it rules out is neither analyzed nor kept.
+    decided: bool | None = None
 
     def exprs(self) -> list[TpyExpr]:
         return [self.condition]
@@ -1602,6 +1617,7 @@ class TpyForEach(TpyStmt):
     step_handover: frozenset[tuple[int, ...]] = frozenset()
     is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
     async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: the DEFINING record of __anext__ (an ancestor of the iterator when inherited), used by codegen to name the __anext__ coro struct
+    async_anext_fi: 'FunctionInfo | None' = None  # set by sema for async-for: the `__anext__` variant the advance calls, whose frame name (`frame_cpp_name`) the sub-coro struct is spelled from
     # Set by parser: the iterable as the program spells it, the loop's name
     # in a diagnostic about its iterator.
     iter_text: str | None = None
@@ -1781,6 +1797,11 @@ class TpyWithItem:
     # -- the struct is emitted once, for the defining record.
     aenter_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
     aexit_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
+    # Set by sema for `async with`: the `__aenter__` / `__aexit__` variant
+    # the statement's implicit calls resolve to, whose frame the sub-coro
+    # slot embeds (`FunctionInfo.frame_cpp_name`).
+    aenter_fi: 'FunctionInfo | None' = field(default=None, kw_only=True)
+    aexit_fi: 'FunctionInfo | None' = field(default=None, kw_only=True)
     # Set by sema for `async with`: __aenter__'s result is a borrow
     # (pointer Poll payload aliasing the manager), so the as-binding must
     # be an aliasing pointer frame field, not an owning copy. The const
@@ -1941,6 +1962,11 @@ class TpyMatchCase:
     # Set by liveness: the names live right after the arm's captures bind
     # (its guard and body, and the arms a failed guard falls through to).
     live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
+    # Set by sema: the value its guard always has (`sema.dead_arms`), None
+    # when it varies; a guard decided False leaves the arm never entered.
+    decided: bool | None = None
+    # Set by sema: the arm has no guard, or one that folds to True.
+    unguarded: bool = False
 
 
 @dataclass
@@ -1961,6 +1987,18 @@ class TpyMatch(TpyStmt):
     # view). Routes codegen to the dynamic_cast dispatch strategy rather than
     # variant-index / field-value matching.
     polymorphic_dispatch: bool = False
+    # Set by sema: True when its arm decision left one arm that always runs
+    # (an unguarded arm on a `None` subject), as `TpyIf.decided` is for a
+    # test; None when which arm runs varies.
+    decided: bool | None = None
+    # Set by sema: evaluating the subject only reads (`dead_arms.is_pure`),
+    # so a subject nothing binds (a `None` subject, no arm left) runs nothing.
+    subject_pure: bool = False
+    # Set by sema: nothing binds or compares the subject (it is typed None,
+    # or no arm is left), so it is evaluated only for its effects. The one
+    # fact the frame (which suspends on an awaited such subject ahead of the
+    # match) and the match lowering read, so the await runs exactly once.
+    subject_effect_only: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         result: list[TpyExpr] = [self.subject]
@@ -2313,6 +2351,15 @@ class TpyFunction:
         carries: an ownership-transfer parameter (`param_takes_ownership`)
         that the caller hands over, never a capture."""
         return not self.is_capture(pname) and param_takes_ownership(ptype)
+
+    @property
+    def is_written_def(self) -> bool:
+        """A def the source writes, not the clone method expansion derives
+        from one (an `@auto_readonly` mutable clone, an `auto_own`
+        borrowing clone): a set's members, counted as the program wrote
+        them."""
+        return not (self.is_auto_readonly_mutable_clone
+                    or self.is_auto_own_borrowing_clone)
 
     @property
     def is_overload_stub(self) -> bool:
@@ -2698,10 +2745,12 @@ def is_base_init_call(stmt: TpyStmt) -> bool:
 
 
 def is_init_trivia(stmt: TpyStmt) -> bool:
-    """A docstring or `pass` in `__init__`: it runs nothing, so it neither
-    displaces a parent-initializer call from the leading run nor closes the
-    init section."""
-    return is_docstring(stmt) or isinstance(stmt, TpyPassStmt)
+    """A docstring, `pass` or `global` / `nonlocal` declaration in
+    `__init__`: it runs nothing, so it neither displaces a
+    parent-initializer call from the leading run nor closes the init
+    section."""
+    return is_docstring(stmt) or isinstance(
+        stmt, (TpyPassStmt, TpyGlobal, TpyNonlocal))
 
 
 def is_module_declaration(stmt: TpyStmt) -> bool:

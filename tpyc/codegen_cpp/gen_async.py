@@ -68,7 +68,8 @@ from ..thir.frame import (
     THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
 )
 from ..thir.lower.frame import (
-    FrameBuildDeps, build_resumable_frame, frame_function_info,
+    FrameBuildDeps, awaited_frame_name, build_resumable_frame, frame_function_info,
+    frame_name_of,
 )
 from ..thir.frame import region_cleanups
 from .frame_names import frame_struct_name, sub_struct_qualname
@@ -345,8 +346,17 @@ class AsyncCoroCodegen:
         `operator<<` repr uses the same `__gen_` convention). The grammar
         itself lives in
         `frame_struct_name`, shared with every call site that embeds
-        someone else's frame."""
-        return frame_struct_name(func.name, record_name, self._shape)
+        someone else's frame; the name it is spelled from is the body's
+        `FunctionInfo.frame_cpp_name`, which a call site reads off the
+        callee it resolved."""
+        return frame_struct_name(
+            frame_name_of(self.ctx.analyzer, func, record_name),
+            record_name, self._shape)
+
+    def factory_name(self, func: TpyFunction) -> str:
+        """The C++ name free function `func`'s factory is declared and
+        defined under: a set variant's own name (`emitted_name`)."""
+        return escape_cpp_name(self.functions.emitted_name(func))
 
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None) -> list[_CoroParam]:
@@ -743,10 +753,10 @@ class AsyncCoroCodegen:
         # Default arg values live on this forward decl (the canonical first
         # declaration); `gen_factory`'s definition omits them.
         params = self._emit_params_decl(func, emit_defaults=True)
-        out.write(f"{return_type_name} {escape_cpp_name(func.name)}({params});\n")
+        out.write(f"{return_type_name} {self.factory_name(func)}({params});\n")
         if self._builds_source_in_place(func):
             header, ret, in_place_params, _ = self._in_place_factory_parts(func)
-            out.write(f"{header}\n{ret} {escape_cpp_name(func.name)}({in_place_params});\n")
+            out.write(f"{header}\n{ret} {self.factory_name(func)}({in_place_params});\n")
         return True
 
     # -- Body partitioning ----------------------------------------------------
@@ -1329,13 +1339,13 @@ class AsyncCoroCodegen:
         self.ctx.emit_declaration_echo(out, func.loc)
         self._emit_template_header(out, func)
         params = self._emit_params_decl(func)
-        out.write(f"{struct_name} {escape_cpp_name(func.name)}({params}) {{\n")
+        out.write(f"{struct_name} {self.factory_name(func)}({params}) {{\n")
         args = self._factory_args_forwarded(func)
         out.write(f"{INDENT}return {struct_name}({args});\n")
         out.write(f"}}\n")
         if self._builds_source_in_place(func):
             header, ret, in_place_params, in_place_args = self._in_place_factory_parts(func)
-            out.write(f"{header}\n{ret} {escape_cpp_name(func.name)}({in_place_params}) {{\n")
+            out.write(f"{header}\n{ret} {self.factory_name(func)}({in_place_params}) {{\n")
             out.write(f"{INDENT}return {ret}({in_place_args});\n")
             out.write(f"}}\n")
 
@@ -1807,7 +1817,7 @@ class AsyncCoroCodegen:
             if extra:
                 sub_cpp = self._sub_struct_qualname(
                     p.await_node.awaited_method_owner_type,
-                    p.await_node.awaited_async_func_name,
+                    awaited_frame_name(p.await_node),
                     getattr(p.await_node.value, "inferred_type_args", None),
                     module_qual=p.sub_struct_module_qual,
                     extra_template_args=extra,

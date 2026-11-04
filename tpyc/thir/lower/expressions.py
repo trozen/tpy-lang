@@ -318,7 +318,6 @@ from .predicates import (
     _poly_subject_const,
     walrus_value_type,
     _binding_form_tuple,
-    _fold_literal_comparison,
     _nested_storage_tuple,
     tuple_stores_into,
     _call_storage_optional_return,
@@ -3186,40 +3185,6 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
         loc=loc), lc)
 
 
-def _fold_literal_chain(e: TpyBinOp, literal_facts: dict) -> 'bool | None':
-    """Mirror of `_try_fold_literal_chain`: operand folds decide first,
-    then the coverage/contradiction combiner (`check_literal_chain`).
-    Membership operands stay None -- their decided fold rejects at the
-    membership fence, so folding them here would skip that gate."""
-    def operand(x) -> 'bool | None':
-        if isinstance(x, TpyBinOp):
-            if x.op in ("&&", "||"):
-                return _fold_literal_chain(x, literal_facts)
-            if x.op in ("==", "!="):
-                return _fold_literal_comparison(x, literal_facts)
-        if isinstance(x, TpyUnaryOp) and x.op == "!":
-            inner = operand(x.operand)
-            if inner is not None:
-                return not inner
-        return None
-
-    left = operand(e.left)
-    right = operand(e.right)
-    if e.op == "||":
-        if left is True or right is True:
-            return True
-        if left is False and right is False:
-            return False
-    else:
-        if left is False or right is False:
-            return False
-        if left is True and right is True:
-            return True
-    if left is None and right is None:
-        return emit_prims.check_literal_chain(e, literal_facts)
-    return None
-
-
 def _operand_lend(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign', side: TpyExpr,
                   analyzer) -> frozenset[SinkForm]:
     """Whether operand `side` of operator `e` may be a borrow of storage
@@ -3397,55 +3362,6 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if lit_val is not None:
             _witness("binop.literal_fold")
             return _lower_int_literal(lit_val, rtype, lc, loc)
-
-    def _literal_fold_name(s: TpyExpr) -> bool:
-        # A name the dead-branch fold may hold a literal fact for: a
-        # match-arm fact (`lc.literal_facts`), or ANY binding whose
-        # declared/read type is a LiteralType -- `==`/`!=` narrowing seeds
-        # facts from those too, so a nested compare under the narrowing
-        # folds to a constant.
-        if not isinstance(s, TpyName):
-            return False
-        if s.name in lc.literal_facts:
-            return True
-        dt = declared.get(s.name)
-        if dt is not None and isinstance(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))),
-                LiteralType):
-            return True
-        at = analyzer.get_expr_type(s)
-        return at is not None and isinstance(
-            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
-            LiteralType)
-
-    if e.op in ("==", "!=") and lc.literal_facts:
-        # The expression-level fold renders a DECIDED verdict as the bare
-        # "true"/"false"; an undecided compare over the flow-sensitive
-        # facts renders plain. `lc.literal_facts` carries every seeding
-        # site (branch facts, match arms, overload stubs; the assert/while
-        # seeds are fenced at their statements).
-        lit_fold = _fold_literal_comparison(e, lc.literal_facts)
-        if lit_fold is not None:
-            _witness("binop.literal_fact_fold")
-            return THIRLiteral(result_type=BOOL, value=lit_fold,
-                               form=Form.VALUE, loc=loc)
-
-    if (e.op in _MEMBERSHIP_OPS and _literal_fold_name(e.left)
-            and emit_prims.check_literal_in(e, lc.literal_facts) is not None):
-        # A DECIDED membership fold has no witnessed render -- it rejects
-        # as `match.literal_fold`; the undecided flavor renders plain.
-        raise ThirUnsupported("match.literal_fold")
-
-    if e.op in ("&&", "||") and lc.literal_facts:
-        # &&/|| chains fold at EXPRESSION position too (operand folds
-        # first, then the coverage/contradiction combiner) -- a decided
-        # chain renders the bare "true"/"false". Membership operands stay
-        # undecided here (their own decided fold rejects above).
-        chain_fold = _fold_literal_chain(e, lc.literal_facts)
-        if chain_fold is not None:
-            _witness("binop.literal_fact_fold")
-            return THIRLiteral(result_type=BOOL, value=chain_fold,
-                               form=Form.VALUE, loc=loc)
 
     if (e.op in _MEMBERSHIP_OPS and e.typed_dict_in_field is not None
             and ((isinstance(e.right, TpyName)
@@ -4131,13 +4047,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         reject()
 
     if e.op in _MEMBERSHIP_OPS and isinstance(e.right, TpyTupleLiteral):
-        # LATENT GAP: this emits the `==` OR-chain unconditionally, with no
-        # literal-fact fold -- `x in (a,b,c)` collapses to a compile-time
-        # `true`/`false` when `x` carries literal-overload narrowing facts.
-        # Unreachable today: the only source, match-over-`Literal[...]`
-        # subjects, has its decided folds fenced at the compare/membership
-        # gate above (`match.literal_fold`). A body that ever reaches here
-        # with such facts must gate them (reject or fold).
+        # A membership a Literal fact decides was decided by sema
+        # (`sema.dead_arms`) where it is a test; elsewhere it runs.
         _witness("binop.tuple_membership")
         elems = e.right.elements
         # A non-trivial needle binds to a `__in_lhs` temp in a statement

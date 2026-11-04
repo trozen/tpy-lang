@@ -6,8 +6,7 @@ from tpy import int32
 type Tree[T] = T | list[Tree[T]]
 
 
-def grow(src: Tree[int32]) -> None:
-    flag = True
+def grow(src: Tree[int32], flag: bool) -> None:  # `flag` a parameter: sema does not decide it
     if flag:
         v = src
     else:
@@ -21,7 +20,7 @@ def grow(src: Tree[int32]) -> None:
 
 def main() -> None:
     tree: Tree[int32] = [1, 2, 3]
-    grow(tree)
+    grow(tree, True)
     match tree:            # aliasing: tree grew to [1, 2, 3, 9]
         case list() as t:
             print(len(t))

@@ -1,0 +1,1 @@
+main.py:25: error: no variant of `__enter__` accepts the call the statement makes: `__enter__()`

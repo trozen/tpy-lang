@@ -1,6 +1,7 @@
 # del of a nonlocal inside a closure is rejected when an enclosing finally-
 # deferred return borrows the name (the closure could free the storage the
-# pending return materializes from).
+# pending return materializes from). CPython accepts it (the returned value
+# is evaluated before the finally): BUGS.md#finally-closure-del-returned-nonlocal-rejects.
 from tpy import int32, Own
 
 

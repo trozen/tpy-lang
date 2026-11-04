@@ -7,6 +7,8 @@ import docstrings as m
 print(repr(m.__doc__))
 print(repr(m.documented.__doc__))
 print(repr(m.undocumented.__doc__))
+print(repr(m.counted.__doc__), m.counted(2))
+print(repr(m.counted_late.__doc__), m.counted_late(1))
 # UTF-8 survives the per-byte C++ escaping.
 print(repr(m.unicode_doc.__doc__))
 print(repr(m.Counter.__doc__))

@@ -23,7 +23,6 @@ void boom() {
 //     return n
 int32_t dead(int32_t n) {
     if (false) {
-        n = (::tpy::add_check<int32_t>(n, 1));
     }
     return n;
 }
@@ -34,7 +33,6 @@ int32_t dead(int32_t n) {
 //     return n
 int32_t spin(int32_t n) {
     while (false) {
-        n = (::tpy::add_check<int32_t>(n, 1));
     }
     return n;
 }

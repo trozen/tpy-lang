@@ -18,11 +18,11 @@ from ..typesys import (
     LiteralType, LiteralValue, is_any_int_type, binds_runtime_symbol,
 )
 from ..parse import (
-    TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
+    TpyExpr, TpyName, TpyBinOp, TpyFieldAccess,
     TpySubscript, SubscriptDunder, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
+    TpyIntLiteral, TpyCoerce, TpyNamedExpr,
     TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
-    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr, TpyAssign,
+    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyAssign,
 )
 from ..value_category import peel_coerce
 from ..parse.nodes import TpyFunction, TpyGeneratorExpression, walk_expr_tree
@@ -38,6 +38,7 @@ from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
 from .context import binds_value_copy
 from .flow_facts import GuardFacts
+from .dead_arms import decided_truth, truthy_operands
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -64,31 +65,6 @@ def nonempty_container_literal(expr: TpyExpr) -> bool | None:
     if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral)):
         return bool(expr.value)
     return None
-
-
-def truthy_operands(expr: TpyExpr,
-                    selects: list[TpyExpr] | None = None) -> list[TpyExpr]:
-    """The leaf expressions a truthiness context actually tests.
-
-    `not x`, the `and` / `or` operands and a ternary's two arms distribute
-    the test to their own operands (the ternary's own test is a condition
-    apart); everything else IS the operand, whatever its node kind. The
-    distributing `and` / `or` / ternary nodes -- each one a truth test
-    itself, whose value is never used -- are appended to `selects` when
-    given.
-    """
-    if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-        return truthy_operands(expr.operand, selects)
-    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-        halves = (expr.left, expr.right)
-    elif isinstance(expr, TpyIfExpr):
-        halves = (expr.then_expr, expr.else_expr)
-    else:
-        return [expr]
-    if selects is not None:
-        selects.append(expr)
-    return truthy_operands(halves[0], selects) + truthy_operands(halves[1],
-                                                                 selects)
 
 
 class NarrowingTracker:
@@ -566,7 +542,7 @@ class NarrowingTracker:
         loop without a runtime check. The operands are read in the order
         they run: `ran(operand)` applies what one may write before the
         next is read."""
-        return self._range_truth(condition, ran) is True
+        return decided_truth(self, condition, ran, ranges=True) is True
 
     def for_head_provably_runs(self, stmt: TpyForEach) -> bool:
         """Whether this `for` head provably runs the body at least once.
@@ -669,38 +645,6 @@ class NarrowingTracker:
         _, rhs = writes[0]
         return nonempty_container_literal(peel_coerce(rhs)) is True
 
-    def _range_truth(self, expr: TpyExpr,
-                     ran: Callable[[TpyExpr], None]) -> bool | None:
-        if isinstance(expr, TpyBoolLiteral):
-            return expr.value
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            inner = self._range_truth(expr.operand, ran)
-            return None if inner is None else not inner
-        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            left = self._range_truth(expr.left, ran)
-            # The short circuit decides without the right operand running.
-            if left is (expr.op == "||"):
-                return left
-            ran(expr.left)
-            right = self._range_truth(expr.right, ran)
-            if right is (expr.op == "||"):
-                return right
-            if left is not None and right is not None:
-                return left
-            return None
-        if isinstance(expr, TpyChainedCompare) and expr.pairs:
-            truths: list[bool | None] = []
-            for pair in expr.pairs:
-                truths.append(self._comparison_truth(pair))
-                if truths[-1] is False:
-                    return False
-                ran(pair)
-            return True if all(t is True for t in truths) else None
-        ran(expr)
-        if isinstance(expr, TpyBinOp):
-            return self._comparison_truth(expr)
-        return None
-
     def _operand_range(self, expr: TpyExpr) -> ValueRange | None:
         literal_val = self._extract_int_literal(expr)
         if literal_val is not None:
@@ -709,7 +653,8 @@ class NarrowingTracker:
             return self.ctx.func.value_ranges.get(expr.name)
         return None
 
-    def _comparison_truth(self, expr: TpyBinOp) -> bool | None:
+    def comparison_truth(self, expr: TpyBinOp) -> bool | None:
+        """An integer compare the operands' value ranges decide."""
         left = self._operand_range(expr.left)
         right = self._operand_range(expr.right)
         if left is None or right is None:

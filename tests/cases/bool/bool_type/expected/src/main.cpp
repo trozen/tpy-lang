@@ -44,21 +44,17 @@ void test_bool() {
     bool b = false;
     bool inferred_true = true;
     bool inferred_false = false;
-    if (a) {
+    if (true) {
         std::cout << 1 << "\n" << ::tpy::check_signals;
+    }
+    if (false) {
     } else {
         std::cout << 0 << "\n" << ::tpy::check_signals;
     }
-    if (b) {
-        std::cout << 1 << "\n" << ::tpy::check_signals;
-    } else {
-        std::cout << 0 << "\n" << ::tpy::check_signals;
-    }
-    if (inferred_true) {
+    if (true) {
         std::cout << 1 << "\n" << ::tpy::check_signals;
     }
-    if (inferred_false) {
-        std::cout << 0 << "\n" << ::tpy::check_signals;
+    if (false) {
     }
     bool flag = true;
     int32_t count = 0;

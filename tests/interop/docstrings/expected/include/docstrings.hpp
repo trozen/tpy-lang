@@ -55,6 +55,7 @@ struct Counter;
 struct Base;
 struct Derived;
 
+extern int64_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
 int64_t documented(int64_t x);
@@ -62,6 +63,8 @@ int64_t unicode_doc(int64_t x);
 int64_t empty_doc(int64_t x);
 int64_t indented_doc(int64_t x);
 int64_t undocumented(int64_t x);
+int64_t counted(int64_t n);
+int64_t counted_late(int64_t n);
 void reject();
 
 struct Rejected : ::tpy::ValueError {

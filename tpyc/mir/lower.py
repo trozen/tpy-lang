@@ -4275,10 +4275,12 @@ class _Lowering:
                 return self.range_loop(stmt, loops)
             case th.THIRForEach():
                 return self.native_loop(stmt, loops)
+            case th.THIRAssert() if stmt.always_holds:
+                return self.fragment()
             case th.THIRIf():
                 return self.if_(stmt, loops)
             case th.THIRWhile():
-                _plain(stmt, {"condition", "body", "orelse", "hoist_decls", "hoisted_bindings"})
+                _plain(stmt, {"condition", "body", "orelse", "hoist_decls", "hoisted_bindings", "decided"})
                 hoists = self.hoists(stmt)
                 # A condition with temporaries is evaluated per iteration, in a
                 # temporary plan scope of its own the body shares.
@@ -4311,7 +4313,7 @@ class _Lowering:
                             f.splice(temporaries)
                         value = f.full_expression_value(condition)
                         block = f.block()
-                        f.branch(value, block.id, normal.id, loc)
+                        f.branch(value, block.id, normal.id, loc, stmt.decided)
                         f.current = block
                         self.sequence(f, body)
                         if f.current is not None:
@@ -4322,7 +4324,7 @@ class _Lowering:
                 else:
                     f.end(MIRGoto(head.id, loc))
                     f.current = head
-                    f.branch(f.full_expression_value(condition), then.id, normal.id, loc)
+                    f.branch(f.full_expression_value(condition), then.id, normal.id, loc, stmt.decided)
                     f.current = then
                     self.scoped_into(f, body)
                     if f.current is not None:
@@ -4387,7 +4389,7 @@ class _Lowering:
         self.place_hoists(f, hoists, loc)
         cond = f.full_expression_value(condition)
         yes, no = f.block(), f.block()
-        f.branch(cond, yes.id, no.id, loc)
+        f.branch(cond, yes.id, no.id, loc, stmt.decided)
         exits = []
         for block, arm, body in ((yes, then, stmt.then_body), (no, orelse, stmt.else_body)):
             f.current = block
@@ -4408,7 +4410,7 @@ class _Lowering:
         """An If's arms -- under a temporary plan, its elif chain's, each in
         its condition's scope -- the final else body, and whether there is one."""
         _plain(stmt, {"condition", "then_body", "else_body", "else_is_nested", "hoist_decls",
-                      "hoisted_bindings"})
+                      "hoisted_bindings", "decided"})
         hoists = self.hoists(stmt)
         condition = self.full_expression(stmt.condition)
         _require(stmt, condition.shape_of().type == BOOL, "condition requires bool")
@@ -4440,7 +4442,7 @@ class _Lowering:
                 f.splice(temporaries)
             value = f.full_expression_value(condition)
             yes, no = f.block(), f.block()
-            f.branch(value, yes.id, no.id, loc)
+            f.branch(value, yes.id, no.id, loc, node.decided)
             f.current = yes
             self.scoped_into(f, then)
             if f.current is not None:

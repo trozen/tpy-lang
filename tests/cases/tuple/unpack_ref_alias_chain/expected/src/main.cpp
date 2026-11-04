@@ -31,7 +31,7 @@ void unpack_method_and_ternary() {
     Counter g0 = Counter(1);
     Counter g1 = Counter(2);
     bool cond = true;
-    Counter& __unpack_0_0 = ((cond) ? (g0) : (g1));
+    Counter& __unpack_0_0 = g0;
     Counter& __unpack_0_1 = g1.get();
     Counter& a = __unpack_0_0;
     Counter& b = __unpack_0_1;

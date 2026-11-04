@@ -26,7 +26,6 @@ int32_t borrow(::tpy::Union<const A*, const B*> u) {
         auto& __u = *std::get<const B*>(u);
         return __u.y;
     }
-    return 0;
 }
 
 // def main() -> None:

@@ -67,7 +67,7 @@ void test_comparison() {
     if ((x != y)) {
         std::cout << "x != y" << "\n" << ::tpy::check_signals;
     }
-    if ((x == 42)) {
+    if (true) {
         std::cout << "x == 42" << "\n" << ::tpy::check_signals;
     }
 }

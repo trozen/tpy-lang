@@ -77,12 +77,16 @@ std::string handle_not_in__lit_rb__wb(std::string_view mode) {
 // @overload
 // def handle_and(mode: Literal["r"]) -> str: ...
 std::string handle_and__lit_r(std::string_view mode) {
+    if (false) {
+    }
     return "read";
 }
 
 // @overload
 // def handle_and(mode: Literal["w"]) -> str: ...
 std::string handle_and__lit_w(std::string_view mode) {
+    if (false) {
+    }
     return "write";
 }
 
@@ -97,12 +101,16 @@ std::string handle_and__lit_w(std::string_view mode) {
 // @overload
 // def handle_and_multi(mode: Literal["r", "w"]) -> str: ...
 std::string handle_and_multi__lit_r__w(std::string_view mode) {
+    if (false) {
+    }
     return "ok";
 }
 
 // @overload
 // def handle_and_multi(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_and_multi__lit_rb__wb(std::string_view mode) {
+    if (false) {
+    }
     return "ok";
 }
 

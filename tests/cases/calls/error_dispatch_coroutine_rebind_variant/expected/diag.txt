@@ -1,0 +1,1 @@
+main.py:21: error: cannot rebind 'h' to a different coroutine: 'h' holds a 'co(x: int32)' coroutine, and one name holds one async function's objects; bind 'co(x: str)' to a new name

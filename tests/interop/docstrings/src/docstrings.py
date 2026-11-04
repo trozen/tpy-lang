@@ -118,6 +118,28 @@ def undocumented(x: int64) -> int64:
     return x
 
 
+calls: int64 = 0
+
+
+# A body's `global` declarations gather at its front, behind the docstring,
+# which stays the first statement and so the __doc__.
+@export
+def counted(n: int64) -> int64:
+    """Add `n` to the call count."""
+    global calls
+    calls += n
+    return calls
+
+
+# A string after a leading `global` is no docstring (CPython: `__doc__` None).
+@export
+def counted_late(n: int64) -> int64:
+    global calls
+    "Not a docstring."
+    calls += n
+    return calls
+
+
 @export
 def reject() -> None:
     """Always raise."""

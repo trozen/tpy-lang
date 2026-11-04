@@ -11,8 +11,8 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def grow(src: Tree[int32]) -> None:
-void grow(Tree<int32_t>& src);
+// def grow(src: Tree[int32], flag: bool) -> None:  # `flag` a parameter: sema does not decide it
+void grow(Tree<int32_t>& src, bool flag);
 // def main() -> None:
 void main();
 

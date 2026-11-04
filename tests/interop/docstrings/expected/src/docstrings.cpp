@@ -71,6 +71,7 @@ std::optional<::tpyapp::docstrings::Bare> EnumUtil<::tpyapp::docstrings::Bare>::
 
 namespace tpyapp::docstrings {
 
+int64_t calls{};
 
 int64_t documented(int64_t x) {
     return x;
@@ -92,11 +93,26 @@ int64_t undocumented(int64_t x) {
     return x;
 }
 
+int64_t counted(int64_t n) {
+    calls = ::tpy::add_check<int64_t>(calls, n);
+    return calls;
+}
+
+int64_t counted_late(int64_t n) {
+    calls = ::tpy::add_check<int64_t>(calls, n);
+    return calls;
+}
+
 void reject() {
     throw Rejected("no");
 }
 
 void __tpy_init() {
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
+
+    calls = 0;
 }
 
 } // namespace tpyapp::docstrings

@@ -2117,10 +2117,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A both-literal int binop folded in the target-less BigInt context
     # (`2**63 - 1` -> the folded BigInt-targeted literal render).
     "binop.literal_fold",
-    "binop.literal_fact_fold",      # ==/!= or &&/|| chain decided by a
-                                    # LiteralType flow fact: bare true/false
-    "narrow.literal_branch_facts",  # LiteralType branch facts seeded into
-                                    # the flow-sensitive literal_facts map
     # sema's optional_safe_eq (value-repr Optional[scalar] ==/!=): optional
     # sides read bare, the plain side opposite an un-narrowed optional is
     # target-typed to its inner (lowering).
@@ -2490,6 +2486,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.bind_assign_move",       # hoisted opt slot: `name = std::move(subject);`
     "match.subject_rvalue",         # call rvalue subject: owned `auto` dispatch-local
     "match.scalar_rvalue_subject",  # switch-tier non-lvalue subject: `auto` copy
+    "match.none_subject",           # `None` subject: no binding, the chain's
+                                    # label-free arms after its effects
+    "match.no_arm",                 # no arm left: the subject's effects only
     "match.bind_reuse_ptr",         # a nested match re-seats an enclosing
                                     # match's `T*` capture hoist
     "match.field_bind_opt_ptr_frame",  # the capture assign lifts through
@@ -2542,7 +2541,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot -> the generic val_or_ptr builder
     "ctor.tuple_literal_value_opt",  # tuple literal (spelled brace-init)
                                     # into a value-repr Optional[tuple] slot
-    "match.literal_facts",          # Literal-subject per-arm fact scope
     "match.field_nested",           # nested class sub-pattern recursion
     "match.field_union_guard",      # holds_alternative<T> union-field guard
     "match.field_guard_as",         # `as` bind of the (extracted) field value

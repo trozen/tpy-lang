@@ -30,6 +30,7 @@ from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants, stamp_overload_facts,
+    unique_cpp_name,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     InteriorMutableType,
@@ -256,17 +257,13 @@ def _emits_own_variant(variant: TpyFunction, impl: TpyFunction | None) -> bool:
     of its own (a bodied `@dispatch` variant, a `typing.overload` stub's
     specialization), so it can take its own name. A `@native` /
     `@cpp_template` member keeps its runtime symbol: C++ chooses among the
-    hand-written runtime overloads. A resumable body is emitted once (a
-    `typing.overload` generator or coroutine implementation is not
-    specialized per stub), and a resumable `@dispatch` pair does not compile
-    yet (BUGS.md#dispatch-generator-pair-sema-crash): its frame and factory
-    are named by the source name."""
+    hand-written runtime overloads. A `typing.overload` generator or
+    coroutine implementation is emitted once, not specialized per stub."""
     if (_LINKAGE_MAP[variant.linkage.name] is not FunctionLinkage.DEFAULT
             or variant.cpp_template is not None
             or variant.builtin_function_key is not None):
         return False
-    body = impl if impl is not None else variant
-    return not (body.is_generator or body.is_async)
+    return impl is None or not (impl.is_generator or impl.is_async)
 
 
 def _clone_families(infos: list[FunctionInfo]) -> list[list[FunctionInfo]]:
@@ -1590,13 +1587,14 @@ class TypeRegistrar:
             record.fields[:] = remaining
         return class_constants, finality
 
-    def _set_generator_yield_type(self, func: TpyFunction) -> None:
-        """Set generator_yield_type for a generator whose signature is not
-        processed by register_function (the @overload impl is not callable, so
-        it never reaches that pass) -- body analysis of its `yield`s asserts the
-        field is present.
-        """
-        resolved_return = self.type_ops.resolve_type(func.return_type)
+    def _set_generator_yield_type(self, func: TpyFunction,
+                                  resolved_return: TpyType | None = None) -> None:
+        """Set generator `func`'s yield type from its `Iterator[T]` return,
+        rejecting any other return. Body analysis of its `yield`s reads it.
+        Also run for a `typing.overload` implementation, which is not
+        callable and so gets no FunctionInfo of its own."""
+        if resolved_return is None:
+            resolved_return = self.type_ops.resolve_type(func.return_type)
         if not (is_protocol_type(resolved_return)
                 and resolved_return.qualified_name() == "typing.Iterator"):
             raise SemanticError(
@@ -1928,7 +1926,7 @@ class TypeRegistrar:
         # pairs. @overload stubs are exempt -- multiple stubs + one
         # implementation share the same name. Property getter+setter share
         # a name -- also exempt.
-        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
+        propagate_clone_names: set[str] = {m.name for m in record.methods if not m.is_written_def}
         overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
         property_method_names: set[str] = {m.name for m in record.methods if m.is_property_getter or m.is_property_setter}
         seen_method_names: set[str] = set()
@@ -2006,7 +2004,7 @@ class TypeRegistrar:
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
         # methods, which would break mutable-vs-const overload tie-breaking.
         mutable_clone_ids: set[int] = {id(m) for m in record.methods
-                                       if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
+                                       if not m.is_written_def}
 
         # Resolve record-level type param bounds early so that
         # attach_type_param_bounds in the method loop below uses resolved versions
@@ -2464,19 +2462,28 @@ class TypeRegistrar:
         #     (synthesized default for unannotated; lets the body inspect).
         # Other shapes are rejected so the codegen call-site doesn't need
         # to handle exotic param types.
+        # A `with` / `async with` makes one exit call for every way out of
+        # the block, while CPython picks the variant from the exception the
+        # block raised (or None): a set's variant would be chosen once for
+        # every path. Lifting this needs a variant per exit path
+        # (BUGS.md#aexit-lacks-exit-checks).
+        # A set counts the variants a call chooses among: the stubs of an
+        # implementation (or the `@dispatch` defs), else the one def.
+        for exit_name in ("__exit__", "__aexit__"):
+            written = [m for m in record.methods
+                       if m.name == exit_name and m.is_written_def]
+            variants = [m for m in written if m.is_overload_stub] or written
+            if len(variants) > 1:
+                raise SemanticError(
+                    f"{exit_name} cannot be overloaded",
+                    next((m.loc for m in record.methods
+                          if m.name == exit_name), record.loc),
+                )
         if "__exit__" in methods:
             exit_loc = next(
                 (m.loc for m in record.methods if m.name == "__exit__"),
                 record.loc,
             )
-            # __exit__ is dispatched at a single codegen call site per
-            # `with` item; multiple overloads would force runtime selection
-            # that the call-site shape can't express. Reject up front.
-            if len(methods["__exit__"]) > 1:
-                raise SemanticError(
-                    "__exit__ cannot be overloaded",
-                    exit_loc,
-                )
             exit_info = methods["__exit__"][0]
             # Canonical-signature hint appended to every __exit__
             # validation error so the user sees the complete expected
@@ -3570,9 +3577,16 @@ class TypeRegistrar:
         A clone family (an `@auto_readonly` / `auto_own` pair, which C++
         tells apart by the receiver) shares one name. A method implementing
         a slot of a `@dynamic` base may not be a set: the slot is one
-        virtual, and its override is chosen by the name C++ calls."""
+        virtual, and its override is chosen by the name C++ calls.
+
+        Every record's receiver pairs get their frame names
+        (`_name_receiver_twin_frames`), a native or builtin-keyed one's
+        included: its TPy-bodied pairs emit frames too."""
         ri = self.ctx.registry.get_record(record.name)
-        if ri is None or ri.is_native or ri.builtin_type_key:
+        if ri is None:
+            return
+        if ri.is_native or ri.builtin_type_key:
+            self._name_receiver_twin_frames(ri, self._record_member_names(ri))
             return
         stub_impl: dict[int, TpyFunction] = {}
         for impl, stubs in self.ctx.overload_groups.items():
@@ -3626,6 +3640,30 @@ class TypeRegistrar:
                         # The operator's own spelling would leave the pick
                         # to C++ again: a named dunder renders as its call.
                         fi.cpp_template = _member_call_template(variant, fi)
+        self._name_receiver_twin_frames(ri, reserved)
+
+    def _name_receiver_twin_frames(self, ri: RecordInfo,
+                                   reserved: frozenset[str]) -> None:
+        """Give the mutable member of each receiver pair of `ri` its own
+        frame name (`FunctionInfo.frame_cpp_name`), clear of `reserved` --
+        every member and variant name, the names the record's other frames
+        are spelled from -- and tell each family member the frames of its
+        whole family. Runs after the variants are named."""
+        taken = set(reserved)
+        groups = [*ri.methods.values(),
+                  *(prop.accessors for prop in ri.properties.values())]
+        for infos in groups:
+            for family in _clone_families(infos):
+                if not any(fi.is_readonly for fi in family):
+                    continue
+                for fi in family:
+                    if fi.is_readonly or fi.root._twin_frame_cpp_name:
+                        continue
+                    fi.root._twin_frame_cpp_name = unique_cpp_name(
+                        f"{fi.variant_cpp_name or fi.name}__mut", taken)
+                frames = tuple(fi.frame_cpp_name for fi in family)
+                for fi in family:
+                    fi.root._family_frame_names = frames
 
     def _record_member_names(self, ri: RecordInfo) -> frozenset[str]:
         """Every C++ member name `ri`'s struct and its bases declare from
@@ -4601,8 +4639,19 @@ class TypeRegistrar:
             scope_record=site.scope_record,
             compat=self.compat if target is not None else None)
 
-    def register_function(self, func: TpyFunction, *, unique_declaration: bool = False) -> None:
-        """Register a function."""
+    def _build_function_info(
+        self, func: TpyFunction, *,
+        declaration: TpyFunction | None = None,
+        variant_decl: TpyFunction | None = None,
+    ) -> tuple[FunctionInfo, list[tuple[str, TpyType]], TpyType]:
+        """The FunctionInfo of free function `func` -- a plain def or one
+        variant of an overload set (`variant_decl`) -- with its resolved
+        parameter and return types. The one builder: a variant gets every
+        fact a plain def does (a generator's yield type, a coroutine's
+        `Cancellable` return), so its body is analyzed and emitted alike.
+        A `typing.overload` stub only declares a signature of its
+        implementation, whose body is checked as a generator, if it is one,
+        by `_set_generator_yield_type`."""
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
 
@@ -4650,40 +4699,19 @@ class TypeRegistrar:
         # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
         # Exception: generator functions return Iterator[T] (codegen emits concrete struct).
         # Exception: @native/@cpp_template stubs (C++ handles the actual return type).
-        if is_protocol_type(resolved_return):
-            if func.is_generator:
-                # Validate that it's Iterator[T]
-                if resolved_return.qualified_name() != "typing.Iterator":
-                    raise SemanticError(
-                        f"Generator function must have return type 'Iterator[T]', "
-                        f"got '{resolved_return}'",
-                        func.loc
-                    )
-                if not resolved_return.type_args:
-                    raise SemanticError(
-                        f"Iterator must have a type argument, e.g. Iterator[int32]",
-                        func.loc
-                    )
-                func.generator_yield_type = resolved_return.type_args[0]
-                self._validate_generator_yield_copyable(
-                    func.generator_yield_type, func.loc)
-            else:
-                pi = protocol_info_of(resolved_return)
-                is_native_stub = func.is_stub and (func.native_name or func.cpp_template)
-                if not (pi and pi.is_dynamic) and not is_native_stub:
-                    raise SemanticError(
-                        f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
-                        f"Only @dynamic protocols can be used as return types",
-                        func.loc
-                    )
-
-        # Generator without Iterator[T] return type
-        if func.is_generator and not is_protocol_type(resolved_return):
-            raise SemanticError(
-                f"Generator function must have return type 'Iterator[T]', "
-                f"got '{resolved_return}'",
-                func.loc
-            )
+        if func.is_typing_overload_stub:
+            pass
+        elif func.is_generator:
+            self._set_generator_yield_type(func, resolved_return)
+        elif is_protocol_type(resolved_return):
+            pi = protocol_info_of(resolved_return)
+            is_native_stub = func.is_stub and (func.native_name or func.cpp_template)
+            if not (pi and pi.is_dynamic) and not is_native_stub:
+                raise SemanticError(
+                    f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
+                    f"Only @dynamic protocols can be used as return types",
+                    func.loc
+                )
 
         # *args on async def: the await-call lowering for a variadic coroutine
         # factory is not wired -- the vararg pack reaches gen_async's coro
@@ -4784,8 +4812,10 @@ class TypeRegistrar:
             fi_return_type = resolved_return
         info = FunctionInfo(
             name=func.name,
-            declaration=func if unique_declaration else None,
-            body=func,
+            declaration=declaration,
+            # A typing.overload stub only declares one signature of the
+            # trailing implementation.
+            body=None if func.is_typing_overload_stub else func,
             params=param_infos,
             return_type=fi_return_type,
             async_inner_return=resolved_return if func.is_async else None,
@@ -4821,11 +4851,19 @@ class TypeRegistrar:
             # builtin FIs leave this None so the gate excludes them.
             originating_module=(None if func.builtin_function_key
                                 else self.ctx.module_name),
+            variant_decl=variant_decl,
             _emits_cpp_defaults=emits_cpp_defaults(func),
         )
         self._stamp_result_borrows(func, info)
 
         self._qualify_error_return(func, info)
+        return info, resolved_params, resolved_return
+
+    def register_function(self, func: TpyFunction, *, unique_declaration: bool = False) -> None:
+        """Register a function."""
+        info, resolved_params, resolved_return = self._build_function_info(
+            func, declaration=func if unique_declaration else None)
+        fi_linkage = info.linkage
 
         # Check for duplicate extern symbol names
         if fi_linkage != FunctionLinkage.DEFAULT:
@@ -4954,9 +4992,7 @@ class TypeRegistrar:
         constructors. An `auto_readonly` / `auto_own` clone is the
         expansion of one source def, not a variant."""
         inits = [m for m in record.methods
-                 if m.name == INIT_METHOD
-                 and not m.is_auto_readonly_mutable_clone
-                 and not m.is_auto_own_borrowing_clone]
+                 if m.name == INIT_METHOD and m.is_written_def]
         first = next((m for m in inits if m.is_overload_stub), None)
         if first is None:
             return
@@ -5201,77 +5237,8 @@ class TypeRegistrar:
         """
         infos: list[FunctionInfo] = []
         for func in stubs:
-            is_generic = bool(func.type_params)
-            resolved_params = []
-            for pname, ptype in func.params:
-                resolved_ptype = self.type_ops.resolve_type(ptype)
-                try:
-                    self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic,
-                                                allow_pointer_repr_dynamic=True)
-                except SemanticError as e:
-                    raise self.ctx.error(str(e), func)
-                resolved_params.append((pname, resolved_ptype))
-
-            resolved_return = self.type_ops.resolve_type(func.return_type)
-            try:
-                self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
-            except SemanticError as e:
-                raise self.ctx.error(str(e), func)
-
-            type_param_bounds = self._resolve_type_param_bounds(
-                func.type_param_bounds, func.loc)
-            # Propagate resolved bounds back to AST (safe: fresh AST per compile)
-            if type_param_bounds:
-                func.type_param_bounds.update(type_param_bounds)
-
-            func_defaults = func.defaults if func.defaults else []
-            stub_param_infos = [
-                ParamInfo(n, t,
-                          default_expr=func_defaults[i] if i < len(func_defaults) else None,
-                          keyword_only=(func.keyword_only_start is not None
-                                        and i >= func.keyword_only_start),
-                          positional_only=i < func.num_posonly_params)
-                for i, (n, t) in enumerate(resolved_params)
-            ]
-            if func.vararg_name is not None and func.vararg_type is not None:
-                va_type = self.type_ops.resolve_type(func.vararg_type)
-                stub_param_infos.append(
-                    ParamInfo(func.vararg_name, _vararg_span_type(va_type),
-                              is_variadic=True))
-            # A stub's own defaults reach codegen (the specialization is
-            # synthesized from the STUB's params, not the implementation's),
-            # so they need the same gate a plain function's get.
-            self._defer_param_defaults(stub_param_infos)
-            info = FunctionInfo(
-                name=func.name,
-                # A @dispatch variant is its own body; a @overload stub only
-                # declares one signature of the trailing implementation.
-                body=func if func.overload_form is OverloadForm.DISPATCH else None,
-                params=stub_param_infos,
-                return_type=resolved_return,
-                is_noalloc=func.is_noalloc,
-                is_readonly=func.is_readonly or func.is_pure,
-                is_pure=func.is_pure,
-                is_transient=func.is_transient,
-                checks_signals=func.checks_signals,
-                may_interrupt=binding_may_interrupt(func),
-                linkage=_LINKAGE_MAP[func.linkage.name],
-                native_name=func.native_name,
-                native_cpp_return_type=func.native_cpp_return_type,
-                cpp_template=func.cpp_template,
-                type_params=func.type_params,
-                type_param_bounds=type_param_bounds,
-                type_param_defaults=func.type_param_defaults,
-                error_return_type=(qualify_exception_name(
-                    func.error_return, self.ctx.registry, self.ctx.module_name)
-                    if func.error_return else None),
-                qualified_name=f"{self.ctx.module_name}.{func.name}",
-                originating_module=self.ctx.module_name,
-                variant_decl=func,
-                _emits_cpp_defaults=emits_cpp_defaults(func),
-            )
-            self._stamp_result_borrows(func, info)
-            self._qualify_error_return(func, info)
+            info, resolved_params, resolved_return = self._build_function_info(
+                func, variant_decl=func)
             # Propagate resolved types back to AST (matches register_record behavior)
             func.params = list(resolved_params)
             func.return_type = resolved_return

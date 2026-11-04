@@ -12,12 +12,12 @@ main::walrus_member@98:0: uncovered (unsupported record fields), summary: opaque
 main::walrus_return@109:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::takel@113:0: covered (storage: no_proof_required), summary: known
 main::container_ternary@118:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
-main::getter_member@126:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::dict_setitem@135:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::list_setitem@144:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::match_arm@153:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::try_body@166:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@178:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::getter_member@125:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::dict_setitem@134:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_setitem@143:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::match_arm@152:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::try_body@165:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@177:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::H.repack@28:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::G.get@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::C.__init__@17:4: covered (storage: no_proof_required), summary: known

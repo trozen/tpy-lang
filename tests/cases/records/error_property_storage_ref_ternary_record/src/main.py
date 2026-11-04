@@ -44,11 +44,10 @@ class Src:
         return self._r
 
 
-def main() -> None:
+def main(c: bool) -> None:  # a parameter: sema does not decide `c`
     s = Src()
-    c = True
     v = s.r if c else s.r  # tpyc: error(/ifexpr.getter_arm_const_source/)
     print(v.x)
 
 
-main()
+main(True)

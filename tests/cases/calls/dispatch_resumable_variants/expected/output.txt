@@ -1,0 +1,61 @@
+free 3
+free 4
+free 3
+arity 4
+arity 5
+arity 6
+generic a
+generic 7
+generic 7
+method 2
+method 5
+method total 5
+box 9
+box 9
+box 9
+module 40
+module 2
+module seen 101
+module free 3
+module free 6
+module free 4
+chain 10
+chain 11
+chain 3
+inherited 3
+inherited 3
+clone 1
+clone 12
+clone sum 23
+clone rw 1
+clone rw 122
+clone ro 1
+clone ro 222
+twins 8 1
+twins ro 9
+twin frame 7
+twin frame plain 8
+plain twin name 4
+auto exit 6
+auto exit exit
+one stub exit 3
+one stub exit exit
+bound 1
+bound 2
+bound other 2
+enter 7
+enter log ['enter', 'exit']
+co 2 4
+bump 5 7 7
+module co 6 60
+aenter ['enter', 'body', 'exit']
+generic aenter 1
+generic aenter log ['enter', 'exit']
+anext 1
+anext 2
+aiter 10
+aiter 20
+atwins 8 1
+atwins ro 9
+auto aexit 4
+auto aexit exit

@@ -1,0 +1,198 @@
+kin::__tpy_init: uncovered (module initialization)
+kin::mi_isinstance@21:0: covered (storage: no_proof_required), summary: known
+kin::mi_pattern@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+kin::mi_union@35:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+kin::Fin.__init__@10:4: covered (storage: no_proof_required), summary: known
+kin::Wing.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::checked@58:0: uncovered (error-return body)
+main::fetch@63:0: uncovered (async body)
+main::probe@68:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::mk@73:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::if_arm@79:0: covered (storage: no_proof_required), summary: known
+main::elif_arm@86:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::ternary@95:0: covered (storage: no_proof_required), summary: known
+main::and_or@101:0: covered (storage: no_proof_required), summary: known
+main::while_arm@106:0: covered (storage: no_proof_required), summary: known
+main::assert_arm@116:0: covered (storage: no_proof_required), summary: known
+main::comprehension@122:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::match_arm@127:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_record@140:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_optional@157:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_literal@168:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::after_terminating@179:0: covered (storage: no_proof_required), summary: known
+main::bound_in_arm@186:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::loop_rebind@193:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::try_finally@206:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::gen@220:0: covered (storage: no_facts: storage facts have not been published)
+main::coro@227:0: uncovered (async body)
+main::mutate_dead@248:0: covered (storage: no_proof_required), summary: known
+main::impure@255:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::impure_checked@263:0: uncovered (error-return body)
+main::impure_await@270:0: uncovered (async body)
+main::non_member@277:0: covered (storage: no_proof_required), summary: known
+main::ternary_types@286:0: covered (storage: no_proof_required), summary: known
+main::literal_truth@292:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::while_literal@299:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::match_membership@309:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::literal_true@320:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::local_constant@327:0: covered (storage: no_proof_required), summary: known
+main::never_none@335:0: covered (storage: no_proof_required), summary: known
+main::multi@342:0: covered (storage: no_proof_required), summary: known
+main::neg@349:0: covered (storage: no_proof_required), summary: known
+main::range_loop@353:0: covered (storage: no_proof_required), summary: known
+main::range_walrus@363:0: covered (storage: no_proof_required), summary: known
+main::comp_shadow@371:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::nested_local@380:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::nonlocal_rebind@391:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::setp@403:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::second_write@408:0: covered (storage: no_proof_required), summary: known
+main::ptr_range@418:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::user_bool@436:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::user_eq@455:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+main::value_compare@462:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::guard_impure@469:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_covered@480:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_none@491:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::nothing@501:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::match_none_call@507:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::keyword_pattern@516:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::loop_rebind_narrowed@525:0: covered (storage: no_proof_required), summary: known
+main::comp_ternary@544:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+main::closure@559:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_body@577:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::literal_zero@585:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::not_none@592:0: covered (storage: no_proof_required), summary: known
+main::take_list@600:0: covered (storage: no_proof_required), summary: known
+main::take_dog@604:0: covered (storage: no_proof_required), summary: known
+main::own_arg@610:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::alias_binding@625:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::grow@636:0: covered (storage: no_facts: storage facts have not been published)
+main::agrow@641:0: uncovered (async body)
+main::frame_arg@647:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::async_frame_arg@655:0: uncovered (async body)
+main::push@676:0: uncovered (unsupported parameter type)
+main::protocol_arg@681:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::kept_and@704:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kept_ternary@710:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kept_or@716:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kept_while@722:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kept_not@728:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::kept_len@747:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::nested_decided@755:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::kw_sink@770:0: uncovered (unmodeled record)
+main::over@775:0: uncovered (no body to lower)
+main::over@781:0: uncovered (no body to lower)
+main::builtin_ctor@786:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::typed_dict@796:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::overloaded@802:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::coverage@831:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::false_and@838:0: covered (storage: no_proof_required), summary: known
+main::call_and_none@845:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::nums@852:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::builtin_truth@857:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::make_truth@865:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::impure_isinstance@870:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::value_undecided@877:0: covered (storage: no_proof_required), summary: known
+main::live_binding@883:0: covered (storage: no_proof_required), summary: known
+main::dead_local@891:0: covered (storage: no_proof_required), summary: known
+main::dead_global@899:0: covered (storage: no_proof_required), summary: known
+main::lambda_walrus_global@908:0: covered (storage: no_proof_required), summary: known
+main::closure_local@915:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::decided_return@924:0: covered (storage: no_proof_required), summary: known
+main::gen_dead_only@930:0: covered (storage: no_facts: storage facts have not been published)
+main::coro_dead_only@936:0: uncovered (async body)
+main::walrus_scalar@943:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::either@950:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::non_member_call@959:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::match_none_or@967:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::match_none_guard@975:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::match_none_empty@983:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::own_read_after@992:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::elif_impure@1001:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::false_head_chain@1010:0: covered (storage: no_proof_required), summary: known
+main::count@1021:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::walrus_live@1026:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+main::comp_impure@1032:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::tick@1038:0: covered (storage: no_proof_required), summary: known
+main::while_impure@1042:0: covered (storage: no_proof_required), summary: known
+main::while_true_return@1052:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::while_true_call@1057:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::while_true_passes@1064:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen_impure@1076:0: uncovered (call needs finalized known summary)
+main::coro_impure@1082:0: uncovered (async body)
+main::while_dead_local@1090:0: covered (storage: no_proof_required), summary: known
+main::dead_capture_after@1098:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_capture@1110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_true@1123:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::arm_local@1132:0: covered (storage: no_proof_required), summary: known
+main::dead_global_decl@1142:0: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::dead_nonlocal_decl@1151:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::inner_scope_nonlocal@1165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::dead_match_global@1179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::match_no_arm@1203:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::no_arm_checked@1221:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+main::fold_checked@1230:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::del_after@1238:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+main::del_rebind@1247:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::del_cond_walrus@1258:0: covered (storage: no_proof_required), summary: known
+main::finally_arm@1272:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::take_str@1283:0: covered (storage: no_proof_required), summary: known
+main::capture_rebind@1289:0: uncovered (owned-leaf move), summary: opaque (owned-leaf move)
+main::ternary_arm_value@1300:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::none_effect@1307:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::none_call_once@1312:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::none_then_dead@1321:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::none_no_arm@1333:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::none_del@1341:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::none_gen@1351:0: uncovered (match across a suspension)
+main::none_guard@1360:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::none_guard_call@1368:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::none_print@1379:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::none_print_no_arm@1385:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::none_chk@1393:0: uncovered (error-return body)
+main::none_er@1402:0: uncovered (error-return body)
+main::none_er_no_arm@1409:0: uncovered (error-return body)
+main::anone@1416:0: uncovered (async body)
+main::none_await@1423:0: uncovered (async body)
+main::none_await_no_arm@1429:0: uncovered (async body)
+main::none_await_arm_awaits@1438:0: uncovered (async body)
+main::none_await_arm_jumps@1448:0: uncovered (async body)
+main::none_await_in_if@1462:0: uncovered (async body)
+main::walrus_subject@1472:0: covered (storage: no_proof_required), summary: known
+main::walrus_stmt@1481:0: covered (storage: no_proof_required), summary: known
+main::none_tail@1489:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::none_field@1504:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_dead_chain@1516:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_dead_union@1526:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::guard_dead_switch@1536:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_dead_str@1548:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@1566:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::Dog.bark@19:4: covered (storage: no_proof_required), summary: known
+main::Kennel.label@241:4: covered (storage: no_proof_required), summary: known
+main::Truth.__bool__@430:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::AnyEq.__eq__@450:4: covered (storage: no_proof_required)
+main::Guard.__enter__@569:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Guard.__exit__@572:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Bag.add@672:4: covered (storage: no_proof_required), summary: known
+main::Gate.__bool__@697:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::Pouch.__len__@741:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::Holder.field_none@818:4: covered (storage: no_proof_required), summary: known
+main::Holder.field_ternary@825:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Cat.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Bird.__init__@33:4: covered (storage: no_proof_required), summary: known
+main::Bat.__init__@40:4: covered (storage: no_proof_required), summary: known
+main::Griffin.__init__@45:4: covered (storage: no_proof_required), summary: known
+main::Kennel.__init__@235:4: covered (storage: no_proof_required), summary: known
+main::Truth.__init__@427:4: covered (storage: no_proof_required), summary: known
+main::AnyEq.__init__@447:4: covered (storage: no_proof_required), summary: known
+main::Ctor.__init__@552:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+main::Bag.__init__@669:4: covered (storage: no_proof_required), summary: known
+main::Gate.__init__@693:4: covered (storage: no_proof_required), summary: known
+main::Pouch.__init__@738:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@813:4: uncovered (use of the record before every field is initialized), summary: opaque (use of the record before every field is initialized)
+main::DeclCtor.__init__@1194:4: covered (storage: no_proof_required), summary: opaque (summary global access)
+main::Tag.__init__@1214:4: covered (storage: no_proof_required), summary: known
+main::NoneHolder.__init__@1499:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Ray.__init__@1783:4: covered (storage: no_proof_required), summary: known

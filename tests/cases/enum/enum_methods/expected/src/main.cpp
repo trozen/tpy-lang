@@ -294,7 +294,7 @@ void main() {
     std::cout << "order:" << " " << __enum_Color{::tpyapp::main::pick()}.scaled(::tpyapp::main::arg()) << " " << ::tpy::ListPrinter((*log)) << "\n" << ::tpy::check_signals;
     bool flag = true;
     std::tuple<Color, int32_t> t = std::tuple<Color, int32_t>{Color::Blue, 1};
-    std::cout << "shapes:" << " " << __enum_Color{((flag) ? (c) : (Color::Blue))}.label() << " " << __enum_Color{std::get<0>(t)}.label() << "\n" << ::tpy::check_signals;
+    std::cout << "shapes:" << " " << __enum_Color{c}.label() << " " << __enum_Color{std::get<0>(t)}.label() << "\n" << ::tpy::check_signals;
     std::cout << "property call:" << " " << (::tpy::__getitem__(__enum_Color{c}.fns(), 0))() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {9};
     std::vector<int32_t>& zs = __enum_Color{c}.pass_on(ys);

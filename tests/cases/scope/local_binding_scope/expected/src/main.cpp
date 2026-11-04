@@ -371,7 +371,7 @@ void alias_shadow() {
 // def isinstance_builtin() -> None:
 //     print("isinstance_builtin", isinstance("x", str))  # tpyc: ok
 void isinstance_builtin() {
-    std::cout << "isinstance_builtin" << " " << ::tpy::print_bool(({ (void)("x"); true; })) << "\n" << ::tpy::check_signals;
+    std::cout << "isinstance_builtin" << " " << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
 }
 
 // # A nested def reading a parameter of the enclosing function.

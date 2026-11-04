@@ -1111,12 +1111,8 @@ void terminating_else(bool c, P& a, P* b) {
     P* p = b;
     if (c) {
         while (true) {
-            goto __after_else_0;
+            break;
         }
-        {
-            return;
-        }
-        __after_else_0:;
     } else {
         p = &a;
     }
@@ -1141,12 +1137,8 @@ void terminating_else_inner(bool c, P& a, P* b) {
     for (int32_t j = 0; j < 2; ++j) {
         if (c) {
             while (true) {
-                goto __after_else_1;
+                break;
             }
-            {
-                continue;
-            }
-            __after_else_1:;
         } else {
             p = &a;
         }

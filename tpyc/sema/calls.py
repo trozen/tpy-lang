@@ -49,7 +49,7 @@ from ..parse import (
     TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictComprehension, TpySetComprehension, TpyNamedExpr,
 )
-from ..prescan import isinstance_narrowing_key
+from ..prescan import fact_key_root, isinstance_narrowing_key
 from ..modules import extract_type_params
 from ..namespace import BindingKind, Blocked, NameBinding
 from ..coercions import CoercionContext, VALUE_TO_PTR, owning_param
@@ -93,11 +93,12 @@ from .int_narrowing import proven_cast, same_type_conversion, site_value_range
 from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            path_key, pointee_root, receiver_leaves,
                            storage_roots)
+from .dead_arms import (Relation, class_relation, queue_disjoint_check,
+                        truthy_operands)
 from .receiver_calls import (call_mutates_receiver,
                              credit_implicit_receiver_call,
                              record_receiver_edges,
                              record_truth_calls)
-from .narrowing import truthy_operands
 from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
 from .elem_paths import owned_slot_paths
@@ -1293,7 +1294,10 @@ class CallAnalyzer:
                              src: CallSource) -> None:
         """`commit_args` for a call whose arguments, `src`, are analyzed
         and received against its resolved `callee` already, bound to it
-        here."""
+        here. `src` is read before its operands were analyzed: a decided
+        one is laid out as its live part."""
+        if not self.ctx.trial_depth and self.ctx.slot_step_commits():
+            src = src.mapped(lambda _, e: self.expr.live_part(e))
         binding = self.bind_args(call, callee.params, callee.name, src=src)
         self.commit_args(call, callee, binding, subst, analyze=True, src=src)
 
@@ -1347,6 +1351,8 @@ class CallAnalyzer:
             arg, fld = td_call.args[k], record.fields[i]
             arg_type = self.expr.analyze_at_slot(arg, fld.type,
                                                  CoercionContext.ARG)
+            if not self.ctx.trial_depth and self.ctx.slot_step_commits():
+                arg = self.expr.live_part(arg)
             td_call.args[k] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
                 coercion_ctx=CoercionContext.ARG, param=f"'{fld.name}'")
@@ -3042,10 +3048,11 @@ class CallAnalyzer:
         var_type = bound_as_spelled(var_type, lists=True)
         result = False
         for ct in check_types:
-            if reg.is_subclass_of_or_equal(var_type, ct):
+            relation = class_relation(reg, var_type, ct)
+            if relation is Relation.INSTANCE:
                 result = True
                 continue
-            if reg.is_subclass_of(ct, var_type):
+            if relation is Relation.DESCENDANT:
                 self.ctx.warning(
                     f"isinstance() check against descendant type '{ct}' on "
                     f"'{var_type}' folds to False (static dispatch; use "
@@ -3063,6 +3070,8 @@ class CallAnalyzer:
                     f"isinstance(p := deref({spelled}), {ct})",
                     expr,
                 )
+            else:
+                queue_disjoint_check(self.ctx, var_type, ct, expr)
         return result
 
     def _analyze_isinstance_type_param(
@@ -3266,7 +3275,10 @@ class CallAnalyzer:
                     f"completes.",
                     expr,
                 )
-        if narrowed is not None and polymorphic_source is None:
+        if (narrowed is not None and polymorphic_source is None
+                and fact_key_root(first_arg.name)
+                not in self.ctx.func.head_kills):
+            # A loop head re-tests a name its body rebinds: no fold.
             narrowed_inner = self._isinstance_unwrap(narrowed)
             if not self._is_union_alias(narrowed_inner) and not isinstance(
                     narrowed_inner, (UnionType, OptionalType)):
@@ -3397,17 +3409,27 @@ class CallAnalyzer:
             if static_fold is not None:
                 self._fold_isinstance(expr, static_fold)
                 return BOOL
-            if len(non_members) == 1:
+            if matched:
+                names = ", ".join(f"'{t}'" for t in non_members)
                 raise self.ctx.error(
                     f"Type '{non_members[0]}' is not a member of union "
-                    f"'{effective_type}'",
-                    expr,
-                )
-            names = ", ".join(f"'{t}'" for t in non_members)
-            raise self.ctx.error(
-                f"Types {names} are not members of union '{effective_type}'",
-                expr,
-            )
+                    f"'{effective_type}'" if len(non_members) == 1 else
+                    f"Types {names} are not members of union "
+                    f"'{effective_type}'", expr)
+            for ct in non_members:
+                for m in effective_type.members:
+                    relation = class_relation(self.ctx.registry, m, ct)
+                    if relation is Relation.DESCENDANT:
+                        self.ctx.warning(
+                            f"isinstance() check against descendant type "
+                            f"'{ct}' on '{m}' folds to False (static "
+                            f"dispatch; use @dynamic for runtime type "
+                            f"checks)", expr)
+                    elif relation is Relation.UNRELATED:
+                        queue_disjoint_check(self.ctx, m, ct, expr)
+            # No member is one of the checked types: the test is False.
+            self._fold_isinstance(expr, False)
+            return BOOL
 
         expr.isinstance_var = key
         expr.isinstance_type = (matched[0] if len(matched) == 1
@@ -6333,6 +6355,10 @@ class CallAnalyzer:
             decl = (declared_types[i] if declared_types is not None
                     and i < len(declared_types) else ptype)
             arg_type = self.expr.analyze_arg_at_param(arg, check_ptype, decl)
+        if not self.ctx.trial_depth and self.ctx.slot_step_commits():
+            # `args` is the call's layout, held apart from the tree until
+            # it is stored: a decided argument's holder does not see it.
+            arg = args[i] = self.expr.live_part(arg)
         if builtin_form:
             arg_type = unwrap_own(unwrap_ref_type(arg_type))
         if own_checks:

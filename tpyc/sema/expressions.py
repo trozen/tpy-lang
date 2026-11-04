@@ -14,7 +14,7 @@ from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, 
 from ..holders import IterHolder
 from ..identity_map import IdentityMap
 from ..typesys import canonical_readonly, make_readonly
-from ..typesys import pointer_repr_optional, readonly_access, repr_shape
+from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import answers_as_call, element_access_getitem, store_slot_type, store_takes_elements
@@ -59,7 +59,7 @@ from ..parse import (
     TpyIfExpr, TpyNamedExpr, TpyAwait,
     TpyLambda, TpyStarUnpack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
-    TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign, TpyNonlocal,
+    TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign,
     collect_name_refs,
     comp_free_reads, comp_sinks,
 )
@@ -91,8 +91,10 @@ from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owne
 from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import step_handover_paths
 from .compatibility import TupleSink
-from .narrowing import NarrowingTracker, truthy_operands
+from .narrowing import NarrowingTracker
 from .flow_facts import Branch, FlowFacts
+from .dead_arms import (decided_truth, folded_truth, narrows_past_literal,
+                        replace_child, truthy_operands)
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
 from .list_elem import (Role, container_call, container_calls, iterated_step,
                         without_mutable_twins,
@@ -199,10 +201,7 @@ def _names_rebound_by(stmt: TpyStmt) -> set[str]:
     if isinstance(stmt, TpyTry):
         names.update(h.binding for h in stmt.handlers if h.binding is not None)
     if isinstance(stmt, TpyNestedDef):
-        def on_inner(inner: TpyStmt) -> None:
-            if isinstance(inner, TpyNonlocal):
-                names.update(inner.names)
-        walk_body_stmts(stmt.func.body, lambda e: None, on_inner)
+        names |= stmt.nonlocal_names
     return names
 
 
@@ -455,6 +454,17 @@ class SubscriptViews(NamedTuple):
         return CallShape(2 if self.kind is SubscriptDunder.SET else 1)
 
 
+@dataclass(frozen=True)
+class ImplicitDunderPick:
+    """What `resolve_implicit_dunder` ranked: the set at the receiver's
+    type args, and the winner there and as registered (None: no variant
+    takes the call)."""
+    candidates: list[FunctionInfo]
+    type_subst: dict
+    matched: FunctionInfo | None
+    original: FunctionInfo | None
+
+
 @dataclass
 class _RouteFrame:
     """An analysis of `expr` now running and the step route it chose
@@ -561,6 +571,11 @@ def _use_as_part_of(parent: TpyExpr, child: TpyExpr) -> str:
     if isinstance(parent, (TpyFString, TpyFStringValue)):
         return "a formatted value of an f-string"
     return "this use"
+
+
+def _narrows(branch: Branch, on_true: bool) -> bool:
+    """`narrows_past_literal` over one path of a test."""
+    return narrows_past_literal(branch.proven_types(on_true))
 
 
 class ExpressionAnalyzer:
@@ -767,7 +782,7 @@ class ExpressionAnalyzer:
             module_qual = fi.originating_module
         targs = getattr(init, "inferred_type_args", None)
         return make_concrete_gen(
-            it, fi.name, owner=owner,
+            it, fi.frame_cpp_name, owner=owner,
             inferred_type_args=tuple(targs) if targs else None,
             module_qual=module_qual, fi=fi)
 
@@ -859,11 +874,15 @@ class ExpressionAnalyzer:
         its children met through their own records. A step met again at
         the slot it last decided for -- committed, or a probe again --
         decides nothing new. `hinted` says `slot` is the entry's own hint;
-        an unhinted entry meets the hint in force."""
+        an unhinted entry meets the hint in force. A decided node an
+        earlier probe left in the tree is placed as a first analysis
+        places it, once a step meeting it commits."""
         at_probe_slot = self.ctx.at_probe_slot
         if slot == rec.slot and (not rec.at_probe_slot or at_probe_slot):
+            self._place_live_part(expr)
             return rec.typ
         if not self.is_open(expr):
+            self._place_live_part(expr)
             return rec.typ
         with self.step_scope(expr), self._route_frame(expr) as frame:
             typ = self._slot_step(expr, slot, coercion_ctx, rec, hinted)
@@ -871,6 +890,7 @@ class ExpressionAnalyzer:
         self.ctx.analysis_records[expr] = AnalysisRecord(
             typ, slot, at_probe_slot,
             frame.route if frame.chosen else rec.route)
+        self._place_live_part(expr)
         return typ
 
     def commits(self, node: TpyExpr) -> bool:
@@ -1117,6 +1137,7 @@ class ExpressionAnalyzer:
                 with self._route_frame(expr) as frame:
                     typ = self._first_analysis(expr, own)
                 self.note_analysis(expr, typ, own, frame.route)
+                self._place_live_part(expr)
         finally:
             self._expr_stack.pop()
         return self._pending_gate(expr, typ) if pending_gate else typ
@@ -1293,6 +1314,39 @@ class ExpressionAnalyzer:
         if known is not typ:
             self.ctx.set_expr_type(expr, known)
         return known
+
+    def resolve_implicit_dunder(self, overloads: list[FunctionInfo],
+                                owner_type: TpyType,
+                                arg_types: list[TpyType],
+                                readonly_receiver: bool, name: str,
+                                err_node: TpyExpr) -> ImplicitDunderPick:
+        """Rank dunder set `overloads` for a call the program makes with no
+        source spelling -- `x in h` (`h.__contains__(x)`), `with` /
+        `async with` (`__enter__()` / `__aenter__()`), `async for`
+        (`__aiter__()`, `__anext__()`) -- on a receiver of `owner_type` at
+        `arg_types`, as the explicit method call ranks it: the set at the
+        receiver's type args. A genuine tie is the call's ambiguity error."""
+        # Drop int-kind type args (e.g. N in Array[T, N]): no dunder
+        # parameter spells one.
+        type_subst = {
+            k: v for k, v in self.type_ops.build_type_substitution(owner_type).items()
+            if isinstance(v, TpyType)
+        }
+        candidates = [
+            self.type_ops.substitute_method_type_params(m, type_subst)
+            if type_subst else m
+            for m in overloads
+        ]
+        try:
+            matched = self.calls.ranking().resolve(
+                candidates, arg_types, is_readonly_receiver=readonly_receiver)
+        except OverloadAmbiguityError as e:
+            raise self.ctx.error(
+                self.compat.ambiguous_overload_text(name, e.candidates),
+                err_node)
+        original = (overloads[candidates.index(matched)]
+                    if matched is not None else None)
+        return ImplicitDunderPick(candidates, type_subst, matched, original)
 
     def _contains_leaf(self, haystack: TpyType, operand: TpyExpr,
                        operand_type: TpyType) -> PendingNumType | None:
@@ -1605,16 +1659,131 @@ class ExpressionAnalyzer:
         self.analyze_condition(cond)
         return self.branch_states(cond)
 
+    def decide(self, e: TpyExpr) -> bool | None:
+        """The value analyzed test `e` always has (`dead_arms`)."""
+        return decided_truth(self.narrowing, e)
+
+    def fold(self, e: TpyExpr) -> bool | None:
+        """The bool literal analyzed test `e` folds to, None when it is
+        undecided or runs code (`dead_arms.folded_truth`)."""
+        return folded_truth(self.narrowing, e)
+
+    def _holder(self, node: TpyExpr) -> object | None:
+        """The expression or statement that holds `node`, under analysis
+        now: what takes its live part once it is decided. None when there
+        is none to rewrite (an expression no statement holds)."""
+        stack = self._expr_stack
+        for i in range(len(stack) - 1, -1, -1):
+            if stack[i] is node:
+                return (stack[i - 1] if i
+                        else self.ctx.func.borrow_tracker.current_stmt)
+        return None
+
+    def queue_live_part(self, holder: object, node: TpyExpr,
+                        live: TpyExpr) -> None:
+        """`node` is decided: `holder` takes `live` in its place, at once
+        (`_place_live_part`); a value sink receiving `node` in a slot list of
+        its own re-reads it (`live_part`). A trial analysis rewrites
+        nothing."""
+        if not self.ctx.trial_depth:
+            self.ctx.func.decided_rewrites[node] = (holder, live)
+
+    def live_part(self, node: TpyExpr) -> TpyExpr:
+        """What `node` stands for in its slot: the live part a decided
+        ternary / `and` / `or` / bool test queued (`queue_live_part`),
+        followed through a live part decided in turn; any other node
+        itself. A value sink's receive re-reads its slot through this,
+        since a slot list it holds apart from the tree is no holder."""
+        rewrites = self.ctx.func.decided_rewrites
+        while True:
+            entry = rewrites.get(node)
+            if entry is None:
+                return node
+            node = entry[1]
+
+    def _place_live_part(self, node: TpyExpr) -> None:
+        """A node decided just now gives its holder its live part at once,
+        before the holder reads its slot back (and decides how it stores
+        what the slot holds). A slot step that does not commit (an overload
+        probe) leaves the tree to the step that does (`reenter`)."""
+        if not self.ctx.slot_step_commits():
+            return
+        self._fold_decided(node)
+        entry = self.ctx.func.decided_rewrites.get(node)
+        if entry is not None:
+            holder, live = entry
+            # A live part decided in its own analysis already gave its
+            # slot to its own live part.
+            live = self.live_part(live)
+            if not replace_child(holder, node, live):
+                raise AssertionError(
+                    f"Internal error: decided {type(node).__name__} at "
+                    f"line {node.loc.line if node.loc else '?'} has no "
+                    f"slot in its holder {type(holder).__name__}")
+
+    def _fold_decided(self, node: TpyExpr) -> None:
+        """A decided bool test whose evaluated part only reads is its bool
+        literal (`dead_arms.folded_truth`): at a test position, over the
+        Literal types and bound-once locals; at a value position (`b = mode
+        == "rb"`), over the Literal types only -- a bound-once local stays a
+        value as written there. A test that narrows a name past a Literal
+        stays: the lowering binds the narrowed name from it."""
+        roots = self.ctx.truth_ok_node[:1]
+        test = any(n is node for r in roots
+                   for n in (r, *truthy_operands(r, arms=False)))
+        if (self.ctx.trial_depth
+                or not isinstance(node, (TpyBinOp, TpyChainedCompare,
+                                         TpyUnaryOp, TpyName, TpyCall))
+                or isinstance(node, TpyUnaryOp) and node.op != "!"
+                or isinstance(node, TpyName) and not test
+                or node in self.ctx.func.decided_rewrites):
+            return
+        t = self.ctx.get_expr_type(node)
+        holder = self._holder(node)
+        if t is None or not is_bool_type(unwrap_qualifiers(t)) and (
+                not test or isinstance(holder, TpyIfExpr)):
+            # A ternary's arm in a test is still a value of its type.
+            return
+        taken = (folded_truth(self.narrowing, node, constants=test)
+                 if holder is not None else None)
+        if taken is None or test and _narrows(self._peek_branch(node), taken):
+            return
+        lit = TpyBoolLiteral(value=taken, loc=node.loc)
+        self.ctx.set_expr_type(lit, BOOL)
+        self.queue_live_part(holder, node, lit)
+
     def branch_states(self, e: TpyExpr) -> Branch:
-        """The TRUE and FALSE paths out of `e`, analyzed just now. An `and` /
-        `or` / `not` / ternary / chained comparison splits into its operands
-        in the order they ran (`_record_branches`): each operand's facts hold
-        for the operands after it, so a later operand's writes kill them on
-        the ordinary path. Any other test proves what its syntax says
+        """The TRUE and FALSE paths out of `e`, analyzed just now; the path a
+        decided test never takes is impossible. An `and` / `or` / `not` /
+        ternary / chained comparison splits into its operands in the order
+        they ran (`_record_branches`): each operand's facts hold for the
+        operands after it, so a later operand's writes kill them on the
+        ordinary path. Any other test proves what its syntax says
         (`NarrowingTracker.leaf_facts`)."""
+        branch = self._branch_states(e)
+        taken = self.decide(e)
+        if taken is True:
+            return branch._replace(on_false=dc_replace(
+                branch.on_false, init_terminated=True))
+        if taken is False:
+            return branch._replace(on_true=dc_replace(
+                branch.on_true, init_terminated=True))
+        return branch
+
+    def _branch_states(self, e: TpyExpr) -> Branch:
         rec = self._branches.pop(e, None)
         if rec is not None and rec[0] is self.ctx.func:
             return rec[1]
+        return self._leaf_branch(e)
+
+    def _peek_branch(self, e: TpyExpr) -> Branch:
+        """`e`'s two paths, left for the `branch_states` that asks next."""
+        rec = self._branches.get(e)
+        if rec is not None and rec[0] is self.ctx.func:
+            return rec[1]
+        return self._leaf_branch(e)
+
+    def _leaf_branch(self, e: TpyExpr) -> Branch:
         holds, fails = self.narrowing.leaf_facts(e)
         here = self.init.save()
         true_keys = holds.keys()
@@ -1763,9 +1932,10 @@ class ExpressionAnalyzer:
                 with self._route_frame(expr) as frame:
                     typ = self._analyze_expr_under_hint_raw(expr, slot,
                                                             coercion_ctx)
+                self.note_analysis(expr, typ, slot, frame.route)
+                self._place_live_part(expr)
             finally:
                 self._expr_stack.pop()
-            self.note_analysis(expr, typ, slot, frame.route)
         return self._pending_gate(
             expr, typ, slot if coercion_ctx is not None else None)
 
@@ -2694,10 +2864,16 @@ class ExpressionAnalyzer:
 
     def _reject_never_none(self, operand: TpyExpr, t: TpyType,
                            expr: TpyBinOp) -> None:
-        """`x is None` over an operand no None test admits: the gaps first,
-        then an operand that is never None."""
+        """`x is None` over an operand no None test admits: the gaps first;
+        then, as a test, it is decided; any other use is rejected."""
         spelled = self.compat.call_type_text(t)
         self._reject_identity_gap(_identity_object(t), spelled, expr)
+        if (any(n is expr for n in self.ctx.truth_ok_node)
+                and self.fold(expr) is not None):
+            # A test: its bool literal (`_fold_decided`), and the arm it
+            # guards is dead. An operand that runs code would stay
+            # evaluated beside the answer, which has no lowering.
+            return
         name = operand_spelling(operand)
         subject = f"'{name}'" if name is not None else "the operand"
         raise self.ctx.error(
@@ -2746,8 +2922,24 @@ class ExpressionAnalyzer:
         if expr.op in ("&&", "||"):
             record_truth_calls(self.ctx, truthy_operands(expr.left))
             left = self.branch_states(expr.left)
+            short = expr.op == "||"
+            # Decided only when the left operand's test folds: one that
+            # runs code leaves both operands live, as undecided.
+            taken = self.fold(expr.left)
+            holder = self._holder(expr) if taken is not None else None
+            if holder is not None and taken is short:
+                # The right operand never runs: the value is the left one.
+                self._record_branches(expr, left)
+                self.queue_live_part(holder, expr, expr.left)
+                return left_type
             self.init.restore(left.on_true if expr.op == "&&"
                               else left.on_false)
+            if holder is not None and not _narrows(left, not short):
+                # The left operand always passes on: the value is the right.
+                right_type = operand(expr.right)
+                self._record_branches(expr, self.branch_states(expr.right))
+                self.queue_live_part(holder, expr, expr.right)
+                return right_type
             with self._runs_conditionally():
                 right_type = operand(expr.right)
             right = self.branch_states(expr.right)
@@ -2873,29 +3065,14 @@ class ExpressionAnalyzer:
             if is_bool_type(right_check) and isinstance(expr.left, TpyBoolLiteral):
                 expr.op = "==" if expr.op == "is" else "!="
                 return BOOL
-            nullable_types = (OptionalType, PtrType)
-            if isinstance(left_check, NoneType) and isinstance(right_check, nullable_types):
+            if isinstance(right_check, NoneType) or isinstance(left_check,
+                                                               NoneType):
+                other, other_type = ((expr.left, left_type)
+                                     if isinstance(right_check, NoneType)
+                                     else (expr.right, right_type))
+                if none_identity_of(other_type) is False:
+                    self._reject_never_none(other, other_type, expr)
                 return BOOL
-            if isinstance(right_check, NoneType) and isinstance(left_check, nullable_types):
-                return BOOL
-            if isinstance(left_check, NoneType) and isinstance(right_check, NoneType):
-                return BOOL
-            # Nullable unions: v is None / v is not None
-            if isinstance(right_check, NoneType) and isinstance(left_check, UnionType) and left_check.has_none_member():
-                return BOOL
-            if isinstance(left_check, NoneType) and isinstance(right_check, UnionType) and right_check.has_none_member():
-                return BOOL
-            # Any vs None: typeid-based check (D15). Other RHS forms of
-            # `is` on Any are still rejected -- see the Future Extensions
-            # row in docs/ANY_TYPE_DESIGN.md.
-            if isinstance(right_check, NoneType) and isinstance(left_check, AnyType):
-                return BOOL
-            if isinstance(left_check, NoneType) and isinstance(right_check, AnyType):
-                return BOOL
-            if isinstance(right_check, NoneType):
-                self._reject_never_none(expr.left, left_type, expr)
-            if isinstance(left_check, NoneType):
-                self._reject_never_none(expr.right, right_type, expr)
             expr.identity_pointees = self._identity_pointees(
                 expr, left_type, right_type)
             return BOOL
@@ -3061,19 +3238,6 @@ class ExpressionAnalyzer:
                 contains_overloads = self.operators.dunder_overloads(
                     right_record, "__contains__")
                 if contains_overloads:
-                    # Drop int-kind type args (e.g. N in Array[T, N]): no
-                    # `__contains__` parameter spells one.
-                    type_subst = {
-                        k: v for k, v in self.type_ops.build_type_substitution(right_type).items()
-                        if isinstance(v, TpyType)
-                    }
-                    # The overload set at the receiver's type args, as the
-                    # method call ranks it, so the pick is the call's winner.
-                    subst_overloads = [
-                        self.type_ops.substitute_method_type_params(m, type_subst)
-                        if type_subst else m
-                        for m in contains_overloads
-                    ]
                     # A literal needle is ranked as the literal, as the
                     # explicit call's argument is.
                     check_left = left_type
@@ -3081,19 +3245,15 @@ class ExpressionAnalyzer:
                                                left_type)
                     readonly_right = receiver_is_readonly(
                         self.ctx, expr.right, haystack_type)
-                    try:
-                        matched = self.calls.ranking().resolve(
-                            subst_overloads,
-                            [leaf if leaf is not None else check_left],
-                            is_readonly_receiver=readonly_right)
-                    except OverloadAmbiguityError as e:
-                        raise self.ctx.error(
-                            self.compat.ambiguous_overload_text(
-                                "__contains__", e.candidates), expr)
-                    if matched is not None:
-                        # Map back to the original (un-substituted) method for codegen
-                        idx = subst_overloads.index(matched)
-                        original_method = contains_overloads[idx]
+                    pick = self.resolve_implicit_dunder(
+                        contains_overloads, right_type,
+                        [leaf if leaf is not None else check_left],
+                        readonly_right, "__contains__", expr)
+                    subst_overloads = pick.candidates
+                    if pick.matched is not None:
+                        matched = pick.matched
+                        original_method = pick.original
+                        type_subst = pick.type_subst
                         self.operators.check_class_bounds(
                             original_method, right_type, type_subst, expr)
                         # `x in h` is an `h.__contains__(x)` call on h.
@@ -4542,37 +4702,30 @@ class ExpressionAnalyzer:
         # 1. Inline: operand is a direct call to a known async def.
         # 2. Erased: operand has type Task[T] (heap-allocated frame).
         operand = expr.value
-        async_fi = self._resolve_call_to_async_def(operand)
-        if async_fi is not None:
-            # Recursively analyze the operand call (validates arg types and,
-            # for generic async defs, infers and substitutes type args into
-            # the operand's `resolved_function_info`).
-            self.analyze_expr(operand)
-            expr.awaited_async_func_name = async_fi.name
-            # Prefer the operand's substituted FunctionInfo's return type;
-            # for generic async defs, `async_fi.return_type` from the
-            # registry still carries unsubstituted TypeParamRefs.
-            resolved_fi = getattr(operand, "resolved_function_info", None)
-            source_fi = resolved_fi if resolved_fi is not None else async_fi
+        # Analyzing the call resolves it (a set's variant, a generic async
+        # def's substituted signature) onto `resolved_function_info`.
+        operand_type = self.analyze_expr(operand)
+        async_fi = (operand.resolved_function_info
+                    if isinstance(operand, TpyCall) else None)
+        if (async_fi is not None and async_fi.is_async
+                and not async_fi.is_callable_value):
+            expr.awaited_inline = True
             # Frame Send/Sync: the sub-coro is stored inline in this frame
-            self.ctx.func.current_awaited_subframes.append(async_fi)
-            inner = self._unwrap_awaitable_return(source_fi.return_type)
+            self.ctx.func.current_awaited_subframes.append(async_fi.root)
+            inner = self._unwrap_awaitable_return(async_fi.return_type)
             expr.await_result_is_borrow = async_result_aliases(
-                source_fi.async_inner_return, inner)
+                async_fi.async_inner_return, inner)
             return inner
 
-        # Type-erased path: analyze operand. Supported v1 erased forms:
+        # Type-erased path. Supported v1 erased forms:
         #   - tpy.Task[T]            (heap-erased coroutine frame)
         #   - asyncio.Future[T]      (manual-completion awaitable)
         #   - any record type with `poll(self, w: Waker) -> Poll[T]`
         #     (structural Awaitable -- supports user-written awaitables
         #     alongside hand-written awaiter types).
-        operand_type = self.analyze_expr(operand)
 
-        # Method-call shape: `await obj.method()`. The free-function probe
-        # above only matches bare-name calls; method calls land here. After
-        # analyze_expr, the method call carries `resolved_function_info`;
-        # treat an async one like the inline shape.
+        # Method-call shape: `await obj.method()`, an async one inlined like
+        # a free call.
         if isinstance(operand, TpyMethodCall):
             mfi = operand.resolved_function_info
             if mfi is not None and mfi.is_async:
@@ -4590,7 +4743,7 @@ class ExpressionAnalyzer:
                         "Bind the receiver to a local first: "
                         "`r = <expr>; await r.method(...)`",
                         operand)
-                expr.awaited_async_func_name = mfi.name
+                expr.awaited_inline = True
                 owner_type = self._method_call_receiver_type(operand)
                 if owner_type is not None:
                     expr.awaited_method_owner_type = coro_struct_owner(
@@ -4774,30 +4927,6 @@ class ExpressionAnalyzer:
         inner = unwrap_own(unwrap_ref_type(recv_type))
         if isinstance(inner, NominalType):
             return inner
-        return None
-
-    def _resolve_call_to_async_def(self, operand) -> 'FunctionInfo | None':
-        """If operand is a direct TpyCall whose target is a known async def,
-        return its FunctionInfo. Otherwise return None.
-
-        Free-function call shape only -- method calls (`await obj.m()`)
-        are detected after `analyze_expr` populates the
-        `TpyMethodCall.resolved_function_info` field; that branch lives
-        in `analyze_await` above.
-        """
-        from ..parse.nodes import TpyCall
-        if not isinstance(operand, TpyCall):
-            return None
-        func_name = operand.maybe_func_name
-        if not func_name:
-            return None
-        overloads = self.ctx.registry.get_function(func_name)
-        if not overloads:
-            return None
-        # Async defs do not participate in @overload, so a single match is OK.
-        for fi in overloads:
-            if fi.is_async:
-                return fi
         return None
 
     # -- Ternary expression analysis ------------------------------------------
@@ -5030,6 +5159,25 @@ class ExpressionAnalyzer:
         self.narrowing.warn_truthy_value_optionals(expr.condition)
 
         cond = self.branch_states(expr.condition)
+        # Decided only when the whole test folds: a test that runs code
+        # leaves both arms live, as undecided.
+        taken = self.fold(expr.condition)
+        holder = self._holder(expr)
+        if (taken is not None and holder is not None
+                and not _narrows(cond, taken)):
+            # Only the live arm runs, and it takes the ternary's place.
+            live_field = "then_expr" if taken else "else_expr"
+            arm = getattr(expr, live_field)
+            self.init.restore(cond.on_true if taken else cond.on_false)
+            if type_hint is not None:
+                typ = self._analyze_select_operand(expr, arm, type_hint,
+                                                   coercion_ctx)
+            else:
+                with self._forward_fill(expr, arm):
+                    typ = self.analyze_expr(arm)
+            self._record_branches(expr, self.branch_states(arm))
+            self.queue_live_part(holder, expr, arm)
+            return typ
 
         # Both arms are conditionally evaluated; only the condition above is
         # not.
@@ -6481,10 +6629,20 @@ class ExpressionAnalyzer:
             # The filters are the comprehension's body: analyzed once, at
             # their own slots, whatever slot the element meets.
             with self.ctx.probe_slot_scope(False):
-                for cond in expr.generators[k].conditions:
+                conditions = expr.generators[k].conditions
+                for cond in list(conditions):
                     branch = self.analyze_branch(cond)
+                    # Decided before the filter's own facts hold.
+                    taken = self.fold(cond)
                     join.leave(branch.on_false)
                     self.init.restore(branch.on_true)
+                    if (taken is True and not self.ctx.trial_depth
+                            and not _narrows(branch, True)):
+                        # A filter that always passes filters nothing; its
+                        # slot may hold its literal already.
+                        live = self.live_part(cond)
+                        conditions[:] = [c for c in conditions
+                                         if c is not cond and c is not live]
             if k + 1 < len(expr.generators):
                 # The next clause's source runs once per element that passed
                 # this clause's filters, with every outer target bound.

@@ -30,8 +30,6 @@ namespace tpyapp::main {
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
         if (false) {
-            auto& __v = *std::get<const B*>(v);
-            return ::tpy::BigInt(-1);
         }
         return __v.x;
     }
@@ -51,7 +49,6 @@ namespace tpyapp::main {
         auto& __v = *std::get<A*>(v);
         return __v.x;
     }
-    return ::tpy::BigInt(-1);
 }
 
 // def elif_exhaustive(v: A | B | C) -> str:

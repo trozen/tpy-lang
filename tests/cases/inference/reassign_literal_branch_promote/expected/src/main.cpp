@@ -56,19 +56,11 @@ void test_binop() {
 //     x += 1
 //     print(x)
 void test_elif_chain() {
-    ::tpy::BigInt x = ::tpy::BigInt(0);
+    int32_t x = 0;
     std::string_view c = ">";
-    if ((c == ">")) {
-    } else if ((c == "[")) {
-        if (true) {
-            x = ::tpyapp::main::get_big();
-        }
-    } else if ((c == "]")) {
-        if (true) {
-            x = ::tpyapp::main::get_big();
-        }
+    if (true) {
     }
-    x = (x) + (::tpy::BigInt(1));
+    x = ::tpy::add_check<int32_t>(x, 1);
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 

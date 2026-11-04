@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return 1 if flag else 0
 int32_t run() {
     bool flag = true;
-    return ((flag) ? (1) : (0));
+    return 1;
 }
 
 // def main() -> None:

@@ -1,0 +1,1 @@
+main.py:24: error: cannot rebind 'g' to a different generator: 'g' holds a 'gen' generator, and one name holds one generator function's objects; bind this value to a new name

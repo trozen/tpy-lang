@@ -150,15 +150,13 @@ int32_t takel(std::vector<int32_t>&& x) {
     return ::tpy::__len__(x);
 }
 
-// def container_ternary() -> None:
-//     # Own argument: a mixed ternary of a list name and a fresh list lowers,
-//     # and the name arm is copied into the owned argument.
+// def container_ternary(k: bool) -> None:
+//     # Own argument: a ternary decided at run time between a list name and a
+//     # fresh list lowers, and the name arm is copied into the owned argument.
 //     xs = [1, 2]
-//     k = True
 //     print("container_ternary", takel(xs if k else [3]), len(xs))  # tpyc: warning(/copies list\[int32\] into owned storage/)
-void container_ternary() {
+void container_ternary(bool k) {
     std::vector<int32_t> xs = {1, 2};
-    bool k = true;
     std::vector<int32_t> __tmp_1 = ((k) ? (xs) : (std::vector<int32_t>{3}));
     std::cout << "container_ternary" << " " << ::tpyapp::main::takel(std::move(__tmp_1)) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
@@ -284,7 +282,7 @@ void try_body() {
 //     wr = walrus_return(wc)
 //     wr.v = 55
 //     print("walrus_return", wc.v)
-//     container_ternary()
+//     container_ternary(True)
 //     dict_setitem()
 //     list_setitem()
 //     match_arm(1)
@@ -348,7 +346,7 @@ void main() {
     C wr = ::tpyapp::main::walrus_return(wc);
     wr.v = 55;
     std::cout << "walrus_return" << " " << wc.v << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::container_ternary();
+    ::tpyapp::main::container_ternary(true);
     ::tpyapp::main::dict_setitem();
     ::tpyapp::main::list_setitem();
     ::tpyapp::main::match_arm(1);

@@ -18,7 +18,6 @@ int32_t consume(std::tuple<P, int32_t>&& t) {
         a.bump();
         return (::tpy::add_check<int32_t>(a.x, n));
     }
-    return n;
 }
 
 // # free function, non-consuming unpack: a later unpack sees the write
@@ -43,7 +42,6 @@ int32_t borrow(std::tuple<P, int32_t>&& t) {
         std::cout << "borrow same" << " " << ::tpy::print_bool(::tpy::same_object(&(a), &(c))) << "\n" << ::tpy::check_signals;
         return c.x;
     }
-    return 0;
 }
 
 // # return of the first target after a re-unpack mutated the element
@@ -107,7 +105,6 @@ int32_t in_match(std::tuple<P, int32_t>&& t, int32_t k) {
             a.bump();
             return a.x;
         }
-        break;
     }
     default: {
         break;
@@ -130,7 +127,6 @@ int32_t mixed(std::tuple<P, P*>&& t) {
     if (true) {
         return (::tpy::add_check<int32_t>(a.x, b.x));
     }
-    return b.x;
 }
 
 // # two owned elements, the tuple re-read after the unpack
@@ -182,7 +178,6 @@ int32_t rebind_consumed_fresh(std::tuple<P, int32_t>&& t) {
     if (true) {
         return (::tpy::add_check<int32_t>(a->x, n));
     }
-    return n;
 }
 
 // # both elements unpacked and dropped: each `Own[P]` warns
@@ -226,7 +221,6 @@ int32_t ro_tuple(std::tuple<P, int32_t>&& t) {
     if (true) {
         return (::tpy::add_check<int32_t>(a.x, n));
     }
-    return n;
 }
 
 // def ro_payload(t: tuple[Own[readonly[P]], int32]) -> int32:
@@ -243,7 +237,6 @@ int32_t ro_payload(std::tuple<P, int32_t>&& t) {
     if (true) {
         return (::tpy::add_check<int32_t>(c.x, m));
     }
-    return m;
 }
 
 // # whole-tuple forward not at its last use, then an unpack
@@ -258,7 +251,6 @@ int32_t sink(std::tuple<P, int32_t>&& t) {
     if (true) {
         return a.x;
     }
-    return 0;
 }
 
 // def forward_then_unpack(t: tuple[Own[P], int32]) -> int32:
@@ -274,7 +266,6 @@ int32_t forward_then_unpack(std::tuple<P, int32_t>&& t) {
     if (true) {
         return (::tpy::add_check<int32_t>(s, a.x));
     }
-    return s;
 }
 
 // # call-result unpack and literal unpack
@@ -371,7 +362,6 @@ int32_t nonescaping(std::tuple<P, int32_t>&& t) {
         if (true) {
             return (::tpy::add_check<int32_t>(a.x, n));
         }
-        return n;
     };
     if (true) {
         c.bump();
@@ -387,7 +377,7 @@ int32_t nonescaping(std::tuple<P, int32_t>&& t) {
 //     # true: the body only borrows t's element, never moves it out
 //     a, n = t
 //     c, m = t
-//     if True:
+//     if n >= 0:  # opaque to sema: `if True:` would be spliced
 //         a2 = copy(a)
 //
 //         # a2 is not used after g: the "used after" warning is false
@@ -403,7 +393,7 @@ std::function<int32_t()> escaping_copy(std::tuple<P, int32_t>&& t) {
     int32_t n = std::get<1>(t);
     P& c = std::get<0>(t);
     int32_t m = std::get<1>(t);
-    if (true) {
+    if ((n >= 0)) {
         P a2 = P(a);
         auto g = [a2, n]() -> int32_t {
             return (::tpy::add_check<int32_t>(a2.x, n));

@@ -2,7 +2,8 @@
 # lvalue reference the Own slot's T&& can't take, so the chosen arm is copied
 # into the slot (warned -- acknowledged divergence: CPython would alias the
 # argument). Pre-fix this was a hard g++ error. Output observes only the owned
-# value (11 either way) to stay parity-clean.
+# value (11 either way) to stay parity-clean. `flag` is a parameter so the
+# test is not decided (a decided one passes its live arm; dead_arm_rule).
 from tpy import Own
 
 
@@ -17,12 +18,11 @@ def take(b: Own[Box]) -> Own[Box]:
     return b
 
 
-def main() -> None:
+def main(flag: bool) -> None:
     a = Box(10)
     other = Box(20)
-    flag = True
     r = take(a if flag else other)   # tpyc: warning(/copies Box into owned storage/)
     print(r.val)                     # 11 (owned value, bumped)
 
 
-main()
+main(True)

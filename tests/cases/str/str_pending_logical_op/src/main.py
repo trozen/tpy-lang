@@ -18,19 +18,17 @@ def test_literal_or() -> None:
     x = "hello" or "world"  # tpyc: type(StrView)
     print(x)
 
-def test_or_right_promotes() -> None:
+def test_or_right_promotes(a: str) -> None:  # `a` a parameter: a literal would decide `or`
     # When the right-hand operand later promotes to std::string (via augassign),
     # the result x must also promote -- it might point to b's buffer at runtime.
-    a = "hello"
     b = "world"
     x = a or b  # tpyc: type(str)
     b += "!"
     print(x)
 
-def test_ternary_right_promotes() -> None:
-    a = "hello"
+def test_ternary_right_promotes(a: str) -> None:
     b = "world"
-    x = a if True else b  # tpyc: type(str)
+    x = a if a else b  # tpyc: type(str)
     b += "!"
     print(x)
 
@@ -43,9 +41,8 @@ def test_literal_or_chain() -> None:
     x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
     print(x)
 
-def test_or_chain_third_promotes() -> None:
+def test_or_chain_third_promotes(a: str) -> None:
     # Promotion must propagate from the third operand too, not just left/right.
-    a = "hello"
     b = "world"
     c = "!"
     x = a or b or c  # tpyc: type(str)
@@ -56,8 +53,8 @@ test_or("hello", "world")
 test_and("hello", "world")
 test_ternary("hello", "world", True)
 test_literal_or()
-test_or_right_promotes()
-test_ternary_right_promotes()
+test_or_right_promotes("hello")
+test_ternary_right_promotes("hello")
 test_or_chain("hello", "world", "!")
 test_literal_or_chain()
-test_or_chain_third_promotes()
+test_or_chain_third_promotes("hello")

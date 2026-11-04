@@ -298,14 +298,12 @@ void temp_logic() {
     Firsts f = Firsts("logic");
     bool yes = true;
     bool no = false;
-    std::optional<std::vector<int32_t>> __tmp_1;
-    bool a = (no && (__tmp_1.emplace(std::vector<int32_t>{::tpyapp::main::mark("logic", 10)}), f.__contains__(&((*__tmp_1)))));
-    std::optional<std::vector<int32_t>> __tmp_2;
-    bool b = (yes || (__tmp_2.emplace(std::vector<int32_t>{::tpyapp::main::mark("logic", 11)}), f.__contains__(&((*__tmp_2)))));
-    std::optional<std::vector<int32_t>> __tmp_3;
-    bool c = (yes && (__tmp_3.emplace(std::vector<int32_t>{::tpyapp::main::mark("logic", 1)}), f.__contains__(&((*__tmp_3)))));
-    std::optional<std::vector<int32_t>> __tmp_4;
-    bool d = (no || (__tmp_4.emplace(std::vector<int32_t>{::tpyapp::main::mark("logic", 2)}), f.__contains__(&((*__tmp_4)))));
+    bool a = no;
+    bool b = yes;
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("logic", 1)};
+    bool c = f.__contains__(&(__tmp_1));
+    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{::tpyapp::main::mark("logic", 2)};
+    bool d = f.__contains__(&(__tmp_2));
     std::cout << "logic:" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;
 }
 

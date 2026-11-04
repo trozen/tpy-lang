@@ -17,16 +17,16 @@ void test_and(std::string_view a, std::string_view b);
 void test_ternary(std::string_view a, std::string_view b, bool cond);
 // def test_literal_or() -> None:
 void test_literal_or();
-// def test_or_right_promotes() -> None:
-void test_or_right_promotes();
-// def test_ternary_right_promotes() -> None:
-void test_ternary_right_promotes();
+// def test_or_right_promotes(a: str) -> None:  # `a` a parameter: a literal would decide `or`
+void test_or_right_promotes(std::string_view a);
+// def test_ternary_right_promotes(a: str) -> None:
+void test_ternary_right_promotes(std::string_view a);
 // def test_or_chain(a: str, b: str, c: str) -> None:
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c);
 // def test_literal_or_chain() -> None:
 void test_literal_or_chain();
-// def test_or_chain_third_promotes() -> None:
-void test_or_chain_third_promotes();
+// def test_or_chain_third_promotes(a: str) -> None:
+void test_or_chain_third_promotes(std::string_view a);
 
 void __tpy_init();
 } // namespace tpyapp::main

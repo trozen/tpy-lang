@@ -76,7 +76,7 @@ from ..prescan import (
     scan_reassigned_vars, collect_in_place_writes,
     storage_spelling,
     FactKills, liveness_alias_sources,
-    collect_nonlocals, closure_exports,
+    closure_exports,
 )
 from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates,
@@ -113,7 +113,7 @@ from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
                            storage_key, storage_roots, StorageKey,
                            view_leaves)
 from .flow_facts import FlowFacts, condition_walrus_targets
-from .literal_utils import is_char_literal_init
+from .literal_utils import is_char_literal_init, literal_value_from_expr
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT, not_assigned_message
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -121,7 +121,7 @@ from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .receiver_calls import (
     check_implicit_readonly_receiver, credit_implicit_receiver_call,
-    implicit_readonly_result_hint,
+    implicit_readonly_result_hint, receiver_is_readonly,
     record_implicit_call, record_receiver_edges,
 )
 from .aug_hold import aug_hold_parts
@@ -179,6 +179,7 @@ from ..value_category import (
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of,
 )
+from .dead_arms import hoist_scope_declarations, narrows_past_literal
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory,
                           reject_rebound_iterated_capture)
@@ -230,6 +231,13 @@ def _converts(value: TpyExpr, written: TpyExpr) -> bool:
     return value and the slot convert it -- an identity str-family coercion
     (`String` into `str`: both spell std::string) does not."""
     return peel_identity_coercions(value, written) is not written
+
+
+def _variant_set_key(fi: FunctionInfo) -> tuple[str | None, str | None, str]:
+    """The overload set a function is a variant of: its defining module,
+    owner and name."""
+    root = fi.root
+    return root.originating_module, root.owning_type_qname, root.name
 
 
 def _declares_here(stmt: TpyStmt, name: str) -> bool:
@@ -1253,10 +1261,29 @@ class StatementAnalyzer:
             module_qual = fi.originating_module
         targs = getattr(init, "inferred_type_args", None)
         return make_concrete_coro(
-            inner, fi.name, owner=owner,
+            inner, fi.frame_cpp_name, owner=owner,
             inferred_type_args=tuple(targs) if targs else None,
             module_qual=module_qual,
             result_is_borrow=aliases, fi=fi)
+
+    def _resolve_statement_dunder(self, overloads: 'list[FunctionInfo]',
+                                  owner_type: TpyType,
+                                  readonly_receiver: bool, name: str,
+                                  err_node: TpyExpr) -> 'FunctionInfo':
+        """The registered variant of dunder set `overloads` that the no-
+        argument call a statement makes on its operand (`__enter__()`,
+        `__aenter__()`, `__aiter__()`, `__anext__()`) resolves to
+        (`resolve_implicit_dunder`); a set no variant of which takes it is
+        an error at the statement."""
+        if len(overloads) == 1:
+            return overloads[0]
+        pick = self.expr.resolve_implicit_dunder(
+            overloads, owner_type, [], readonly_receiver, name, err_node)
+        if pick.original is None:
+            raise self.ctx.error(
+                f"no variant of `{name}` accepts the call the statement "
+                f"makes: `{name}()`", err_node)
+        return pick.original
 
     def _record_frame_binding(self, stmt: TpyVarDecl) -> None:
         """One binding of a frame-holding local: the per-name roots the
@@ -1400,11 +1427,23 @@ class StatementAnalyzer:
                 else "this value")
         coro = isinstance(prev, ConcreteCoroType)
         kind = "coroutine" if coro else "generator"
+        prev_fi = prev.frame_fi
+        cand_fi = (cand.frame_fi if isinstance(cand, ConcreteFrameType)
+                   else None)
+        if (prev_fi is not None and cand_fi is not None
+                and _variant_set_key(prev_fi) == _variant_set_key(cand_fi)):
+            # Two variants of one set share the bare name, so each is named by
+            # its parameters (BUGS.md#dispatch-generator-rebind-variant).
+            prev_name = self.compat.variant_text(prev_fi.name, prev_fi)
+            what = f"'{self.compat.variant_text(cand_fi.name, cand_fi)}'"
+        else:
+            prev_name = (prev_fi.name if prev_fi is not None
+                         else prev.frame_func_name)
         other = (kind if coro or isinstance(cand, ConcreteGenType)
                  else "iterator")
         raise self.ctx.error(
             f"cannot rebind '{stmt.name}' to a different {other}: "
-            f"'{stmt.name}' holds a '{prev.frame_func_name}' {kind}, and one "
+            f"'{stmt.name}' holds a '{prev_name}' {kind}, and one "
             f"name holds one {'async' if coro else 'generator'} function's "
             f"objects; bind {what} to a new name",
             stmt)
@@ -2092,28 +2131,6 @@ class StatementAnalyzer:
                         MayLend(self.ctx)),
                         MarkRequest(through_field=True))
 
-    def _unfold_loop_killed_isinstance(
-            self, condition: TpyExpr, killed: set[str]) -> None:
-        """Drop the static-true/false `isinstance` fold on a loop condition
-        whose subject the loop body reassigns.
-
-        The fold is computed from the subject's loop-entry narrowing; a rebind
-        in the body makes it non-loop-invariant, so the condition must be
-        re-checked each iteration (clearing `macro_expansion` routes codegen to
-        the runtime `holds_alternative`/cast). Walks the boolean structure so
-        `isinstance(t, T) and ...` is covered too.
-        """
-        if isinstance(condition, TpyCall):
-            if (condition.isinstance_var is not None
-                    and condition.isinstance_var in killed
-                    and isinstance(condition.macro_expansion, TpyBoolLiteral)):
-                condition.macro_expansion = None
-        elif isinstance(condition, TpyBinOp) and condition.op in ("&&", "||"):
-            self._unfold_loop_killed_isinstance(condition.left, killed)
-            self._unfold_loop_killed_isinstance(condition.right, killed)
-        elif isinstance(condition, TpyUnaryOp) and condition.op == "!":
-            self._unfold_loop_killed_isinstance(condition.operand, killed)
-
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
         result: dict[str, TpyType] = {}
@@ -2477,6 +2494,28 @@ class StatementAnalyzer:
                                  what=self.expr.describe_pending_use(expr))
         self.pend.resolve_ready()
 
+    def analyze_block(self, stmts: list[TpyStmt], *,
+                      enter: Callable[[TpyStmt], None] | None = None) -> None:
+        """Analyze a statement list in order. Once a decided statement
+        (`dead_arms`) leaves the list terminated, the statements after it
+        are unreachable, a dead arm as any other: they are dropped
+        unanalyzed. Code after a plain `return` stays analyzed.
+
+        The prescans (hoisting, written names, alias and loop-frame scans,
+        liveness) ran over the list as written: what they found in a dead
+        arm or a dropped tail is a superset of what the analyzed list
+        holds, and stays sound for it."""
+        f = self.ctx.func
+        for i, s in enumerate(stmts):
+            if enter is not None:
+                enter(s)
+            was_terminated = f.init_terminated
+            self.analyze_stmt(s)
+            if (getattr(s, "decided", None) is not None
+                    and not was_terminated and f.init_terminated):
+                del stmts[i + 1:]
+                return
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         bt = self.ctx.func.borrow_tracker
@@ -2492,8 +2531,14 @@ class StatementAnalyzer:
         analyzed = False
         narrowed_before = (dict(self.ctx.func.narrowed_types)
                            if self._records_post_facts() else None)
+        rewrites_mark = len(self.ctx.func.decided_rewrites)
         try:
             self._analyze_stmt_dispatch(stmt)
+            # Each decided node took its slot where it was received.
+            rewrites = self.ctx.func.decided_rewrites
+            if len(rewrites) > rewrites_mark:
+                for node in list(rewrites)[rewrites_mark:]:
+                    del rewrites[node]
             if narrowed_before is not None:
                 facts = self._post_stmt_facts(narrowed_before)
                 if facts:
@@ -2794,6 +2839,18 @@ class StatementAnalyzer:
                 head.proven_types(True))
             stmt.else_type_facts = self._filter_union_codegen_facts(
                 head.proven_types(False))
+            # The test stays as written (its pure decided parts folded to
+            # literals); the arm it rules out is empty, never analyzed.
+            taken = self.expr.decide(stmt.condition)
+            if not self.ctx.trial_depth:
+                stmt.decided = taken
+                if taken is not None:
+                    (stmt.else_body if taken else stmt.then_body).clear()
+                    # The dead path's narrowing binds nothing anywhere.
+                    if taken:
+                        stmt.else_type_facts = {}
+                    else:
+                        stmt.then_type_facts = {}
             scope_before = set(self.ctx.func.current_scope.bindings.keys())
             pending_before = set(self.ctx.func.pending_loop_vars)
             assigned_before = frozenset(self.ctx.func.definitely_assigned)
@@ -2803,8 +2860,8 @@ class StatementAnalyzer:
             bindings_before = dict(self.ctx.func.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
             self.init.restore(head.on_true)
-            for s in stmt.then_body:
-                self.analyze_stmt(s)
+            if taken is not False:
+                self.analyze_block(stmt.then_body)
             then_state = self.init.save()
             consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
             then_terminated = self.ctx.func.init_terminated
@@ -2813,8 +2870,8 @@ class StatementAnalyzer:
             carried_else = self._enter_sibling_arm(
                 bindings_before, ns_types_before, head.on_false)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
-            for s in stmt.else_body:
-                self.analyze_stmt(s)
+            if taken is not True:
+                self.analyze_block(stmt.else_body)
             else_state = self.init.save()
             consumed_after_else = self.ctx.func.current_consumed_own_params.copy()
             else_terminated = self.ctx.func.init_terminated
@@ -2850,6 +2907,21 @@ class StatementAnalyzer:
             if not self.ctx.func.init_terminated:
                 predecl -= self._frame_block_keeps(
                     branch_new, predecl, "'if' block", keepable=branch_new)
+            if taken is not None:
+                # A decided test that narrows a name binds what its live arm
+                # binds as the undecided twin does, arm-local: the lowering
+                # of a narrowing `if` declares nothing in front of it
+                # (`if.narrow_hoist`). Otherwise the live arm's names are
+                # declared in front of the `if` only when read after it.
+                if narrows_past_literal(stmt.then_type_facts if taken
+                                        else stmt.else_type_facts):
+                    arm_local = set(predecl)
+                elif stmt.live_names_after is not None:
+                    arm_local = predecl - stmt.live_names_after
+                else:
+                    arm_local = set()
+                self.ctx.func.definitely_assigned -= arm_local
+                predecl -= arm_local
             # An `if` that is the whole `else` body of another `if` (an
             # `elif`, or `else:` over a nested `if` -- the AST is the same)
             # has nothing after it in that block to read what its arms bound,
@@ -2884,7 +2956,23 @@ class StatementAnalyzer:
             # loop-entry state, with what the back edge kills dropped, and
             # the body is entered from its TRUE path.
             self.init.apply_fact_kills(body_kills, keep_steps=True)
-            head = self.expr.analyze_branch(stmt.condition)
+            # A name the body rebinds decides no test of the head, which
+            # runs again after each pass (`dead_arms.decided_truth`).
+            saved_kills = self.ctx.func.head_kills
+            self.ctx.func.head_kills = frozenset(body_kills.names)
+            try:
+                head = self.expr.analyze_branch(stmt.condition)
+                taken = self.expr.decide(stmt.condition)
+                if not self.ctx.trial_depth:
+                    stmt.decided = taken
+            finally:
+                self.ctx.func.head_kills = saved_kills
+            if not self.ctx.trial_depth:
+                if taken is False:
+                    stmt.body.clear()
+                elif taken is True:
+                    # The head never fails: only a `break` leaves the loop.
+                    stmt.orelse.clear()
             # Whether the first pass runs: the pre-loop state, less what the
             # head's own evaluation may write before its test is read.
             entry = self.init.save()
@@ -2904,11 +2992,6 @@ class StatementAnalyzer:
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(
                 head.proven_types(True))
-            # An `isinstance` fold rests on the loop-entry narrowing of its
-            # subject; if the body rebinds that subject the condition is not
-            # loop-invariant, so drop the static fold and re-check each
-            # iteration (else codegen emits an exit-less `while (true)`).
-            self._unfold_loop_killed_isinstance(stmt.condition, body_kills.names)
             with self._loop_body_scope(stmt) as (inner_scope, edges):
                 self.init.restore(head.on_true)
                 saved_binders = {n: self.ctx.local_decl_of(n)
@@ -2917,8 +3000,8 @@ class StatementAnalyzer:
                     self.ctx.declare_local(n, inner_scope.depth,
                                            block_depth=block)
                 try:
-                    for s in stmt.body:
-                        self.analyze_stmt(s)
+                    if taken is not False:
+                        self.analyze_block(stmt.body)
                 finally:
                     for n, saved in saved_binders.items():
                         self.ctx.restore_local_decl(n, saved)
@@ -2962,8 +3045,7 @@ class StatementAnalyzer:
                             stmt.body))
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True,
                                               binder=stmt):
-                        for s in stmt.body:
-                            self.analyze_stmt(s)
+                        self.analyze_block(stmt.body)
                 self._finish_loop_clauses(
                     stmt, inner_scope, edges, before=before, pre_loop=before,
                     consumed_before=consumed_before_loop,
@@ -3130,8 +3212,7 @@ class StatementAnalyzer:
                             stmt.var, elem_type, iterates,
                             placeable=not iteration_yields_copies(
                                 self.ctx, iterable_type))
-                        for s in stmt.body:
-                            self.analyze_stmt(s)
+                        self.analyze_block(stmt.body)
                     # The head's variables leave scope with the loop: a later
                     # binding of the name is another variable.
                     self.pend.retire_loop_heads(cid_floor)
@@ -3220,7 +3301,13 @@ class StatementAnalyzer:
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(
                 head.proven_types(True))
-            if stmt.message is not None:
+            taken = self.expr.decide(stmt.condition)
+            if not self.ctx.trial_depth:
+                stmt.decided = taken
+            if taken is True and not self.ctx.trial_depth:
+                # The message runs only on the raising path, which is dead.
+                stmt.message = None
+            if stmt.message is not None and taken is not True:
                 # The message runs only on the raising path, inside the
                 # statement's own failure branch, which never comes back.
                 self.init.restore(head.on_false)
@@ -3229,8 +3316,8 @@ class StatementAnalyzer:
                     raise self.ctx.error(
                         "assert message must be a string", stmt)
             self.init.restore(head.on_true)
-        elif isinstance(stmt, TpyGlobal):
-            self._analyze_global_stmt(stmt)
+        elif isinstance(stmt, (TpyGlobal, TpyNonlocal)):
+            pass  # declared at body entry (`_declare_scope_names`)
         elif isinstance(stmt, TpyRaise):
             self._analyze_raise(stmt)
         elif isinstance(stmt, TpyTry):
@@ -3239,16 +3326,16 @@ class StatementAnalyzer:
             self.match.analyze_match(stmt)
         elif isinstance(stmt, TpyWith):
             self._analyze_with(stmt)
-        elif isinstance(stmt, TpyNonlocal):
-            self._analyze_nonlocal(stmt)
         elif isinstance(stmt, TpyNestedDef):
             self._analyze_nested_def(stmt)
 
     def _track_for_range_facts(self, stmt: TpyForEach) -> None:
-        """Set range facts for loop variable when iterating over range().
-
-        Detects: range(len(arr)), range(N).
+        """The range facts of a loop head's targets: none from an earlier
+        binding of the name (the head binds them afresh), and over range()
+        the index's -- range(len(arr)), range(N).
         """
+        for name in stmt.head_targets():
+            self.ctx.func.value_ranges.pop(name, None)
         iterable = stmt.iterable
         if not self.ctx.calls_builtin(iterable, "range"):
             return
@@ -3736,8 +3823,7 @@ class StatementAnalyzer:
         self.ctx.func.in_finally = True
         self.ctx.func.pending_return_borrows.append(
             self._collect_deferred_return_names(stmt))
-        for s in stmt.finally_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.finally_body)
         self.ctx.func.pending_return_borrows.pop()
         self.ctx.func.in_finally = prev_in_finally
         # Re-union the normal path: replay the finally body's own kills on
@@ -3759,8 +3845,7 @@ class StatementAnalyzer:
         """Analyze try/finally with no except handlers."""
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
         before = self.init.save()
-        for s in stmt.try_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.try_body)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
         self._analyze_finally_body(stmt, before)
         # Hoist try-body variables so they're accessible in the finally body,
@@ -3831,8 +3916,7 @@ class StatementAnalyzer:
             self.ctx.func.try_except_error_type = self._exception_qname(
                 handler.exception_type, handler_record)
 
-        for s in stmt.try_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.try_body)
 
         # The last analysis of this body wins. `trial_scope` rolls back the
         # context but not AST mutations, so accumulating would let a
@@ -3842,8 +3926,7 @@ class StatementAnalyzer:
         self.ctx.func.try_except_error_type = prev_try_error
         self.ctx.func.try_except_error_handled = prev_handled
 
-        for s in stmt.else_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.else_body)
         then_state = self.init.save()
         consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
         then_terminated = self.ctx.func.init_terminated
@@ -3883,8 +3966,7 @@ class StatementAnalyzer:
         prev_has_binding = self.ctx.func.in_except_has_binding
         self.ctx.func.in_except_tier = TryTier.RETURN
         self.ctx.func.in_except_has_binding = handler.binding is not None
-        for s in handler.body:
-            self.analyze_stmt(s)
+        self.analyze_block(handler.body)
         self.ctx.func.in_except_tier = prev_except_tier
         self.ctx.func.in_except_has_binding = prev_has_binding
 
@@ -3953,15 +4035,13 @@ class StatementAnalyzer:
                 handler_records.append(None)
 
         # Analyze try body
-        for s in stmt.try_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.try_body)
         # Capture try-body bindings BEFORE else (else vars are scoped to the
         # if(__ok) block in C++ and must not leak into post-try scope)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
 
         # Analyze else body
-        for s in stmt.else_body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.else_body)
         arm_bindings = [dict(self.ctx.func.current_scope.bindings)]
         then_state = self.init.save()
         consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
@@ -3999,8 +4079,7 @@ class StatementAnalyzer:
 
             prev_except_tier = self.ctx.func.in_except_tier
             self.ctx.func.in_except_tier = TryTier.THROW
-            for s in h.body:
-                self.analyze_stmt(s)
+            self.analyze_block(h.body)
             self.ctx.func.in_except_tier = prev_except_tier
 
             if h.binding and h.binding in self.ctx.func.current_scope.bindings:
@@ -4162,7 +4241,10 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Type '{iterable_inner}' cannot be used as an async "
                 f"iterable (missing __aiter__ method)", stmt.iterable)
-        aiter_info = aiter_overloads[0]
+        aiter_info = self._resolve_statement_dunder(
+            aiter_overloads, iterable_inner,
+            receiver_is_readonly(self.ctx, stmt.iterable), "__aiter__",
+            stmt.iterable)
         # An inherited __aiter__ reports its self-type with a generic base's
         # unbound T; bind it so aiter_type carries concrete args.
         if isinstance(iterable_inner, NominalType):
@@ -4192,7 +4274,11 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Async iterator '{aiter_type}' is missing `__anext__` "
                 f"method", stmt.iterable)
-        anext_info = anext_overloads[0]
+        # `__anext__` is called on what `__aiter__` returned, a mutable
+        # receiver: a `readonly[...]` result is not a NominalType, refused above.
+        anext_info = self._resolve_statement_dunder(
+            anext_overloads, aiter_type, False, "__anext__", stmt.iterable)
+        anext_decl = anext_info
         # Codegen reads async_aiter_type to name the __anext__ sub-coro struct;
         # it must be __anext__'s DEFINING record (an ancestor when the iterator
         # inherits it), since the struct exists only there. Binding also gives
@@ -4203,6 +4289,7 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"`__anext__` on '{aiter_type}' must be `async def` "
                 f"for use in `async for`", stmt.iterable)
+        stmt.async_anext_fi = anext_info
 
         anext_ret = unwrap_ref_type(anext_info.return_type)
         if (isinstance(anext_ret, NominalType)
@@ -4222,7 +4309,6 @@ class StatementAnalyzer:
                                       placeable=False)
         stmt.elem_type = make_ref(elem_type)
         # What each step hands over is what `__anext__`'s declaration writes.
-        anext_decl = anext_overloads[0]
         self._stamp_step_handover(stmt, elem_type,
                                   declared=anext_decl.async_inner_return)
         self._check_loop_var_rebind(stmt, elem_type)
@@ -4256,8 +4342,7 @@ class StatementAnalyzer:
             with self.scopes.loop_var(inner_scope, stmt.var, var_type,
                                        inner_scope.depth, is_foreach=True,
                                        binder=stmt):
-                for s in stmt.body:
-                    self.analyze_stmt(s)
+                self.analyze_block(stmt.body)
             self.pend.retire_loop_heads(cid_floor)
         self._finish_loop_clauses(
             stmt, inner_scope, edges, before=before, pre_loop=before,
@@ -4359,8 +4444,13 @@ class StatementAnalyzer:
                     f" (missing {exit_method} method)", err_node)
 
             # Validate async-ness: in `async with`, both methods must be
-            # `async def`. In sync `with`, neither should be.
-            enter_info = enter_overloads[0]
+            # `async def`. In sync `with`, neither should be. The enter
+            # dunder may be a `@dispatch` set, resolved like the call the
+            # statement makes; an exit set is refused at registration.
+            enter_info = self._resolve_statement_dunder(
+                enter_overloads, ctx_type,
+                receiver_is_readonly(self.ctx, item.context_expr),
+                enter_method, err_node)
             exit_info = exit_overloads[0]
             # The exit step runs TPy code unless the manager is native: a
             # call on the manager, on every path out of the block.
@@ -4415,6 +4505,9 @@ class StatementAnalyzer:
                         f"to handle. Move the failing work into a method the "
                         f"body calls inside a try/except.", err_node)
 
+            if stmt.is_async:
+                item.aenter_fi = enter_info
+                item.aexit_fi = exit_info
             if stmt.is_async and enter_owner is not None:
                 item.aenter_owner_type = enter_owner
                 item.aexit_owner_type = exit_owner
@@ -4555,8 +4648,7 @@ class StatementAnalyzer:
         # can pre-declare them outside the guard {} scope (C++ scoping).
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
 
-        for s in stmt.body:
-            self.analyze_stmt(s)
+        self.analyze_block(stmt.body)
         if before is not None and any(
                 item.exit_can_suppress for item in stmt.items):
             # A suppressing `__exit__` resumes after the statement from
@@ -4593,6 +4685,23 @@ class StatementAnalyzer:
             self.deduction.promote_hoisted_views(predecl)
 
     # --- Nested def / nonlocal ---
+
+    def _declare_scope_names(self, stmt: TpyStmt) -> None:
+        if isinstance(stmt, TpyGlobal):
+            self._analyze_global_stmt(stmt)
+        elif isinstance(stmt, TpyNonlocal):
+            self._analyze_nonlocal(stmt)
+        elif isinstance(stmt, TpyNestedDef):
+            # A nested def's `nonlocal` set holds for its whole body and is
+            # read before the def is analyzed (a loop head asks what its body
+            # rebinds), so it is fixed here, with no arm of it emptied yet.
+            # A def nested in it declares for its own scope only.
+            names: set[str] = set()
+            walk_body_stmts(
+                stmt.func.body, lambda e: None,
+                lambda s: names.update(s.names)
+                if isinstance(s, TpyNonlocal) else None)
+            stmt.nonlocal_names = names
 
     def _analyze_nonlocal(self, stmt: TpyNonlocal) -> None:
         """Analyze a nonlocal declaration."""
@@ -4653,6 +4762,12 @@ class StatementAnalyzer:
         if func.is_method and not func.is_staticmethod:
             self.ctx.func.current_param_name_to_idx["self"] = -1
 
+        # A `global` / `nonlocal` declaration holds for the whole body,
+        # wherever it is written and whether its arm runs: at the front, no
+        # arm a later step drops or splices takes it along.
+        hoist_scope_declarations(func.body)
+        walk_body_stmts(func.body, lambda e: None, self._declare_scope_names)
+
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body,
                                     pre_declared=param_names | nonlocal_params,
@@ -4660,6 +4775,10 @@ class StatementAnalyzer:
         assert scan.literal_locals is not None
         self.ctx.func.pending_num_names = scan.literal_locals.pending
         self.ctx.func.int_literal_values = scan.literal_locals.literals
+        if not module_init:
+            self.ctx.func.constant_locals = {
+                n: v for n, e in scan.literal_locals.single_stores.items()
+                if (v := literal_value_from_expr(e)) is not None}
         self.ctx.func.pending_num_excluded = scan.literal_locals.excluded
         self.ctx.func.pending_num_rebound = scan.literal_locals.rebound
         self.ctx.func.first_bindings = scan.first_bindings
@@ -4706,14 +4825,14 @@ class StatementAnalyzer:
         self.ctx.func.current_chain_alias_sources = dict(scan.chain_alias_sources)
 
         # Analyze body
-        for stmt in func.body:
+        def enter(stmt: TpyStmt) -> None:
             if module_init:
                 # A parser-minted comprehension temp is an init-scope local,
                 # not a module slot; every other depth-0 binding declares one.
                 self.ctx.current_module_stmt = (
                     None if isinstance(stmt, TpyVarDecl) and stmt.module_init_local
                     else stmt)
-            self.analyze_stmt(stmt)
+        self.analyze_block(func.body, enter=enter)
         if module_init:
             self.ctx.current_module_stmt = None
 
@@ -4789,10 +4908,9 @@ class StatementAnalyzer:
         def check_defs(stmts: list[TpyStmt]) -> None:
             for s in stmts:
                 if isinstance(s, TpyNestedDef):
-                    nonlocals: set[str] = set()
-                    for inner_s in s.func.body:
-                        if isinstance(inner_s, TpyNonlocal):
-                            nonlocals.update(inner_s.names)
+                    # The def's whole-body declaration set: a dead arm's
+                    # `nonlocal` is gone from the body by now.
+                    nonlocals = s.nonlocal_names
 
                     def check_dels(stmts2: list[TpyStmt]) -> None:
                         for d in stmts2:
@@ -4878,8 +4996,7 @@ class StatementAnalyzer:
 
         # The body's `nonlocal` declarations, bound in the inner scope before
         # its analysis.
-        nonlocal_names: set[str] = set()
-        collect_nonlocals(func.body, nonlocal_names)
+        nonlocal_names = stmt.nonlocal_names
         inner_locals = self.ctx.local_names_for(func)
         free_reads = _nested_def_free_names(func, inner_locals,
                                             into_lambdas=True) - nonlocal_names
@@ -4955,10 +5072,10 @@ class StatementAnalyzer:
             if self.ctx.func.escape_hoisted_vars:
                 self.ctx.nested_def_hoisted_vars[func] = set(
                     self.ctx.func.escape_hoisted_vars)
+            if self.ctx.func.global_declarations:
+                self.ctx.nested_def_global_decls[func] = set(
+                    self.ctx.func.global_declarations)
 
-            # Use the authoritative nonlocal set from body analysis
-            # (covers nonlocal declarations at any nesting depth)
-            nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
             # Harvest closure mutation facts before the state restore discards
             # them: attempted mutation marks (filtered to outer names below),
             # the writes deferred to a callee among them, and self-receiver
@@ -4971,7 +5088,6 @@ class StatementAnalyzer:
                                    callee=e.callee_fi)
                 for e in self.ctx.func.current_call_edges
                 if e.receiver_idx == -1]
-        stmt.nonlocal_names = nonlocal_names
         # After the scope restore: any later call in the enclosing function
         # may invoke this closure, killing facts for its nonlocal targets and
         # for the outer storage it writes through.
@@ -5349,8 +5465,7 @@ class StatementAnalyzer:
         if not stmt.orelse:
             return
         with self.scopes.block_scope() as else_scope:
-            for s in stmt.orelse:
-                self.analyze_stmt(s)
+            self.analyze_block(stmt.orelse)
             else_end_assigned = self._assigned_here()
             # A str/bytes tuple-unpack target the clause declares owns its
             # buffer, on the same channel and for the same reason as an

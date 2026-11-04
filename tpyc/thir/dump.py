@@ -606,7 +606,10 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
             tags += " [synthetic_default]"
         if stmt.default_goto:
             tags += " [default_goto]"
-        lines = [f"{pad}match {_expr(stmt.subject)}:{tags}"]
+        lines = ([] if stmt.subject_effect is None
+                 else _stmt_lines(stmt.subject_effect, depth))
+        subject = _expr(stmt.subject) if stmt.subject is not None else "None"
+        lines.append(f"{pad}match {subject}:{tags}")
         arm_pad = "  " * (depth + 1)
         if stmt.none_entry is not None:
             lines.append(f"{arm_pad}case None:")

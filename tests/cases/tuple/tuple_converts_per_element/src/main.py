@@ -723,7 +723,7 @@ def main() -> None:
     keep(xs, A(80))
     print("container", xs[0][0].v, xs[0][1].v)
     a = A(90)
-    c = True
+    c = len("x") > 0  # opaque to sema: a literal would decide the selects on `c`
     # conditional operand: the call runs only where the guard lets it
     r1 = c or take(mkb(a))  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
     print("or", r1)

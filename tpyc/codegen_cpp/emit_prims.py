@@ -27,18 +27,17 @@ from typing import (Callable, Container, Final, Iterator, Mapping, NoReturn,
 
 from ..namespace import Namespace
 from ..parse.nodes import (
-    SourceLocation, TpyAsPattern, TpyBinOp, TpyBoolLiteral,
+    SourceLocation, TpyAsPattern, TpyBoolLiteral,
     TpyCall, TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral, TpyFunction,
     TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
-    TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral,
+    TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern,
     TpyStrLiteral, TpySubscript,
-    TpyTupleLiteral, TpyTupleUnpack, TpyVarDecl,
+    TpyTupleUnpack, TpyVarDecl,
     TpyWildcardPattern,
 )
-from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
-                                  literal_value_from_expr)
+from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import pointer_repr_optional, dyn_protocol_borrow_result
@@ -632,7 +631,8 @@ def returns_bare_reference(rt: 'TpyType | None') -> bool:
     if rt is None:
         return False
     rt = unwrap_readonly(rt)
-    if rt.is_value_type() or isinstance(rt, (OwnType, OptionalType, PtrType)):
+    if (rt.is_value_type() or is_void_like_type(rt)
+            or isinstance(rt, (OwnType, OptionalType, PtrType))):
         return False
     if isinstance(rt, UnionType) and not rt.needs_wrapper():
         # A pointer-variant or value union is returned by value (a prvalue
@@ -881,85 +881,6 @@ def is_duplicable_expr(expr: TpyExpr) -> bool:
     return False
 
 
-# -- literal-fact folds ----------------------------------------------------
-
-def _flatten_chain(expr: TpyExpr, op: str) -> list[TpyExpr]:
-    """Flatten a left-recursive &&/|| chain into a list of operands."""
-    result: list[TpyExpr] = []
-    while isinstance(expr, TpyBinOp) and expr.op == op:
-        result.append(expr.right)
-        expr = expr.left
-    result.append(expr)
-    result.reverse()
-    return result
-
-
-def check_literal_chain(
-    expr: TpyBinOp, literal_facts: dict[str, TpyType],
-) -> bool | None:
-    """Check if a flattened &&/|| chain of == comparisons can be resolved.
-
-    For ||: returns True if collected values cover the variable's full
-    LiteralType set (full-set coverage).
-    For &&: returns False if the same variable is required to equal two
-    different values (contradiction).
-    """
-    operands = _flatten_chain(expr, expr.op)
-    eq_facts: dict[str, set] = {}
-    for operand in operands:
-        if not isinstance(operand, TpyBinOp) or operand.op != "==":
-            return None
-        extracted = False
-        for var_side, lit_side in [(operand.left, operand.right),
-                                   (operand.right, operand.left)]:
-            if not isinstance(var_side, TpyName):
-                continue
-            lit_val = literal_value_from_expr(lit_side)
-            if lit_val is None:
-                continue
-            eq_facts.setdefault(var_side.name, set()).add(lit_val)
-            extracted = True
-            break
-        if not extracted:
-            return None
-    if expr.op == "||":
-        for var_name, values in eq_facts.items():
-            lit_type = literal_facts.get(var_name)
-            if isinstance(lit_type, LiteralType) and set(lit_type.values) <= values:
-                return True
-    else:
-        for values in eq_facts.values():
-            if len(values) > 1:
-                return False
-    return None
-
-
-def check_literal_in(
-    expr: TpyBinOp, literal_facts: dict[str, TpyType],
-) -> bool | None:
-    """Check if `x in (a, b, ...)` / `x not in (a, b, ...)` can be resolved."""
-    if not isinstance(expr.left, TpyName):
-        return None
-    lit_type = literal_facts.get(expr.left.name)
-    if not isinstance(lit_type, LiteralType):
-        return None
-    if not isinstance(expr.right, (TpyTupleLiteral, TpySetLiteral)):
-        return None
-    rhs_values: set = set()
-    for elem in expr.right.elements:
-        val = literal_value_from_expr(elem)
-        if val is None:
-            return None
-        rhs_values.add(val)
-    lit_values = set(lit_type.values)
-    is_in = expr.op == "in"
-    if lit_values <= rhs_values:
-        return True if is_in else False
-    if lit_values.isdisjoint(rhs_values):
-        return False if is_in else True
-    return None
-
-
 # -- render constants ------------------------------------------------------
 
 CMP_HELPER: Final = {
@@ -1153,8 +1074,6 @@ __all__ = [
     "CTOR_DEMOTE_READS_INHERITED",
     "FLOAT_STR_CONSTANTS",
     "PARAM_LOCAL_SET_FIELDS",
-    "check_literal_chain",
-    "check_literal_in",
     "emit_except_handler_header",
     "emit_finally_chain",
     "emit_isinstance_extractions",
