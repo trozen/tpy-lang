@@ -5695,6 +5695,20 @@ spelling too).
 
 ### Generic Functions
 
+**The contract.** Each instantiation of a generic function, generator or
+class behaves as the code obtained by substituting its type arguments by
+hand: the same overload selection, narrowing, ownership, copies, moves and
+checks. Inferred and spelled type arguments that name the same type mean the
+same thing, and a type argument is never an internal type. The body is
+checked once against what its bounds declare; opt-outs a type argument
+brings (`@nocopy`, `__del__`, Send/Sync) are checked at each instantiation
+and reported at the Python line. Two differences are deliberate: a possible
+cost at an open `T` is warned once at the declaration, hedged ("may copy
+T"; see "the copy contract of a generic body"), and proof-based elisions
+(bounds, cast and division checks) may differ. Any other difference between
+a generic and its hand-written twin is a defect on one side
+(`docs/PITFALLS.md` "generic-equals-monomorphic-twin" lists the open ones).
+
 **Working**: Generic functions using Python 3.12+ syntax (`def first[T]:`)
 
 ```python
