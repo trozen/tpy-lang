@@ -81,8 +81,8 @@ void zap(Inner& i) {
     i.name = "n4";
 }
 
-// # the ROOT record is the argument: `zap(o.mid.inner)`, a record argument
-// # spelled as a two-hop field chain, is rejected (BUGS.md#deep-field-chain-at-record-arg)
+// # the ROOT record is the argument, written to two hops down (the chain
+// # itself as the argument, `zap(o.mid.inner)`, is the other spelling)
 // def zap_deep(x: Outer) -> None:
 //     x.inner.tag = b"Z6"
 void zap_deep(Outer& x) {
