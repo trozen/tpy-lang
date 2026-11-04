@@ -1,0 +1,51 @@
+closed-relay 11 12
+generic-relay 11 12
+write-source 77
+nocopy-relay 6 7
+inner-producer 101 102
+mixed 101 105
+frame-local-after 4
+frame-local-str str
+unpack 12 112
+callable-local 11 12
+genexpr 11 12
+closed-genexpr 12 13
+blocks 11 12
+while 11 12
+method 11 12
+list 2 2
+callee-below 11
+tuple-relay 11 12
+ro-id 5
+ro-id 206
+ro-map 1
+ro-map 1
+ro-map-src 7
+ro-map-value 6
+ro-map-value 8
+unpack-int 8
+next 1
+own-slot 2003
+copy-relay 1 2
+apply 42
+part 11 12
+part-alias 21 22
+call 11 12
+call-alias 21 22
+unpack-alias 11 12
+tuple-step 31 32
+generic-part 11 12
+generic-call 41 42
+own-part 50 2
+own-part 51 2
+tuple-return 41
+tuple-return-nested 41
+pop-local 2
+pop-local 1
+pop-local-str b
+pop-local-str a
+pop-own 4
+pop-own 3
+own 1 2
+own-nocopy 7
+own-nocopy 8

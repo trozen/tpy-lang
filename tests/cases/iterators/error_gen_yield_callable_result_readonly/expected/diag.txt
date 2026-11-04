@@ -1,0 +1,1 @@
+main.py:16: error: Cannot yield local or temporary as reference. Reference type 'readonly[U]' is yielded by reference. Bind it to a local first (`y = ...` then `yield y`) to lend it from the generator, or declare the generator 'Iterator[Own[readonly[U]]]' to yield by value.

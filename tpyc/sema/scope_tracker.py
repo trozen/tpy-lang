@@ -262,6 +262,9 @@ class ScopeTracker:
         # namespace region the variable belongs to.
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(name, var_type)
+        # A head unpack adds its rejected-rebind targets as loop variables
+        # (`UnpackTarget.rebind_rejected`); they leave with the loop.
+        loop_vars_before = set(self.ctx.func.loop_vars)
         if is_foreach:
             self.ctx.func.loop_vars.add(name)
         was_assigned = name in self.ctx.func.definitely_assigned
@@ -271,6 +274,7 @@ class ScopeTracker:
         finally:
             if is_foreach:
                 self.ctx.func.loop_vars.discard(name)
+            self.ctx.func.loop_vars.intersection_update(loop_vars_before)
             if not was_assigned:
                 self.ctx.func.definitely_assigned.discard(name)
             self.ctx.restore_local_decl(name, saved_decl)

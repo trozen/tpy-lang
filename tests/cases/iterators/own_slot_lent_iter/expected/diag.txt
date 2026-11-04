@@ -1,5 +1,7 @@
-main.py:211: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:226: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:232: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:236: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:238: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:204: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:212: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:220: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:224: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:240: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:244: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:246: warning: copies list[int32] elements; use copy_iter() to make this explicit

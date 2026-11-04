@@ -1989,9 +1989,9 @@ void combinators_owning() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_53 = ::tpy::unwrap_ref(*__r_1);
-            int32_t i = std::get<0>(__for_tup_53);
-            std::tuple<A, int32_t> s = std::get<1>(__for_tup_53);
+            auto&& __for_tup_55 = ::tpy::unwrap_ref(*__r_1);
+            int32_t i = std::get<0>(__for_tup_55);
+            std::tuple<A, int32_t> s = std::get<1>(__for_tup_55);
             total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(i, std::get<1>(s))), std::get<0>(s).v)));
         }
     }
@@ -2001,9 +2001,9 @@ void combinators_owning() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            auto&& __for_tup_54 = ::tpy::unwrap_ref(*__r_3);
-            std::tuple<A, int32_t> y = std::get<0>(__for_tup_54);
-            int32_t k = std::get<1>(__for_tup_54);
+            auto&& __for_tup_56 = ::tpy::unwrap_ref(*__r_3);
+            std::tuple<A, int32_t> y = std::get<0>(__for_tup_56);
+            int32_t k = std::get<1>(__for_tup_56);
             total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(std::get<0>(y).v, k)));
         }
     }
@@ -2064,9 +2064,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
             __state = S_JOIN_1;
             continue;
         }
-        { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_55 = std::tuple<std::string, A*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
-        k = std::get<0>(__for_tup_55);
-        a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_55))));
+        { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_57 = std::tuple<std::string, A*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
+        k = std::get<0>(__for_tup_57);
+        a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_57))));
         __state = S_RESUME_0;
         return ::tpy::__len__(k);
     }
@@ -2079,9 +2079,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
             __state = S_JOIN_3;
             continue;
         }
-        __for_tup_56 = *((*__for_it_1))++;
-        o = ::tpy::optional_to_ptr(std::get<0>(__for_tup_56));
-        n = std::get<1>(__for_tup_56);
+        __for_tup_58 = *((*__for_it_1))++;
+        o = ::tpy::optional_to_ptr(std::get<0>(__for_tup_58));
+        n = std::get<1>(__for_tup_58);
         __state = S_RESUME_1;
         return n;
     }
@@ -2091,9 +2091,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        __for_tup_57 = &(::tpy::unwrap_ref(*(*__for_r_2)));
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_57)))));
-        j = std::get<1>((*__for_tup_57));
+        __for_tup_59 = &(::tpy::unwrap_ref(*(*__for_r_2)));
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_59)))));
+        j = std::get<1>((*__for_tup_59));
         __state = S_RESUME_3;
         return j;
     }
@@ -2257,8 +2257,8 @@ void comp_twice_ref(std::vector<std::tuple<A, A>>& ps) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& __for_tup_60 = *__beg_0;
-            auto& x = std::get<1>(__for_tup_60);
+            auto&& __for_tup_62 = *__beg_0;
+            auto& x = std::get<1>(__for_tup_62);
             __result.push_back(::tpyapp::main::bump(x, 1));
         }
         std::move(__result);
@@ -2376,6 +2376,13 @@ void comp_twice_ref(std::vector<std::tuple<A, A>>& ps) {
 //     wx = [(A(1), 2)]
 //     walrus_ptr(wx)
 //     print("open_t", open_t([(A(1), 1), (A(2), 2)], A(0)))
+//     rq = A(3)
+//     print("readonly_else_rebind",
+//           readonly_else_rebind([(A(1), 2)], rq) is rq)
+//     gps = [(GCell("a"), 1)]
+//     gcq = GCell("q")
+//     print("open_composite_rebind", open_composite_rebind(gps, gcq),
+//           gps[0][0].k, gcq.k)
 //     tree: Tree[int32] = [1, 2]
 //     wrapper_elem(tree)
 //     combinators_owning()
@@ -2513,6 +2520,11 @@ void main() {
     std::vector<std::tuple<A, int32_t>> __tmp_9 = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     A __tmp_10 = A(0);
     std::cout << "open_t" << " " << ::tpyapp::main::open_t<A>(__tmp_9, __tmp_10) << "\n" << ::tpy::check_signals;
+    A rq = A(3);
+    std::cout << "readonly_else_rebind" << " " << ::tpy::print_bool(::tpy::same_object(&(::tpyapp::main::readonly_else_rebind<A>({std::tuple<A, int32_t>{A(1), 2}}, rq)), &(rq))) << "\n" << ::tpy::check_signals;
+    std::vector<std::tuple<GCell<std::string>, int32_t>> gps = ::tpy::make_vector<std::tuple<GCell<std::string>, int32_t>>(std::tuple<GCell<std::string>, int32_t>{GCell<std::string>("a"), 1});
+    GCell<std::string> gcq = GCell<std::string>("q");
+    std::cout << "open_composite_rebind" << " " << ::tpyapp::main::open_composite_rebind<std::string>(gps, gcq) << " " << std::get<0>(::tpy::__getitem__(gps, 0)).k << " " << gcq.k << "\n" << ::tpy::check_signals;
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2};
     ::tpyapp::main::wrapper_elem(tree);
     ::tpyapp::main::combinators_owning();

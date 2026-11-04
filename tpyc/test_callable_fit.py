@@ -374,7 +374,8 @@ def callg[T](f: Fn[[T], int32], p: T) -> int32:
 
 def my_map[T, U](f: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
     for x in it:
-        yield f(x)
+        y = f(x)
+        yield y
 
 
 class H:

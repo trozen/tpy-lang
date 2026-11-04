@@ -103,42 +103,47 @@ __genexpr_free_function_1_frame __genexpr_free_function_1(std::vector<std::vecto
 //     bump("free copy() of a list", copy(nl))  # tpyc: ok
 //     print("free copy() of a list nl", nl)
 //     print("free int32 iterator", total(Ints()))  # tpyc: ok
+//     # a generic step lending its field copies at an owning slot, as the
+//     # concrete twin's does
 //     bag = Bag[list[int32]]()
 //     bag.push([7])
-//     bump("free generic step", bag)  # tpyc: ok
-//     # an Own type argument on a generic step hands each element over
+//     bump("free generic step", bag)  # tpyc: warning(/copies list\[int32\] elements/)
+//     # an Own type argument on a generic step still lends the field's
+//     # elements, so they copy (handing them over needs a popping
+//     # `Iterator[Own[T]]` step, which an `Iterable` slot refuses today:
+//     # BUGS.md#own-yield-generator-refused-at-iterable-slot)
 //     ob = Bag[Own[list[int32]]]()
 //     e: list[int32] = [8]
 //     ob.push(e)
-//     bump("free Own type arg", ob)  # tpyc: ok
+//     bump("free Own type arg", ob)  # tpyc: warning(/copies list\[int32\] elements/)
 //     print("free Own type arg ob", len(ob.items))
 //     # a generic generator declared to hand over its copies
 //     bump("free clones_own", clones_own(View()))  # tpyc: ok
 //     print("free clones_own G", G)
 //     cl: list[list[int32]] = [[15]]
-//     # `Iterator[T]` declares a lending step, whatever the body yields
-//     bump("free clones named", clones(cl))  # tpyc: warning(/copies list\[int32\] elements/)
-//     print("free clones named cl", cl)
-//     # a subclass binding an inherited generic __iter__'s T keeps it open
+//     # `Iterator[T]` declares a lending step: a named argument's elements copy
+//     # (the source read-back is the divergence case's "free copying generic")
+//     bump("free clones named", each_lent(cl))  # tpyc: warning(/copies list\[int32\] elements/)
+//     # a subclass binding an inherited generic __iter__'s T lends as its base
 //     sb = SubBag()
 //     sb.push([14])
-//     bump("free SubBag", sb)  # tpyc: ok
+//     bump("free SubBag", sb)  # tpyc: warning(/copies list\[int32\] elements/)
 //     # a __next__ declared Own hands each element over
 //     bump("free Own __next__", OwnCursor())  # tpyc: ok
 //     bump("free Own separate __next__", OwnSeparate())  # tpyc: ok
 //     # a user iterator lending a Ptr: the pointer is the value handed over
 //     take_ptrs(PtrView(R))  # tpyc: ok
 //     print("free Ptr step", len(R.items))
-//     # generic producers over an open T keep their verdict
-//     # (BUGS.md#generic-producer-own-slot-verdict: a false copy warning)
+//     # generic producers over an open T declared to hand their pops over
 //     d = [[9]]
-//     bump("free drain", drain(d))  # tpyc: warning(/copies list\[int32\] elements/)
+//     bump("free drain", drain(d))  # tpyc: ok
 //     print("free drain d", d)
 //     bd = Bag[list[int32]]()
 //     bd.push([10])
 //     bump("free Bag.drain", bd.drain())  # tpyc: ok
+//     # a lending generic generator under a lazy combinator copies at the slot
 //     fd = [[11]]
-//     bump("free filter drain", filter(keep, drain(fd)))  # tpyc: warning(/copies list\[int32\] elements/)
+//     bump("free filter drain", filter(keep, each_lent(fd)))  # tpyc: warning(/copies list\[int32\] elements/)
 //     # a genexpr warned already; a generator over its parameter warns for a
 //     # temporary argument too: the copy is unobservable, but the signature
 //     # cannot tell its parameter from a global (the declared-signature rule)
@@ -170,9 +175,8 @@ void free_function() {
     ::tpyapp::main::bump("free clones_own", __tmp_6);
     std::cout << "free clones_own G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> cl = {{15}};
-    auto __tmp_7 = ::tpyapp::main::clones<std::vector<int32_t>>(cl);
+    auto __tmp_7 = ::tpyapp::main::each_lent<std::vector<int32_t>>(cl);
     ::tpyapp::main::bump("free clones named", __tmp_7);
-    std::cout << "free clones named cl" << " " << ::tpy::ListPrinter(cl) << "\n" << ::tpy::check_signals;
     SubBag sb = SubBag();
     sb.push(std::vector<int32_t>{14});
     ::tpyapp::main::bump("free SubBag", sb);
@@ -191,7 +195,7 @@ void free_function() {
     bd.push(std::vector<int32_t>{10});
     ::tpyapp::main::bump("free Bag.drain", bd.drain());
     std::vector<std::vector<int32_t>> fd = {{11}};
-    auto __tmp_12 = ::tpy::builtin_filter(keep, ::tpyapp::main::drain<std::vector<int32_t>>(fd));
+    auto __tmp_12 = ::tpy::builtin_filter(keep, ::tpyapp::main::each_lent<std::vector<int32_t>>(fd));
     ::tpyapp::main::bump("free filter drain", __tmp_12);
     std::vector<std::vector<int32_t>> __tmp_13 = {{12}};
     auto __tmp_14 = ::tpyapp::main::from_param(__tmp_13);

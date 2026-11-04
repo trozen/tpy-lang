@@ -1,12 +1,9 @@
 # A GENERIC generator's yield slot is spelled `::tpy::yield_slot_t<T>` (a
 # `val_or_ref<T>`), so the element's value-vs-reference shape is settled at
 # instantiation and the generic frame lends exactly where its monomorphic twin
-# does. Each lending section mutates the YIELDED value and prints the source
-# afterwards -- a read-only section would match CPython even if the yield
-# copied. The inverse sections pin the VALUE slot, which a generator gets when
-# a yield source does not outlive a suspension; they are read-only because a
-# mutation through the copy would NOT reach the source, which is a CPython
-# divergence rather than a pinned behaviour.
+# does -- the signature decides, never the body. Each lending section mutates
+# the YIELDED value and prints the source afterwards -- a read-only section
+# would match CPython even if the yield copied.
 from tpy import Fn, Own, dispatch, int32, nocopy, readonly
 from typing import Iterable, Iterator, Protocol
 
@@ -190,33 +187,31 @@ def via_shadowing_local[T](xs: list[T]) -> Iterator[T]:
     yield xs[1]
 
 
-# INVERSE: an erased `Fn` result carries no ownership, so the slot stays a
-# VALUE one and the element is copied out -- read-only here, because mutating
-# it would not reach the source (BUGS.md#generic-yield-fn-result-copies)
+# a callable value's result, bound to a frame local first: the frame lends the
+# local (a bare `yield fn(x)` is rejected -- the callable may return a new
+# value)
 def mapped[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
     for x in it:
-        yield fn(x)  # tpyc: ok
+        y = fn(x)
+        yield y  # tpyc: ok
 
 
-# INVERSE: one ephemeral source demotes the WHOLE frame -- the slot is one
-# type for every yield, so the `items` loop copies too although its own source
-# lends (BUGS.md#generic-yield-mixed-source-demotes-frame). Read-only for the
-# same reason as the `Fn` section.
+# a param-container yield beside an `Iterator[T]` relay: both lend
 def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
     for x in items:
         yield x  # tpyc: ok
     for y in extra:
-        yield y
+        yield y  # tpyc: ok
 
 
 # an `Own[T]`-returning named callee behind the same `Fn` param: the result is
-# a fresh value, so the value slot is the only sound choice
+# a fresh value the frame local owns, lent from the frame
 def fresh(p: Point) -> Own[Point]:
     return Point(p.x)
 
 
-# INVERSE: a loop var over an `Iterator[T]` param borrows the inner producer's
-# step slot, which the next step overwrites -- the VALUE slot copies it out
+# a loop var over an `Iterator[T]` param relayed as it is: the relay lends the
+# inner step for one step of this generator
 def relay[T](it: Iterator[T]) -> Iterator[T]:
     for x in it:
         yield x  # tpyc: ok
@@ -396,29 +391,30 @@ def main() -> None:
         p.x += 100
     print("named-fn", ns[0].x, ns[1].x)
 
-    # inverse 1: a LAMBDA callee is erased, so nothing says its result
-    # borrows and the element is copied out (the named form above is why this
-    # section, not that one, pins the value slot)
+    # a LAMBDA callee returns its own value (the named form above lends), so
+    # the frame local holds a copy -- read-only, since a write through it
+    # would not reach the source (BUGS.md#generic-yield-fn-result-copies)
     ms = [Point(1), Point(2)]
     for p in mapped(lambda q: q, ms):  # tpyc: warning(/copies Point into owned storage/)
         print("fn", p.x)
 
     # ... and an `Own`-returning named callee behind the same param: a fresh
-    # value, so copying out is right rather than a divergence
+    # value the frame local owns
     for p in mapped(fresh, ms):
         print("own-fn", p.x)
 
-    # inverse 2: the Iterator[T] relay hands out a copy of the step element
+    # the Iterator[T] relay lends the step element on
     rs = [Point(1), Point(2)]
     for p in relay(each(rs)):
-        print("relay", p.x)
+        p.x += 100
     print("relay-src", rs[0].x, rs[1].x)
 
-    # inverse 3: one ephemeral source demotes every other yield in the frame
+    # a relay beside a param-container yield: every yield lends
     mi = [Point(1), Point(2)]
     mx = [Point(5)]
     for p in mixed(mi, each(mx)):
-        print("mixed", p.x)
+        p.x += 100
+    print("mixed", mi[0].x, mi[1].x, mx[0].x)
 
 
 main()

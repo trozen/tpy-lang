@@ -103,12 +103,6 @@ _DIAGNOSTIC_DISAGREEMENTS: dict[tuple[str, str], str] = {
      "lambda p: p",
      "h: Callable[[tuple[A, int32]], Own[tuple[A, int32]]] = lambda q: q"):
         "BUGS.md#lambda-own-result-borrowed-param-copies-unwarned",
-    # A generic generator's yields recorded HEDGED once the frame's slot
-    # settles, with no hedge diagnostic.
-    ("def mix[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:",
-     "yield x"): "BUGS.md#generic-yield-mixed-source-demotes-frame",
-    ("def mix[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:",
-     "yield y"): "BUGS.md#generic-yield-mixed-source-demotes-frame",
     # A generic local bound from a lending call copies, unwarned.
     ("def keep_rebound[T](xs: list[T], x: T, z: T) -> None:",
      "y = ident(x)"): "BUGS.md#generic-lending-local-copies-unwarned",
@@ -5679,11 +5673,6 @@ from typing import Iterator
 from tpy import int32
 def ident[T](a: T) -> T:
     return a
-def mix[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
-    for x in items:
-        yield x
-    for y in extra:
-        yield y
 def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
     y = ident(x)
     xs.append(y)
@@ -5703,9 +5692,10 @@ def test_filed_hedged_copies_without_a_diagnostic_are_the_only_exemptions(
                     if e.loc is not None and any(
                         leaf.permission is P.HEDGED
                         for leaf in rec.leaves.values()))
-    assert hedged == [7, 9, 11, 13]
+    assert hedged == [6, 8]
     assert not [d for d in ctx.diagnostics if "cop" in d.message]
-    renamed = _FILED_SILENT_HEDGES.replace("def mix[T]", "def mix2[T]")
+    renamed = _FILED_SILENT_HEDGES.replace("def keep_rebound[T]",
+                                           "def keep_rebound2[T]")
     _c, modules2 = _compile_program(renamed)
     with pytest.raises(AssertionError):
         _assert_records_agree_with_warnings(_entry(modules2), [], renamed)

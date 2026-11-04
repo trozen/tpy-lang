@@ -2822,7 +2822,11 @@ def _unpack_target_shape(stmt: TpyTupleUnpack, i: int, tt, an
     if not is_new:
         return _NO_SHAPE
     if is_ref:
-        if _p.record_like(tt, an):
+        # One object bound by reference: a record or container, or an open
+        # `T`, whose reference instantiation is one (`val_or_ref_t<T>`).
+        if (_p.record_like(tt, an)
+                or (isinstance(tt, TpyType) and unwrap_readonly(tt).value_form()
+                    is ValueForm.TYPE_PARAM)):
             return _TargetShape(F.REFERENCE, elem_pointer=True)
         if _p._optional_ptr_borrow(tt, an) is not None:
             return _TargetShape(F.POINTER, elem_pointer=True)

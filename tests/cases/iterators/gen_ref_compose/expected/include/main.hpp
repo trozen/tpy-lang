@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
-struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_fn>, U> {
+struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_fn>, ::tpy::yield_slot_t<U>> {
     ::tpy::frame_state __state;
     F_fn fn;
     T_it it;
@@ -60,6 +60,7 @@ struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_f
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    ::tpy::frame_slot<U> y;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -73,18 +74,21 @@ struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_f
           fn(std::forward<F_fn>(fn_)),
           it(std::forward<T_it>(it_)) {}
 
-    std::expected<U, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __next__();
     __gen_my_map& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_my_map<T, U, T_it, F_fn>&) {
         return os << "<generator my_map>";
     }
 };
+// # the callable's result is bound to a frame local first: the frame lends it
+// # (a bare `yield fn(x)` is rejected -- the callable may return a new value)
 // def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 //     for x in it:
-//         yield fn(x)                                                # -> S_RESUME_0
+//         y = fn(x)
+//         yield y                                                    # -> S_RESUME_0
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
-std::expected<U, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__() {
+std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -92,7 +96,7 @@ std::expected<U, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__(
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0:  // after: yield fn(x)
+    case S_RESUME_0:  // after: yield y
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -100,8 +104,9 @@ std::expected<U, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__(
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        y.emplace(fn((*x)));
         __state = S_RESUME_0;
-        return fn((*x));
+        return ::tpy::yield_from_local<U>((*y));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

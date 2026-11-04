@@ -35,11 +35,6 @@ def passthru[T](src: Iterable[T]) -> Iterator[T]:
         yield x
 
 
-def clones[T](src: Iterable[T]) -> Iterator[T]:
-    for x in src:
-        yield copy(x)
-
-
 def gen() -> Iterator[list[int32]]:
     for x in G:
         yield x
@@ -227,9 +222,11 @@ def free_function(c: bool) -> None:
     pt = list(passthru(View()))  # tpyc: warning(/copies list\[int32\] elements/)
     pt[0].append(7)
     print("free pass-through generic list()", G)
-    # `Iterator[T]` declares a lending step; declare `Iterator[Own[T]]` to hand over
-    bump(clones(View()))  # tpyc: warning(/copies list\[int32\] elements/)
-    print("free copying generic", G)
+    # a generic generator declared `Iterator[T]` lends (a copying body is an
+    # error there), so a named argument's elements copy at the owning slot
+    cg: list[list[int32]] = [[15]]
+    bump(passthru(cg))  # tpyc: warning(/copies list\[int32\] elements/)
+    print("free copying generic", cg)
     bump(Cursor())  # tpyc: warning(/copies list\[int32\] elements/)
     print("free next", G)
     bump(Separate())  # tpyc: warning(/copies list\[int32\] elements/)

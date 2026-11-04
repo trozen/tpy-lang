@@ -307,13 +307,16 @@ class TestCompilerFromSource:
 
 class TestImportComponentBodies:
     @pytest.mark.parametrize(("gen_mod", "callee_mod"), [("a", "b"), ("z", "y")])
-    def test_generic_yield_verdict_reads_cycle_peer_borrow(
-            self, tmp_path, gen_mod, callee_mod):
-        """A generic generator yielding a lending callee's result lends,
-        whichever cycle member is analyzed first: the verdict settles after
-        every member's bodies. Pinned here rather than in a case because
-        the peer's function template is not visible to the generator's
-        header (BUGS.md#cycle-peer-template-call-undeclared)."""
+    @pytest.mark.parametrize(("arg", "dangles"), [("r", False), ("[r[0]]", True)])
+    def test_yield_root_check_reads_cycle_peer_borrow(
+            self, tmp_path, gen_mod, callee_mod, arg, dangles):
+        """A generic generator yielding a lending callee's result is checked
+        against the callee's borrow fact whichever cycle member is analyzed
+        first: the check runs after every member's bodies. Lending from the
+        row (`r`) is accepted; lending from a temporary list dangles. Pinned
+        here rather than in a case because the peer's function template is
+        not visible to the generator's header
+        (BUGS.md#cycle-peer-template-call-undeclared)."""
         (tmp_path / f"{gen_mod}.py").write_text(
             "from typing import Iterator\n"
             f"import {callee_mod}\n"
@@ -321,7 +324,7 @@ class TestImportComponentBodies:
             "\n"
             "def each_first[T](rows: list[list[T]]) -> Iterator[T]:\n"
             "    for r in rows:\n"
-            f"        yield {callee_mod}.first(r)\n"
+            f"        yield {callee_mod}.first({arg})\n"
         )
         (tmp_path / f"{callee_mod}.py").write_text(
             f"import {gen_mod}\n"
@@ -333,10 +336,12 @@ class TestImportComponentBodies:
         entry = tmp_path / "main.py"
         entry.write_text(f"import {gen_mod}\nimport {callee_mod}\n")
         compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS)
-        modules = {m.name: m for m in compiler.compile()}
-        gen, = (f for f in modules[gen_mod].ast.functions
-                if f.name == "each_first")
-        assert gen.generic_yield_borrows
+        if dangles:
+            with pytest.raises(SemanticError,
+                               match="Cannot yield local or temporary"):
+                compiler.compile()
+        else:
+            compiler.compile()
 
 
 class TestReexportedVariableEntry:

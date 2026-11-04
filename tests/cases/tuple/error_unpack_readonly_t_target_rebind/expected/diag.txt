@@ -1,0 +1,1 @@
+main.py:9: error: Cannot reassign loop variable 'x' of type 'readonly[T]'; assign to a new local variable instead

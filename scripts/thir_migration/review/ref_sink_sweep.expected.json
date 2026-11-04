@@ -1150,9 +1150,9 @@
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [ra"
  ],
  "array_i__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'Array[int32, 2]' i",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "array_i__gen__global_name__decl_alias": [
   "ok",
@@ -6545,9 +6545,9 @@
   ""
  ],
  "deref_list__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'DL' is yielded by ",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "deref_list__gen__global_name__decl_alias": [
   "ok",
@@ -9395,9 +9395,9 @@
   ""
  ],
  "deref_rec__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'DR' is yielded by ",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "deref_rec__gen__global_name__decl_alias": [
   "ok",
@@ -12115,9 +12115,9 @@
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_value"
  ],
  "dict_si__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'dict[str, int32]' ",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "dict_si__gen__global_name__decl_alias": [
   "ok",
@@ -14760,9 +14760,9 @@
   ""
  ],
  "gen_rec__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'Box[R]' is yielded",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "gen_rec__gen__global_name__decl_alias": [
   "ok",
@@ -17475,9 +17475,9 @@
   ""
  ],
  "list_i__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'list[int32]' is yi",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "list_i__gen__global_name__decl_alias": [
   "ok",
@@ -20030,9 +20030,9 @@
   ""
  ],
  "list_r__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'list[R]' is yielde",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "list_r__gen__global_name__decl_alias": [
   "ok",
@@ -22705,9 +22705,9 @@
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow].x = binop(*%t[0] [borrow].x, +, lit(1)) [4] print(method_call(*%b, v_m, []).x [raw]) yield_values: [0] coerce(lit(0) -"
  ],
  "rec__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'R' is yielded by r",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "rec__gen__global_name__decl_alias": [
   "ok",
@@ -25785,9 +25785,9 @@
   ""
  ],
  "set_i__gen__borrow_method__yield_borrow": [
-  "sema:Cannot yield local or temporary as reference. Reference type 'set[int32]' is yie",
+  "ok",
   "",
-  ""
+  "yield_values: [0] method_call(*%b, v_m, [])"
  ],
  "set_i__gen__global_name__decl_alias": [
   "ok",

@@ -989,43 +989,49 @@ class BorrowTracker:
             self.loans.setdefault(storage, {})[borrower] = loan
 
 
-class EphemeralKind(Enum):
-    """How strongly an ephemeral-borrow name is held.
-
-    HARD: the name borrows a producer step slot at EVERY instantiation, so
-    retaining it past the step is rejected outright.
-    GATE_ONLY: the name borrows only at the REFERENCE instantiations of an
-    open `T` (the step result is a copy at the value ones), so it cannot be
-    rejected -- it only feeds the generic-yield slot verdict, which answers
-    with a slot choice instead of a diagnostic.
-    """
-    HARD = "hard"
-    GATE_ONLY = "gate_only"
-
-
-def ephemeral_borrow_root(ephemeral_vars: 'dict[str, EphemeralKind]',
-                          expr: 'TpyExpr | None',
-                          kind: 'EphemeralKind | None' = None) -> str | None:
+def ephemeral_borrow_root(ctx: 'SemanticContext',
+                          expr: 'TpyExpr | None') -> str | None:
     """Return the ephemeral-borrow var name `expr` reads from, else None.
 
     A bare ephemeral name, a walrus handing one out, a select picking one,
     or a field/subscript chain rooted in one (storing `x.field` retains a
     borrow into the same stale slot): the HOLDER climb, following no call
     (`NO_CALLS`) -- a `.clone()` / copy-producing call breaks the borrow,
-    and whether a lending call keeps it is filed undecided.
-
-    `kind` restricts the match to names held that strongly; None matches
-    either kind (the generic-yield gate's question -- does this source
-    borrow at all).
+    and an escape through a lending call is left to MIR
+    (BUGS.md#ephemeral-step-through-lending-call-unchecked).
     """
     if expr is None:
         return None
+    lit = peel_coerce(expr)
+    if isinstance(lit, TpyTupleLiteral):
+        # A tuple holds each reference leaf as its scalar would; a
+        # value-typed element (`(p.n, 1)`) is a copy and roots nothing.
+        for elem in lit.elements:
+            et = ctx.get_expr_type(elem)
+            if et is not None and et.is_value_type():
+                continue
+            name = ephemeral_borrow_root(ctx, elem)
+            if name is not None:
+                return name
+        return None
+    ephemeral_vars = ctx.func.ephemeral_borrow_vars
     # A ternary reads from whichever arm is taken -- ephemeral if either is.
     for place in storage_roots(expr, Use.HOLDER, None, NO_CALLS).places:
-        held = ephemeral_vars.get(place.name)
-        if held is not None and (kind is None or held is kind):
+        if place.name in ephemeral_vars:
             return place.name
     return None
+
+
+def ephemeral_escape_error(ctx: 'SemanticContext', what: str, name: str,
+                           expr: 'TpyExpr | None') -> Exception:
+    """The rejection of retaining ephemeral borrow `name` past its step."""
+    return ctx.error(
+        f"Cannot {what} '{name}': it borrows an element of a generator / "
+        f"iterator, valid only for the current iteration step (the producer "
+        f"reuses its frame slot on the next step). Copy it out first "
+        f"(`{name}.clone()` for a @nocopy type, otherwise a plain copy).",
+        expr,
+    )
 
 
 def register_binding_borrow(ctx: 'SemanticContext', name: Holder,
@@ -1772,12 +1778,12 @@ class OwnSlot(NamedTuple):
 
 class ParkedFunctionState(NamedTuple):
     """A body's function state kept for a check that runs after the body
-    (`SemanticContext.reenter`): the module-end generic-yield-slot verdict,
-    a pointer-tuple rebind's declared-slot check.
+    (`SemanticContext.reenter`): a generator's yield rooting checks, a
+    pointer-tuple rebind's declared-slot check.
 
     `scope` and `ns` are parked beside the state because the body-exit path
     nulls them ON that state, and a site inside a block has a scope of its
-    own: the verdict walk asks whether a yield source is rooted in durable
+    own: the rooting check asks whether a yield source is rooted in durable
     storage, and with no scope a local that shadows a module global reads as
     the global and is wrongly certified as durable.
     """
@@ -2370,25 +2376,19 @@ class FunctionTrackingState:
     # valid only until the next iteration step (the generator frame slot is
     # overwritten on each __next__()), so retaining it past the step is unsound.
     # These are kept OUT of the safe-to-return provenance and rejected at escape
-    # sites (return / store / container insert / closure capture / yield onward).
+    # sites beyond the step (return / store / container insert / closure
+    # capture); a yield relays the step and is no such escape.
     # Active only during the consuming loop body (added before, discarded after).
-    # A GATE_ONLY entry carries the same fact for an open-`T` source, which
-    # borrows only at its reference instantiations: too weak to reject an
-    # escape on, but it feeds the generic-yield slot verdict. ONE table, so
-    # alias and walrus propagation reaches both kinds.
-    ephemeral_borrow_vars: dict[str, EphemeralKind] = field(default_factory=dict)
-    # Borrow-yield rooting checks deferred until `func.generator_locals` is
-    # populated: a yielded frame-resident local is a valid borrow root, but the
-    # check runs during body analysis, before the frame-local set exists.
+    # An open-`T` element counts as the borrow its reference instantiation
+    # makes, as the concrete twin's does.
+    ephemeral_borrow_vars: set[str] = field(default_factory=set)
+    # Borrow-yield rooting checks deferred past body analysis: a yielded
+    # frame-resident local is a valid borrow root only once
+    # `func.generator_locals` exists, and a callee's `return_borrows_from`
+    # only once the callee's body is analyzed -- so they run with the
+    # component's other settled facts (`deferred_yield_root_checks`).
     # Entries are (yielded_expr, elem_type, loc).
     pending_yield_root_checks: list[tuple[TpyExpr, TpyType, 'SourceLocation | None']] = field(default_factory=list)
-    # Yield sources of a generator whose element is an open `T`, recorded for
-    # the per-generator provenance gate (the slot borrows only if EVERY source
-    # outlives a suspension). Entries are (yielded_expr, source_is_ephemeral);
-    # the ephemeral half must be sampled at the yield, while the loop-body
-    # marking is live, and the rooting half is deferred exactly like
-    # `pending_yield_root_checks`.
-    pending_generic_yield_sources: list[tuple[TpyExpr, bool]] = field(default_factory=list)
     # Return/yield dangling checks over a str/bytes local whose storage the
     # deduction has not settled yet. A use must not be what decides the
     # storage, so the check waits for the post-body drain
@@ -3245,17 +3245,16 @@ class SemanticContext:
     # capture, a copy, which a non-copyable type cannot take.
     finally_rebound_returns: IdentitySet = field(default_factory=IdentitySet)
 
-    # Per-function states of this module's generic generators whose yield-slot
-    # verdict is still owed. The verdict reads `return_borrows_from` of the
-    # callees behind its yield sources, and that fact is filled at the END of
-    # each callee's body analysis -- so a verdict settled during the
-    # generator's own body would answer differently depending on whether the
-    # callee happens to sit above or below it. The whole state is kept (not a
-    # copy) because the verdict walk asks this function's params, scope and
-    # frame locals; nothing mutates it once the body is done. The scope and
-    # namespace ride in the record rather than on the state, which the
-    # body-exit path nulls.
-    deferred_generic_yield_settles: list['ParkedFunctionState'] = field(default_factory=list)
+    # Per-function states of the generators whose yield rooting checks
+    # (`pending_yield_root_checks`) are still owed. The checks read
+    # `return_borrows_from` of the callees behind the yields, filled at the
+    # END of each callee's body analysis -- so a check run during the
+    # generator's own body would answer differently depending on whether
+    # the callee sits above or below it. The whole state is kept (not a
+    # copy) because the check asks this function's params, scope and frame
+    # locals; the scope and namespace ride in the record rather than on the
+    # state, which the body-exit path nulls.
+    deferred_yield_root_checks: list['ParkedFunctionState'] = field(default_factory=list)
     # Scope escapes whose diagnostic waits for a callee's borrow fact
     # (`ScopeTracker.settle_deferred_escapes`).
     deferred_escapes: list['DeferredEscape'] = field(default_factory=list)

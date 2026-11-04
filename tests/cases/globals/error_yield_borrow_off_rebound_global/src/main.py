@@ -1,24 +1,23 @@
-# The rule is the same at a generator's borrow YIELD -- the frame survives
-# suspension, so the yielded borrow must root in storage nothing reseats --
-# and only the verb differs.
-# XS is reference-typed, so `Cannot reassign global variable 'XS' of non-value
-# type` is the sibling reject that fires instead when sema reaches `reset`
-# first -- which is why this leg offers no `Iterator[Own[...]]` escape, only
-# the parity-preserving remedy of dropping the rebind.
+# The rebound-global rule at a generator's YIELD: a view yielded off a module
+# `str` that some function rebinds through `global` points into the buffer the
+# rebind frees, since the frame survives suspension -- only the verb differs
+# from the return. (A reference-typed global cannot reach this leg: its own
+# `global` rebind is rejected first, and a borrow yield is checked after every
+# body.)
 from typing import Iterator
 
-from tpy import int32
+from tpy import StrView
 
-XS = [1, 2, 3]
+S = "abc"
 
 
-def rows() -> Iterator[list[int32]]:
-    yield XS  # tpyc: error(/Cannot yield a borrow of module variable 'XS'.*Stop rebinding 'XS'/)
+def rows() -> Iterator[StrView]:
+    yield S  # tpyc: error(/Cannot yield a borrow of module variable 'S'.*Yield str or String/)
 
 
 def reset() -> None:
-    global XS
-    XS = [9]
+    global S
+    S = "xyz"
 
 
 def main() -> None:

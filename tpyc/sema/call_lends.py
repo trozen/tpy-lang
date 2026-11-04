@@ -1263,7 +1263,8 @@ def is_enum_name_read(expr: TpyExpr, ctx: 'SemanticContext') -> bool:
 
 
 def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
-                         proof: bool = False) -> bool:
+                         proof: bool = False,
+                         gen_yield: bool = False) -> bool:
     """Whether the call-shaped `call` hands back a FRESH object, which a
     borrow of it dies with: a fresh-stamped result (`ResultForm.is_fresh`),
     a constructor (a borrowing one excepted: `borrowing_ctor_arg`; a
@@ -1275,7 +1276,13 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
     With `proof`, the answer must prove the result fresh: an owned buffer
     is not asked about, and a callable value counts only through a
     declared `Own[T]` -- its signature is the `Fn` type's, which says
-    nothing else about ownership."""
+    nothing else about ownership.
+
+    With `gen_yield` (a generator's lending yield slot), a callable value
+    declared to return an open type parameter is fresh too: at an owning
+    callee the instantiation's value is new, and the reference
+    instantiation decides a generic body. A return keeps the default
+    reading, so `return fn(x)` at `-> U` is unchanged."""
     lend = callee_lend_fact(call)
     if lend.fresh:
         return True
@@ -1309,6 +1316,9 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
             or is_bytearray_type(unwrap_own(unwrap_readonly(
                 ctx.get_expr_type(call))))):
         return True
+    if (gen_yield and callable_value and not proof
+            and is_open_type_param_return(fi.root.return_type)):
+        return True
     if ((proof and callable_value) or ret is None
             or is_open_type_param_return(fi.root.return_type)):
         return False
@@ -1329,17 +1339,6 @@ def _through_expression(call: TpyExpr) -> bool:
     borrow fact off."""
     return (isinstance(call, TpyCall) and not isinstance(call.func, TpyName)
             and borrowing_ctor_arg(call) is None and not _is_null_ptr(call))
-
-
-def _recorded_index_missing(call: TpyExpr, lend: CalleeLend) -> bool:
-    """Whether the callee's recorded `return_borrows_from` (`lend`, the
-    call's `callee_lend_fact`) names a position this call fills with no
-    operand: the result's provenance is then unknown."""
-    if (not isinstance(call, (TpyCall, TpyMethodCall))
-            or lend.kind is not CalleeFact.RECORDED):
-        return False
-    present = {idx for idx, _ in lend.ops.indexed()}
-    return not lend.sources <= present
 
 
 def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
@@ -1393,18 +1392,22 @@ class ReturnLend(CallPolicy):
     borrowing-view type no rule classifies is a VIEWNODE. A ternary and a
     `*args` pack below the value are followed per operand.
 
-    `strict` is the closed-world reading (a recorded source naming no
-    operand of the call is UNNAMED). `proof` is the reading that must PROVE
+    `gen_yield` is the reading at a generator's borrow-slot yield, whose
+    slot lends what it is handed for a whole step: an `Own[T]` result is a
+    TEMPORARY whoever the callee (`copy()`, `xs.pop()`), and so is the
+    result of a callable VALUE declared as an open type parameter -- at an
+    owning callee the instantiation's value is fresh, and the reference
+    instantiation decides a generic body. `proof` is the reading that must PROVE
     a temporary (`borrow_temp_root`): a fresh result only by
     `call_result_is_fresh`'s proof, a call only through its recorded
     sources, no path through a hidden call, a walrus or an await, and the
     and/or arms followed."""
     follows_selects = True
 
-    def __init__(self, ctx: 'SemanticContext', *, strict: bool = False,
+    def __init__(self, ctx: 'SemanticContext', *, gen_yield: bool = False,
                  proof: bool = False) -> None:
         self.ctx = ctx
-        self.strict = strict
+        self.gen_yield = gen_yield
         self.proof = proof
         self.may = MayLend(ctx)
 
@@ -1459,8 +1462,10 @@ class ReturnLend(CallPolicy):
 
     def at_call(self, call: TpyExpr, path: tuple,
                 ask: Ask) -> list[LendSource] | None:
-        if ((self.proof or not _builtin_own_result(self.ctx, call))
-                and call_result_is_fresh(self.ctx, call, proof=self.proof)):
+        if ((self.proof or self.gen_yield
+             or not _builtin_own_result(self.ctx, call))
+                and call_result_is_fresh(self.ctx, call, proof=self.proof,
+                                         gen_yield=self.gen_yield)):
             return []
         if _is_null_ptr(call):
             return []
@@ -1474,8 +1479,6 @@ class ReturnLend(CallPolicy):
         if not srcs or any(s.assumed for s in srcs):
             return None
         if self.proof and any(s.how is not Lent.RECORDED for s in srcs):
-            return None
-        if self.strict and _recorded_index_missing(call, lend):
             return None
         return srcs
 
@@ -1498,13 +1501,9 @@ class ReturnLend(CallPolicy):
         lend = callee_lend_fact(op)
         obj = op.obj if isinstance(op, TpyMethodCall) else None
         if lend.kind is CalleeFact.RECORDED:
-            if self.strict and _recorded_index_missing(op, lend):
-                return LeafKind.UNNAMED
             return [s._replace(how=Lent.AWAITED) for s in call_lend_sources(
                 lend.ops, lend.sources, analyzer=self.ctx,
                 declared_of=declared_reader(self.ctx), temp_backing=True)]
-        if self.strict:
-            return LeafKind.UNNAMED
         # Fail closed on a borrow-await with no fact: every operand.
         return [LendSource(-1 if e is obj else i, e, None,
                            how=Lent.AWAITED_ALL)

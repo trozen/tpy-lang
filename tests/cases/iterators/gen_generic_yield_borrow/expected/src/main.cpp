@@ -16,7 +16,7 @@ __gen_local_after_nested local_after_nested(int32_t x) {
 }
 
 // # an `Own[T]`-returning named callee behind the same `Fn` param: the result is
-// # a fresh value, so the value slot is the only sound choice
+// # a fresh value the frame local owns, lent from the frame
 // def fresh(p: Point) -> Own[Point]:
 //     return Point(p.x)
 Point fresh(const Point& p) {
@@ -163,29 +163,30 @@ Point& ident(Point& p) {
 //         p.x += 100
 //     print("named-fn", ns[0].x, ns[1].x)
 //
-//     # inverse 1: a LAMBDA callee is erased, so nothing says its result
-//     # borrows and the element is copied out (the named form above is why this
-//     # section, not that one, pins the value slot)
+//     # a LAMBDA callee returns its own value (the named form above lends), so
+//     # the frame local holds a copy -- read-only, since a write through it
+//     # would not reach the source (BUGS.md#generic-yield-fn-result-copies)
 //     ms = [Point(1), Point(2)]
 //     for p in mapped(lambda q: q, ms):  # tpyc: warning(/copies Point into owned storage/)
 //         print("fn", p.x)
 //
 //     # ... and an `Own`-returning named callee behind the same param: a fresh
-//     # value, so copying out is right rather than a divergence
+//     # value the frame local owns
 //     for p in mapped(fresh, ms):
 //         print("own-fn", p.x)
 //
-//     # inverse 2: the Iterator[T] relay hands out a copy of the step element
+//     # the Iterator[T] relay lends the step element on
 //     rs = [Point(1), Point(2)]
 //     for p in relay(each(rs)):
-//         print("relay", p.x)
+//         p.x += 100
 //     print("relay-src", rs[0].x, rs[1].x)
 //
-//     # inverse 3: one ephemeral source demotes every other yield in the frame
+//     # a relay beside a param-container yield: every yield lends
 //     mi = [Point(1), Point(2)]
 //     mx = [Point(5)]
 //     for p in mixed(mi, each(mx)):
-//         print("mixed", p.x)
+//         p.x += 100
+//     print("mixed", mi[0].x, mi[1].x, mx[0].x)
 void main() {
     std::array<Point, 2> pts = {Point(1), Point(2)};
     {
@@ -478,8 +479,8 @@ void main() {
         for (;;) {
             auto __r_49 = __itr_48.__next__();
             if (!__r_49.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_49);
-            std::cout << "relay" << " " << p.x << "\n" << ::tpy::check_signals;
+            auto&& p = ::tpy::unwrap_ref(*__r_49);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "relay-src" << " " << ::tpy::__getitem__(rs, 0).x << " " << ::tpy::__getitem__(rs, 1).x << "\n" << ::tpy::check_signals;
@@ -492,10 +493,11 @@ void main() {
         for (;;) {
             auto __r_51 = __itr_50.__next__();
             if (!__r_51.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_51);
-            std::cout << "mixed" << " " << p.x << "\n" << ::tpy::check_signals;
+            auto&& p = ::tpy::unwrap_ref(*__r_51);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
+    std::cout << "mixed" << " " << ::tpy::__getitem__(mi, 0).x << " " << ::tpy::__getitem__(mi, 1).x << " " << ::tpy::__getitem__(mx, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // # a module global under the same name as the local below, so that local SHADOWS

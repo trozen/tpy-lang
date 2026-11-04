@@ -102,7 +102,7 @@ from .storage_walk import StorageKey
 from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
-from .compatibility import TupleSink, TypeCompatibility
+from .compatibility import TypeCompatibility
 from .capture_copies import CopyReason, warn_closure_captures
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
@@ -1009,7 +1009,6 @@ class SemanticAnalyzer:
         self._expand_function_macros(module)
         self._expand_builder_traces(module)
         self._decide_const_withheld(module)
-        self.ctx.deferred_generic_yield_settles.clear()
 
     def analyze_body_passes(self, module: TpyModule) -> None:
         """Body phase 2: record method bodies, free function bodies, then
@@ -1027,10 +1026,10 @@ class SemanticAnalyzer:
 
     def settle_body_facts(self) -> None:
         """Body phase 3, once every body of the import component is
-        analyzed: every callee's return-borrow fact is final, so the generic
-        yield-slot verdicts and the deferred escapes answer independently of
+        analyzed: every callee's return-borrow fact is final, so the yield
+        rooting checks and the deferred escapes answer independently of
         definition order -- across the component's modules too."""
-        self._settle_deferred_generic_yields()
+        self._settle_yield_root_checks()
         self.stmts.scopes.settle_deferred_escapes()
 
     def publish_phase2_facts(self, module: TpyModule) -> None:
@@ -1662,53 +1661,27 @@ class SemanticAnalyzer:
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
 
-    def _enqueue_generic_yield_settle(self) -> None:
-        """Park a generator with open-`T` yield sources for the module-end
+    def _park_yield_root_checks(self) -> None:
+        """Park a generator with yield rooting checks for the component-end
         settle; runs after the post-body drain, once frame locals exist."""
-        if self.ctx.func.pending_generic_yield_sources:
-            self.ctx.deferred_generic_yield_settles.append(
+        if self.ctx.func.pending_yield_root_checks:
+            self.ctx.deferred_yield_root_checks.append(
                 ParkedFunctionState(
                     self.ctx.func.current_function, self.ctx.func,
                     self.ctx.func.current_scope, self.ctx.func.current_ns))
 
-    def _settle_deferred_generic_yields(self) -> None:
-        """Decide, once per generator, whether an open-`T` yield slot LENDS.
-
-        A generator lends what it yields when every yield source outlives a
-        suspension; otherwise it hands out a value. The slot is one type for
-        the whole frame, so the answer is per generator, not per yield -- and
-        it is a VERDICT, not a diagnostic: an unrooted source selects the value
-        slot (today's spelling) rather than an error, because the same body
-        also instantiates at value `T`s, which borrow nothing.
-
-        Runs after every body in the module, not at the end of the generator's
-        own body: the walk reads the callees' `return_borrows_from`, which is
-        filled when the CALLEE's body finishes, so an earlier verdict would
-        depend on the source order of the two definitions. Each generator's
-        own function state is re-installed for its walk, together with the
-        function node, scope and namespace parked at enqueue -- the rooting
-        half asks that function's params, scope and frame locals.
-        """
-        for parked in self.ctx.deferred_generic_yield_settles:
-            fn = parked.func
-            if not isinstance(fn, TpyFunction):
-                continue
-            with self.ctx.reenter(parked) as state:
-                sources = list(state.pending_generic_yield_sources)
-                fn.generic_yield_borrows = all(
-                    not ephemeral and not self.compat.is_dangling_return(
-                        value, gen_yield=True, assume_unknown_calls_safe=False)
-                    for value, ephemeral in sources)
-                state.pending_generic_yield_sources.clear()
-                if not fn.generic_yield_borrows:
-                    # The frame stores what it yields: each yield is an
-                    # owning sink, registered now that its slot is settled
-                    # (the body settled first, so it reads its verdicts).
-                    slot = OwnType(unwrap_ref_type(fn.generator_yield_type))
-                    for value, _ephemeral in sources:
-                        self.compat.register_owned_result(
-                            value, slot, TupleSink.YIELD)
-        self.ctx.deferred_generic_yield_settles.clear()
+    def _settle_yield_root_checks(self) -> None:
+        """Run every parked generator's yield rooting checks under its own
+        function state, node, scope and namespace: the rooting half asks
+        that function's params, scope and frame locals, and a callee's
+        `return_borrows_from` -- filled when the CALLEE's body finishes, so
+        an earlier check would depend on the source order of the two
+        definitions."""
+        parked_all = self.ctx.deferred_yield_root_checks
+        self.ctx.deferred_yield_root_checks = []
+        for parked in parked_all:
+            with self.ctx.reenter(parked):
+                self.compat.drain_yield_root_checks()
 
     def _analyze_function(self, func: TpyFunction, *,
                           genexpr_source_loans: tuple[tuple[StorageKey, LoanInfo], ...] = (),
@@ -1821,7 +1794,7 @@ class SemanticAnalyzer:
                     loop.elem_type = resolve_int_literals(
                         loop.elem_type, self.ctx.default_int_for_literal)
         self.compat.drain_deferred_escape_checks()
-        self._enqueue_generic_yield_settle()
+        self._park_yield_root_checks()
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
@@ -3053,7 +3026,7 @@ class SemanticAnalyzer:
             if method.is_generator or method.is_async:
                 self._collect_generator_locals(method, local_ns, exclude_self=True)
             self.compat.drain_deferred_escape_checks()
-            self._enqueue_generic_yield_settle()
+            self._park_yield_root_checks()
             # After the deduction, as a function body's: its declared-slot
             # checks read the settled types.
             finalize_pointer_tuples(self.ctx, method, nested=False,

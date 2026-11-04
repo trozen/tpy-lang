@@ -533,6 +533,7 @@ struct val_or_ref {
     storage_t data_;
 
     val_or_ref(const std::remove_const_t<T>& v) requires (is_val) : data_(v) {}
+    val_or_ref(std::remove_const_t<T>&& v) requires (is_val) : data_(std::move(v)) {}
     val_or_ref(T& ref) requires (!is_val) : data_(&ref) {}
     // Borrow-pointer sources (tuple borrow slots are `T*`): same non-null
     // borrow contract as the T& ctor.
@@ -575,5 +576,27 @@ namespace detail {
     template<typename T> struct yield_slot_impl<const val_or_ref<T>> { using type = val_or_ref<const T>; };
 }
 template<typename T> using yield_slot_t = typename detail::yield_slot_impl<T>::type;
+
+// A generator's frame-resident local at its last use, handed to an open-`T`
+// yield slot: a value instantiation moves it into the slot, a reference one
+// lends it -- the frame outlives the step. Taking the local by lvalue
+// reference keeps a temporary out at either instantiation. A local that is
+// already a slot (`T = val_or_ref<P>`, a borrow the call site deduced) lends
+// its referent, so a const slot (`yield_slot_t<const T>`) takes it too; a
+// const value local copies, as a const local's return does.
+template<typename T, typename Src>
+yield_slot_t<T> yield_from_local(Src& y) {
+    if constexpr (requires { typename std::remove_const_t<Src>::is_val_or_ref_tag; }) {
+        if constexpr (yield_slot_t<T>::is_val) {
+            return yield_slot_t<T>(std::move(y.get()));
+        } else {
+            return yield_slot_t<T>(y.get());
+        }
+    } else if constexpr (yield_slot_t<T>::is_val) {
+        return yield_slot_t<T>(std::move(y));
+    } else {
+        return yield_slot_t<T>(y);
+    }
+}
 
 } // namespace tpy

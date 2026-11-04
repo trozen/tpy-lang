@@ -48,8 +48,6 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
 struct __gen_passthru;
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-struct __gen_clones;
 struct __gen_gen;
 struct __gen_nth;
 struct __gen_gen_l;
@@ -70,9 +68,6 @@ void reset();
 // def passthru[T](src: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
 __gen_passthru<T, T_src> passthru(T_src&& src);
-// def clones[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-__gen_clones<T, T_src> clones(T_src&& src);
 // def gen() -> Iterator[list[int32]]:
 __gen_gen gen();
 // def nth(i: int32) -> Iterator[list[int32]]:
@@ -484,69 +479,6 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_passthru<T, T_
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
 __gen_passthru<T, T_src> passthru(T_src&& src) {
     return __gen_passthru<T, T_src>(std::forward<T_src>(src));
-}
-
-// def clones[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-struct __gen_clones : public ::tpy::next_iter_mixin<__gen_clones<T, T_src>, T> {
-    ::tpy::frame_state __state;
-    T_src src;
-    using __for_src_0_t = decltype((src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_JOIN_0 = 2,
-        S_DONE = 3,
-    };
-
-    __gen_clones(T_src&& src_)
-        : __state(S_INITIAL),
-          src(std::forward<T_src>(src_)) {}
-
-    std::expected<T, ::tpy::StopIteration> __next__();
-    __gen_clones& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __gen_clones<T, T_src>&) {
-        return os << "<generator clones>";
-    }
-};
-// def clones[T](src: Iterable[T]) -> Iterator[T]:
-//     for x in src:
-//         yield copy(x)                            # -> S_RESUME_0
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-std::expected<T, ::tpy::StopIteration> __gen_clones<T, T_src>::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::resumable_iter_init(__for_itr_0, src);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0:  // after: yield copy(x)
-    case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
-        if (!(*__for_r_0).has_value()) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        __state = S_RESUME_0;
-        return T((*x));
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
-
-// def clones[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-__gen_clones<T, T_src> clones(T_src&& src) {
-    return __gen_clones<T, T_src>(std::forward<T_src>(src));
 }
 
 // def gen() -> Iterator[list[int32]]:

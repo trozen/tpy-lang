@@ -98,7 +98,6 @@ def _populated() -> FunctionTrackingState:
         nested_def_nodes={'f': N.TpyNestedDef(func)},
         nested_def_block_defs={'f': (stmt, "the 'if' block on line 3")},
         pending_yield_root_checks=[(expr, INT32, loc)],
-        pending_generic_yield_sources=[(expr, False)],
         pending_view_storage_checks=[(expr, INT32, loc, INT32, False)],
         unread_coro_locals={'c': stmt},
         var_decl_by_name={'x': N.TpyVarDecl("x", None, None)},
@@ -171,7 +170,7 @@ _FIXTURE_FIELDS = {
     'base_init_calls',
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
     'nested_def_block_defs', 'pending_yield_root_checks',
-    'pending_generic_yield_sources', 'pending_view_storage_checks',
+    'pending_view_storage_checks',
     'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
     'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
@@ -201,7 +200,6 @@ _LEAF_VALUE_NAMES = {
     'SourceLocation',   # a position, the one non-node record nodes carry
     'TpyType',          # deliberately not carried by identity; see the seeder
     'TryTier', 'ValueRange', '_ClassConstantSentinel', 'LiteralValue',
-    'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
     'StorageKey',       # a name and member names
     'OwnSlot',          # a param name and an element index

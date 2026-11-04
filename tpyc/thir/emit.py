@@ -1290,6 +1290,11 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if is_plain_nonvalue(t):
             return f"&({inner})"
     elif e.form is Form.STORAGE:
+        if e.trait is TraitAbi.YIELD_SLOT:
+            # A frame local at its last use into an open-`T` yield slot: the
+            # instantiation moves a value in or lends a reference.
+            elem = f"const {t.to_cpp()}" if e.is_const else t.to_cpp()
+            return f"::tpy::yield_from_local<{elem}>({inner})"
         if e.base_copy:
             # `move`: the value is an rvalue the base part moves out of.
             ref = "&&" if e.move else "&"

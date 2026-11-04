@@ -596,12 +596,13 @@ until written through) needs whole-function analysis, not per-reader arms.
 
 Result-representation readers share `typesys.classify_result_representation`.
 An explicit position selects synchronous call classification, async payload
-classification, the erased callable's declared return spelling, or a
-generator's yield slot (`GENERATOR_YIELD`: `RESULT_TUPLE` for a tuple in its
-result form, `YIELD_BORROW` for a reference element in `val_or_ref<T>`,
-`YIELD_TRAIT` for an open `T` the generator lends through `yield_slot_t<T>`,
+classification or the erased callable's declared return spelling. A
+generator's yield slot is THIR's decision from the declared element alone
+(`thir/lower/context.py:yield_result_representation`: `RESULT_TUPLE` for a
+tuple in its result form, `YIELD_BORROW` for a reference element in
+`val_or_ref<T>`, `YIELD_TRAIT` for an open `T` through `yield_slot_t<T>`,
 `STORAGE` otherwise), which both the frame skeleton's `__next__` slot and
-the yield value's result slot (`thir/lower/context.py:yield_slot`) read. The reader
+the yield value's result slot (`yield_slot`) read. The reader
 preserves each position's wrapper handling and exclusions; `value_category`
 adapts its answers and `CallableType` renders the erased result. These are
 representation decisions, not ownership, access-permission or provenance proofs.

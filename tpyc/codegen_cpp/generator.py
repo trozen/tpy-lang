@@ -1026,7 +1026,7 @@ class CodeGenerator:
         async `_classify_params` machinery (value by value, str as
         string_view, reference types by `T&`, `Own[T]` moved in, pointer-repr
         `Optional` as `T*`). Tuple yields use the borrow-form slot via
-        the GENERATOR_YIELD result classification.
+        the yield-slot representation.
 
         The decision is memoized on the func: the gate is consulted from
         several orchestration passes, and building the CFG per call would be

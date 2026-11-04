@@ -80,6 +80,8 @@ scalar_select 111 12
 comp_owned_optional [4] [4, -1] [4]
 walrus_ptr 40 40 2
 open_t 4
+readonly_else_rebind True
+open_composite_rebind 1 1 10
 wrapper_elem 3 True
 combinators_owning 48
 gen_head_cells [1, 4, 9, 5, 10] 101 1

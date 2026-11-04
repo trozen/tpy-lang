@@ -80,9 +80,11 @@ bool keep(const std::vector<int32_t>& x) {
 //     pt = list(passthru(View()))  # tpyc: warning(/copies list\[int32\] elements/)
 //     pt[0].append(7)
 //     print("free pass-through generic list()", G)
-//     # `Iterator[T]` declares a lending step; declare `Iterator[Own[T]]` to hand over
-//     bump(clones(View()))  # tpyc: warning(/copies list\[int32\] elements/)
-//     print("free copying generic", G)
+//     # a generic generator declared `Iterator[T]` lends (a copying body is an
+//     # error there), so a named argument's elements copy at the owning slot
+//     cg: list[list[int32]] = [[15]]
+//     bump(passthru(cg))  # tpyc: warning(/copies list\[int32\] elements/)
+//     print("free copying generic", cg)
 //     bump(Cursor())  # tpyc: warning(/copies list\[int32\] elements/)
 //     print("free next", G)
 //     bump(Separate())  # tpyc: warning(/copies list\[int32\] elements/)
@@ -191,18 +193,18 @@ void free_function(bool c) {
     std::vector<std::vector<int32_t>> pt = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpyapp::main::passthru<std::vector<int32_t>>(__tmp_9));
     ::tpy::__getitem__(pt, 0).push_back(7);
     std::cout << "free pass-through generic list()" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_10 = View();
-    auto __tmp_11 = ::tpyapp::main::clones<std::vector<int32_t>>(__tmp_10);
+    std::vector<std::vector<int32_t>> cg = {{15}};
+    auto __tmp_10 = ::tpyapp::main::passthru<std::vector<int32_t>>(cg);
+    ::tpyapp::main::bump(__tmp_10);
+    std::cout << "free copying generic" << " " << ::tpy::ListPrinter(cg) << "\n" << ::tpy::check_signals;
+    auto __tmp_11 = Cursor();
     ::tpyapp::main::bump(__tmp_11);
-    std::cout << "free copying generic" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_12 = Cursor();
-    ::tpyapp::main::bump(__tmp_12);
     std::cout << "free next" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_13 = Separate();
-    ::tpyapp::main::bump(__tmp_13);
+    auto __tmp_12 = Separate();
+    ::tpyapp::main::bump(__tmp_12);
     std::cout << "free separate iterator" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_14 = Child();
-    ::tpyapp::main::bump(__tmp_14);
+    auto __tmp_13 = Child();
+    ::tpyapp::main::bump(__tmp_13);
     std::cout << "free inherited" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> a = ::tpy::construct<std::vector<std::vector<int32_t>>>(View());
     ::tpy::__getitem__(a, 0).push_back(7);
@@ -216,24 +218,24 @@ void free_function(bool c) {
         const auto& k = *__beg_0;
         std::cout << "free set()" << " " << k.v << " " << ::tpy::__getitem__((*GK), 0).v << "\n" << ::tpy::check_signals;
     }
-    View __tmp_15 = View();
-    std::vector<std::vector<int32_t>> m = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 2>{5, 6}, __tmp_15));
+    View __tmp_14 = View();
+    std::vector<std::vector<int32_t>> m = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 2>{5, 6}, __tmp_14));
     std::cout << "free map" << " " << ::tpy::ListPrinter((*G)) << " " << ::tpy::__len__(m) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ns = {1, 2};
-    View __tmp_16 = View();
-    std::vector<std::tuple<int32_t, std::vector<int32_t>>> z = ::tpy::construct<std::vector<std::tuple<int32_t, std::vector<int32_t>>>>(::tpy::builtin_zip(ns, __tmp_16));
+    View __tmp_15 = View();
+    std::vector<std::tuple<int32_t, std::vector<int32_t>>> z = ::tpy::construct<std::vector<std::tuple<int32_t, std::vector<int32_t>>>>(::tpy::builtin_zip(ns, __tmp_15));
     std::get<1>(::tpy::__getitem__(z, 0)).push_back(7);
     std::cout << "free zip" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    View __tmp_17 = View();
-    auto __tmp_18 = ::tpy::builtin_filter(keep, __tmp_17);
-    ::tpyapp::main::bump(__tmp_18);
+    View __tmp_16 = View();
+    auto __tmp_17 = ::tpy::builtin_filter(keep, __tmp_16);
+    ::tpyapp::main::bump(__tmp_17);
     std::cout << "free filter" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    View __tmp_19 = View();
-    auto __tmp_20 = ::tpy::builtin_enumerate(__tmp_19);
-    ::tpyapp::main::bump_pairs(__tmp_20);
-    View __tmp_21 = View();
-    auto __tmp_22 = ::tpy::__iter__(__tmp_21);
-    ::tpyapp::main::bump(__tmp_22);
+    View __tmp_18 = View();
+    auto __tmp_19 = ::tpy::builtin_enumerate(__tmp_18);
+    ::tpyapp::main::bump_pairs(__tmp_19);
+    View __tmp_20 = View();
+    auto __tmp_21 = ::tpy::__iter__(__tmp_20);
+    ::tpyapp::main::bump(__tmp_21);
     std::cout << "free iter" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     View v = View();
     ::tpyapp::main::bump(v);
@@ -269,31 +271,31 @@ void free_function(bool c) {
     ::tpyapp::main::bump(ie);
     std::cout << "free if-expression" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     Rows rows = Rows();
-    auto __tmp_23 = ::tpyapp::main::view_of(&rows);
-    ::tpyapp::main::bump(__tmp_23);
+    auto __tmp_22 = ::tpyapp::main::view_of(&rows);
+    ::tpyapp::main::bump(__tmp_22);
     std::cout << "free Own factory" << " " << ::tpy::ListPrinter(rows.items) << "\n" << ::tpy::check_signals;
     View cv = View();
-    auto __tmp_24 = View(cv);
-    ::tpyapp::main::bump(__tmp_24);
+    auto __tmp_23 = View(cv);
+    ::tpyapp::main::bump(__tmp_23);
     std::cout << "free copy()" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_25 = GV<std::vector<int32_t>>();
-    ::tpyapp::main::bump(__tmp_25);
+    auto __tmp_24 = GV<std::vector<int32_t>>();
+    ::tpyapp::main::bump(__tmp_24);
     std::cout << "free Own type arg" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_26 = Own2();
-    ::tpyapp::main::bump(__tmp_26);
+    auto __tmp_25 = Own2();
+    ::tpyapp::main::bump(__tmp_25);
     Own2 o = Own2();
     ::tpyapp::main::bump(o);
     std::cout << "free own field" << "\n" << ::tpy::check_signals;
     GA->append(Pt(1));
-    auto __tmp_27 = SpanView();
-    ::tpyapp::main::bump_pt(__tmp_27);
+    auto __tmp_26 = SpanView();
+    ::tpyapp::main::bump_pt(__tmp_26);
     std::cout << "free SpanIter" << " " << (*GA).__getitem____int32(0).v << "\n" << ::tpy::check_signals;
-    PtView __tmp_28 = PtView();
-    std::vector<std::tuple<Tag, Pt>> zt = ::tpy::construct<std::vector<std::tuple<Tag, Pt>>>(::tpy::builtin_zip(std::array<Tag, 1>{Tag(7)}, __tmp_28));
+    PtView __tmp_27 = PtView();
+    std::vector<std::tuple<Tag, Pt>> zt = ::tpy::construct<std::vector<std::tuple<Tag, Pt>>>(::tpy::builtin_zip(std::array<Tag, 1>{Tag(7)}, __tmp_27));
     std::get<1>(::tpy::__getitem__(zt, 0)).v = ::tpy::add_check<int32_t>(std::get<1>(::tpy::__getitem__(zt, 0)).v, 100);
     std::cout << "free zip nocopy half" << " " << std::get<0>(::tpy::__getitem__(zt, 0)).v << " " << ::tpy::__getitem__((*GP), 0).v << "\n" << ::tpy::check_signals;
-    PtView __tmp_29 = PtView();
-    std::vector<std::tuple<Pt, Tag>> zm = ::tpy::construct<std::vector<std::tuple<Pt, Tag>>>(::tpy::builtin_zip(__tmp_29, std::array<Tag, 1>{Tag(8)}));
+    PtView __tmp_28 = PtView();
+    std::vector<std::tuple<Pt, Tag>> zm = ::tpy::construct<std::vector<std::tuple<Pt, Tag>>>(::tpy::builtin_zip(__tmp_28, std::array<Tag, 1>{Tag(8)}));
     std::get<0>(::tpy::__getitem__(zm, 0)).v = ::tpy::add_check<int32_t>(std::get<0>(::tpy::__getitem__(zm, 0)).v, 100);
     std::cout << "free zip nocopy half mirrored" << " " << std::get<1>(::tpy::__getitem__(zm, 0)).v << " " << ::tpy::__getitem__((*GP), 0).v << "\n" << ::tpy::check_signals;
     Pt q = Pt(1);

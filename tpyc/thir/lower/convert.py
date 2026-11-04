@@ -1527,6 +1527,14 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                             held_object_type(expr, st, types)))
         if (not explicit_copy and under.movable and not implicit
                 and slot.construct is SlotConstruct.RETURN):
+            if slot.trait is TraitAbi.YIELD_SLOT:
+                # A generator's yield slot moves a value instantiation in
+                # and lends a reference one: the frame outlives the step.
+                return Plan(THIRFormConvert(result_type=st, value=expr,
+                                            form=Form.STORAGE, move=True,
+                                            is_const=slot.const,
+                                            trait=TraitAbi.YIELD_SLOT,
+                                            loc=expr.loc), Effect.MOVE)
             # The frame's own value at its last use, read through a deref:
             # a result moves it out (an id-expression moves implicitly).
             return Plan(THIRMove(value=expr, result_type=st,

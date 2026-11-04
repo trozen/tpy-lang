@@ -1358,6 +1358,9 @@ class TpyTupleUnpack(TpyStmt):
     is_loop_head: bool = False
     # Set by sema at a loop head: its loop's `TpyForEach.loop_body_rebinds`.
     loop_body_rebinds: frozenset[str] = frozenset()
+    # Set by sema at a loop head: the names rebound in the loop body or
+    # anywhere else in the function.
+    rebound_anywhere: frozenset[str] = frozenset()
     # Set by sema at a loop head: its loop's `TpyForEach.step_handover`.
     step_handover: frozenset[tuple[int, ...]] = frozenset()
     # Set by sema:
@@ -2268,11 +2271,6 @@ class TpyFunction:
     # one.
     genexpr_inner_loans: 'tuple[tuple[StorageKey, LoanInfo], ...]' = ()
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
-    # Set by sema for a generator whose yield type is an open `T`: does the
-    # frame LEND what it yields (the `val_or_ref<T>` slot) or hand out a value?
-    # One slot type serves the whole frame, so the provenance of every yield
-    # source settles it once, at the end of body analysis.
-    generic_yield_borrows: bool = False
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     forwarded_locals: 'dict[str, str] | None' = None  # Set by sema: hoisted local -> backing static-protocol param it forwards to
     is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine

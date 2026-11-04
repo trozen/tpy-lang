@@ -67,6 +67,7 @@ from ..thir.frame import (
     THIRSuspend, THIRTryRegion, THIRFallOff,
     THIRWithEnter, THIRWithRegion, THIRYieldSuspension,
 )
+from ..thir.lower.context import yield_result_representation
 from ..thir.lower.frame import (
     FrameBuildDeps, awaited_frame_name, build_resumable_frame, frame_function_info,
     frame_name_of,
@@ -1599,11 +1600,10 @@ class AsyncCoroCodegen:
         """The generator's __next__ iterator slot type -- the element type that
         is BOTH the std::expected payload (`_resumable_ret_type_cpp`) and the
         next_iter_mixin element arg (`_generator_iter_base`); the two must stay
-        identical, so they share this single source."""
+        identical, so they share this single source. The representation is
+        THIR's yield-slot decision, the one the body's yields convert into."""
         yt = func.generator_yield_type
-        rep = classify_result_representation(
-            yt, position=ResultPosition.GENERATOR_YIELD,
-            generic_borrows=func.generic_yield_borrows)
+        rep = yield_result_representation(yt)
         if rep is ResultRepresentation.RESULT_TUPLE:
             return yt.to_cpp_return()
         cpp = self.types.type_to_cpp(yt)
@@ -1626,7 +1626,7 @@ class AsyncCoroCodegen:
         """The frame body method's return type. Async: `Poll<T>`.
         Generator: `std::expected<T_slot, ::tpy::StopIteration>` where
         T_slot is the iterator slot type from
-        the GENERATOR_YIELD result classification -- borrow form
+        the yield-slot representation -- borrow form
         (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
         bare cpp type otherwise. The yield emit already bridges
         storage-form sources into the borrow-form slot when

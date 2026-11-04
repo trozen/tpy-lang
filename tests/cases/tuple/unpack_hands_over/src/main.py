@@ -3,7 +3,7 @@
 import asyncio
 from typing import Iterator
 from tpy import (Own, int32, nocopy, error_return, ReturnException, own_iter,
-                 copy_iter, Array)
+                 copy_iter, Array, readonly)
 
 
 # A lent section mutates through its target, then reads the source: a target
@@ -829,6 +829,40 @@ def open_t[T](ps: list[tuple[T, int32]], first: T) -> int32:
     return s + len(keep)
 
 
+# for head, composite element of an open T rebound in the body: it
+# re-points as at its concrete twin, so writes before and after the rebind
+# reach their objects
+class GCell[T]:
+    v: T
+    k: int32
+
+    def __init__(self, v: Own[T]) -> None:
+        self.v = v
+        self.k = 0
+
+
+def open_composite_rebind[T](ps: list[tuple[GCell[T], int32]],
+                             q: GCell[T]) -> int32:
+    s = 0
+    for c, n in ps:
+        c.k += 1
+        c = q  # tpyc: ok
+        c.k += 10
+        s += n
+    return s
+
+
+# for head, `readonly[T]` element rebound in the loop's else clause: a
+# wrapped type parameter keeps its reference, as at the concrete twin
+def readonly_else_rebind[T](xs: readonly[list[tuple[T, int32]]],
+                            y: readonly[T]) -> readonly[T]:
+    for x, n in xs:
+        pass
+    else:
+        x = y  # tpyc: ok
+    return x
+
+
 # recursive-wrapper element: the target binds the wrapper's alternative (a
 # list of such tuples cannot be built for a for head,
 # BUGS.md#wrapper-tuple-list-unbuildable)
@@ -995,6 +1029,13 @@ def main() -> None:
     wx = [(A(1), 2)]
     walrus_ptr(wx)
     print("open_t", open_t([(A(1), 1), (A(2), 2)], A(0)))
+    rq = A(3)
+    print("readonly_else_rebind",
+          readonly_else_rebind([(A(1), 2)], rq) is rq)
+    gps = [(GCell("a"), 1)]
+    gcq = GCell("q")
+    print("open_composite_rebind", open_composite_rebind(gps, gcq),
+          gps[0][0].k, gcq.k)
     tree: Tree[int32] = [1, 2]
     wrapper_elem(tree)
     combinators_owning()

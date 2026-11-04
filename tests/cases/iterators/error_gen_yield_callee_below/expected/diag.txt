@@ -1,0 +1,2 @@
+main.py:15: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:15: error: Cannot yield local or temporary as reference. Reference type 'T' is yielded by reference. Declare the generator 'Iterator[Own[T]]' to yield by value.

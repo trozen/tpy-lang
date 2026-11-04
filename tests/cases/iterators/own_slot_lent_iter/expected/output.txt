@@ -8,12 +8,11 @@ free copy() of a list nl [[5]]
 free int32 iterator 3
 free generic step [7, 99]
 free Own type arg [8, 99]
-free Own type arg ob 0
+free Own type arg ob 1
 free clones_own [1, 99]
 free clones_own [2, 99]
 free clones_own G [[1], [2]]
 free clones named [15, 99]
-free clones named cl [[15]]
 free SubBag [14, 99]
 free Own __next__ [1, 99]
 free Own __next__ [2, 99]

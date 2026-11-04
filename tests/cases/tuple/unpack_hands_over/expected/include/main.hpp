@@ -21,6 +21,7 @@ struct Node;
 struct StepIt;
 struct AStepIt;
 struct B;
+template<typename T> struct GCell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -237,6 +238,14 @@ void walrus_ptr(std::vector<std::tuple<A, int32_t>>& xs);
 // def open_t[T](ps: list[tuple[T, int32]], first: T) -> int32:
 template<typename T>
 int32_t open_t(const std::vector<std::tuple<T, int32_t>>& ps, ::tpy::param_val_or_ref_t<T> first);
+// def open_composite_rebind[T](ps: list[tuple[GCell[T], int32]],
+//                              q: GCell[T]) -> int32:
+template<typename T>
+int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GCell<T>& q);
+// def readonly_else_rebind[T](xs: readonly[list[tuple[T, int32]]],
+//                             y: readonly[T]) -> readonly[T]:
+template<typename T>
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<T, int32_t>>& xs, ::tpy::readonly_form_t<T> y);
 // def wrapper_elem(s: Tree[int32]) -> None:
 void wrapper_elem(Tree<int32_t>& s);
 // def combinators_owning() -> None:
@@ -453,6 +462,26 @@ struct B {
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     ::tpy::print_object_default(os, B::__tpy_class_name__, obj);
+    return os;
+}
+
+// class GCell[T]:
+template<typename T>
+struct GCell {
+    // v: T
+    T v;
+    // k: int32
+    int32_t k;
+
+    // def __init__(self, v: Own[T]) -> None:
+    GCell() = default;
+    explicit GCell(::tpy::own_param_t<T> v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GCell";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const GCell<T>& obj) {
+    ::tpy::print_object_default(os, GCell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -1161,14 +1190,14 @@ struct __gen_gen_head_cells : public ::tpy::next_iter_mixin<__gen_gen_head_cells
     ::tpy::ordered_map<std::string, A>& d;
     const std::vector<std::tuple<std::optional<A>, int32_t>>& opts;
     std::vector<std::tuple<A, int32_t>>& qs;
-    std::tuple<std::string, A*> __for_tup_55;
+    std::tuple<std::string, A*> __for_tup_57;
     std::string k;
     A* a = nullptr;
-    std::tuple<std::optional<A>, int32_t> __for_tup_56;
+    std::tuple<std::optional<A>, int32_t> __for_tup_58;
     A* o = nullptr;
     int32_t n;
     using __for_src_2_t = ::tpy::for_source_t<decltype((::tpy::copy_iter<std::tuple<A, int32_t>>(qs)))>;
-    ::tpy::for_step_elem_t<__for_src_2_t>* __for_tup_57 = nullptr;
+    ::tpy::for_step_elem_t<__for_src_2_t>* __for_tup_59 = nullptr;
     ::tpy::step_elem_member_t<0, ::tpy::for_step_elem_t<__for_src_2_t>>* c = nullptr;
     int32_t j;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
@@ -1313,6 +1342,15 @@ inline AStepIt& AStepIt::__aiter__() {
 // def __init__(self, v: int32) -> None:
 //     self.items = [v]
 inline B::B(int32_t v) : items(std::vector<int32_t>{v}) {}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+//     self.k = 0
+template<typename T>
+inline GCell<T>::GCell(::tpy::own_param_t<T> v)
+    : v(std::move(v)),
+      k(0) {}
+
 // # for head, open T element: one body for every instantiation, so the target
 // # neither aliases nor owns (no write through it is expressible)
 // def open_t[T](ps: list[tuple[T, int32]], first: T) -> int32:
@@ -1330,12 +1368,64 @@ int32_t open_t(const std::vector<std::tuple<T, int32_t>>& ps, ::tpy::param_val_o
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_52 = *__beg_0;
-        T x = std::get<0>(__for_tup_52);
+        const auto& x = std::get<0>(__for_tup_52);
         int32_t n = std::get<1>(__for_tup_52);
         s = ::tpy::add_check<int32_t>(s, n);
     }
     std::array<T, 1> keep = {::tpy::param_to_storage<T>(first)};
     return (::tpy::add_check<int32_t>(s, ::tpy::__len__(keep)));
+}
+// def open_composite_rebind[T](ps: list[tuple[GCell[T], int32]],
+//                              q: GCell[T]) -> int32:
+//     s = 0
+//     for c, n in ps:
+//         c.k += 1
+//         c = q  # tpyc: ok
+//         c.k += 10
+//         s += n
+//     return s
+template<typename T>
+int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GCell<T>& q) {
+    int32_t s = 0;
+    auto& __obj_0 = ps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& __for_tup_53 = *__beg_0;
+        auto* c = &(std::get<0>(__for_tup_53));
+        int32_t n = std::get<1>(__for_tup_53);
+        c->k = ::tpy::add_check<int32_t>(c->k, 1);
+        c = &(q);
+        c->k = ::tpy::add_check<int32_t>(c->k, 10);
+        s = ::tpy::add_check<int32_t>(s, n);
+    }
+    return s;
+}
+// # for head, `readonly[T]` element rebound in the loop's else clause: a
+// # wrapped type parameter keeps its reference, as at the concrete twin
+// def readonly_else_rebind[T](xs: readonly[list[tuple[T, int32]]],
+//                             y: readonly[T]) -> readonly[T]:
+//     for x, n in xs:
+//         pass
+//     else:
+//         x = y  # tpyc: ok
+//     return x
+template<typename T>
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<T, int32_t>>& xs, ::tpy::readonly_form_t<T> y) {
+    const T* x;
+    auto& __obj_1 = xs;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto&& __for_tup_54 = *__beg_1;
+        x = &(std::get<0>(__for_tup_54));
+        int32_t n = std::get<1>(__for_tup_54);
+    }
+    {
+        x = &(y);
+    }
+    __after_else_0:;
+    return (*x);
 }
 
 void __tpy_init();

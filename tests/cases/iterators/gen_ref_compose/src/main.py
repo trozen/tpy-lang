@@ -12,9 +12,12 @@ class Point:
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
+# the callable's result is bound to a frame local first: the frame lends it
+# (a bare `yield fn(x)` is rejected -- the callable may return a new value)
 def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
     for x in it:
-        yield fn(x)
+        y = fn(x)
+        yield y
 
 def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
     i: int32 = 0

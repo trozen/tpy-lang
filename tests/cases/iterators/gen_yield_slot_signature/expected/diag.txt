@@ -1,0 +1,3 @@
+main.py:403: warning: copies P elements; use copy_iter() to make this explicit
+main.py:433: warning: copies P into local 'first'; use copy() to make this explicit
+main.py:438: warning: copies P elements; use copy_iter() to make this explicit

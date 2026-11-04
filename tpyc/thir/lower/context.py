@@ -17,7 +17,8 @@ from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             iter_capture_bindings)
 from ...identity_map import IdentityMap
 from ...prescan import scan_reassigned_vars
-from ...typesys import contains_type_param, pointer_repr_optional
+from ...typesys import (contains_type_param, pointer_repr_optional,
+                        yield_uses_borrow_slot)
 from ...type_def_registry import ParamPassing, has_view_param_form
 from ...typesys import (
     AnyType,
@@ -1377,18 +1378,36 @@ def return_slot(lc: '_LowerCtx', *,
                     implicit_move=implicit_move)
 
 
+def yield_result_representation(yt: TpyType) -> 'ResultRepresentation':
+    """How a generator's `__next__` hands out its element, from the declared
+    yield type alone -- the frame's signature, never its body: a tuple in
+    its result form (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`; readonly
+    peeled first, or a readonly tuple would collapse to a copying storage
+    slot); a bare reference element, or an open `T`, through the borrow
+    slot (`val_or_ref<T>` / `yield_slot_t<T>`, `std::optional<T&>` being
+    ill-formed pre-C++26); anything else -- a value, an `Own` move, an
+    Optional / union with a representation of its own -- as storage. The
+    printer spells the frame's slot from this same answer."""
+    bare = unwrap_ref_type(unwrap_readonly(yt))
+    if isinstance(bare, TupleType):
+        return ResultRepresentation.RESULT_TUPLE
+    if yield_uses_borrow_slot(yt):
+        return (ResultRepresentation.YIELD_TRAIT
+                if isinstance(bare, TypeParamRef)
+                else ResultRepresentation.YIELD_BORROW)
+    return ResultRepresentation.STORAGE
+
+
 def yield_slot(lc: '_LowerCtx') -> 'Slot | None':
     """The slot a generator's `yield` hands its value to: the yielded
-    element held as its GENERATOR_YIELD classification says. A frame member
+    element held as `yield_result_representation` says. A frame member
     is no id-expression of the `__next__` body, so nothing moves implicitly:
     a move out of the frame is spelled."""
     yt = lc.func.generator_yield_type
     if not isinstance(yt, TpyType):
         return None
     return slot_for(yt, SlotPosition.RETURN, lc.analyzer,
-                    result=classify_result_representation(
-                        yt, position=ResultPosition.GENERATOR_YIELD,
-                        generic_borrows=lc.func.generic_yield_borrows),
+                    result=yield_result_representation(yt),
                     implicit_move=False)
 
 

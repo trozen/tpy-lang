@@ -1,0 +1,1 @@
+main.py:27: error: Cannot reassign loop variable 'x' of type 'T'; assign to a new local variable instead

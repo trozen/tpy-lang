@@ -17,17 +17,13 @@ several places. Where this section and the prose below disagree, **this section 
 - **Single gate, no enum, no stamped fact.** There is no `YieldABI` enum, no `classify_yield_abi`, and
   no `TpyFunction.generator_yield_abi` field. The borrow-slot decision is one pure predicate
   `typesys.yield_uses_borrow_slot(elem_type) -> bool`, called directly by sema and both codegen paths.
-- **An OPEN `T` is admitted by the gate, and one per-generator verdict says whether it lends.**
+- **An OPEN `T` is admitted by the gate, and the signature alone decides.**
   `yield_uses_borrow_slot` admits an open `T` (a `TypeParamRef`), because `val_or_ref<T>`
   holds a value `T` by value and a reference `T` by pointer, so the shape is settled at instantiation
-  and the generic frame renders what its monomorphic twin does. Admission is not the whole answer:
-  one slot type serves the whole frame, so sema settles a single VERDICT per generic generator
-  (`TpyFunction.generic_yield_borrows`) from the provenance of every yield source, and the frame
-  spells the idempotent `::tpy::yield_slot_t<T>` only when it says lend. Two companion predicates
-  keep that split honest: `yield_always_borrows` is what a DEFINITION-time sema rule reads (the open
-  `T` does not borrow at its value instantiations, so a rule that treated it as one would reject
-  them), and `yield_slot_borrows(elem, verdict)` is the single answer codegen asks. See
-  `docs/ITERATOR_DESIGN.md` for the verdict rule itself.
+  and the generic frame renders what its monomorphic twin does. `Iterator[T]` lends at every `T`
+  (`::tpy::yield_slot_t<T>`), whatever the body yields: a generic body is admitted only where its
+  twin at a reference instantiation is, so its yields take the same rooting checks. See
+  `docs/ITERATOR_DESIGN.md` for the rule itself.
   (The enum/stamped-fact mechanism in "The single yield-ABI classifier" and the typesys section was
   built, then collapsed.) The two remaining VALUE/OWNED distinctions are expressed inline at their two
   sites (the copyable check in `registration.py`; the mutation-marking in `_analyze_yield`).
@@ -39,7 +35,8 @@ several places. Where this section and the prose below disagree, **this section 
   Value-storage stores (field / container / global) COPY and are intentionally NOT rejected;
   return / outer-local stash are caught by the existing dangling / lifetime checks; closures are safe
   (Callable copies, Fn is inline). The one genuinely new rejection is **yield-onward in an outer
-  generator**, plus a conservative nested-`def` capture backstop. `next()` results are NOT stamped
+  generator** -- since 2026-11-04 no longer an escape at all: anything rooted in the current step may be yielded, since it lives as long as one
+  step of the outer generator; only a return beyond the step keeps the check (a store copies by design, a yielded loop-carried alias is BUGS.md#loop-carried-step-alias-yield) -- plus a conservative nested-`def` capture backstop. `next()` results are NOT stamped
   ephemeral (only for-loop vars).
 - **The resumable `(*b)` deref was KEPT, not removed** (codegen section says "remove"): `val_or_ref<T>`
   constructs from `T&`, so `(*b)` produces the `T&` the slot needs.
@@ -67,7 +64,7 @@ several places. Where this section and the prose below disagree, **this section 
   (BUGS.md#generator-resume-overwrites-held-yield for the resumption hazard).
 - **Actual tests** (the "Tests" section names are aspirational): `gen_yield_nocopy`, `gen_yield_del`,
   `gen_method_yield_nocopy`, `gen_own_yield_fresh`, `gen_ref_multi_yield` (mutation guard),
-  `genexpr_ref_mutate`, `error_gen_yield_fresh_as_ref`, `error_gen_borrow_yield_onward`,
+  `genexpr_ref_mutate`, `error_gen_yield_fresh_as_ref`,
   `error_gen_borrow_escape_return`, `error_genexpr_fresh_as_ref`.
 
 ## Problem
@@ -163,7 +160,8 @@ check verbatim is insufficient. The borrow rule:
    aliasing an element of a frame-held container. A borrow of a per-`__next__()`-call local (a
    temporary, or a local that does not live on the frame) is **rejected at sema** -- this is the part
    the function-return machinery does cover.
-2. **Validity window (consumer-enforced).** A yielded borrow is an **ephemeral borrow**, valid only
+2. **Validity window (consumer-enforced).** *(Superseded 2026-11-04: a yield relays the step and only
+   a return keeps the ephemeral check; see the top of this document.)* A yielded borrow is an **ephemeral borrow**, valid only
    until the next `resume`/`__next__()` (or frame destruction) -- C++ input-iterator semantics. The
    *producer* classifier only certifies "this yield can supply a borrow"; preventing the *consumer*
    from retaining it past the iteration step is a separate, consumer-side borrow-checker
@@ -229,7 +227,7 @@ already safe or already caught, so the enforced set is smaller (verified empiric
 | `return x` | a generator loop var is body-scoped and not `safe_to_return` | **already rejected** by the dangling-return check (ephemeral message layered on top) |
 | stash into an outer-scope local (`saved = x`; use after loop) | scope-depth lifetime analysis | **already rejected** ("'x' is rebound on each iteration; use copy() or Rc") |
 | closure / lambda capture | `Callable` lambdas capture **by value** (copy); `Fn` lambdas are inline / non-escaping | **safe**; a conservative backstop rejects an ephemeral capture inside a nested `def` |
-| **`yield x` onward in an outer generator** | re-yields a reference into the inner frame slot; the Stage-built generator-loop-var provenance broadening would otherwise *bless* it | **rejected** (the one genuine new gap) |
+| **`yield x` onward in an outer generator** | re-yields a reference into the inner frame slot; the Stage-built generator-loop-var provenance broadening would otherwise *bless* it | **accepted** since 2026-11-04 in any spelling rooted in the current step (the loop target, a part, an alias of a part, a lending call over it): it lends the step for one step of the outer generator, within the source's lifetime |
 
 So v1 enforcement = keep the borrow **out of provenance / `safe_to_return`** (so the existing dangling /
 lifetime checks fire), reject **yield-onward**, and a conservative **nested-`def` capture** backstop.
@@ -391,7 +389,8 @@ ABI exception) and fixes the common syntax in the same release.
 - `@nocopy` element under `Iterator[T]` now **accepted** (was rejected) -- flip the existing
   `error_gen_yield_nocopy` cases.
 - The resumable frame, the single generator emitter (the single-yield lambda peephole was deleted 2026-09-12).
-- **Consumer-escape rejections (scalar + tuple):** `error_gen_borrow_escape_store` (stash a borrow-yield
+- **Consumer-escape rejections (scalar + tuple):** *(superseded 2026-11-04: `_yield_onward` is gone --
+  a yield relays the step; only the return rejection remains enforced)* `error_gen_borrow_escape_store` (stash a borrow-yield
   loop var into a list/field), `_return` (return it from the consumer), `_capture` (close over it),
   `_yield_onward` (re-yield without `clone()`); the `clone()` / `Own` conversion forms accepted. A
   parallel `error_gen_tuple_borrow_escape` proves the retrofit covers tuple yields.

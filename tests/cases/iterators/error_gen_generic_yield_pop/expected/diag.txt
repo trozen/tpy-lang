@@ -1,0 +1,1 @@
+main.py:16: error: Cannot yield local or temporary as reference. Reference type 'T' is yielded by reference. Bind it to a local first (`y = ...` then `yield y`) to lend it from the generator, or declare the generator 'Iterator[Own[T]]' to yield by value.

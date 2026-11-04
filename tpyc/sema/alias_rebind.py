@@ -61,7 +61,7 @@ from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
     NominalType, OptionalType, OwnType, ReadonlyType, TpyType, TupleType,
-    TypeParamRef, is_dyn_protocol, is_protocol_type,
+    TypeParamRef, ValueForm, is_dyn_protocol, is_protocol_type,
     drop_own_marker, make_readonly, owned_payload, peel_slot, pointer_repr_optional, unwrap_optional_own, unwrap_own,
     unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
@@ -380,15 +380,24 @@ def tuple_source_elem_owned(ctx: 'SemanticContext', expr: TpyExpr | None,
 class UnpackTarget:
     """What one unpack target binds: the element as an object of its own
     (`owned`, moved in), a reference to the source's element (`ref`), or
-    else a value -- and the type it binds at, `Own` peeled."""
+    else a value -- and the type it binds at, `Own` peeled.
+    `rebind_rejected`: a for-head target of a type parameter (`readonly`
+    or not) the loop body rebinds -- its rebind takes the scalar loop variable's error
+    (`StatementAnalyzer._check_nonvalue_rebinding`). No one pointer
+    re-points at both a view argument and an owned element, and a copy
+    would miss the source silently; so a bare-T target rebound anywhere
+    else records no reference either, and the lowering refuses it."""
     owned: bool
     ref: bool
     type: TpyType
+    rebind_rejected: bool = False
 
 
 def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
                           source: TupleType, *, readonly: bool,
                           consumed: bool, borrowed: 'frozenset[int]',
+                          rebound: 'frozenset[int]',
+                          body_rebound: 'frozenset[int]',
                           step: 'frozenset[ElemPath] | None' = None
                           ) -> list[UnpackTarget]:
     """THE per-target record of an unpack of `value` (a tuple of type
@@ -398,7 +407,10 @@ def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
     it; a loop head's step (`step`, the leaf paths its iteration hands
     over, `step_handover_paths`) every element whose leaves it hands over;
     a name its declared `Own` elements where the read consumes it
-    (`consumed`), less those a binding of it borrows (`borrowed`)."""
+    (`consumed`), less those a binding of it borrows (`borrowed`).
+    `rebound`: the targets the function rebinds anywhere; `body_rebound`:
+    those a loop head's body rebinds, a subset."""
+    assert step is not None or not body_rebound
     if step is not None:
         leaves = leaf_paths(source)
         handed: 'list[bool] | None' = []
@@ -445,10 +457,32 @@ def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
             if isinstance(own.wrapped, ReadonlyType):
                 elem_type = make_readonly(
                     opt.with_inner(unwrap_readonly(opt.inner)))
-        ref = (not owned and not elem_type.is_value_type()
-               and not isinstance(elem_type, TypeParamRef))
-        out.append(UnpackTarget(owned, ref, elem_type))
+        ref = not owned and not elem_type.is_value_type()
+        # No one pointer type re-points a rebound bare-T target at both a
+        # view argument and an owned element: an in-body rebind of a loop
+        # head's takes the scalar loop variable's error, any other has no
+        # reference form to lower
+        # (BUGS.md#generic-borrow-local-rebind-view-instantiation).
+        # The in-body rebind takes the scalar loop variable's error at any
+        # type parameter, `readonly[T]` included, as the scalar does; a
+        # rebind elsewhere unbinds only a bare one (a wrapped one keeps its
+        # reference whatever the rebind).
+        held = unwrap_ref_type(elem_type)
+        rejected = (ref and i in body_rebound
+                    and unwrap_readonly(held).value_form()
+                    is ValueForm.TYPE_PARAM)
+        unbound = rejected or (ref and i in rebound
+                               and held.value_form() is ValueForm.TYPE_PARAM)
+        out.append(UnpackTarget(owned, ref and not unbound, elem_type,
+                                rebind_rejected=rejected))
     return out
+
+
+def target_indices(targets: 'list[str | None]',
+                   names: 'Container[str]') -> 'frozenset[int]':
+    """The indices of the unpack `targets` named in `names`."""
+    return frozenset(i for i, n in enumerate(targets)
+                     if n is not None and n in names)
 
 
 def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,

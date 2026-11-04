@@ -1228,7 +1228,7 @@ __gen_via_shadowing_local<T> via_shadowing_local(std::vector<T>& xs) {
 
 // def mapped[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
-struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_fn>, U> {
+struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_fn>, ::tpy::yield_slot_t<U>> {
     ::tpy::frame_state __state;
     F_fn fn;
     T_it it;
@@ -1236,6 +1236,7 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_f
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    ::tpy::frame_slot<U> y;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1249,21 +1250,22 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_f
           fn(std::forward<F_fn>(fn_)),
           it(std::forward<T_it>(it_)) {}
 
-    std::expected<U, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __next__();
     __gen_mapped& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_mapped<T, U, T_it, F_fn>&) {
         return os << "<generator mapped>";
     }
 };
-// # INVERSE: an erased `Fn` result carries no ownership, so the slot stays a
-// # VALUE one and the element is copied out -- read-only here, because mutating
-// # it would not reach the source (BUGS.md#generic-yield-fn-result-copies)
+// # a callable value's result, bound to a frame local first: the frame lends the
+// # local (a bare `yield fn(x)` is rejected -- the callable may return a new
+// # value)
 // def mapped[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 //     for x in it:
-//         yield fn(x)  # tpyc: ok                                    # -> S_RESUME_0
+//         y = fn(x)
+//         yield y  # tpyc: ok                                        # -> S_RESUME_0
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
-std::expected<U, ::tpy::StopIteration> __gen_mapped<T, U, T_it, F_fn>::__next__() {
+std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_mapped<T, U, T_it, F_fn>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1271,7 +1273,7 @@ std::expected<U, ::tpy::StopIteration> __gen_mapped<T, U, T_it, F_fn>::__next__(
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0:  // after: yield fn(x)  # tpyc: ok
+    case S_RESUME_0:  // after: yield y  # tpyc: ok
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -1279,8 +1281,9 @@ std::expected<U, ::tpy::StopIteration> __gen_mapped<T, U, T_it, F_fn>::__next__(
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        y.emplace(fn((*x)));
         __state = S_RESUME_0;
-        return fn((*x));
+        return ::tpy::yield_from_local<U>((*y));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1296,7 +1299,7 @@ __gen_mapped<T, U, T_it, F_fn> mapped(F_fn&& fn, T_it&& it) {
 
 // def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
-struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, T> {
+struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     std::vector<T>& items;
     T_extra extra;
@@ -1322,24 +1325,21 @@ struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, T> {
           items(items),
           extra(std::forward<T_extra>(extra_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_mixed& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_mixed<T, T_extra>&) {
         return os << "<generator mixed>";
     }
 };
-// # INVERSE: one ephemeral source demotes the WHOLE frame -- the slot is one
-// # type for every yield, so the `items` loop copies too although its own source
-// # lends (BUGS.md#generic-yield-mixed-source-demotes-frame). Read-only for the
-// # same reason as the `Fn` section.
+// # a param-container yield beside an `Iterator[T]` relay: both lend
 // def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
 //     for x in items:
 //         yield x  # tpyc: ok                                       # -> S_RESUME_0
 //     for y in extra:
-//         yield y                                                   # -> S_RESUME_1
+//         yield y  # tpyc: ok                                       # -> S_RESUME_1
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
-std::expected<T, ::tpy::StopIteration> __gen_mixed<T, T_extra>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_mixed<T, T_extra>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1359,7 +1359,7 @@ std::expected<T, ::tpy::StopIteration> __gen_mixed<T, T_extra>::__next__() {
         __state = S_RESUME_0;
         return (*x);
     }
-    case S_RESUME_1:  // after: yield y
+    case S_RESUME_1:  // after: yield y  # tpyc: ok
     case S_JOIN_1: {
         __for_r_1.emplace(extra.__next__());
         if (!(*__for_r_1).has_value()) {
@@ -1384,7 +1384,7 @@ __gen_mixed<T, T_extra> mixed(std::vector<T>& items, T_extra&& extra) {
 
 // def relay[T](it: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
-struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T, T_it>, T> {
+struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T, T_it>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -1402,20 +1402,20 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T, T_it>, T> {
         : __state(S_INITIAL),
           it(std::forward<T_it>(it_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_relay<T, T_it>&) {
         return os << "<generator relay>";
     }
 };
-// # INVERSE: a loop var over an `Iterator[T]` param borrows the inner producer's
-// # step slot, which the next step overwrites -- the VALUE slot copies it out
+// # a loop var over an `Iterator[T]` param relayed as it is: the relay lends the
+// # inner step for one step of this generator
 // def relay[T](it: Iterator[T]) -> Iterator[T]:
 //     for x in it:
 //         yield x  # tpyc: ok                    # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
-std::expected<T, ::tpy::StopIteration> __gen_relay<T, T_it>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_relay<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
         __state = S_DONE;  // until a yield sets where to resume

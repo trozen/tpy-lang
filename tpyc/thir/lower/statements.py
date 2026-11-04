@@ -169,7 +169,8 @@ from ...prescan import (
     match_is_none,
     scope_bound_names,
 )
-from ...typesys import NONE, protocol_param_alternatives, type_alternatives
+from ...typesys import (NONE, contains_type_param, protocol_param_alternatives,
+                        type_alternatives)
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
@@ -6952,9 +6953,11 @@ def _head_ref_cpp(stmt: TpyTupleUnpack, tt: TpyType,
                   lc: '_LowerCtx') -> str:
     """The pointee a reference or pointer target spells: a loop head's
     deduces the step's const (`auto&` / `auto*`) -- an iterator over a const
-    source yields const elements its record cannot see -- a statement's
-    names its type."""
-    if stmt.is_loop_head:
+    source yields const elements its record cannot see -- and so does a
+    target whose type its instantiation decides, whose element is a const
+    value at one and a pointer's pointee at another; a statement's names
+    its type."""
+    if stmt.is_loop_head or contains_type_param(tt):
         return "auto"
     return lc.render_type(unwrap_readonly(tt))
 

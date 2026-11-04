@@ -2363,11 +2363,9 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     A bare `T` slot assumed VALUE and copied the element out of the source,
     losing a consumer's mutation where `Iterator[Point]` lends it. The
     value-bounded (`T: ValueType`) and INT type params never reach here:
-    `is_value_type()` answers True for them above. Admission is not the whole
-    answer for an open `T` -- whether a given generator's yields may be lent
-    at all is the per-generator provenance verdict
-    (`TpyFunction.generic_yield_borrows`); this predicate only says the slot
-    CAN carry a borrow.
+    `is_value_type()` answers True for them above. The slot is the
+    signature's alone: a generic body is admitted only where every yield
+    could be lent at a reference instantiation, as its concrete twin's is.
 
     Excluded (each keeps its existing slot): value-type elements (copied);
     `Own` (owned value slot, moved out); tuples (own borrow form via
@@ -2379,39 +2377,6 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     if isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType):
         return False
     return not borrow_form_differs(elem_type)
-
-
-def yield_always_borrows(elem_type: 'TpyType') -> bool:
-    """Whether the borrow slot `yield_uses_borrow_slot` admits hands out a
-    borrow at EVERY instantiation -- the same question minus the open type
-    param, whose `val_or_ref<T>` holds a pointer at a reference `T` and a
-    plain value at a value `T`.
-
-    Sema rules that must answer at DEFINITION time read this one: a generic
-    body is analyzed once, before any instantiation, so a rule that treats
-    the open `T` as a borrow rejects the value instantiations too (a
-    `for x in it: yield x` relay of an `Iterator[T]` param is the shape that
-    showed it). The slot spelling has no such problem -- C++ resolves it per
-    instantiation -- so it reads the predicate above instead.
-    """
-    return (yield_uses_borrow_slot(elem_type)
-            and not isinstance(unwrap_ref_type(unwrap_readonly(elem_type)),
-                               TypeParamRef))
-
-
-def yield_slot_borrows(elem_type: 'TpyType', generic_borrows: bool) -> bool:
-    """Whether a generator's yield slot for `elem_type` hands out a borrow.
-
-    `yield_uses_borrow_slot` says the slot CAN carry one; an OPEN `T` also
-    needs the producer's per-generator provenance verdict
-    (`TpyFunction.generic_yield_borrows`), since one slot type serves the
-    whole frame. The open-`T` shape test lives here alone, so a consumer
-    re-deriving it cannot drift from the spelling `yield_borrow_slot_cpp`
-    picks for the same element.
-    """
-    if not yield_uses_borrow_slot(elem_type):
-        return False
-    return yield_always_borrows(elem_type) or generic_borrows
 
 
 def yield_borrow_slot_cpp(elem_type: 'TpyType', cpp_elem: str) -> str:
@@ -3105,8 +3070,6 @@ class ResultPosition(Enum):
     SYNC_CALL = "sync_call"
     ASYNC_PAYLOAD = "async_payload"
     ERASED_CALLABLE = "erased_callable"
-    # A generator's yielded element: the iterator slot `__next__` returns.
-    GENERATOR_YIELD = "generator_yield"
 
 
 class ResultRepresentation(Enum):
@@ -3176,35 +3139,15 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
 
 def classify_result_representation(
         ret_type: TpyType | None, *, position: ResultPosition,
-        fi: FunctionInfo | None = None,
-        generic_borrows: bool = False) -> ResultRepresentation:
+        fi: FunctionInfo | None = None) -> ResultRepresentation:
     """Read the current return convention at one specific consuming position.
 
     Normalization is position-specific: erasure renders the declared type
     verbatim, sync strips Ref only, and async also strips outer markers and
     readonly. Keep render-time type/permission handling at the consumer.
-
-    `generic_borrows`: a generator's provenance verdict for an open `T`
-    yield (`TpyFunction.generic_yield_borrows`), which the element type
-    alone cannot answer.
+    A generator's yield slot is THIR's own decision
+    (`thir.lower.context.yield_result_representation`).
     """
-    if position is ResultPosition.GENERATOR_YIELD:
-        # Iterator yields hand out references like function returns
-        # (CPython semantics), so a tuple yields its result form, which
-        # std::expected can hold. `readonly` is peeled before the tuple test,
-        # or a readonly tuple would collapse to a copying storage slot.
-        if isinstance(unwrap_ref_type(unwrap_readonly(ret_type)), TupleType):
-            return ResultRepresentation.RESULT_TUPLE
-        # A bare reference element is handed out through `val_or_ref<T>`
-        # (`std::optional<T&>` is ill-formed pre-C++26). The forms with a
-        # representation of their own (an Optional / union pointer or
-        # storage, an `Own` move) and a value element keep storage.
-        if yield_slot_borrows(ret_type, generic_borrows):
-            return (ResultRepresentation.YIELD_TRAIT
-                    if isinstance(unwrap_ref_type(unwrap_readonly(ret_type)),
-                                  TypeParamRef)
-                    else ResultRepresentation.YIELD_BORROW)
-        return ResultRepresentation.STORAGE
     if position is ResultPosition.ERASED_CALLABLE:
         return (ResultRepresentation.ERASED_VOID if isinstance(ret_type, VoidType)
                 else ResultRepresentation.ERASED_DECLARED_TYPE)

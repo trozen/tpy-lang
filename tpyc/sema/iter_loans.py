@@ -34,7 +34,7 @@ from ..typesys import (
     contains_reference_type, FunctionInfo, GenExprType, NominalType,
     PendingDictType, PendingListType, ReadonlyType, PendingSetType, RecordInfo,
     TpyType, TupleType, TypeParamRef, make_dict,
-    make_list, make_set, yield_always_borrows,
+    make_list, make_set, yield_uses_borrow_slot,
     is_callable_type, is_dyn_protocol, is_fn_type, is_protocol_type,
     type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
@@ -49,7 +49,7 @@ from .call_lends import (
 )
 from ..holders import Holder, IterHolder
 from .context import BorrowKind, LoanInfo, element_index_key
-from .elem_paths import ElemPath, declared_lent_paths, leaves_at
+from .elem_paths import ElemPath, declared_lent_paths
 from .storage_walk import (LoanKey, MarkRequest, StorageKey, call_loans,
                            loan_key, mark_roots)
 from .receiver_calls import (
@@ -255,23 +255,17 @@ def step_producer(ctx: 'SemanticContext', iterable: TpyExpr | None,
     return None
 
 
-def _lent_leaves(step: TpyType) -> frozenset[ElemPath]:
-    """The leaves of a declared step that are lent references: those the
-    declaration does not mark `Own` (`declared_lent_paths`), minus an open
-    type parameter's, whose handling its instantiation keeps."""
-    lent = declared_lent_paths(step)
-    return frozenset(p for p, e in leaves_at(step, ())
-                     if p in lent and not type_param_names(e))
-
-
 def _user_step(ctx: 'SemanticContext', iterable: TpyExpr | None,
                iterable_type: 'TpyType | None'
                ) -> tuple[StepProducer | None, frozenset[ElemPath]]:
-    """`step_producer` and its lent leaves (`user_step_lends`)."""
+    """`step_producer` and its lent leaves (`user_step_lends`): those its
+    declared step does not mark `Own` (`declared_lent_paths`), an open type
+    parameter's included, which lends at every instantiation as its
+    concrete twin's does."""
     producer = step_producer(ctx, iterable, iterable_type)
     if producer is None or producer.step is None:
         return producer, frozenset()
-    return producer, _lent_leaves(producer.step)
+    return producer, declared_lent_paths(producer.step)
 
 
 def user_step_lends(ctx: 'SemanticContext', iterable: TpyExpr | None,
@@ -283,9 +277,9 @@ def user_step_lends(ctx: 'SemanticContext', iterable: TpyExpr | None,
     each such leaf even when no named storage backs it (a global, a `Ptr`
     target, the receiver's fields).
 
-    Invariant: it reads declared signatures and the MRO only -- never
-    `generic_yield_borrows` or any other body fact -- so the verdict does
-    not depend on whether the producer is defined above or below its use.
+    Invariant: it reads declared signatures and the MRO only -- never a
+    body fact -- so the verdict does not depend on whether the producer is
+    defined above or below its use.
     `iterable_type` defaults to `iterable`'s; with no `iterable` only the
     type answers (a generator is recognized by its call)."""
     if iterable_type is None and iterable is not None:
@@ -677,11 +671,11 @@ def iteration_yields_copies(ctx: SemanticContext, iterable_type: TpyType,
     resolve counts as copying."""
     inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
     if isinstance(inner, GenExprType):
-        return not yield_always_borrows(inner.element_type)
+        return not yield_uses_borrow_slot(inner.element_type)
     if (is_protocol_type(inner) and isinstance(inner, NominalType)
             and inner.qualified_name() == "typing.Iterator" and inner.type_args
             and isinstance(inner.type_args[0], TpyType)):
-        return not yield_always_borrows(inner.type_args[0])
+        return not yield_uses_borrow_slot(inner.type_args[0])
     if not (isinstance(inner, NominalType) and inner.is_user_record):
         return False
     record = ctx.registry.get_record_for_type(inner)
@@ -691,7 +685,7 @@ def iteration_yields_copies(ctx: SemanticContext, iterable_type: TpyType,
     if iters and unwrap_readonly(iters[0].return_type) != inner:
         return iteration_yields_copies(ctx, iters[0].return_type, depth + 1)
     nexts = record.get_method_overloads("__next__")
-    return not (nexts and yield_always_borrows(nexts[0].return_type))
+    return not (nexts and yield_uses_borrow_slot(nexts[0].return_type))
 
 
 def iterated_storage(ctx: SemanticContext, iterable: TpyExpr) -> IteratedStorage:

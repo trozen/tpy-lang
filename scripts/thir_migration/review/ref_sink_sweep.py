@@ -838,7 +838,11 @@ def _driver(kind_name: str, pos: Position, src, sink: Sink, cell: str,
             run = ["asyncio.run(%s)" % call]
     elif pos.name == "gen":
         if sink.name == "yield_borrow":
-            run = ["for r in %s:" % call, "    " + _mut(kind_name, "r")]
+            # The element itself is read back after the write, beside the
+            # original: a copying yield slot shows in either.
+            run = _observed(kind_name, RETURN_ORIG.get(src.name, ""), [
+                "for r in %s:" % call, "    " + _mut(kind_name, "r"),
+                "    print(%s)" % _obs(kind, "r")])
         else:
             run = ["for _r in %s:" % call, "    pass"]
     elif pos.ctor:

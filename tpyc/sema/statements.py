@@ -44,7 +44,7 @@ from ..typesys import (
     unwrap_optional_own, owned_payload,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
-    yield_uses_borrow_slot, yield_always_borrows, GenExprType,
+    yield_uses_borrow_slot, GenExprType,
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, ConcreteFrameType, ConcreteGenType, make_concrete_coro,
     make_cancellable)
@@ -156,7 +156,8 @@ from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, is_reference_local,
                            stamp_bind_kind, stamp_unpack_rebinds,
-                           UnpackTarget, unpack_target_records)
+                           UnpackTarget, target_indices,
+                           unpack_target_records)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
@@ -165,10 +166,11 @@ from .type_join import (expression_spelling, operand_spelling,
 from .compatibility import (TupleSink, inferred_field_slot,
                             owned_tuple_slots, result_owns_storage)
 from .context import (
-    BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS,
+    BorrowKind, INVALIDATING_BORROW_KINDS,
     CLASS_CONSTANT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
     element_loan_mutation_warning, storage_loan_mutation_warning,
-    register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf,
+    register_binding_borrow, ephemeral_borrow_root, ephemeral_escape_error,
+    contains_pending_leaf,
     SitedKey,
 )
 from ..value_category import (
@@ -807,19 +809,16 @@ def update_ephemeral_alias_fact(ctx: SemanticContext, name: str,
     same stale-slot borrow under another name, so escapes through the
     alias must reject like the direct form. Value bindings COPY and carry
     no fact; any other rebind clears it.
-
-    The alias inherits the root's KIND, so a GATE_ONLY hold reaches the
-    slot verdict through an alias exactly as the direct form does.
     """
     eph = ctx.func.ephemeral_borrow_vars
     root = None
     if init_expr is not None and var_type is not None:
         if _local_points_into_source(var_type):
-            root = ephemeral_borrow_root(eph, init_expr)
+            root = ephemeral_borrow_root(ctx, init_expr)
     if root is not None:
-        eph[name] = eph[root]
+        eph.add(name)
     else:
-        eph.pop(name, None)
+        eph.discard(name)
 
 
 def _mark_bound_loop_var_sources(ctx: SemanticContext, name: str,
@@ -3025,6 +3024,12 @@ class StatementAnalyzer:
             if head is not None:
                 head.is_loop_head = True
                 head.loop_body_rebinds = stmt.loop_body_rebinds
+                # A bare-T target rebound outside the body as well binds no
+                # reference (`unpack_target_records`): the loop's rebinds
+                # plus the function's.
+                head.rebound_anywhere = (
+                    stmt.loop_body_rebinds
+                    | self.ctx.func.current_reassigned_vars)
             if stmt.is_async:
                 self._analyze_async_for(stmt)
                 return
@@ -3180,14 +3185,6 @@ class StatementAnalyzer:
                     # and escapes are rejected in the loop body. Container sources
                     # are durable and keep their normal provenance.
                     ephemeral_src = self._is_ephemeral_borrow_loop_source(inner_iterable_type)
-                    # The same question with an open `T` element counted as a
-                    # borrow -- input to the generic-yield provenance gate, not
-                    # to any diagnostic: at a value instantiation such a source
-                    # lends nothing, so the loop var must stay durable here.
-                    open_eph_src = (
-                        not ephemeral_src
-                        and self._is_ephemeral_borrow_loop_source(
-                            inner_iterable_type, open_param_borrows=True))
                     track_loop_prov = (
                         not ephemeral_src
                         and _needs_provenance_tracking(unwrap_readonly(elem_type))
@@ -3197,7 +3194,7 @@ class StatementAnalyzer:
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
                     eph_added = self._mark_ephemeral_loop_targets(
-                        stmt, ephemeral_src, open_eph_src)
+                        stmt, ephemeral_src)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self._check_loop_var_rebind(stmt, elem_type)
                     cid_floor = self.ctx.pending_num_counter
@@ -3219,7 +3216,7 @@ class StatementAnalyzer:
                     if track_loop_prov:
                         self.init.remove_loop_var_provenance(stmt.var)
                     for name in eph_added:
-                        self.ctx.func.ephemeral_borrow_vars.pop(name, None)
+                        self.ctx.func.ephemeral_borrow_vars.discard(name)
                 # Whether the loop var binds const-ref is decided once every
                 # write through it is known, the callees' included
                 # (`resolve_loop_bindings`); here only whether it may at all.
@@ -5989,8 +5986,7 @@ class StatementAnalyzer:
                           lambda: for_live_region(stmt), elem_type,
                           handed_over=stmt.consuming_iter_fi is not None)
 
-    def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType, *,
-                                         open_param_borrows: bool = False) -> bool:
+    def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType) -> bool:
         """True if iterating this source hands out frame-slot-rooted borrows whose
         validity ends with the producer -- a generator / `Iterator[T]` value
         whose element is a non-value borrow (BORROW_REF) or a borrow-form tuple
@@ -5998,10 +5994,6 @@ class StatementAnalyzer:
         Container sources (list/dict/Span/user `__iter__`) are durable and
         excluded; so is `Iterator[Own[T]]` (owned, moved out) and value-type
         elements.
-
-        `open_param_borrows` forwards to `_elem_is_ephemeral_borrow`: an open
-        `T` element counts as a borrow, which only the generic-yield
-        provenance gate asks for.
         """
         inner = unwrap_readonly(unwrap_ref_type(iterable_type))
         # Ephemeral when the source hands out an element by BORROW: the plain
@@ -6010,55 +6002,39 @@ class StatementAnalyzer:
         # borrow tuple. Elements the slot copies out keep their own
         # representation and are not ephemeral.
         if isinstance(inner, GenExprType):
-            return self._elem_is_ephemeral_borrow(
-                inner.element_type, open_param_borrows=open_param_borrows)
+            return self._elem_is_ephemeral_borrow(inner.element_type)
         if not (is_protocol_type(inner) and isinstance(inner, NominalType)
                 and inner.qualified_name() == "typing.Iterator" and inner.type_args):
             return False
         raw_elem = inner.type_args[0]
         if not isinstance(raw_elem, TpyType):
             return False
-        return self._elem_is_ephemeral_borrow(
-            raw_elem, open_param_borrows=open_param_borrows)
+        return self._elem_is_ephemeral_borrow(raw_elem)
 
     @staticmethod
-    def _elem_is_ephemeral_borrow(elem_type: TpyType, *,
-                                  open_param_borrows: bool = False) -> bool:
+    def _elem_is_ephemeral_borrow(elem_type: TpyType) -> bool:
         """A yielded element whose representation borrows the producer's frame:
-        the scalar val_or_ref slot, or a pointer-element borrow tuple.
-
-        `yield_always_borrows`, not the slot predicate: an open `T` element
-        borrows only at its reference instantiations, and this rule runs once
-        at the generic body's definition. `open_param_borrows` asks the same
-        question WITH the open `T` counted as a borrow -- the generic-yield
-        provenance gate's half, which drives a slot choice rather than a
-        diagnostic.
-        """
-        if (yield_uses_borrow_slot(elem_type) if open_param_borrows
-                else yield_always_borrows(elem_type)):
+        the scalar val_or_ref slot, or a pointer-element borrow tuple. An open
+        `T` counts as the borrow its reference instantiation makes -- a
+        generic body is accepted only where its concrete twin at a reference
+        type would be."""
+        if yield_uses_borrow_slot(elem_type):
             return True
         peeled = unwrap_readonly(unwrap_ref_type(elem_type))
         return (isinstance(peeled, TupleType)
                 and peeled.has_pointer_repr_element())
 
-    def _mark_ephemeral_loop_targets(self, stmt: TpyForEach, ephemeral_src: bool,
-                                     open_param_src: bool = False) -> set[str]:
+    def _mark_ephemeral_loop_targets(self, stmt: TpyForEach,
+                                     ephemeral_src: bool) -> set[str]:
         """Stamp the loop var of an ephemeral borrow yield -- and, for a
         tuple-unpack loop, the unpack target names (each aliases the producer's
         frame through the synthetic tuple var) -- returning the names added to
         ephemeral_borrow_vars (so the caller can drop them after the loop
-        body).
-
-        `open_param_src`: the source lends only at the reference
-        instantiations of an open `T`, so the names are held GATE_ONLY --
-        marking them HARD would reject the value instantiations, where
-        nothing is borrowed."""
-        if not ephemeral_src and not open_param_src:
+        body)."""
+        if not ephemeral_src:
             return set()
         added = {stmt.var, *stmt.head_targets()}
-        kind = EphemeralKind.HARD if ephemeral_src else EphemeralKind.GATE_ONLY
-        for name in added:
-            self.ctx.func.ephemeral_borrow_vars[name] = kind
+        self.ctx.func.ephemeral_borrow_vars.update(added)
         return added
 
     def _reject_ephemeral_escape(self, expr: 'TpyExpr | None', what: str) -> None:
@@ -6067,26 +6043,14 @@ class StatementAnalyzer:
         An ephemeral borrow (a for-loop var over a generator / Iterator[T] /
         genexpr borrow source) is valid only for the current iteration step -- the
         producer's frame slot is overwritten on the next __next__(). Retaining it
-        past the step (returning or yielding it onward) would read a stale slot.
-        The fix is to copy out (`.clone()` for @nocopy types, a plain copy)."""
-        name = self._ephemeral_root_name(expr)
+        past the step (returning it, storing it into longer-lived storage)
+        would read a stale slot. A yield is no such escape: it relays the
+        step for one step of this generator. The fix is to copy out
+        (`.clone()` for @nocopy types, a plain copy)."""
+        name = ephemeral_borrow_root(self.ctx, expr)
         if name is None:
             return
-        raise self.ctx.error(
-            f"Cannot {what} '{name}': it borrows an element of a generator / "
-            f"iterator, valid only for the current iteration step (the producer "
-            f"reuses its frame slot on the next step). Copy it out first "
-            f"(`{name}.clone()` for a @nocopy type, otherwise a plain copy).",
-            expr,
-        )
-
-    def _ephemeral_root_name(self, expr: 'TpyExpr | None') -> 'str | None':
-        """Return the HARD ephemeral-borrow var name `expr` reads from, else
-        None (see `sema.context.ephemeral_borrow_root`). Only a HARD hold
-        rejects an escape; a GATE_ONLY one is not a borrow at the value
-        instantiations, so it answers the slot verdict alone."""
-        return ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars, expr,
-                                     EphemeralKind.HARD)
+        raise ephemeral_escape_error(self.ctx, what, name, expr)
 
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
@@ -6129,26 +6093,11 @@ class StatementAnalyzer:
                                           TupleSink.YIELD)
         self.compat.check_tuple_result(stmt.value, yield_slot,
                                        TupleSink.YIELD)
-        # Re-yielding an ephemeral borrow onward (consumed from an inner
-        # generator/iterator) past its iteration step would let the outer
-        # consumer read a stale slot -- reject unless copied out. EXCEPTION:
-        # the direct relay of an ephemeral borrow TUPLE (`for pair in src:
-        # yield pair`) is sound -- the inner source lives in THIS generator's
-        # frame, and the outer consumer's use of the relayed borrow lasts one
-        # step of THIS generator, which is within the source's lifetime. The
-        # allowance is yield-only and does not mark the var durable: return /
-        # retention escapes still reject below and in `_analyze_return`.
-        inner_val = (stmt.value.expr if isinstance(stmt.value, TpyCoerce)
-                     else stmt.value)
-        is_direct_tuple_relay = (
-            isinstance(inner_val, TpyName)
-            and (self.ctx.func.ephemeral_borrow_vars.get(inner_val.name)
-                 is EphemeralKind.HARD)
-            and isinstance(unwrap_readonly(unwrap_ref_type(
-                self.ctx.get_expr_type(inner_val) or elem_type)), TupleType)
-        )
-        if not is_direct_tuple_relay:
-            self._reject_ephemeral_escape(stmt.value, "yield")
+        # A yield is no escape beyond the step: whatever roots in an inner
+        # iterator's current step (`x`, `x.f`, `q = x.f`, `ident(x)`, `(x, 1)`)
+        # is used by the consumer for one step of THIS generator, within the
+        # step's lifetime, so no ephemeral check runs here; returns and
+        # stores keep it (`_reject_ephemeral_escape`).
         # Declaration-driven yield ABI: a plain-reference borrow yield (the
         # val_or_ref<T> slot) hands out a reference, so the yielded source must
         # outlive the frame -- the same rooting rule as returning a reference,
@@ -6163,29 +6112,20 @@ class StatementAnalyzer:
         # yield_uses_borrow_slot excludes tuples (they own their borrow form via
         # to_cpp_return), so route them through the full dangling check too -- its
         # per-element tuple branch is what catches the fresh member.
-        if yield_always_borrows(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
+        # An open `T` takes the same check: the reference instantiation
+        # decides, as at the concrete twin.
+        if yield_uses_borrow_slot(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
             # A borrow-yielded container literal must materialize as a real
             # list/dict/set (the val_or_ref<T> slot hands out a reference, and
             # the consumer may resize it), so force it off the Array
             # optimization -- a new escape route the array builder predates.
             self._force_yielded_pending_lists(stmt.value, elem_type)
-            # Deferred: a yielded frame-resident local is a valid borrow root,
-            # but func.generator_locals isn't populated until after body
-            # analysis. The ephemeral-escape rejection above stays inline, so an
-            # ephemeral re-yield is still caught before this point.
+            # Deferred: a yielded frame-resident local is a valid borrow
+            # root, but func.generator_locals isn't populated until after
+            # body analysis, and a callee's borrow fact until its body is
+            # (`settle_body_facts`).
             self.ctx.func.pending_yield_root_checks.append(
                 (stmt.value, elem_type, stmt.loc))
-        elif yield_uses_borrow_slot(elem_type):
-            # An open `T`: whether the slot lends is not a per-yield question
-            # but a per-generator one (one slot type for the whole frame), and
-            # an unrooted source is not an error here -- it selects the VALUE
-            # slot, which copies. Record the two halves of the provenance
-            # verdict; the rooting half is answered at the drain, the ephemeral
-            # half only while the consuming loop body's marking is live.
-            self.ctx.func.pending_generic_yield_sources.append(
-                (stmt.value,
-                 ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars,
-                                       stmt.value) is not None))
         else:
             self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc,
                                                  for_yield=True)
@@ -7426,6 +7366,13 @@ class StatementAnalyzer:
         records = unpack_target_records(
             self.ctx, stmt.value, rhs_type, readonly=rhs_readonly,
             consumed=source_consumed, borrowed=borrowed_elems,
+            rebound=target_indices(
+                stmt.targets,
+                stmt.rebound_anywhere if stmt.is_loop_head
+                else self.ctx.func.current_reassigned_vars),
+            body_rebound=(target_indices(stmt.targets,
+                                         stmt.loop_body_rebinds)
+                          if stmt.is_loop_head else frozenset()),
             step=stmt.step_handover if stmt.is_loop_head else None)
         # A rebound target binds at its declared type, as `a = t[i]` does.
         bind_types: dict[int, TpyType] = {}
@@ -7433,6 +7380,18 @@ class StatementAnalyzer:
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
             rec = records[i]
             owned, is_ref, elem_type = rec.owned, rec.ref, rec.type
+            if rec.rebind_rejected:
+                # A loop variable like the scalar one, so its in-body rebind
+                # takes the scalar's error (`_check_nonvalue_rebinding`);
+                # the loop removes the name with its head. The other
+                # `loop_vars` readers see it as the scalar loop variable:
+                # owned-local typing (`ExpressionAnalyzer` name reads), the
+                # owning-sink move verdict and owning test
+                # (`compatibility.py`), `mark_consumed_loop_var`, the
+                # deduction's rebind-mix message and owning-bind rule
+                # (`local_deduction.py`), and the receiver copy-in rule
+                # (`methods.py`).
+                self.ctx.func.loop_vars.add(name)
             stmt.is_owned.append(owned)
             stmt.is_ref.append(is_ref)
             if (is_ref and name is not None and stmt.is_loop_head
@@ -8012,8 +7971,9 @@ class StatementAnalyzer:
         # and is intentionally NOT rejected. Escapes that retain the *reference*
         # past the iteration step are caught elsewhere: returning it
         # (dangling-return check), stashing it where it outlives its scope
-        # (lifetime analysis), re-yielding it (yield-onward check), and capturing
-        # it by reference in a closure (nested-def escape check).
+        # (lifetime analysis), and capturing it by reference in a closure
+        # (nested-def escape check). A yield relays the current step, which
+        # lives as long as one step of this generator.
         # Property setter: validate and tag for codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property is not None:
             prop = stmt.target.resolved_property

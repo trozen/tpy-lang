@@ -95,7 +95,8 @@ from .context import (
     OwnIterMove, OwningRead, PendingCopy, SinkCopy,
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
     BorrowKind, ReadonlyReceiverCheck,
-    BorrowTracker, SitedKey, holds_generator_object, paths_overlap,
+    BorrowTracker, SitedKey, holds_generator_object,
+    paths_overlap,
 )
 from ..prescan import expr_to_narrowing_key
 from ..storage_trace import Step, StepKind, is_unbound_field, trace
@@ -5305,7 +5306,8 @@ class TypeCompatibility:
         return (f"Cannot return {display} referencing a local or temporary; "
                 + _view_keeping_hint(expr.name, display, info.stored_source))
 
-    def _name_is_param_or_global(self, name: str) -> bool:
+    def _name_is_param_or_global(self, name: str, *,
+                                 yield_slot: bool = False) -> bool:
         """True if the name refers to caller-owned storage that outlives the call.
 
         The one name rule of the durability readers (`_place_durable`,
@@ -5320,6 +5322,9 @@ class TypeCompatibility:
         params-are-safe treatment: the body is analyzed pre-instantiation
         where value-ness (by-value vs by-reference return) is unknown --
         same TypeParamRef exemption the per-element tuple dangle check uses.
+        A generator's yield asks without it (`yield_slot`): its slot lends
+        at every instantiation, so the reference one decides, as at the
+        concrete twin.
         """
         func = self.ctx.func.current_function
         # Only a real receiver is durable by being `self`; in a free function
@@ -5332,7 +5337,8 @@ class TypeCompatibility:
                 if pname == name:
                     own_inner = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
                     return (own_inner is None
-                            or contains_type_param(own_inner))
+                            or (not yield_slot
+                                and contains_type_param(own_inner)))
         return self._name_is_module_global(name)
 
     def _name_is_module_global(self, name: str) -> bool:
@@ -5374,7 +5380,7 @@ class TypeCompatibility:
         return None
 
     def _place_durable(self, leaf: Leaf, *, view_source: bool,
-                       gen_yield: bool, strict: bool) -> bool:
+                       gen_yield: bool) -> bool:
         """The name rule at a PLACE leaf of the durability climb
         (`ReturnLend`): a parameter, `self` or a module global outlives the
         call (`_name_is_param_or_global`); a local bound from durable
@@ -5382,15 +5388,15 @@ class TypeCompatibility:
         storage (`view_source`): a movable owned local is moved or destroyed
         at the return, so a view of it dangles. Under `gen_yield` (the value
         of a generator's `yield`) a frame-resident local is stable
-        frame-slot storage. Both flags hold only at a leaf the value reaches
-        through no call; the closed-world reading keeps `gen_yield` through
-        recorded sources, whose provenance it follows the whole way down."""
+        frame-slot storage. `view_source` holds only at a leaf the value
+        reaches through no call; `gen_yield` also through recorded sources,
+        whose provenance the climb follows the whole way down."""
         calls = leaf.calls
         vs = view_source and not calls
-        gy = gen_yield and (not calls or strict and all(
-            c.how in (Lent.RECORDED, Lent.AWAITED) for c in calls))
+        gy = gen_yield and all(c.how in (Lent.RECORDED, Lent.AWAITED)
+                               for c in calls)
         name = leaf.name
-        if self._name_is_param_or_global(name):
+        if self._name_is_param_or_global(name, yield_slot=gen_yield):
             return True
         if not vs and self.ctx.func.bp_is_safe_to_return(name):
             return True
@@ -5399,23 +5405,18 @@ class TypeCompatibility:
                                                        view_source=vs))
 
     def _leaves_dangle(self, ls: list[Leaf], *, view_source: bool = False,
-                       gen_yield: bool = False, strict: bool = False) -> bool:
+                       gen_yield: bool = False) -> bool:
         """`is_dangling_return` as a mapping of the durability leaves: a
-        temporary or an unclassified view node dangles; static storage, a
-        call result no operand names and an unplaceable node dangle only in
-        the closed-world reading; a name by the name rule
-        (`_place_durable`)."""
+        temporary or an unclassified view node dangles; a name by the name
+        rule (`_place_durable`)."""
         for leaf in ls:
             kind = leaf.kind
             if kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE):
                 return True
             if kind is LeafKind.PLACE:
                 if not self._place_durable(leaf, view_source=view_source,
-                                           gen_yield=gen_yield,
-                                           strict=strict):
+                                           gen_yield=gen_yield):
                     return True
-            elif kind is not LeafKind.NULL and strict:
-                return True
         return False
 
     def _leaves_safe(self, ls: list[Leaf]) -> bool:
@@ -5454,11 +5455,12 @@ class TypeCompatibility:
         return True
 
     def durability_leaves(self, expr: TpyExpr, *,
-                          strict: bool = False) -> list[Leaf]:
+                          gen_yield: bool = False) -> list[Leaf]:
         """Where the storage of a returned, yielded or bound `expr` lives
-        (`leaves` under `ReturnLend`); `strict` is the closed-world
-        reading."""
-        return leaves(expr, ReturnLend(self.ctx, strict=strict), split=False)
+        (`leaves` under `ReturnLend`); `gen_yield` is the reading at a
+        generator's borrow-slot yield."""
+        return leaves(expr, ReturnLend(self.ctx, gen_yield=gen_yield),
+                      split=False)
 
     def rebound_global_borrow_root(
             self, expr: TpyExpr,
@@ -5576,8 +5578,7 @@ class TypeCompatibility:
         return view_family_for_type(storage) is not None
 
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
-                           gen_yield: bool = False,
-                           assume_unknown_calls_safe: bool = True) -> bool:
+                           gen_yield: bool = False) -> bool:
         """Check if returning this expression would create a dangling reference
         (`_leaves_dangle` over `durability_leaves`).
 
@@ -5591,26 +5592,17 @@ class TypeCompatibility:
         A frame-resident local (in `func.generator_locals`) is then a valid
         borrow root -- its `tpy::frame_slot<T>` storage is stable for the
         generator's lifetime, and the consumer-side ephemeral-borrow rule
-        forbids retaining the yielded borrow past the next resume. The
-        exemption fires only at a root the value reaches through no call (the
-        closed-world reading follows recorded sources too).
+        forbids retaining the yielded borrow past the next resume -- reached
+        directly or through recorded sources; and a fresh value the slot
+        would lend is a temporary (`ReturnLend`'s `gen_yield`).
 
-        `assume_unknown_calls_safe`: the DIAGNOSTIC reading (the default)
-        trusts a callee it cannot see through -- the callee is responsible for
-        not handing back a dangling reference, and rejecting every opaque call
-        would reject valid code. The generic yield-slot VERDICT reads the same
-        climb closed-world instead (False): an unproven source must fall to the
-        value slot rather than lend something the callee may have
-        materialized -- an erased `Fn` result carries no ownership at all (see
-        `docs/CALLABLE_CONTRACT_DESIGN.md`), and a callee whose body is not
-        analyzed yet has no fact to read. Closed-world, a call is non-dangling
-        only where its resolved signature borrows from operands that are
-        themselves non-dangling.
+        A callee it cannot see through is trusted: the callee is responsible
+        for not handing back a dangling reference, and rejecting every opaque
+        call would reject valid code.
         """
-        strict = not assume_unknown_calls_safe
         return self._leaves_dangle(
-            self.durability_leaves(expr, strict=strict),
-            view_source=view_source, gen_yield=gen_yield, strict=strict)
+            self.durability_leaves(expr, gen_yield=gen_yield),
+            view_source=view_source, gen_yield=gen_yield)
 
     def borrow_temp_root(self, expr: TpyExpr) -> TpyExpr | None:
         """The fresh owned temporary a borrow-form `expr` PROVABLY points
@@ -5719,24 +5711,26 @@ class TypeCompatibility:
             expr
         )
 
-    def drain_deferred_escape_checks(self) -> None:
-        """Run the return/yield rooting checks deferred during body analysis.
-
-        Both lists are drained from this one place, at the END of a body and
-        after `func.generator_locals` is populated, because both answers need
-        the post-body state: a yielded frame-resident local is a valid borrow
-        root only once the frame-local set exists, and a str/bytes local's
-        storage is what the deduction settled. Yield-rooting runs first -- its
-        checks can themselves defer a view-storage entry.
-
-        Nothing is dropped: the view-storage pass is final, so a check that
-        deferred during analysis either passes or raises here.
-        """
+    def drain_yield_root_checks(self) -> None:
+        """Run a generator's borrow-yield rooting checks, once the component's
+        callee facts are settled (`SemanticAnalyzer.settle_body_facts`), under
+        the generator's parked state. A check can itself defer a
+        view-storage entry, drained right after: the storage is final."""
         roots = self.ctx.func.pending_yield_root_checks
         self.ctx.func.pending_yield_root_checks = []
         for value, elem_type, loc in roots:
             self.check_dangling_reference(value, elem_type, loc, for_yield=True)
+        self.drain_deferred_escape_checks()
 
+    def drain_deferred_escape_checks(self) -> None:
+        """Run the return/yield view-storage checks deferred during body
+        analysis, at the END of a body: a str/bytes local's storage is what
+        the deduction settled. (The yield rooting checks wait longer, for
+        the callees' facts: `drain_yield_root_checks`.)
+
+        Nothing is dropped: the view-storage pass is final, so a check that
+        deferred during analysis either passes or raises here.
+        """
         checks = self.ctx.func.pending_view_storage_checks
         self.ctx.func.pending_view_storage_checks = []
         for expr, return_type, loc, source_type, for_yield in checks:
@@ -5953,10 +5947,18 @@ class TypeCompatibility:
                     f"{_own_fix(return_type, cap=True)}.",
                     expr
                 )
+            # A call's new value bound to a frame local is lent from the
+            # frame instead.
+            local_fix = ("Bind it to a local first (`y = ...` then "
+                         "`yield y`) to lend it from the generator, or "
+                         if for_yield and call_result_is_fresh(
+                             self.ctx, call, gen_yield=True)
+                         else "")
+            fix = _own_fix(return_type, cap=not local_fix)
             raise self.ctx.error(
                 f"Cannot {verb} local or temporary as reference. "
                 f"Reference type '{return_type}' is {verb}ed by reference. "
-                f"{_own_fix(return_type, cap=True)}.",
+                f"{local_fix}{fix}.",
                 expr
             )
 

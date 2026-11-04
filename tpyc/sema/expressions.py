@@ -6557,7 +6557,9 @@ class ExpressionAnalyzer:
         head.step_handover = gen.step_handover
         for rec in unpack_target_records(
                 self.ctx, value, tup, readonly=readonly, consumed=True,
-                borrowed=frozenset(), step=gen.step_handover):
+                borrowed=frozenset(), rebound=frozenset(),
+                body_rebound=frozenset(),
+                step=gen.step_handover):
             head.target_types.append(rec.type)
             head.is_owned.append(rec.owned)
             head.is_ref.append(rec.ref)
