@@ -26,31 +26,28 @@ changes the `harness/stdlib_render` snapshot (`tpy.version` folds
 release commit (annotated; the build hook bakes `git describe`), then
 `uv build --wheel` + `uv publish`.
 
-## 0.7.0 (prepared when the trigger above fires)
+## 0.8.0 (prepared when the trigger above fires)
+
+Carried over from 0.7.0, which shipped without them:
 
 - Tuples: no silent divergence and the everyday shapes compile --
-  `docs/TUPLE_COMPLETION_PLAN.md`: U3 (the policy flips) and the
-  everyday rejects of U2, which land with the element-form unit (U5) on
-  the lowering's slot contract; U4 and the mixed-param `&&` form are done
-- `str` and `bytes` under one sound view rule, keyed on the view family
-  (plan unit U6 is its tuple part) -- landed on branch
-  `str-bytes-view-rule`; what remains is MIR's relaxation of its copies --
-  TODO: "`str` / `bytes` views: MIR precision over the one view rule"
+  `docs/TUPLE_COMPLETION_PLAN.md`: the everyday rejects of U2, which
+  land with the element-form unit (U5) on the lowering's slot contract,
+  then U3 (the policy flips)
+- `str` / `bytes` views: MIR's relaxation of the one view rule's copies
+  -- TODO: "`str` / `bytes` views: MIR precision over the one view rule"
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
   reference elements -- TODO: "Iterating a tuple"
-- Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
-  landed, the owned outer clause and its `for`-statement twin included
-- `collections.defaultdict` (postponed 2026-10-29 behind the `[thir] RULE` mechanisms) -- TODO: "collections: the rest of the
-  module"
-- Per-instantiation result form for a generic body, then builtin
-  keyword arguments (landed), then iterator provenance, in that order
-  (user, 2026-10-05) -- TODO: "Per-instantiation result form for a
-  generic body", "Iterator provenance"
-- The 0.6.0 known limitations, silent miscompiles first
+- `collections.defaultdict` (postponed 2026-10-29 behind the `[thir]
+  RULE` mechanisms) -- TODO: "collections: the rest of the module"
+- Per-instantiation result form for a generic body, then iterator
+  provenance, in that order (user, 2026-10-05) -- TODO: "Per-instantiation
+  result form for a generic body", "Iterator provenance"
+- The 0.7.0 known issues (`RELEASE_NOTES.md`), silent classes first
 - Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
   `str-field-write-through-subscript-rejects`
 
-Queue (triage at 0.7 planning; not commitments):
+Queue (triage at 0.8 planning; not commitments):
 
 - The other multi-`for` comprehension refusals -- TODO: "Lift: a name
   bound by two `for` clauses", "Lift: rebinding a capture" (MIR),

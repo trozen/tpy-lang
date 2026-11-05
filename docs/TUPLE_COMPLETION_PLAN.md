@@ -9,7 +9,7 @@ on `c7435b494b` plus the D6 fix (U2 D6). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
 
 The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
-points here for the 0.7.0 tuple requirement; the entries themselves stay in
+points here for the 0.8.0 tuple requirement; the entries themselves stay in
 `BUGS.md` / `TODO.md`, and this file only orders them, sizes them and records
 which release each unit belongs to.
 
@@ -97,7 +97,7 @@ severity (user decision 2026-09-23). A global divergence is filed against the
 TODO design entry "Module scope is the body of __tpy_init" rather than fixed
 per shape; the mixed tuple global (D2) waits on that entry.
 
-### 0.7.0 (moved from 0.6.0 on 2026-09-25)
+### 0.8.0 (moved from 0.6.0 on 2026-09-25, from 0.7.0 on 2026-11-05)
 
 - [x] **U0 -- the matrix as an instrument.** DONE 2026-09-21:
   `scripts/thir_migration/review/tuple_element_matrix.py` (163 cells) with its
@@ -714,7 +714,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
   holder (`BUGS.md#finally-mutate-then-rebind-return`), the container FIELD
   as a borrow-tuple element (`btuple.elem_container_field`).
 
-### After 0.7.0
+### After 0.8.0
 
 - [ ] **U6 -- `str` / `bytes` view elements** (D3, D4). A view element at a
   tuple param and a view-safe local, as the scalar has. ABI change with wide
@@ -768,4 +768,4 @@ Tick a box with the merge commit when a unit lands, and delete the `BUGS.md`
 entries it closes. A defect found while working a unit becomes a line in that
 unit (and a `BUGS.md` entry), never a silent widening. When the matrix is
 re-run, replace the table and its date rather than appending to it. When U0-U4
-are ticked, the 0.7.0 tuple requirement is met.
+are ticked, the 0.8.0 tuple requirement is met.

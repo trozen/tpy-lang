@@ -1,5 +1,279 @@
 # Release Notes
 
+## 0.7.0 (2026-11-05)
+
+298 commits since 0.6.2. A breaking release -- read Migration first.
+
+### Migration
+
+- **Module settings are a `__tpy__` dict**: `# tpy:` directive comments
+  are gone. Write `__tpy__ = {"mod": "native", "includes": [...],
+  "links": [...]}` after the docstring; a leftover comment is an error
+  (`'# tpy:' directives were replaced by __tpy__`). Unknown keys and
+  non-literal values are errors.
+- **Removed**: `@inline` and `FStr` (an f-string is a plain `str`
+  everywhere); `@native_preserves_refs` (use `@native(...,
+  elements=True)` and `mutates="elements"`); `@copy_returns_warn` (use
+  `borrows=` / `element_of=`); `unsafe_interior_mutable[Ptr[T]]`.
+- **Fixed-width wrap helpers renamed, no aliases**: `T.trunc(x)` ->
+  `T.wrap(x)`, `T.add_wrap` / `sub_wrap` / `mul_wrap` / `shl_wrap` /
+  `shr_wrap` -> `T.wrap_add` / ... / `T.wrap_shr`. Signed `wrap_shr` is
+  arithmetic: `int8.wrap_shr(-1, 1)` is `-1`.
+- **8- and 16-bit arithmetic promotes**: `+ - * // % ** << ~` and unary
+  `-` on `int8`..`uint16` compute in the default int, so
+  `uint8(200) + uint8(100)` is `300`; `& | ^ >>` keep the narrow type.
+  Overflow raises `OverflowError` in every build mode, and an integer
+  value narrows into a fixed-width slot through a run-time check (an
+  out-of-range parameter default from a `Final` is still unchecked,
+  `BUGS.md#fixed-int-default-final-out-of-range`).
+- **Behavior now follows CPython** (output can change):
+  - `sys.exit` raises `SystemExit`, so `finally`, `with` and a bare
+    `except` see it; a `str` code goes to stderr with status 1.
+  - Ctrl-C raises `KeyboardInterrupt` in synchronous programs (was a
+    hard kill); an uncaught one exits with status 130. Every
+    `asyncio.run` installs its own SIGINT handler.
+  - A None access the compiler cannot rule out raises a catchable
+    `AttributeError` / `TypeError` instead of panicking.
+  - Text: `str(0.1 * 3)` is `0.30000000000000004`, `str(float("inf"))`
+    is `inf`, a `char` reprs quoted (`list(s)` prints `['a', 'b']`), a
+    plain `Enum` member prints `Color.RED`, a record without `__str__`
+    prints `<__main__.X object at 0x...>`.
+  - Aliasing: `min` / `max` (with `key=`) and `dict.get(k, d)` return
+    the object itself, `deref(h)` binds a borrow, and `ba += x` on a
+    `bytearray` mutates in place -- each was a silent copy. Rebinding a
+    reference local keeps the old object for its aliases (it was
+    overwritten in place). `next(it, d)` accepts reference elements and
+    copies, with a warning, when bound.
+  - A value-type loop variable (int, `str`, `bytes`, tuple) copies its
+    element when the loop may write the source: `for v in y: y[0] = 50;
+    print(v)` prints the old element. A record loop variable aliases, as
+    in CPython.
+  - Parameter defaults resolve where the `def` is written, not at the
+    caller; `-1 in d.values()` compares integers by value.
+  - `isinstance(h, Dog)` on an `Rc` / `Box` / `Arc` / `Weak` handle
+    tests the handle, so it is False, with a warning pointing at
+    `isinstance(p := deref(h), Dog)`; 0.6 looked through to the object.
+  - `asyncio.sleep(0)` always yields once; timer wake-ups follow
+    CPython's loop order.
+  - `random`: a one-value draw (`randrange(1)`, `randint(a, a)`,
+    `choice([x])`) consumes random state as CPython does, so seeded
+    sequences after one differ from 0.6.
+  - `io.FileIO(fd, mode="r", closefd=True)`: `mode` now comes before
+    `closefd`, so a positional `FileIO(fd, False)` must become
+    `closefd=False`; `readable()` / `writable()` / `seekable()` on a
+    closed stream raise `ValueError`.
+  - Overloads rank by declared parameter shape (exact > generic >
+    subclass > protocol > bare `T`), and declaration order never breaks
+    a tie: `m(3)` over `m(int)` / `m(float)` runs the `int` variant, and
+    a genuine tie is an `Ambiguous overload` error.
+- **`chr()` and `char(n)` are limited to 0..127 for now**: `chr(200)`
+  raises `ValueError` (0.6 stored a truncated byte); CPython accepts up
+  to `0x10FFFF`.
+- **A `JoinHandle` dropped without `join()` detaches** the thread, as
+  Rust's does, instead of panicking.
+- **Newly refused, each with a located error**:
+  - a read before a function-wide local binding of the same name
+    (`'x' is read before it is bound on line 4 ...`; 0.6 read the
+    module's `x`);
+  - an annotation on a local after its first binding;
+  - an implicit `float` -> `float32` conversion at a declared slot
+    (literals still adapt);
+  - an empty container literal whose first typed store is narrower than
+    a later one (`ws = []; ws.append(int8(1)); ws.append(int64(2))`:
+    `'ws' holds int8 elements ... annotate its first binding`), or a
+    store after a typed use fixed the element type;
+  - an int value or default in an inferred float dict
+    (`d = {"a": 0.5}; d.get("b", 1)`: `write 1.0 instead of 1`; 0.6
+    converted it silently);
+  - a callback that would narrow its argument or whose return does not
+    fit the `Callable` slot (`write 'lambda x: cb(x)'`; 0.6 truncated);
+  - a TPy-bodied `@dispatch` / `@overload` constructor: a class takes
+    one `__init__` (bodyless `@native` constructor sets stay);
+  - a write into a fresh call result (`make().n = 5`);  - the entry module inside an import cycle; a generic type naming a
+    cycle peer's class in a header position;
+  - builtin calls breaking CPython 3.12's positional-only / keyword-only
+    rules (`s.find("a", start=1)`; `sorted(xs, f)` is refused too, with
+    a misleading message, `BUGS.md#builtin-default-key-diagnostics`);
+  - a write to another module's `Final` (`sys.platform = "x"`);
+  - a non-constant class-body name read by a parameter default;
+  - readonly: an explicit `@readonly` method returning its own storage
+    at a mutable type must declare `-> readonly[...]`; a
+    `__deref__ -> readonly[T]` at a plain `T` parameter; re-pointing a
+    `readonly[Ptr]` field. A readonly holder no longer makes the
+    pointee of its `Ptr[T]` / `Span[T]` readonly -- spell
+    `Ptr[readonly[T]]` for that;
+  - module-level code in a native module other than imports and
+    declarations (was dropped silently);
+  - protocol type-parameter bounds (`P[T: ValueType]` refuses
+    `P[list[int32]]`), duplicate or constrained protocol type params;
+  - a `ValueType` field holding a reference type through a part or an
+    unbounded `T`;
+  - in a generic generator `-> Iterator[T]`, yielding a fresh value
+    (declare `Iterator[Own[T]]` or bind it first);
+  - redefining a nested `def` name in the same block; `nonlocal` in a
+    nested def that an escaping closure calls.
+- **C++ spellings `@native` companion code sees**: `tpy::sys_exit` is
+  gone (`main()` calls `::tpy::run_main`); the None-check helpers are
+  `none_*` and throw `NoneAttributeError` / `NoneTypeError` (base
+  `NoneAccessError`); a `Final[T] = native_global(...)` is declared
+  `extern const T`, so its definition must be `const`; overload and
+  `@dispatch` variants get their own C++ names (`describe__Dog`); a
+  `Literal[str]` result is `std::string` (a getter no longer returns a
+  view); a module part that is a C++ keyword or ends in `_` gets a
+  trailing `_` in its namespace (`util_` -> `util__`); a call omitting a
+  `@native` binding's defaulted argument passes the TPy default, not the
+  C++ one; `Ptr[char]` is one character, not a C string; importing
+  through a native module runs its imports' initializers.
+- **CPython stubs**: fixed-width arithmetic under CPython returns plain
+  `int`s, which changes width-sensitive dispatch there.
+- **Caches**: the precompiled header moved to one shared
+  `~/.cache/tpyc/pch/`. The 0.6 per-program `__tpyc__/pch/` directories
+  (about 200MB each) and the REPL's `~/.cache/tpyc/pch_<key>` can be
+  deleted by hand. Shared-cache entries unused for `$TPYC_CACHE_MAX_AGE`
+  days (default 3) are evicted; exec markers live 30 days. The first
+  build after upgrading rebuilds everything.
+
+### Language and compiler
+
+- **MIR lifetime warnings**: the MIR ownership analysis runs on every
+  compile and warns where a reference may outlive or lose what it
+  points into -- an argument pointing into a container the callee
+  modifies, an assignment freeing a value a view still reads, a view
+  returned from a temporary, an iteration whose element a call may
+  move. Advisory: generated code is unchanged, and a MIR failure only
+  skips that body's checks.
+- **Inference**: a literal-seeded local widens to the typed values
+  stored later; mixed fixed-width operators widen (`int8 + int32` is
+  `int32`); a container literal's element type is settled by all its
+  stores and typed uses, empty literals and nested rows included; an
+  integer constant folds at every sink.
+- **Overloads and dispatch**: one shape ranking for calls, operators,
+  subscripts and membership (`x in h` is `h.__contains__(x)`); record
+  operators answer like their explicit dunder (`3 < c` runs
+  `c.__gt__(3)`, `!=` negates `__eq__`); `@overload` stubs are
+  copies of the implementation (methods, generics, generators,
+  coroutines, `@error_return`); a `Literal` is a value set over its base;
+  `isinstance` on a static type folds the dead branch.
+- **Builtins**: keyword arguments per the CPython 3.12 signatures
+  (`sorted(xs, key=f, reverse=True)`, `max(xs, key=f)`); `max(xs)` /
+  `min(xs)` over an iterable, `next(it, default)`, `print(*xs)`,
+  `for line in f`; `is` / `is not` test identity.
+- **Comprehensions** take several `for` clauses with filters at each
+  level, and an outer clause may iterate an owned source
+  (`[p.v for ps in batches() for p in ps]`).
+- **Closures**: a captured name is never moved; an escaping nested
+  `def` that calls sibling defs no longer dangles; a closure that keeps
+  its own copy of an object warns.
+- **`str` and `bytes` under one view rule**, decided at the binding:
+  `y = names[i]` owns a copy where a view could dangle; `bytes` works
+  wherever `str` does in tuples and slices.
+- **Tuples**: tuple locals read like tuple parameters; tuples at
+  container elements, arguments, returns, `Own[tuple]` slots and
+  `-> tuple[...] | None`; tuple globals; `a, b = stack.pop()`; unpack
+  targets bind like scalar names (`docs/TUPLE_COMPLETION_PLAN.md`).
+- **A builtin base is an ordinary base**: subclass `dict`, `list`,
+  `set`, `bytearray` and the builtin exceptions, with iteration, `in`,
+  comparison, printing, upcasts, `isinstance` and `super()`.
+- **Protocols**: type-parameter bounds are honored; a protocol argument
+  takes the concrete type's form, so a record binds in place instead of
+  being copied; `@runtime_checkable` is accepted.
+- **Field writes and arguments** convert at the slot's declared form:
+  about 190 well-typed field writes and 44 argument shapes that were
+  refused now compile.
+- **Scoping**: a name bound anywhere in a function is local to the whole
+  function; module statements form one initialization body; dotted
+  class and enum paths (`pkg.mod.Color.RED`) resolve everywhere.
+- **Fixed silent bugs** include: rebinding the iterated name inside a
+  loop changed what the loop iterated, and a comprehension read a
+  moved-from element after its first iteration (both regressions since
+  0.5.0); `u > -1` on a `uint64` was False; `o.get().v += 1` evaluated
+  the call twice; `q = d.get(k); r = q` emptied the dict entry; escaping
+  nested defs and several `str` views read freed memory;
+  `next(iter([3, 4]), 0)` read freed memory; a narrowing proved in `try`
+  and read in `finally` segfaulted.
+
+### Generated C++
+
+A module's C++ consults only its import closure, so library headers are
+identical in every program; calls to empty module initializers are
+gone. Checked-arithmetic helpers are inlined with a cold throw path in
+every build mode, and constants fold instead of calling them. More
+parameters and loop bindings are `const T&`; `raise` no longer copies
+the exception; `is` renders `::tpy::same_object`. Generated code no
+longer depends on Python's string hash seed.
+
+### CPython interop and embedding
+
+- **TPy programs run under CPython**: the wheel ships the `tpy` stubs
+  and the real `tplib`, so a TPy program runs under CPython 3.12+ or
+  PyPy after `pip install tpy-lang`; `TPY_CPYTHON_FAST=1` selects a
+  faster stub arithmetic mode.
+- **`--no-signals`** compiles the Ctrl-C layer out for embedded builds.
+  A host that keeps it gets `tpy::install_interrupt_handler()` and
+  `tpy::request_interrupt()`. Extension modules and `--no-main` hosts
+  keep their own SIGINT handler; `SystemExit` crosses `@export` with its
+  code.
+- **`@native`**: bound `__getitem__` stubs render at subscripts and
+  through `Ptr` receivers; omitted trailing defaults are spelled from
+  the TPy signature; native modules may form import cycles. New binding
+  keywords: `transient=`, `checks_signals=`, `adopts=`.
+
+### Library
+
+- **Signals**: `signal.signal(signum, handler)`, `default_int_handler`,
+  SIGHUP..SIGWINCH; sleep, input, sockets, thread joins and file I/O are
+  interruptible.
+- **`subprocess.Popen`** (pipes, `wait` / `poll` / `terminate` /
+  `kill`, context manager), `io.BufferedWriter`, `os.kill`, `os.waitpid`,
+  `os.waitstatus_to_exitcode`.
+- **`sys.platform`, `sys.byteorder`, `sys.maxsize`** and a new
+  `platform` module (`system()`, `machine()`) report the build target;
+  `sys.platform == ...` folds to a constant.
+- **asyncio**: scheduling follows CPython's loop; cancellation reaches
+  `Queue`, `Lock`, `Semaphore`, `Event` and `Future`; `Future.cancel`.
+- **`bytearray`** slice assignment, extended slices included.
+- **Text**: one shortest-round-trip float conversion; f-strings and
+  `print` render Optionals, `Ptr` and unions as their payload or `None`;
+  enum and default record text as in CPython 3.12.
+- `str.join` reserves once (up to 5x faster on large joins); `BigInt` converts
+  from every integer type.
+
+### Tooling
+
+- **Build caches**: one shared precompiled header for the CLI, the REPL
+  and tests, and compile steps share ccache entries across programs --
+  building a new `print("hi")` program after another one drops from
+  about 5.6s to 0.05s (default compiler settings).
+- CLI: Ctrl-C during a build exits cleanly; `--dump-mir` shows MIR's
+  verdict per body.
+- Nightly CI on GitHub Actions, including native macOS.
+
+### Known issues
+
+Tracked in `BUGS.md`. The silent classes that matter most: call
+arguments, operands and f-string parts run their side effects in the C++
+compiler's order rather than left to right (`f(random(), random())`
+draws in reverse order); a value moved at its last use while a closure,
+a `finally` or an alias still reads it; a view (a `str` slice, a `Span`,
+a view held by a closure or a generator) or an element reference
+outliving its buffer when a temporary dies or the container grows or is
+rebound through a call, an alias or a nested function -- MIR warns for
+some of these shapes, not all (they are retired by the MIR ownership
+checker, not patched piecemeal); a fact kept past a write the analysis
+does not see, which can skip a None or divide-by-zero check;
+`isinstance(x, int)` is False for a fixed-width int or a `bool`, which
+also steers which `@overload` copy runs, and some overload sets pick the
+wrong variant; constructor field initialization in an order CPython
+would not run; an `@error_return` call skipping an enclosing handler or
+`finally`; int/float comparisons beyond 2**53; some bindings and
+builtins copy where CPython shares; some inferred integer widths
+truncate a later wider value; generator and asyncio cleanup on
+exceptions and cancellation; comparing two string literals
+(`"ab" > "aa"`); and `Arc` handing a mutable payload to two threads.
+Loud: accepted programs that fail the C++ build (tuple, Optional/union
+and generic forms); shapes without a lowering, rejected at the line;
+tuple reference elements at consuming positions.
+
 ## 0.6.2 (2026-09-30)
 
 Licensing and packaging patch release. The compiler, runtime and library
