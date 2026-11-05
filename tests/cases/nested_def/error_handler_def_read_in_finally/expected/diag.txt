@@ -1,0 +1,1 @@
+main.py:12: error: 'h' is not readable after the 'try' block on line 6: the nested function 'h' defined on line 9 is bound inside that block and does not outlive it, and a nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'h' -- move the 'def' above the block, or rename it

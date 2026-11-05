@@ -223,6 +223,9 @@ def lambda_local(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param '
 # `__exit__` runs the closure after the returned value is built. After the
 # `with`, the rebind does not free `x` either: the prescan cannot rule out an
 # `__exit__` that swallows and falls through with the lambda still held.
+# (The later rebind of `x` makes the closure capture the parameter by
+# reference, BUGS.md#escaping-def-rebound-param-captured-by-ref; it runs
+# inside the frame here, so it reads correctly.)
 def with_exit(x: Own[Point], flag: bool) -> Own[Wrap]:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
     def grow() -> int32:
         x.items.append(12)
@@ -331,7 +334,7 @@ def chained() -> int32:
     s = Sink()
     p = Point()
 
-    def size() -> int32:
+    def size() -> int32:  # tpyc: warning(/Escaping closure 'size' copies local 'p'/)
         return len(p.items)
 
     def outer() -> int32:
@@ -383,13 +386,14 @@ def held_on_raise(flag: bool) -> int32:
     return n
 
 
-# a property read in the `return` runs the stored def.
+# a property read in the `return` runs the stored def. Read-only: a write
+# through the captured record fails the C++ build
+# (BUGS.md#lambda-write-through-capture-build-error).
 def via_property() -> int32:
     s = Sink()
     p = Point()
 
-    def grow() -> int32:
-        p.items.append(22)
+    def grow() -> int32:  # tpyc: warning(/Escaping closure 'grow' copies local 'p'/)
         return len(p.items)
 
     def outer() -> int32:
@@ -400,13 +404,14 @@ def via_property() -> int32:
     return h.value
 
 
-# an element read in the `return` runs the stored def.
+# an element read in the `return` runs the stored def. Read-only: a write
+# through the captured record fails the C++ build
+# (BUGS.md#lambda-write-through-capture-build-error).
 def via_getitem() -> int32:
     s = Sink()
     p = Point()
 
-    def grow() -> int32:
-        p.items.append(23)
+    def grow() -> int32:  # tpyc: warning(/Escaping closure 'grow' copies local 'p'/)
         return len(p.items)
 
     def outer() -> int32:
@@ -469,13 +474,14 @@ def finally_return_defers(x: Own[Point]) -> Own[Point]:  # tpyc: ok
 
 
 # a `__del__` runs the closure after the return has built its value: a
-# returned name ...
+# returned name ... (Read-only here and in the next section: a write
+# through the captured record fails the C++ build,
+# BUGS.md#lambda-write-through-capture-build-error.)
 def del_holder_return(x: Own[Point]) -> Own[Point]:
-    def g() -> int32:
-        x.items.append(26)
+    def g() -> int32:  # tpyc: warning(/Escaping closure 'g' copies local 'x'/)
         return len(x.items)
 
-    h = Holder(lambda: g())
+    h = Holder(lambda: g())  # tpyc: warning(/copies nested function 'g' when it is created, and with it its own copy of 'x'/)
     return x  # tpyc: warning(/copies Point into owned storage/)
 
 
@@ -483,11 +489,10 @@ def del_holder_return(x: Own[Point]) -> Own[Point]:
 def del_holder_tuple() -> tuple[Own[Point], int32]:
     p = Point()
 
-    def g() -> int32:
-        p.items.append(27)
+    def g() -> int32:  # tpyc: warning(/Escaping closure 'g' copies local 'p'/)
         return len(p.items)
 
-    h = Holder(lambda: g())
+    h = Holder(lambda: g())  # tpyc: warning(/copies nested function 'g' when it is created, and with it its own copy of 'p'/)
     return (p, 1)  # tpyc: warning(/copies Point into owned storage \(tuple element 0\)/)
 
 
@@ -502,23 +507,25 @@ def lambda_same_call() -> int32:
 # nested def cannot call a bound method on `T`,
 # BUGS.md#nested-def-bounded-typeparam-method-rejected.)
 def del_holder_generic[T](x: Own[T]) -> Own[T]:
-    def g() -> int32:
+    def g() -> int32:  # tpyc: warning(/Escaping closure 'g' may keep its own copy of local 'x'/)
         return len(str(x))
 
-    h = Holder(lambda: g())
+    h = Holder(lambda: g())  # tpyc: warning(/copies nested function 'g' when it is created, and with it what it may hold of 'x'/)
     return x  # tpyc: warning(/may copy T into owned storage/)
 
 
 # ... and a returned tuple NAME (an `Own` tuple param, which a bare
-# `return t;` would move out of).
+# `return t;` would move out of). Read-only, and by subscript: a write
+# through the captured tuple, or an unpack of it, fails the C++ build
+# (BUGS.md#lambda-write-through-capture-build-error).
 def del_holder_tuple_name(
         t: tuple[Own[Point], Own[Point]]) -> tuple[Own[Point], Own[Point]]:
-    def g() -> int32:
-        a, b = t
-        a.items.append(29)
-        return len(a.items)
+    # Hedged: a tuple parameter may be its borrow form (references to the
+    # caller's records), so whether the copy duplicates them is unsettled.
+    def g() -> int32:  # tpyc: warning(/nested function 'g' may keep its own copy of 't'/)
+        return len(t[0].items)
 
-    h = Holder(lambda: g())
+    h = Holder(lambda: g())  # tpyc: warning(/copies nested function 'g' when it is created, and with it what it may hold of 't'/)
     return t  # tpyc: warning(/copies tuple\[Own\[Point\], Own\[Point\]\] into owned storage/)
 
 
@@ -573,12 +580,12 @@ def main():
     r = finally_return_defers(Point())
     print("finally_return_defers", len(r.items))
     r = del_holder_return(Point())
-    print("del_holder_return done")
+    print("del_holder_return", len(r.items))
     t = del_holder_tuple()
     print("del_holder_tuple", t[1])
     print("lambda_same_call", lambda_same_call())
     g = del_holder_generic(Point())
-    print("del_holder_generic done")
+    print("del_holder_generic", g)
     u = del_holder_tuple_name((Point(), Point()))
     print("del_holder_tuple_name done")
 

@@ -43,7 +43,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
-    TpyDelVar, SourceLocation, expr_contains_self_method_call,
+    TpyDelVar, TpyLambda, SourceLocation, expr_contains_self_method_call,
     VarLinkage, is_module_declaration,
 )
 from ..parse.module_settings import NATIVE_MODULE
@@ -103,7 +103,8 @@ from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
-from .capture_copies import CopyReason, warn_closure_captures
+from .capture_copies import CopyReason, closure_noun, warn_closure_captures
+from .def_reach import reach_at
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
 from .pending_num import PendingNums
@@ -125,7 +126,7 @@ from .alias_rebind import finalize_pointer_tuples, global_write_facts
 from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_leftover_source_writes, resolve_loop_frame_calls
-from ..value_category import origin_shared, wants_move
+from ..value_category import origin_shared, peel_coerce, wants_move
 from .mutation_propagation import (propagate_mutation_facts, infer_method_const,
                                    resolve_loop_bindings)
 from tpyc import modules as builtin_modules
@@ -2183,23 +2184,42 @@ class SemanticAnalyzer:
         escaping_locals: set[str] = set()
         # Why each escaping def copies a capture it does not move.
         def_reasons: IdentityMap = IdentityMap()
-        for name in self.ctx.func.nested_def_escapes:
-            node = self.ctx.func.nested_def_nodes.get(name)
-            if node is None:
+        reached_via = self._escaping_closures(body)
+        nested_defs: list[TpyNestedDef] = []
+        walk_body_stmts(body, lambda e: None,
+                        lambda s: nested_defs.append(s)
+                        if isinstance(s, TpyNestedDef) else None)
+        for node in nested_defs:
+            if node not in reached_via:
                 continue
+            name = node.func.name
+            via = reached_via[node]
+            if via is not None:
+                # Carried out by the closure that captures it: the frame
+                # member rule its own escape site would apply.
+                self.ctx.reject_resumable_nested_def_escape(name, via)
             node.escapes = True
             # Reject nonlocal in escaping closures
             if node.nonlocal_names:
                 nl_list = ", ".join(f"'{n}'" for n in sorted(node.nonlocal_names))
+                why = ("the closure is returned or stored" if via is None
+                       else f"{closure_noun(via)} escapes and captures it,"
+                            f" so it escapes too")
                 self.ctx.emit_error(
                     f"nonlocal {nl_list} in escaping closure '{name}' is not supported"
-                    f" (the closure is returned or stored; use a class instead)",
+                    f" ({why}; use a class instead)",
                     node)
             # Collect names referenced after the nested def for move analysis
             names_used_after = self._names_used_after(body, node)
             copy_reasons = def_reasons.setdefault(node, {})
+            captured_defs = self.ctx.func.closure_captured_defs.get(node) or {}
             # Per-capture analysis: determine ref vs value vs move capture mode
             for cap_name in node.captured_names:
+                if cap_name in captured_defs:
+                    # A sibling closure is a local object like any other.
+                    self._move_or_copy(node, cap_name, names_used_after,
+                                       copy_reasons)
+                    continue
                 if cap_name == "self" and self.ctx.receiver_self_in_scope():
                     # The receiver is captured as `this` -- an alias,
                     # neither copied nor moved, so the copy/move buckets
@@ -2223,30 +2243,24 @@ class SemanticAnalyzer:
                             f" a borrowed view of the caller's storage. Use String"
                             f" for an owned capture",
                             node)
-                    elif not raw_type.is_value_type():
-                        if is_own_param:
-                            # Own[T] param is destroyed on return -- must move
-                            node.move_captures.add(cap_name)
+                    elif is_own_param and not raw_type.is_value_type():
+                        # Owned by the frame, which dies on return: the
+                        # local's rule. A @nocopy one read again after the
+                        # closure takes the copy too, which C++ refuses
+                        # (BUGS.md#escaping-closure-nocopy-capture-no-diagnostic).
+                        if self._move_or_copy(node, cap_name,
+                                              names_used_after,
+                                              copy_reasons, raw_type):
                             self.ctx.mark_own_param_consumed(cap_name)
-                        else:
-                            # Regular const-ref param: caller's object outlives closure
-                            node.ref_captures.add(cap_name)
+                    elif not raw_type.is_value_type():
+                        # Regular const-ref param: caller's object outlives closure
+                        node.ref_captures.add(cap_name)
                 else:
                     # Local variable: must copy or move (local dies on return).
                     escaping_locals.add(cap_name)
-                    should_move = wants_move(raw_type)
-                    if (should_move and self._capture_aliases_other_storage(
-                            cap_name, raw_type)):
-                        # Moving a local that aliases other storage (`x = a`,
-                        # a select alias, a borrow-call result) would steal
-                        # that storage: the closure owns a copy.
-                        copy_reasons[cap_name] = CopyReason.ALIASES
-                    elif should_move and cap_name not in names_used_after:
-                        # Last use -- move into the closure, no warning
-                        node.move_captures.add(cap_name)
-                    elif should_move:
-                        # Used after the closure -- must copy, warn
-                        copy_reasons[cap_name] = CopyReason.USED_AFTER
+                    self._move_or_copy(node, cap_name, names_used_after,
+                                       copy_reasons, raw_type)
+        self._lambda_sibling_reasons(body, def_reasons)
         warn_closure_captures(self.ctx, body, def_reasons)
         # An escaping lambda copies its captures like an escaping def does.
         for lam, _ in value_capture_lambdas(body, nested=True):
@@ -2256,6 +2270,98 @@ class SemanticAnalyzer:
         if escaping_locals and func is not None:
             self.function_escaping_captured_locals[func] = frozenset(
                 escaping_locals)
+
+    def _move_or_copy(self, closure: TpyNestedDef | TpyLambda, name: str,
+                      used_after: set[str] | None,
+                      reasons: dict[str, CopyReason],
+                      raw_type: TpyType | None = None) -> bool:
+        """THE last-use rule of a capture an escaping closure holds by value
+        -- a local, an `Own` parameter, a sibling closure (`raw_type`
+        None): moved in when nothing reads it after the closure (True),
+        else copied, with the reason its copy warning gives (`used_after`
+        None: the closure is not at the top level, so a later read is not
+        ruled out). A lambda never moves; only the copy's reason is
+        recorded for it. A local that aliases other storage always copies
+        (moving would steal it), and a cheap value type copies without a
+        warning."""
+        if raw_type is not None:
+            if not wants_move(raw_type):
+                return False
+            if self._capture_aliases_other_storage(name, raw_type):
+                reasons[name] = CopyReason.ALIASES
+                return False
+        if used_after is None:
+            reasons[name] = CopyReason.MAY_BE_USED_AFTER
+            return False
+        if name in used_after:
+            reasons[name] = CopyReason.USED_AFTER
+            return False
+        if isinstance(closure, TpyLambda):
+            return False
+        closure.move_captures.add(name)
+        return True
+
+    def _lambda_sibling_reasons(self, body: list[TpyStmt],
+                                def_reasons: IdentityMap) -> None:
+        """The reasons a by-value lambda copies the nested defs it captures
+        (`_move_or_copy`): whether the body reads them after the lambda's
+        top-level statement -- known for a simple statement; one inside a
+        compound statement (its header or a block) may be followed by a
+        read the top-level rule does not see. Asked only of a lambda that
+        captures one."""
+        captured_defs = self.ctx.func.closure_captured_defs
+        for stmt in body:
+            lambdas = [lam for lam, _ in
+                       value_capture_lambdas([stmt], nested=True)
+                       if captured_defs.get(lam)]
+            if not lambdas:
+                continue
+            used = (None if any(stmt.sub_bodies())
+                    else self._names_used_after(body, stmt))
+            for lam in lambdas:
+                reasons = def_reasons.setdefault(lam, {})
+                for name in captured_defs[lam]:
+                    self._move_or_copy(lam, name, used, reasons)
+
+    def _escaping_closures(self, body: list[TpyStmt]) -> IdentityMap:
+        """The closures of `body` that escape, each mapped to the escaping
+        closure that captures it (None for one an escape site hands out
+        itself). An escape site hands out a nested def (`nested_def_escapes`)
+        or a by-value lambda written anywhere but as a local's value; an
+        escaping closure carries the nested defs it captures along, and so
+        on to a fixpoint. A lambda bound to a local is taken as called in
+        place, even when the local is later handed out through an alias
+        (BUGS.md#escaping-lambda-alias-sibling-capture)."""
+        fs = self.ctx.func
+        local_values: IdentitySet = IdentitySet()
+
+        def on_stmt(s: TpyStmt) -> None:
+            if isinstance(s, TpyVarDecl):
+                target, value = s.name, s.init
+            elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+                target, value = s.target.name, s.value
+            else:
+                return
+            if value is not None and target not in fs.global_declarations:
+                local_values.add(peel_coerce(value))
+
+        walk_body_stmts(body, lambda e: None, on_stmt)
+        reached_via: IdentityMap = IdentityMap()
+        work: list[TpyNestedDef | TpyLambda] = []
+        for closure in fs.nested_def_escapes:
+            reached_via[closure] = None
+            work.append(closure)
+        for lam, _ in value_capture_lambdas(body):
+            if lam not in local_values and lam not in reached_via:
+                reached_via[lam] = None
+                work.append(lam)
+        while work:
+            closure = work.pop()
+            for node in (fs.closure_captured_defs.get(closure) or {}).values():
+                if node not in reached_via:
+                    reached_via[node] = closure
+                    work.append(node)
+        return reached_via
 
     def _capture_aliases_other_storage(self, name: str,
                                        raw_type: TpyType) -> bool:
@@ -2276,11 +2382,27 @@ class SemanticAnalyzer:
             return False
         return origin_shared(self.ctx, decl.init)
 
-    @staticmethod
-    def _names_used_after(body: list[TpyStmt], nested_node: TpyNestedDef) -> set[str]:
-        """Collect names referenced after the nested def -- in the statements
-        that follow it, in the lambdas they build, and by every sibling `def`
-        those statements can reach.
+    def _reached_from(self, stmt: TpyStmt, sibling: TpyNestedDef) -> bool:
+        """Whether a read of `sibling`'s name at top-level statement `stmt`
+        or after it reaches `sibling` (`def_reach.py`): not a def bound in
+        a block that has ended by then."""
+        func = self.ctx.func.current_function
+        if not isinstance(func, TpyFunction):
+            return True
+        reach = reach_at(self.ctx.def_reach_cache, func, sibling.func.name,
+                         stmt)
+        return reach.reached is sibling
+
+    def _names_used_after(self, body: list[TpyStmt],
+                          nested_node: TpyStmt) -> set[str] | None:
+        """Collect names referenced after top-level statement `nested_node`
+        of `body` (a nested def, or a statement creating a lambda) -- in
+        the statements that follow it, in the lambdas they build, and by
+        every sibling `def` those statements can reach. None when it is not
+        a top-level statement: what can run after a closure inside a block
+        (a loop's next pass, a `try`'s handlers) is not followed here, so
+        every capture may be used again
+        (BUGS.md#closure-captured-name-moved-at-last-use).
 
         A sibling def's body is a separate scope, but not for this question:
         it reads the local while the escaping closure is alive, so moving the
@@ -2293,12 +2415,13 @@ class SemanticAnalyzer:
         different defs called the same thing.
 
         A sibling written after this def can be reached; one written before
-        can as soon as a statement after this def names it, or a sibling
-        already reachable captures it. The answer is deliberately
-        conservative -- a sibling that is named but never called, and a
-        lambda parameter that shadows the local, both count -- because the
-        cost of a wrong YES is a copy and the cost of a wrong NO is a read of
-        moved-from storage.
+        can as soon as a statement after this def names it -- the def such a
+        read reaches (`def_reach.py`), never another def of the same name in
+        a block that has ended -- or a sibling already reachable captures
+        it. The answer is deliberately conservative -- a sibling that is
+        named but never called, and a lambda parameter that shadows the
+        local, both count -- because the cost of a wrong YES is a copy and
+        the cost of a wrong NO is a read of moved-from storage.
         """
         found = False
         after_stmts: list[TpyStmt] = []
@@ -2308,8 +2431,7 @@ class SemanticAnalyzer:
             elif stmt is nested_node:
                 found = True
         if not found:
-            # Nested def not at top level of body -- conservatively assume all used
-            return set(nested_node.captured_names or [])
+            return None
         names = _collect_body_name_refs(after_stmts, into_lambdas=True)
         siblings: list[TpyNestedDef] = []
         written_after: IdentitySet = IdentitySet()
@@ -2329,7 +2451,9 @@ class SemanticAnalyzer:
         while True:
             newly = [sib for sib in siblings
                      if sib not in merged
-                     and (sib in written_after or sib.func.name in names)]
+                     and (sib in written_after
+                          or (sib.func.name in names
+                              and self._reached_from(nested_node, sib)))]
             if not newly:
                 return names
             for sib in newly:

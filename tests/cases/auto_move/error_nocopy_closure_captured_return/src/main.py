@@ -24,7 +24,9 @@ class Holder:
 
 
 def f(ys: Own[Tok]) -> Own[Tok]:
-    def peek() -> int32:
+    # The copy warning names a copy C++ refuses for a @nocopy type
+    # (BUGS.md#escaping-closure-nocopy-capture-no-diagnostic).
+    def peek() -> int32:  # tpyc: warning(/Escaping closure 'peek' copies local 'ys'/)
         return ys.n
 
     h = Holder(lambda: peek())

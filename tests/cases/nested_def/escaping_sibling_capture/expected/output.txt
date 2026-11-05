@@ -1,0 +1,35 @@
+s_scalar 8
+s_list 16
+s_record 50
+s_param 42.0
+s_two 11
+s_lambda_esc 12
+s_lambda_append 42
+e_list 33
+e_field 42
+e_global 52
+e_tuple 62
+e_passed 72
+p_ref_param 102
+p_method 73
+make_easing 0.817892051 0.771926739
+make_easing store [0.514243221, 0.59768559, 0.679384717]
+copied_sibling local 10
+copied_sibling 10
+i_local 22
+i_lambda 807
+own_used_after holder 4
+own_used_after 4
+own_last_use 6
+bigint_param 42
+per_arm 17 27
+lambda_last_use 7
+lambda_used_after 6 7 12
+loop [3, 3, 3, 30, 30, 30]
+lambda_header 3 3
+per_handler 2 1
+per_case 1 2
+dead_sibling inner 4
+dead_sibling scope 7
+block_sibling_hedged 4
+dead_sibling 4

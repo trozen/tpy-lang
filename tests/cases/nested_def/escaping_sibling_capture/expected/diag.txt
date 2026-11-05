@@ -1,0 +1,15 @@
+main.py:241: warning: Escaping closure 'esc' copies nested function 'h', and with it its own copy of 'xs' ('h' is used after the closure definition, preventing a move); a change made through one copy is not seen through the other (Python closures share it). Reorder code so the closure is the last use of 'h'
+main.py:281: warning: Escaping closure 'g' copies local 'x' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:284: warning: lambda at line 284 copies nested function 'g' when it is created, and with it its own copy of 'x'
+main.py:286: warning: copies R into owned storage; use copy() to make this explicit
+main.py:296: warning: lambda at line 296 copies nested function 'g' when it is created, and with it its own copy of 'x'
+main.py:301: warning: nested function 'h' copies 'x' when it is created
+main.py:315: warning: Escaping closure 'esc' copies local 'base' (may be used again after the closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:319: warning: Escaping closure 'esc' copies local 'base' (may be used again after the closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:332: warning: lambda at line 332 copies nested function 'h' when it is created, and with it its own copy of 'xs'; 'h' is used after it; a change made through one copy is not seen through the other (Python closures share it)
+main.py:334: warning: lambda at line 334 copies nested function 'h' when it is created, and with it its own copy of 'xs'; 'h' may be used again after it
+main.py:345: warning: lambda at line 345 copies nested function 'h' when it is created, and with it its own copy of 'xs'
+main.py:354: warning: Escaping closure 'f' copies local 'xs' (may be used again after the closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:366: warning: lambda at line 366 copies nested function 'h' when it is created, and with it its own copy of 'xs'; 'h' may be used again after it
+main.py:381: warning: lambda at line 381 copies nested function 'h' when it is created, and with it its own copy of 'xs'; 'h' may be used again after it
+main.py:410: warning: Escaping closure 'f' copies nested function 'h', and with it its own copy of 'xs' ('h' may be used again after the closure definition, preventing a move). Reorder code so the closure is the last use of 'h'

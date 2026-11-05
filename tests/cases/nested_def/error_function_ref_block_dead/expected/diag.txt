@@ -1,0 +1,1 @@
+main.py:13: error: 'esc' is not readable after the 'if' block on line 8: the nested function 'esc' defined on line 9 is bound inside that block and does not outlive it, and a nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'esc' -- move the 'def' above the block, or rename it

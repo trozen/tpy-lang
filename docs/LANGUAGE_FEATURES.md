@@ -9975,9 +9975,48 @@ Send/Sync rules for built-in types:
   C++ lambdas with auto-inferred captures. Non-escaping closures capture by reference;
   escaping closures (returned as `Callable`, passed to `Callable` params, stored in fields
   or containers) use per-capture mode: non-value parameters capture by reference (caller's
-  object outlives the closure, Python-like semantics), `Own[T]` parameters and last-use locals
-  are moved, remaining non-value locals are copied (with a warning suggesting `copy()` or a
-  class). `nonlocal` enables mutable captures (non-escaping only); a `nonlocal` store into a
+  object outlives the closure, Python-like semantics), `Own[T]` parameters and locals the closure is the last use of
+  are moved, the remaining ones are copied (with a warning suggesting `copy()` or a
+  class) -- an `Own[T]` parameter takes exactly the local's rule, a `@nocopy` one read again
+  after the closure included, whose copy C++ refuses
+  (`BUGS.md#escaping-closure-nocopy-capture-no-diagnostic`). "Last use" is decided for a
+  closure at the body's top level, from the statements after it; a closure inside a block
+  (an `if` arm, a loop body, a `try` part, a compound statement's header) copies what it
+  could move, with the hedged *(may be used again after the closure definition, preventing
+  move)* (`BUGS.md#closure-captured-name-moved-at-last-use`). Escape is TRANSITIVE: a nested def that an escaping closure captures (calls or
+  names) escapes too and takes the same per-capture rule, so `def helper(x): return x + base`
+  called by a returned `def esc()` renders `auto helper = [base](...)` and `esc` captures
+  `[helper = std::move(helper)]` -- a captured sibling is moved in at its last use like a
+  local, else copied, and a copy of a sibling that holds a list, record or other costly
+  capture warns (*Escaping closure 'esc' copies nested function 'h', and with it its own copy
+  of 'xs'*; the warning adds that the two copies do not share it only where the top-level rule
+  proves the body uses the sibling again). A lambda written at an escape site (returned, appended, passed to or stored at a
+  `Callable` slot) carries the defs it calls along the same way (in a generator or an `async
+  def`, where a nested def is a frame member, that is the frame member's escape error); a lambda that is a local's
+  value is taken as called in place, and a sibling called only by it keeps referring to the
+  frame -- also when that lambda is then returned (`f = lambda: h(); return f`), handed out
+  through an alias (`g = f`), or captured by an escaping lambda
+  (`BUGS.md#escaping-lambda-alias-sibling-capture`). The costs of the rule: a sibling of an escaping closure that rebinds through
+  `nonlocal` is rejected, a list or record it captures and the body changes later is a
+  warned snapshot, and one it writes through fails the C++ build as the direct twin does
+  (`BUGS.md#lambda-write-through-capture-build-error`). Not yet carried: a sibling handed out
+  by a nested factory def (`BUGS.md#escaping-sibling-through-nested-factory`) and one called by
+  a lambda created inside another lambda's body
+  (`BUGS.md#escaping-lambda-inside-lambda-sibling-capture`). Reference parameters and `self` stay
+  by reference in every escaping closure (`BUGS.md#escaping-closure-ref-param-by-reference`).
+  A nested `def` may not REBIND a name that a `def` earlier in its own block or an enclosing
+  block already bound -- *this inner definition rebinds the enclosing function's local
+  'helper'; TPy does not support this rebinding* -- because each `def` is its own
+  block-scoped C++ lambda and which one a closure holds would depend on the path taken
+  (TODO.md "A nested `def` is a binding of a function local" lifts it for same-signature defs). One `def`
+  per arm of an `if` / `elif` / `match`, and a block `def` followed by a later scope-level
+  one, are not rebindings and compile; which `def` a read reaches comes from the lexical
+  structure (each of a `try`'s body, handlers, `else` and `finally` is a block of its own, so
+  a `try`-body `def` read from its `else` is the block-dead read error below). A closure saved
+  inside a block keeps that block's `def` after a later scope-level one replaces it
+  (`BUGS.md#nested-def-scope-redef-late-binding`). A read of the name after its block --
+  `return esc` as well as `esc()`, and a read inside a nested def written after that block --
+  is the block-dead read error below. `nonlocal` enables mutable captures (non-escaping only); a `nonlocal` store into a
   parameter of the enclosing function gives the parameter storage of its own (`nonlocal n;
   n = n + 1` over `n: int`) -- a reference-type parameter is refused as its own body's
   rebind is (*Cannot reassign parameter*) -- and a `str` / `bytes` variable a nested def stores into owns its
@@ -10016,11 +10055,10 @@ Send/Sync rules for built-in types:
   INSIDE THAT BLOCK: its callable is declared in the block, so a read after the block is a
   located error naming the block, whatever the paths through it bound -- both arms of an
   `if`, a `with` body included -- and never a silent call of the module name. Reads inside
-  the block, and a `def` written above the block, compile as usual. A scope-level `def` of
-  the name SUPERSEDES a block entry from either side, so a read it covers is legal: written
-  above the block it still answers reads after it, and written below a block-bound twin it
-  takes over from there -- only a read whose nearest binding is the block one is the error
-  (`nested_def/name_collides_with_function` pins both directions). This is a shipped
+  the block compile as usual. A scope-level `def` written BELOW a block-bound twin takes
+  over from there, so a read it covers is legal -- only a read whose nearest binding is the
+  block one is the error; one written ABOVE the block is the rebinding error above
+  (`nested_def/name_collides_with_function` pins the legal direction). This is a shipped
   limitation, not Python's rule: lifting it means giving the callable a slot at function
   scope (`BUGS.md#nested-def-block-scoped-lambda-read-after-block`). The block rule does
   NOT reach the module-level twin: a `def` written inside a module-level `if` is a module

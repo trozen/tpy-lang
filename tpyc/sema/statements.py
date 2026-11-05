@@ -217,16 +217,6 @@ from ..type_def_registry import (
 # Replaces a recorded type by a function of its value at that point.
 _Rewrite = Callable[[Callable[[TpyType], TpyType]], None]
 
-# How a diagnostic names the compound statement a nested `def` sits in.
-_BLOCK_KEYWORD = {
-    TpyIf: "if",
-    TpyWhile: "while",
-    TpyForEach: "for",
-    TpyTry: "try",
-    TpyWith: "with",
-    TpyMatch: "match",
-}
-
 
 def _converts(value: TpyExpr, written: TpyExpr) -> bool:
     """Whether the coercions `coerce_expr` recorded between the written
@@ -900,10 +890,7 @@ class StatementAnalyzer:
         self.init = InitTracker(ctx, narrowing)
         self.expr = expr
         self.match = MatchAnalyzer(ctx, self, expr)
-        # The statements whose analysis is open, innermost last. A nested
-        # `def` reads its enclosing statement off it (the block its callable
-        # is declared in); every statement's analysis ends by retiring the
-        # nested defs that block bound.
+        # The statements whose analysis is open, innermost last.
         self._stmt_stack: list[TpyStmt] = []
         # Set after construction, from the compatibility layer it wraps.
         self.pend: PendingNums
@@ -1638,7 +1625,7 @@ class StatementAnalyzer:
                 mark_roots(self.ctx, [StorageKey.of_name(stmt.value.name)],
                            MarkRequest(params=False, loop_vars=True))
                 # Escape tracking: returning a nested def marks it as escaping
-                if stmt.value.name in self.ctx.func.nested_def_names:
+                if stmt.value.name in self.ctx.func.nested_def_nodes:
                     self.ctx.reject_resumable_nested_def_escape(
                         stmt.value.name, stmt)
                     self.ctx.mark_nested_def_escape(stmt.value.name)
@@ -2561,7 +2548,6 @@ class StatementAnalyzer:
                 self.ctx.func.compound_stack.pop()
             bt.current_stmt = prev_stmt
             self._stmt_stack.pop()
-            self._retire_block_nested_defs(stmt)
             # Flush post-access ptr narrowing queued during expression analysis.
             # See FunctionTrackingState.pending_non_null_ptr_vars for rationale
             # (deferred to statement boundary so within-statement sibling
@@ -2710,16 +2696,6 @@ class StatementAnalyzer:
             scan(loop.body, True)
         return names
 
-    def _retire_block_nested_defs(self, stmt: TpyStmt) -> None:
-        """End the reach of every nested `def` this statement's body bound:
-        its callable is declared inside the block, so no read past the
-        block can name it, whatever the paths through it assigned."""
-        live = self.ctx.func.nested_def_block_defs
-        if not live:
-            return
-        for name in [n for n, (owner, _) in live.items() if owner is stmt]:
-            self.ctx.func.nested_def_block_dead[name] = live.pop(name)[1]
-
     def _is_sole_else_if(self, stmt: TpyIf) -> bool:
         owner = self._stmt_stack[-2] if len(self._stmt_stack) >= 2 else None
         return (isinstance(owner, TpyIf) and len(owner.else_body) == 1
@@ -2774,19 +2750,6 @@ class StatementAnalyzer:
         for body, carried, bindings in arms:
             for name in sorted(carried - front):
                 self._place_arm_decl(None, body, name, bindings.get(name))
-
-    def _enclosing_block_phrase(self) -> 'str | None':
-        """The statement the `def` now being analyzed sits in, named for a
-        diagnostic -- None when it is a direct element of the scope's body
-        and its binding therefore lasts for the whole scope."""
-        if len(self._stmt_stack) < 2:
-            return None
-        owner = self._stmt_stack[-2]
-        keyword = _BLOCK_KEYWORD.get(type(owner))
-        where = f" on line {owner.loc.line}" if owner.loc is not None else ""
-        if keyword is None:
-            return f"the enclosing block{where}"
-        return f"the '{keyword}' block{where}"
 
     def _analyze_stmt_dispatch(self, stmt: TpyStmt) -> None:
         # Coroutine[T] single-use: reject only genuine drops of a bare
@@ -5006,6 +4969,13 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 "Nested functions cannot contain further nested functions",
                 stmt)
+        # Two defs one read could reach would make which one a closure holds
+        # depend on the path taken (BUGS.md#nested-def-scope-redef-late-binding).
+        if self.ctx.nested_def_rebinds(stmt):
+            raise self.ctx.error(
+                f"this inner definition rebinds the enclosing function's "
+                f"local '{func.name}'; TPy does not support this rebinding",
+                stmt)
 
         # The body's `nonlocal` declarations, bound in the inner scope before
         # its analysis.
@@ -5184,21 +5154,10 @@ class StatementAnalyzer:
         # `if`/`for`/`try` body leaves this namespace entry standing but
         # drops out of `definitely_assigned` at the branch merge, which is
         # how the guard tells the two paths apart.
-        # Where the `def` is decides how long the name it binds can be read:
-        # inside a block its callable is declared in that block, so the
-        # binding retires with it; at the scope's own level it lasts, and
-        # supersedes a block binding of the same name made earlier.
-        self.ctx.func.nested_def_block_dead.pop(func.name, None)
-        block = self._enclosing_block_phrase()
-        if block is None:
-            self.ctx.func.nested_def_block_defs.pop(func.name, None)
-        else:
-            self.ctx.func.nested_def_block_defs[func.name] = (
-                self._stmt_stack[-2], block)
 
         # Track for escape analysis
-        self.ctx.func.nested_def_names.add(func.name)
-        self.ctx.func.nested_def_nodes[func.name] = stmt
+        self.ctx.record_closure_captured_defs(stmt, captured)
+        self.ctx.record_nested_def(stmt)
 
     def _resolve_literal_type(self, t: TpyType) -> TpyType:
         """Resolve IntLiteralType/FloatLiteralType to concrete types."""

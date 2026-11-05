@@ -1,0 +1,1 @@
+main.py:9: error: nonlocal 'base' in escaping closure 'bump' is not supported (nested function 'esc' escapes and captures it, so it escapes too; use a class instead)

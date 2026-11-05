@@ -1,0 +1,1 @@
+main.py:11: error: nested function 'h' defined in a generator cannot escape or be passed as a value (it lives on the coroutine frame); call it directly

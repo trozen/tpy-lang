@@ -27,7 +27,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..parse.nodes import (TpyCall, TpyComprehensionGenerator, TpyExpr,
                            TpyForEach, TpyLambda, TpyMethodCall, TpyName,
                            TpyNestedDef, TpyStmt, TpyTupleUnpack, TpyWhile,
@@ -63,6 +63,11 @@ class CopyReason(Enum):
     USED_AFTER = (" (used after closure definition, preventing move)."
                   " Reorder code so the closure is the last use, or use"
                   " copy() to make the copy explicit")
+    # A closure inside a block: a later read is not ruled out, nor proven.
+    MAY_BE_USED_AFTER = (" (may be used again after the closure definition,"
+                         " preventing move). Reorder code so the closure is"
+                         " the last use, or use copy() to make the copy"
+                         " explicit")
     ALIASES = (", which aliases storage it does not own; use copy() to"
                " make the copy explicit")
 
@@ -390,6 +395,77 @@ def by_value_captures(closure: Closure,
                                            ReadKind.MODULE)))]
 
 
+def copies_sibling(closure: Closure, name: str) -> bool:
+    """Whether `closure` copies the nested def it captures as `name`
+    rather than moving it in or referring to it."""
+    if isinstance(closure, TpyLambda):
+        return closure.captures_by_value
+    return closure.escapes and name not in closure.move_captures
+
+
+def closure_holding(ctx: 'SemanticContext', closure: TpyNestedDef,
+                    seen: IdentitySet) -> tuple[str, CaptureCopy] | None:
+    """A capture an escaping nested def holds by value (copied or moved
+    in) whose copy is not free, with its copy verdict -- what a copy of the
+    closure object duplicates; through the nested defs it holds in turn.
+    None when copying it duplicates nothing costly."""
+    if not closure.escapes or closure in seen:
+        return None
+    seen.add(closure)
+    reads = closure_bindings(ctx, closure)
+    bindings = reads.bindings
+    sibling_defs = ctx.func.closure_captured_defs.get(closure) or {}
+    held = by_value_captures(closure, bindings)
+    held += [n for n in closure.captured_names
+             if n in closure.move_captures and n not in held]
+    for name in held:
+        if name in sibling_defs:
+            continue
+        binding = bindings.get(name)
+        ctype = capture_type(closure, name, binding)
+        # A @nocopy capture makes the closure itself uncopyable: there is no
+        # copy to warn about (BUGS.md#escaping-closure-nocopy-capture-no-diagnostic).
+        if isinstance(ctype, TpyType) and ctx.is_type_nocopy(ctype):
+            continue
+        verdict = classify_capture(ctx, name, binding, ctype,
+                                   reads.read_types.get(name))
+        if verdict is not CaptureCopy.NONE:
+            return name, verdict
+    for name, sibling in sibling_defs.items():
+        found = closure_holding(ctx, sibling, seen)
+        if found is not None:
+            return found
+    return None
+
+
+def sibling_copy_message(closure: Closure, name: str,
+                         held: tuple[str, CaptureCopy],
+                         reason: CopyReason | None) -> str:
+    """The warning of `closure` copying the nested def `name`, which holds
+    capture `held` by value: the copy duplicates it too. `reason`: the
+    body uses `name` again after the closure (USED_AFTER), so the two live
+    side by side and the warning says they do not share the held object;
+    or it may (MAY_BE_USED_AFTER), which the warning says without that
+    claim."""
+    inner, verdict = held
+    what = (f"what it may hold of '{inner}'" if verdict is CaptureCopy.HEDGED
+            else f"its own copy of '{inner}'")
+    proven = reason is CopyReason.USED_AFTER
+    apart = ("" if not proven or verdict is CaptureCopy.COST
+             else "; a change made through one copy is not seen through"
+                  " the other (Python closures share it)")
+    use = "is used" if proven else "may be used again"
+    if reason is not None and isinstance(closure, TpyNestedDef):
+        fname = closure.func.name
+        return (f"Escaping closure '{fname}' copies nested function '{name}',"
+                f" and with it {what} ('{name}' {use} after the closure"
+                f" definition, preventing a move){apart}. Reorder code so the"
+                f" closure is the last use of '{name}'")
+    used = f"; '{name}' {use} after it" if reason is not None else ""
+    return (f"{closure_noun(closure)} copies nested function '{name}' when"
+            f" it is created, and with it {what}{used}{apart}")
+
+
 def warn_once(ctx: 'SemanticContext', message: str, node: Closure) -> None:
     """Emit a capture warning once per source position: the two bodies of
     an `@auto_readonly` pair are one source occurrence."""
@@ -431,7 +507,17 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
         captures[closure] = (names, bindings)
         reasons = (def_reasons.get(closure) if def_reasons is not None
                    else None) or {}
+        sibling_defs = ctx.func.closure_captured_defs.get(closure) or {}
+        for name, sibling in sibling_defs.items():
+            if not copies_sibling(closure, name):
+                continue
+            held = closure_holding(ctx, sibling, IdentitySet())
+            if held is not None:
+                warn_once(ctx, sibling_copy_message(
+                    closure, name, held, reasons.get(name)), closure)
         for name in names:
+            if name in sibling_defs:
+                continue
             binding = bindings.get(name)
             verdict = classify_capture(ctx, name, binding,
                                        capture_type(closure, name, binding),

@@ -21,18 +21,18 @@ held_then_rebind 4 3
 chained 3
 held_on_break 3
 held_on_raise 3
-via_property 4
-via_getitem 4
+via_property 3
+via_getitem 3
 rebind_after_consume 4
 finally_after_handler 4
 finally_return_defers sees 4
 finally_return_defers 4
-holder sees 4
-del_holder_return done
-holder sees 4
+holder sees 3
+del_holder_return 3
+holder sees 3
 del_holder_tuple 1
 lambda_same_call 3
 holder sees 3
-del_holder_generic done
-holder sees 4
+del_holder_generic xxx
+holder sees 3
 del_holder_tuple_name done

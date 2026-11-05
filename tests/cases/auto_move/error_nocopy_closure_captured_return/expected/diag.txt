@@ -1,1 +1,2 @@
-main.py:31: error: @nocopy type 'Tok' is used after this point and cannot be moved into return type Own[Tok]. Remove later uses or restructure the code.
+main.py:29: warning: Escaping closure 'peek' copies local 'ys' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:33: error: @nocopy type 'Tok' is used after this point and cannot be moved into return type Own[Tok]. Remove later uses or restructure the code.

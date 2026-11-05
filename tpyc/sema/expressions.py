@@ -7518,6 +7518,7 @@ class ExpressionAnalyzer:
         expr.captured_names = captured
         expr.body_captures = (outer_scope.body_reads(captured)
                               if outer_scope is not None else tuple(captured))
+        self.ctx.record_closure_captured_defs(expr, captured)
         # Callable context: captures must be by value (std::function can escape).
         # Fn (template) stays inline; captures by reference are safe.
         if isinstance(fn_type, CallableType) and not fn_type.is_template:
@@ -7736,13 +7737,17 @@ class ExpressionAnalyzer:
                 # A local bound later: the read is the name's own analysis.
                 return None
             if binding:
+                # The read's reach checks (a def bound in a block it does
+                # not outlive, one not bound on every path).
+                binding = self.ctx.resolve_name(expr.name, expr)
+            if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     return None  # local variable shadows any function
                 if binding.kind == BindingKind.FUNCTION and binding.func_infos:
                     matched_data = self._match_function_to_hint_data(
                         binding.func_infos, slot, expr.name, expr)
                     nested_def = (matched_data is not None
-                                  and expr.name in self.ctx.func.nested_def_names)
+                                  and expr.name in self.ctx.func.nested_def_nodes)
 
         # Check registry (covers imported functions not yet in namespace)
         if matched_data is None:

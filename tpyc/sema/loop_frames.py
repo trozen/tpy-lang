@@ -504,14 +504,18 @@ def _nested_def_write(ctx: 'SemanticContext', hold: LoopFrameHold,
         names.append(call.func)
     for n in names:
         n = peel_coerce(n)
-        if not (isinstance(n, TpyName)
-                and n.name in ctx.func.nested_def_names):
+        defs = (ctx.func.nested_def_nodes.get(n.name)
+                if isinstance(n, TpyName) else None)
+        if not defs:
             continue
-        node = ctx.func.nested_def_nodes.get(n.name)
-        if node is None:
-            return f"the loop calls '{n.name}', whose writes are not known"
-        hit = sorted((set(node.captured_names) | node.nonlocal_names)
-                     & hold.reach, key=_user_first)
+        # Every def bound under the name counts, conservatively: the call's
+        # statement is not carried to this check, and the def it reaches
+        # (def_reach) would admit per-arm generator defs the frame printer
+        # cannot emit (BUGS.md#resumable-per-arm-nested-def-duplicate-member).
+        written: set[str] = set()
+        for node in defs:
+            written |= set(node.captured_names) | node.nonlocal_names
+        hit = sorted(written & hold.reach, key=_user_first)
         if hit:
             return f"the loop calls '{n.name}', which may write {_shown(hit[0])}"
         if hold.globals_:

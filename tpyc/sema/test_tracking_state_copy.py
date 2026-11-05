@@ -85,6 +85,10 @@ def _populated() -> FunctionTrackingState:
     frame_rebinds[N.TpyVarDecl("g", None, None)] = None
     rewrites: IdentityMap = IdentityMap()
     rewrites[expr] = (stmt, N.TpyBoolLiteral(True))
+    nested = N.TpyNestedDef(func)
+    escapes: IdentitySet = IdentitySet([nested])
+    captured_defs: IdentityMap = IdentityMap()
+    captured_defs[N.TpyLambda([], N.TpyName("h"))] = {'h': nested}
     return FunctionTrackingState(
         current_function=func,
         body_root=func,
@@ -96,8 +100,9 @@ def _populated() -> FunctionTrackingState:
         pending_loop_vars={'i': PendingLocal(INT32, (stmt,), stmt2,
                                              head_first=True)},
         write_history={'x': [(INT32, expr)]},
-        nested_def_nodes={'f': N.TpyNestedDef(func)},
-        nested_def_block_defs={'f': (stmt, "the 'if' block on line 3")},
+        nested_def_nodes={'f': [nested]},
+        nested_def_escapes=escapes,
+        closure_captured_defs=captured_defs,
         pending_yield_root_checks=[(expr, INT32, loc)],
         pending_view_storage_checks=[(expr, INT32, loc, INT32, False)],
         unread_coro_locals={'c': stmt},
@@ -171,7 +176,8 @@ _FIXTURE_FIELDS = {
     'current_function', 'body_root', 'compound_stack', 'decided_rewrites',
     'base_init_calls',
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
-    'nested_def_block_defs', 'pending_yield_root_checks',
+    'nested_def_escapes', 'closure_captured_defs',
+    'pending_yield_root_checks',
     'pending_view_storage_checks',
     'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
     'literal_locals',
@@ -324,7 +330,6 @@ def test_snapshot_still_copies_the_containers() -> None:
     assert copied is not state
     assert copied.compound_stack is not state.compound_stack
     assert copied.nested_def_nodes is not state.nested_def_nodes
-    assert copied.nested_def_block_defs is not state.nested_def_block_defs
     assert copied.write_history is not state.write_history
     assert copied.borrow_tracker is not state.borrow_tracker
     # The dict-of-lists is the shape a shallow copy would get wrong: the

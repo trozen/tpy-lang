@@ -297,16 +297,17 @@ def test_a_nested_def_escapes_at_its_committed_slot_only(monkeypatch):
     """A nested def passed to a generic callee's `Callable` parameter is
     marked escaping by the winner's receive (`nested_def_escapes`), never
     by the probe that infers the callee's type parameters."""
-    probe_writes: list[set[str]] = []
+    probe_writes: list[list[object]] = []
     original = SemanticContext.probe_slot_scope
 
     @contextmanager
     def probe_slot_scope(self, probing):
-        before = set(self.func.nested_def_escapes)
+        before = self.func.nested_def_escapes.copy()
         with original(self, probing):
             yield
-        if probing and self.func.nested_def_escapes != before:
-            probe_writes.append(self.func.nested_def_escapes - before)
+        added = [n for n in self.func.nested_def_escapes if n not in before]
+        if probing and added:
+            probe_writes.append(added)
 
     monkeypatch.setattr(SemanticContext, "probe_slot_scope",
                         probe_slot_scope)

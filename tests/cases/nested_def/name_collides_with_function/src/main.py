@@ -6,7 +6,10 @@
 # `match` body and read it THERE, while the block is still open; a read after
 # such a block is the error
 # (nested_def/error_branch_local_read_after) -- unless a SCOPE-level def of the
-# name is in effect there, which two more sections cover from either side. The
+# name is in effect there, which two more sections cover: one above a block
+# that binds nothing, one below a block-bound twin (a scope-level def ABOVE a
+# block that binds the name again is the rebinding error,
+# nested_def/error_nested_def_rebinds_enclosing). The
 # last section puts TWO defs in one block: each retires with the block
 # independently of its sibling (nested_def/error_two_block_defs_read_after).
 from typing import Callable

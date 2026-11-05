@@ -451,14 +451,14 @@ int32_t run_fn(__F0&& f, Point&& p) {
 // # nested def cannot call a bound method on `T`,
 // # BUGS.md#nested-def-bounded-typeparam-method-rejected.)
 // def del_holder_generic[T](x: Own[T]) -> Own[T]:
-//     def g() -> int32:
+//     def g() -> int32:  # tpyc: warning(/Escaping closure 'g' may keep its own copy of local 'x'/)
 //         return len(str(x))
 //
-//     h = Holder(lambda: g())
+//     h = Holder(lambda: g())  # tpyc: warning(/copies nested function 'g' when it is created, and with it what it may hold of 'x'/)
 //     return x  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> del_holder_generic(::tpy::own_param_t<T> x) {
-    auto g = [&x]() -> int32_t {
+    auto g = [x]() -> int32_t {
         return ::tpy::__len__(std::string(::tpy::__str__(x)));
     };
     Holder h = Holder([g]() -> int32_t { return g(); });

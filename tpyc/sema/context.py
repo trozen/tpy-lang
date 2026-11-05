@@ -21,6 +21,7 @@ from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
 from .elem_paths import ElemPath
+from .def_reach import Reach, def_reach, reach_at
 
 if TYPE_CHECKING:
     from ..parse import TpyGeneratorExpression
@@ -2347,18 +2348,17 @@ class FunctionTrackingState:
     closure_mutated_paths: dict[str, TpyType | None] = field(
         default_factory=dict)
     closure_mutated_receivers: set[str] = field(default_factory=set)
-    nested_def_names: set[str] = field(default_factory=set)
-    nested_def_escapes: set[str] = field(default_factory=set)
-    nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
-    # A nested `def` written inside a compound statement's body declares its
-    # callable for that block alone, so nothing past the block's end can
-    # name it -- even when every path through the block bound it. Live
-    # entries are name -> (the enclosing statement, a phrase naming it for
-    # diagnostics); `analyze_stmt` moves one into `nested_def_block_dead`
-    # when that statement's analysis ends, and a later `def` at the scope's
-    # own level takes the name out of both (it declares one that lasts).
-    nested_def_block_defs: dict[str, tuple['TpyStmt', str]] = field(default_factory=dict)
-    nested_def_block_dead: dict[str, str] = field(default_factory=dict)
+    # Every nested def this body binds, per name in source order (which one
+    # a read reaches is `visible_nested_def`, from the lexical structure).
+    nested_def_nodes: dict[str, list['TpyNestedDef']] = field(
+        default_factory=dict)
+    # The nested defs an escape site hands out (a `return`, a read at a
+    # `Callable` slot), by node. Lambdas are not in it: one escapes by its
+    # position (`_escaping_closures`).
+    nested_def_escapes: IdentitySet = field(default_factory=IdentitySet)
+    # Per closure (def or lambda): the nested defs of this body it captures,
+    # by captured name, resolved where the closure is written.
+    closure_captured_defs: IdentityMap = field(default_factory=IdentityMap)
     # The namespace level this scope's own bindings land in. `current_ns`
     # walks DOWN into a lambda/comprehension child and UP to the module, so
     # this is the boundary that says whether a name is bound HERE.
@@ -3332,6 +3332,9 @@ class SemanticContext:
     # The names each function body binds (`local_names_for`), computed once.
     function_local_names: 'IdentityMap[TpyFunction, dict]' = field(
         default_factory=IdentityMap)
+    # The lexical positions of each function body's statements and nested
+    # defs (`def_reach.DefReach`), computed once.
+    def_reach_cache: IdentityMap = field(default_factory=IdentityMap)
     # Per outermost body, the generator expressions created in it, in
     # creation order (`GenexprCreation`); `finalize_pointer_tuples` takes
     # them with the body's final sets.
@@ -4407,11 +4410,73 @@ class SemanticContext:
                 f"Internal error: {what} written at a slot that does not "
                 f"commit ({self.probe_slot.name.lower()})")
 
+    def def_reach(self, name: str, enclosing: bool = False) -> 'Reach':
+        """What a read of nested-def name `name` reaches here, from the
+        lexical structure (`def_reach.py`): for a read in this function's
+        body, at the statement under analysis; for one in a nested def's
+        body (`enclosing`), at that def in the enclosing function."""
+        fs = self.func
+        func = fs.current_function
+        if not isinstance(func, TpyFunction):
+            return Reach()
+        stmt = fs.borrow_tracker.current_stmt
+        if enclosing:
+            outer = self.enclosing_function()
+            if outer is None:
+                return Reach()
+            site = def_reach(self.def_reach_cache, outer).by_func.get(func)
+            if site is None:
+                return Reach()
+            func, stmt = outer, site
+        if stmt is None:
+            return Reach()
+        return reach_at(self.def_reach_cache, func, name, stmt)
+
+    def nested_def_rebinds(self, stmt: 'TpyNestedDef') -> bool:
+        """Whether nested def `stmt` rebinds a name an earlier def of this
+        body binds in its own block or an enclosing one -- the same reach
+        a read at `stmt` would have."""
+        func = self.func.current_function
+        if not isinstance(func, TpyFunction):
+            return False
+        reach = reach_at(self.def_reach_cache, func, stmt.func.name, stmt)
+        return reach.reached is not None
+
+    def visible_nested_def(self, name: str) -> 'TpyNestedDef | None':
+        """The nested def of this body a read of `name` reaches here."""
+        if name not in self.func.nested_def_nodes:
+            return None
+        return self.def_reach(name).reached
+
+    def record_nested_def(self, stmt: 'TpyNestedDef') -> None:
+        """Register nested def `stmt`, bound where it is analyzed."""
+        self.func.nested_def_nodes.setdefault(stmt.func.name, []).append(stmt)
+
     def mark_nested_def_escape(self, name: str) -> None:
-        """Nested def `name` escapes: its value reaches a type-erased
-        `Callable` or a return, so it is materialized as a closure object."""
+        """The nested def `name` reaches here escapes: its value reaches a
+        type-erased `Callable` or a return, so it is materialized as a
+        closure object."""
         self.assert_slot_effect("a nested def's escape")
-        self.func.nested_def_escapes.add(name)
+        node = self.visible_nested_def(name)
+        if node is not None:
+            self.func.nested_def_escapes.add(node)
+
+    def record_closure_captured_defs(self, closure: 'TpyNestedDef | TpyLambda',
+                                     captured: 'Iterable[str]') -> None:
+        """Which of this body's nested defs `closure` captures: an escaping
+        closure carries them along, so they escape with it."""
+        found = {}
+        for name in captured:
+            node = self.visible_nested_def(name)
+            binding = (self.func.current_ns.lookup(name)
+                       if self.func.current_ns is not None else None)
+            if (node is not None and isinstance(binding, NameBinding)
+                    and binding.kind == BindingKind.FUNCTION):
+                found[name] = node
+        if found:
+            self.func.closure_captured_defs[closure] = found
+        else:
+            self.func.closure_captured_defs.pop(closure, None)
 
     def mark_representational_param(self, name: str) -> None:
         """Type parameter `name` met a coercion its structural conformers
@@ -4918,9 +4983,10 @@ class SemanticContext:
         fs = self.func
         own = (blocked.root is fs.own_ns
                or blocked.root is self._function_root_scope())
-        block = fs.nested_def_block_dead.get(name)
-        if own and block is not None:
-            raise self.error(self._block_dead_message(name, block), node)
+        reach = (self.def_reach(name)
+                 if own and name in fs.nested_def_nodes else Reach())
+        if reach.dead is not None:
+            raise self.error(self._block_dead_message(name, reach), node)
         if (own and self.promote_pending_loop_var is not None
                 and self.promote_pending_loop_var(name, node)):
             return
@@ -4981,11 +5047,14 @@ class SemanticContext:
             return f"the module's '{name}'"
         return f"the local '{name}' of '{outer.name}'"
 
-    def _block_dead_message(self, name: str, block: str) -> str:
+    def _block_dead_message(self, name: str, reach: Reach) -> str:
         loc = self.func.local_names.get(name)
-        where = f" on line {loc.line}" if loc is not None else ""
+        if loc is None and reach.dead is not None:
+            loc = reach.dead.loc
+        block = reach.dead_block
+        where = f" defined on line {loc.line}" if loc is not None else ""
         return (f"'{name}' is not readable after {block}: the nested "
-                f"function '{name}' defined{where} is bound inside that "
+                f"function '{name}'{where} is bound inside that "
                 f"block and does "
                 f"not outlive it, and a nested 'def' makes its name a local "
                 f"of the whole enclosing scope, so this read cannot reach an "
@@ -5019,12 +5088,12 @@ class SemanticContext:
         if binding.kind == BindingKind.VARIABLE:
             self.check_assigned(name, node)
             return
-        if binding.kind != BindingKind.FUNCTION or level != "own":
+        if binding.kind != BindingKind.FUNCTION or level == "module":
             return
-        block = fs.nested_def_block_dead.get(name)
-        if block is not None:
-            raise self.error(self._block_dead_message(name, block), node)
-        if name not in fs.definitely_assigned:
+        reach = self.def_reach(name, enclosing=level != "own")
+        if reach.dead is not None:
+            raise self.error(self._block_dead_message(name, reach), node)
+        if level == "own" and name not in fs.definitely_assigned:
             raise self.error(not_assigned_message(name), node)
 
     def local_names_for(self, func: 'TpyFunction'

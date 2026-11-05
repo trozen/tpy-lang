@@ -236,9 +236,9 @@ def escaping_copy(t: tuple[Own[P], int32]) -> Callable[[], int32]:  # tpyc: warn
     if n >= 0:  # opaque to sema: `if True:` would be spliced
         a2 = copy(a)
 
-        # a2 is not used after g: the "used after" warning is false
-        # (BUGS.md#branch-closure-false-used-after-copy)
-        def g() -> int32:  # tpyc: warning(/copies local 'a2' \(used after closure definition/)
+        # a2 is not used after g, but a def inside a block copies what it
+        # could move (BUGS.md#closure-captured-name-moved-at-last-use)
+        def g() -> int32:  # tpyc: warning(/copies local 'a2' \(may be used again after the closure definition/)
             return a2.x + n
         if True:
             c.bump()
