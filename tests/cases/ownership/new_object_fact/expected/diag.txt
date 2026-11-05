@@ -1,0 +1,19 @@
+main.py:226: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:227: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:154: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:189: warning: copies Item into Any; use copy() to make this explicit
+main.py:232: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:234: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:240: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:242: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:542: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:544: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:553: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:557: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:577: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:598: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:619: warning: Passing borrowed container 'b' to non-readonly parameter 'b' (function may invalidate references)
+main.py:620: warning: Passing borrowed container 'b' to non-readonly parameter 'b' (function may invalidate references)
+main.py:622: warning: Passing borrowed container 'b' to non-readonly parameter 'b' (function may invalidate references)
+main.py:623: warning: Passing borrowed container 'b' to non-readonly parameter 'b' (function may invalidate references)
+main.py:625: warning: Passing borrowed container 'b' to non-readonly parameter 'b' (function may invalidate references)

@@ -357,7 +357,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                         i = ::tpy::add_check<int32_t>(i, 1);
                         continue;
                     }
-                    parts->push_back(c);
+                    parts->push_back(std::move(c));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -386,7 +386,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                     continue;
                 }
                 at_field_start = false;
-                parts->push_back(c);
+                parts->push_back(std::move(c));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {
@@ -592,7 +592,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                         i = ::tpy::add_check<int32_t>(i, 1);
                         continue;
                     }
-                    parts->push_back(c);
+                    parts->push_back(std::move(c));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -621,7 +621,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                     continue;
                 }
                 at_field_start = false;
-                parts->push_back(c);
+                parts->push_back(std::move(c));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {

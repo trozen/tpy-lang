@@ -15,7 +15,7 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 """
 
 from enum import Enum, auto
-from typing import Any, Callable, NamedTuple, Protocol
+from typing import Any, Callable, Iterator, NamedTuple, Protocol
 
 from .typesys import element_access, pointer_repr_optional, pointer_variant_union
 from .typesys import (
@@ -28,12 +28,13 @@ from .typesys import (
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
-    param_takes_ownership, answers_as_call, dyn_protocol_borrow_result,
+    param_takes_ownership, answers_as_call,
     ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
     is_dyn_protocol, is_owned_leaf, substitute_type_params_structural,
     unwrap_qualifiers, CallableType, LiteralType, PendingViewType, is_fn_type,
     peel_binding, PendingContainerType, ListRepeatType, param_may_be_written,
-    contains_reference_type,
+    contains_reference_type, peel_slot, owned_payload,
+    without_type_param_bounds, PendingGenericInstanceType,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -43,7 +44,7 @@ from .parse import (
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
-    SubscriptDunder, is_property_getter_read,
+    SubscriptDunder, is_property_getter_read, const_tuple_index, past_cast,
 )
 from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
@@ -51,6 +52,136 @@ from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_str_view_type, is_varargs, type_def_of,
                                 RUNTIME_CONTAINER_CATEGORIES, TypeCategory)
 from . import qnames
+
+
+ElemPath = tuple[int, ...]
+
+
+def bare_tuple(t: TpyType | None) -> TupleType | None:
+    """`t` as a tuple, its wrappers (`peel_slot`) peeled; None for no
+    tuple."""
+    bare = peel_slot(t) if t is not None else None
+    return bare if isinstance(bare, TupleType) else None
+
+
+def leaves_at(et: TpyType, path: ElemPath
+              ) -> Iterator[tuple[ElemPath, TpyType]]:
+    """Every leaf of a value of type `et` at `path` with its payload type:
+    the members of a nested tuple, any other type itself. The one walk
+    over a tuple's leaves (`leaf_paths`, `reference_paths`, the
+    conversion's copied leaves)."""
+    e = peel_slot(et)
+    if isinstance(e, TupleType):
+        for i, sub in enumerate(e.element_types):
+            yield from leaves_at(sub, path + (i,))
+    else:
+        # An `Own[T] | None` leaf owns its payload `T` as an `Own[T]` leaf
+        # does; only nullability tells them apart.
+        payload = owned_payload(e)
+        yield path, (peel_slot(payload) if payload is not None else e)
+
+
+def is_reference_leaf(t: TpyType) -> bool:
+    """THE test of a leaf an owning slot copies or moves as an object: a
+    payload that is no value type -- an open type parameter included,
+    whatever its bound (`T`, `T | None`, `T | int32`): that a `ValueType`
+    bound makes its copy unobservable is sema's decision, stated in the
+    record as a VALUE leaf."""
+    return not without_type_param_bounds(peel_slot(t)).is_value_type()
+
+
+def paths_at(et: TpyType, path: ElemPath) -> frozenset[ElemPath]:
+    """The reference paths of a tuple element of type `et` at `path`: its
+    own when it is a reference leaf (`is_reference_leaf`), its members'
+    when it is a nested value tuple."""
+    return frozenset(p for p, e in leaves_at(et, path)
+                     if is_reference_leaf(e))
+
+
+def reference_paths(slot: TpyType | None,
+                    prefix: ElemPath = ()) -> frozenset[ElemPath]:
+    """The element paths of tuple `slot` -- top-level `(i,)`, nested
+    `(i, j)` through value tuples -- whose leaf is a reference: the
+    reference projection of `leaf_paths`. Empty for no tuple."""
+    if bare_tuple(slot) is None:
+        return frozenset()
+    return paths_at(slot, prefix)
+
+
+def declared_borrowed(declared: TpyType, slot: TpyType,
+                      path: ElemPath, paths_at: Callable[
+                          [TpyType, ElemPath], frozenset[ElemPath]]
+                      = paths_at) -> frozenset[ElemPath]:
+    """The paths at `path` a call's declared return element `declared`
+    lends: an `Own[...]` marker hands its subtree over, a nested tuple
+    answers per member, anything else lends every path of the slot there
+    (`paths_at`: its reference paths, or every leaf path)."""
+    d = unwrap_readonly(unwrap_send_sync(declared))
+    if unwrap_optional_own(d) is not None:
+        return frozenset()
+    dt, st = bare_tuple(d), bare_tuple(slot)
+    if (dt is None or st is None
+            or len(dt.element_types) != len(st.element_types)):
+        return paths_at(slot, path)
+    out: set[ElemPath] = set()
+    for i, (de, se) in enumerate(zip(dt.element_types, st.element_types)):
+        out |= declared_borrowed(de, se, path + (i,), paths_at)
+    return frozenset(out)
+
+
+def declared_call_paths(call: 'TpyCall | TpyMethodCall', slot: TupleType,
+                        prefix: ElemPath = ()) -> frozenset[ElemPath]:
+    """The paths of tuple `slot` at `prefix` a call's result lends by its
+    declared return (`declared_borrowed`): `Own[tuple]` nothing, an
+    `Own` element marker at any depth not that subtree; every reference
+    path of a callee with no declared return."""
+    fi = call.resolved_function_info
+    if fi is None or fi.return_type is None:
+        return reference_paths(slot, prefix)
+    ret = unwrap_readonly(fi.return_type)
+    if isinstance(ret, OptionalType):
+        # A tuple slot takes the Optional's payload: its markers say.
+        ret = ret.inner
+    return declared_borrowed(ret, slot, prefix)
+
+
+def declared_result_paths(e: TpyExpr, slot: TupleType, type_of: "ExprTypeOf",
+                          prefix: ElemPath = ()) -> frozenset[ElemPath]:
+    """The paths of tuple `slot` at `prefix` the result of `e` lends by
+    what its callee declares: a call's return (`declared_call_paths`), an
+    owned `await`'s coroutine return (the awaited type drops a whole
+    `Own`), a by-value `__getitem__`'s return; every reference path of
+    anything else, a borrow `await` included."""
+    if isinstance(e, (TpyCall, TpyMethodCall)):
+        return declared_call_paths(e, slot, prefix)
+    if isinstance(e, TpyAwait) and not e.await_result_is_borrow:
+        fi = getattr(peel_coerce(e.value), "resolved_function_info", None)
+        awaited = (fi.async_inner_return
+                   if fi is not None and fi.async_inner_return is not None
+                   else type_of(e))
+        if awaited is not None:
+            return declared_borrowed(awaited, slot, prefix)
+        return reference_paths(slot, prefix)
+    getitem = getitem_call_of(e)
+    if getitem is not None and getitem.return_type is not None:
+        return declared_borrowed(getitem.return_type, slot, prefix)
+    return reference_paths(slot, prefix)
+
+
+def tuple_subscript_index(expr: TpyExpr, type_of: "ExprTypeOf") -> int | None:
+    """The element `t[i]` reads off a tuple-typed `t`, or None for any other
+    step: the one place step that stays a component of a call's result."""
+    if not isinstance(expr, TpySubscript):
+        return None
+    obj_t = type_of(expr.obj)
+    tup = unwrap_qualifiers(obj_t) if obj_t is not None else None
+    if not isinstance(tup, TupleType):
+        return None
+    i = const_tuple_index(expr.index)
+    if i is None:
+        return None
+    n = len(tup.element_types)
+    return i + n if i < 0 else i
 
 
 def holds_no_pointer(t: TpyType) -> bool:
@@ -354,11 +485,15 @@ CONTAINER_LITERAL_NODES: tuple = (
 def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | None') -> bool:
     """True if this function/method call returns a C++ lvalue reference (T&).
 
-    A function/method returns T& iff its declared return is a concrete
-    (non-generic) reference type that is not owned/nullable: copy is spelled
-    `Own[T]`, nullability `Optional[T]`, an unresolved generic stays
-    `TypeParamRef` (rendered val_or_ref_t<T>), and protocol returns are
-    value-shaped concrete structs -- all of which use value semantics. This
+    The one reading of the sync call convention
+    (`classify_result_representation`). A function/method returns T& iff
+    its declared return is a concrete (non-generic) reference type that is
+    not owned/nullable: copy is spelled `Own[T]`, nullability `Optional[T]`,
+    an unresolved generic stays `TypeParamRef` (rendered val_or_ref_t<T>),
+    a structural protocol return is a value-shaped concrete struct and a
+    void return is none -- all of which use value semantics. A `@dynamic`
+    protocol result is its base by reference (`P&`) except from a frame
+    factory, and a recursive wrapper union is `Tree&`. This
     holds uniformly for user-defined AND `@native` record methods: a native
     binding declares its C++ return convention through the same `-> V` vs
     `-> Own[V]` contract, so no per-native special case is needed.
@@ -384,15 +519,13 @@ def declared_result_is_value(fi: 'FunctionInfo | None') -> bool:
     value-shaped one -- an Optional, a union, a tuple, a number -- is a
     fresh value the caller owns, even where its pointer representation
     would read as a borrowed `T*` from an undeclared callee. A bare open
-    `T` is not decided here: the instantiation may be a reference. A
-    `@dynamic` protocol result is its base by reference (`P&`)."""
+    `T` is not decided here: the instantiation may be a reference."""
     if (fi is None or not is_bodyless_binding(fi)
             or not fi.root.borrow_declared):
         return False
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fi.return_type)))
     return (isinstance(rt, TpyType) and not isinstance(rt, TypeParamRef)
-            and not returns_cpp_reference_shape(rt)
-            and dyn_protocol_borrow_result(rt) is None)
+            and not call_returns_cpp_ref(None, fi))
 
 
 def call_hands_back_value(call: TpyExpr) -> bool:
@@ -455,70 +588,70 @@ def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
 def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',
                       expr: TpyExpr) -> bool:
     """Whether a name bound from `expr` OWNS the object it holds, so its
-    last use may move it: a fresh value (`is_rvalue_source`) that is not a
-    pointer-form borrow the callee lent (`lends_pointer_form_result`). The
+    last use may move it: no leaf of it is shared storage (`origin`). The
     one ownership question every name binding (declaration, assignment,
     walrus, the bind-kind stamp) asks."""
-    return (is_rvalue_source(analyzer, expr)
-            and not lends_pointer_form_result(analyzer, expr))
+    return not origin_shared(analyzer, expr)
 
 
 def result_is_fresh(analyzer: 'ValueCategoryAnalyzer',
                     expr: TpyExpr) -> bool:
-    """Whether `expr` is POSITIVELY proven a value the statement creates and
-    owns, so a reference binding of it may be moved from: a literal, a
-    container literal or an f-string, a builtin type's operator, a user
-    record's constructor, a call whose declared result is `Own[...]`, or a
-    call into a body whose result is by value (not a reference return; an
-    open type parameter's at this instantiation). Read off the callee as
-    declared. Anything else is not proven: a bodyless binding hands back
-    what its C++ returns, which may be an operand or an element in place
-    (`min(a, b, key=f)`, `d.setdefault(k, v)`, `int(x)`)."""
-    while isinstance(expr, TpyCoerce):
-        if expr.coercion.builds_fresh_value:
+    """The augmented-assignment hold policy: whether `expr` is a value the
+    statement itself creates and owns, so a part held once may be moved
+    from. `origin` says what is NEW; every clause below states the policy
+    on top of it."""
+    e = expr
+    while isinstance(e, TpyCoerce):
+        # A coercion that builds a value builds one the statement owns.
+        if e.coercion.builds_fresh_value:
             return True
-        expr = expr.expr
-    if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                         TpyBytesLiteral, TpyBoolLiteral, TpyFString,
-                         TpyTupleLiteral, *CONTAINER_LITERAL_NODES)):
-        return True
-    ops = call_operands(expr)
-    if (isinstance(expr, TpyUnaryOp) or (isinstance(expr, TpyBinOp)
-                                         and expr.op not in ("&&", "||"))):
-        # An operator on a builtin type builds its result in the runtime;
-        # a class's is the call it resolves to.
-        recv = analyzer.get_expr_type(ops.obj) if ops is not None else None
-        if ops is None or (recv is not None and not answers_as_call(recv)):
-            return True
-    if (ops is None or ops.fi.is_callable_value
-            or (isinstance(expr, TpyCall)
-                and expr.macro_expansion is not None)):
+        e = e.expr
+    ops = call_operands(e)
+    recv = (analyzer.get_expr_type(ops.obj)
+            if ops is not None and ops.obj is not None else None)
+    if (isinstance(e, (TpyUnaryOp, TpyBinOp)) and recv is not None
+            and not answers_as_call(recv)):
+        # A builtin type's operator is no call: the runtime builds its
+        # result, which `origin` reads as new.
+        ops = None
+    if ops is not None:
+        # A callable value's signature says nothing about what its target
+        # returns, and a macro's rewrite is held through what it expands to.
+        if (ops.fi.is_callable_value
+                or (isinstance(e, TpyCall) and e.macro_expansion is not None)):
+            return False
+        fi = ops.fi.root
+        # A builtin constructor may hand back its argument in place
+        # (`int(x)`): only a user record's construction is known new.
+        if fi.is_constructor or (isinstance(e, TpyCall)
+                                 and fi.name == "__init__"):
+            made = analyzer.get_expr_type(e)
+            return isinstance(made, NominalType) and made.is_user_record
+        # A bodyless binding hands back what its C++ returns, which may be
+        # an operand or an element in place (`min(a, b, key=f)`,
+        # `d.setdefault`); a protocol method's call runs a conformer's
+        # body, as a bodied callee.
+        if ((fi.body is None or fi.body.is_stub or is_bodyless_binding(fi))
+                and not isinstance(unwrap_readonly(fi.return_type)
+                                   if fi.return_type else None, OwnType)
+                and not (recv is not None and is_protocol_type(
+                    unwrap_qualifiers(recv)))):
+            return False
+    leaves = origin(analyzer, e)
+    if len(leaves) != 1:
         return False
-    fi = ops.fi.root
-    if fi.is_constructor or (isinstance(expr, TpyCall)
-                             and fi.name == "__init__"):
-        made = analyzer.get_expr_type(expr)
-        return isinstance(made, NominalType) and made.is_user_record
-    rt = unwrap_readonly(fi.return_type) if fi.return_type else None
-    if isinstance(rt, OwnType):
-        return True
-    if (fi.body is None or fi.body.is_stub or is_bodyless_binding(fi)):
-        return False
-    if (isinstance(expr, TpyCallLike)
-            and expr.result_form is ResultForm.BORROW):
-        return False
-    if returns_open_type_param(fi):
-        # `val_or_ref_t<T>`: by value at a value instantiation, as the
-        # monomorphic twin returns it (`property_access_returns_cpp_ref`).
-        # An Optional or a union is left out: the runtime's value-type
-        # trait answers a reference for one where the sema shape says
-        # value (that predicate's documented gap).
-        inst = analyzer.get_expr_type(expr)
+    (leaf,) = leaves
+    # An open `T` result is a value at a value instantiation, as the
+    # monomorphic twin returns it; an Optional or a union is left out (the
+    # runtime's value-type trait answers a reference for one).
+    if leaf.kind is OriginKind.OPEN:
+        inst = analyzer.get_expr_type(e)
         return (inst is not None
                 and not isinstance(unwrap_readonly(inst),
                                    (OptionalType, UnionType))
                 and not return_type_is_cpp_ref(inst))
-    return not call_returns_cpp_ref(analyzer, fi)
+    # A pointer-form handle is held as the handle.
+    return leaf.kind is OriginKind.NEW or lends_pointer_form_result(analyzer, e)
 
 
 def call_value_optional(call: TpyExpr) -> 'OptionalType | None':
@@ -549,15 +682,16 @@ def call_result_holdable(analyzer: ValueCategoryAnalyzer,
         analyzer, getattr(expr, "resolved_function_info", None))
 
 
-def binds_fresh_call_value(expr: TpyExpr) -> bool:
+def binds_fresh_call_value(analyzer: 'ValueCategoryAnalyzer',
+                           expr: TpyExpr) -> bool:
     """Whether a name bound from `expr` OWNS what it holds because `expr`
-    is a borrow-declared call sema stamped a fresh value
-    (`ResultForm.is_fresh`). Whether making that value copies an object the
-    program still reaches is the binding's question (`returns_borrow`,
-    warned there); the bound name is no borrow afterwards, so a later sink
-    moves it at its last use like any owned local."""
-    expr = peel_coerce(expr)
-    return isinstance(expr, TpyCallLike) and expr.result_form.is_fresh
+    is a borrow-declared call's value made from lent operands (`origin`'s
+    COPY). Whether making that value copies an object the program still
+    reaches is the binding's question (`origin_lends`, warned there); the
+    bound name is no borrow afterwards, so a later sink moves it at its last
+    use like any owned local."""
+    return all(leaf.kind is OriginKind.COPY
+               for leaf in origin(analyzer, expr))
 
 
 def lends_a_fresh_result(expr: TpyExpr) -> bool:
@@ -1061,6 +1195,9 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         return is_rvalue_source(analyzer, expr.expr)
     # Function calls
     if isinstance(expr, TpyCall):
+        # `cast(T, x)` renders its argument.
+        if expr.cast_operand is not None:
+            return is_rvalue_source(analyzer, expr.cast_operand)
         # Expression callees -> rvalue
         if not isinstance(expr.func, TpyName):
             return True
@@ -1074,8 +1211,14 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         # Generic type constructors -> rvalue
         if expr.call_type is not None:
             return True
-        if analyzer.registry.get_function(expr.func_name) is not None:
-            return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
+        # A function's call, a nested def's included (the registry knows
+        # only module-level names); a callable value's result and a
+        # builtin sema renders itself (`cast` from `Any`) are by value.
+        fi = expr.resolved_function_info
+        if (analyzer.registry.get_function(expr.func_name) is not None
+                or (fi is not None and not fi.is_callable_value
+                    and not fi.special_handling)):
+            return not call_returns_cpp_ref(analyzer, fi)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
 
@@ -1134,10 +1277,13 @@ def for_source_is_rvalue(stmt: TpyForEach,
 
 
 def peel_coerce(e: TpyExpr) -> TpyExpr:
-    """The expression under any stack of TpyCoerce wrappers."""
-    while isinstance(e, TpyCoerce):
-        e = e.expr
-    return e
+    """The expression under any stack of TpyCoerce wrappers and of the
+    `typing.cast` calls that hand back their argument as it is."""
+    while True:
+        under = e.expr if isinstance(e, TpyCoerce) else past_cast(e)
+        if under is e:
+            return e
+        e = under
 
 
 def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
@@ -1998,6 +2144,8 @@ def peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
             expr = expr.expr
         elif isinstance(expr, TpyNamedExpr):
             expr = expr.value
+        elif past_cast(expr) is not expr:
+            expr = past_cast(expr)
         else:
             return expr
 
@@ -2022,68 +2170,6 @@ def _borrow_link(expr: TpyExpr) -> 'tuple[FunctionInfo | None, TpyExpr | None] |
     return None
 
 
-def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
-    """Whether `expr` hands back a borrow of storage that outlives it.
-
-    The borrowed sources `is_lvalue` says no to: a call is an rvalue by the
-    address-of test, yet the reference it returns can alias the callee's
-    storage, so filling an owning slot from it copies exactly as a name or a
-    field does. `is_rvalue_source` is the right reader of the call and
-    `call_returns_cpp_ref` is not: a builtin factory (`list(xs)`,
-    `bytearray(b)`) declares `-> list[T]` too, and only the
-    constructor/factory layers on top of that predicate tell the fresh value
-    apart from the borrow.
-
-    One rule at every owning slot, with no lifetime reasoning: a
-    borrow-returning call IS a borrowed source. A receiver rooted in a
-    temporary does not exempt it -- what the callee hands back can reach
-    past its receiver, so the temporary bounds nothing. `Wrapper(take_ptr(
-    h.o)).get()` returns `h.o` through a pointer field, and the copy the
-    owning slot makes is the divergence the diagnostic names. A callee
-    returning a bare type param is such a call too -- the generic body must
-    reach the same verdict its monomorphic twin does.
-
-    The freshness fact of a call at an owning slot for the whole result. A
-    member read off it also needs `call_result_is_fresh(proof=True)`: a
-    `Callable` value's by-value result is fresh here but may copy a borrow
-    (BUGS.md#callable-value-borrow-return-copies-unwarned).
-    """
-    inner = peel_value_wrappers(expr)
-    # An if-expr emits its arms inline, so the slot is filled from whichever
-    # arm runs: borrowed if either can be.
-    if isinstance(inner, TpyIfExpr):
-        return (returns_borrow(analyzer, inner.then_expr)
-                or returns_borrow(analyzer, inner.else_expr))
-    if isinstance(inner, TpyAwait):
-        return inner.await_result_is_borrow
-    # A getter handing back a reference may return any storage (a global),
-    # so however fresh its receiver is, the slot copies what it reads.
-    if property_access_returns_cpp_ref(analyzer, inner):
-        return True
-    # A borrow-declared call sema stamped a fresh value is a borrowed source
-    # exactly when holding it copies an object the program still reaches.
-    if isinstance(inner, TpyCallLike) and inner.result_form.is_fresh:
-        return inner.copy_observable
-    # The pointer borrow form is a C++ prvalue `is_rvalue_source` calls
-    # fresh, yet what it points at is the callee's lent storage.
-    if lends_pointer_form_result(analyzer, inner):
-        return True
-    link = _borrow_link(inner)
-    if link is None:
-        return False
-    # A callee declaring a bare type param as its return hands back the same
-    # reference a concrete reference-typed return does at every reference-type
-    # instantiation, and a value at the rest. `is_rvalue_source` answers the
-    # C++ RENDER question and reads the unresolved parameter as a value, which
-    # is the twin's verdict only for the value-typed half -- so at an owning
-    # slot the source counts as borrowed. What the slot then REPORTS is
-    # decided per instantiation (sema/own_copy.py), so the value-typed half
-    # costs no diagnostic.
-    if returns_open_type_param(link[0]):
-        return True
-    return not is_rvalue_source(analyzer, inner)
-
-
 def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     """The callee's declared return is a bare, still-open type parameter, and
     the callee is one whose declaration says what its return convention is.
@@ -2097,3 +2183,252 @@ def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     if fi is None or fi.is_constructor or fi.is_callable_value:
         return False
     return is_open_type_param_return(fi.return_type)
+
+
+# -- origin: would CPython share the value with storage the program holds? --
+
+class OriginKind(Enum):
+    # The statement creates the object (a construction, a by-value result,
+    # a literal, an operator's value, a member / element of a new whole).
+    NEW = auto()
+    # A borrow-declared call's value made from lent operands
+    # (`ResultForm.is_fresh`); `observable` when the copy is.
+    COPY = auto()
+    # Storage the program holds: a name, a member / element of it, a call
+    # whose signature hands back a reference.
+    SHARED = auto()
+    # An open `T` result in a generic body: either, per instantiation.
+    OPEN = auto()
+
+
+class Origin(NamedTuple):
+    kind: OriginKind
+    # COPY: the copy reaches an object the program still holds.
+    observable: bool = False
+    # NEW call result: the call proves it fresh (`call_result_is_fresh`'s
+    # proof), which a member read off it needs.
+    proven: bool = True
+
+
+_NEW = Origin(OriginKind.NEW)
+_SHARED = Origin(OriginKind.SHARED)
+_OPEN = Origin(OriginKind.OPEN)
+_LITERALS = CONTAINER_LITERAL_NODES + (
+    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
+    TpyBoolLiteral, TpyNoneLiteral, TpyFString, TpyTupleLiteral)
+
+
+def origin(analyzer: ValueCategoryAnalyzer, expr: TpyExpr,
+           path: ElemPath = (), *, members: bool = False
+           ) -> frozenset[Origin]:
+    """Where the value at element `path` of `expr` comes from, as one
+    `Origin` per leaf it may come from: a select (a ternary, a value `and` /
+    `or`) any of its arms, every other expression one. Read off types,
+    signatures (the sync-call convention reader) and the node stamps sema
+    made at the expression -- never a callee body fact or a tracker -- so
+    sema and the lowering get the same answer. The path of a tuple-typed
+    value names an element; `()` is the value whole (a tuple literal or a
+    call's tuple is NEW whole whatever its elements are). With `members`, a
+    tuple literal answers as the members it is built from instead."""
+    e = expr
+    while isinstance(e, TpyCoerce):
+        if e.coercion.builds_fresh_value:
+            return frozenset({_NEW})
+        e = e.expr
+    if isinstance(e, TpyIfExpr):
+        return (origin(analyzer, e.then_expr, path, members=members)
+                | origin(analyzer, e.else_expr, path, members=members))
+    if (isinstance(e, TpyBinOp) and e.op in ("&&", "||")
+            and not is_bool_type(analyzer.get_expr_type(e))):
+        return (origin(analyzer, e.left, path, members=members)
+                | origin(analyzer, e.right, path, members=members))
+    if isinstance(e, (TpyName, TpyNamedExpr)):
+        return frozenset({_SHARED})
+    if isinstance(e, TpyTupleLiteral):
+        if path and 0 <= path[0] < len(e.elements):
+            return origin(analyzer, e.elements[path[0]], path[1:],
+                          members=members)
+        if members and not path:
+            return frozenset({_NEW}).union(*(
+                origin(analyzer, m, members=True) for m in e.elements))
+        return frozenset({_NEW})
+    if isinstance(e, TpyFieldAccess):
+        if e.enum_member_of is not None:
+            return frozenset({_NEW})
+        if e.hidden_call is not None:
+            return _call_origin(analyzer, e.hidden_call, path)
+        return _member_origin(analyzer, e, path)
+    if isinstance(e, TpySubscript):
+        if e.slice_function_info is not None:
+            return frozenset({_SHARED if call_returns_cpp_ref(
+                analyzer, e.slice_function_info) else _NEW})
+        if getitem_call_of(e) is not None:
+            return _call_origin(analyzer, e, path)
+        index = tuple_subscript_index(e, analyzer.get_expr_type)
+        if index is not None:
+            return origin(analyzer, e.obj, (index,) + path, members=members)
+        if const_tuple_index(e.index) is None:
+            return frozenset({_SHARED})
+        # An element of a new whole is new; of existing storage, shared.
+        return origin(analyzer, e.obj)
+    if isinstance(e, TpyAwait):
+        if e.await_result_is_borrow:
+            return frozenset({_SHARED})
+        return frozenset({_await_element(analyzer, e, path)})
+    if isinstance(e, (TpyBinOp, TpyUnaryOp)):
+        dunder = (e.resolved_binop if isinstance(e, TpyBinOp)
+                  else e.resolved_unaryop)
+        return (_call_origin(analyzer, e, path) if dunder is not None
+                else frozenset({_NEW}))
+    if isinstance(e, (TpyCall, TpyMethodCall)):
+        return _call_origin(analyzer, e, path)
+    return frozenset({_NEW})
+
+
+def _member_origin(analyzer: ValueCategoryAnalyzer, e: TpyFieldAccess,
+                   path: ElemPath) -> frozenset[Origin]:
+    """A member read: through a pointer or `__deref__` the pointee's
+    storage; off a new whole a new member only where the whole is a call
+    that proves its result fresh -- a reference member of an unproven
+    result (a callable value's, a bodyless binding's by-value one) may be a
+    copy of a borrow its target returned. An element of a tuple member of a
+    call's result is lent as the call's declared return lends it."""
+    obj = peel_coerce(e.obj)
+    if e.deref_depth or isinstance(
+            unwrap_qualifiers(analyzer.get_expr_type(obj)), PtrType):
+        return frozenset({_SHARED})
+    slot = bare_tuple(analyzer.get_expr_type(e))
+    if (path and slot is not None and isinstance(obj, (TpyCall, TpyMethodCall))
+            and all(leaf.kind is OriginKind.NEW
+                    for leaf in origin(analyzer, obj))
+            and _paths_overlap(path, declared_call_paths(obj, slot))):
+        return frozenset({_SHARED})
+    member_t = analyzer.get_expr_type(e)
+    by_value = member_t is not None and unwrap_qualifiers(
+        member_t).is_value_type()
+    out: set[Origin] = set()
+    for leaf in origin(analyzer, obj):
+        if leaf.kind is OriginKind.NEW:
+            out.add(_NEW if leaf.proven or by_value else _SHARED)
+        else:
+            out.add(leaf)
+    return frozenset(out)
+
+
+def _await_element(analyzer: ValueCategoryAnalyzer, e: TpyAwait,
+                   path: ElemPath) -> Origin:
+    """An owned `await` result: new, except an element its coroutine's
+    declared return lends."""
+    t = bare_tuple(analyzer.get_expr_type(e))
+    if not path or t is None:
+        return _NEW
+    lent = declared_result_paths(e, t, analyzer.get_expr_type)
+    return _SHARED if _paths_overlap(path, lent) else _NEW
+
+
+def _paths_overlap(path: ElemPath, paths: 'frozenset[ElemPath]') -> bool:
+    return any(path[:len(p)] == p or p[:len(path)] == path for p in paths)
+
+
+def _call_origin(analyzer: ValueCategoryAnalyzer, e: TpyExpr,
+                 path: ElemPath) -> frozenset[Origin]:
+    """A call's result (an operator dispatched to its dunder and a
+    `__getitem__` subscript are the calls they render): the stamp sema made
+    at the call, else the callee's signature. An element of a tuple result
+    is the whole's unless the declared return hands it over (`Own`), and a
+    new tuple's element the callee lends by its declaration is shared."""
+    if past_cast(e) is not e:
+        # `cast` hands back its argument.
+        return origin(analyzer, past_cast(e), path)
+    whole = _call_whole(analyzer, e)
+    if not path or whole.kind is OriginKind.OPEN:
+        return frozenset({whole})
+    t = bare_tuple(analyzer.get_expr_type(e))
+    if t is None:
+        return frozenset({whole})
+    lent = declared_result_paths(e, t, analyzer.get_expr_type)
+    if not _paths_overlap(path, lent):
+        return frozenset({_NEW})
+    return frozenset({_SHARED if whole.kind is OriginKind.NEW else whole})
+
+
+def _call_whole(analyzer: ValueCategoryAnalyzer, e: TpyExpr) -> Origin:
+    if isinstance(e, TpyCallLike) and e.result_form.is_fresh:
+        return Origin(OriginKind.COPY, observable=e.copy_observable)
+    if (property_access_returns_cpp_ref(analyzer, e)
+            or lends_pointer_form_result(analyzer, e)):
+        return _SHARED
+    link = _borrow_link(e)
+    if returns_open_type_param(link[0] if link is not None else None):
+        return _OPEN
+    if not is_rvalue_source(analyzer, e):
+        return _SHARED
+    if isinstance(e, TpyCallLike):
+        return Origin(OriginKind.NEW, proven=_call_proves_fresh(analyzer, e))
+    return _NEW
+
+
+def _call_proves_fresh(analyzer: ValueCategoryAnalyzer,
+                       call: TpyCallLike) -> bool:
+    """Whether a by-value call result is PROVEN a fresh object: a
+    construction (a borrowing view's or a null `Ptr`'s is none), an
+    `Own[T]` return, or a reference-type result the callee's convention
+    returns by value. A callable value's signature is the `Fn` type's,
+    which says nothing else about ownership."""
+    if isinstance(call, TpyCall) and call.call_type is not None:
+        ct = call.call_type
+        return not (isinstance(ct, PtrType) or is_borrowing_view_type(ct))
+    if isinstance(analyzer.get_expr_type(call), PendingGenericInstanceType):
+        return True
+    ops = call_operands(call)
+    if ops is None:
+        return False
+    fi = ops.fi
+    if fi.is_constructor:
+        return True
+    if call.result_form.is_declared:
+        return False
+    ret = unwrap_readonly(fi.return_type) if fi.return_type else None
+    if isinstance(ret, OwnType):
+        return True
+    if (fi.is_callable_value or ret is None
+            or is_open_type_param_return(fi.root.return_type)):
+        return False
+    return (isinstance(ret, NominalType) and not ret.is_value_type()
+            and not (is_protocol_type(ret) or is_dyn_protocol(ret))
+            and not call_returns_cpp_ref(analyzer, fi))
+
+
+def _lends(leaf: Origin) -> bool:
+    """A leaf a holder of it would share with storage the program holds."""
+    return (leaf.kind in (OriginKind.SHARED, OriginKind.OPEN)
+            or (leaf.kind is OriginKind.COPY and leaf.observable))
+
+
+def origin_lends(analyzer: ValueCategoryAnalyzer, expr: TpyExpr,
+                 path: ElemPath = ()) -> bool:
+    """Some leaf of `expr` at `path` is shared storage."""
+    return any(_lends(leaf) for leaf in origin(analyzer, expr, path))
+
+
+def origin_shared(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Some leaf of `expr` is storage the program holds -- what it names
+    exists beyond the statement (`binds_owned_value`'s complement)."""
+    return any(leaf.kind is OriginKind.SHARED
+               for leaf in origin(analyzer, expr))
+
+
+def origin_open(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Some leaf of `expr` is an open `T` result, a reference only at a
+    reference instantiation (`val_or_ref_t<T>` / `val_or_cref_t<T>`); a
+    copy sema stamped on the call is a value instead."""
+    return any(leaf.kind is OriginKind.OPEN
+               for leaf in origin(analyzer, expr))
+
+
+def origin_new(analyzer: ValueCategoryAnalyzer, expr: TpyExpr,
+               path: ElemPath = ()) -> bool:
+    """Every leaf of `expr` at `path` is new: no storage the program
+    holds, a tuple literal's members included."""
+    return not any(_lends(leaf)
+                   for leaf in origin(analyzer, expr, path, members=True))

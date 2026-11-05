@@ -147,7 +147,7 @@ from ...value_category import (
     call_hands_back_value, call_result_holdable, call_result_is_reference,
     call_result_live_in_statement, call_returns_cpp_ref,
     is_rvalue_source,
-    property_getter_of,
+    property_getter_of, origin_shared,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -797,7 +797,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
     element family."""
     if slot is None:
         return note_detail("container_lit.slot_family") if note else False
-    if (not is_rvalue_source(analyzer, e)
+    if (origin_shared(analyzer, e)
             and _value_opt_tuple(analyzer.get_expr_type(e), analyzer)
             is not None
             and _value_opt_tuple_copyable(analyzer.get_expr_type(e),
@@ -1975,14 +1975,11 @@ def _borrow_local_binding(stmt: 'TpyVarDecl | BindingSource',
         # a C++ reference binds const. Other call bindings (an
         # OPTIONAL_TO_PTR optional return) fall through untagged so the
         # generic probe's family drilldown names them.
-        if binding is LocalBinding.REF_ALIAS and (
-                record_like(target_type, analyzer)
-                # A borrow-returning genrec method call binds the same alias
-                # (`g = h.get()` -> `Tree<int32_t>& g = h.get();`) -- the
-                # wrapper struct is one C++ value type, the reference binds
-                # like any record's.
-                or isinstance(unwrap_readonly(unwrap_send_sync(target_type)),
-                              RecursiveAliasInstanceType)):
+        # The alias binds whatever the convention reader says the call
+        # hands back by reference -- a record, a container, a recursive
+        # wrapper (`g = h.get()` -> `Tree<int32_t>& g = h.get();`).
+        if binding is LocalBinding.REF_ALIAS and call_returns_cpp_ref(
+                analyzer, stmt.init.resolved_function_info):
             return binding
         if binding is LocalBinding.POINTER and record_like(target_type,
                                                            analyzer):
@@ -5632,7 +5629,7 @@ def _container_storage_call_rvalue(e: TpyExpr, slot: 'TpyType | None',
     if isinstance(atu, OwnType):
         atu = unwrap_readonly(atu.wrapped)
     atu = _resolve_literal_seeded(atu, analyzer)
-    if atu != su or not is_rvalue_source(analyzer, e):
+    if atu != su or origin_shared(analyzer, e):
         return False
     return isinstance(e, TpyMethodCall) or _rvalue_free_call_shape(e, analyzer)
 
@@ -12883,8 +12880,7 @@ def _separate_iterator_record_temp(a: TpyExpr, analyzer) -> 'TpyType | None':
         return None
     if _self_iterator_record(ri, analyzer):
         return None
-    if is_lvalue_iterable(a, analyzer.registry.get_record,
-                          analyzer.get_expr_type):
+    if is_lvalue_iterable(a, analyzer.registry.get_record):
         return None
     return at
 

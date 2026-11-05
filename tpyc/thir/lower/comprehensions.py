@@ -63,7 +63,6 @@ from .predicates import (
     _mixed_own_storage_source,
     storage_tuple_name_source,
     _storage_opt_ternary_elem,
-    _call_iterable_lvalue,
     _dict_view_iterable_ok,
     _genfac_like_call,
     _eligible_char,
@@ -188,8 +187,7 @@ def _iter_rvalue_source(it, analyzer) -> bool:
     fi = getattr(it, "resolved_function_info", None)
     if fi is None or fi.native_name != "tpy::__iter__" or len(it.args) != 1:
         return False
-    return not is_lvalue_iterable(it.args[0], analyzer.registry.get_record,
-                                  analyzer.get_expr_type)
+    return not is_lvalue_iterable(it.args[0], analyzer.registry.get_record)
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # The admitted iterable families whose size is known up front, so the
@@ -237,8 +235,7 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
         # A borrow the call returns is only as durable as what it lends from,
         # and that can be a temporary any number of calls down
         # (BUGS.md#borrow-call-comp-source).
-        if is_lvalue_iterable(it, analyzer.registry.get_record,
-                              analyzer.get_expr_type):
+        if is_lvalue_iterable(it, analyzer.registry.get_record):
             return None
         lvalue = False
     else:
@@ -379,13 +376,10 @@ def _source_route(gen, declared: dict[str, TpyType],
                     return None
                 genfac = True
                 lvalue = is_lvalue_iterable(
-                    it, analyzer.registry.get_record,
-                    analyzer.get_expr_type)
+                    it, analyzer.registry.get_record)
             else:
-                mfi = it.resolved_function_info
                 it_type = unwrap_readonly(unwrap_send_sync(ret))
-                lvalue = not (mfi is not None
-                              and isinstance(mfi.return_type, OwnType))
+                lvalue = is_lvalue_iterable(it, analyzer.registry.get_record)
         else:
             return None
     elif isinstance(it, (TpyName, TpyFieldAccess)):
@@ -463,15 +457,14 @@ def _source_route(gen, declared: dict[str, TpyType],
                     or _resolved_str_value(it_type, analyzer) is not None):
                 return None
             genfac = True
-            lvalue = is_lvalue_iterable(it, analyzer.registry.get_record,
-                                        analyzer.get_expr_type)
+            lvalue = is_lvalue_iterable(it, analyzer.registry.get_record)
         else:
             # A CONTAINER-returning call with an unpack head is unwitnessed
             # (the storage-form registration differs) -- keep rejecting.
             if gen.unpack_vars is not None:
                 return None
             it_type = unwrap_readonly(unwrap_send_sync(ret))
-            lvalue = _call_iterable_lvalue(it, analyzer)
+            lvalue = is_lvalue_iterable(it, analyzer.registry.get_record)
     elif isinstance(it, TpyCall) and owns:
         # An Own[T]-yielding generator source (`widgets(3)`), the owned-move
         # comprehension. The generator is iterated via begin/end (the comp
@@ -492,8 +485,7 @@ def _source_route(gen, declared: dict[str, TpyType],
             # A user iterator has no begin()/end() of its own; its
             # `__iter__`/`__next__` family hands nothing to a sink here.
             return None
-        lvalue = is_lvalue_iterable(it, analyzer.registry.get_record,
-                                    analyzer.get_expr_type)
+        lvalue = is_lvalue_iterable(it, analyzer.registry.get_record)
     else:
         return None
     if it_type is None:

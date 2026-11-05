@@ -187,10 +187,8 @@ _MESSAGE = "is a new object dropped after this statement"
     # the box holds `x` inline
     ("def g[T: HasN](x: T) -> None:\n    mk_pbox(x).x.n = 7\n",
      "'mk_pbox(...)'"),
-    # current behavior: a negative constant index is not normalized, so the
-    # lent element reads as new (BUGS.md#new-value-fact-gaps; `[1]` below
-    # is not)
-    ("def f(it: Item) -> None:\n    pair(it)[-1].n = 5\n", "'[...]'"),
+    # a `__getattr__` returning by value hands back a new object
+    ("def f(d: Dynamic) -> None:\n    d.fresh.n = 5\n", "the expression"),
 ])
 def test_write_into_new_object_is_an_error(body: str, named: str) -> None:
     with pytest.raises(SemanticError) as err:
@@ -226,11 +224,9 @@ def test_write_into_new_object_is_an_error(body: str, named: str) -> None:
     # `__deref__`
     "def f(r: Rc[Item]) -> None:\n    r.clone().n = 5\n",
     "def f(r: Rc[Item]) -> None:\n    r.clone().n += 5\n",
-    # the lent element of a tuple of references
+    # the lent element of a tuple of references, at either index spelling
     "def f(it: Item) -> None:\n    pair(it)[1].n = 5\n",
-    # current behavior: a `__getattr__` result's field is not read as a new
-    # object; the lowering refuses the write (BUGS.md#new-value-fact-gaps)
-    "def f(d: Dynamic) -> None:\n    d.fresh.n = 5\n",
+    "def f(it: Item) -> None:\n    pair(it)[-1].n = 5\n",
 ])
 def test_write_reaching_existing_storage_is_not(body: str) -> None:
     _compile(HEADER + body)

@@ -22,29 +22,29 @@ skeleton and the THIR emitter both call them, and neither owns them.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import (Callable, Container, Final, Iterator, Mapping, NoReturn,
+from typing import (Callable, Final, Iterator, Mapping, NoReturn,
                     TextIO, TYPE_CHECKING)
 
 from ..namespace import Namespace
 from ..parse.nodes import (
     SourceLocation, TpyAsPattern, TpyBoolLiteral,
-    TpyCall, TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr,
+    TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral, TpyFunction,
-    TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
+    TpyIntLiteral, TpyLiteralPattern, TpyMatchCase,
     TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern,
-    TpyStrLiteral, TpySubscript,
+    TpyStrLiteral,
     TpyTupleUnpack, TpyVarDecl,
     TpyWildcardPattern,
 )
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
-from ..typesys import pointer_repr_optional, dyn_protocol_borrow_result
+from ..typesys import pointer_repr_optional
 from ..typesys import (
     BIGINT, AnyType, IntLiteralType, LiteralType,
     NominalType, OptionalType,
-    OwnType, PtrType, ReadonlyType, TpyType, TupleType,
+    OwnType, ReadonlyType, TpyType, TupleType,
     UnionType, VoidType,
     error_return_to_cpp, exception_record_cpp, handler_exception_record,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
@@ -52,9 +52,10 @@ from ..typesys import (
     param_takes_ownership,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import (const_indirect_local, peel_coerce,
+from ..value_category import (const_indirect_local,
                               unpack_source_const_slots)
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
+from .protocols import signature_return_cpp
 from .variant_access import VariantAccess
 
 if TYPE_CHECKING:
@@ -92,10 +93,11 @@ def defer_signals_cpp(fi: 'FunctionInfo | None') -> str | None:
     return "::tpy::DeferSignals __tpy_defer_signals;"
 
 
-def nested_def_signature(types: 'TypeResolver',
-                         func: TpyFunction) -> 'tuple[str, str | None]':
-    """(params_str, ret_cpp-or-None-for-void) for a nested def -- shared
-    by the lambda emission and the resumable-frame member emission."""
+def nested_def_signature(types: 'TypeResolver', func: TpyFunction,
+                         analyzer) -> 'tuple[str, str | None]':
+    """(params_str, ret_cpp-or-None-for-void) for a nested def emitted as a
+    resumable-frame member; its return spells as every signature's does
+    (`signature_return_cpp`), the lambda's included."""
     params = []
     for pname, ptype in func.params:
         resolved = types.resolve_type(ptype)
@@ -103,7 +105,7 @@ def nested_def_signature(types: 'TypeResolver',
         params.append(resolved.to_cpp_param(cpp_name))
     return_type = types.resolve_type(func.return_type)
     ret_cpp = (None if isinstance(return_type, VoidType)
-               else types.type_to_cpp(return_type))
+               else signature_return_cpp(return_type, analyzer))
     return ", ".join(params), ret_cpp
 
 
@@ -622,81 +624,6 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
 # Pure functions of the pattern/subject shape plus the type system, kept in
 # one home so the tier a `match` takes is decided in exactly one place.
 
-def returns_bare_reference(rt: 'TpyType | None') -> bool:
-    """True when a return type lowers to a C++ lvalue reference (`T&` /
-    `const T&`) -- a bare non-value reference type. Own (by-value move),
-    Optional / Ptr (pointer repr), structural protocols (auto), and value
-    types are prvalues / non-references and excluded; a `@dynamic` protocol
-    returns its base by reference."""
-    if rt is None:
-        return False
-    rt = unwrap_readonly(rt)
-    if (rt.is_value_type() or is_void_like_type(rt)
-            or isinstance(rt, (OwnType, OptionalType, PtrType))):
-        return False
-    if isinstance(rt, UnionType) and not rt.needs_wrapper():
-        # A pointer-variant or value union is returned by value (a prvalue
-        # `std::variant<...>`), not `T&`. Only a wrapper union returns by
-        # reference (mirrors UnionType.to_cpp_return's needs_wrapper gate).
-        return False
-    return (dyn_protocol_borrow_result(rt) is not None
-            or not is_protocol_type(rt))
-
-
-def match_subject_is_lvalue(expr: TpyExpr) -> bool:
-    """A match subject is an lvalue when binding it with `auto&` is
-    safe (won't dangle) and useful (lets `case C() as v: v.f = ...`
-    write through to the original storage).
-
-    Plain names, field accesses whose target is itself an lvalue,
-    and subscripts on lvalue targets all qualify. A method call that
-    returns a bare reference (an accessor like `h.get() -> Tree[T]`
-    lowering to `Tree<T>&`) on an lvalue receiver also qualifies -- the
-    reference aliases the receiver's storage, which outlives the match.
-    So does a whole subject that is a free call returning one over
-    lvalue arguments (`deref(b)`): its result can alias only what they
-    reach. Other calls (by-value / Own returns, temporary receivers),
-    literals, and constructed temporaries do not."""
-    if isinstance(expr, TpyCall):
-        # Only as the whole subject: a chain off a free call
-        # (`deref(s).kind`) has no subject rung that binds it.
-        fi = expr.resolved_function_info
-        return (fi is not None and returns_bare_reference(fi.return_type)
-                and not expr.kwargs
-                and all(_lvalue_place(peel_coerce(a)) for a in expr.args))
-    return _lvalue_place(expr)
-
-
-def _lvalue_place(expr: TpyExpr) -> bool:
-    if isinstance(expr, TpyName):
-        return True
-    if isinstance(expr, TpyFieldAccess):
-        return _lvalue_place(expr.obj)
-    if isinstance(expr, TpySubscript):
-        return _lvalue_place(expr.obj)
-    if isinstance(expr, TpyMethodCall):
-        fi = expr.resolved_function_info
-        return (fi is not None and returns_bare_reference(fi.return_type)
-                and _lvalue_place(expr.obj))
-    return False
-
-
-def resumable_match_subject_is_stable(
-        expr: TpyExpr, narrowed: 'Container[str]') -> bool:
-    """Whether a `match` subject is storage a pointer-form arm binding may
-    alias across a suspension.
-
-    A non-lvalue subject is a dispatch-local copy of the subject. So is a
-    NARROWED name, even though it is syntactically a plain name: it renders to
-    the enclosing arm's extraction alias rather than to the frame field, and
-    that alias dies with the dispatch. A pointer-repr `Optional` capture points
-    INTO whichever of the two it was bound from, so neither survives the first
-    resumption."""
-    if isinstance(expr, TpyName) and expr.name in narrowed:
-        return False
-    return match_subject_is_lvalue(expr)
-
-
 def sub_has_field_condition(sub: 'TpyPattern') -> bool:
     """Whether a field sub-pattern emits a runtime condition: a literal
     comparison, a union field guard, or a nested record sub-pattern that
@@ -1084,7 +1011,6 @@ __all__ = [
     "is_plain_nonvalue",
     "is_simple_lvalue",
     "is_trivial_needle",
-    "match_subject_is_lvalue",
     "nested_def_signature",
     "partition_optional_cases",
     "pattern_has_field_condition",
@@ -1095,8 +1021,6 @@ __all__ = [
     "reject_polymorphic_rvalue_into_optional_local",
     "reject_rebind_slot_crosses_scope",
     "reject_suspending_polymorphic_match",
-    "resumable_match_subject_is_stable",
-    "returns_bare_reference",
     "seed_param_locals",
     "seed_param_locals_scoped",
     "setup_body_scope",

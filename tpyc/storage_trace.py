@@ -18,7 +18,7 @@ from .parse import (
     TpyAwait, TpyBinOp, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
     TpyGeneratorExpression, TpyIfExpr, TpyMethodCall, TpyName, TpyNamedExpr,
     TpyStarUnpack, TpySubscript, TpyUnaryOp, TpyVarargPack,
-    is_property_getter_read,
+    is_property_getter_read, past_cast,
 )
 
 
@@ -117,6 +117,9 @@ def trace(expr: TpyExpr) -> Trace:
         if isinstance(expr, TpyCoerce):
             steps.append(Step(StepKind.COERCE, expr))
             expr = expr.expr
+        elif past_cast(expr) is not expr:
+            steps.append(Step(StepKind.COERCE, expr))
+            expr = past_cast(expr)
         elif isinstance(expr, TpyFieldAccess) and not expr.default_fill:
             steps.append(Step(StepKind.FIELD, expr))
             expr = expr.obj

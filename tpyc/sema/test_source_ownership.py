@@ -82,13 +82,9 @@ _DIAGNOSTIC_DISAGREEMENTS: dict[tuple[str, str], str] = {
     # A nested def's return of a captured `Own` name copies it unwarned (an
     # `Own[T | None]` one is moved out of the enclosing binding).
     (_B, "return x"): "BUGS.md#nested-def-captured-own-return-copies",
-    # A walrus stored into `Any` copies the object it names, unwarned, and
-    # so does a borrowing call.
-    (_B, "h.x = (w := a)"): "BUGS.md#any-store-walrus-copies-silently",
     # A tuple local stored into `Any` puts its element pointers in the cell.
     (_B, "h.x = t"): "BUGS.md#any-slot-rebound-local-holds-pointer",
-    ("def borrow(h: H) -> A:", "h.b = (w := a)"):
-        "BUGS.md#any-store-walrus-copies-silently",
+    # A borrowing call stored into `Any` copies its result unwarned.
     ("def borrow(h: H) -> A:", "h.b = borrow(h)"):
         "BUGS.md#any-store-walrus-copies-silently",
     # An open `T` member of a tuple literal held by a list literal.
@@ -2030,7 +2026,7 @@ def gunat[T](a: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
 
 def test_stamped_call_of_fresh_operands_moves() -> None:
     # A stamped call whose lent operands are fresh owners copies nothing an
-    # owning sink could tell (`returns_borrow` False): its leaves MOVE, and
+    # owning sink could tell (`origin_lends` False): its leaves MOVE, and
     # so do those of an element read off it (`call(...)[0]`); a borrowed
     # operand's projection still hedges.
     records, warnings, _ctx = _leaf_records(LENDING_DECLS + """\
@@ -2625,6 +2621,59 @@ def walrus_new() -> tuple[Own[A], int32]:
     compat = entry.analyzer.compat
     assert compat.new_value(walrus.value)
     assert not compat.new_value(walrus)
+
+
+def test_a_reference_select_with_an_lvalue_arm_is_a_place() -> None:
+    # A reference-type `and` / `or` hands back whichever operand runs, as
+    # its ternary twin does: with an lvalue operand it is a place, so a
+    # tuple literal captures it by reference and an owning sink copies it;
+    # with only fresh operands it is a new value.
+    _records, _w, entry = _probe("""\
+class Q:
+    def __init__(self, n: int32) -> None:
+        self.n = n
+    def __bool__(self) -> bool:
+        return self.n != 0
+def lv_or(a: Q, b: Q, c: bool) -> None:
+    t = (a or b, 1)
+    u = (a if c else b, 1)
+    w = (Q(1) or Q(2), 1)
+""")
+    compat = entry.analyzer.compat
+    members = {
+        e.loc.line - _LEAF_LINES: e.elements[0]
+        for f in entry.ast.functions if f.name == "lv_or"
+        for s in f.body
+        for e in [s.init] if isinstance(e, TpyTupleLiteral)}
+    assert [compat.is_lvalue(members[ln]) for ln in (7, 8, 9)] \
+        == [True, True, False]
+    assert [compat.arrives_borrowed(members[ln]) for ln in (7, 8, 9)] \
+        == [True, True, False]
+    assert [compat.new_value(members[ln]) for ln in (7, 8, 9)] \
+        == [False, False, True]
+
+
+def test_a_tuple_literal_is_new_only_where_its_members_are() -> None:
+    # The whole literal is a new tuple, yet a copy of it copies every
+    # member: it is new only where each member it is built from is, at
+    # every depth, as an element path into it reads that member.
+    _records, _w, entry = _probe("""\
+def lits(a: A) -> None:
+    t = (A(1), 1)
+    u = (a, 1)
+    v = ((A(1), 2), 1)
+    w = ((a, 2), 1)
+""")
+    compat = entry.analyzer.compat
+    lits = {
+        s.init.loc.line - _LEAF_LINES: s.init
+        for f in entry.ast.functions if f.name == "lits"
+        for s in f.body if isinstance(s.init, TpyTupleLiteral)}
+    assert [compat.new_value(lits[ln]) for ln in (2, 3, 4, 5)] \
+        == [True, False, True, False]
+    assert compat.new_value(lits[5], (1,))
+    assert not compat.new_value(lits[5], (0,))
+    assert compat.new_value(lits[5], (0, 1))
 
 
 def test_an_operator_lending_the_pointer_form_is_not_new() -> None:
@@ -4358,7 +4407,6 @@ def test_blocker_rows_are_recorded() -> None:
         46: ("TpyName", P.PASS),        # `nonlocal` rebind: the binding
                                          # aliases `q`, owning nothing
                                          # (BUGS.md#nonlocal-rebind-overwrites-in-place)
-        56: ("TpyName", P.WARNED),    # walrus into `Any`
         61: ("TpyCall", P.MOVE),         # a call through a `Fn` value that
         63: ("TpyCall", P.MOVE),         # lends: its result reads as fresh
         73: ("TpyName", P.WARNED),    # a tuple local into `Any`
@@ -4382,6 +4430,7 @@ def test_blocker_rows_are_recorded() -> None:
         38: ("TpyName", P.MOVE),         # nested def's local into a field
         51: ("TpyName", P.MOVE),         # union local's last-use store
         54: ("TpyName", P.MOVE),         # last-use store into `Any`
+        56: ("TpyName", P.WARNED),       # walrus into `Any`
         65: ("TpyName", P.WARNED),       # `lambda q: q` at an `Own` result
         69: ("TpyName", P.WARNED),       # a lambda capturing a parameter
         84: ("TpyTupleLiteral", P.MOVE),  # a last-use tuple name member
@@ -4420,6 +4469,7 @@ def test_blocker_rows_are_recorded() -> None:
         "lambda at line 53 copies the object 'r' refers to when it is created",
         "copies P into owned storage", "copies P into owned storage",
         "copies P into field",
+        "copies P into Any",
         "copies P into owned storage",
         "lambda at line 95 copies the object 'a' refers to when it is created",
         "copies P into owned storage",

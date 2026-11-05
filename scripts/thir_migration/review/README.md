@@ -352,7 +352,7 @@ in a base worktree and in the merged tree, sha256 over the WHOLE emitted tree
   The plain widening also admitted a SILENT COPY -- a container ctor arm beside
   an lvalue arm renders a prvalue `?:` (TPy printed 97, CPython 90) because
   `call_returns_cpp_ref` reads a builtin `__init__` as borrow-returning
-  (`BUGS.md#void-method-reads-as-borrow-returning`); the arm now asks the shared
+  (a void-return verdict fixed 2026-11-03); the arm now asks the shared
   `is_rvalue_source` classifier instead; the pair it declines is cased as
   `control_flow/error_ternary_container_elem_ctor_arm`, and the one shape the
   merge flips (a bytearray-element ternary, which now binds the element by

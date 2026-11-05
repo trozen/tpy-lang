@@ -42,16 +42,16 @@ from ..typesys import (
 from .. import qnames
 from ..identity_map import IdentityMap
 from ..value_category import (
-    async_result_aliases, owned_payload_spelling,
+    async_result_aliases, call_operands, owned_payload_spelling,
     CONTAINER_LITERAL_NODES, getitem_call_of, is_iterator_protocol,
     is_rvalue_source,
     peel_coerce, peel_value_wrappers, const_place,
-    accessor_returns_ref, returns_borrow, holds_no_pointer, value_may_point,
-    finalized_on_path, place_dies)
+    accessor_returns_ref, holds_no_pointer, value_may_point,
+    finalized_on_path, place_dies, origin_lends, origin_new, origin_shared,
+    tuple_subscript_index)
 from . import own_copy
 from .alias_rebind import (
-    declared_call_paths, pointer_tuple_names, top_level, tuple_borrowed_paths,
-    tuple_elem_owned, tuple_source_elem_owned,
+    pointer_tuple_names, top_level, tuple_elem_owned, tuple_source_elem_owned,
 )
 from .elem_paths import (
     ElemPath, bare_tuple, declared_lent_paths, is_reference_leaf, leaf_paths,
@@ -96,14 +96,12 @@ from .context import (
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
     BorrowKind, ReadonlyReceiverCheck,
     BorrowTracker, SitedKey, holds_generator_object,
-    paths_overlap,
 )
 from ..prescan import expr_to_narrowing_key
 from ..storage_trace import Step, StepKind, is_unbound_field, trace
 from .storage_walk import (Leaf, LeafKind, MarkRequest, StorageKey, Use,
                            leaves, mark_roots, slot_lent_roots,
-                           storage_roots, ternary_operands,
-                           tuple_subscript_index)
+                           storage_roots, ternary_operands)
 from .numeric_lattice import (fixed_int_range_contains, numeric_info,
                              smallest_common_int)
 from ..diagnostics import (
@@ -537,7 +535,7 @@ _NEW_LITERALS = CONTAINER_LITERAL_NODES + (
 def _produces_result(expr: TpyExpr) -> bool:
     """A call, an `await`, an operator (a builtin one builds its value; a
     dunder is a call) or a subscript dispatched to `__getitem__`: a
-    result `returns_borrow` classifies."""
+    result `origin` classifies."""
     if isinstance(expr, (TpyCallLike, TpyAwait, TpyBinOp, TpyUnaryOp)):
         return True
     return (isinstance(expr, TpySubscript)
@@ -3408,39 +3406,29 @@ class TypeCompatibility:
         return True
 
     def is_lvalue(self, expr: TpyExpr) -> bool:
-        """Check if an expression is an lvalue (can have its address taken)."""
-        if isinstance(expr, TpyCoerce):
-            return self.is_lvalue(expr.expr)
-        # Named variables are lvalues
-        if isinstance(expr, TpyName):
-            return True
-        # Field access on an lvalue is also an lvalue (e.g., obj.field)
-        if isinstance(expr, TpyFieldAccess):
-            return self.is_lvalue(expr.obj)
-        # Subscript on an lvalue is also an lvalue (e.g., arr[i])
-        if isinstance(expr, TpySubscript):
-            return self.is_lvalue(expr.obj)
-        # A non-value ternary or and/or select is the classifier's: an lvalue
-        # unless every operand is fresh (a fresh operand beside an lvalue one
-        # is emplaced into a slot).
-        # So an owning slot copies the chosen arm and warns, and a local
-        # bound from it borrows rather than owns.
-        if isinstance(expr, TpyIfExpr) or (
-                isinstance(expr, TpyBinOp) and expr.op in ("&&", "||")):
-            rt = self.ctx.get_expr_type(expr)
+        """Whether an expression is an lvalue (can have its address taken):
+        the value category's answer (`is_rvalue_source`) for a place -- a
+        call, an `await` or an operator result is no place, unless it is a
+        `@property` read handing back a reference (`accessor_returns_ref`),
+        existing storage whatever the receiver."""
+        inner = peel_coerce(expr)
+        select = isinstance(inner, TpyIfExpr) or (
+            isinstance(inner, TpyBinOp) and inner.op in ("&&", "||"))
+        if select:
+            rt = self.ctx.get_expr_type(inner)
             if rt is not None and not rt.is_value_type():
+                # A reference select is a place unless every arm is fresh:
+                # a fresh arm beside an lvalue one is emplaced into a slot.
                 return not is_rvalue_source(self.ctx, expr)
-        if isinstance(expr, TpyIfExpr):
-            return self.is_lvalue(expr.then_expr) and self.is_lvalue(expr.else_expr)
-        # A `@property` read is a method call from the moment sema resolves
-        # it, so node kind no longer separates it from the field read it
-        # wraps -- the getter's RETURN CONVENTION does, as the value
-        # category reads it (`accessor_returns_ref`): a reference it hands
-        # back is existing storage whatever the receiver.
+            # A value select names a place only when both arms do; a value
+            # `and`/`or` builds its value.
+            return (isinstance(inner, TpyIfExpr)
+                    and self.is_lvalue(inner.then_expr)
+                    and self.is_lvalue(inner.else_expr))
         if accessor_returns_ref(self.ctx, expr):
             return True
-        # Everything else (calls, literals, operators) are rvalues
-        return False
+        return (not _produces_result(inner)
+                and not is_rvalue_source(self.ctx, expr))
 
     def is_const_ref_source(self, expr: TpyExpr) -> bool:
         """Check if expression provides a const reference (can't be captured as T&):
@@ -4658,7 +4646,7 @@ class TypeCompatibility:
             # decided before this.
             if (whole_slot and action == "return"
                     and isinstance(unwrapped, OwnType)
-                    and (is_rvalue_source(self.ctx, inner)
+                    and (not origin_shared(self.ctx, inner)
                          or (isinstance(inner, TpyName)
                              and inner not in self.ctx.comp_var_reads))
                     and self.returned_captured_name(expr) is None):
@@ -5951,7 +5939,10 @@ class TypeCompatibility:
             # frame instead.
             local_fix = ("Bind it to a local first (`y = ...` then "
                          "`yield y`) to lend it from the generator, or "
-                         if for_yield and call_result_is_fresh(
+                         if for_yield
+                         and (isinstance(call, TpyCall)
+                              or call_operands(call) is not None)
+                         and call_result_is_fresh(
                              self.ctx, call, gen_yield=True)
                          else "")
             fix = _own_fix(return_type, cap=not local_fix)
@@ -6258,29 +6249,16 @@ class TypeCompatibility:
     def tuple_lent_paths(self, expr: TpyExpr | None, slot: TpyType | None,
                          prefix: ElemPath = ()) -> frozenset[ElemPath] | None:
         """The element paths a tuple source lends as it ARRIVES at an owning
-        sink (`tuple_borrowed_paths`' incoming question): a literal member
-        lends what it does itself (`member_lends`), however its literal
-        captures it, and a call -- or an element read off one -- what its
-        result does (`call_lent_paths`)."""
-        return tuple_borrowed_paths(self.ctx, expr, slot, prefix,
-                                    incoming=self)
-
-    def call_lent_paths(self, call: TpyCall | TpyMethodCall,
-                        slot: TupleType,
-                        prefix: ElemPath = ()) -> frozenset[ElemPath]:
-        """The paths of tuple `slot` at `prefix` a CALL's result lends as
-        it arrives at an owning sink: the leaves the sink copies. A call with
-        a lend contract (`borrows=` / `element_of=`, which
-        `stamp_result_borrow` stamps) lends its declared return's paths
-        (`declared_call_paths`) exactly when the scalar twin's result would
-        be a borrowed source (`returns_borrow`: a copy of an operand the
-        program still reaches), and nothing otherwise; a call without one
-        lends per its declared return. An open `T` leaf among them takes
-        the sink's per-leaf hedge."""
-        if (call.result_form.is_declared
-                and not returns_borrow(self.ctx, call)):
+        sink: those whose leaf is shared storage (`origin_lends`), unless the
+        read moves its place out (`path_moves`). None when the slot is no
+        tuple."""
+        bare = bare_tuple(slot)
+        if bare is None or expr is None:
+            return None
+        if self.path_moves(expr):
             return frozenset()
-        return declared_call_paths(call, slot, prefix)
+        return frozenset(p for p in reference_paths(bare, prefix)
+                         if origin_lends(self.ctx, expr, p[len(prefix):]))
 
     def warn_argument_tuple_copies(self, call: TpyCallLike, slot: TupleType,
                                    dest: str) -> None:
@@ -6739,19 +6717,11 @@ class TypeCompatibility:
 
     def arrives_borrowed(self, expr: 'TpyExpr | None') -> bool:
         """The source names storage that outlives the expression, so an
-        owning slot copies it: an lvalue (a ternary of lvalue arms included),
-        a borrow-returning call, a tuple lending an element
-        (`tuple_lent_paths`), a walrus (whatever its value: it names the binding it
-        just made, which outlives the store), or a MIXED-arm ternary whose
-        name arm is a reference. The one question every `Own`
-        slot and owned-storage member asks before its copy rule.
-
-        A walrus renders `(d = &(c), *d)`, a read of the named object that
-        never moves, so the bound name takes no last-use exemption. A
-        reference-type ternary with an existing-object arm is an lvalue to
-        the classifier, so `is_lvalue` answers it; the per-arm fallback below
-        serves the ternaries it does not, and a protocol or record result is
-        left to the lowering."""
+        owning slot copies it: a tuple lending an element
+        (`tuple_lent_paths`), shared storage (`origin_lends`), an lvalue,
+        or a member an owner's finalizer still reads (`copies_in_place`).
+        The one question every `Own` slot and owned-storage member asks
+        before its copy rule."""
         if expr is None:
             return False
         # A tuple literal is fresh: what its members lend is their own
@@ -6761,43 +6731,8 @@ class TypeCompatibility:
                 else None)
         if lent is not None:
             return bool(lent)
-        if self.is_lvalue(expr) or returns_borrow(self.ctx, expr):
-            return True
-        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-        if isinstance(inner, TpyNamedExpr):
-            return True
-        # A member of a call's result is the temporary's own only when the
-        # result is PROVEN fresh and not a borrow: a `Callable` value's
-        # by-value result may be a copy of a borrow its target returned,
-        # which `returns_borrow` calls fresh
-        # (BUGS.md#callable-value-borrow-return-copies-unwarned). Through a
-        # pointer it is the pointee's, whatever handed the pointer back.
-        # Off any other object it is borrowed where the object is, or where
-        # C++ reads the object as an lvalue (an element of a temporary
-        # container), which copies the member.
-        if isinstance(inner, TpyFieldAccess) and inner.hidden_call is None:
-            obj = peel_coerce(inner.obj)
-            if isinstance(unwrap_qualifiers(self.ctx.get_expr_type(obj)),
-                          PtrType):
-                return True
-            if self.copies_in_place(inner):
-                # An owner's finalizer on the path still reads the member;
-                # the copied leaf says to read it as an lvalue
-                # (`Leaf.in_place`, `_member_leaf`).
-                return True
-            if isinstance(obj, TpyCallLike):
-                return (returns_borrow(self.ctx, obj)
-                        or not call_result_is_fresh(self.ctx, obj,
-                                                    proof=True))
-            return (self.arrives_borrowed(obj)
-                    or not is_rvalue_source(self.ctx, obj))
-        if not isinstance(inner, TpyIfExpr):
-            return False
-        result = unwrap_qualifiers(self.ctx.get_expr_type(inner))
-        if isinstance(result, NominalType) and (result.is_protocol
-                                                or result.is_user_record):
-            return False
-        return self.ternary_arm_copies(inner)
+        return (origin_lends(self.ctx, expr) or self.is_lvalue(expr)
+                or self.copies_in_place(peel_coerce(expr)))
 
     def copies_in_place(self, read: TpyExpr) -> bool:
         """Whether a copy of member read `read` must read it as an lvalue:
@@ -6837,7 +6772,7 @@ class TypeCompatibility:
             # an arm the classifier calls an lvalue (an element, a field, a
             # borrow-returning call) names storage that outlives the store.
             if not isinstance(arm, TpyName):
-                if not is_rvalue_source(self.ctx, arm):
+                if origin_shared(self.ctx, arm):
                     at = self.ctx.get_expr_type(arm)
                     if (at is not None and not unwrap_qualifiers(
                             at).is_value_type()):
@@ -7337,57 +7272,10 @@ class TypeCompatibility:
                     _element_at(tt, p[len(prefix):])))
 
     def new_value(self, expr: TpyExpr, path: ElemPath = ()) -> bool:
-        """Whether the value at element `path` of `expr` is proven NEW --
-        no storage the program holds, so a copy of it copies nothing
-        CPython would alias: a result that is no borrow (`returns_borrow`;
-        a construction included) at a path its call does not lend
-        (`tuple_lent_paths`), a literal, a field of a new value (off a call
-        only one `call_result_is_fresh` proves) or a constant-index element
-        of one, and a select, `and`/`or` or coercion whose every value arm
-        is new. An allow-list: every other source -- a name, a walrus (the
-        storage of the name it binds, which stays in use), an element or
-        field of existing storage, a shape not listed -- is borrowed."""
-        inner = peel_coerce(expr)
-        if isinstance(inner, TpyIfExpr):
-            return (self.new_value(inner.then_expr, path)
-                    and self.new_value(inner.else_expr, path))
-        if isinstance(inner, TpyBinOp) and inner.op in ("&&", "||"):
-            return (self.new_value(inner.left, path)
-                    and self.new_value(inner.right, path))
-        if isinstance(inner, TpyTupleLiteral):
-            if path:
-                return (0 <= path[0] < len(inner.elements)
-                        and self.new_value(inner.elements[path[0]], path[1:]))
-            return all(self.new_value(m) for m in inner.elements)
-        if isinstance(inner, TpyFieldAccess):
-            obj = peel_coerce(inner.obj)
-            return (inner.hidden_call is None
-                    # A member reached through `__deref__` (an `Rc`
-                    # payload's) is the pointee's storage.
-                    and inner.deref_depth == 0
-                    and not isinstance(unwrap_qualifiers(
-                        self.ctx.get_expr_type(obj)), PtrType)
-                    and (not isinstance(obj, TpyCallLike)
-                         or call_result_is_fresh(self.ctx, obj, proof=True))
-                    and self.new_value(obj))
-        if (isinstance(inner, TpySubscript)
-                and getitem_call_of(inner) is None):
-            idx = const_tuple_index(inner.index)
-            return idx is not None and self.new_value(inner.obj,
-                                                      (idx,) + path)
-        if _produces_result(inner):
-            # A call's result at an owning slot is the callee's new value
-            # unless it is a borrow (`returns_borrow`: a fresh-stamped
-            # result by its lent fact, `copy_observable`); a tuple result's
-            # element is unless the call lends it.
-            if returns_borrow(self.ctx, inner):
-                return False
-            t = self.ctx.get_expr_type(inner)
-            if path and bare_tuple(t) is not None:
-                return not paths_overlap(
-                    path, self.tuple_lent_paths(inner, t) or ())
-            return True
-        return isinstance(inner, _NEW_LITERALS)
+        """Whether the value at element `path` of `expr` is NEW -- no
+        storage the program holds, so a copy of it copies nothing CPython
+        would alias (`origin_new`)."""
+        return origin_new(self.ctx, expr, path)
 
     def _literal_members(self, reg: SinkRead
                          ) -> Iterator[tuple[TpyExpr, ElemPath]]:

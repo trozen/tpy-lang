@@ -47,15 +47,15 @@ from typing import TYPE_CHECKING, Callable, Iterable
 from ..parse import (
     TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess, TpyIntLiteral,
     TpyMethodCall, TpyName, TpyStarUnpack, TpyStrLiteral, TpySubscript,
-    TpyVarargPack, const_tuple_index, is_property_getter_read,
+    TpyVarargPack, is_property_getter_read,
 )
 from ..storage_trace import Step, StepKind, Trace, is_unbound_field, trace
 from ..typesys import (
-    TpyType, TupleType, following_components, is_indirection_type,
-    unwrap_qualifiers, unwrap_readonly,
+    TpyType, following_components, is_indirection_type,
+    unwrap_readonly,
 )
 from ..type_def_registry import is_borrowing_view_type
-from ..value_category import (
+from ..value_category import (tuple_subscript_index, 
     ExprTypeOf, call_operands, call_returns_cpp_ref, lent_operands,
 )
 
@@ -294,22 +294,6 @@ def _literal_elem(step: TpyExpr) -> int | None:
     key = element_index_key(step.index)
     return (key[1] if key is not None and key[0] == "lit"
             and isinstance(key[1], int) else None)
-
-
-def tuple_subscript_index(expr: TpyExpr, type_of: ExprTypeOf) -> int | None:
-    """The element `t[i]` reads off a tuple-typed `t`, or None for any other
-    step: the one place step that stays a component of a call's result."""
-    if not isinstance(expr, TpySubscript):
-        return None
-    obj_t = type_of(expr.obj)
-    tup = unwrap_qualifiers(obj_t) if obj_t is not None else None
-    if not isinstance(tup, TupleType):
-        return None
-    i = const_tuple_index(expr.index)
-    if i is None:
-        return None
-    n = len(tup.element_types)
-    return i + n if i < 0 else i
 
 
 def call_lends_receiver_at(expr: TpyExpr, path: tuple) -> bool:

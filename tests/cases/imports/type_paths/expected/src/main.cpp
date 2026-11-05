@@ -378,14 +378,13 @@ void members() {
 //           isinstance(o, (mm.Outer, MO.Inner)),  # tpyc: ok
 //           isinstance(o, m.Outer | m.Outer.Inner))  # tpyc: ok
 //     o2 = m.Outer()
-//     # Read-only: the cast copies o2 where CPython aliases it
-//     # (BUGS.md#cast-live-name-copies).
+//     # The cast hands back o2 itself, as in CPython.
 //     p = cast(m.Outer, o2)  # tpyc: ok
 //     print("cast:", p.LIMIT)
 void type_tests(::tpy::Union<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*> o) {
     std::cout << "isinstance:" << " " << ::tpy::print_bool(std::holds_alternative<const ::tpyapp::m::Outer::Inner*>(o)) << " " << ::tpy::print_bool(::tpy::holds_any<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*>(o)) << " " << ::tpy::print_bool(::tpy::holds_any<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*>(o)) << "\n" << ::tpy::check_signals;
     ::tpyapp::m::Outer o2 = ::tpyapp::m::Outer();
-    ::tpyapp::m::Outer p = o2;
+    ::tpyapp::m::Outer& p = o2;
     std::cout << "cast:" << " " << ::tpyapp::m::Outer::LIMIT << "\n" << ::tpy::check_signals;
 }
 

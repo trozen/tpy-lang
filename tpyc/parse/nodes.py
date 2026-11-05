@@ -593,6 +593,16 @@ class TpyCall(TpyCallLike):
         return self.func.name
 
     @property
+    def cast_operand(self) -> 'TpyExpr | None':
+        """The argument a resolved `typing.cast(T, x)` hands back as it is,
+        or None: a cast out of `Any` extracts a value instead. Every peel
+        that steps over a coercion steps over it."""
+        if (self.cast_target_type is not None and not self.cast_source_is_any
+                and len(self.args) == 2):
+            return self.args[1]
+        return None
+
+    @property
     def maybe_func_name(self) -> str | None:
         """Name of the callee, or None if the callee isn't a TpyName
         (subscript-callee `arr[0]()`, expression callee `(get())()` etc.).
@@ -790,6 +800,15 @@ def lambda_of(expr: TpyExpr) -> TpyExpr:
     if (isinstance(expr, (TpyName, TpyFieldAccess))
             and expr.factory_expansion is not None):
         return expr.factory_expansion
+    return expr
+
+
+def past_cast(expr: TpyExpr) -> TpyExpr:
+    """`expr` under its `typing.cast` calls that hand back their argument
+    as it is (`TpyCall.cast_operand`): the value it IS, which every peel
+    over a coercion reads too."""
+    while isinstance(expr, TpyCall) and expr.cast_operand is not None:
+        expr = expr.cast_operand
     return expr
 
 

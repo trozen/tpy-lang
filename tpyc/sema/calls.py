@@ -73,7 +73,7 @@ from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
                               is_iterator_protocol,
                               protocol_slot, protocol_twin_slot,
-                              is_rvalue_source, peel_coerce)
+                              peel_coerce, origin_shared)
 from .own_copy import (KIND_SLOT, copy_result_under_write,
                        lost_write_message,
                        slot_message, value_call_copy_message)
@@ -1717,7 +1717,7 @@ class CallAnalyzer:
         lends = expr_lends_storage(self.ctx, operand)
         handle_or_view = rt is not None and (is_iterator_protocol(rt)
                                              or is_borrowing_view_type(rt))
-        fresh = (not lends and is_rvalue_source(self.ctx, operand)
+        fresh = (not lends and not origin_shared(self.ctx, operand)
                  and not handle_or_view)
         read_only = isinstance(rt, ReadonlyType)
         if idx not in fi.root.element_borrows_from:

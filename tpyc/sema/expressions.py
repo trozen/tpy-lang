@@ -87,7 +87,7 @@ from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRout
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
-                             lent_operands)
+                             lent_operands, origin_shared)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import step_handover_paths
 from .compatibility import TupleSink
@@ -4844,7 +4844,7 @@ class ExpressionAnalyzer:
         rejects. With no `__poll__` FunctionInfo (a coroutine handle) the
         mark is eager.
         """
-        if is_rvalue_source(self.ctx, operand):
+        if not origin_shared(self.ctx, operand):
             check_implicit_readonly_receiver(self.ctx, operand, None,
                                              "__poll__", operand, record=False)
             return

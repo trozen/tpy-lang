@@ -1,0 +1,65 @@
+main::__tpy_init: uncovered (module initialization)
+main::pet_of@42:0: uncovered (unsupported return type)
+main::pick@47:0: uncovered (unsupported return type)
+main::guarded@56:0: uncovered (unsupported return type)
+main::outer@64:0: uncovered (unsupported parameter type)
+main::gen_vals@72:0: uncovered (unsupported parameter type)
+main::coro_val@78:0: uncovered (async body)
+main::run_frame@85:0: uncovered (async body)
+main::gen_nested@92:0: uncovered (unsupported parameter type)
+main::co_nested@99:0: uncovered (async body)
+main::passthru@107:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::wrap@111:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::size@115:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::pair@130:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::keep@134:0: covered (storage: no_proof_required), summary: known
+main::bump_item@138:0: covered (storage: no_proof_required), summary: known
+main::opt_bump@142:0: covered (storage: no_proof_required), summary: known
+main::gen_id@147:0: uncovered (generic body)
+main::ret_last@153:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::count@171:0: uncovered (unsupported parameter type)
+main::union_bump@182:0: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
+main::any_store@188:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::split@193:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+main::first@209:0: certified, summary: known
+main::nth@213:0: certified, summary: known
+main::gen_lent@230:0: uncovered (unsupported hoisted value)
+main::co_lent@238:0: uncovered (async body)
+main::cast_write@248:0: covered (storage: no_proof_required), summary: known
+main::cast_return@254:0: certified, summary: known
+main::cast_yield@258:0: uncovered (reference yield)
+main::nested_ref@264:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::poly_rebound@307:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::poly_global@324:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::poly_guarded@339:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
+main::gen_nested_record@363:0: uncovered (nested def)
+main::co_nested_record@370:0: uncovered (async body)
+main::animal_at@407:0: uncovered (unsupported return type)
+main::make_item@411:0: covered (storage: no_proof_required), summary: known
+main::bump_first@415:0: covered (storage: no_proof_required), summary: known
+main::subjects_d@420:0: uncovered (member definition: record member holds a borrow), summary: opaque (member definition: record member holds a borrow)
+main::subjects@494:0: uncovered (unsupported parameter type)
+main::elements@537:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::main@608:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Dog.bump@24:4: covered (storage: no_proof_required), summary: known
+main::Dog.val@27:4: covered (storage: no_proof_required), summary: known
+main::Shelf.get@37:4: uncovered (generic body)
+main::Tag.label@166:4: covered (storage: no_proof_required), summary: known
+main::Keeper.keep_lent@225:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+main::Animal.tag@281:4: covered (storage: no_proof_required)
+main::Hound.tag@289:4: covered (storage: no_proof_required)
+main::Pen.kennel@385:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Pen.kennel@385:4#2: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Pen.poly_prop_method@390:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Pen.first_method@400:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Dog.__init__@21:4: covered (storage: no_proof_required), summary: known
+main::Shelf.__init__@34:4: uncovered (generic constructor)
+main::Item.__init__@126:4: covered (storage: no_proof_required), summary: known
+main::Tag.__init__@163:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@178:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Bag.__init__@205:4: covered (storage: no_proof_required), summary: known
+main::Keeper.__init__@222:4: covered (storage: no_proof_required), summary: known
+main::Animal.__init__@278:4: covered (storage: no_proof_required), summary: known
+main::Hound.__init__@286:4: covered (storage: no_proof_required), summary: known
+main::Kennel.__init__@297:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+main::Pen.__init__@381:4: uncovered (member definition: record member holds a borrow), summary: opaque (member definition: record member holds a borrow)

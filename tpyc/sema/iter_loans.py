@@ -41,7 +41,7 @@ from ..typesys import (
 )
 from ..value_category import (
     call_operands, frame_factory_callee, frame_temp_arg_source,
-    is_rvalue_source, iterator_source_callee,
+    iterator_source_callee, origin_shared,
 )
 from .call_lends import (
     CalleeFact, MayLend, borrowing_ctor_arg, call_callee, call_lend_sources,
@@ -871,7 +871,7 @@ def _record_iter_receiver_mutation(
     # a readonly one still rejects a mutating `__iter__`. A loop variable's
     # climb cannot change that verdict: only an @auto_readonly pair lends a
     # handle, and a readonly receiver runs its const clone.
-    if is_rvalue_source(ctx, iterable_expr):
+    if not origin_shared(ctx, iterable_expr):
         check_implicit_readonly_receiver(ctx, iterable_expr, iter_fi,
                                          "__iter__", iterable_expr)
         return

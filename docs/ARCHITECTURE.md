@@ -763,6 +763,31 @@ frame field of the tuple needs `frame_slot` wrapping (an OWN element held by
 value, never a `std::optional`) is the separate `needs_frame_slot()`.
 Unit-tested in `tpyc/test_value_form.py`.
 
+### Expression origin
+
+Whether an expression's value is a NEW object, a COPY a borrow-declared call
+made from lent operands, SHARED storage the program holds, or an OPEN `T`
+result is one function, `origin()` (`tpyc/value_category.py`), answered per
+element path (`origin(e, (1,))` is element 1 of a tuple-typed value) and per
+select arm. It reads types, callee signatures and the stamps sema leaves on
+the node (`result_form`, `copy_observable`, `await_result_is_borrow`, the
+coercion) -- never a callee body or a tracker -- so sema and THIR get the
+same answer at the same node. A call's convention has ONE reader,
+`classify_result_representation(SYNC_CALL)` (`typesys.py`), through
+`call_returns_cpp_ref`. The consumers read origin through named readings --
+`origin_new` (a copy of it copies nothing CPython would alias),
+`origin_shared`, `origin_lends`, `origin_open` -- and the policies built on
+top keep their own clauses: the aug-assignment hold (`result_is_fresh`), the
+match-subject admission (`_subject_admission`, `thir/lower/match.py`: one
+BORROW / OWNED / SNAPSHOT / REFUSE verdict per subject for its tier, from
+origin and the root climb, which every tier reads) and the C++ category `is_rvalue_source`, which stays the render's
+fact. A `typing.cast(T, x)` out of a non-`Any` value is its argument: every
+coercion peel (`peel_coerce`, `peel_value_wrappers`, the storage climb
+`storage_trace.trace`) steps over it (`past_cast`). Move permission (last-use
+moves, `path_moves`) and lifetime (`place_dies`, the lend policies, MIR) are
+separate facts. The MIR sections above use "origin" for a MIR place's referent,
+a different notion.
+
 ### Default construction
 
 Whether a type's C++ default construction exists and whether it runs user

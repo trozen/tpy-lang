@@ -171,8 +171,7 @@ def type_tests(o: m.Outer | m.Outer.Inner) -> None:
           isinstance(o, (mm.Outer, MO.Inner)),  # tpyc: ok
           isinstance(o, m.Outer | m.Outer.Inner))  # tpyc: ok
     o2 = m.Outer()
-    # Read-only: the cast copies o2 where CPython aliases it
-    # (BUGS.md#cast-live-name-copies).
+    # The cast hands back o2 itself, as in CPython.
     p = cast(m.Outer, o2)  # tpyc: ok
     print("cast:", p.LIMIT)
 

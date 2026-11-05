@@ -3113,7 +3113,10 @@ def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
     Separate from the classifier because a caller can hold only a composed
     return type -- a generic record's re-resolved signature carries the raw
     `T`, which answers False here for a substitution that is in fact a
-    reference -- and must get the same answer the SYNC_CALL arm computes.
+    reference -- or asks of a type no call returns (`ReferenceType`
+    conformance, an `__enter__` result). Every question about a CALL's
+    result reads the classifier, which adds what only the callee answers
+    (`_sync_result_is_reference`).
     """
     rt = unwrap_ref_type(ret_type)
     return (rt is not None and not rt.is_value_type()
@@ -3135,6 +3138,29 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
         return ret_type
     rt = unwrap_readonly(ret_type)
     return rt.wrapped if isinstance(rt, OwnType) else ret_type
+
+
+def _sync_result_is_reference(ret_type: TpyType | None,
+                              fi: FunctionInfo) -> bool:
+    """The sync call convention past the callee-kind exits: the type shape,
+    corrected where a declared result renders otherwise. A void result is no
+    reference; an open `T` under any access or marker wrapper is
+    `val_or_ref_t<T>`, a reference only at some instantiations, so the
+    generic body reads it as none; a `@dynamic` protocol is its base by
+    reference (`P&`) except from a frame factory, whose `Cancellable[T]` /
+    iterator is a fresh frame by value; a recursive wrapper union is
+    `Tree&`."""
+    if ret_type is None:
+        return False
+    peeled = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
+    if is_void_like_type(peeled) or isinstance(repr_shape(ret_type),
+                                               TypeParamRef):
+        return False
+    if returns_cpp_reference_shape(ret_type):
+        return True
+    if dyn_protocol_borrow_result(peeled) is not None:
+        return not (fi.is_async or fi.is_generator)
+    return isinstance(peeled, UnionType) and peeled.needs_wrapper()
 
 
 def classify_result_representation(
@@ -3160,8 +3186,8 @@ def classify_result_representation(
                 and not fi.root.borrow_declared):
             return ResultRepresentation.STORAGE
         return (ResultRepresentation.CPP_REFERENCE
-                if returns_cpp_reference_shape(_type_arg_own_peeled(ret_type,
-                                                                    fi))
+                if _sync_result_is_reference(_type_arg_own_peeled(ret_type,
+                                                                  fi), fi)
                 else ResultRepresentation.STORAGE)
     if position is ResultPosition.ASYNC_PAYLOAD:
         rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))

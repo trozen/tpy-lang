@@ -5,7 +5,11 @@ switch/chain, record, optional-partition, union, and guarded-union.
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
+from enum import Enum
+from typing import NamedTuple
 from ...parse.nodes import (
+    is_property_getter_read,
+    past_cast,
     TpyMatchCase,
     TpyExprStmt,
     TpyAsPattern,
@@ -41,15 +45,16 @@ from ...typesys import (
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
 from ..source import BindingForm, BindingRepr, Held, NameFacts
-from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
-                               is_rvalue_source)
+from ...value_category import (call_hands_back_value, call_result_holdable,
+                               call_returns_cpp_ref, leaves_hold_no_pointer,
+                               lends_from_dying_source, peel_coerce, origin,
+                               origin_shared, OriginKind,
+                               property_access_returns_cpp_ref)
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.emit_prims import (
-    match_subject_is_lvalue,
     partition_optional_cases,
     pattern_has_field_condition,
     reject_nonlvalue_resumable_match_ptr_bind,
-    resumable_match_subject_is_stable,
     sub_has_field_condition,
 )
 from ...codegen_cpp.protocols import narrow_cast_rhs
@@ -87,7 +92,6 @@ from .predicates import (
     _native_cond_scalar,
     _isinstance_narrow_info,
     _eligible_char,
-    _wrapper_borrow_return,
     _wrapper_union_like,
     _eligible_enum,
     _eligible_scalar,
@@ -179,8 +183,8 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         # a RecursiveAliasInstanceType admitted through the genrec-track
         # accessor) both reach the variant via `.value` -- the whole flow is
         # duck-keyed (`needs_wrapper()` / `wrapper_info()`), and the M4c
-        # wrapper slice admits NAME subjects on the unguarded tier only
-        # (_route_match narrows).
+        # wrapper slice admits NAME and borrow-returning CALL subjects
+        # (`_subject_admission` narrows).
         return "switch_union"
     if _eligible_enum(t, analyzer) is not None:
         return "switch_enum"
@@ -1092,41 +1096,231 @@ class _MatchRoute:
     # its record's form picks the predecl (`_statements._hoist_builder`,
     # `_HOIST_BUILDERS` keyed on the form).
     hoist_types: tuple[tuple[str, TpyType, BindingRepr], ...]
+    # The subject admission's verdict (`_subject_admission`), every tier's:
+    # BORROW binds `auto& __match_subject_N = <subj>;`, any other admitted
+    # verdict the by-value dispatch local.
+    subject: '_Subject'
     union_route: 'str | None' = None
-    # A call/ctor F1-record rvalue subject on the record capture tier:
-    # `auto __match_subject_N = <call>;` (subject_ref=False), captures move
-    # out of the owned temporary.
-    subject_rvalue: bool = False
 
 
-def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
-                           pointers: AbstractSet[str],
-                           narrowed: AbstractSet[str],
-                           storage_tuple_locals: AbstractSet[str],
-                           analyzer) -> bool:
-    """A non-name subject the storage-form tiers admit: a field/subscript
-    LVALUE chain (the shared `match_subject_is_lvalue` fact -- `auto&`
-    binds the storage) rooted at `self` or a declared name that renders
-    direct (pointer/narrowed/tuple-alias roots spell indirect). A method
-    call in the chain climbs to its receiver when a holder may keep its
-    reference result past the statement (`_call_lends_held_storage`), as the
-    `auto&` bind does."""
-    if not match_subject_is_lvalue(subj):
-        return False
-    e = subj
-    while (isinstance(e, (TpyFieldAccess, TpySubscript))
-           or (isinstance(e, TpyMethodCall)
-               and _call_lends_held_storage(e, analyzer))):
-        e = e.obj
-    if not isinstance(e, TpyName):
-        return False
-    root = e.name
-    if root == "self":
-        return True
-    if root not in declared:
-        return False
-    return not (root in pointers or root in narrowed
-                or root in storage_tuple_locals)
+def _place_root(expr: TpyExpr, analyzer, *,
+                proven: bool) -> 'TpyName | None':
+    """The root name of a place chain -- fields, subscripts and methods
+    handing back a C++ reference into their receiver -- or None when `expr`
+    is no such place. `proven` climbs a method only when its reference is
+    PROVEN to point into storage a holder may keep past the statement
+    (`_call_lends_held_storage`, which no `@property` read is); otherwise a
+    reference a holder may keep (`call_result_holdable`) is enough, and a
+    `@property` read climbs when it hands back a C++ reference into a
+    receiver that outlives the statement. A name used as a function or
+    class value is no storage."""
+    if isinstance(expr, TpyName):
+        return (None if expr.is_function_ref
+                or expr.factory_expansion is not None else expr)
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        return _place_root(expr.obj, analyzer, proven=proven)
+    if not isinstance(expr, TpyMethodCall):
+        return None
+    if proven:
+        climbs = (call_returns_cpp_ref(None, expr.resolved_function_info)
+                  and _call_lends_held_storage(expr, analyzer))
+    elif is_property_getter_read(expr):
+        climbs = (property_access_returns_cpp_ref(analyzer, expr)
+                  and not lends_from_dying_source(analyzer, expr))
+    else:
+        climbs = call_result_holdable(analyzer, expr)
+    return _place_root(expr.obj, analyzer, proven=proven) if climbs else None
+
+
+class _SubjectPlace(NamedTuple):
+    # The subject names storage `auto&` binds (no copy, no dangle).
+    place: bool
+    # The chain's root name -- for a whole free call, its place arguments'
+    # roots, the only storage its reference result can alias.
+    roots: 'tuple[TpyName, ...]'
+
+
+def _subject_place(expr: TpyExpr, analyzer, *,
+                   proven: bool) -> _SubjectPlace:
+    """The one root climb of a match subject (`_place_root`): a place
+    chain, or -- only as the whole subject -- a free call returning a C++
+    reference over place arguments (`first(c)`, `deref(b)`); a chain off a
+    free call (`first(c).n`) has no subject rung that binds it. An argument
+    whose type holds no pointer (`nth(xs, 1)`'s index) cannot carry the
+    reference, so it needs no root. A `cast` is its argument."""
+    expr = past_cast(expr)
+    if isinstance(expr, TpyCall):
+        roots = tuple(_place_root(peel_coerce(a), analyzer, proven=proven)
+                      for a in expr.args
+                      if not _holds_no_pointer(a, analyzer))
+        lends = ((call_returns_cpp_ref(None, expr.resolved_function_info)
+                  and _call_lends_held_storage(expr, analyzer)) if proven
+                 else call_result_holdable(analyzer, expr))
+        return _SubjectPlace(
+            lends and not expr.kwargs and None not in roots,
+            tuple(r for r in roots if r is not None))
+    root = _place_root(expr, analyzer, proven=proven)
+    return _SubjectPlace(root is not None,
+                         (root,) if root is not None else ())
+
+
+def _holds_no_pointer(arg: TpyExpr, analyzer) -> bool:
+    t = analyzer.get_expr_type(arg)
+    return t is not None and leaves_hold_no_pointer(t)
+
+
+class _Subject(Enum):
+    """The one admission verdict of a `match` subject (`_subject_admission`),
+    which every tier reads and none re-derives. BORROW: existing storage,
+    bound `auto&`. OWNED: a new object the dispatch local owns (a capture
+    may move out of it). SNAPSHOT: a value the dispatch local copies -- a
+    scalar read, a pointer-variant union result, a polymorphic read off a
+    temporary. REFUSE: no tier binds it."""
+    BORROW = "borrow"
+    OWNED = "owned"
+    SNAPSHOT = "snapshot"
+    REFUSE = "refuse"
+
+
+# The tiers binding a place subject `auto&`. The guarded `==` chain and the
+# str discriminator switch re-read the subject after each guard, so a place
+# subject there would see a guard's mutation, which CPython's single
+# evaluation does not (BUGS.md#match-subject-alias-under-guard-mutation):
+# they take a non-place subject only, snapshotted; the guarded Optional
+# chain takes a name only.
+_PLACE_TIERS = frozenset({
+    "switch_union", "if_elif_record", "guarded_record",
+    "optional_partition", "if_elif_optional", "if_elif",
+    "switch_primitive", "switch_enum"})
+# The value tiers: a non-place subject copies into the dispatch local, and
+# every arm condition and binding reads the local, never the expression.
+_SNAPSHOT_TIERS = frozenset({
+    "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded",
+    "switch_str"})
+
+
+def _subject_admission(stmt: TpyMatch, kind: 'str | None',
+                       lc: '_LowerCtx', declared: dict[str, TpyType],
+                       pointers: AbstractSet[str],
+                       narrowed: AbstractSet[str],
+                       storage_tuple_locals: AbstractSet[str]) -> _Subject:
+    """The one admission of a `match` subject, decided once per match for
+    its tier (`kind`: `_match_strategy`'s, or "poly" for polymorphic
+    dispatch, which carries the guarded-ness the tier needs).
+
+    A NAME binds `auto&` when it renders direct; a pointer local, a
+    NARROWED name (the enclosing arm's extraction alias) and a tuple alias
+    are refused, except the `@dynamic` local's base pointer on the poly
+    tier and a wrapper union's pointer local, which deref into the alias.
+
+    Any other subject is a PLACE when it climbs to roots (`_subject_place`):
+    the poly tier binds every place `auto&`, whatever its root renders as;
+    the other place tiers (`_PLACE_TIERS`) bind one whose reference is
+    proven held and whose roots render direct (`self`, or a declared name
+    that is no pointer local, narrowed name or tuple alias), and refuse
+    every other place -- copying it would lose a write CPython sees. A
+    non-place subject is SNAPSHOT on the value tiers and on the poly tier
+    off a temporary; a NEW object (every origin leaf new) the record chain
+    owns; a call result the poly tier owns when it is a value
+    (`call_hands_back_value`); a pointer-variant union result the union
+    tier snapshots; a wrapper union's reference result binds `auto&`.
+
+    In a resumable body a pointer-form Optional capture points INTO the
+    subject, so a subject that is no place -- a dispatch-local copy, or a
+    narrowed name's alias -- leaves its frame field dangling at the first
+    resumption: no lowering is correct, so that verdict is lowering's own
+    diagnostic, before any tier is asked."""
+    analyzer = lc.analyzer
+    subj = stmt.subject
+    # A new object is decided first: an extraction (`cast(Item, a)` out of
+    # `Any`) climbs like a call over a place, but names no storage of it.
+    new = all(leaf.kind is OriginKind.NEW for leaf in origin(analyzer, subj))
+    lvalue = not new and _subject_place(subj, analyzer, proven=False).place
+    if (not lvalue or (isinstance(subj, TpyName) and subj.name in narrowed)
+            ) and any(lc.frame_local(b.name, FrameLocalClass.OPT_PTR)
+                      for case in stmt.cases
+                      for b in iter_capture_bindings(case.pattern)):
+        reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
+    if kind is None:
+        return _Subject.REFUSE
+    t = unwrap_readonly(stmt.subject_type)
+    if kind == "switch_union" and t.needs_wrapper() and (
+            not isinstance(subj, (TpyName, TpyCall, TpyMethodCall))
+            or _match_union_route(stmt, t) not in ("switch_union",
+                                                   "guarded_union")):
+        # A wrapper subject is a NAME (the deref'd pointer local included)
+        # or a borrow-returning CALL: a field / subscript source would
+        # compose `.value` over a member read, and both union tiers
+        # dispatch through the `.value` variant member.
+        return _Subject.REFUSE
+    if (not isinstance(subj, TpyName)
+            and kind in ("optional_partition", "if_elif_optional")
+            and not t.uses_pointer_repr()):
+        # A field / subscript source takes the `optional_to_ptr` lift
+        # (`_lower_optional_subject`), which a value-repr Optional has no
+        # spelling for.
+        return _Subject.REFUSE
+
+    def direct(name: str) -> bool:
+        return (name not in pointers and name not in narrowed
+                and name not in storage_tuple_locals)
+
+    if isinstance(subj, TpyName):
+        if subj.name not in declared:
+            return _Subject.REFUSE
+        if direct(subj.name):
+            return _Subject.BORROW
+        derefs = (lc.binding(subj.name).form is BindingForm.DYN
+                  if kind == "poly"
+                  else kind == "switch_union" and t.needs_wrapper())
+        return (_Subject.BORROW
+                if derefs and subj.name in pointers
+                and subj.name not in narrowed
+                and subj.name not in storage_tuple_locals
+                else _Subject.REFUSE)
+    call = isinstance(subj, (TpyCall, TpyMethodCall))
+    if kind == "poly":
+        if lvalue:
+            return _Subject.BORROW
+        if not call:
+            return _Subject.SNAPSHOT
+        # A borrowed object the subject cannot bind by reference (a
+        # temporary receiver's `make().get()`) would be bound as a sliced
+        # copy, which no subclass arm matches.
+        if not call_hands_back_value(subj):
+            raise ThirUnsupported("match.poly_subject_copy", detail=True)
+        return _Subject.OWNED
+    # A `None` subject (`subject_effect_only`) binds no alias a guard could
+    # make re-read, so its place is admitted on every value tier.
+    if kind not in _PLACE_TIERS and not (
+            lvalue and stmt.subject_effect_only and kind in _SNAPSHOT_TIERS):
+        return (_Subject.SNAPSHOT if kind in _SNAPSHOT_TIERS and not lvalue
+                else _Subject.REFUSE)
+    held = _subject_place(subj, analyzer, proven=True)
+    # A resumable body takes no whole-call subject: its frame captures copy
+    # out of the subject (BUGS.md#resumable-optional-capture-copies).
+    frame_call = (isinstance(past_cast(subj), TpyCall)
+                  and lc.resumable_leaf_mode)
+    if (held.place and not frame_call and origin_shared(analyzer, subj)
+            and all(r.name == "self" or (r.name in declared and direct(r.name))
+                    for r in held.roots)):
+        return _Subject.BORROW
+    if kind == "switch_union" and call:
+        returns_ref = call_returns_cpp_ref(analyzer,
+                                           subj.resolved_function_info)
+        if t.needs_wrapper():
+            return _Subject.BORROW if returns_ref else _Subject.REFUSE
+        return (_Subject.SNAPSHOT
+                if not returns_ref and pointer_variant_union(t) is not None
+                else _Subject.REFUSE)
+    if lvalue:
+        return _Subject.REFUSE
+    if kind in _SNAPSHOT_TIERS:
+        return _Subject.SNAPSHOT
+    if (kind == "if_elif_record" and isinstance(subj, TpyCall)
+            and not isinstance(t, OptionalType) and new):
+        return _Subject.OWNED
+    return _Subject.REFUSE
 
 
 def _nullable_match_hoist(rec: BindingRepr) -> bool:
@@ -1199,36 +1393,19 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
 
 def _match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
-        pointers: AbstractSet[str], narrowed: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
-        lc: '_LowerCtx') -> "_MatchRoute | None":
+        prescan: _Prescan, lc: '_LowerCtx', kind: str,
+        subject: _Subject) -> "_MatchRoute | None":
     """Return the strategy data consumed while lowering a match, or None.
 
-    M1 covers the unguarded scalar switch tiers
-    (switch_enum / switch_primitive), no captures. The subject is a bare
-    declared name (an lvalue -- `auto&`; pointer-local / narrowed /
-    tuple-alias names render indirect and reject). Arms are enum-member /
-    int-literal patterns, or-patterns of those, and the wildcard; guards,
-    `as`/capture bindings, and arms carrying narrowing `type_facts` (never
-    set for plain enum/fixed-int subjects -- defensive) reject,
-    which keeps the guarded tiers' second counter draw
-    (`__match_end_N`) and the bind-mode machinery unreachable. The sema
-    hoist (`if_branch_decls`) follows the try arm's discipline:
-    already-declared names skip, fresh names admit by their hoist records
-    (`_route_hoists`), and every arm body walks with them in scope."""
-    if stmt.polymorphic_dispatch:
-        subj = stmt.subject
-        if isinstance(subj, TpyName):
-            if subj.name not in declared:
-                return None
-            # A `@dynamic` local's base pointer reads as the object (`(*p)`),
-            # which the subject binds by reference.
-            dyn_local = (subj.name in pointers
-                         and lc.binding(subj.name).form is BindingForm.DYN)
-            if ((subj.name in pointers and not dyn_local)
-                    or subj.name in narrowed
-                    or subj.name in storage_tuple_locals):
-                return None
+    The subject is admitted once, for every tier (`_subject_admission`);
+    the route adds the tier's own shape gates. The sema hoist
+    (`if_branch_decls`) follows the try arm's discipline: already-declared
+    names skip, fresh names admit by their hoist records (`_route_hoists`),
+    and every arm body walks with them in scope."""
+    if subject is _Subject.REFUSE:
+        return None
+    subj = stmt.subject
+    if kind == "poly":
         hoist_types = _route_hoists(stmt, analyzer, declared, prescan, lc)
         if hoist_types is None:
             return None
@@ -1237,108 +1414,8 @@ def _match_route(
         kind = ("poly_guarded" if any(
             c.guard is not None or pattern_has_field_condition(c.pattern)
             for c in stmt.cases) else "poly_if_elif")
-        return _MatchRoute(kind=kind, hoist_types=hoist_types)
-    kind = _match_strategy(stmt, analyzer)
-    if kind is None:
-        return None
-    subject_rvalue = False
-    subj = stmt.subject
-    if isinstance(subj, TpyName):
-        if subj.name not in declared:
-            return None
-        if (subj.name in pointers or subj.name in narrowed
-                or subj.name in storage_tuple_locals):
-            # A POINTER-local WRAPPER subject derefs into the alias
-            # (`auto& __match_subject_N = (*v);` -- the hoisted wrapper
-            # local); the name arm's deref supplies the spelling.
-            if not (kind == "switch_union"
-                    and subj.name in pointers
-                    and subj.name not in narrowed
-                    and subj.name not in storage_tuple_locals
-                    and unwrap_readonly(stmt.subject_type).needs_wrapper()):
-                return None
-    else:
-        # Field/subscript LVALUE subjects (storage-form: value-variant
-        # `std::get`, `auto&` bind) admit on the union and record tiers,
-        # plus the pointer-repr O1 partition, the pointer-repr unguarded
-        # optional chain (the `optional_to_ptr` lift, `auto` bind), and the
-        # UNGUARDED scalar chain (`match self.n:` -- the `auto&` subject
-        # bind compares like a name, and with no guard nothing runs between
-        # two arm tests to change what that alias sees).
-        if kind not in ("switch_union", "if_elif_record", "guarded_record",
-                        "optional_partition", "if_elif_optional",
-                        "if_elif", "switch_primitive", "switch_enum"):
-            # The guarded chain and the str discriminator switch join for
-            # NON-lvalue subjects only: those materialize into the by-value
-            # dispatch local, so every arm reads a stable copy. The guarded
-            # chain's arms RE-READ the `auto&` alias after each guard, so an
-            # lvalue subject a guard mutates diverges from CPython, which
-            # snapshots the subject once
-            # (BUGS.md#match-subject-alias-under-guard-mutation); the
-            # exclusion stands until a scalar subject binds by value. A
-            # `None` subject binds no alias to re-read.
-            if not (kind in ("if_elif_guarded", "switch_str")
-                    and (not match_subject_is_lvalue(subj)
-                         or stmt.subject_effect_only)):
-                return None
-        if not _match_expr_subject_ok(subj, declared, pointers, narrowed,
-                                      storage_tuple_locals, analyzer):
-            # Call/ctor F1-record RVALUE subjects admit on the unguarded
-            # record tier: the subject materializes into an owned
-            # dispatch-local (`auto __match_subject_N = <call>;`), captures
-            # move out of it. Optional-typed rvalues stay out (an
-            # `optional_to_ptr` lift on a temporary would dangle).
-            # The union-switch analog: a Call/MethodCall rvalue returning a
-            # non-wrapper ptr-variant union materializes the same way, the
-            # arms `std::get` off the by-value dispatch local (the scoped
-            # UNION_SUBJECT verdict admits the call's union
-            # return at exactly this position).
-            union_call_subject = (
-                kind == "switch_union"
-                and isinstance(subj, (TpyCall, TpyMethodCall))
-                and is_rvalue_source(analyzer, subj)
-                and pointer_variant_union(stmt.subject_type) is not None)
-            # A BORROW-returning WRAPPER call subject binds by reference
-            # (`auto& __match_subject_N = h.get();` -- the accessor's
-            # `Tree<T>&` return): subject_ref stays True, the existing
-            # wrapper-borrow result rung admits the call render.
-            _wrap_borrow_subj = (
-                kind == "switch_union"
-                and isinstance(subj, (TpyCall, TpyMethodCall))
-                and unwrap_readonly(stmt.subject_type).needs_wrapper()
-                and getattr(subj, "resolved_function_info", None) is not None
-                and (call_returns_cpp_ref(analyzer,
-                                          subj.resolved_function_info)
-                     or _wrapper_borrow_return(
-                         subj.resolved_function_info.return_type,
-                         analyzer) is not None))
-            # A NON-LVALUE subject on any scalar tier copies into the
-            # dispatch local (`auto __match_subject_N = <expr>;` -- the
-            # `match_subject_is_lvalue` ternary; a scalar copy is
-            # safe by value, and every arm condition/binding reads the
-            # local, never the expression again). Lvalue chains rooted at
-            # pointer/narrowed/tuple-alias names stay out: those bind
-            # `auto&`, a render not lowered here.
-            scalar_rvalue_subject = (
-                kind in ("switch_enum", "switch_primitive", "if_elif",
-                         "if_elif_guarded", "switch_str")
-                and not match_subject_is_lvalue(subj))
-            if _wrap_borrow_subj:
-                pass
-            elif not (union_call_subject
-                      or scalar_rvalue_subject
-                      or (kind == "if_elif_record"
-                          and isinstance(subj, TpyCall)
-                          and is_rvalue_source(analyzer, subj)
-                          and not isinstance(
-                              unwrap_readonly(stmt.subject_type),
-                              OptionalType))):
-                return None
-            else:
-                subject_rvalue = True
-        if (kind in ("optional_partition", "if_elif_optional")
-                and not unwrap_readonly(stmt.subject_type).uses_pointer_repr()):
-            return None
+        return _MatchRoute(kind=kind, hoist_types=hoist_types,
+                           subject=subject)
     hoist_types = _route_hoists(
         stmt, analyzer, declared, prescan, lc,
         nonvalue_ok=kind in ("if_elif_record", "guarded_record",
@@ -1348,25 +1425,15 @@ def _match_route(
     if hoist_types is None:
         return None
     if kind == "switch_union":
-        u = unwrap_readonly(stmt.subject_type)
-        union_route = _match_union_route(stmt, u)
-        if u.needs_wrapper():
-            # M4c: wrapper subjects are NAME (incl. the deref'd pointer
-            # local) or borrow-returning-CALL only (a field/subscript
-            # source would compose `.value` over a member read -- out of
-            # slice). Both union tiers dispatch through the `.value`
-            # variant member (`wrapper_value` on the node).
-            if (not isinstance(subj, (TpyName, TpyCall, TpyMethodCall))
-                    or union_route not in ("switch_union", "guarded_union")):
-                return None
+        union_route = _match_union_route(
+            stmt, unwrap_readonly(stmt.subject_type))
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
-                          union_route=union_route,
-                          subject_rvalue=subject_rvalue)
+                           subject=subject, union_route=union_route)
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
             return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
-                           subject_rvalue=subject_rvalue)
+                           subject=subject)
     if kind in ("optional_partition", "if_elif_optional",
                 "if_elif_optional_guarded"):
         # Pointer-repr NAME subjects must be the admitted borrow form (the
@@ -1380,10 +1447,10 @@ def _match_route(
                 and _optional_ptr_borrow_name(subj, declared, analyzer)
                 is None):
             return None
-        return _MatchRoute(kind=kind, hoist_types=hoist_types)
+        return _MatchRoute(kind=kind, hoist_types=hoist_types,
+                           subject=subject)
     return _MatchRoute(kind=_ordered_scalar_kind(stmt, kind, analyzer),
-                       hoist_types=hoist_types,
-                       subject_rvalue=subject_rvalue)
+                       hoist_types=hoist_types, subject=subject)
 
 def _select_match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
@@ -1391,24 +1458,13 @@ def _select_match_route(
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
         lc: '_LowerCtx') -> _MatchRoute:
     """Select a match lowering strategy or reject at the lowering boundary."""
-    # A capture that lands in a `P*` frame field points INTO the subject, so a
-    # subject that is not stable storage leaves the field dangling at the
-    # first resumption. No lowering is correct here, so the verdict is
-    # lowering's own -- rejecting instead would only defer the body and leave
-    # the user-facing message to whichever layer emits it next.
-    # Only a capture NAMING an Optional-pointer frame local builds the
-    # aliasing field.
-    # Stability is the shared predicate, so it covers the narrowed-name subject
-    # too: that renders to the enclosing arm's extraction alias rather than to
-    # the frame field, which is just as dispatch-local as a copy.
-    if any(lc.frame_local(_bind.name, FrameLocalClass.OPT_PTR)
-           for _case in stmt.cases
-           for _bind in iter_capture_bindings(_case.pattern)):
-        if not resumable_match_subject_is_stable(stmt.subject, narrowed):
-            reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
-    route = _match_route(
-        stmt, analyzer, declared, pointers, narrowed,
-        storage_tuple_locals, prescan, lc)
+    kind = ("poly" if stmt.polymorphic_dispatch
+            else _match_strategy(stmt, analyzer))
+    subject = _subject_admission(stmt, kind, lc, declared, pointers,
+                                 narrowed, storage_tuple_locals)
+    route = (_match_route(stmt, analyzer, declared, prescan, lc, kind,
+                          subject)
+             if kind is not None else None)
     if route is None:
         raise ThirUnsupported("stmt.match")
     return route
@@ -1566,15 +1622,16 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                                   hoist_decls,
                                   loop_depth=loop_depth,
                                   arm_body_hooks=arm_body_hooks,
-                                  subject_rvalue=route.subject_rvalue)
+                                  subject=route.subject)
     if kind in ("poly_if_elif", "poly_guarded"):
         return _lower_match_poly(stmt, lc, declared, loc, pointers,
-                                 hoist_decls, kind, loop_depth=loop_depth)
+                                 hoist_decls, kind, loop_depth=loop_depth,
+                                 subject=route.subject)
     if kind in ("if_elif_record", "guarded_record"):
         return _lower_match_record(stmt, lc, declared, loc, pointers,
                                    hoist_decls, kind, loop_depth=loop_depth,
                                    hoisted=hoisted,
-                                   subject_rvalue=route.subject_rvalue,
+                                   subject=route.subject,
                                    arm_body_hooks=arm_body_hooks)
     if kind == "optional_partition":
         return _lower_match_optional(stmt, lc, declared, loc, pointers,
@@ -1591,7 +1648,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         return _lower_match_switch_str(stmt, lc, declared, loc, pointers,
                                        hoist_decls, loop_depth=loop_depth,
                                        arm_body_hooks=arm_body_hooks,
-                                       subject_rvalue=route.subject_rvalue)
+                                       subject=route.subject)
     subj_type = (declared.get(stmt.subject.name)
                  if isinstance(stmt.subject, TpyName)
                  else lc.analyzer.get_expr_type(stmt.subject))
@@ -1612,7 +1669,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if synthetic_default:
         _witness("match.synthetic_default")
     emit_unreachable = _unreachable_tail(stmt, arms)
-    if route.subject_rvalue:
+    if route.subject is not _Subject.BORROW:
         _witness("match.scalar_rvalue_subject")
     subject = None
     if not stmt.subject_effect_only:
@@ -1628,7 +1685,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         strategy=kind,
         subject=subject,
         subject_effect=subject_effect,
-        subject_ref=not route.subject_rvalue,
+        subject_ref=route.subject is _Subject.BORROW,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -2099,7 +2156,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         hoist_decls: 'list[HoistDecl]',
                         kind: str, *, loop_depth: int = 0,
                         hoisted: AbstractSet[str] = frozenset(),
-                        subject_rvalue: bool = False,
+                        subject: _Subject,
                         arm_body_hooks: bool = False) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
     source-order single-entry arms; per class arm the pre-rendered literal
@@ -2136,7 +2193,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 # arm reject.
                 opt_frame=(NameFacts(lambda n: lc.frame_local(
                                n, FrameLocalClass.OPT_PTR))
-                           if arm_body_hooks and not subject_rvalue
+                           if arm_body_hooks
+                           and subject is _Subject.BORROW
                            else frozenset())):
             raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
@@ -2152,7 +2210,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         if isinstance(test, TpyClassPattern):
             field_conds, field_bindings = _lower_field_subpatterns(
                 test, declared, arm_declared, lc, from_case_var=False,
-                subject_is_rvalue=subject_rvalue)
+                subject_is_rvalue=subject is not _Subject.BORROW)
         elif isinstance(test, TpyOrPattern):
             or_conds = _lower_or_field_conds(test, lc)
         binding = None
@@ -2166,7 +2224,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 # ENCLOSING match's this (nested) match re-seats. An rvalue
                 # subject never reaches this form (sema records no borrow
                 # fact for it) -- defensive.
-                if subject_rvalue:
+                if subject is not _Subject.BORROW:
                     raise ThirUnsupported("match.capture_shape", detail=True)
                 mode = "assign" if subject_is_ptr else "assign_addr"
                 if not here:
@@ -2176,7 +2234,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 # The owned optional slot moves from the MATERIALIZED rvalue
                 # subject only; an lvalue subject or a guarded arm (later
                 # arms could re-read the moved-from subject) rejects.
-                if not subject_rvalue or case.guard is not None:
+                if (subject is not _Subject.OWNED
+                        or case.guard is not None):
                     raise ThirUnsupported("match.capture_shape", detail=True)
                 mode = "assign_move"
             else:
@@ -2213,12 +2272,12 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 or_conds=or_conds)
         arms.append(THIRMatchArm(labels=(), entries=(entry,)))
     emit_unreachable = _unreachable_tail(stmt, arms)
-    if subject_rvalue:
+    if subject is not _Subject.BORROW:
         _witness("match.subject_rvalue")
     return THIRMatch(
         strategy=kind,
         subject=_lower_subject_expr(stmt.subject, lc, declared),
-        subject_ref=not subject_rvalue,
+        subject_ref=subject is _Subject.BORROW,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -2249,7 +2308,8 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
                       declared: dict[str, TpyType], loc,
                       pointers: AbstractSet[str],
                       hoist_decls: 'list[HoistDecl]',
-                      kind: str, *, loop_depth: int = 0) -> THIRMatch:
+                      kind: str, *, loop_depth: int = 0,
+                      subject: _Subject) -> THIRMatch:
     """Lower a polymorphic-dispatch `match` (poly_if_elif / poly_guarded),
     the subject bound once, per class
     arm the C++17 if-init cast (`Sub* __mpoly_i = <cast>`) plus the
@@ -2282,13 +2342,6 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
     source_inner = polymorphic_source_inner(var_decl, analyzer.registry)
     if source_inner is None:
         raise ThirUnsupported("match.poly_source", detail=True)
-    if (isinstance(subj, (TpyCall, TpyMethodCall))
-            and not match_subject_is_lvalue(subj)
-            and not call_hands_back_value(subj)):
-        # A borrowed object the subject cannot bind by reference (a
-        # temporary receiver's `make().get()`) would be bound as a sliced
-        # copy, which no subclass arm matches.
-        raise ThirUnsupported("match.poly_subject_copy", detail=True)
     is_const = _poly_subject_const(subj, lc)
     arms: list[THIRMatchArm] = []
     for i, case in enumerate(_bindings.scoped(lc, stmt.cases)):
@@ -2412,7 +2465,7 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
     return THIRMatch(
         strategy=kind,
         subject=_lower_expr(subj, lc, declared, use=subj_use),
-        subject_ref=match_subject_is_lvalue(subj),
+        subject_ref=subject is _Subject.BORROW,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -2426,7 +2479,7 @@ def _lower_subject_expr(subj: TpyExpr, lc: _LowerCtx,
                         declared: dict[str, TpyType]) -> THIRExpr:
     """The union/record-tier subject render. An admitted field/subscript
     lvalue chain lowers PRECHECKED: the route already vetted the shape
-    (`_match_expr_subject_ok`), and the raw storage read is exactly what
+    (`_subject_admission`), and the raw storage read is exactly what
     `auto& __match_subject_N = <subj>;` binds -- the result-type ladders
     gate sink positions, not the subject bind."""
     if isinstance(subj, TpyFieldAccess):
@@ -3116,7 +3169,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                             hoist_decls: 'list[HoistDecl]', *,
                             loop_depth: int = 0,
                             arm_body_hooks: bool = False,
-                            subject_rvalue: bool = False) -> THIRMatch:
+                            subject: _Subject) -> THIRMatch:
     """Lower a switch_str `match` -- the discriminator
     dispatch (see THIRMatch.str_disc_kind): cases partition into guarded
     str-literal arms (pre-switch standalone blocks, source order), unguarded
@@ -3275,12 +3328,12 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
 
     emit_unreachable = _unreachable_tail(stmt, arms, *str_guarded,
                                         *str_trailing)
-    if subject_rvalue:
+    if subject is not _Subject.BORROW:
         _witness("match.scalar_rvalue_subject")
     return THIRMatch(
         strategy="switch_str",
         subject=_lower_expr(stmt.subject, lc, declared),
-        subject_ref=not subject_rvalue,
+        subject_ref=subject is _Subject.BORROW,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -3300,7 +3353,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        hoist_decls: 'list[HoistDecl]', *,
                        loop_depth: int = 0,
                        arm_body_hooks: bool = False,
-                       subject_rvalue: bool = False) -> THIRMatch:
+                       subject: _Subject) -> THIRMatch:
     """Lower a switch_union `match` (M4a): arms in SOURCE order (no default
     regrouping -- `default:` emits in place),
     labels are numeric variant indices over the full
@@ -3443,17 +3496,18 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
             field_bindings=field_bindings,
             arm_case=case if arm_body_hooks else None),)))
     emit_unreachable = _unreachable_tail(stmt, arms)
-    if subject_rvalue:
+    by_value = subject is not _Subject.BORROW
+    if by_value:
         _witness("match.subject_rvalue")
-    subject = (_lower_expr(stmt.subject, lc, declared,
-                           use=_ExprUse(pos=SinkPos.MATCH_SUBJECT))
-               if subject_rvalue
-               else _lower_subject_expr(stmt.subject, lc, declared))
-    _refuse_lent_variant_captures(stmt, subject)
+    subject_expr = (_lower_expr(stmt.subject, lc, declared,
+                                use=_ExprUse(pos=SinkPos.MATCH_SUBJECT))
+                    if by_value
+                    else _lower_subject_expr(stmt.subject, lc, declared))
+    _refuse_lent_variant_captures(stmt, subject_expr)
     return THIRMatch(
         strategy="switch_union",
-        subject=subject,
-        subject_ref=not subject_rvalue,
+        subject=subject_expr,
+        subject_ref=not by_value,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -3469,7 +3523,8 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         # keyed uses_pointer_repr).
         is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
                         if subj_name is not None
-                        else subject_rvalue or _lent_variant_subject(subject)),
+                        else by_value
+                        or _lent_variant_subject(subject_expr)),
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )

@@ -43,7 +43,7 @@ from ..parse.nodes import (
     name_path,
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
-from ..value_category import (is_rvalue_source, lends_pointer_form_result,
+from ..value_category import (lends_pointer_form_result, origin_shared,
                               peel_coerce)
 from .call_lends import borrow_declared_sources
 from .alias_rebind import stamp_capture_rebind
@@ -495,7 +495,7 @@ class MatchAnalyzer:
             # rvalue subject must own: the temporary dies at the match block,
             # so a leaked alias would dangle, and there is no caller storage a
             # mutation could reach.
-            if aliasing_bindings and not is_rvalue_source(self.ctx, stmt.subject):
+            if aliasing_bindings and origin_shared(self.ctx, stmt.subject):
                 for node in iter_capture_bindings(case.pattern):
                     if not node.bind_by_value:
                         record_stmt_borrow_binding(

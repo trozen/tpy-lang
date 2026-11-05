@@ -191,7 +191,6 @@ from ...codegen_cpp.types import (resolve_pending_container,
 from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
-    is_constructor_call,
     local_class_cpp,
     module_variable_cpp,
     qualified_cpp_name,
@@ -5963,10 +5962,9 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
     if sub.needs_optional_runtime_check:
         return False
     getitem = _record_dunder(sub, SubscriptDunder.GET, analyzer)
-    # The return convention is the callee's as declared (`root`).
-    fi = getitem.root if getitem is not None else None
-    if fi is None or not (call_returns_cpp_ref(analyzer, fi)
-                          or _open_ref_return(fi)):
+    # The convention at this instantiation: the substituted callee.
+    if getitem is None or not (call_returns_cpp_ref(analyzer, getitem)
+                               or _open_ref_return(getitem.root)):
         return False
     result_t = analyzer.get_expr_type(sub)
     if not (_f1_record(result_t, analyzer)
@@ -8803,7 +8801,7 @@ def _nonvalue_container_ret(ret: TpyType | None) -> bool:
     `get_expr_type` (a by-value rvalue), a borrow return Ref-stripped (a C++
     lvalue), a readonly borrow return ReadonlyType-wrapped -- all three capture
     into `__obj_N` and iterate identically past the `auto`-vs-`auto&` verdict
-    (`_call_iterable_lvalue`). `Array` is on the axis and admitted with the
+    (`is_lvalue_iterable`). `Array` is on the axis and admitted with the
     rest; `Span` is a value type and stays out, as does bytes (admitted by
     the value-position check already)."""
     if ret is None:
@@ -9123,8 +9121,7 @@ def call_declared_held(call: 'TpyCall | TpyMethodCall | None',
 
 
 def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
-    """Whether the callee's DECLARED return is `Own[...]` (the same fi
-    consult as `_call_iterable_lvalue`; the skeleton's
+    """Whether the callee's DECLARED return is `Own[...]` (the skeleton's
     `is_storage_form_source` keys owning tuple slots on it)."""
     return _declared_own_return(call, under_optional=False) is not None
 
@@ -9192,20 +9189,6 @@ def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
     return (pointer_repr_optional(ret) is not None
             and not call_hands_back_value(e))
 
-
-def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:
-    """`is_lvalue_iterable`'s call arm over the admitted iterable calls: an
-    `Own[...]` return is a by-value rvalue even though `get_expr_type` strips
-    the Own -- consult the fi instead; a value-type (str) return is
-    an rvalue (both take the owning `auto __obj_N =` capture); the remaining
-    admitted shape is a borrow return (`T&` / `const T&`), a C++ lvalue
-    (`auto& __obj_N =`)."""
-    rfi = e.resolved_function_info
-    if rfi is not None and isinstance(rfi.return_type, OwnType):
-        return False
-    if is_constructor_call(e, analyzer.registry.get_record):
-        return False
-    return not analyzer.get_expr_type(e).is_value_type()
 
 def _member_valued_union_slot(a: TpyExpr, ptype: TpyType | None,
                               analyzer) -> bool:
@@ -9342,11 +9325,7 @@ def _ru_wrapper_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     fi = getattr(a, "resolved_function_info", None)
     if fi is None:
         return False
-    # Two spellings of "returns a C++ reference": the record-keyed helper
-    # (a genrec method's `Tree<T>&`) and the bare wrapper-union return
-    # slot (`-> Expr` -> `Expr&` on a free function).
-    if not (call_returns_cpp_ref(analyzer, fi)
-            or _wrapper_borrow_return(fi.return_type, analyzer) is not None):
+    if not call_returns_cpp_ref(analyzer, fi):
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(a))))
@@ -9373,8 +9352,7 @@ def _ru_wrapper_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     if fi is None:
         return False
     # The borrow-returning flavor rides its own row (BORROW_BIND use).
-    if (call_returns_cpp_ref(analyzer, fi)
-            or _wrapper_borrow_return(fi.return_type, analyzer) is not None):
+    if call_returns_cpp_ref(analyzer, fi):
         return False
     at = analyzer.get_expr_type(a)
     wi = ut.wrapper_info()

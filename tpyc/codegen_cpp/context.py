@@ -12,13 +12,12 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 
-from ..typesys import pointer_repr_optional
+from ..typesys import pointer_repr_optional, element_access
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
-    is_union_or_optional_type,
     param_takes_ownership,
     shadowed_local_cpp_name, unwrap_own,
 )
@@ -29,7 +28,7 @@ from ..parse import (
     TpyGeneratorExpression,
     TpyCoerce, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr, TpyImport, TpyVarDecl, TpyTupleUnpack, VarLinkage,
-    TpyNamedExpr,
+    TpyNamedExpr, SubscriptDunder,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -819,7 +818,6 @@ def is_constructor_call(expr: 'TpyExpr',
 def is_lvalue_iterable(
     expr: TpyExpr,
     get_record: Callable[[str], object | None],
-    get_type: Callable[[TpyExpr], TpyType],
 ) -> bool:
     """Check if an iterable expression is a C++ lvalue.
 
@@ -828,35 +826,28 @@ def is_lvalue_iterable(
     get ``auto`` to own the temporary safely.
 
     get_record: look up a record by name (e.g. registry.get_record).
-    get_type:   resolve the C++ result type of an expression.
     """
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
     if isinstance(expr, TpyName):
         return True
     if isinstance(expr, TpyFieldAccess):
-        return is_lvalue_iterable(expr.obj, get_record, get_type)
+        return is_lvalue_iterable(expr.obj, get_record)
     if isinstance(expr, TpySubscript):
         # Slicing (a[1:]) returns an rvalue span/view, not a reference into obj.
         # Only single-index subscripting (a[0]) returns T& and inherits lvalueness from obj.
         if isinstance(expr.index, TpySlice):
             return False
-        return is_lvalue_iterable(expr.obj, get_record, get_type)
+        # A class `__getitem__` answers as its explicit call does.
+        getitem = expr.dunder(SubscriptDunder.GET)
+        if (getitem is not None
+                and element_access(expr, SubscriptDunder.GET) is None):
+            return _call_returns_cpp_ref_shared(None, getitem)
+        return is_lvalue_iterable(expr.obj, get_record)
     if isinstance(expr, (TpyMethodCall, TpyCall)):
-        if is_constructor_call(expr, get_record):
-            return False
-        # Own[T] returns are by-value rvalues even when T is a reference type;
-        # get_type strips OwnType, so consult resolved_function_info to see it.
-        rfi = expr.resolved_function_info
-        if rfi is not None and isinstance(rfi.return_type, OwnType):
-            return False
-        ret_type = get_type(expr)
-        # Protocol return types (e.g. Iterator[T] from generators) are
-        # value types in practice -- the C++ return is a concrete struct.
-        if is_protocol_type(ret_type):
-            return False
-        return (not ret_type.is_value_type()
-                and not is_union_or_optional_type(ret_type))
+        return (not is_constructor_call(expr, get_record)
+                and _call_returns_cpp_ref_shared(
+                    None, expr.resolved_function_info))
     return False
 
 
@@ -875,12 +866,6 @@ def ternary_iterable_lends_storage(
     """
     if not isinstance(expr, TpyIfExpr):
         return False
-
-    def peeled(e: TpyExpr) -> TpyType:
-        # `readonly[T]` lends exactly what `T` does, so the arm's family is
-        # read off the peeled type.
-        return unwrap_readonly(get_type(e))
-
     for arm in (expr.then_expr, expr.else_expr):
         bare = arm
         while isinstance(bare, TpyCoerce):
@@ -889,7 +874,7 @@ def ternary_iterable_lends_storage(
                 and get_type(bare) is None):
             # A call with no resolved return type names no storage to lend.
             continue
-        if is_lvalue_iterable(arm, get_record, peeled):
+        if is_lvalue_iterable(arm, get_record):
             return True
     return False
 

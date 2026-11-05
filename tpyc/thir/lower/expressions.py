@@ -20,7 +20,7 @@ from ...parse.nodes import (
     RebindStorage,
     ResultForm,
     lambda_of,
-    is_property_getter_read,
+    is_property_getter_read, past_cast,
     FSTRING_CONV_NONE,
     FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
@@ -190,7 +190,7 @@ from ...value_category import (
     call_hands_back_value, call_result_is_reference,
     call_result_live_in_statement, call_returns_cpp_ref,
     handed_over_iter, is_rvalue_source, lends_pointer_form_result,
-    may_hold_pointer, protocol_twin_slot,
+    may_hold_pointer, protocol_twin_slot, origin_shared,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
                       expr_kind_tag, replace_detail,
@@ -947,7 +947,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # ... and at an ITERABLE sink (`for it in list(each(items)):`)
               # the same bare prvalue under the for-head's owning
               # `auto __obj_N =` capture (the container route classes the
-              # construct call an rvalue via _call_iterable_lvalue).
+              # construct call an rvalue via is_lvalue_iterable).
               or (result is _ExprResultUse.ITERABLE
                   and _ct_b is not None
                   and (is_dict(_ct_b) or is_list(_ct_b) or is_set(_ct_b)
@@ -1157,7 +1157,9 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                              _ExprResultUse.BORROW_BIND)
                   and fi is not None
                   and (_own_dyn_return(fi.return_type) is not None
-                       or dyn_protocol_borrow_result(fi.return_type) is not None)
+                       or (dyn_protocol_borrow_result(fi.return_type)
+                           is not None
+                           and call_returns_cpp_ref(analyzer, fi)))
                   and _witness("call.dyn_recv_ret"))
               # A wrapper-union BORROW-returning call composing in place
               # (`count(passthru(tree))` -- the `Expr&` result binds the
@@ -1169,6 +1171,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and fi is not None
                   and _wrapper_borrow_return(fi.return_type, analyzer)
                   is not None
+                  and call_returns_cpp_ref(analyzer, fi)
                   and _witness("call.wrapper_borrow_ret"))
               # A container-returning call at the STORAGE return sink lands
               # bare regardless of element family -- the whole container is
@@ -5795,7 +5798,7 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
     Never from the node's `form`."""
     an = lc.analyzer
     t = node.result_type
-    rv = e is not None and is_rvalue_source(an, e)
+    rv = e is not None and not origin_shared(an, e)
     if isinstance(node, THIRSelf):
         return Held.BORROWED
     if isinstance(node, THIRName):
@@ -13575,7 +13578,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # Borrow slot: the earlier slot-info arms (pointer-repr Optional,
         # pointer-variant union, TypeParamRef) each spell their own form --
         # sliced out; only the plain pointer-repr non-value arm is spelled.
-        elem = e.elements[i]
+        elem = past_cast(e.elements[i])
         if property_access_returns_cpp_ref(analyzer, elem):
             # The pointer-repr route to the element chokepoint's verdict: a
             # getter read is an lvalue, so sema captures it REF and the decl
@@ -16100,7 +16103,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     if (reference and slot.materializer is Materializer.CALLER
             and plan.effect is Effect.PASS
             and temps and _select_node(_peel_coerce(a))
-            and not is_rvalue_source(lc.analyzer, _peel_coerce(a))):
+            and origin_shared(lc.analyzer, _peel_coerce(a))):
         # A select one of whose operands is an object the caller keeps
         # copies it: the copy is held for the call and moved in.
         t = slot.type
@@ -19652,11 +19655,9 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _rec_result = _f1_record(rec_t, analyzer)
 
         def _rec_arm_borrow_call(arm) -> bool:
-            # The shared value-category classifier has the last word: a
-            # builtin container's ctor call resolves to its `__init__`, whose
-            # VOID return makes `call_returns_cpp_ref` answer True (see
-            # BUGS.md#void-method-reads-as-borrow-returning). Admitting one as
-            # an lvalue arm renders a prvalue `?:` that silently COPIES the
+            # The shared value-category classifier has the last word: an
+            # arm the convention reads as a reference but whose call is an
+            # rvalue would render a prvalue `?:` that silently COPIES the
             # other arm -- the mixed-category copy this arm must not make.
             return (isinstance(arm, (TpyCall, TpyMethodCall))
                     and call_returns_cpp_ref(

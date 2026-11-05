@@ -28,7 +28,7 @@ from ..sema.protocols import Vtable, protocol_is_const
 from ..emitted_members import (
     EmittedMember, MemberKind, MemberSignature, ProtocolParamInfo,
     protocol_return, record_emitted_members, resolve_protocol_type,
-    static_protocol_params,
+    return_is_deduced, static_protocol_params,
 )
 from ..sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_forward_ok,
                                 record_inherits_dynamic)
@@ -252,6 +252,47 @@ def return_slot_kind(return_type: TpyType, *, error_return: bool) -> ReturnSlot:
     if error_return_uses_borrow_slot(return_type):
         return ReturnSlot.EXPECTED_BORROW
     return ReturnSlot.EXPECTED
+
+
+def signature_return_cpp(return_type: TpyType, analyzer, *,
+                         const: bool = False,
+                         cpp_error: str | None = None) -> str:
+    """A function signature's C++ return spelling, `Base&` for a @dynamic
+    protocol: one spelling for every function form, a nested def's lambda
+    included. `cpp_error` wraps it in `std::expected<T, E>`."""
+    slot = return_slot_kind(return_type, error_return=cpp_error is not None)
+    if slot is ReturnSlot.PROTOCOL:
+        unwrapped = protocol_return(return_type)
+        if not return_is_deduced(return_type):
+            base = dynamic_base_name(unwrapped, analyzer)
+            if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+                ret = f"const {base}&"
+            else:
+                ret = f"{base}&"
+            if cpp_error:
+                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+                    inner = f"::tpy::val_or_ref<const {base}>"
+                else:
+                    inner = f"::tpy::val_or_ref<{base}>"
+                return f"std::expected<{inner}, {cpp_error}>"
+            return ret
+        return "auto"
+    if slot is ReturnSlot.PLAIN:
+        if const:
+            return return_type.to_cpp_return_const()
+        return return_type.to_cpp_return()
+    # std::expected can't hold references. For reference-returned types
+    # (where the plain return is T&) -- including recursive-union wrappers
+    # -- use val_or_ref<T> which stores by pointer. A const / readonly
+    # return keeps the const through the stored pointer
+    # (val_or_ref<const T>), mirroring the @dynamic-protocol branch above.
+    inner = unwrap_ref_type(unwrap_readonly(return_type)).to_cpp()
+    if slot is ReturnSlot.EXPECTED_BORROW:
+        if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+            inner = f"::tpy::val_or_ref<const {inner}>"
+        else:
+            inner = f"::tpy::val_or_ref<{inner}>"
+    return f"std::expected<{inner}, {cpp_error}>"
 
 
 @dataclass(frozen=True)

@@ -56,7 +56,7 @@ void main() {
     Holder h = Holder(7);
     std::cout << ::tpyapp::pkg_v::kind(h.value) << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg_v::V tmp = ::tpyapp::pkg_v::make_int();
-    ::tpyapp::pkg_v::V w = ::tpyapp::main::wrap(tmp);
+    ::tpyapp::pkg_v::V& w = ::tpyapp::main::wrap(tmp);
     std::cout << ::tpyapp::pkg_v::kind(w) << "\n" << ::tpy::check_signals;
 }
 

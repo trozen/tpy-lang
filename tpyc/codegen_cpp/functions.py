@@ -54,9 +54,9 @@ from .int_literals import render_int_literal_value
 from ..sema.literal_utils import literal_value_from_expr
 from ..emitted_members import (
     EmittedMember, ProtocolParamInfo, RefQualifier, group_is_template,
-    overload_stubs_are_literal_only, protocol_return, return_is_deduced,
+    overload_stubs_are_literal_only,
 )
-from .protocols import ReturnSlot, return_slot_kind
+from .protocols import signature_return_cpp
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -683,39 +683,8 @@ class FunctionGenerator:
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
         cpp_error = error_return_to_cpp(error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if error_return else None
-        slot = return_slot_kind(return_type, error_return=cpp_error is not None)
-        if slot is ReturnSlot.PROTOCOL:
-            unwrapped = protocol_return(return_type)
-            if not return_is_deduced(return_type):
-                base = self.protocols.get_dynamic_base_name(unwrapped)
-                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
-                    ret = f"const {base}&"
-                else:
-                    ret = f"{base}&"
-                if cpp_error:
-                    if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
-                        inner = f"::tpy::val_or_ref<const {base}>"
-                    else:
-                        inner = f"::tpy::val_or_ref<{base}>"
-                    return f"std::expected<{inner}, {cpp_error}>"
-                return ret
-            return "auto"
-        if slot is ReturnSlot.PLAIN:
-            if const:
-                return return_type.to_cpp_return_const()
-            return return_type.to_cpp_return()
-        # std::expected can't hold references. For reference-returned types
-        # (where the plain return is T&) -- including recursive-union wrappers
-        # -- use val_or_ref<T> which stores by pointer. A const / readonly
-        # return keeps the const through the stored pointer
-        # (val_or_ref<const T>), mirroring the @dynamic-protocol branch above.
-        inner = unwrap_ref_type(unwrap_readonly(return_type)).to_cpp()
-        if slot is ReturnSlot.EXPECTED_BORROW:
-            if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
-                inner = f"::tpy::val_or_ref<const {inner}>"
-            else:
-                inner = f"::tpy::val_or_ref<{inner}>"
-        return f"std::expected<{inner}, {cpp_error}>"
+        return signature_return_cpp(return_type, self.ctx.analyzer,
+                                    const=const, cpp_error=cpp_error)
 
     @staticmethod
     def _emit_param_with_decision(

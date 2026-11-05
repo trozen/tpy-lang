@@ -125,7 +125,7 @@ from .alias_rebind import finalize_pointer_tuples, global_write_facts
 from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_leftover_source_writes, resolve_loop_frame_calls
-from ..value_category import is_rvalue_source, wants_move
+from ..value_category import origin_shared, wants_move
 from .mutation_propagation import (propagate_mutation_facts, infer_method_const,
                                    resolve_loop_bindings)
 from tpyc import modules as builtin_modules
@@ -2285,7 +2285,7 @@ class SemanticAnalyzer:
         decl = self.ctx.func.var_decl_by_name.get(name)
         if decl is None or decl.init is None:
             return False
-        return not is_rvalue_source(self.ctx, decl.init)
+        return origin_shared(self.ctx, decl.init)
 
     @staticmethod
     def _names_used_after(body: list[TpyStmt], nested_node: TpyNestedDef) -> set[str]:

@@ -157,6 +157,7 @@ from ...codegen_cpp.forms import (
 from ...codegen_cpp.protocols import (
     dynamic_base_name,
     dyn_slot_cpp,
+    signature_return_cpp,
 )
 from ...coercions import CoercionContext
 from ...sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_binding_owns,
@@ -186,7 +187,7 @@ from ...liveness import (
 from ...value_category import (
     binds_owned_value, call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
     CONTAINER_LITERAL_NODES, is_rvalue_source,
-    property_access_returns_cpp_ref,
+    property_access_returns_cpp_ref, origin_open, origin_shared,
 )
 from ..faces import witness as _witness
 from ..reject import (
@@ -4858,7 +4859,8 @@ def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
     # handle (`rc.get()` on `Rc[Pet]`) at that instantiation.
     if isinstance(init, (TpyCall, TpyMethodCall)):
         fi = getattr(init, "resolved_function_info", None)
-        if fi is not None and dyn_protocol_borrow_result(fi.return_type) is not None:
+        if (call_returns_cpp_ref(lc.analyzer, fi)
+                and dyn_protocol_borrow_result(fi.return_type) is not None):
             _witness("decl.dyn_erased_call")
             return _lower_expr(init, lc, declared,
                                use=_ExprUse(result=_ExprResultUse.RECEIVER))
@@ -5070,7 +5072,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
     resolved_ret = lc.render_resolve(rt)
     ret_cpp = (None if isinstance(resolved_ret, VoidType)
-               else lc.render_type(resolved_ret))
+               else signature_return_cpp(resolved_ret, analyzer))
     with _nested_def_lowering_scope(
             lc, func, scope.declared,
             self_captured="self" in stmt.captured_names,
@@ -10986,7 +10988,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # the shared borrow-local rung (`decl.record_borrow_call`)
                     # before this cascade is reached; one that gets here is
                     # a borrow the storage decl below would COPY, so it stops.
-                    if not is_rvalue_source(analyzer, stmt.init):
+                    if origin_shared(analyzer, stmt.init):
                         note_detail("decl.container_call_borrow")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                     storage_call = True
@@ -11151,7 +11153,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         # records.
                         and (_value_opt_tuple_copyable(vtype, analyzer)
                              is not None
-                             or is_rvalue_source(analyzer, stmt.init))
+                             or not origin_shared(analyzer, stmt.init))
                         and _witness("decl.value_opt_tuple_slot"))
                     or _owned_view_opt_whole_src(stmt, vtype, lc)
                     # ... and the source whose type is the INNER rather than
@@ -11200,13 +11202,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # indirection rules apply in full: a reassigned / hoisted /
                     # move-through name and a non-rvalue source each bind an
                     # alias (`T* v = &__slot_N;`, `T& b = a;`) instead, and
-                    # those renders are their own rows.
+                    # those renders are their own rows. An open-T result
+                    # is a reference at a reference instantiation, so the
+                    # slot would copy it there unwarned; a copy sema
+                    # stamped and warned is a value.
                     or (_type_param_value_slot(vtype)
                         and stmt.name not in lc.prescan.reassigned
                         and stmt.name not in lc.prescan.hoisted
                         and stmt.name not in lc.prescan.move_through
                         and stmt.init is not None
                         and is_rvalue_source(analyzer, stmt.init)
+                        and not origin_open(analyzer, stmt.init)
                         and _witness("decl.type_param_slot"))
                     or _protocol_auto_slot(vtype)
                     # A LAZY list-repeat slot (`x = [7] * n` never

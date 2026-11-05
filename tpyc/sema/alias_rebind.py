@@ -38,8 +38,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import (TYPE_CHECKING, Container, Iterable, Mapping, NamedTuple,
-                    Protocol)
+from typing import (TYPE_CHECKING, Container, Iterable, Mapping,
+                    NamedTuple)
 
 from ..holders import External, Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
@@ -56,7 +56,7 @@ from ..parse import (
 from ..parse.nodes import (RebindStorage, read_names,
                            value_capture_lambdas, walk_body_stmts,
                            walk_expr_tree)
-from ..storage_trace import StepKind, Trace, is_unbound_field, trace
+from ..storage_trace import StepKind, is_unbound_field, trace
 from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
@@ -69,13 +69,14 @@ from ..typesys import (
 # `is_reference_leaf` and `leaves_at` are imported from here by the frozen
 # tpyc/thir/lower/convert.py.
 from .elem_paths import (
-    ElemPath, _declared_borrowed, _paths_at, bare_tuple, is_reference_leaf,
-    leaf_paths, leaves_at, reference_paths,
+    ElemPath, bare_tuple, declared_borrowed, is_reference_leaf, leaf_paths,
+    leaves_at, paths_at, reference_paths,
 )
 from .dyn_erasure import DynEntry, dyn_binding_owns, dyn_entry
 from ..value_category import (binds_owned_value, call_operands,
-                              getitem_call_of, leaves_hold_no_pointer,
-                              may_hold_pointer, peel_coerce)
+                              declared_result_paths, leaves_hold_no_pointer,
+                              may_hold_pointer, peel_coerce,
+                              tuple_subscript_index)
 from .call_lends import (
     ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
 )
@@ -84,7 +85,7 @@ from .context import (
     note_nonowning_bind,
 )
 from .storage_walk import (Place, StorageKey, Use, call_loans, leaves,
-                           storage_roots, tuple_subscript_index)
+                           storage_roots)
 from .loop_frames import (
     LoopFrameHold, WithExitCheck, advanced_root, binding_value,
     check_loop_hold,
@@ -159,20 +160,6 @@ def top_level(paths: Iterable[ElemPath]) -> frozenset[int]:
     return frozenset(p[0] for p in paths)
 
 
-class IncomingLends(Protocol):
-    """The INCOMING question of a tuple source at an owning sink
-    (`tuple_borrowed_paths`): what each scalar member of a literal lends as
-    it arrives, and what a call's result does."""
-
-    def member_lends(self, m: TpyExpr) -> bool: ...
-
-    def path_moves(self, expr: TpyExpr) -> bool | None: ...
-
-    def call_lent_paths(self, call: 'TpyCall | TpyMethodCall',
-                        slot: TupleType,
-                        prefix: ElemPath = ()) -> frozenset[ElemPath]: ...
-
-
 def _owned_member(ctx: 'SemanticContext', m: TpyExpr) -> bool:
     """A literal member the tuple takes over: a fresh value, or a parameter
     handed over (`Own[...]`)."""
@@ -187,31 +174,19 @@ def _owned_member(ctx: 'SemanticContext', m: TpyExpr) -> bool:
 
 
 def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
-                         slot: TpyType | None, prefix: ElemPath = (), *,
-                         incoming: IncomingLends | None = None
+                         slot: TpyType | None, prefix: ElemPath = ()
                          ) -> frozenset[ElemPath] | None:
     """The element paths (`reference_paths`) of a tuple SOURCE at `slot`
-    whose reference payload arrives BORROWED -- storage that outlives the
-    expression, which an owning slot copies where CPython aliases. None
-    when the slot is no tuple. A call lends per its declared return
-    (`declared_call_paths`), or as `incoming` answers where the caller
-    asks the incoming question -- of an element read off a call
-    (`call(...)[0]`) too, projected to its subtree; an `await` and a
-    by-value `__getitem__` lend as their declared result does, a walrus as
-    the name it binds; a select lends what
-    either arm does (C++ copies the chosen one); a place the read moves out
-    (`path_moves`, asked of an incoming source: an element at its
-    tuple's last use, a consuming method's field) lends nothing;
-    a name, a field, a subscript and anything else lend every reference
-    path.
-
-    A literal answers two questions. Its INCOMING ownership (`incoming`
-    given: what each scalar member lends as it arrives, the sink's question)
-    asks every member, whatever its capture: a nested tuple member answers
-    for its subtree. Its STORAGE after capture (no `incoming`: what a
-    binding of it holds, the binding masks' question) lends each member it
-    does not capture by VALUE -- a member it captured by value is held as
-    an object of its own, a copied one included."""
+    that a binding of it holds BORROWED after capture -- the binding masks'
+    question. None when the slot is no tuple. A call lends per its declared
+    return (`declared_call_paths`), a fresh copy of a lent operand nothing;
+    an `await` and a by-value `__getitem__` lend as their declared result
+    does, a walrus as the name it binds; a select lends what either arm
+    does; a literal lends each member it does not capture by VALUE (a
+    member it captured by value is held as an object of its own, a copied
+    one included); a name, a field, a subscript and anything else lend
+    every reference path. What a source lends as it ARRIVES at an owning
+    sink is its origin's (`TypeCompatibility.tuple_lent_paths`)."""
     bare = bare_tuple(slot)
     if bare is None or expr is None:
         return None
@@ -221,8 +196,7 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
         return frozenset()
     if isinstance(init, TpyIfExpr):
         return frozenset().union(*(
-            tuple_borrowed_paths(ctx, arm, bare, prefix,
-                                 incoming=incoming) or frozenset()
+            tuple_borrowed_paths(ctx, arm, bare, prefix) or frozenset()
             for arm in (init.then_expr, init.else_expr)))
     if isinstance(init, TpyTupleLiteral):
         caps = init.elem_capture
@@ -230,136 +204,38 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
         for i, et in enumerate(bare.element_types):
             path = prefix + (i,)
             m = init.elements[i] if i < len(init.elements) else None
-            if incoming is None:
-                # A captured open `T` copies an existing object in at a
-                # reference instantiation (`param_to_storage`), as the
-                # binding-borrow registry reads it: it lends, unless fresh
-                # or handed over (`Own`).
-                # A literal no capture was decided for (a walrus's) holds a
-                # value-typed element by value, the capture rule's first
-                # answer.
-                held_by_value = (caps[i] is TupleElemCapture.VALUE
-                                 if i < len(caps)
-                                 else not caps and et.is_value_type())
-                if (held_by_value
-                        and not (m is not None
-                                 and isinstance(unwrap_readonly(
-                                     unwrap_ref_type(et)), TypeParamRef)
-                                 and not _owned_member(ctx, m))):
-                    continue
-            elif m is None:
+            # A captured open `T` copies an existing object in at a
+            # reference instantiation (`param_to_storage`), as the
+            # binding-borrow registry reads it: it lends, unless fresh
+            # or handed over (`Own`).
+            # A literal no capture was decided for (a walrus's) holds a
+            # value-typed element by value, the capture rule's first
+            # answer.
+            held_by_value = (caps[i] is TupleElemCapture.VALUE
+                             if i < len(caps)
+                             else not caps and et.is_value_type())
+            if (held_by_value
+                    and not (m is not None
+                             and isinstance(unwrap_readonly(
+                                 unwrap_ref_type(et)), TypeParamRef)
+                             and not _owned_member(ctx, m))):
                 continue
             if bare_tuple(et) is not None and m is not None:
-                out |= tuple_borrowed_paths(
-                    ctx, m, et, path, incoming=incoming) or frozenset()
-            elif incoming is None or incoming.member_lends(m):
-                out |= _paths_at(et, path)
+                out |= tuple_borrowed_paths(ctx, m, et, path) or frozenset()
+            else:
+                out |= paths_at(et, path)
         return frozenset(out)
-    if isinstance(init, (TpyCall, TpyMethodCall)):
-        if incoming is not None:
-            return incoming.call_lent_paths(init, bare, prefix)
-        if init.result_form.copies_operand:
-            # A fresh copy of a lent operand: what a binding of it holds is
-            # its own (`warn_value_call_binding` tells the copy).
-            return frozenset()
-        return declared_call_paths(init, bare, prefix)
+    if (isinstance(init, (TpyCall, TpyMethodCall))
+            and init.result_form.copies_operand):
+        # A fresh copy of a lent operand: what a binding of it holds is
+        # its own (`warn_value_call_binding` tells the copy).
+        return frozenset()
     if isinstance(init, TpyNamedExpr):
         # A walrus denotes the name it binds, never the value it was given.
         return reference_paths(bare, prefix)
-    if isinstance(init, TpyAwait):
-        # The awaited result hands over what its `Own` markers own, unless
-        # the coroutine lends its result: a coroutine's as its declaration
-        # writes it (the awaited type drops a whole `Own`), a handle's or a
-        # `Task` / `Future` / `__poll__` payload's as analyzed.
-        fi = getattr(peel_coerce(init.value), "resolved_function_info", None)
-        awaited = (fi.async_inner_return
-                   if fi is not None and fi.async_inner_return is not None
-                   else ctx.get_expr_type(init))
-        if init.await_result_is_borrow or awaited is None:
-            return reference_paths(bare, prefix)
-        return _declared_borrowed(awaited, bare, prefix)
-    getitem = getitem_call_of(init)
-    if getitem is not None and getitem.return_type is not None:
-        # A `__getitem__` returning by value lends what its declared return
-        # does, as the call it is.
-        return _declared_borrowed(getitem.return_type, bare, prefix)
-    if incoming is not None and incoming.path_moves(init):
-        return frozenset()
-    if incoming is not None:
-        projected = _projected_call_paths(ctx, trace(init), bare, (), False,
-                                          incoming)
-        if projected is not None:
-            return frozenset(prefix + p for p in projected)
-    return reference_paths(bare, prefix)
-
-
-def _projected_call_paths(ctx: 'SemanticContext', t: Trace, slot: TupleType,
-                          comp: ElemPath, inside: bool,
-                          incoming: IncomingLends
-                          ) -> frozenset[ElemPath] | None:
-    """The paths of tuple `slot` a value read off a call's result lends as
-    it arrives -- an element (`call(...)[0][1]`), a field
-    (`call(...).pair`, `call(...)[0].pair`), through the arms of a select
-    (`(f(...) if c else g(...))[0]`, either arm's lend) -- projected over
-    the one climb (`trace`) with `_Roots.place`'s component rule: a tuple
-    subscript is a component `comp` of the call's result, and past a field
-    (`inside`) the read lies in the reference leaf at `comp`, lent whole
-    when that leaf is. None when the climb takes any other step or ends at
-    anything but a call or a ternary."""
-    for step in t.steps:
-        if step.kind is StepKind.COERCE:
-            continue
-        if step.kind is StepKind.FIELD:
-            if (step.node.hidden_call is not None
-                    or is_unbound_field(step)):
-                return None
-            comp, inside = (), True
-            continue
-        index = tuple_subscript_index(step.node, ctx.get_expr_type)
-        if step.kind is not StepKind.INDEX or index is None:
-            return None
-        comp = (index,) + comp
-    if t.arms:
-        if not isinstance(t.end, TpyIfExpr):
-            return None
-        out: set[ElemPath] = set()
-        for arm in t.arms:
-            got = _projected_call_paths(ctx, arm, slot, comp, inside,
-                                        incoming)
-            if got is None:
-                return None
-            out |= got
-        return frozenset(out)
-    if not (comp or inside) or not t.ends_at_call or not isinstance(
-            t.end, (TpyCall, TpyMethodCall)):
-        return None
-    whole = bare_tuple(ctx.get_expr_type(t.end))
-    if whole is None:
-        # A record result: the field read off it is lent with the result.
-        return (incoming.call_lent_paths(t.end, slot)
-                if inside and not comp else None)
-    below = frozenset(p[len(comp):]
-                      for p in incoming.call_lent_paths(t.end, whole)
-                      if p[:len(comp)] == comp)
-    if inside:
-        return reference_paths(slot) if below else frozenset()
-    return below
-
-
-def declared_call_paths(call: 'TpyCall | TpyMethodCall', slot: TupleType,
-                        prefix: ElemPath = ()) -> frozenset[ElemPath]:
-    """The paths of tuple `slot` at `prefix` a call's result lends by its
-    declared return (`_declared_borrowed`): `Own[tuple]` nothing, an
-    `Own` element marker at any depth not that subtree; every reference
-    path of a callee with no declared return."""
-    fi = call.resolved_function_info
-    if fi is None or fi.return_type is None:
-        return reference_paths(slot, prefix)
-    ret = unwrap_readonly(fi.return_type)
-    if isinstance(ret, OptionalType):
-        # A tuple slot takes the Optional's payload: its markers say.
-        ret = ret.inner
-    return _declared_borrowed(ret, slot, prefix)
+    # A call, an owned `await` or a by-value `__getitem__` lends what its
+    # callee declares; anything else every reference path.
+    return declared_result_paths(init, bare, ctx.get_expr_type, prefix)
 
 
 def tuple_source_elem_owned(ctx: 'SemanticContext', expr: TpyExpr | None,

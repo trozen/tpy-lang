@@ -179,7 +179,7 @@ from ..value_category import (
     owned_payload_spelling,
     iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
-    binds_fresh_call_value, binds_owned_value, consuming_iter_of,
+    binds_fresh_call_value, binds_owned_value, consuming_iter_of, origin_shared,
 )
 from .dead_arms import hoist_scope_declarations, narrows_past_literal
 from .expressions import (_nested_def_free_names, _find_list_member,
@@ -1387,7 +1387,7 @@ class StatementAnalyzer:
     def _binds_fresh_frame(self, stmt: TpyVarDecl) -> bool:
         """An unpack target bound to a temp that holds a new generator
         (`g, k = counter(1), 2`), not another name's (`g, h = h, g`)."""
-        return is_rvalue_source(self.ctx, self._binding_source(stmt).reads)
+        return not origin_shared(self.ctx, self._binding_source(stmt).reads)
 
     def _binding_source(self, stmt: TpyVarDecl) -> BindingSource:
         assert stmt.init is not None
@@ -1763,7 +1763,7 @@ class StatementAnalyzer:
         lowering binds none (`expr.ifexpr`), so it keeps the marker."""
         def unowned_place(a: TpyExpr) -> bool:
             return (not isinstance(a, TpyIfExpr)
-                    and not is_rvalue_source(self.ctx, a)
+                    and origin_shared(self.ctx, a)
                     and not self._denotes_owned_binding(a))
         e = peel_coerce(expr)
         if isinstance(e, TpyIfExpr):
@@ -4360,7 +4360,7 @@ class StatementAnalyzer:
         resolves two callees, possibly rebound from a generic base, and a
         `with self.<field>:` method is kept non-const on that eager mark
         today."""
-        if is_rvalue_source(self.ctx, manager):
+        if not origin_shared(self.ctx, manager):
             for method, callee in calls:
                 check_implicit_readonly_receiver(self.ctx, manager, callee,
                                                  method, manager)
@@ -7031,7 +7031,7 @@ class StatementAnalyzer:
             # and a declared call's fresh value, which the local owns.
             if (stmt.name in self.ctx.func.current_reassigned_vars
                     or self.ctx.is_top_level
-                    or binds_fresh_call_value(stmt.init)):
+                    or binds_fresh_call_value(self.ctx, stmt.init)):
                 var_type = unwrap_ref_type(var_type)
             # A reassigned per-element-Own tuple local must model the unified
             # borrow type, not owning storage (else an alias rebind copies

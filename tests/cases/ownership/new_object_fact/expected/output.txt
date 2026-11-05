@@ -1,0 +1,58 @@
+free 6
+match 11
+finally
+try 16
+closure 21
+generator 26 26
+async 31 31
+generator-nested 36
+async-nested 41
+comprehension [41, 41]
+method 6
+wrapper-union 3
+wrapper-union-bind 3
+lent-sink 1 1
+lent-arg 1 2
+lent-return 1 1
+lent-method 1 2
+lent-generator [1, 2] 1
+lent-async 2 1
+lent-comprehension 1 2
+cast-sink 1 3
+cast-bind 15
+cast-tuple 16 16
+cast-param 17
+cast-return 18
+cast-yield 19
+cast-alias-move 4 4
+nested-call 20
+cast-arg 21
+cast-opt-arg 22
+cast-union-arg 23
+cast-generic-arg 24
+cast-select 25 0
+cast-own-arg 25 5
+dyn-str-key 1
+slice-move ['a', 'b']
+walrus-Any 25
+match-bind 5
+match-dynamic 6
+match-scalar 6
+match-scalar-arg 7
+match-cast 9
+poly-rebound 9 19
+poly-global 8 18
+poly-prop 7 17
+poly-prop-method 6
+poly-prop-loop 8
+record-guarded-call 8
+record-call-method 21
+record-call-loop 23
+poly-scalar-arg 11
+any-cast 4
+record-new 5
+scalar-guarded snapshot 2
+poly-narrowed 5
+poly-ptr 3 2
+generator-nested-record [42] 42
+async-nested-record 43 43

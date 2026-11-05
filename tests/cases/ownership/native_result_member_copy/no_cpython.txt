@@ -1,0 +1,1 @@
+The binding copy_of is a C++ template in native_types.hpp with no CPython implementation.

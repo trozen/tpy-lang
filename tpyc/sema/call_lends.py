@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..parse import (
     ResultForm, TpyArrayLiteral, TpyAwait, TpyBinOp, TpyBytesLiteral,
-    TpyCall, TpyCallLike, TpyDictLiteral, TpyExpr, TpyFieldAccess,
+    TpyCall, TpyCallLike, TpyCoerce, TpyDictLiteral, TpyExpr, TpyFieldAccess,
     TpyFString, TpyGeneratorExpression, TpyListRepeat, TpyMethodCall,
     TpyName, TpyNoneLiteral, TpySetLiteral, TpySlice, TpyStrLiteral,
     TpySubscript, TpyUnaryOp, TpyVarargPack, is_property_getter_read,
@@ -61,7 +61,7 @@ from ..type_def_registry import (
 )
 from ..typesys import (
     contains_reference_type, FunctionInfo, LiteralType, NominalType, OptionalType, OwnType,
-    PendingGenericInstanceType, PendingViewType, PtrType,
+    PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
     contains_type_param, declares_no_writes, held_whole_borrow_sources,
     is_bodyless_binding, is_bufferless_scalar, is_void_like_type,
@@ -81,7 +81,7 @@ from ..value_category import (
     is_generic_protocol, param_written, protocol_twin_slot,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
-    holds_no_pointer, may_hold_pointer, peel_coerce,
+    holds_no_pointer, may_hold_pointer, peel_coerce, origin, OriginKind,
     reference_may_hold_pointer,
 )
 from .storage_walk import (
@@ -1266,67 +1266,46 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
                          proof: bool = False,
                          gen_yield: bool = False) -> bool:
     """Whether the call-shaped `call` hands back a FRESH object, which a
-    borrow of it dies with: a fresh-stamped result (`ResultForm.is_fresh`),
-    a constructor (a borrowing one excepted: `borrowing_ctor_arg`; a
-    `Ptr[T]()` points nowhere), an `Own[T]` return, an owned `str` /
-    `String` / `bytes` / `bytearray` result, or a reference-type result the
-    callee's convention returns by value -- a `Callable` returning a record
-    included.
-
-    With `proof`, the answer must prove the result fresh: an owned buffer
-    is not asked about, and a callable value counts only through a
-    declared `Own[T]` -- its signature is the `Fn` type's, which says
-    nothing else about ownership.
+    borrow of it dies with: a value made from lent operands, or a new
+    object the call proves fresh (`origin`). Without `proof`, also what a
+    borrow of the result may not outlive though the call proves nothing
+    else about it: an owned `str` / `String` / `bytes` / `bytearray`
+    buffer, a borrowing view constructed from nothing, and a `Callable`'s
+    by-value record result (no C++ reference crosses a `Callable`).
 
     With `gen_yield` (a generator's lending yield slot), a callable value
     declared to return an open type parameter is fresh too: at an owning
     callee the instantiation's value is new, and the reference
     instantiation decides a generic body. A return keeps the default
     reading, so `return fn(x)` at `-> U` is unchanged."""
-    lend = callee_lend_fact(call)
-    if lend.fresh:
+    if any(leaf.kind is OriginKind.COPY
+           or (leaf.kind is OriginKind.NEW and leaf.proven)
+           for leaf in origin(ctx, call)):
         return True
+    if proof:
+        return False
     if isinstance(call, TpyCall) and call.call_type is not None:
-        ct = call.call_type
-        if isinstance(ct, PtrType):
-            return False
-        if is_borrowing_view_type(ct):
-            return not proof and not call.args
-        return True
-    # A generic construction a later use completes is typed pending until
-    # then, however the callee is spelled (`cls(xs)`, an import alias).
-    if isinstance(ctx.get_expr_type(call), PendingGenericInstanceType):
-        return True
-    if lend.kind is CalleeFact.UNRESOLVED:
+        return is_borrowing_view_type(call.call_type) and not call.args
+    lend = callee_lend_fact(call)
+    if lend.kind is CalleeFact.UNRESOLVED or (
+            isinstance(call, TpyCallLike) and call.result_form.is_declared):
         return False
     fi = lend.ops.fi
-    callable_value = lend.kind is CalleeFact.CALLABLE
-    if fi.is_constructor:
-        return True
-    if (isinstance(call, TpyCallLike)
-            and call.result_form.is_declared):
-        return False
-    ret = unwrap_readonly(fi.return_type) if fi.return_type else None
-    if isinstance(ret, OwnType):
-        return True
-    if not proof and (
-            is_str_type(fi.return_type) or is_string_type(fi.return_type)
+    if (is_str_type(fi.return_type) or is_string_type(fi.return_type)
             or is_bytes_type(fi.return_type)
             or is_bytearray_type(fi.return_type)
             or is_bytearray_type(unwrap_own(unwrap_readonly(
                 ctx.get_expr_type(call))))):
         return True
-    if (gen_yield and callable_value and not proof
+    callable_value = lend.kind is CalleeFact.CALLABLE
+    if (gen_yield and callable_value
             and is_open_type_param_return(fi.root.return_type)):
         return True
-    if ((proof and callable_value) or ret is None
-            or is_open_type_param_return(fi.root.return_type)):
-        return False
-    # A callable value returns by value whatever its result type: no C++
-    # reference crosses a `Callable`.
-    return (isinstance(ret, NominalType) and not ret.is_value_type()
-            and not (is_protocol_type(ret) or is_dyn_protocol(ret))
-            and (callable_value or not call_returns_cpp_ref(ctx, fi)))
+    ret = unwrap_readonly(fi.return_type) if fi.return_type else None
+    return (callable_value
+            and isinstance(ret, NominalType) and not ret.is_value_type()
+            and not is_open_type_param_return(fi.root.return_type)
+            and not (is_protocol_type(ret) or is_dyn_protocol(ret)))
 
 
 def _is_null_ptr(call: TpyExpr) -> bool:
@@ -1716,7 +1695,8 @@ class MustLend(CallPolicy):
     def at_step(self, step: Step) -> bool:
         node = step.node
         if step.kind is StepKind.COERCE:
-            return not node.coercion.builds_fresh_value
+            return not (isinstance(node, TpyCoerce)
+                        and node.coercion.builds_fresh_value)
         if step.kind is StepKind.FIELD:
             return node.hidden_call is None
         if step.kind is StepKind.INDEX:

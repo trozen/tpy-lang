@@ -1310,7 +1310,7 @@ class AsyncCoroCodegen:
         # resume case; frame-field access via implicit this).
         for nd in (slot.source for slot in cfg.nested_defs):
             params_str, nd_ret = emit_prims.nested_def_signature(
-                self.types, nd.func)
+                self.types, nd.func, self.ctx.analyzer)
             ret_str = nd_ret if nd_ret is not None else "void"
             out.write(f"{INDENT}{ret_str} "
                       f"{escape_cpp_name(nd.func.name)}({params_str});\n")
@@ -1576,7 +1576,7 @@ class AsyncCoroCodegen:
             for nd_slot in cfg.nested_defs:
                 nd = nd_slot.source
                 params_str, nd_ret = emit_prims.nested_def_signature(
-                    self.types, nd.func)
+                    self.types, nd.func, self.ctx.analyzer)
                 ret_str = nd_ret if nd_ret is not None else "void"
                 self._emit_template_header(out, func, record_name=record_name)
                 out.write(f"{ret_str} {struct_name}::"
