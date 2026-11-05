@@ -183,7 +183,7 @@ from ...liveness import (
     try_terminates_ignoring_finally, tuple_literal_leaves,
 )
 from ...value_category import (
-    binds_owned_value, call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
+    binds_owned_value, call_hands_back_value, call_returns_cpp_ref, for_source_is_rvalue,
     CONTAINER_LITERAL_NODES, is_rvalue_source,
     property_access_returns_cpp_ref, origin_open, origin_shared,
 )
@@ -200,7 +200,7 @@ from ..reject import (
 from ..scalar_leaves import record_owner, storage_leaf
 from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     builds_assigned_record,
-    THIROptionalRead, THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
+    THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
     THIRBytesLiteral, THIRCoerce, THIRNoneCheck,
     THIRContainerLiteral, THIRContinue,
@@ -223,7 +223,7 @@ from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoiste
     THIRUnaryNot, THIRVarDecl, THIRWhile, THIRWith, THIRWithItem, THIRTempRead,
     WithTargetArm)
 from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_genrec_return,
-    _tuple_opt_elem_subscript, place_hops,
+    place_hops,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
     _value_tuple_return,
     _alias_call_source_ok, _call_storage_optional_return,
@@ -240,12 +240,12 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _wrapper_member_ctor_slot, _wrapper_member_literal_slot, _rvalue_ref_init,
     _select_node, _native_iter_value_slot, _own_record_tuple,
     _open_t_tuple_storage_decl, _union_elem_value_tuple, _protocol_auto_slot,
-    _value_record_slot, _value_opt_record, _f1_param_lvalue_reseat_ok,
+    _value_record_slot, _value_opt_record,
     _f1_record, record_like, _union_base_member_match, _f1_container_ref,
     _nested_container_elem_type, record_like, _method_rvalue_record_like,
     _single_member_of_family, _f1_tuple, _mixed_own_btuple_call,
     _renders_own_borrow_tuple, _nested_storage_tuple, _optional_borrow_tuple,
-    _nullable_borrow_tuple_call, _alias_field_source_ok, _f2_reseat_ok,
+    _nullable_borrow_tuple_call, _alias_field_source_ok,
     _facts_have_concrete, _field_decl_type,
     _narrowed_opt_container_field, _bound_call_of, _dunder_render,
     _method_member_cpp,
@@ -259,7 +259,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _poly_narrow_multi_info, _narrow_facts_ok,
     _any_narrow_facts_ok, _nonvalue_container_ret, _record_call_rvalue_operand,
     _callable_value, _optional_narrow_facts_ok, _opt_pointee_wide,
-    _optional_ptr_borrow, _own_storage_opt_param,
+    _optional_ptr_borrow,
     _nullable_static_protocol_param, _ptr_opt_borrow_call_ret,
     _storage_optional_return_wide,
     _optional_ptr_borrow_name, _optional_ptr_borrow_wide,
@@ -295,6 +295,7 @@ from .context import (
     field_slot_use,
     SlotConstruct,
     _decl_slot_forms,
+    _ONLY_PTR_OPT_PASSTHROUGH,
     _ExprResultUse,
     _LEND_OK,
     _NO_FORMS,
@@ -329,7 +330,7 @@ from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
     _class_const_aug_assign_ok, _container_aug_setitem_ok, aug_key_retention,
     _container_literal_decl_ok, _container_literal_shape_ok, _bytearray_recv,
     _bytearray_value_slot_init, _container_setitem_ok, _storage_decl_src,
-    _deref_coerce_borrow_slot, _opt_ptr_addr_of_record_source,
+    _opt_ptr_addr_of_record_source,
     _user_record_setitem_ok,
     _expr_evaluation_inert, _print_kwarg_token, _record_slice_upcast_ok,
     _setitem_widened_elem_ok, _setitem_widened_family_ok,
@@ -362,7 +363,7 @@ from .expressions import (
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
     _lower_slice_recv, _constructs_value, _flush_witness, _hoists_arg_temp,
     _deref_loop_source, _lower_isinstance_cond,
-    _narrow_member_cpp, _narrow_subject_const, _narrow_subject_is_ptr,
+    _narrow_member_cpp, _narrow_subject_is_ptr,
     _union_source_layout, _union_extraction, _inline_union_member,
     _narrow_variant_cpp, _poly_casts, _poly_isinstance, _any_isinstance,
     _IsinSubject, _isinstance_subject, _isin_test, _subject_form,
@@ -6894,14 +6895,23 @@ def _unpack_elems(stmt: TpyTupleUnpack, value: THIRExpr,
                         holder=value, ref=ref, read_id=read_id)
 
 
+def _convert_at(src: THIRExpr, slot: Slot, lc: '_LowerCtx', detail: str,
+                reason: Callable[[], str], loc=None) -> THIRExpr:
+    """`src` converted at a binding's `slot`; a refusal rejects the
+    statement as `reason()`, rendered after the refusal's key is noted
+    under the `detail` family (`stmt_reject_reason` reads it)."""
+    plan = convert(src, slot, lc.analyzer)
+    if isinstance(plan, Refuse):
+        note_detail(detail + plan.key)
+        raise ThirUnsupported(reason(), loc=loc, message=plan.message)
+    return spelled(plan, lc.render_type)
+
+
 def _unpack_convert(r: ElemRead, slot: Slot, lc: '_LowerCtx', loc, *,
                     reason: str = "stmt.tuple_unpack") -> THIRExpr:
     """Element `r` converted at its target's slot."""
-    plan = convert(r.at(slot), slot, lc.analyzer)
-    if isinstance(plan, Refuse):
-        note_detail("tuple_unpack.elem_" + plan.key)
-        raise ThirUnsupported(reason, loc=loc, message=plan.message)
-    return spelled(plan, lc.render_type)
+    return _convert_at(r.at(slot), slot, lc, "tuple_unpack.elem_",
+                       lambda: reason, loc)
 
 
 def _local_slot(tt: TpyType, form: BindingForm, construct: SlotConstruct,
@@ -8704,20 +8714,20 @@ def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
 
 def _ptr_union_value(init: TpyExpr, ptr_u: 'UnionType', is_const: bool,
                      lc: _LowerCtx, declared: dict[str, TpyType],
-                     loc) -> THIRExpr:
+                     loc, reason: Callable[[], str]) -> THIRExpr:
     """The value a pointer-variant binding (`::tpy::Union<A*, B*>`) takes
-    off a slotless source `init`: None stores the monostate member bare; a
-    value-variant field or element lvalue lifts via
-    `to_[const_]ptr_variant`; a same-union name or a ptr-variant-returning
-    call lands bare."""
+    off a slotless source `init`, declared or reseated: None stores the
+    monostate member bare; any other source is its read converted at the
+    local's slot (a value-variant field or element lifts, a same-union
+    name or a ptr-variant-returning call lands bare, a member's object is
+    addressed). A refusal rejects as `reason`."""
     if isinstance(init, TpyNoneLiteral):
         return THIRLiteral(result_type=ptr_u, value=None, form=Form.STORAGE,
                            loc=loc)
-    src, storage = ptr_union_source(init, ptr_u, lc, declared)
-    if not storage:
-        return src
-    return THIRFormConvert(result_type=ptr_u, value=src, form=Form.BORROW,
-                           is_const=is_const, loc=loc)
+    src, _ = ptr_union_source(init, ptr_u, lc, declared)
+    return _convert_at(stamped(src, lc), _local_slot(
+        ptr_u, BindingForm.POINTER_UNION, SlotConstruct.ASSIGN, lc,
+        const=is_const), lc, "ptr_union.", reason)
 
 
 def ptr_union_source(init: TpyExpr, ptr_u: 'UnionType', lc: _LowerCtx,
@@ -9049,7 +9059,8 @@ def _decl_ptr_variant(stmt, vtype, rec, scope, loc):
     ptr_u = _eligible_ptr_union_wide(vtype, lc.analyzer)
     facts = _record_facts(rec)
     u_init = _ptr_union_value(stmt.init, ptr_u, facts["is_const"], lc,
-                              declared, loc)
+                              declared, loc,
+                              lambda: stmt_reject_reason(stmt))
     declared[stmt.name] = vtype
     return THIRVarDecl(
         name=stmt.name, resolved_type=ptr_u, init=u_init,
@@ -9349,196 +9360,87 @@ _FIRST_DECL_BUILDERS: dict[BindingConstruct, _DeclBuilder] = {
 }
 
 
-def _reseat_const_ok(name: str, lc: _LowerCtx) -> bool:
-    """Whether a reseat of pointer slot `name` may take its source's const:
-    a slot with a const source re-points only as a const pointer (the
-    planner's slot verdict; a frame pointer field's own const)."""
-    rec = lc.declaring(name)
-    return (not rec.const_source or rec.const
-            or ((lc.frame_local(name, FrameLocalClass.ALIAS_PTR)
-                 or lc.frame_local(name, FrameLocalClass.REBIND_PTR))
-                and lc.binding(name).frame_const))
+def _reseat_source(init: TpyExpr, lc: '_LowerCtx',
+                   declared: dict[str, TpyType]) -> THIRExpr:
+    """A pointer local's new source, read as a pointer slot takes it: a
+    pointer binding bare, an owned slot (engaged wherever read) as the
+    object it holds, a narrowed Optional through its payload, an
+    un-narrowed one whole (the slot lifts it), an lvalue as itself."""
+    whole = isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lc.analyzer.get_expr_type(init)))), OptionalType)
+    return stamped(_lower_expr(
+        init, lc, declared,
+        # An owned slot's name read is the object it holds (`(*b)`); the
+        # declaration's forms address the optional itself
+        # (BUGS.md#decl-from-hoisted-owned-slot-addresses-optional).
+        use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                     forms=_ONLY_PTR_OPT_PASSTHROUGH),
+        allow_whole_optional=whole,
+        subscript_prechecked=True, field_prechecked=True), lc)
 
 
-@dataclass(frozen=True)
-class _ConvertSource:
-    """A reseat source the target's own render converts (`&(h.f)` through
-    the BORROW convert) rather than an arm that re-points the local
-    itself."""
-    src: THIRExpr
-
-
-def _reseat_lvalue_source(stmt: TpyVarDecl, want: TpyType, lc: '_LowerCtx',
-                          declared: dict[str, TpyType], *,
-                          opt_target: 'OptionalType | None'
-                          ) -> 'THIRStmt | _ConvertSource | None':
-    """The source arms of a slotless pointer local's reseat onto an lvalue,
-    one list for both targets: a plain pointer local (`opt_target` None) and
-    a pointer-repr Optional local (`opt_target` its type). `want` is the
-    pointee the source must denote. An arm that re-points the local returns
-    its statement; a field or a param that reads converted returns the
-    source for the target's convert; None when no arm takes the source. The
-    render is the target's where they differ: an Optional element of a tuple
-    converts to the Optional local's pointer (`to_local`)."""
-    analyzer = lc.analyzer
-    loc = stmt.loc
-    target = _var_decl_type(stmt, analyzer)
-    const = lc.declaring(stmt.name).const
-    # A bare record PARAM reseat (`x = b;` -> `x = &(b);`), the sibling
-    # of the F1-record field reseat below.
-    if _f1_param_lvalue_reseat_ok(stmt.init, want, declared, lc, analyzer):
-        src_name = _lower_expr(stmt.init, lc, declared)
-        if (src_name.form is Form.BORROW
-                and analyzer.registry.is_subclass_of_or_equal(
-                    src_name.result_type, want)):
-            if isinstance(src_name, THIRName) and src_name.cpp is None:
-                # A plain record-param `T&` lvalue: the same PTR_ADDR
-                # address-of as the storage-local rung (`x = &(b);`), a
-                # subclass param binding the base pointer implicitly. A
-                # spelled (narrowed/deref) source stays out. (A type-differing
-                # source -- e.g. a readonly-wrapped binding -- stays a real
-                # convert.)
-                _witness("reseat.param_name")
-                return THIRPtrLocalRebind(
-                    alias_binding=alias_binding(src_name, target, const,
-                                                analyzer),
-                    name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-                    value=src_name, loc=loc)
-            note_detail("decl.reseat_param_source")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        return _ConvertSource(src_name)
-    if _f2_reseat_ok(stmt.init, declared, analyzer):
-        return _ConvertSource(_lower_field_source(stmt.init, lc, declared))
-    if (isinstance(stmt.init, TpyName)
-            and stmt.init.name in declared
-            and not lc.binding(stmt.init.name).reads_as_pointer
-            and not lc.binding(stmt.init.name).rebind_slot
-            and stmt.init.name not in lc.narrow.narrowed
-            and _reseat_const_ok(stmt.name, lc)
-            and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(declared[stmt.init.name]))))
-            and analyzer.registry.is_subclass_of_or_equal(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared[stmt.init.name]))), want)):
-        # A plain same-type -- or subclass-record -- storage LOCAL lvalue
-        # (`items = base;` -> `items = &(base);`, `pet = &(cat);`): the
-        # rebind's address-of catch-all for a name that renders bare
-        # storage. The `&` lives in the PTR_ADDR emit (a FormConvert over
-        # the BORROW-form name read would be the no-op node the validator
-        # rejects). Pointer-form and narrowed sources stay on their own
-        # rungs; an owned slot's read is the object it holds (`&((*b))`).
-        _witness("reseat.storage_name")
-        source = _lower_expr(stmt.init, lc, declared,
-                             use=_ExprUse(forms=_ONLY_INDIRECT_READ))
-        return THIRPtrLocalRebind(
-            alias_binding=alias_binding(source, target, const, analyzer),
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=source, loc=loc)
-    if (isinstance(stmt.init, TpyName)
-            and stmt.init.name in lc.narrow.narrowed
-            and lc.binding(stmt.init.name).ptr_variant
-            # A const-pointee subject's alias binds `const M&`; its address
-            # would be a `const M*` at this mutable slot.
-            and not _narrow_subject_const(stmt.init.name, lc)
-            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared.get(stmt.init.name)))) == want):
-        # A narrowed ptr-variant union's extraction alias binds `M&`, so
-        # re-pointing off it takes the plain address-of (`form =
-        # &(__data);`) -- the same lift the subscript element arm uses, over
-        # the renamed alias.
-        _witness("reseat.narrow_alias_addr")
-        return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=_lower_expr(stmt.init, lc, declared), loc=loc)
-    if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
-            and call_result_holdable(analyzer, stmt.init)
-            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                analyzer.get_expr_type(stmt.init) or want))) == want):
-        # A borrow-returning CALL reseat (`result = pick(seed);` ->
-        # `result = &(pick(seed));`): the callee's `T&` result is an lvalue,
-        # so the same PTR_ADDR address-of applies -- the reseat twin of
-        # `decl.record_borrow_call`. Value-returning calls (an `Own[T]`/value
-        # result would address a temp) stay on the rebind-slot machinery.
-        _witness("reseat.borrow_call")
-        return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=_lower_expr(
-                stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+def _reseat_convert(stmt: 'TpyVarDecl | BindingSource',
+                    vtype: 'TpyType | None', lc: '_LowerCtx',
+                    declared: dict[str, TpyType], loc) -> THIRStmt:
+    """The reseat of a slotless pointer local -- a plain `T*`, a
+    pointer-repr Optional or a pointer-variant union -- onto its new
+    source: the source converted at the local's own slot, as its
+    declaration binds it, written as the unpack target's reseat is. A
+    pointer passes, an lvalue's address is taken, a storage Optional or
+    union lifts; a source with no storage of its own refuses."""
+    an = lc.analyzer
+    rec = lc.declaring(stmt.name)
+    t = declared[stmt.name]
+    def reason() -> str:
+        return stmt_reject_reason(stmt)
+    # A frame pointer field holds the const its frame layout decided.
+    const = rec.const or (lc.resumable_leaf_mode
+                          and lc.binding(stmt.name).frame_const)
+    if rec.const_source and not const:
+        # A mutable pointer holds no const object (the planner's slot
+        # verdict).
+        note_detail("reseat.const_source")
+        raise ThirUnsupported(reason())
+    ptr_u = _eligible_ptr_union_wide(t, an)
+    if ptr_u is not None:
+        return THIRAssign(
+            target=THIRName(result_type=ptr_u, name=stmt.name,
+                            form=Form.BORROW, loc=loc),
+            value=_ptr_union_value(stmt.init, ptr_u, const, lc, declared,
+                                   loc, reason),
             loc=loc)
-    if (_borrow_dunder_source(stmt.init, analyzer)
-            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                analyzer.get_expr_type(stmt.init) or want))) == want):
-        # The OPERATOR flavor of that row (`c = a + b;` / `c = -b;` -> `c =
-        # &(((a) + (b)));`): a borrow-returning dunder's friend shim hands
-        # back an operand's `[const] T&`, so the address-of is of live
-        # storage, not a temp. The reseat twin of `decl.dunder_borrow_alias`.
-        # Value-returning dunders are `is_rvalue_source`-True and were
-        # already claimed by the BRANCH_RVALUE / rebind-slot rungs.
-        _witness("reseat.dunder_borrow")
-        return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=_lower_expr(stmt.init, lc, declared), loc=loc)
-    if (isinstance(stmt.init, TpySubscript)
-            and stmt.init.slice_function_info is None
-            and not isinstance(stmt.init.index, TpySlice)):
-        if (opt_target is not None
-                and _tuple_opt_elem_subscript(stmt.init, declared, analyzer)):
-            # An Optional element of a tuple re-points the Optional local as
-            # its declaration binds it: the read converts to the pointer
-            # (passed or lifted).
-            _witness("reseat.subscript_elem")
-            return THIRAssign(
-                target=THIRName(result_type=target, name=stmt.name, loc=loc),
-                value=to_local(_lower_expr(stmt.init, lc, declared,
-                                           subscript_prechecked=True),
-                               opt_target, BindingForm.POINTER, analyzer),
-                loc=loc)
-        if (_reseat_const_ok(stmt.name, lc)
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(stmt.init) or want))) == want
-                and is_plain_nonvalue(want)):
-            # A mutable container ELEMENT lvalue (`p = points[0];` -> `p =
-            # &(::tpy::__getitem__(points, 0));`): the same address-of
-            # catch-all over the element read. RECEIVER use: the record-elem
-            # read is admitted for address-of inners there (a value use would
-            # copy the borrow). A readonly receiver's element re-points only
-            # a const slot.
-            _witness("reseat.subscript_elem")
-            return THIRPtrLocalRebind(
-                name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-                value=_lower_expr(
-                    stmt.init, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.RECEIVER)),
-                loc=loc)
-    if _deref_coerce_borrow_slot(stmt.init, declared.get(stmt.name),
-                                 declared, analyzer):
-        # A deref auto-coercion reseat (`copy = ptr2;` -> `copy =
-        # &(::tpy::deref_check(ptr2));`): the deref_check result is an
-        # lvalue, so the same PTR_ADDR address-of the decl rung applies --
-        # the reseat twin of `decl.deref_coerce_addr`.
-        _witness("reseat.deref_coerce")
-        return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=_lower_expr(stmt.init, lc, declared), loc=loc)
-    if (isinstance(stmt.init, TpyIfExpr)
-            and all(isinstance(arm, (TpyCall, TpyMethodCall))
-                    and call_result_holdable(analyzer, arm)
-                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        analyzer.get_expr_type(arm) or want))) == want
-                    for arm in (stmt.init.then_expr, stmt.init.else_expr))):
-        # A TERNARY of borrow-returning calls (`b = g.itself() if flag else
-        # h.itself();` -> `b = &(((flag) ? (..) : (..)));`): both `T&` arms
-        # make the ternary an lvalue, so the same PTR_ADDR address-of
-        # applies over the whole conditional.
-        _witness("reseat.borrow_call_ternary")
-        return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-            value=_lower_expr(
-                stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-            loc=loc)
-    return None
+    held = (lc.binding(stmt.init.name) if isinstance(stmt.init, TpyName)
+            else None)
+    if (held is not None and (held.optional_storage or held.nullable_storage)
+            and frame_object_slot(held.type)):
+        # A generator's slot here is the enclosing BLOCK's `std::optional`,
+        # which an outer alias would outlive
+        # (BUGS.md#block-optional-slot-alias-dangles).
+        note_detail("reseat.frame_opt_storage_alias")
+        raise ThirUnsupported(reason())
+    slot = _local_slot(t, BindingForm.POINTER, SlotConstruct.ASSIGN, lc,
+                       const=const)
+    src = _reseat_source(stmt.init, lc, declared)
+    value = _convert_at(src, slot, lc, "reseat.", reason)
+    _witness("reseat.convert")
+    target = THIRName(result_type=vtype, name=stmt.name, loc=loc)
+    opt = pointer_repr_optional(t)
+    pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        opt.inner if opt is not None else t)))
+    facts = dict(alias_binding=alias_binding(src, pointee, const, an),
+                 storage_borrow=storage_borrow(src, pointee, const, an))
+    if (isinstance(value, THIRFormConvert) and value.form is Form.BORROW
+            and is_plain_nonvalue(unwrap_readonly(value.result_type))):
+        # The address of the object: the pointer write the local's
+        # declaration spells (`PTR_ADDR`), whose storage facts name it --
+        # a plain pointer's and a pointer-repr Optional's alike.
+        return THIRPtrLocalRebind(name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                                  value=value.value, loc=loc, **facts)
+    if opt is not None:
+        # An Optional's write is described by its layout fact, which
+        # excludes a holder's alias facts.
+        return THIRAssign(target=target, value=value, loc=loc)
+    return THIRAssign(target=target, value=value, loc=loc, **facts)
 
 
 def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
@@ -9668,43 +9570,6 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                 loc=loc)
         note_detail("reseat.opt_storage_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    # A BORROW-returning ptr-opt call reseat of a wide-opt POINTER
-    # binding: the `T*` result IS the binding's shape, so the pointer
-    # copies bare (`z = first<int32_t>(xs);`) -- no slot write, slot
-    # or no slot (the branch-hoisted flavor allocates none).
-    if (stmt.name in declared and lc.declaring(stmt.name).pointer
-            and isinstance(stmt.init, (TpyCall, TpyMethodCall))
-            and _optional_ptr_borrow_wide(declared[stmt.name],
-                                          analyzer) is not None
-            and _ptr_opt_borrow_call_ret(
-                stmt.init, analyzer.get_expr_type(stmt.init))
-            # ... and the result must ALREADY be that `T*`. A
-            # `@property` getter hands back the field's
-            # `std::optional<T>` BY REFERENCE, so the bare copy assigns
-            # an optional to a pointer and does not compile. The DECL
-            # pass-through asks the same question one arm up; this is
-            # its RESEAT sibling, which the storage-ref family has no
-            # lift for either (TODO.md, "Four positions REJECT a
-            # storage-ref `@property` read").
-            and not reads_storage_form_optional(analyzer, stmt.init)):
-        # Rebind-slot locals too: emit's slot render needs rebind_storage.
-        _witness("reseat.opt_call_pass")
-        return THIRAssign(
-            target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
-            value=_lower_expr(
-                stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.STORAGE,
-                             pos=SinkPos.LOCAL_DECL,
-                             forms=_decl_slot_forms(
-                                 vtype, analyzer, whole_tuple_call=False,
-                                 from_call=True, ptr_local=True),
-                             # An argument temporary dies with the
-                             # statement's block while the pointer the
-                             # result re-points may outlive it: the
-                             # lvalue pointer reseat's refusal.
-                             allow_temps=False),
-                allow_whole_optional=True),
-            loc=loc)
     # F2d rebind-slot reseat: a rebind sema stamps as putting an object
     # of its own into a rebound reference local (`rebind_storage`), or a
     # branch-first write into a hoisted pointer, which is no rebind and
@@ -9813,14 +9678,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
             rebuild=frame_object_slot(declared[stmt.name]),
             loc=loc)
     # An LVALUE reseat of a slot-holding name leaves the slot untouched
-    # and re-points the alias (`p = &(lvalue);`): the pointer reseat
-    # arms below.
-    # F2a pointer-local reseat: lift the new lvalue field source to `T*` via
-    # `&(...)` (the same storage->borrow convert as the first decl). Eligibility
-    # admitted only an F1-record field source here. result_type is the stripped
-    # `vtype` (the pointee), matching the first-decl path -- `get_expr_type`
-    # would leave a ReadonlyType wrapper the THIR fully-resolved-type invariant
-    # forbids (emit strips it either way, so the render is unaffected).
+    # and re-points the alias (`p = &(lvalue);`): the pointer reseat below.
     if lc.declaring(stmt.name).pointer and stmt.name in declared:
         if (lc.declaring(stmt.name).form is BindingForm.DYN
                 and not lc.declaring(stmt.name).coro_frame):
@@ -9853,11 +9711,8 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
         if reseat_u is not None:
             # A slotless OPT_PTR_SLOT local (never rvalue-reassigned --
             # the slot-holders reseat via the rebind-slot arm above)
-            # reseats to None (`p = nullptr;`) or lifts a new pointee via
-            # `&(...)`: a bare record PARAM (`x = p;` -> `x = &(p);`) or an
-            # F1-record field source (`x = &(recv.field);`) -- the
-            # nullptr / address-of rebind arms.
-            # Pointer / rvalue / optional_to_ptr sources are later rungs.
+            # reseats to None (`p = nullptr;`); a frame body's rvalue
+            # lands in its frame field; any other source converts.
             if isinstance(stmt.init, TpyNoneLiteral):
                 _witness("reseat.opt_none")
                 return THIRPtrLocalRebind(
@@ -9984,190 +9839,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                     name=stmt.name, kind=PtrSlotKind.FRAME_RVALUE,
                     value=value, val_cpp=fld,
                     rebind_storage=RebindStorage.OWN, loc=loc)
-            if (isinstance(stmt.init, TpyName)
-                    and lc.binding(stmt.init.name).storage_opt
-                    and _optional_ptr_borrow_wide(
-                        declared.get(stmt.init.name), analyzer)
-                    == reseat_u):
-                # A STORAGE-opt local source (a loop var over
-                # `list[P | None]`) is `std::optional<P>`, not a `T*`:
-                # it lifts (`first = ::tpy::optional_to_ptr(it);` --
-                # the rebind's storage-opt-lvalue branch), never the
-                # bare pointer copy below.
-                _witness("reseat.storage_opt_name_lift")
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=THIRFormConvert(
-                        result_type=reseat_u,
-                        value=_lower_expr(stmt.init, lc, declared,
-                                          allow_whole_optional=True),
-                        form=Form.BORROW, loc=loc),
-                    loc=loc)
-            if (isinstance(stmt.init, TpyName)
-                    and stmt.init.name not in lc.narrow.narrowed
-                    # A STORAGE-form binding of the same declared type
-                    # takes the lift arm above, never this bare copy.
-                    and not lc.binding(stmt.init.name).storage_opt
-                    and (lc.binding(stmt.init.name).pointer
-                         or _optional_ptr_borrow_name(
-                             stmt.init, declared, analyzer) is not None)
-                    and _optional_ptr_borrow(declared.get(stmt.init.name),
-                                             analyzer) == reseat_u):
-                # Same-Optional pointer-source copy (`q = a;` -- a `T*`
-                # param/local source copies the pointer bare -- the
-                # pointer-local source branch). Const safety rides the
-                # structural equality: a readonly-inner source Optional
-                # is a DIFFERENT OptionalType than the mutable target's,
-                # so a const-dropping copy can never match this arm.
-                _witness("reseat.opt_ptr_copy")
-                source_type = declared[stmt.init.name]
-                source_layout = optional_layout(source_type, analyzer, borrow=True,
-                    readonly=lc.binding(stmt.init.name).const)
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=THIRName(result_type=source_type, name=stmt.init.name,
-                                   form=Form.BORROW if source_layout is not None else Form.VALUE,
-                                   optional_read=THIROptionalRead(source_layout, False)
-                                   if source_layout is not None else None, loc=loc),
-                    loc=loc)
-            if (isinstance(stmt.init, TpyName)
-                    and stmt.init.name not in lc.narrow.narrowed
-                    # A POINTEE-typed pointer LOCAL copies bare too
-                    # (`saved = p;` -- the escape-hoisted `Point* p`
-                    # is already the target's raw `T*`). The
-                    # SAME-Optional ptr-repr GLOBAL flavor (`q = g;`)
-                    # is the pointer-slot-global consumer class --
-                    # blocked on TODO.md's one-place consumer guard,
-                    # not admitted piecemeal here.
-                    and lc.binding(stmt.init.name).reads_as_pointer
-                    and unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(
-                            declared.get(stmt.init.name))))
-                    == unwrap_readonly(reseat_u.inner)):
-                _witness("reseat.opt_ptr_copy")
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=_lower_expr(
-                        stmt.init, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.RECEIVER)),
-                    loc=loc)
-            if (isinstance(stmt.init, TpyFieldAccess)
-                    and reads_storage_form_optional(analyzer, stmt.init)
-                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        analyzer.get_expr_type(stmt.init)))) == reseat_u
-                    and _field_receiver_ok(stmt.init, declared, analyzer)):
-                # Storage-form optional FIELD reseat: the same
-                # optional_to_ptr lift as the first decl, re-pointing the
-                # slotless local (`p = ::tpy::optional_to_ptr(h.value);`
-                # -- the rebind's storage-opt-lvalue branch, which
-                # spells no const on the assign line).
-                field = _lower_field_source(stmt.init, lc, declared)
-                _witness("reseat.opt_field_lift")
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=THIRFormConvert(
-                        result_type=reseat_u, value=field,
-                        form=Form.BORROW, loc=loc),
-                    loc=loc)
-            if (isinstance(stmt.init, TpyName)
-                    and lc.binding(stmt.init.name).optional_storage
-                    and _own_storage_opt_param(
-                        declared.get(stmt.init.name), analyzer)
-                    == reseat_u):
-                # An `Own[P | None]` param source: the same storage-form
-                # optional_to_ptr lift as the field reseat, re-pointing
-                # the slotless local (`y = ::tpy::optional_to_ptr(x);`).
-                _witness("reseat.opt_own_param_lift")
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=THIRFormConvert(
-                        result_type=reseat_u,
-                        value=_lower_expr(stmt.init, lc, declared,
-                                          allow_whole_optional=True),
-                        form=Form.BORROW, loc=loc),
-                    loc=loc)
-            arm = _reseat_lvalue_source(stmt, pointee, lc, declared,
-                                        opt_target=reseat_u)
-            if arm is None:
-                note_detail("decl.opt_reseat_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            if not isinstance(arm, _ConvertSource):
-                return arm
-            _witness("reseat.opt_lvalue")
-            return THIRAssign(
-                target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
-                value=THIRFormConvert(
-                    result_type=pointee, value=arm.src, form=Form.BORROW,
-                    is_const=lc.declaring(stmt.name).const, loc=loc),
-                loc=loc)
-        # An OPTIONAL_STORAGE source sits in `pointers` for its deref
-        # reads, but it is `std::optional<T>`, not a `T*`: the pointer
-        # local lifts off it (`alias = ::tpy::optional_to_ptr(p);`),
-        # the F1 storage-optional read, never the bare pointer copy. A
-        # storage that may be empty (a storage-Optional loop variable)
-        # lifts the same way.
-        if (isinstance(stmt.init, TpyName)
-                and (lc.binding(stmt.init.name).optional_storage
-                     or lc.binding(stmt.init.name).nullable_storage)
-                and stmt.init.name not in lc.narrow.narrowed):
-            src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.init.name])))
-            if frame_object_slot(src_t):
-                # A generator's slot here is the enclosing BLOCK's
-                # `std::optional`, which an outer alias would outlive
-                # (BUGS.md#block-optional-slot-alias-dangles).
-                note_detail("reseat.frame_opt_storage_alias")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("reseat.opt_storage_lift")
-            return THIRAssign(
-                target=THIRName(result_type=vtype, name=stmt.name,
-                                loc=loc),
-                value=THIRFormConvert(
-                    result_type=OptionalType(src_t),
-                    value=_lower_expr(stmt.init, lc, declared,
-                                      allow_whole_optional=True),
-                    form=Form.BORROW, loc=loc),
-                loc=loc)
-        # A pointer-NAME copy reseat (`saved = p;` -- both `T*` locals):
-        # the bare pointer copies, no address-of (a pointer-local source
-        # renders the name verbatim).
-        if (isinstance(stmt.init, TpyName)
-                and lc.binding(stmt.init.name).pointer
-                and stmt.init.name not in lc.narrow.narrowed):
-            _witness("reseat.ptr_copy")
-            source = THIRName(result_type=vtype, name=stmt.init.name, loc=loc)
-            return THIRAssign(
-                alias_binding=alias_binding(source, vtype,
-                                            lc.declaring(stmt.name).const, analyzer),
-                target=THIRName(result_type=vtype, name=stmt.name,
-                                loc=loc),
-                value=source,
-                loc=loc)
-        arm = _reseat_lvalue_source(
-            stmt, unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.name]))), lc, declared, opt_target=None)
-        if arm is None:
-            note_detail("decl.reseat_source")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        if not isinstance(arm, _ConvertSource):
-            return arm
-        src_name = arm.src
-        convert = THIRFormConvert(
-            result_type=vtype,
-            value=src_name, form=Form.BORROW,
-            is_const=lc.declaring(stmt.name).const, loc=loc)
-        return THIRAssign(
-            target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
-            alias_binding=alias_binding(src_name, vtype,
-                                        lc.declaring(stmt.name).const, analyzer),
-            storage_borrow=storage_borrow(src_name, vtype,
-                                          lc.declaring(stmt.name).const, analyzer),
-            value=convert, loc=loc)
+        return _reseat_convert(stmt, vtype, lc, declared, loc)
     return None
 
 
@@ -10745,27 +10417,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             return node
         # A pointer-variant union local's reseat: a concrete-member rvalue
         # through a slot (`.emplace` + re-lift), else the slotless value
-        # `_ptr_union_value` builds.
+        # its declaration binds (`_reseat_convert`).
         ptr_u = (_eligible_ptr_union_wide(declared[stmt.name], lc.analyzer)
                  if is_reassign else None)
         if ptr_u is not None and stmt.init is not None:
-            if not isinstance(stmt.init, TpyNoneLiteral) and not _ptr_union_source_ok(
-                    stmt.init, declared, analyzer, ptr_u,
-                    allow_field=stmt.name not in lc.prescan.reassigned):
-                slot_kind = _ptr_union_slot_kind(stmt.init, ptr_u, declared,
-                                                 lc, analyzer)
-                if slot_kind is None:
-                    note_detail("decl.ptr_union_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+            slot_kind = (None if isinstance(stmt.init, TpyNoneLiteral)
+                         or _ptr_union_source_ok(stmt.init, declared,
+                                                 analyzer, ptr_u,
+                                                 allow_field=True)
+                         else _ptr_union_slot_kind(stmt.init, ptr_u,
+                                                   declared, lc, analyzer))
+            if slot_kind is PtrSlotKind.UNION_RVALUE:
                 # The rvalue kind through the rebind slot pre-declared at
                 # the decl (`.emplace` + re-lift), or -- when the decl had
                 # no rvalue init and so no slot (`v: A|B|None = None; v =
                 # A(...)`) -- the slotless inline form (a fresh `__slot_N`
-                # declared at the reseat). The address reseat is a later
-                # rung.
-                if slot_kind is not PtrSlotKind.UNION_RVALUE:
-                    note_detail("decl.union_reseat_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                # declared at the reseat).
                 if lc.declaring(stmt.name).rebind_slot:
                     _witness("reseat.union_rvalue")
                     _rk = PtrSlotKind.UNION_RVALUE
@@ -10778,13 +10445,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                       use=_ExprUse(
                                           result=_ExprResultUse.BORROW_BIND)),
                     val_cpp=_union_storage_val_cpp(ptr_u), loc=loc)
-            u_init = _ptr_union_value(
-                stmt.init, ptr_u, lc.declaring(stmt.name).const, lc,
-                declared, loc)
-            return THIRAssign(
-                target=THIRName(result_type=ptr_u, name=stmt.name,
-                                form=Form.BORROW, loc=loc),
-                value=u_init, loc=loc)
+            return _reseat_convert(stmt, vtype, lc, declared, loc)
         decl_tgt = declared.get(stmt.name, vtype)
         if isinstance(stmt.init, TpyStrLiteral) and _eligible_char(decl_tgt):
             # A GLOBAL is pre-seeded into `declared`, so its initializing

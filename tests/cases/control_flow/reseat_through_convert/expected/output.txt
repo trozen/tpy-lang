@@ -1,0 +1,32 @@
+select_hoist 14 5
+select_hoist 14 5
+opt_elem 11
+opt_elem_empty True True
+opt_select 6
+opt_select 3
+prop_loop 22
+loop_field 12 12
+ctor 104
+method 4 15
+method 14 15
+try 4 15
+with 14 5
+via_ptr 10
+err_return 12
+union_member 1 12
+union_member 21 12
+union_member 21 12
+der_call 12
+dunder_self 8
+dunder_self 9
+tuple_lend 11
+narrowed_field 4
+narrowed_assert 4
+narrowed_method 31
+engaged 4
+gen 1
+gen 12
+gen 1
+gen 16
+gen_after 12 16
+async 3 7

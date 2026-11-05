@@ -266,7 +266,9 @@ def test_a_reference_parameter_holder_is_never_reseated(artifacts: Artifacts) ->
 
 @pytest.mark.parametrize("binding,thir_reason,mir_reason", [
     ("saved: Cell | Other = self", "decl.ptr_union_source", None),
-    ("saved: Cell | Other = other\n        saved = self", "decl.union_reseat_source", None),
+    # The union local re-points at the receiver; MIR does not cover the
+    # union declaration.
+    ("saved: Cell | Other = other\n        saved = self", None, "unsupported union declaration"),
     # The Optional local re-points at the receiver (`saved = &((*this));`);
     # MIR does not cover the reseat.
     ("saved: Cell | None = None\n        saved = self", None, "unsupported optional reseat"),

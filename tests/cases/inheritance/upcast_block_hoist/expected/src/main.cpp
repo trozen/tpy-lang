@@ -64,7 +64,7 @@ void at_try(bool f) {
     {
         try {
             b = static_cast<Base&&>(Der(3));
-            keep = ::tpy::optional_to_ptr(b);
+            keep = &((*b));
         } catch (const ::tpy::ValueError&) {
             return;
         }

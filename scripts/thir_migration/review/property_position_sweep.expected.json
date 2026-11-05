@@ -1340,7 +1340,7 @@
   "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__opt__prop__local": [
-  "stmt.var_decl:decl.opt_reseat_source",
+  "ok",
   "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__own__meth__local": [

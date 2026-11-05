@@ -227,7 +227,7 @@
  "array_i__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "array_i__async__param__tuple_elem": [
   "ok",
@@ -2482,7 +2482,7 @@
  "bytearray__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "bytearray__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -5332,7 +5332,7 @@
  "deref_list__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "deref_list__async__param__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -8182,7 +8182,7 @@
  "deref_rec__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "deref_rec__async__param__tuple_elem": [
   "ok",
@@ -11032,7 +11032,7 @@
  "dict_si__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "dict_si__async__param__tuple_elem": [
   "ok",
@@ -13612,7 +13612,7 @@
  "gen_rec__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "gen_rec__async__param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -16327,7 +16327,7 @@
  "list_i__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "list_i__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -16375,7 +16375,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -16645,7 +16645,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_i__ctor__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -16675,7 +16675,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__ctor__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -16705,7 +16705,7 @@
   "%x: list = %pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_i__ctor__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -16735,7 +16735,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -16885,7 +16885,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -17170,7 +17170,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_i__fn__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -17205,7 +17205,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__fn__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -17240,7 +17240,7 @@
   "%x: list = %pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_i__fn__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -17275,7 +17275,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -17720,7 +17720,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18005,7 +18005,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_i__meth__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18040,7 +18040,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__meth__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18075,7 +18075,7 @@
   "%x: list = %pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_i__meth__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18110,7 +18110,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18285,7 +18285,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18540,7 +18540,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18575,7 +18575,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "list_i__nested__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18610,7 +18610,7 @@
   "%x: list = %pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "list_i__nested__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -18645,7 +18645,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "list_i__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19042,7 +19042,7 @@
  "list_r__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "list_r__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -19055,7 +19055,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19295,7 +19295,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_r__ctor__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19325,7 +19325,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__ctor__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19355,7 +19355,7 @@
   "%x: list = %pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_r__ctor__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19385,7 +19385,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19505,7 +19505,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19760,7 +19760,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_r__fn__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19795,7 +19795,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__fn__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19830,7 +19830,7 @@
   "%x: list = %pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_r__fn__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -19865,7 +19865,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20240,7 +20240,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20495,7 +20495,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "list_r__meth__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20530,7 +20530,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__meth__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20565,7 +20565,7 @@
   "%x: list = %pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "list_r__meth__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20600,7 +20600,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20740,7 +20740,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -20965,7 +20965,7 @@
   "%x: list = %b._v [storage] method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__obj_field__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -21000,7 +21000,7 @@
   "%x: list = call(mk, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) call(nested_inner, [])"
  ],
  "list_r__nested__own_call__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -21035,7 +21035,7 @@
   "%x: list = %pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "list_r__nested__param__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -21070,7 +21070,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) call(nested_inner, [])"
  ],
  "list_r__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.reseat_source",
+  "reject:stmt.var_decl:reseat.pointee_type",
   "",
   ""
  ],
@@ -21432,7 +21432,7 @@
  "rec__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "rec__async__param__tuple_elem": [
   "ok",
@@ -24637,7 +24637,7 @@
  "set_i__async__param__return_borrow": [
   "ok",
   "",
-  "return_values: [0] optptr{&(%pv)}"
+  "return_values: [0] form_convert[borrow](%pv)"
  ],
  "set_i__async__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",

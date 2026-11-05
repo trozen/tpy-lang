@@ -513,11 +513,13 @@ class THIRName(THIRExpr):
 
     @property
     def indirect(self) -> bool:
-        """The binding is a POINTER (`T*`), per the read's `source`. BORROW
-        spells both `T&` and `T*`, so a consumer that must not bind a raw
-        pointer bare asks `raw_pointer`."""
+        """The binding is a POINTER (`T*`), per the read's `source` -- not
+        an owning `std::optional<T>` read through as one
+        (`BindingRepr.reads_as_pointer`). BORROW spells both `T&` and `T*`,
+        so a consumer that must not bind a raw pointer bare asks
+        `raw_pointer`."""
         b = self.source.binding if self.source is not None else None
-        return b is not None and b.pointer and b.name == self.name
+        return b is not None and b.reads_as_pointer and b.name == self.name
 
     @property
     def raw_pointer(self) -> bool:

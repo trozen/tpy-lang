@@ -191,12 +191,15 @@ def test_alias_conversions_cannot_acquire_ownership_effects(
     decl, branch, ret = fn.body
     reseat = branch.then_body[0]
     assert isinstance(decl.init, th.THIRFormConvert)
-    assert isinstance(reseat.value, th.THIRFormConvert)
+    # The reseat takes the object's address in its `PTR_ADDR` write; the
+    # conversion a write could carry instead is built here.
+    assert isinstance(reseat, th.THIRPtrLocalRebind) and reseat.kind is th.PtrSlotKind.PTR_ADDR
     assert decl.alias_binding is not None and reseat.alias_binding is not None
+    lifted = replace(decl.init, value=reseat.value)
     for bad in (
         replace(fn, body=(replace(decl, init=replace(decl.init, **change)), branch, ret)),
         replace(fn, body=(decl, replace(branch, then_body=(replace(
-            reseat, value=replace(reseat.value, **change)),)), ret)),
+            reseat, value=replace(lifted, **change)),)), ret)),
     ):
         not_covered(bad, "unsupported metadata")
         with pytest.raises(THIRValidationError, match="non-borrow conversion"):

@@ -1,0 +1,48 @@
+main::__tpy_init: uncovered (module initialization)
+main::select_hoist@39:0: certified, summary: opaque (summary output effect)
+main::opt_elem@49:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::opt_select@61:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::prop_loop@81:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
+main::loop_field@91:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::try_hoist@121:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::with_hoist@139:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::via_ptr@148:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::err_return@176:0: uncovered (error-return body)
+main::union_member@201:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::der_call@215:0: uncovered (reference type mismatch), summary: opaque (reference type mismatch)
+main::dunder_self@233:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+main::pick_pair@243:0: certified, summary: known
+main::tuple_lend@247:0: certified, summary: opaque (summary output effect)
+main::narrowed_field@256:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
+main::narrowed_assert@264:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::engaged@289:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::gen@301:0: uncovered (unsupported hoisted value)
+main::co@315:0: uncovered (async body)
+main::pick@343:0: certified, summary: known
+main::warned_tuple_temp@347:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::key_of@364:0: covered (storage: no_proof_required), summary: known
+main::warned_min_temp@374:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::main@383:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.der@34:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported native container element)
+main::P.pa@77:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::P.pa@77:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::M.go@111:4: certified, summary: opaque (summary output effect)
+main::Ctx.__enter__@132:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+main::Ctx.__exit__@135:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::EH.get_b@171:4: uncovered (error-return body)
+main::S.__add__@229:4: covered (storage: no_proof_required)
+main::NH.bump@280:4: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
+main::K.ret@369:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Der.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@26:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::P.__init__@73:4: covered (storage: no_proof_required), summary: known
+main::M.__init__@103:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::EH.__init__@166:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@186:4: covered (storage: no_proof_required), summary: known
+main::U.__init__@195:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::S.__init__@226:4: covered (storage: no_proof_required), summary: known
+main::NH.__init__@276:4: covered (storage: no_proof_required), summary: known
+main::Leaf.__init__@332:4: covered (storage: no_proof_required), summary: known
+main::LA.__init__@339:4: covered (storage: no_proof_required), summary: known
+main::V.__init__@360:4: covered (storage: no_proof_required), summary: known

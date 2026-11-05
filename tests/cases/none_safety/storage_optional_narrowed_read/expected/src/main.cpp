@@ -182,7 +182,7 @@ void comprehension() {
             auto&& x = *__beg_0;
             if ((x.has_value())) {
                 std::cout << "async plain" << " " << ::tpyapp::main::plain((*x)) << "\n" << ::tpy::check_signals;
-                y = ::tpy::optional_to_ptr(x);
+                y = &((*x));
                 y->n = 60;
                 std::cout << "async alias" << " " << (*x).n << "\n" << ::tpy::check_signals;
             }
@@ -253,7 +253,7 @@ void try_body() {
             try {
                 if ((x.has_value())) {
                     std::cout << "try plain" << " " << ::tpyapp::main::plain((*x)) << "\n" << ::tpy::check_signals;
-                    y = ::tpy::optional_to_ptr(x);
+                    y = &((*x));
                     y->n = 70;
                     std::cout << "try alias" << " " << (*x).n << "\n" << ::tpy::check_signals;
                 }

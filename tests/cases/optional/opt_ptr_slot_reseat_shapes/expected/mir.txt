@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::param_reseat@46:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::double_rvalue_reseat@55:0: covered (storage: no_proof_required), summary: known
-main::lvalue_reseat@64:0: uncovered (unsupported optional field borrow), summary: opaque (unsupported optional field borrow)
+main::lvalue_reseat@64:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::pick@72:0: certified, summary: known
 main::borrow_call@76:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::dunder@85:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)

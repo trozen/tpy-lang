@@ -1,0 +1,3 @@
+main.py:218: warning: upcast narrows 'Der' to 'A' -- only 'A' fields and methods will be accessible; keep the concrete type or make 'A' a @dynamic protocol
+main.py:349: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:379: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement

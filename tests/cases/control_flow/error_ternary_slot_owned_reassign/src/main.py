@@ -11,7 +11,7 @@ def mk() -> Own[list[int32]]:
 
 def f(a: list[int32], c: bool) -> None:
     x = [0] if c else [0, 0]
-    x = mk() if not c else a  # tpyc: error(/decl\.reseat_source/)
+    x = mk() if not c else a  # tpyc: error(/expr\.ifexpr/)
     a.append(5)
     print(len(x))
 

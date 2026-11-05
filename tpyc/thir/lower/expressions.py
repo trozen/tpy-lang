@@ -62,7 +62,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
-from ...typesys import ANY, binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
+from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
     drop_own_marker, dyn_protocol_borrow_result, make_readonly,
     param_takes_ownership)
@@ -5856,6 +5856,9 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
             # `deref_check(p)`: the pointee, storage the pointer names.
             return Held.BORROWED
         return stamped(node.expr, lc).source.held
+    if isinstance(node, THIRErrorReturnUnwrap):
+        # The unwrapped value is held as the call hands it back.
+        return stamped(node.call, lc).source.held
     if isinstance(node, (THIRCall, THIRMethodCall)):
         declared = call_declared_held(
             e if isinstance(e, (TpyCall, TpyMethodCall)) else None, t)
@@ -5884,12 +5887,16 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
     if isinstance(node, (THIRIfExpr, THIRValueSelect)):
         # What the lowering normalized the arms into.
         return node.select_result.held
-    if isinstance(node, THIRBinOp):
+    if isinstance(node, (THIRBinOp, THIRUnaryArith)):
         if not rv:
             # An operator result that is no rvalue names existing storage
             # (a dunder handing back a reference) unless it is a value.
             return (Held.VALUE if t is None or t.is_value_type()
                     else Held.BORROWED)
+        if e is not None and lends_pointer_form_result(an, e):
+            # A dunder handing back the pointer form (`A | None` as `A*`)
+            # lends its operand's storage, as the call does.
+            return Held.BORROWED
         return (Held.FRESH if _owned_buffer(t, an) or not t.is_value_type()
                 else Held.VALUE)
     if (isinstance(node, (THIRStrLiteral, THIRBytesLiteral))
@@ -5928,14 +5935,14 @@ _HELD_BY_KIND: dict[type, Held] = {
     # A plain value: a scalar literal or operator result, a predicate, an
     # enum member, a constant, a callable, a value-initialized slot.
     **dict.fromkeys((
-        THIRLiteral, THIRStrLiteral, THIRCharLiteral, THIRUnaryArith,
-        THIRUnaryNot, THIRIsNone, THIRIdentity, THIRIsinstance,
+        THIRLiteral, THIRStrLiteral, THIRCharLiteral, THIRUnaryNot,
+        THIRIsNone, THIRIdentity, THIRIsinstance,
         THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti, THIRDynCast,
         THIRConceptTest,
         THIRMembership, THIRStrMembership, THIRTupleMembership,
         THIRChainedCompareStmtExpr, THIREvalThen, THIRTruthy, THIREnumMember,
         THIREnumWrap, THIRClassConstant, THIRLambda, THIRDefaultConstruct,
-        THIRPrintChain, THIRErrorReturnUnwrap, THIRConsumingIter),
+        THIRPrintChain, THIRConsumingIter),
         Held.VALUE),
     # Built in place (literal construction, the compiler-support
     # exception): read as the value it builds; its elements carry their
@@ -6171,6 +6178,19 @@ def _read_owned_elements(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
     return None
 
 
+def _step_const(under: THIRExpr, lc: '_LowerCtx') -> bool:
+    """Whether a place step off `under` (a member, an element, a
+    dereference) lands in const storage: a handle's referent is const where
+    its type argument is (`indirection_referent_readonly`, an Optional
+    handle's too), any other step where `under` is."""
+    t = under.result_type
+    bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+            if t is not None else None)
+    ro = indirection_referent_readonly(
+        bare.inner if isinstance(bare, OptionalType) else t)
+    return stamped(under, lc).source.const if ro is None else ro
+
+
 def _temporary(e: 'TpyExpr | None', node: THIRExpr,
                lc: '_LowerCtx') -> 'bool | None':
     """`Source.temporary`. A select's is its lowering's decision; with a
@@ -6325,23 +6345,24 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     if named:
         # A function or closure name read as a value has no record.
         rec = lc.lookup_binding(e.name)
-        const = rec is not None and rec.const
+        # A storage Optional's payload is its loop variable's const.
+        const = rec is not None and (rec.const or rec.const_storage_opt)
     elif isinstance(lowered, THIRSelf):
         # Every `self` node is the enclosing method's receiver.
         const = (lc.self_receiver is not None
                  and lc.binding(lc.self_receiver).const)
     elif isinstance(lowered, (THIRFieldAccess, THIRSubscript)):
         # A member or element of a const object is const.
-        const = const or stamped(lowered.receiver, lc).source.const
+        const = const or _step_const(lowered.receiver, lc)
     elif isinstance(lowered, THIRCoerce):
-        const = const or stamped(lowered.expr, lc).source.const
+        const = const or _step_const(lowered.expr, lc)
     elif isinstance(lowered, THIRIfExpr):
         # A select hands back one of its arms: const where either is.
         const = const or any(stamped(a, lc).source.const
                              for a in (lowered.then, lowered.orelse))
     elif isinstance(lowered, THIRNoneCheck):
         # The checked value's referent, const where the value is.
-        const = const or stamped(lowered.value, lc).source.const
+        const = const or _step_const(lowered.value, lc)
     # `pointer_held` is the node's own (`THIRExpr.reads_raw_pointer`): the
     # node writes it when the stamp is attached and again whenever an arm
     # rebuilds the node.

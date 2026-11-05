@@ -7293,26 +7293,12 @@ def _record_dunder(sub: TpyExpr, kind: SubscriptDunder, analyzer, *,
     return sub.dunder(kind)
 
 
-def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
-    """A pointer-local reseat value: an lvalue field read off an F1-record receiver
-    whose field is itself an F1-record (the new pointee), so it reseats as
-    `p = &(recv.field);`. rvalue / `None` / name-alias reseats need the rebind-slot
-    (`__slot_N`) machinery and reject here. The borrow-CALL reseat flavor
-    (`first = &(get_first(data));`) has its own link in the reseat chain --
-    this predicate's consumers lower through the FIELD-source builder."""
-    return (_field_receiver_ok(init, declared, analyzer)
-            and _f1_record(analyzer.get_expr_type(init), analyzer))
-
 def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
                            analyzer) -> bool:
-    """`_f2_reseat_ok`'s reference-AXIS sibling: an lvalue field read off an
-    F1-record receiver whose field is any reference type -- record or
-    container alike -- so an alias local binds `a = &(recv.field);`.
-
-    A separate predicate rather than a widening of `_f2_reseat_ok`: that one
-    gates the sync pointer-local RESEAT, whose container flavor has its own
-    emit, so the two axes must not move together. Both halves here take the
-    identical FIELD-source render, which is why one predicate spans them
+    """An lvalue field read off an F1-record receiver whose field is any
+    reference type -- record or container alike -- so an alias local binds
+    `a = &(recv.field);`. Both take the identical FIELD-source render,
+    which is why one predicate spans them
     (docs/PITFALLS.md#same-construct-every-position)."""
     return (_field_receiver_ok(init, declared, analyzer)
             and record_like(analyzer.get_expr_type(init), analyzer))
@@ -7329,26 +7315,6 @@ def _union_base_member_match(st: 'TpyType | None', members, analyzer) -> bool:
         return False
     return sum(1 for m in members
                if analyzer.registry.is_subclass_of(st, m)) == 1
-
-def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
-                               declared: dict[str, TpyType], lc, analyzer) -> bool:
-    """A pointer-repr `Optional` local reseat source that lifts via `&(name)`: a
-    bare record PARAM name whose stripped type is the F1-record pointee or a
-    subclass of it (C++ binds the derived address to the base pointer
-    implicitly, so the upcast is the same `&(p)`). A param renders as a plain
-    lvalue (`T&` / `const T&`), so `&(p)` is well-formed -- the pointer-local
-    rebind's address-of arm. A pointer-local source (bare copy) or an
-    owned-local / rvalue source takes a different emit and rejects here."""
-    if not isinstance(init, TpyName):
-        return False
-    if init.name not in lc.prescan.param_names or lc.binding(init.name).pointer:
-        return False
-    t = declared.get(init.name)
-    if t is None:
-        return False
-    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return (_f1_record(tu, analyzer)
-            and analyzer.registry.is_subclass_of_or_equal(tu, pointee))
 
 def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
                          pointers: set[str]) -> bool:

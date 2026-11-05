@@ -350,12 +350,13 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     if isinstance(st, UnionType):
         return _to_pointer_variant(expr, s, st, rt, types, const=const,
                                    call=call)
-    if isinstance(st, OptionalType):
-        pointee = unwrap_readonly(st.inner)
-    else:
+    record_slot = not isinstance(st, OptionalType)
+    if record_slot:
         # A plain record's pointer is its Optional's borrow form (`T*`).
         pointee = st
         st = OptionalType(pointee)
+    else:
+        pointee = unwrap_readonly(st.inner)
     if isinstance(rt, OptionalType) and _binds(pointee,
                                                unwrap_readonly(rt.inner),
                                                types):
@@ -392,6 +393,15 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
         # The address of a value that dies with the statement -- or whose
         # lifetime nothing states -- would dangle.
         return Refuse("borrow_source")
+    if not _binds(pointee, rt, types):
+        # The address of an object of another type is no pointer of this
+        # one.
+        return Refuse("pointee_type")
+    if record_slot or not call:
+        # The address of the stored object (`&(x)`).
+        return Plan(THIRFormConvert(result_type=pointee, value=expr,
+                                    form=Form.BORROW, is_const=const,
+                                    loc=expr.loc), Effect.LIFT)
     return Plan(THIROptionalPtrArg(result_type=st, form=Form.BORROW,
                                    value=expr, addr_of=True, loc=expr.loc),
                 Effect.LIFT)
@@ -418,6 +428,10 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
         # assignment-narrowed read holds.
         if (s.held is Held.STORAGE and not s.pointer_held
                 and not (call and s.variant)):
+            if not _lendable(s):
+                # The pointer variant into a union that dies with the
+                # statement would dangle.
+                return Refuse("borrow_source")
             # A const slot holds the const pointer variant.
             return Plan(THIRFormConvert(result_type=st, value=expr,
                                         form=Form.BORROW,
@@ -451,6 +465,11 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
             # A parameter points into storage held for the call.
             return Plan(expr, Effect.MATERIALIZE,
                         storage_request=StorageRequest(rt))
+        if s.held in (Held.VALUE, Held.FRESH):
+            # A value (`1.5 * 2.0`) is no storage at all: the pointer
+            # needs a slot to hold it, which no row builds here
+            # (BUGS.md#ptr-union-local-binop-member-rejects).
+            return Refuse("needs_slot")
         return Refuse("borrow_source")
     if call:
         return Plan(THIRUnionArgLift(
@@ -1039,9 +1058,12 @@ class Landing:
 
 def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
             analyzed_t: 'TpyType | None', slot_t: TpyType,
-            types) -> Landing:
+            types, *, unwrapped: bool = False) -> Landing:
     """`named_t`: the declared type of the storage the source names
-    (`Source.named_type`)."""
+    (`Source.named_type`). `unwrapped`: the read takes a narrowed
+    Optional's payload, not the storage it names."""
+    if unwrapped:
+        named_t = None
     member = absorbed_member(slot_t, storage_type(analyzed_t), types)
     whole = (named_t is not None
              and storage_type(named_t) == slot_t
@@ -1449,10 +1471,17 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     borrow_tuple = (s.held is Held.BORROWED
                     and isinstance(rt_lowered, TupleType))
     b = s.binding
-    land = landing(b, s.named_type, s.analyzed_type, st, types)
+    narrowed = s.held_by_deref is not None
+    land = landing(b, s.named_type, s.analyzed_type, st, types,
+                   unwrapped=narrowed and expr.reads_unwrapped)
     # A source read whole as the slot's own Optional / union is that type,
-    # whatever its narrowed read would be.
-    rt_whole = st if land.whole_binding else rt_lowered
+    # whatever its narrowed read would be; a narrowed Optional read whole
+    # is the Optional its storage holds.
+    rt_whole = (st if land.whole_binding
+                else storage_type(s.named_type)
+                if narrowed and not expr.reads_unwrapped
+                and s.named_type is not None
+                else rt_lowered)
 
     param_t = s.param_type
     if (holds in (SlotHolds.OWNS, SlotHolds.TRAIT) and param_t is not None

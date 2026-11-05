@@ -322,15 +322,25 @@ def sample(a: int32 | bool, b: int32 | bool) -> int32:
     _assert_rejects_at(reasons, "body:stmt.var_decl", "decl.narrowed_rebind")
 
 
-@pytest.mark.parametrize("statements,reason", [
-    ("    current: Cell | Other = a\n", "decl.ptr_union_source"),
-    ("    current = base\n    current = a\n", "decl.union_reseat_source"),
-])
-def test_existing_record_member_construction_gate_is_preserved(statements: str, reason: str) -> None:
-    # Direct member construction is internal IR coverage until these gates lift.
-    source = SOURCE + "\ndef sample(a: Cell, base: Cell | Other) -> int32:\n" + statements + "    return 0\n"
-    _, reasons = _strict_reject(source)
-    _assert_rejects_at(reasons, "body:stmt.var_decl", reason)
+def _sample(statements: str) -> str:
+    return SOURCE + "\ndef sample(a: Cell, base: Cell | Other) -> int32:\n" + statements + "    return 0\n"
+
+
+def test_existing_record_member_construction_gate_is_preserved() -> None:
+    # A union DECLARATION from a record member is still refused by the lowering.
+    _, reasons = _strict_reject(_sample("    current: Cell | Other = a\n"))
+    _assert_rejects_at(reasons, "body:stmt.var_decl", "decl.ptr_union_source")
+
+
+def test_record_member_reseat_is_uncovered() -> None:
+    # The reseat points the union local at the record as its member, which
+    # MIR does not cover yet.
+    compiler, modules = _compile(_sample("    current = base\n    current = a\n"))
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(f for node, f in ctx.thir_functions.items() if node.name == "sample")
+        result = lower_function(fn, MIRBodyId("unions", fn.name))
+    assert isinstance(result, MIRNotCovered) and "unsupported expression form" in result.reason
 
 
 def test_a_payload_alias_binds_readonly(artifacts: Artifacts) -> None:

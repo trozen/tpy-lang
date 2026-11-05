@@ -98,8 +98,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `Point& p2 = ::tpy::deref_check(ptr);`
     "decl.deref_coerce_addr",       # ... reassigned, so pointer-bound ->
                                     # `Point* copy = &(deref_check(ptr));`
-    "reseat.deref_coerce",          # ... and its reseat -> `copy =
-                                    # &(::tpy::deref_check(ptr2));`
     "move.own_opt_last_use",        # ... and the reverse-nesting twin: the
                                     # Own[record|None] slot (optional<P>&&)
     "arg.own_opt_call_pass",        # Own[P|None]-returning call rvalue binds
@@ -612,9 +610,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.declared_call_copy",
     # A None literal at a value-opt slot of a NESTED ctor arg
     # (`describe(Dog(None))` -> `std::nullopt`, temp-free).
-    # A ternary of borrow-returning calls at a pointer reseat
-    # (`b = &(((flag) ? (g.itself()) : (h.itself())));`).
-    "reseat.borrow_call_ternary",
     "arg.own_element_move",         # owned tuple element at its Own[T] slot,
                                     # the tuple's last use: std::move(get)
     "arg.own_element_copy",         # ... still live: the declared copy
@@ -1120,8 +1115,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_copy_ctor",         # `return copy(P(1))` -> the ctor
     "decl.opt_own_param_lift",      # `y = x` off an Own[P|None] param: pure
                                     # lift, `P* y = optional_to_ptr(x);`
-    "reseat.opt_own_param_lift",    # ... and the slotless reseat twin,
-                                    # `y = ::tpy::optional_to_ptr(x);`
     "reseat.opt_storage_call",      # OPT_STORAGE_CALL reseat re-fills the
                                     # decl slot and re-lifts the pointer
     "name.func_ref_targs",          # generic fn ref spells the template-args
@@ -1760,7 +1753,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # REBIND_SLOT render minus the rebind slot).
     "decl.record_slot_rvalue",
     # Reassigned container-ELEMENT borrow local's first decl: `[const] T* p =
-    # &(::tpy::__getitem__(ps, i));` -- the decl twin of `reseat.subscript_elem`.
+    # &(::tpy::__getitem__(ps, i));` -- the decl twin of an element reseat.
     "decl.subscript_elem_addr",
     "decl.ptr_name_addr",           # reassigned record-name alias: T* x = &(a)
     "decl.ptr_call_addr",           # reassigned borrow-call: T* x = &(f(a))
@@ -1785,22 +1778,16 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.alias_ptr_deref_src",
     "decl.alias_opt_ptr_deref_src",  # proven Optional-ptr source: T& a = (*p)
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
-    "reseat.opt_call_pass",         # borrow-returning ptr-opt call reseat:
-                                    # the bare pointer copy, no slot write
     "reseat.opt_none",
-    "reseat.opt_ptr_copy",       # same-Optional borrow-name source: bare pointer copy
     # Rvalue reseat by sema's storage verdict: `(*x) = <rvalue>;` or
     # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind arm).
     "reseat.opt_rvalue",
     # ... with a container LITERAL as that rvalue, its element types resolved
     # against the slot's inner (`xs = &*(__slot_N = {1, 2, 3});`).
     "reseat.opt_container_literal",
-    # Lvalue reseat of a slotless Optional local: lift a bare record param or an
-    # F1-record field source via `x = &(...);`.
-    "reseat.opt_lvalue",
-    "reseat.storage_opt_name_lift", # storage-opt LOCAL name reseat: the
-                                    # optional_to_ptr lift, not a ptr copy
-    "reseat.opt_field_lift",        # slotless opt local = optional_to_ptr(field)
+    # Slotless pointer reseat: the source converted at the LOCAL slot
+    # (`x = &(h.a);`, `y = ::tpy::optional_to_ptr(h.o);`).
+    "reseat.convert",
     # Ptr-variant union local from a concrete-member rvalue: value-variant
     # `__slot_N` + `to_ptr_variant(__slot_N)`.
     "decl.union_slot_rvalue",
@@ -2057,15 +2044,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.branch_rvalue",         # lazy-slot rvalue reseat of a branch hoist
     "reseat.rvalue_comp",           # a comprehension source at any slot
                                     # rebind (`&*(__slot_N = ({...}))`)
-    "reseat.storage_name",          # `x = base;` -> `x = &(base);` lvalue lift
-    "reseat.param_name",            # `x = b;` over a record param's T& lvalue
-    "reseat.borrow_call",           # `x = pick(s);` -> `x = &(pick(s));`
-    "reseat.subscript_elem",        # `p = xs[i];` -> `p = &(__getitem__(...));`
-    "reseat.opt_storage_lift",      # `alias = p;` off an OPTIONAL_STORAGE local -> `optional_to_ptr(p)`
-    "reseat.narrow_alias_addr",     # `form = data;` off a narrowed union ->
-                                    # `form = &(__data);`
-    "reseat.dunder_borrow",         # `c = a + b;` -> `c = &(((a) + (b)));`,
-                                    # the operator flavor of reseat.borrow_call
     "print.hoisted_container_arg",  # ListPrinter((*items)) over a hoisted ptr
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <construction>;`

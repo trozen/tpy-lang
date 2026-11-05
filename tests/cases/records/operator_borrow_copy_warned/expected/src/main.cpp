@@ -22,7 +22,7 @@ std::optional<A> neg(const H& h) {
 // def inv(h: H) -> Own[A]:
 //     return ~h  # tpyc: warning(/copies A into owned storage/)
 A inv(const H& h) {
-    return ~(h);
+    return A(~(h));
 }
 
 // def main() -> None:

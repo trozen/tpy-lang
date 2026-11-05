@@ -2128,7 +2128,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # reseat arms: pass-1 registered the name, so the sync dispatch
             # sees a reassign and takes the assign-only renders --
             # `x = nullptr;` (reseat.opt_none) and the `x = &(b);` lvalue
-            # lift (reseat.opt_lvalue) -- exactly the frame's member-assign
+            # lift (reseat.convert) -- exactly the frame's member-assign
             # shape; off-slice sources keep their named reseat rejects
             # there (the bare member assign would silently DROP the
             # address-of lift, the divergence the probe caught). Rebind-slot

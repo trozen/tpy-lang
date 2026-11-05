@@ -222,7 +222,9 @@ def test_missing_read_or_binding_fact_is_uncovered(artifacts: Artifacts) -> None
     # The Optional local re-points at the parameter (`current = &(b);`);
     # MIR does not cover the reseat.
     ("Cell | None", None, "unsupported optional reseat"),
-    ("Cell | Other", "decl.union_reseat_source", None),
+    # The union local re-points at the parameter as its member; MIR does
+    # not cover the reseat.
+    ("Cell | Other", None, "unsupported expression form"),
 ])
 def test_record_parameter_reseat_source_verdicts(annotation: str, thir_reason: str | None,
                                                  mir_reason: str | None) -> None:

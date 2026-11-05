@@ -83,7 +83,7 @@ void free_alias_holder() {
     std::optional<Pic> p;
     for (int32_t i = 0; i < 3; ++i) {
         p = Pic(i);
-        alias = ::tpy::optional_to_ptr(p);
+        alias = &((*p));
     }
     alias->n = ::tpy::add_check<int32_t>(alias->n, 5);
     std::cout << "free_alias_holder" << " " << alias->n << " " << p->n << "\n" << ::tpy::check_signals;
@@ -102,7 +102,7 @@ void free_alias_const() {
     Pic* view;
     for (int32_t i = 0; i < 3; ++i) {
         p = Pic(i);
-        view = ::tpy::optional_to_ptr(p);
+        view = &((*p));
     }
     p->n = ::tpy::add_check<int32_t>(p->n, 5);
     std::cout << "free_alias_const" << " " << view->n << "\n" << ::tpy::check_signals;
@@ -775,7 +775,7 @@ void sib_record() {
     Flat* saved;
     for (int32_t i = 0; i < 2; ++i) {
         f = Flat(i);
-        saved = ::tpy::optional_to_ptr(f);
+        saved = &((*f));
     }
     for (int32_t k = 0; k < 2; ++k) {
         std::cout << "sib_record" << " " << k << "\n" << ::tpy::check_signals;
