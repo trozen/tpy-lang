@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::moved_prefix@10:0: uncovered (no body to lower)
+main::main@13:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

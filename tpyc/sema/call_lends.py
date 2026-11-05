@@ -81,7 +81,8 @@ from ..value_category import (
     is_generic_protocol, param_written, protocol_twin_slot,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
-    holds_no_pointer, may_hold_pointer, peel_coerce, origin, OriginKind,
+    holds_no_pointer, is_rvalue_source, may_hold_pointer, peel_coerce,
+    origin, OriginKind,
     reference_may_hold_pointer,
 )
 from .storage_walk import (
@@ -865,7 +866,8 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
         # recorded (STUB) fails closed.
         if (kind not in _RECORDS_A_FACT
                 or index in recorded_return_borrow_sources(fi)
-                or index in root.addr_escapes_params):
+                or index in root.addr_escapes_params
+                or index in root.readonly_addr_escapes_params):
             return Retention.MEASURED
         return None
     if arg is None and isinstance(call, (TpyCall, TpyMethodCall)) and (
@@ -874,7 +876,8 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
     slot = _retention_slot(fi, index, call, analyzer, arg, recv)
     type_of = analyzer.get_expr_type if analyzer is not None else None
     keeps = Retention(0)
-    if _stub_result_retains(fi, index, slot, call, type_of):
+    if _stub_result_retains(fi, index, slot, call, type_of) and not (
+            _adopts_fresh(fi, index, arg, analyzer)):
         keeps |= (Retention.DECLARED_RESULT
                   if _declared_result_points_nowhere(fi, call, type_of)
                   else Retention.RESULT)
@@ -882,6 +885,18 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
             or root.is_transient or not _component_may_point(slot)):
         keeps |= Retention.COPIES
     return keeps or None
+
+
+def _adopts_fresh(fi: FunctionInfo, index: int, arg: TpyExpr | None,
+                  analyzer: 'ValueCategoryAnalyzer | None') -> bool:
+    """Whether the binding's result takes over argument `arg` at parameter
+    `index` (`adopts=`): a fresh one is moved into the result, so the
+    result channel keeps nothing of its storage -- the loans the argument
+    itself carries are its own operands' and stay with it. Without an
+    analyzer to tell a fresh argument from a named one it fails closed."""
+    return (index in fi.root.adopted_params and arg is not None
+            and analyzer is not None
+            and is_rvalue_source(analyzer, peel_coerce(arg)))
 
 
 def _immutable_at(ctx: 'SemanticContext', expr: TpyExpr) -> bool:

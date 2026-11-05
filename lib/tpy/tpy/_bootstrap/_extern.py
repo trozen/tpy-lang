@@ -75,6 +75,12 @@ class Callable: ...
 # them. Without them a free function's result is a fresh value (a native
 # method's keeps the receiver borrow its signature implies). Each
 # tuple takes any length; `tuple[str]` is how the schema spells "names".
+# Function-level `adopts=(...)` (here and on @cpp_template, free functions
+# only): the parameters whose FRESH argument the result takes over -- the
+# bound C++ has an rvalue overload that moves it into the result -- so the
+# call keeps nothing of that argument's storage and the caller holds no
+# temporary for it; a named argument is lent as the signature says. Disjoint
+# from borrows= / element_of=.
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
            cpp_return_type: type | None = None, indirecting: bool = False,
@@ -84,7 +90,8 @@ def native(name: str = "", function: bool = False, binding: str = "",
            element_effect: str = "",
            element_access: bool | Callable[[], None] = False,
            _iter_yields_ref_tuple_proxies: bool = False, *,
-           borrows: tuple[str], element_of: tuple[str]): ...
+           borrows: tuple[str], element_of: tuple[str],
+           adopts: tuple[str]): ...
 
 @builtin_decorator("tpy.extern.export")
 def export(name: str = "", binding: str = ""): ...
@@ -95,7 +102,8 @@ def export(name: str = "", binding: str = ""): ...
 def cpp_template(template: str, transient: bool = False,
                  checks_signals: bool = False,
                  element_access: bool | Callable[[], None] = False, *,
-                 borrows: tuple[str], element_of: tuple[str]): ...
+                 borrows: tuple[str], element_of: tuple[str],
+                 adopts: tuple[str]): ...
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...

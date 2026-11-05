@@ -8126,9 +8126,11 @@ class StatementAnalyzer:
                 # emission so the `&param -> T*` store type-checks.
                 tgt_inner = unwrap_qualifiers(target_type)
                 if (isinstance(stmt.target, TpyFieldAccess)
-                        and isinstance(tgt_inner, PtrType)
-                        and not tgt_inner.is_readonly):
-                    self.ctx.func.current_addr_escape_param_names.add(stmt.value.name)
+                        and isinstance(tgt_inner, PtrType)):
+                    (self.ctx.func.current_readonly_addr_escape_param_names
+                     if tgt_inner.is_readonly
+                     else self.ctx.func.current_addr_escape_param_names
+                     ).add(stmt.value.name)
             elif isinstance(stmt.value, TpyName) and consumes:
                 # A local holding what an Own param moved in, stored.
                 self.ctx.mark_own_param_consumed(stmt.value.name)

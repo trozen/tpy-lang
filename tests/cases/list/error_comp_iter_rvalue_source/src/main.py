@@ -1,6 +1,6 @@
-# `iter(<rvalue>)` as a comprehension source rejects: `::tpy::__iter__` owns a
-# temporary list or array but not every family (a set, a dict), so the route
-# refuses every rvalue source until they all own theirs
+# `iter(<rvalue>)` as a comprehension source rejects: the route has no row for
+# it yet, although `::tpy::__iter__` owns a temporary of every family, so the
+# iterator would keep it alive
 # (BUGS.md#comp-iter-rvalue-source).
 from tpy import int32, Own
 

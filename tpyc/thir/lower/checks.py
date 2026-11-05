@@ -12886,19 +12886,20 @@ def _separate_iterator_record_temp(a: TpyExpr, analyzer) -> 'TpyType | None':
 
 
 def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                callee, analyzer) -> 'TpyType | None':
-    """A `_separate_iterator_record_temp` worth binding to a local at a native
-    iterator callee's `Iterable[T]` slot (`zip(Noisy(2), xs)`): the record
-    type to declare the local as, else None. Bound first, the argument is an
-    lvalue, the borrowing flavor is selected and the combinator stays
-    movable. A render choice only: the argument is admitted by the same rows
-    either way, and where no local can be made it keeps the owned, pinned
-    form. Only a constructor or free-function call is a candidate (the
-    sources the temp's init lowers), and only a MOVABLE record: a non-movable
-    temp cannot bank in a conditional operand and would be built on the arm
-    not taken."""
-    if callee is None or not _native_iterator_callee(callee,
-                                                     callee.return_type):
+                                callee, index: int,
+                                analyzer) -> 'TpyType | None':
+    """A `_separate_iterator_record_temp` worth binding to a local at a
+    parameter that adopts its fresh argument (`adopts=`, `zip(Noisy(2),
+    xs)`): the record type to declare the local as, else None. Adopted, such
+    a record pins the result (the iterator may point into it); bound first,
+    the argument is an lvalue, the borrowing flavor is selected and the
+    result stays movable. A render choice only: the argument is admitted by
+    the same rows either way, and where no local can be made it keeps the
+    owned, pinned form. Only a constructor or free-function call is a
+    candidate (the sources the temp's init lowers), and only a MOVABLE
+    record: a non-movable temp cannot bank in a conditional operand and
+    would be built on the arm not taken."""
+    if callee is None or index not in callee.root.adopted_params:
         return None
     if not isinstance(a, TpyCall):
         return None

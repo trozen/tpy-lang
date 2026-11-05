@@ -1,0 +1,5 @@
+main::__tpy_init: uncovered (module initialization)
+main::make@16:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@20:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::Source.__iter__@13:4: uncovered (no body to lower)
+main::Source.__init__@11:4: uncovered (no body to lower)

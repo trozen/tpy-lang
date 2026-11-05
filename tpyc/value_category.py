@@ -267,8 +267,13 @@ def reference_may_hold_pointer(t: NominalType,
     """Whether a reference-type value may hold a pointer into storage it
     does not own (`_parts_may_hold_pointer`)."""
     td = type_def_of(t)
-    return _parts_may_hold_pointer(t, td.record if td is not None else None,
-                                   seen)
+    rec = td.record if td is not None else None
+    if rec is not None and rec.is_native and not rec.owns_elements:
+        # A native record's declared fields do not describe its C++ storage,
+        # which may point anywhere; one owning its type arguments' values
+        # (`elements=True`) holds what they hold.
+        return True
+    return _parts_may_hold_pointer(t, rec, seen)
 
 
 def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:

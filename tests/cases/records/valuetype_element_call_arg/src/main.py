@@ -203,6 +203,9 @@ def free_fn(pts: list[Color]) -> None:
     # a field store of an element.
     s.c = pts[1]  # tpyc: ok
     print("field store", s.c.r)
+    slots = [Slot(Color(4))]
+    # a ValueType field read off a list element.
+    print("element field", mix(slots[0].c, slots[0].c).r)  # tpyc: ok
     out: list[Color] = []
     # push_back of an element.
     out.append(pts[0])  # tpyc: ok

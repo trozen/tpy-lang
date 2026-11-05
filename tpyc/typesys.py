@@ -8717,6 +8717,10 @@ class FunctionInfo:
     # initializer list. Populated during body analysis; never propagated
     # transitively (escape is a per-body structural fact).
     addr_escapes_params: frozenset[int] = frozenset()
+    # Param indices whose address the body stores into a `Ptr[readonly[T]]`
+    # field: the callee keeps the argument past the call (retention), while
+    # its `const T&` signature stands.
+    readonly_addr_escapes_params: frozenset[int] = frozenset()
     _structural_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
     # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.
@@ -8752,6 +8756,10 @@ class FunctionInfo:
     # (`element_of=(...)` on `@native` / `@cpp_template`): handed out by iterating the
     # argument, so only a container argument lends it.
     element_borrows_from: frozenset[int] = frozenset()
+    # Declared `adopts=(...)`: a FRESH argument at one of these parameters
+    # is owned by the result (the binding's rvalue overload moves it in), so
+    # the call keeps nothing of its storage; a named one is lent as declared.
+    adopted_params: frozenset[int] = frozenset()
     held_whole_params: frozenset[int] = frozenset()
     # The part of return_borrows_from the result holds only as a reference to
     # the whole object: it neither iterates that storage nor hands out a

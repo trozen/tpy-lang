@@ -486,6 +486,31 @@ result borrows, not that the borrow is sound: as with every native
 signature, the stub author answers for the C++ actually returning one of the
 named arguments.
 
+#### Taking over a fresh argument: `adopts=`
+
+A lazy binding whose result keeps an argument (an iterator over it) may own
+a TEMPORARY argument instead of borrowing it: its C++ has an rvalue overload
+that moves the argument into the result. `adopts=` names those parameters,
+on a free function's `@native` / `@cpp_template`:
+
+```python
+@cpp_template("::lib::walk({0})", adopts=("items",))
+def walk[T](items: Iterable[T]) -> Iterator[T]: ...
+```
+
+A fresh argument there (`walk(make())`) is passed as it is and the result
+owns it: the call keeps nothing of its storage, so the caller holds no
+temporary for it and nothing warns that it dies; the loans the argument
+carries stay (`walk(reversed(xs))` still borrows `xs`, and `xs.append(1)`
+while the result is alive warns). A named argument (`walk(xs)`) is lent as
+the signature says. A class instance whose `__iter__` builds a separate
+iterator is still bound to a local first, since the iterator may point into
+it and the result could not move. The builtin `iter`, `enumerate`, `zip`,
+`map`, `filter` and `reversed` declare it on their iterable parameters. A
+name must be a parameter that can hold storage, and may not also appear in
+`borrows=` / `element_of=`; a method stub and a `@native` class refuse the
+keyword.
+
 ### Declaring element storage: `elements=True` and `mutates="elements"`
 
 A native container -- a class whose values own the values of its type
@@ -705,7 +730,9 @@ never off its name. Three channels:
 
 - **The result.** What `borrows=` / `element_of=` declare (a declared borrow
   at a value-shaped instantiation is a fresh value); an `Iterator[T]` return
-  keeps its reference arguments; a reference or view result keeps the
+  keeps its reference arguments, except a fresh one at a parameter named in
+  `adopts=`, which it owns (see "Taking over a fresh argument: `adopts=`"
+  below); a reference or view result keeps the
   receiver of a method and the lendable arguments of a free binding; a
   borrowing view's constructor keeps its first argument; an owned result
   that may hold a pointer (`list(views) -> list[StrView]`) carries the
@@ -717,7 +744,10 @@ never off its name. Three channels:
   parameter's value -- or the elements, keys and values it hands over,
   `Own` peeled, a protocol by its type arguments -- may hold a pointer:
   `list[StrView].extend` keeps its argument's views, `list[Box].extend`
-  keeps nothing of a `Box`. `transient=True` and `pure` promise no copy.
+  keeps nothing of a `Box`. A `@native` record's declared fields do not
+  describe its C++ storage, so a value of one counts as possibly holding a
+  pointer -- unless it is declared `elements=True`, which says it owns its
+  type arguments' values and holds only what they hold. `transient=True` and `pure` promise no copy.
   The channels add up: a binding whose result keeps a view argument
   (`borrows=("text",)`) may keep a copy of it as well.
 - **Addresses: never.** A binding never keeps the address of a plain

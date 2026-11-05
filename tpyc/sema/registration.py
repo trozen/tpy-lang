@@ -4432,6 +4432,34 @@ class TypeRegistrar:
             self._stamp_declared_borrow(func, info)
         else:
             self._stamp_iterator_retention(func, info)
+        if func.declared_adopts:
+            self._stamp_adopts(func, info)
+
+    @staticmethod
+    def _stamp_adopts(func: TpyFunction, info: FunctionInfo) -> None:
+        """Stamp a binding's `adopts=(...)` keyword: the parameters whose
+        fresh argument its result takes over (`FunctionInfo.adopted_params`),
+        each a parameter of the signature that can hold storage."""
+        where = f"'{func.name}'"
+        out: set[int] = set()
+        for name in func.declared_adopts:
+            idx = next((i for i, p in enumerate(info.params)
+                        if p.name == name), None)
+            if idx is None:
+                raise SemanticError(
+                    f"adopts= names '{name}', which is not a parameter of "
+                    f"{where}", func.loc)
+            if not param_type_can_lend(info.params[idx].type,
+                                       callables=False):
+                raise SemanticError(
+                    f"adopts= names '{name}', whose type "
+                    f"'{info.params[idx].type}' holds no storage the result "
+                    f"could take over", func.loc)
+            if idx in out:
+                raise SemanticError(
+                    f"adopts= names '{name}' twice", func.loc)
+            out.add(idx)
+        info.adopted_params = frozenset(out)
 
     def _stamp_declared_borrow(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Stamp a binding's `borrows=(...)` / `element_of=(...)` keywords:

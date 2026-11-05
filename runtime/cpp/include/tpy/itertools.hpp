@@ -115,11 +115,11 @@ public:
         noexcept(std::is_nothrow_move_constructible_v<C>)
         requires (!separate_user_iterator<C>)
         : src_(std::move(o.src_)) {
-#ifndef NDEBUG
+        // The cursor may point into the moved-from container; restarting the
+        // walk would replay its elements.
         if constexpr (!is_self_iterator_v<C>) {
-            if (o.cur_.seeded()) tpy_panic("owning combinator moved after its first pull");
+            if (o.cur_.seeded()) tpy_panic("owning iterator moved after its cursor was made");
         }
-#endif
     }
     owned_iter_source& operator=(owned_iter_source&&) = delete;
 
@@ -137,6 +137,13 @@ public:
     void start() {
         if constexpr (is_self_iterator_v<C>) (void)tpy::iter_dunder(src_);
         else if constexpr (separate_user_iterator<C>) cur_.seed(src_);
+    }
+
+    // start() for `iter()` itself, a function: CPython runs every source's
+    // __iter__ at the call, so the cursor exists from here on.
+    void start_now() {
+        if constexpr (is_self_iterator_v<C>) (void)tpy::iter_dunder(src_);
+        else cur_.seed(src_);
     }
 
     decltype(auto) __next__() {
@@ -172,9 +179,7 @@ public:
         if constexpr (indexed) {
             cur_ = o.cur_;
         } else {
-#ifndef NDEBUG
-            if (o.cur_.has_value()) tpy_panic("owning combinator moved after its first pull");
-#endif
+            if (o.cur_.has_value()) tpy_panic("owning iterator moved after its first pull");
         }
     }
     owned_range_source& operator=(owned_range_source&&) = delete;
@@ -330,7 +335,55 @@ using result_step_t = std::conditional_t<
     std::is_lvalue_reference_v<R> && !is_value_type_v<std::remove_cvref_t<R>>,
     val_or_ref<std::remove_reference_t<R>>, std::remove_cvref_t<R>>;
 
+// A TEMPORARY argument `__iter__` takes over: a container (other than the
+// vector / array `owning_native_iterator` already owns), a user record whose
+// `__iter__` returns a separate iterator, anything iterable the call would
+// otherwise read after it dies. Views and pointers are not owners.
+template<typename C>
+concept owned_iter_temporary =
+    !std::is_lvalue_reference_v<C> && !std::is_const_v<C> && std::is_class_v<C>
+    && !vector_or_array_based<C>
+    && !std::ranges::enable_borrowed_range<C>
+    && requires(C& c) { tpy::iter_dunder(c); };
+
 } // namespace detail
+
+// `iter(make())`: the iterator keeps the temporary alive, as a Python iterator
+// keeps its container (`owning_native_iterator`'s rule for every other kind).
+// Every source's __iter__ runs here, so a move after construction panics; the
+// iterator is built in place where iter() is called.
+template<typename C>
+class owning_iter
+    : public next_iter_mixin<owning_iter<C>,
+                             detail::step_value_t<detail::owned_iter_source<C>>> {
+    detail::owned_iter_source<C> src_;
+public:
+    explicit owning_iter(C&& c) : src_(std::move(c)) { src_.start_now(); }
+
+    decltype(auto) __next__() { return src_.__next__(); }
+
+    owning_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_iter&) {
+        return os << "<iterator>";
+    }
+};
+
+// A temporary self-iterator (a generator frame, a combinator, a user iterator)
+// IS its iterator: `iter(it)` returns it, after running its `__iter__`.
+template<typename C>
+    requires detail::owned_iter_temporary<C> && is_self_iterator_v<C>
+C __iter__(C&& x) {
+    (void)tpy::iter_dunder(x);
+    return std::move(x);
+}
+
+template<typename C>
+    requires detail::owned_iter_temporary<C> && (!is_self_iterator_v<C>)
+owning_iter<C> __iter__(C&& x) {
+    return owning_iter<C>(std::move(x));
+}
+
 
 // -- enumerate --
 

@@ -14774,7 +14774,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             ok = _native_call_arg_ok(a, ptype, declared, analyzer,
                                      retains=_keep, **body_facts)
             _sit = (_separate_iterator_temp_arg(a, ptype, _callee_fi,
-                                                analyzer)
+                                                arg_index, analyzer)
                     if ok and temp_args and lc.may_hoist else None)
             if _sit is not None:
                 # A render choice over an argument the rows above admitted:

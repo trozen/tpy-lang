@@ -1,0 +1,1 @@
+main.py:9: error: adopts= names 'items', which is not a parameter of 'numbered'

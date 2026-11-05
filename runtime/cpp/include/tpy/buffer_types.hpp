@@ -238,3 +238,9 @@ struct std::hash<::tpy::String> {
         return std::hash<std::string_view>{}(std::string_view(s));
     }
 };
+
+// The view points at a buffer it does not own, as the `std::span` it derives
+// from does; a derived type does not inherit the span's specialization, and
+// without it a fresh view argument takes the owning overloads.
+template<>
+inline constexpr bool std::ranges::enable_borrowed_range<::tpy::BytesView> = true;

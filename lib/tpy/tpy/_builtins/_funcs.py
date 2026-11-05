@@ -390,7 +390,7 @@ def next[T: ReferenceType](iterator: Iterator[T], default: T, /) -> T: ...
 # TODO: make non-native once regular functions can return protocol types
 @readonly
 @type_param_default(T=DefaultInt)
-@native("tpy::__iter__")
+@native("tpy::__iter__", adopts=("object",))
 def iter[T](object: Iterable[T], /) -> Iterator[T]: ...
 
 
@@ -662,13 +662,13 @@ def oct(number: int, /) -> str: ...
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate({0})")
+@cpp_template("::tpy::builtin_enumerate({0})", adopts=("iterable",))
 def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]: ...
 
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate({0}, {1})")
+@cpp_template("::tpy::builtin_enumerate({0}, {1})", adopts=("iterable",))
 def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T]]: ...
 
 
@@ -676,7 +676,7 @@ def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T
 
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_reversed({0})")
+@cpp_template("::tpy::builtin_reversed({0})", adopts=("sequence",))
 def reversed[T](sequence: Sequence[T], /) -> Iterator[T]: ...
 
 
@@ -684,22 +684,22 @@ def reversed[T](sequence: Sequence[T], /) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1})")
+@cpp_template("::tpy::builtin_zip({0}, {1})", adopts=("iter1", "iter2"))
 def zip[T1, T2](iter1: Iterable[T1], iter2: Iterable[T2], /) -> Iterator[tuple[T1, T2]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2})", adopts=("iter1", "iter2", "iter3"))
 def zip[T1, T2, T3](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], /) -> Iterator[tuple[T1, T2, T3]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3})", adopts=("iter1", "iter2", "iter3", "iter4"))
 def zip[T1, T2, T3, T4](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], /) -> Iterator[tuple[T1, T2, T3, T4]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3}, {4})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3}, {4})", adopts=("iter1", "iter2", "iter3", "iter4", "iter5"))
 def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5], /) -> Iterator[tuple[T1, T2, T3, T4, T5]]: ...
 
 
@@ -707,27 +707,27 @@ def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Ite
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map<{U}>({0}, {1})")
+@cpp_template("::tpy::builtin_map<{U}>({0}, {1})", adopts=("iterable",))
 def map[T, U](function: Fn[[T], U], iterable: Iterable[T], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2})")
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2})", adopts=("iterable", "iter2"))
 def map[T1, T2, U](function: Fn[[T1, T2], U], iterable: Iterable[T1], iter2: Iterable[T2], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3})")
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3})", adopts=("iterable", "iter2", "iter3"))
 def map[T1, T2, T3, U](function: Fn[[T1, T2, T3], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4})")
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4})", adopts=("iterable", "iter2", "iter3", "iter4"))
 def map[T1, T2, T3, T4, U](function: Fn[[T1, T2, T3, T4], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4}, {5})")
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4}, {5})", adopts=("iterable", "iter2", "iter3", "iter4", "iter5"))
 def map[T1, T2, T3, T4, T5, U](function: Fn[[T1, T2, T3, T4, T5], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5], /) -> Iterator[U]: ...
 
 
@@ -735,12 +735,12 @@ def map[T1, T2, T3, T4, T5, U](function: Fn[[T1, T2, T3, T4, T5], U], iterable: 
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter({0}, {1})")
+@cpp_template("::tpy::builtin_filter({0}, {1})", adopts=("iterable",))
 def filter[T](function: Fn[[T], bool], iterable: Iterable[T], /) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter_truthy({1})")
+@cpp_template("::tpy::builtin_filter_truthy({1})", adopts=("iterable",))
 def filter[T](function: None, iterable: Iterable[T], /) -> Iterator[T]: ...
 
 

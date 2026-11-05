@@ -215,6 +215,9 @@ A own_elem_call(const std::vector<A>& xs) {
 //     # a field store of an element.
 //     s.c = pts[1]  # tpyc: ok
 //     print("field store", s.c.r)
+//     slots = [Slot(Color(4))]
+//     # a ValueType field read off a list element.
+//     print("element field", mix(slots[0].c, slots[0].c).r)  # tpyc: ok
 //     out: list[Color] = []
 //     # push_back of an element.
 //     out.append(pts[0])  # tpyc: ok
@@ -266,6 +269,8 @@ void free_fn(const std::vector<Color>& pts) {
     Slot s = Slot(Color(0));
     s.c = ::tpy::__getitem__(pts, 1);
     std::cout << "field store" << " " << s.c.r << "\n" << ::tpy::check_signals;
+    std::array<Slot, 1> slots = {Slot(Color(4))};
+    std::cout << "element field" << " " << ::tpyapp::main::mix(::tpy::__getitem__(slots, 0).c, ::tpy::__getitem__(slots, 0).c).r << "\n" << ::tpy::check_signals;
     std::vector<Color> out = std::vector<Color>{};
     out.push_back(::tpy::__getitem__(pts, 0));
     std::cout << "push_back" << " " << ::tpy::__getitem__(out, 0).r << "\n" << ::tpy::check_signals;

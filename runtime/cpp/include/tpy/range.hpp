@@ -144,3 +144,8 @@ std::string __str__(const Range<T>& r) { return __repr__(r); }
 template<typename T> struct is_value_type<Range<T>> : std::true_type {};
 
 } // namespace tpy
+
+// Its iterators carry the values themselves, never a pointer into the range,
+// so a fresh range needs no owner: iter() walks it as it walks a view.
+template<typename T>
+inline constexpr bool std::ranges::enable_borrowed_range<tpy::Range<T>> = true;

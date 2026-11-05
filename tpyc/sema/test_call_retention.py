@@ -606,3 +606,119 @@ def test_binding_retention_at_a_generic_protocol_reads_the_elements() -> None:
         got = [retention_channel(c.resolved_function_info, 0, c, ctx)
                for c in found]
     assert got == [Retention.RESULT, Retention.RESULT | Retention.COPIES]
+
+
+_ADOPT_SRC = '''
+from typing import Iterable, Iterator
+from tpy import Own, Ptr, int32, readonly
+from tpy.extern import cpp_template
+
+
+class P:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+class Box:
+    p: Ptr[readonly[P]] = None
+
+
+@cpp_template("::tpy::builtin_enumerate({0})", adopts=("items",))
+def walk[T](items: Iterable[T]) -> Iterator[tuple[int32, T]]: ...
+
+
+def mk() -> Own[list[P]]:
+    return [P(1)]
+
+
+def save(box: Box, p: P) -> int32:
+    box.p = p
+    return p.v
+
+
+def subject(xs: list[P], box: Box) -> None:
+    walk(mk())
+    walk(xs)
+    save(box, P(2))
+'''
+
+
+def test_adopted_fresh_argument_drops_the_result_channel() -> None:
+    # `adopts=`: the result takes a fresh argument over, so the call keeps
+    # nothing of its storage; a named argument stays lent through the result.
+    compiler, modules = _compile(_ADOPT_SRC)
+    entry = _entry(modules)
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    calls: list[TpyCall] = []
+    walk_body_stmts(fn.body, lambda e: None,
+                    lambda s: calls.append(s.expr)
+                    if isinstance(s, TpyExprStmt) else None)
+    fresh, named, save = calls
+    ctx = entry.analyzer.ctx
+    with activate_compiler(compiler):
+        keep_fresh = retention_channel(fresh.resolved_function_info, 0,
+                                       fresh, ctx)
+        keep_named = retention_channel(named.resolved_function_info, 0,
+                                       named, ctx)
+        keep_saved = retention_channel(save.resolved_function_info, 1,
+                                       save, ctx)
+    assert keep_fresh is None or not keep_fresh & (
+        Retention.RESULT | Retention.DECLARED_RESULT)
+    assert keep_named is not None and keep_named & Retention.RESULT
+    # An address stored into a `Ptr[readonly[P]]` field keeps the argument.
+    assert keep_saved == Retention.MEASURED
+
+
+_NATIVE_RECORD_SRC = '''
+from typing import Iterator
+from tpy import NativeIterable, int32, readonly
+from tpy.extern import native
+
+
+@native("::Win")
+class Win:
+    def size(self) -> int32: ...
+
+
+@native("::Bag", elements=True)
+class Bag[T](NativeIterable[T]):
+    def __init__(self) -> None: ...
+
+    @native("tpy::__iter__", function=True)
+    @readonly
+    def __iter__(self) -> Iterator[T]: ...
+
+
+@native("stash")
+def stash(w: Win) -> None: ...
+
+
+@native("stash_bag")
+def stash_bag(b: Bag[int32]) -> None: ...
+
+
+def subject(w: Win, b: Bag[int32]) -> None:
+    stash(w)
+    stash_bag(b)
+'''
+
+
+def test_native_record_argument_may_hold_a_pointer() -> None:
+    # A `@native` record's declared fields do not describe its C++ storage
+    # (a `std::string_view` member it never declares), so a binding handed one
+    # may keep a copy of a pointer it holds; one owning its elements
+    # (`elements=True`) holds only what they hold.
+    compiler, modules = _compile(_NATIVE_RECORD_SRC)
+    entry = _entry(modules)
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    found: list[TpyExpr] = []
+    walk_body_stmts(fn.body, lambda e: None,
+                    lambda s: found.append(s.expr)
+                    if isinstance(s, TpyExprStmt) else None)
+    ctx = entry.analyzer.ctx
+    with activate_compiler(compiler):
+        got = [retention_channel(c.resolved_function_info, 0, c, ctx)
+               for c in found]
+    assert got == [Retention.COPIES, None]

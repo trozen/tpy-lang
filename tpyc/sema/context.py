@@ -2473,6 +2473,9 @@ class FunctionTrackingState:
     # at body-analysis end; consumed by param-signature codegen to suppress
     # the `const T&` default so the `&param -> T*` store type-checks.
     current_addr_escape_param_names: set[str] = field(default_factory=set)
+    # Params whose address is stored into a `Ptr[readonly[T]]` field: kept
+    # past the call as the mutable ones are, but a `const T&` still takes it.
+    current_readonly_addr_escape_param_names: set[str] = field(default_factory=set)
     # Awaited sub-frame FunctionInfos for Send/Sync frame classification
     # (sema/frame_traits.py). A None entry is an await whose operand frame sema
     # cannot classify (Task / structural awaitable) -- forces non-Send.

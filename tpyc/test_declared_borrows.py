@@ -379,6 +379,62 @@ def test_declaration_spelling_errors(decl, message):
         _entry(_NATIVE + decl)
 
 
+@pytest.mark.parametrize("decl, message", [
+    ("@native(adopts=(\"nope\",))\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "adopts= names 'nope', which is not a parameter of 'f'"),
+    ("@native(adopts=(\"a\", \"a\"))\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "adopts= names 'a' twice"),
+    ("@cpp_template(\"f({0}, {1})\", adopts=(\"n\",))\n"
+     "def f(a: list[int32], n: int32) -> list[int32]: ...\n",
+     "adopts= names 'n', whose type 'int32' holds no storage"),
+])
+def test_adopts_errors(decl, message):
+    with pytest.raises(SemanticError, match=message):
+        _entry(_NATIVE + decl)
+
+
+@pytest.mark.parametrize("decl, message", [
+    ("@native(adopts=())\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "must name at least one parameter the result takes over"),
+    ("@native(borrows=(\"a\",), adopts=(\"a\",))\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "names 'a' in both adopts= and borrows= / element_of="),
+    # A binding with a TPy body declares nothing for it to take over.
+    ("@native(adopts=(\"a\",))\n"
+     "def f(a: list[int32]) -> list[int32]:\n"
+     "    return a\n",
+     "must have `...` body"),
+    ("@cpp_template(\"f({0})\", element_of=(\"a\",), adopts=(\"a\",))\n"
+     "def f(a: list[int32]) -> int32: ...\n",
+     "names 'a' in both adopts= and borrows= / element_of="),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(adopts=(\"other\",))\n"
+     "    def pick(self, other: Node) -> Node: ...\n",
+     "adopts=...\\) is only valid on a free function stub"),
+    ("@native(\"Node\", adopts=(\"v\",))\nclass Node:\n"
+     "    v: int32\n",
+     "adopts=...\\) is only valid on a free function stub"),
+])
+def test_adopts_spelling_errors(decl, message):
+    with pytest.raises(ParseError, match=message):
+        _entry(_NATIVE + decl)
+
+
+def test_adopts_stamps_the_parameters():
+    """`adopts=` lands as the binding's adopted parameter indices."""
+    entry = _entry(_NATIVE + "@cpp_template(\"g({0}, {1})\", adopts=(\"b\",))\n"
+                   "def g(a: list[int32], b: list[int32]) -> int32: ...\n"
+                   "def f(a: list[int32]) -> int32:\n"
+                   "    return g(a, a)\n")
+    fn = next(f for f in entry.ast.functions if f.name == "f")
+    call, = _calls(fn.body, [])
+    assert call.resolved_function_info.root.adopted_params == frozenset({1})
+
+
 _ELEM = (
     "from typing import Iterator\n"
     "from tpy import Own, ReferenceType, ComparableRef, dispatch\n"

@@ -2220,6 +2220,10 @@ class TpyFunction:
     # stamped into FunctionInfo at registration. None = neither keyword.
     declared_borrows: tuple[str, ...] | None = None
     declared_element_of: tuple[str, ...] = ()
+    # @native / @cpp_template(adopts=(...)) on a free function: the
+    # parameters whose FRESH argument the result takes over (a named one is
+    # lent as the signature says); stamped into FunctionInfo.adopted_params.
+    declared_adopts: tuple[str, ...] = ()
     # @native(mutates="elements"): see FunctionInfo.native_mutates.
     native_mutates: str | None = None
     # @native(element_effect=...): see FunctionInfo.native_element_effect.

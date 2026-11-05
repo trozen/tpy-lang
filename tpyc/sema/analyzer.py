@@ -1994,6 +1994,10 @@ class SemanticAnalyzer:
                 i for i, pname in enumerate(param_list)
                 if pname in self.ctx.func.current_addr_escape_param_names
             )
+            func_info.readonly_addr_escapes_params = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.func.current_readonly_addr_escape_param_names
+            )
             # Generator and async functions: the returned frame stores
             # non-value params as T& references (or &ref lambda captures), and
             # str/view params as views of the argument's storage, so the
@@ -3237,6 +3241,10 @@ class SemanticAnalyzer:
                     method_fi.addr_escapes_params = frozenset(
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.func.current_addr_escape_param_names
+                    )
+                    method_fi.readonly_addr_escapes_params = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.func.current_readonly_addr_escape_param_names
                     )
 
             self._warn_unconsumed_own_params(method)

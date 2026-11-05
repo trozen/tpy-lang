@@ -1271,6 +1271,28 @@ class Parser:
                 f"its elements", dec)
         return tuple(borrows), tuple(element_of)
 
+    def _parse_adopts(self, qname: str, kw: dict[str, object],
+                      dec: ast.expr) -> tuple[str, ...]:
+        """The parameter names a binding's `adopts=(...)` keyword declares
+        its result takes over when handed a fresh argument; which parameters
+        they name is checked at registration, against the resolved
+        signature."""
+        adopts = tuple(kw.get("adopts", ()))
+        name = bare_name(qname)
+        if "adopts" in kw and not adopts:
+            raise ParseError(
+                f"@{name}(adopts=...) must name at least one parameter the "
+                f"result takes over", dec)
+        declared = (tuple(kw.get("borrows", ()))
+                    + tuple(kw.get("element_of", ())))
+        both = [n for n in adopts if n in declared]
+        if both:
+            raise ParseError(
+                f"@{name} names '{both[0]}' in both adopts= and borrows= / "
+                f"element_of=; the result either takes the argument over or "
+                f"borrows it", dec)
+        return adopts
+
     def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
         """Parse @readonly validated arg -> (is_readonly, readonly_opt_out).
 
@@ -1645,6 +1667,11 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
+                if "adopts" in kw:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(adopts=...) is only valid on a "
+                        f"free function stub: it declares what a bound C++ "
+                        f"call's result takes over", dec)
                 for call_kw in ("transient", "checks_signals", "borrows",
                                 "element_of"):
                     if call_kw in kw:
@@ -2532,6 +2559,11 @@ class Parser:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname in (qnames.NATIVE, qnames.CPP_TEMPLATE):
+                if "adopts" in kw:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(adopts=...) is only valid on a "
+                        f"free function stub: it declares what a bound C++ "
+                        f"call's result takes over", dec)
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
                 element_access = (self._parse_element_access(kw)
@@ -2964,6 +2996,7 @@ class Parser:
         overload_form: OverloadForm | None = None
         value_ptr_coercion = False
         borrow_facts: tuple[tuple[str, ...], tuple[str, ...]] | None = None
+        adopts: tuple[str, ...] = ()
         error_return: str | None = None
         builtin_decorator_key: str | None = None
         builtin_function_key: str | None = None
@@ -3015,6 +3048,7 @@ class Parser:
                     checks_signals_dec = dec
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
+                adopts = self._parse_adopts(qname, kw, dec) or adopts
                 self._reject_free_function_method_kwargs(qname, kw, dec)
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
@@ -3072,6 +3106,7 @@ class Parser:
                 self._reject_type_fact_kwargs(qname, kw, dec)
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
+                adopts = self._parse_adopts(qname, kw, dec) or adopts
                 self._reject_free_function_method_kwargs(qname, kw, dec)
                 if kw.get("transient"):
                     transient_dec = dec
@@ -3299,6 +3334,7 @@ class Parser:
             value_ptr_coercion=value_ptr_coercion,
             declared_borrows=borrow_facts[0] if borrow_facts else None,
             declared_element_of=borrow_facts[1] if borrow_facts else (),
+            declared_adopts=adopts,
             type_params=type_params,
             type_param_kinds=type_param_kinds,
             type_param_bounds=type_param_bounds,

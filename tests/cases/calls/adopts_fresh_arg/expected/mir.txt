@@ -1,0 +1,22 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@18:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::mkp@25:0: uncovered (custom record special member), summary: opaque (custom record special member)
+main::double@29:0: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
+main::positive@33:0: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
+main::save@41:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::mk_set@86:0: covered (storage: no_proof_required), summary: known
+main::mkd@90:0: covered (storage: no_proof_required), summary: known
+main::word@94:0: covered (storage: no_proof_required), summary: known
+main::mk_ba@98:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen_adopt@102:0: uncovered (argument held across a suspension)
+main::main@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::<genexpr>@178:34: uncovered (generator expression)
+main::P.__copy__@13:4: uncovered (custom record special member)
+main::Cur.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Cur.__next__@58:4: uncovered (error-return body)
+main::Noisy.__iter__@71:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Holder.get@82:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::P.__init__@10:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::Cur.__init__@50:4: covered (storage: no_proof_required), summary: known
+main::Noisy.__init__@68:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@79:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
