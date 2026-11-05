@@ -113,9 +113,9 @@ void test_writer_control_chars() {
     w.array_start();
     w.write_str("a\tb");
     w.write_str("c\nd");
-    w.write_str((::tpy::str_concat(::tpy::char_to_str(static_cast<char>(8)), "x")));
-    w.write_str((::tpy::str_concat(::tpy::char_to_str(static_cast<char>(12)), "y")));
-    w.write_str((::tpy::str_concat(::tpy::char_to_str(static_cast<char>(0)), "z")));
+    w.write_str((::tpy::str_concat(::tpy::char_to_str(::tpy::chr(8)), "x")));
+    w.write_str((::tpy::str_concat(::tpy::char_to_str(::tpy::chr(12)), "y")));
+    w.write_str((::tpy::str_concat(::tpy::char_to_str(::tpy::chr(0)), "z")));
     w.array_end();
     std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }

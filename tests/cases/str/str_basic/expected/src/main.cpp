@@ -35,7 +35,7 @@ void __tpy_init() {
 
     std::cout << ::tpyapp::main::count_char("xoxox", 'x') << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__("hello") << "\n" << ::tpy::check_signals;
-    std::cout << static_cast<char>(65) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::chr(65) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

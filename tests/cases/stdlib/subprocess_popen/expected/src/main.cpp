@@ -337,7 +337,7 @@ void bad_arguments() {
             std::cout << "badarg:" << " " << e.error_number << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::String nul_arg = (::tpy::str_concat((::tpy::str_concat("a", ::tpy::char_to_str(static_cast<char>(0)))), "b"));
+    ::tpy::String nul_arg = (::tpy::str_concat((::tpy::str_concat("a", ::tpy::char_to_str(::tpy::chr(0)))), "b"));
     {
         try {
             std::vector<std::string> __tmp_2 = {"echo", nul_arg};

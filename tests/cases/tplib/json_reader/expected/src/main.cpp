@@ -607,6 +607,60 @@ void test_describe() {
     std::cout << err2.describe("any") << "\n" << ::tpy::check_signals;
 }
 
+// def test_unicode_escapes() -> None:
+//     cases = [
+//         ("bmp", '"\\u00e9\\u2588"'),
+//         ("pair", '"\\ud83d\\ude00x"'),
+//         ("pair_end", '"x\\uD83D\\uDE00"'),
+//         ("lone_high", '"\\ud800"'),
+//         ("lone_low", '"\\udc00"'),
+//         ("high_non_low", '"\\ud83dA"'),
+//         ("bad_hex", '"\\u00zz"'),
+//         ("bad_hex_low", '"\\ud800\\udc0x"'),
+//         ("truncated", '"\\u"'),
+//         ("truncated_2", '"\\u12"'),
+//         ("truncated_after", '"\\ud83d\\ude00\\u"'),
+//         ("truncated_low", '"\\ud83d\\u12"'),
+//     ]
+//     for name, data in cases:
+//         reader = JsonReader(data)
+//         try:
+//             # The \u escape decode under test.
+//             s = reader.read_str()
+//             print(name + ":", repr(s), len(s.encode()))
+//         except JsonError as e:
+//             print(name + ": JsonError:", e.message, e.pos)
+void test_unicode_escapes() {
+    std::array<std::tuple<std::string, std::string>, 12> cases = {std::tuple<std::string, std::string>{"bmp", "\"\\u00e9\\u2588\""}, std::tuple<std::string, std::string>{"pair", "\"\\ud83d\\ude00x\""}, std::tuple<std::string, std::string>{"pair_end", "\"x\\uD83D\\uDE00\""}, std::tuple<std::string, std::string>{"lone_high", "\"\\ud800\""}, std::tuple<std::string, std::string>{"lone_low", "\"\\udc00\""}, std::tuple<std::string, std::string>{"high_non_low", "\"\\ud83dA\""}, std::tuple<std::string, std::string>{"bad_hex", "\"\\u00zz\""}, std::tuple<std::string, std::string>{"bad_hex_low", "\"\\ud800\\udc0x\""}, std::tuple<std::string, std::string>{"truncated", "\"\\u\""}, std::tuple<std::string, std::string>{"truncated_2", "\"\\u12\""}, std::tuple<std::string, std::string>{"truncated_after", "\"\\ud83d\\ude00\\u\""}, std::tuple<std::string, std::string>{"truncated_low", "\"\\ud83d\\u12\""}};
+    auto& __obj_0 = cases;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& __for_tup_0 = *__beg_0;
+        std::string name = std::get<0>(__for_tup_0);
+        std::string data = std::get<1>(__for_tup_0);
+        ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader(data);
+        std::string s;
+        {
+            std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_64;
+            {
+                auto __try_tmp_65 = reader.read_str();
+                if (!__try_tmp_65.has_value()) { __err_opt_64 = std::move(__try_tmp_65.error()); goto __except_64; }
+                s = ::tpy::unwrap_ref_move(*__try_tmp_65);
+            }
+            std::cout << (::tpy::str_concat(name, ":")) << " " << std::string(::tpy::repr_of(s)) << " " << ::tpy::__len__(::tpy::bytes_from_str(s)) << "\n" << ::tpy::check_signals;
+            goto __after_try_64;
+            // except JsonError:
+            __except_64:;
+            {
+                auto& e = *__err_opt_64;
+                std::cout << (::tpy::str_concat(name, ": JsonError:")) << " " << e.message << " " << e.pos << "\n" << ::tpy::check_signals;
+            }
+            __after_try_64:;
+        }
+    }
+}
+
 // def main() -> None:
 //     try:
 //         test_basic_object()
@@ -641,21 +695,11 @@ void test_describe() {
 //     except JsonError:
 //         print("ERROR")
 //     test_describe()
+//     test_unicode_escapes()
 void main() {
     {
         {
-            auto __try_tmp_65 = ::tpyapp::main::test_basic_object();
-            if (!__try_tmp_65.has_value()) goto __except_64;
-        }
-        goto __after_try_64;
-        // except JsonError:
-        __except_64:;
-        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
-        __after_try_64:;
-    }
-    {
-        {
-            auto __try_tmp_67 = ::tpyapp::main::test_nested();
+            auto __try_tmp_67 = ::tpyapp::main::test_basic_object();
             if (!__try_tmp_67.has_value()) goto __except_66;
         }
         goto __after_try_66;
@@ -666,7 +710,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_69 = ::tpyapp::main::test_null_and_escape();
+            auto __try_tmp_69 = ::tpyapp::main::test_nested();
             if (!__try_tmp_69.has_value()) goto __except_68;
         }
         goto __after_try_68;
@@ -677,7 +721,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_71 = ::tpyapp::main::test_float();
+            auto __try_tmp_71 = ::tpyapp::main::test_null_and_escape();
             if (!__try_tmp_71.has_value()) goto __except_70;
         }
         goto __after_try_70;
@@ -688,7 +732,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_73 = ::tpyapp::main::test_skip();
+            auto __try_tmp_73 = ::tpyapp::main::test_float();
             if (!__try_tmp_73.has_value()) goto __except_72;
         }
         goto __after_try_72;
@@ -699,7 +743,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_75 = ::tpyapp::main::test_empty_containers();
+            auto __try_tmp_75 = ::tpyapp::main::test_skip();
             if (!__try_tmp_75.has_value()) goto __except_74;
         }
         goto __after_try_74;
@@ -710,7 +754,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_77 = ::tpyapp::main::test_negative_int();
+            auto __try_tmp_77 = ::tpyapp::main::test_empty_containers();
             if (!__try_tmp_77.has_value()) goto __except_76;
         }
         goto __after_try_76;
@@ -721,7 +765,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_79 = ::tpyapp::main::test_raw_methods();
+            auto __try_tmp_79 = ::tpyapp::main::test_negative_int();
             if (!__try_tmp_79.has_value()) goto __except_78;
         }
         goto __after_try_78;
@@ -730,7 +774,19 @@ void main() {
         std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_78:;
     }
+    {
+        {
+            auto __try_tmp_81 = ::tpyapp::main::test_raw_methods();
+            if (!__try_tmp_81.has_value()) goto __except_80;
+        }
+        goto __after_try_80;
+        // except JsonError:
+        __except_80:;
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
+        __after_try_80:;
+    }
     ::tpyapp::main::test_describe();
+    ::tpyapp::main::test_unicode_escapes();
 }
 
 // from tplib.json import JsonError, JsonReader, JsonToken

@@ -56,8 +56,8 @@ void __tpy_init() {
     std::cout << ::tpy::__getitem__((*data), 0) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_3 = {72, 73};
     chars = &__global_slot_3;
-    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 0)) << ::tpy::check_signals;
-    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::chr(::tpy::__getitem__((*chars), 0)) << ::tpy::check_signals;
+    std::cout << ::tpy::chr(::tpy::__getitem__((*chars), 1)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

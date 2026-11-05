@@ -5,7 +5,25 @@
 # TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
 #   when whitespace was already consumed by the previous call
 from enum import Enum
-from tpy import int32, int64, float64, char, StrView, readonly, error_return, ReturnException
+from tpy import int32, int64, uint8, float64, char, StrView, readonly, error_return, ReturnException
+
+
+def _utf8_str(cp: int32) -> str:
+    # An ASCII code point goes through chr() at the caller.
+    out = bytearray()
+    if cp < 0x800:
+        out.append(uint8(0xC0 | (cp >> 6)))
+        out.append(uint8(0x80 | (cp & 0x3F)))
+    elif cp < 0x10000:
+        out.append(uint8(0xE0 | (cp >> 12)))
+        out.append(uint8(0x80 | ((cp >> 6) & 0x3F)))
+        out.append(uint8(0x80 | (cp & 0x3F)))
+    else:
+        out.append(uint8(0xF0 | (cp >> 18)))
+        out.append(uint8(0x80 | ((cp >> 12) & 0x3F)))
+        out.append(uint8(0x80 | ((cp >> 6) & 0x3F)))
+        out.append(uint8(0x80 | (cp & 0x3F)))
+    return out.decode()
 
 
 class JsonError(Exception, ReturnException):
@@ -358,6 +376,7 @@ class JsonReader:
             return self._data[start:end]
         return self._unescape(start, end)
 
+    @error_return(JsonError)
     def _unescape(self, start: int32, end: int32) -> str:
         result = ""
         i = start
@@ -385,19 +404,25 @@ class JsonReader:
                 elif esc == "f":
                     result = result + chr(12)
                 elif esc == "u":
-                    # \uXXXX: parse 4 hex digits
                     if not (i + 4 < end):
-                        # Incomplete escape -- just skip
-                        i += 1
-                        chunk_start = i
-                        continue
+                        raise JsonError("Invalid \\uXXXX escape", i)
                     code = self._parse_hex4(i + 1)
-                    # TODO: chr(code) truncates to 1 byte; codepoints > 0xFF
-                    # silently lose their high bits. Need a chr that emits
-                    # multi-byte UTF-8 for the BMP, plus surrogate-pair
-                    # handling for codepoints > 0xFFFF.
-                    result = result + chr(code)
                     i += 4
+                    # JSON spells an astral code point as a UTF-16 surrogate pair.
+                    if code >= 0xD800 and code <= 0xDBFF and i + 2 < end and self._data[i + 1] == "\\" and self._data[i + 2] == "u":
+                        if not (i + 6 < end):
+                            raise JsonError("Invalid \\uXXXX escape", i + 2)
+                        low = self._parse_hex4(i + 3)
+                        if low >= 0xDC00 and low <= 0xDFFF:
+                            code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
+                            i += 6
+                    # UTF-8 storage cannot hold an unpaired surrogate.
+                    if code >= 0xD800 and code <= 0xDFFF:
+                        raise JsonError("lone surrogate in \\u escape", i - 5)
+                    if code < 0x80:
+                        result = result + chr(code)
+                    else:
+                        result = result + _utf8_str(code)
                 else:
                     result = result + "\\"
                     result = result + esc
@@ -409,9 +434,8 @@ class JsonReader:
             result = result + self._data[chunk_start:end]
         return result
 
+    @error_return(JsonError)
     def _parse_hex4(self, pos: int32) -> int32:
-        # TODO: invalid hex digits silently contribute 0 instead of raising
-        # JsonError. CPython rejects with `Invalid \uXXXX escape`.
         result: int32 = 0
         i: int32 = 0
         while i < 4:
@@ -423,7 +447,7 @@ class JsonReader:
             elif c >= "A" and c <= "F":
                 result = result * 16 + (ord(c) - ord("A") + 10)
             else:
-                result = result * 16
+                raise JsonError("Invalid \\uXXXX escape", pos - 1)
             i += 1
         return result
 

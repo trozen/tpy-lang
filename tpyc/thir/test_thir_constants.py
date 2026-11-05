@@ -229,7 +229,7 @@ class TestPrimitiveConstructorCall:
 
 class TestCharConstructor:
     """`char(65)` is a value-scalar type constructor like the fixed-int ones;
-    the constant position renders it as a `static_cast<char>`."""
+    the constant position renders it as a `::tpy::chr` call."""
 
     SRC = PRELUDE + (
         "CH: Final[char] = char(65)\n"
@@ -242,7 +242,7 @@ class TestCharConstructor:
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
-        assert "inline constexpr char CH = static_cast<char>(65);" in thir[0]
+        assert "inline constexpr char CH = ::tpy::chr(65);" in thir[0]
 
 
 class TestClassConstantPosition:
@@ -262,7 +262,7 @@ class TestClassConstantPosition:
 
     def test_byte_identical(self):
         hpp, _cpp = _assert_byte_identical(self.SRC)
-        assert "static constexpr char CH = static_cast<char>(65);" in hpp
+        assert "static constexpr char CH = ::tpy::chr(65);" in hpp
 
 
 class TestNonfiniteFloat:

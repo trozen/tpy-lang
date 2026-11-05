@@ -14,6 +14,7 @@
 namespace tpyapp::a_user {
 
 using ::tpystd::tplib::json::writer::_hex_byte;
+using ::tpystd::tplib::json::parser::_utf8_str;
 
 using ::tpystd::tplib::json::parser::JsonError;
 using ::tpystd::tplib::json::parser::JsonReader;

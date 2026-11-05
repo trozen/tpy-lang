@@ -265,8 +265,8 @@ void test_vowel_counting() {
 //     if c97 == "a":
 //         print("chr(97) == a: yes")
 void test_chr_function() {
-    char c65 = static_cast<char>(65);
-    char c97 = static_cast<char>(97);
+    char c65 = ::tpy::chr(65);
+    char c97 = ::tpy::chr(97);
     std::cout << c65 << "\n" << ::tpy::check_signals;
     std::cout << c97 << "\n" << ::tpy::check_signals;
     if ((c65 == 'A')) {

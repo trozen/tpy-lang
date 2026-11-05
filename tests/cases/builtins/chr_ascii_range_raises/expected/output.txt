@@ -1,0 +1,6 @@
+chr: 128 ValueError: chr() arg not in range(128)
+chr: 200 ValueError: chr() arg not in range(128)
+chr: -1 ValueError: chr() arg not in range(128)
+chr: 9608 ValueError: chr() arg not in range(128)
+ctor: ValueError: chr() arg not in range(128)
+big: OverflowError

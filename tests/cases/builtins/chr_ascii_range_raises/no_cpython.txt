@@ -1,0 +1,1 @@
+CPython's chr() returns any code point; TPy restricts chr() and char(n) to ASCII (0..127) until the string-width design widens char.

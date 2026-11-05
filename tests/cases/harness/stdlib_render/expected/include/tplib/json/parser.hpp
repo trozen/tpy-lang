@@ -44,6 +44,9 @@ struct JsonReader;
 
 inline constexpr std::string_view __name__ = "tplib.json.parser";
 
+// def _utf8_str(cp: int32) -> str:
+std::string _utf8_str(int32_t cp);
+
 // class JsonError(Exception, ReturnException):
 struct JsonError : ::tpy::ReturnException {
     // pos: int32
@@ -165,11 +168,13 @@ struct JsonReader {
     // def _read_raw_str(self) -> str:
     std::expected<std::string, JsonError> _read_raw_str();
 
+    // @error_return(JsonError)
     // def _unescape(self, start: int32, end: int32) -> str:
-    std::string _unescape(int32_t start, int32_t end) const;
+    std::expected<std::string, JsonError> _unescape(int32_t start, int32_t end) const;
 
+    // @error_return(JsonError)
     // def _parse_hex4(self, pos: int32) -> int32:
-    int32_t _parse_hex4(int32_t pos) const;
+    std::expected<int32_t, JsonError> _parse_hex4(int32_t pos) const;
 
     // @error_return(JsonError)
     // def _read_number_raw(self) -> StrView:

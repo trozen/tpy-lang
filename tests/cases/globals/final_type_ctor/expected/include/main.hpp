@@ -25,7 +25,7 @@ inline constexpr double DBL = static_cast<double>(SMALL);
 // FLAG: Final[bool] = bool(1)
 inline constexpr bool FLAG = (1 != 0);
 // CH: Final[char] = char(65)
-inline constexpr char CH = static_cast<char>(65);
+inline constexpr char CH = ::tpy::chr(65);
 
 // def main() -> None:
 void main();

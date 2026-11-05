@@ -66,8 +66,8 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>(false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(::tpy::chr(65))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(::tpy::chr(0))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(static_cast<double>(true)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(static_cast<double>(false)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpy::float_from_str("3.14")) << "\n" << ::tpy::check_signals;

@@ -1,0 +1,7 @@
+main::__tpy_init: uncovered (module initialization)
+main::free_function@25:0: uncovered (stub result may borrow a scalar argument), summary: opaque (stub result may borrow a scalar argument)
+main::constructor@33:0: uncovered (stub result may borrow a scalar argument), summary: opaque (stub result may borrow a scalar argument)
+main::comprehension@40:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::main@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Alphabet.letter@20:4: covered (storage: no_proof_required), summary: known
+main::Alphabet.__init__@17:4: covered (storage: no_proof_required), summary: known

@@ -1,4 +1,5 @@
-# Test JsonReader pull-parser: objects, arrays, nesting, escapes, skip, all value types.
+# Test JsonReader pull-parser: objects, arrays, nesting, escapes, skip, all value types;
+# \u escapes decode to UTF-8, and malformed, truncated or lone-surrogate ones raise.
 from tpy import error_return
 from tplib.json import JsonError, JsonReader, JsonToken
 
@@ -170,6 +171,30 @@ def test_describe() -> None:
     err2 = JsonError("custom msg")
     print(err2.describe("any"))
 
+def test_unicode_escapes() -> None:
+    cases = [
+        ("bmp", '"\\u00e9\\u2588"'),
+        ("pair", '"\\ud83d\\ude00x"'),
+        ("pair_end", '"x\\uD83D\\uDE00"'),
+        ("lone_high", '"\\ud800"'),
+        ("lone_low", '"\\udc00"'),
+        ("high_non_low", '"\\ud83dA"'),
+        ("bad_hex", '"\\u00zz"'),
+        ("bad_hex_low", '"\\ud800\\udc0x"'),
+        ("truncated", '"\\u"'),
+        ("truncated_2", '"\\u12"'),
+        ("truncated_after", '"\\ud83d\\ude00\\u"'),
+        ("truncated_low", '"\\ud83d\\u12"'),
+    ]
+    for name, data in cases:
+        reader = JsonReader(data)
+        try:
+            # The \u escape decode under test.
+            s = reader.read_str()
+            print(name + ":", repr(s), len(s.encode()))
+        except JsonError as e:
+            print(name + ": JsonError:", e.message, e.pos)
+
 def main() -> None:
     try:
         test_basic_object()
@@ -204,6 +229,7 @@ def main() -> None:
     except JsonError:
         print("ERROR")
     test_describe()
+    test_unicode_escapes()
 
 main()
 

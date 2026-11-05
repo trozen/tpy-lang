@@ -31,3 +31,15 @@ NYC
 [^---<expected number> -.]
 json error
 custom msg
+bmp: 'é█' 5
+pair: '😀x' 5
+pair_end: 'x😀' 5
+lone_high: JsonError: lone surrogate in \u escape 1
+lone_low: JsonError: lone surrogate in \u escape 1
+high_non_low: JsonError: lone surrogate in \u escape 1
+bad_hex: JsonError: Invalid \uXXXX escape 2
+bad_hex_low: JsonError: Invalid \uXXXX escape 8
+truncated: JsonError: Invalid \uXXXX escape 2
+truncated_2: JsonError: Invalid \uXXXX escape 2
+truncated_after: JsonError: Invalid \uXXXX escape 14
+truncated_low: JsonError: Invalid \uXXXX escape 8

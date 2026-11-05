@@ -79,6 +79,16 @@ inline int32_t ord_str(std::string_view s) {
     return static_cast<int32_t>(static_cast<unsigned char>(s[0]));
 }
 
+// chr(i) / char(i): a `char` is one byte of UTF-8 `str` storage, so only
+// ASCII is a faithful character; anything else raises instead of truncating.
+// constexpr so a constant `char(65)` stays a compile-time constant.
+TPY_ALWAYS_INLINE constexpr char chr(int32_t i) {
+    if (static_cast<uint32_t>(i) >= 128u) [[unlikely]] {
+        raise_value_error("chr() arg not in range(128)");
+    }
+    return static_cast<char>(i);
+}
+
 // char(s: str) -- extract single character, throws TypeError if len(s) != 1.
 inline char char_from_str(std::string_view s) {
     if (s.size() != 1) {

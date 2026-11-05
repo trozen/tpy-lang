@@ -1593,11 +1593,11 @@ class char(Sized, Equatable, Stringable, Representable):
     @pure
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("static_cast<char>({0})")
+    @cpp_template("::tpy::chr({0})")
     @pure
     def __init__(self, x: int32, /) -> None: ...
     @dispatch
-    @cpp_template("static_cast<char>(({0}).to_fixed_check<int32_t>())")
+    @cpp_template("::tpy::chr(({0}).to_fixed_check<int32_t>())")
     @pure
     def __init__(self, x: int, /) -> None: ...
     @dispatch

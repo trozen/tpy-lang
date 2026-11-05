@@ -1,0 +1,7 @@
+free: 'a' '\x00' '\x7f'
+free: 'Z'
+ctor: '0' '9'
+method: C
+comp: ['A', 'B', 'C', 'D', 'E']
+const: A
+class_const: A

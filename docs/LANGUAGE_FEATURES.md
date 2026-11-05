@@ -692,7 +692,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `str` | `std::string` (parameters: `std::string_view`) |
 | `String` | `::tpy::String` (parameters: `const ::tpy::String&`) |
 | `StrView` | `std::string_view` |
-| `char` | `char` |
+| `char` | `char` (one byte of UTF-8 `str` storage: `chr(n)` / `char(n)` accept 0..127 and raise `ValueError` otherwise) |
 | `None` (function-return slot, e.g. `def f() -> None`) | `void` |
 | `None` (every other annotation slot -- function params, locals, fields, type-args like `Future[None]`/`Own[None]`/`list[None]`, tuple elements, ...) | `std::monostate` |
 | `T \| None` (T value type) | `std::optional<T>` |
@@ -7072,6 +7072,7 @@ class Car(Vehicle, Printable, Measurable):
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins/` via `@native`/`@cpp_template`
+  - `chr(n)` and `char(n)` return a `char`, one byte of UTF-8 `str` storage, so they accept only 0..127 and raise `ValueError: chr() arg not in range(128)` otherwise, where CPython returns any code point; a non-ASCII character is spelled as a `str` literal (`"\u00e9"`). A documented restriction until the string-width design (`docs/STRING_WIDTH_DESIGN.md`) widens `char`. An `int` argument beyond `int32` raises `OverflowError`, as in CPython.
   - `print(*args, sep=" ", end="\n", file=sys.stdout, flush=False)`. `sep`/`end` accept a string literal, a string-typed name, or a computed string expression (`sep=s + "!"`, `sep=make()`), which is evaluated once. A computed separator needs every positional argument to be a literal, a name or a plain field read: a call-valued argument beside it is refused with a located "not yet supported" message, since the chain would run it after the separator (see BUGS.md `subexpression-right-to-left-eval`). A `StrView`-typed computed source is refused too -- the binding outlives the expression the view may point into. `file=` accepts any value satisfying the `Writable` protocol (`write(str) -> int32` + `flush() -> None`), whose `write()` sees one call per streamed token (BUGS.md `print-sink-write-call-pattern`) and whose exceptions, from `write()` or `flush()`, propagate out of the `print` as in CPython; `sys.stdout`, `sys.stderr`, `open(...)` results, and user records all qualify. `flush=` requires a bool literal.
   - `print(*xs)` spreads a list, `Array`, `Span` or `*args` pack (also a temporary one such as `print(*list(g))`) into the call, mixed freely with positional arguments and other `*` segments; the sequence is borrowed, each element prints as a positional argument of its type would, and separators appear only between written items (with `none: list[int] = []`, `print("a", *none, "b")` prints `a b`). Any other iterable -- a generator, a `str`, a tuple, a set -- is refused (a stricter-by-design rule: printing while a generator runs would interleave its side effects with the output, where CPython drains it first); materialize it with `list(...)` first.
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`

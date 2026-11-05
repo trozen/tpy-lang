@@ -129,9 +129,9 @@ void JsonWriter::_write_escaped(std::string_view s) {
         } else if ((c == '\t')) {
             esc = "\\t";
         } else if ((static_cast<int32_t>(static_cast<unsigned char>(c)) < 32)) {
-            if ((c == static_cast<char>(8))) {
+            if ((c == ::tpy::chr(8))) {
                 esc = "\\b";
-            } else if ((c == static_cast<char>(12))) {
+            } else if ((c == ::tpy::chr(12))) {
                 esc = "\\f";
             } else {
                 esc = (::tpy::str_concat("\\u00", ::tpystd::tplib::json::writer::_hex_byte(static_cast<int32_t>(static_cast<unsigned char>(c)))));

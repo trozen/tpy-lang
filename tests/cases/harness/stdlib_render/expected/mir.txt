@@ -1309,35 +1309,36 @@ tplib.fix_str::FixStrIter.__init__@21:4: uncovered (record member holds a borrow
 tplib.fix_str::FixStr.__init__@38:4: uncovered (generic constructor)
 tplib.json::__tpy_init: uncovered (module initialization)
 tplib.json.parser::__tpy_init: uncovered (module initialization)
-tplib.json.parser::JsonError.describe@20:4: uncovered (missing receiver fact)
-tplib.json.parser::JsonReader.position@75:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader._skip_ws@79:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader.peek@86:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
-tplib.json.parser::JsonReader.read_object_start@110:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_object_end@117:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_array_start@124:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_array_end@131:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.has_next@137:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader.read_key@150:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_key_raw@159:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_str@183:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_str_raw@187:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_int@207:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_float@228:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_number_raw@233:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_bool@243:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.read_null@254:4: uncovered (error-return body)
-tplib.json.parser::JsonReader.skip_value@262:4: uncovered (error-return body)
-tplib.json.parser::JsonReader._skip_str@292:4: uncovered (error-return body)
-tplib.json.parser::JsonReader._skip_str_no_ws@297:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader._skip_key@311:4: uncovered (error-return body)
-tplib.json.parser::JsonReader._skip_number@319:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader._read_raw_str@337:4: uncovered (error-return body)
-tplib.json.parser::JsonReader._unescape@361:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader._parse_hex4@412:4: covered (storage: no_proof_required), summary: known
-tplib.json.parser::JsonReader._read_number_raw@434:4: uncovered (error-return body)
-tplib.json.parser::JsonError.__init__@14:4: uncovered (missing record layout)
-tplib.json.parser::JsonReader.__init__@70:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::_utf8_str@11:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+tplib.json.parser::JsonError.describe@38:4: uncovered (missing receiver fact)
+tplib.json.parser::JsonReader.position@93:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::JsonReader._skip_ws@97:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::JsonReader.peek@104:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+tplib.json.parser::JsonReader.read_object_start@128:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_object_end@135:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_array_start@142:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_array_end@149:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.has_next@155:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::JsonReader.read_key@168:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_key_raw@177:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_str@201:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_str_raw@205:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_int@225:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_float@246:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_number_raw@251:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_bool@261:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.read_null@272:4: uncovered (error-return body)
+tplib.json.parser::JsonReader.skip_value@280:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._skip_str@310:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._skip_str_no_ws@315:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::JsonReader._skip_key@329:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._skip_number@337:4: covered (storage: no_proof_required), summary: known
+tplib.json.parser::JsonReader._read_raw_str@355:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._unescape@380:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._parse_hex4@438:4: uncovered (error-return body)
+tplib.json.parser::JsonReader._read_number_raw@458:4: uncovered (error-return body)
+tplib.json.parser::JsonError.__init__@32:4: uncovered (missing record layout)
+tplib.json.parser::JsonReader.__init__@88:4: covered (storage: no_proof_required), summary: known
 tplib.json.writer::__tpy_init: uncovered (module initialization)
 tplib.json.writer::_hex_byte@6:0: covered (storage: no_proof_required), summary: known
 tplib.json.writer::JsonWriter._emit_nl@25:4: covered (storage: no_proof_required), summary: known

@@ -32,13 +32,13 @@ def hash(obj: Hashable, /) -> uint64: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("static_cast<char>({0})")
+@cpp_template("::tpy::chr({0})")
 def chr(i: int32, /) -> char: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("static_cast<char>(({0}).to_fixed_check<int32_t>())")
+@cpp_template("::tpy::chr(({0}).to_fixed_check<int32_t>())")
 def chr(i: int, /) -> char: ...
 
 

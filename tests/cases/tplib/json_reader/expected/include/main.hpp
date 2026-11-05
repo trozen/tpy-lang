@@ -43,6 +43,8 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int(
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods();
 // def test_describe() -> None:
 void test_describe();
+// def test_unicode_escapes() -> None:
+void test_unicode_escapes();
 // def main() -> None:
 void main();
 

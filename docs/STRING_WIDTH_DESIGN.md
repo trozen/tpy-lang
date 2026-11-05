@@ -126,6 +126,10 @@ of the diagnostic depends on whether the code point is statically known:
 (Exact exception types/messages are an implementation detail to settle in the
 feature pass; the invariant is that none of these is a silent wrong answer.)
 
+Interim, until this design lands: storage is UTF-8 and `char` is one byte, so
+`chr(n)` / `char(n)` accept 0..127 and raise `ValueError` otherwise; the
+constant-argument compile-time error above is part of this unit.
+
 ### Source literals
 
 TPy consumes the code points the Python parser already decoded from the source

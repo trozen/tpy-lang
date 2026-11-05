@@ -40,7 +40,7 @@ void __tpy_init() {
     std::cout << ::std::abs(-42) << "\n" << ::tpy::check_signals;
     c = ::tpy::char_from_str("A");
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n" << ::tpy::check_signals;
-    std::cout << static_cast<char>(66) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::chr(66) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main
