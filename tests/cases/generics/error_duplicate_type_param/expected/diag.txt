@@ -1,0 +1,1 @@
+main.py:5: error: Function 'f': duplicate type parameter name 'T'

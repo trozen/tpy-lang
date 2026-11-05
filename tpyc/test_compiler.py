@@ -747,32 +747,32 @@ class TestCodegenRegression:
         with pytest.raises(SemanticError, match="cannot be constructed from"):
             compiler.compile()
 
-    # Positions sema's located range check does not walk
-    # (BUGS.md#int-type-arg-range-unlocated): the render guard refuses them.
-    @pytest.mark.parametrize("decl,owner", [
+    # A nested def's and a generic method's signature are checked where they
+    # are written, with the line.
+    @pytest.mark.parametrize("decl,owner,line", [
         ("def main() -> None:\n"
          "    def f(x: U[18446744073709551616]) -> None:\n"
          "        print(1)\n"
-         "    print(0)\n", "U"),
+         "    print(0)\n", "U", 4),
         ("from typing import Callable\n"
          "class First:\n"
          "    def f[T](self, cb: Callable[[T], U[18446744073709551616]]) -> None:\n"
-         "        print(1)\n", "U"),
+         "        print(1)\n", "U", 5),
         ("from tpy import Array, int32\n"
          "def main() -> None:\n"
          "    def f(x: Array[int32, 18446744073709551616]) -> None:\n"
          "        print(1)\n"
-         "    print(0)\n", "Array"),
+         "    print(0)\n", "Array", 5),
     ], ids=["nested_param", "generic_method", "nested_array_param"])
-    def test_int_type_arg_out_of_range_refused_at_render(self, decl, owner):
+    def test_int_type_arg_out_of_range_refused_located(self, decl, owner, line):
         source = "class U[N: int]:\n    pass\n" + decl
         compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
         with pytest.raises(
-                CodeGenError,
+                SemanticError,
                 match=rf"integer type argument N = 18446744073709551616 of '{owner}' "
-                      r"is out of range \(0 to 18446744073709551615\)"):
-            compiler.generate_code_to_strings(modules[-1])
+                      r"is out of range \(0 to 18446744073709551615\)") as exc:
+            compiler.compile()
+        assert exc.value.loc is not None and exc.value.loc.line == line
 
     def test_int_type_arg_upper_bound_renders_unsigned_long_long(self):
         # 2**64 - 1 does not fit a signed 64-bit literal, so it needs the

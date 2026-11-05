@@ -4786,7 +4786,7 @@ class TypeCompatibility:
         if not isinstance(typ, TypeParamRef):
             return False
         return is_value_type_bound(
-            self.type_ops.get_type_param_bound(typ.name))
+            self.type_ops.get_type_param_bound(typ))
 
     def deep_convertible_to_union(self, actual: TpyType, union: TpyType) -> bool:
         """Whether a concrete list/dict's (possibly nested) leaves would each
@@ -4959,7 +4959,7 @@ class TypeCompatibility:
         cur = child
         while isinstance(cur, TypeParamRef) and cur.name not in seen:
             seen.add(cur.name)
-            bound = self.type_ops.get_type_param_bound(cur.name)
+            bound = self.type_ops.get_type_param_bound(cur)
             if bound is None:
                 return False
             if bound == parent:

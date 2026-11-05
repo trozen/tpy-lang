@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace as dc_replace
 from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
+    attach_type_param_bounds,
     same_class,
     canonical_readonly, settled_substitution,
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
@@ -43,6 +44,10 @@ from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
 from .numeric_lattice import join_numeric
 from .pending_num import leaves_as_numbers
+from .bound_check import type_param_bound_error
+
+# Each type parameter's known bounds (`declaration_bound_scope`).
+BoundScope = Mapping[str, tuple[TpyType, ...]]
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -295,6 +300,63 @@ def _check_own_int_type_args(typ: NominalType, kinds: Sequence[TypeParamKind],
                 f"out of range (0 to {INT_TYPE_ARG_MAX})", loc)
 
 
+def int_type_param_as_type_error(name: str,
+                                 loc: SourceLocation | None) -> SemanticError:
+    """The refusal of integer type parameter `name` where a type is spelled."""
+    return SemanticError(
+        f"Integer type parameter '{name}' cannot be used as a type annotation",
+        loc)
+
+
+def check_type_arg_kind(typ: NominalType, kind: TypeParamKind, name: str,
+                        arg: 'TpyType | int',
+                        loc: SourceLocation | None) -> None:
+    """Refuse a type argument `arg` of `typ` that its parameter `name`, of
+    `kind`, cannot take: an integer parameter takes an integer or an integer
+    type parameter, a type parameter a type."""
+    int_param_ref = isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT
+    if kind == TypeParamKind.INT:
+        if isinstance(arg, int) or int_param_ref:
+            return
+        raise SemanticError(
+            f"Type parameter '{name}' of '{typ.name}' requires an integer, "
+            f"got {arg}", loc)
+    if isinstance(arg, int):
+        raise SemanticError(
+            f"Type parameter '{name}' of '{typ.name}' requires a type, "
+            f"got integer {arg}", loc)
+    if int_param_ref:
+        raise int_type_param_as_type_error(arg.name, loc)
+    if not isinstance(arg, TpyType):
+        raise SemanticError(
+            f"Invalid type argument for '{name}' of '{typ.name}': {arg}", loc)
+
+
+def _protocol_bounds_in(scope: 'BoundScope') -> list[dict[str, NominalType]]:
+    """The bounds each type parameter of `scope` carries, a type-parameter
+    bound (`U: T`) followed to the bound it names: what `U` is known to
+    satisfy. A ref carries one bound, so a parameter known to satisfy
+    several gives one table per bound, the k-th table holding each
+    parameter's k-th (or last) bound."""
+    width = max((len(bs) for bs in scope.values()), default=0)
+    tables: list[dict[str, NominalType]] = []
+    for k in range(max(width, 1)):
+        def nth(name: str) -> 'TpyType | None':
+            bs = scope.get(name) or ()
+            return bs[min(k, len(bs) - 1)] if bs else None
+        out: dict[str, NominalType] = {}
+        for name in scope:
+            bound = nth(name)
+            seen = {name}
+            while isinstance(bound, TypeParamRef) and bound.name not in seen:
+                seen.add(bound.name)
+                bound = nth(bound.name)
+            if isinstance(bound, NominalType):
+                out[name] = bound
+        tables.append(out)
+    return tables
+
+
 def _direct_fixed_int_binding(
         ptype: TpyType, arg_t: TpyType) -> tuple[str, TpyType] | None:
     """(type param, fixed-int type) when `arg_t` is a scalar fixed int bound
@@ -336,6 +398,10 @@ class TypeOperations:
         # can hold them together (`PendingNums.wants_fit`).
         self.pending_wants_fit: Callable[
             [Mapping[int, TpyType]], dict[int, int] | None] | None = None
+        # Types spelled before the layer's declarations are all registered,
+        # whose bounds `drain_bound_checks` checks then; None once it ran.
+        self._bound_checks: list[tuple[TpyType, SourceLocation | None,
+                                       'BoundScope | None']] | None = []
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Sema-local type normalization.
@@ -395,13 +461,21 @@ class TypeOperations:
 
     def _type_param_table(
         self, typ: NominalType,
-    ) -> tuple[Sequence[TypeParamKind], Sequence[str]] | None:
-        """The kinds and names of `typ`'s declared type parameters: a
-        record's (user or stub-backed builtin), else a factory builtin's
-        TypeDef; None for a name neither declares."""
+    ) -> tuple[Sequence[TypeParamKind], Sequence[str], Mapping[str, TpyType]] | None:
+        """The kinds, names and bounds of `typ`'s declared type parameters: a
+        record's (user or stub-backed builtin) or a protocol's, else a
+        factory builtin's TypeDef; None for a name none of them declares."""
         record_info = self.ctx.registry.get_record_for_type(typ)
         if record_info is not None:
-            return record_info.type_param_kinds, record_info.type_params
+            return (record_info.type_param_kinds, record_info.type_params,
+                    record_info.type_param_bounds)
+        if is_protocol_type(typ):
+            protocol_info = protocol_info_of(typ)
+            if protocol_info is None:
+                return None
+            kinds = (protocol_info.type_param_kinds
+                     or [TypeParamKind.TYPE] * len(protocol_info.type_params))
+            return kinds, protocol_info.type_params, protocol_info.type_param_bounds
         # Parser leaves some bare-name builtins without _module_qname (e.g.
         # `def f(x: list)`), so the simple-name scan is the factory fallback.
         qn = typ.qualified_name()
@@ -409,29 +483,99 @@ class TypeOperations:
         if td is None or td.type_factory is None:
             td = find_factory_by_simple_name(typ.name)
         if td is not None and td.type_factory is not None:
-            return td.param_kinds, td.param_names
+            return td.param_kinds, td.param_names, {}
         return None
 
-    def check_int_type_args(self, typ: TpyType,
-                            loc: SourceLocation | None) -> None:
-        """Refuse an integer type argument out of 0..2**64-1 anywhere in
-        `typ`. Range only: no position rule, so every place a type is
-        written (annotation, alias body, constructor) can apply it."""
+    def check_type_args(self, typ: TpyType, loc: SourceLocation | None, *,
+                        bounds: bool) -> None:
+        """Refuse a type argument anywhere in `typ` that its generic does not
+        accept: an integer for a type parameter or the reverse, an integer
+        out of 0..2**64-1, and -- when `bounds` -- a type that breaks the
+        parameter's declared bound. No position rule, so every place a type
+        is written (annotation, alias body, base, bound) can apply it. The
+        bound part needs every declaration's conformance facts, so before
+        `drain_bound_checks` it is asked only through `queue_bound_check`."""
         if isinstance(typ, NominalType) and typ.type_args:
             table = self._type_param_table(typ)
             if table is not None:
-                _check_own_int_type_args(typ, table[0], table[1], loc)
+                kinds, names, declared = table
+                _check_own_int_type_args(typ, kinds, names, loc)
+                if len(typ.type_args) == len(kinds):
+                    if is_protocol_type(typ):
+                        # A record's and a factory's kinds are checked by
+                        # their position rules.
+                        for i, (arg, kind) in enumerate(zip(typ.type_args, kinds)):
+                            check_type_arg_kind(typ, kind, names[i], arg, loc)
+                    if bounds and declared:
+                        subst = {n: a for n, a in zip(names, typ.type_args)
+                                 if isinstance(a, TpyType)}
+                        msg = type_param_bound_error(
+                            subst, declared, typ.name,
+                            self.protocols.satisfies_bound,
+                            self.substitute_type_params)
+                        if msg is not None:
+                            raise SemanticError(msg, loc)
         for inner in typ.inner_types():
-            self.check_int_type_args(inner, loc)
+            self.check_type_args(inner, loc, bounds=bounds)
+
+    def queue_bound_check(self, typ: TpyType, loc: SourceLocation | None,
+                          scope: 'BoundScope | None' = None) -> None:
+        """Check `typ`'s type arguments against their declared bounds: at
+        once after `drain_bound_checks`, else when it runs. `scope` is the
+        enclosing declaration's resolved bounds (a method's own over its
+        class's), which a type parameter spelled in `typ` carries."""
+        if self._bound_checks is None:
+            self._check_bounds_in(typ, loc, scope)
+        else:
+            self._bound_checks.append((typ, loc, scope))
+
+    def _check_bounds_in(self, typ: TpyType, loc: SourceLocation | None,
+                         scope: 'BoundScope | None') -> None:
+        if not scope:
+            self.check_type_args(typ, loc, bounds=True)
+            return
+        # A parameter holding several bounds satisfies a requirement any
+        # one of them proves.
+        first: SemanticError | None = None
+        for table in _protocol_bounds_in(scope):
+            try:
+                self.check_type_args(attach_type_param_bounds(typ, table),
+                                     loc, bounds=True)
+                return
+            except SemanticError as err:
+                first = first or err
+        assert first is not None
+        raise first
+
+    def check_spelled_type(self, typ: TpyType, loc: SourceLocation | None,
+                           scope: 'BoundScope | None' = None) -> None:
+        """`check_type_args` over a type a declaration spells, with its
+        bound part through `queue_bound_check`."""
+        self.check_type_args(typ, loc, bounds=False)
+        self.queue_bound_check(typ, loc, scope)
+
+    def drain_bound_checks(self) -> None:
+        """Check every queued type against its bounds, once every declaration
+        of the analysis layer is registered; later spellings check at once."""
+        queued, self._bound_checks = self._bound_checks, None
+        for typ, loc, scope in queued or ():
+            self._check_bounds_in(typ, loc, scope)
 
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
         allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
         allow_pointer_repr_dynamic: bool = False,
+        bound_scope: 'BoundScope | None' = None,
+        check_bounds: bool = True,
     ) -> None:
-        """Validate that a type is well-formed: the integer type argument
-        range anywhere in it, then the position rules (`_validate_type`)."""
-        self.check_int_type_args(typ, loc)
+        """Validate that a type is well-formed: its type arguments
+        (`check_spelled_type`, the bound part read in `bound_scope` -- or
+        skipped by `check_bounds` False, for a spelling already queued), then
+        the position rules (`_validate_type`)."""
+        if check_bounds:
+            self.check_spelled_type(typ, loc, bound_scope)
+        else:
+            self.check_type_args(typ, loc, bounds=False)
         self._validate_type(
             typ, allow_type_param_ref, loc, allow_forward_ref=allow_forward_ref,
             check_hashable_constraints=check_hashable_constraints,
@@ -490,7 +634,7 @@ class TypeOperations:
             if not allow_type_param_ref:
                 raise SemanticError(f"Type parameter '{typ.name}' used outside of generic context", loc)
             if typ.kind == TypeParamKind.INT:
-                raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
+                raise int_type_param_as_type_error(typ.name, loc)
             return
         if isinstance(typ, NominalType) and typ.is_record:
             if typ.qualified_name() == "builtins.type":
@@ -799,9 +943,9 @@ class TypeOperations:
         loc: SourceLocation | None = None,
         allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
     ) -> None:
-        """`_validate_record_type_args` after the integer type argument
+        """`_validate_record_type_args` after the type argument kind and
         range check over the whole of `typ`."""
-        self.check_int_type_args(typ, loc)
+        self.check_type_args(typ, loc, bounds=False)
         self._validate_record_type_args(
             typ, record_info, allow_type_param_ref, loc,
             allow_forward_ref=allow_forward_ref,
@@ -845,33 +989,9 @@ class TypeOperations:
             return
 
         for i, (arg, kind) in enumerate(zip(typ.type_args, record_info.type_param_kinds)):
-            param_name = record_info.type_params[i]
-            if kind == TypeParamKind.INT:
-                # Expect an integer value or INT TypeParamRef (forwarding)
-                if isinstance(arg, int):
-                    continue
-                if isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT:
-                    continue  # Valid: forwarding an INT type param
-                raise SemanticError(
-                    f"Type parameter '{param_name}' of '{typ.name}' requires an integer, "
-                    f"got {arg}",
-                    loc,
-                )
-            else:
-                # Expect a type value
-                if isinstance(arg, int):
-                    raise SemanticError(
-                        f"Type parameter '{param_name}' of '{typ.name}' requires a type, "
-                        f"got integer {arg}",
-                        loc,
-                    )
-                if isinstance(arg, TpyType):
-                    _recurse(arg)
-                else:
-                    raise SemanticError(
-                        f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}",
-                        loc,
-                    )
+            check_type_arg_kind(typ, kind, record_info.type_params[i], arg, loc)
+            if kind == TypeParamKind.TYPE:
+                _recurse(arg)
 
     def substitute_param_type(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         """Substitute a PARAMETER slot's type.
@@ -1052,13 +1172,12 @@ class TypeOperations:
             return self.is_forwarded_type_param(typ.wrapped, type_params)
         return False
 
-    def get_type_param_bound(self, type_param_name: str) -> TpyType | None:
-        """Look up the bound for a type parameter from current context.
-
-        Checks current function's type_param_bounds first, then record's.
-        Returns None if no bound is declared.
-        """
-        return self.ctx.type_param_bound(type_param_name)
+    def get_type_param_bound(self, ref: TypeParamRef) -> TpyType | None:
+        """The declared bound of type parameter `ref`, or None when it has
+        none: the bound its declaration attached to the ref."""
+        if ref.bound is not None:
+            return ref.bound
+        return self.ctx.type_param_bound(ref.name)
 
     def match_type_with_inference(
         self,

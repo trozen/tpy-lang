@@ -1,0 +1,1 @@
+main.py:6: error: Protocol 'P': integer type parameters (`N: int`) are not yet supported

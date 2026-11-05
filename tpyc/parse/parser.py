@@ -959,6 +959,7 @@ class Parser:
                         name=result.name,
                         methods=result.methods,
                         type_params=result.type_params,
+                        type_param_kinds=result.type_param_kinds,
                         is_dynamic=result.is_dynamic,
                         is_runtime_checkable=result.is_runtime_checkable,
                         module=self._public_module(),
@@ -1745,26 +1746,8 @@ class Parser:
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
         # Also extract bounds: class Foo[T: Comparable]: or class Foo[N: int]:
-        type_params = []
-        type_param_kinds: list[TypeParamKind] = []
-        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
-        if hasattr(node, 'type_params') and node.type_params:
-            for tp in node.type_params:
-                if isinstance(tp, ast.TypeVar):
-                    type_params.append(tp.name)
-                    if tp.bound is not None:
-                        # Check for N: int syntax (integer type parameter)
-                        if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
-                            type_param_kinds.append(TypeParamKind.INT)
-                        else:
-                            # Protocol bound -- resolution and protocol-shape
-                            # validation deferred to sema.
-                            type_param_kinds.append(TypeParamKind.TYPE)
-                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
-                    else:
-                        type_param_kinds.append(TypeParamKind.TYPE)
-                else:
-                    raise ParseError(self._unsupported_type_param(tp), tp)
+        type_params, type_param_kinds, type_param_bounds = self._parse_type_params(
+            node, f"Class '{node.name}'")
 
         # A conditional override conditions the trait on type parameters, so it
         # is meaningless on a non-generic class (it could never fire, silently
@@ -2045,18 +2028,13 @@ class Parser:
         # Note: Protocols don't support INT type params (only TYPE).
         # Set scope before parsing bases so generic parents like `Iterable[T]`
         # can reference the protocol's own type params.
-        type_params = []
-        if hasattr(node, 'type_params') and node.type_params:
-            for tp in node.type_params:
-                if isinstance(tp, ast.TypeVar):
-                    type_params.append(tp.name)
-                else:
-                    raise ParseError(self._unsupported_type_param(tp), tp)
+        type_params, type_param_kinds, type_param_bounds = self._parse_type_params(
+            node, f"Protocol '{node.name}'", allow_int=False)
 
         # Set type param scope for parsing parent protocols and method signatures
         # (all TYPE kind for protocols).
         old_scope = self._type_param_scope
-        self._type_param_scope = {tp: TypeParamKind.TYPE for tp in type_params} if type_params else None
+        self._type_param_scope = dict(zip(type_params, type_param_kinds)) if type_params else None
 
         # Extract parent protocols (excluding Protocol itself). Both bare
         # (`Sized`) and generic (`Iterable[T]`) parents are accepted. Sema
@@ -2167,7 +2145,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, is_runtime_checkable=is_runtime_checkable, cpp_concept=cpp_concept, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, parent_protocols=parent_protocols, is_dynamic=is_dynamic, is_runtime_checkable=is_runtime_checkable, cpp_concept=cpp_concept, loc=self._loc(node))
 
     def _parse_enum(
         self, node: ast.ClassDef,
@@ -2708,17 +2686,8 @@ class Parser:
                     f"@auto_readonly)", mutates_dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
-        method_type_params: list[str] = []
-        method_type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
-        if hasattr(node, 'type_params') and node.type_params:
-            for tp in node.type_params:
-                if isinstance(tp, ast.TypeVar):
-                    method_type_params.append(tp.name)
-                    if tp.bound is not None:
-                        # Protocol bound -- resolution + validation deferred to sema.
-                        method_type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
-                else:
-                    raise ParseError(self._unsupported_type_param(tp), tp)
+        method_type_params, _, method_type_param_bounds = self._parse_type_params(
+            node, f"Method '{class_name}.{node.name}'", allow_int=False)
 
         # Early @auto_readonly + method type params guard. Sema catches
         # the self-annotation / per-param paths, but running this at parse
@@ -3128,24 +3097,8 @@ class Parser:
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
         # Bounds: def foo[T: Comparable](): (protocol bound)
         # INT params: def foo[T, N: int](): (integer type parameter, e.g. for Array[T, N])
-        type_params = []
-        type_param_bounds: dict[str, 'TpyType | TypeRefNode'] = {}
-        type_param_kinds: list[TypeParamKind] = []
-        if hasattr(node, 'type_params') and node.type_params:
-            for tp in node.type_params:
-                if isinstance(tp, ast.TypeVar):
-                    type_params.append(tp.name)
-                    if tp.bound is not None:
-                        if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
-                            type_param_kinds.append(TypeParamKind.INT)
-                        else:
-                            type_param_kinds.append(TypeParamKind.TYPE)
-                            # Protocol bound -- resolution + validation deferred to sema.
-                            type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
-                    else:
-                        type_param_kinds.append(TypeParamKind.TYPE)
-                else:
-                    raise ParseError(self._unsupported_type_param(tp), tp)
+        type_params, type_param_kinds, type_param_bounds = self._parse_type_params(
+            node, f"Function '{node.name}'")
 
         # Set scope for parsing parameter and return types
         type_param_scope = (
@@ -4765,6 +4718,42 @@ class Parser:
     def _unsupported_type_param(self, tp: ast.AST) -> str:
         return (f"only plain type parameters ('T', 'T: Bound') are supported, "
                 f"got '{self._source_excerpt(tp)}'")
+
+    def _parse_type_params(
+        self, node: 'ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef',
+        owner: str, *, allow_int: bool = True,
+    ) -> 'tuple[list[str], list[TypeParamKind], dict[str, TpyType | TypeRefNode]]':
+        """The PEP 695 type parameters of a class, protocol, function or
+        method: names, kinds (`N: int` is an integer parameter) and the raw
+        bounds, which sema resolves. `owner` names the declaration in a
+        diagnostic (`Protocol 'P'`); `allow_int` False refuses `N: int`
+        where the declaration cannot carry an integer parameter."""
+        names: list[str] = []
+        kinds: list[TypeParamKind] = []
+        bounds: dict[str, 'TpyType | TypeRefNode'] = {}
+        for tp in getattr(node, 'type_params', None) or ():
+            if not isinstance(tp, ast.TypeVar):
+                raise ParseError(self._unsupported_type_param(tp), tp)
+            if tp.name in names:
+                raise ParseError(
+                    f"{owner}: duplicate type parameter name '{tp.name}'", tp)
+            names.append(tp.name)
+            if tp.bound is None:
+                kinds.append(TypeParamKind.TYPE)
+            elif isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
+                if not allow_int:
+                    raise ParseError(
+                        f"{owner}: integer type parameters (`{tp.name}: int`) "
+                        f"are not yet supported", tp)
+                kinds.append(TypeParamKind.INT)
+            elif isinstance(tp.bound, ast.Tuple):
+                raise ParseError(
+                    f"Type parameter '{tp.name}': constrained type parameters "
+                    f"(`{self._source_excerpt(tp)}`) are not supported", tp)
+            else:
+                kinds.append(TypeParamKind.TYPE)
+                bounds[tp.name] = self._parse_type_ref(tp.bound)
+        return names, kinds, bounds
 
     def _binop_to_str(self, op: ast.operator, node: ast.AST) -> str:
         """Convert binary operator to string."""

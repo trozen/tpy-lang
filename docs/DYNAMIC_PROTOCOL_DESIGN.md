@@ -601,8 +601,8 @@ consistently if the instantiation is `T = str`.
 Two `@dynamic` declarations of one name that a generic protocol combines agree
 as the language-level "One name, one slot" rule in `docs/LANGUAGE_FEATURES.md`
 says: `-> Own[T]` and `-> T` agree only when `T` is a value type
-(`TpyType.is_value_type()`, so a class type parameter bounded `ValueType` counts
-while a protocol's bound does not yet, BUGS.md#protocol-type-param-bound-ignored);
+(`TpyType.is_value_type()`, so a type parameter bounded `ValueType` counts, a
+class's or a protocol's: the bound rides on the type parameter's ref);
 around a reference type or an unbounded `T`, `Own` selects the by-value virtual
 over the reference one, so the two declarations disagree. Parameter names,
 kinds and defaults are not compared (`_slot_disagreement`). Where they agree the

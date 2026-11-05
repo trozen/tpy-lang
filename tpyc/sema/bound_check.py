@@ -1,4 +1,5 @@
-"""Class-shadowed method type-param bound enforcement.
+"""Type-parameter bound enforcement: the bound diagnostics, and the
+class-shadowed method type-param bound.
 
 A method declared as `def m[T: Bound](...)` on `class C[T]` is interpreted as
 "callable only when class T satisfies Bound" -- mirroring the C++ `requires`
@@ -14,7 +15,9 @@ participating in the methods/expressions/operators/protocols import cycle.
 from __future__ import annotations
 from typing import Callable, Collection, Optional
 
-from ..typesys import TpyType, FunctionInfo
+from .. import qnames
+from ..typesys import NominalType, TpyType, FunctionInfo
+from .send_chain import why_not_send, why_not_sync, render_chain
 
 
 def find_method_class_param_bound_violation(
@@ -88,3 +91,60 @@ def bound_violation_text(method_name: str,
     subject = "its type argument" if builtin_owner else f"type parameter '{tp}'"
     return (f"Method '{method_name}' requires {subject} to satisfy "
             f"'{bound}', but '{concrete}' does not conform")
+
+
+def validate_type_param_bounds(
+    type_subst: dict[str, TpyType],
+    bounds: dict[str, TpyType],
+    func_name: str,
+    satisfies_bound,
+    error_fn,
+    substitute,
+    detail: str = "",
+) -> None:
+    """Validate that resolved type args satisfy their type parameter bounds
+    (`type_param_bound_error`), raising `error_fn` of the message."""
+    msg = type_param_bound_error(type_subst, bounds, func_name,
+                                 satisfies_bound, substitute, detail)
+    if msg is not None:
+        raise error_fn(msg)
+
+
+def type_param_bound_error(
+    type_subst: dict[str, TpyType],
+    bounds: dict[str, TpyType],
+    func_name: str,
+    satisfies_bound,
+    substitute,
+    detail: str = "",
+) -> str | None:
+    """Why a resolved type arg breaks its type parameter's bound, or None.
+
+    A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
+    resolves them against `type_subst` before the conformance check so `T`'s
+    bound is checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
+
+    `detail` is appended to the message by a call site whose type args are
+    INFERRED from the argument slots, where the reason the bound has to hold is
+    not obvious from the source.
+    """
+    for param_name, type_arg in type_subst.items():
+        if param_name in bounds:
+            bound = substitute(bounds[param_name], type_subst)
+            if not satisfies_bound(type_arg, bound):
+                return (
+                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                    f"for type parameter '{param_name}' of '{func_name}'"
+                    f"{detail}"
+                    f"{_send_sync_bound_detail(bound, type_arg)}")
+    return None
+
+
+def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
+    """Why-not chain appended to a failing `T: Send` / `T: Sync` bound."""
+    qname = bound.qualified_name() if isinstance(bound, NominalType) else None
+    if qname not in qnames.SEMA_ONLY_MARKER_PROTOCOLS:
+        return ""
+    send = qname == qnames.SEND
+    chain = why_not_send(type_arg) if send else why_not_sync(type_arg)
+    return f"\n{render_chain(chain, send)}" if chain is not None else ""

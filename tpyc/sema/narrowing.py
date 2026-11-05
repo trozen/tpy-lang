@@ -190,7 +190,7 @@ class NarrowingTracker:
                 return field_type
 
             if isinstance(actual_type, TypeParamRef):
-                bound = self.type_ops.get_type_param_bound(actual_type.name)
+                bound = self.type_ops.get_type_param_bound(actual_type)
                 if bound is not None and is_protocol_type(bound):
                     protocol_info = protocol_info_of(bound)
                     if protocol_info:

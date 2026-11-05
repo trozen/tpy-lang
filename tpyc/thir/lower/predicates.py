@@ -56,7 +56,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
-                       pointer_repr_optional, readonly_access)
+                       pointer_repr_optional, readonly_access, repr_shape)
 from ...typesys import element_access, element_access_getitem
 from ...typesys import NONE, pending_view_of, protocol_param_alternatives, result_follows_receiver_root
 from ...typesys import (
@@ -4056,11 +4056,23 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
 
 
 def _optional_ptr_borrow_wide(t: TpyType | None,
-                              analyzer) -> 'OptionalType | None':
+                              analyzer, *,
+                              open_param_any_form: bool = False,
+                              ) -> 'OptionalType | None':
     """`_optional_ptr_borrow` over `_opt_pointee_wide` -- see the scoping
     contract there. The narrow F1 accessor keeps every binding-level
-    consumer."""
-    t = pointer_repr_optional(t)
+    consumer. `open_param_any_form` also admits an Optional over an open
+    TYPE parameter in its value form (a `ValueType`-bounded `T`): only for
+    a reader whose render is form-blind, as the Optional field's storage
+    is `std::optional<T>` at either form."""
+    opt = pointer_repr_optional(t)
+    if opt is None and open_param_any_form and isinstance(t, TpyType):
+        shape = repr_shape(t)
+        if (isinstance(shape, OptionalType)
+                and isinstance(unwrap_readonly(shape.inner), TypeParamRef)
+                and unwrap_readonly(shape.inner).kind == TypeParamKind.TYPE):
+            opt = shape
+    t = opt
     if t is None:
         return None
     inner = unwrap_readonly(t.inner)

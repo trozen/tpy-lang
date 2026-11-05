@@ -618,7 +618,15 @@ class SemanticAnalyzer:
         self.bind_imports(module, module_name, cpp_module_name=cpp_module_name)
         self.register_records_and_protocols(module)
         self.register_signatures(module)
+        self.check_declared_bounds()
         analyze_component_bodies([(self, module)])
+
+    def check_declared_bounds(self) -> None:
+        """Check every type spelled so far against the bounds of the generics
+        it names, once every declaration of the analysis layer is registered
+        (`TypeOperations.drain_bound_checks`); a later spelling checks at
+        once."""
+        self.type_ops.drain_bound_checks()
 
     def _warn_export_class_return_alias(self, module: TpyModule) -> None:
         warn_export_class_return_alias(self.ctx, module)
@@ -1623,7 +1631,7 @@ class SemanticAnalyzer:
             return True
         # Generic T bounded to ValueType: same as value type
         if isinstance(payload, TypeParamRef) and is_value_type_bound(
-                self.type_ops.get_type_param_bound(payload.name)):
+                self.type_ops.get_type_param_bound(payload)):
             return True
         # @nocopy types are lifetime-significant: taking Own[T] to
         # consume-by-drop (hand it off and let it drop) is a legitimate
@@ -2758,7 +2766,7 @@ class SemanticAnalyzer:
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
         """Validate that all NominalType members in a type alias are registered."""
-        self.type_ops.check_int_type_args(typ, loc)
+        self.type_ops.check_spelled_type(typ, loc)
         # Recursive union aliases have self-referencing NominalType placeholders
         # inside their members -- safety was already validated.
         if alias_name in self.ctx.recursive_union_names:

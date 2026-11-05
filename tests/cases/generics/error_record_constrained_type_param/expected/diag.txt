@@ -1,0 +1,1 @@
+main.py:5: error: Type parameter 'T': constrained type parameters (`T: (int32, float)`) are not supported

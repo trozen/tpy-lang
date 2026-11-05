@@ -1,0 +1,1 @@
+main.py:11: error: Integer type parameter 'N' cannot be used as a type annotation

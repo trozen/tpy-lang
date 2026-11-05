@@ -416,6 +416,14 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Parameterized C++20 concept generation (e.g., `tpy::Sequence<int32_t>`)
    - Indexing support for protocol-typed variables
    - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
+   - Type-parameter bounds (`class P[T: ValueType](Protocol)`) resolve as a record's
+     (`TypeRegistrar._resolve_type_param_bounds`, protocol bounds only) and ride on
+     each `TypeParamRef` of the protocol's members and parents. Every spelled type's
+     arguments are checked against their generic's declared bounds by one walker
+     (`TypeOperations.check_type_args`): types spelled while the analysis layer's
+     declarations register queue their bound check, which the layer pass
+     (`SemanticAnalyzer.check_declared_bounds`) drains before any body. A bound renders
+     nothing: the concept's parameter stays `typename`
 4. **Phase 4**: `NativeIterable[T]` protocol ✅ **COMPLETE**
    - `NativeIterable[T]` in `tpy` module for C++ range-based for loops
    - Marker protocol with `extends` declaration (no methods required)

@@ -10,6 +10,8 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..diagnostics import SemanticError
+from ..parse import ParseError
+from ..compiler import CompileError
 from ..thir.testutil import _compile, _entry
 from . import protocols as protocols_mod
 
@@ -786,10 +788,20 @@ class Cell[T](Peek[T], OwnPeek[T]):
 """, r"'Cell' combines @dynamic declarations of 'peek' that disagree in "
      r"return type: 'Peek\.peek\(self\) -> T' and "
      r"'OwnPeek\.peek\(self\) -> Own\[T\]'" + _ONE_SLOT),
-    # A protocol's `T: ValueType` bound is not carried
-    # (BUGS.md#protocol-type-param-bound-ignored), so its T is not known to
-    # be a value type; this row compiles once that is fixed.
-    "protocol_bounded_type_param": ("""
+}
+
+
+@pytest.mark.parametrize("name", list(OWN_RETURN_CONFLICTS))
+def test_own_return_of_non_value_type_counts(name: str) -> None:
+    body, message = OWN_RETURN_CONFLICTS[name]
+    with pytest.raises(SemanticError, match=message):
+        _compile(HEADER + body)
+
+
+def test_protocol_value_type_bound_makes_own_return_agree() -> None:
+    # A protocol's `T: ValueType` bound rides on its T, so `-> T` and
+    # `-> Own[T]` declare one slot.
+    _compile(HEADER + """
 from tpy import ValueType
 @dynamic
 class Get[T: ValueType](Protocol):
@@ -800,17 +812,7 @@ class OwnGet[T: ValueType](Protocol):
 @dynamic
 class Gets[U: ValueType](Get[U], OwnGet[U], Protocol):
     pass
-""", r"'Gets' combines @dynamic declarations of 'get' that disagree in "
-     r"return type: 'Get\.get\(self\) -> U' and "
-     r"'OwnGet\.get\(self\) -> Own\[U\]'"),
-}
-
-
-@pytest.mark.parametrize("name", list(OWN_RETURN_CONFLICTS))
-def test_own_return_of_non_value_type_counts(name: str) -> None:
-    body, message = OWN_RETURN_CONFLICTS[name]
-    with pytest.raises(SemanticError, match=message):
-        _compile(HEADER + body)
+""")
 
 
 def test_own_parameter_still_counts() -> None:
@@ -830,30 +832,42 @@ class Takes(Put, OwnPut, Protocol):
 """)
 
 
-# A protocol type-parameter bound is never checked
-# (BUGS.md#protocol-type-param-bound-ignored), so each bound shape compiles.
+# A protocol type-parameter bound is resolved as a record's is: a protocol,
+# which may name the parameter itself, and nothing else.
 PROTOCOL_BOUNDS = {
-    "constrained": "class P[T: (int32, float)](Protocol):",
-    "object": "class P[T: object](Protocol):",
-    "union": "class P[T: int32 | float](Protocol):",
-    "optional": "class P[T: int32 | None](Protocol):",
-    "self_referencing": "class P[T: Addable[T]](Protocol):",
+    "constrained": ("class P[T: (int32, float)](Protocol):",
+                    r"constrained type parameters \(`T: \(int32, float\)`\) "
+                    r"are not supported"),
+    "object": ("class P[T: object](Protocol):", r"Unknown type: object"),
+    "union": ("class P[T: int32 | float](Protocol):",
+              r"Type parameter bound must be a protocol, got float \| int32"),
+    "optional": ("class P[T: int32 | None](Protocol):",
+                 r"Type parameter bound must be a protocol, got int32 \| None"),
+    "self_referencing": ("class P[T: Addable[T]](Protocol):", None),
 }
 
 
 @pytest.mark.parametrize("name", list(PROTOCOL_BOUNDS))
-def test_protocol_type_param_bound_compiles(name: str) -> None:
-    _compile(HEADER + """
+def test_protocol_type_param_bound(name: str) -> None:
+    header, message = PROTOCOL_BOUNDS[name]
+    source = HEADER + """
 class Addable[T](Protocol):
     def plus(self, o: T) -> int32: ...
-""" + PROTOCOL_BOUNDS[name] + """
+""" + header + """
     def count(self) -> int32: ...
 class Bag:
+    def plus(self, o: Bag) -> int32:
+        return 1
     def count(self) -> int32:
         return 4
-def use(p: P[int32]) -> int32:
+def use(p: P[Bag]) -> int32:
     return p.count()
-""")
+"""
+    if message is None:
+        _compile(source)
+        return
+    with pytest.raises((SemanticError, ParseError, CompileError), match=message):
+        _compile(source)
 
 
 @pytest.mark.parametrize("generic", [False, True])

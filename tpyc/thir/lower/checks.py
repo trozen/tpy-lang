@@ -13388,7 +13388,8 @@ def _print_optval_opt(a: TpyExpr, analyzer,
             # field storage IS `std::optional<T>`, so the print emit's pointer-repr
             # arm swaps the `_val` spelling in for exactly this source shape.
             return (opt or _value_opt_formatted(fdt, analyzer)
-                    or _optional_ptr_borrow_wide(fdt, analyzer))
+                    or _optional_ptr_borrow_wide(fdt, analyzer,
+                                                 open_param_any_form=True))
     return None
 
 def _print_optptr_form(

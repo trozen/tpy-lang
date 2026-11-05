@@ -659,7 +659,7 @@ class ProtocolChecker:
                 # the protocol arm below, this does not follow a marker's
                 # sub-protocols (none exist); revisit if the hierarchy grows.
                 if isinstance(actual, TypeParamRef):
-                    abound = self.type_ops.get_type_param_bound(actual.name)
+                    abound = self.type_ops.get_type_param_bound(actual)
                     return (ProtocolConformanceKind.EXPLICIT
                             if abound is not None
                             and abound.qualified_name() == qname else None)
@@ -782,7 +782,7 @@ class ProtocolChecker:
         if isinstance(actual, TypeParamRef):
             if protocol.qualified_name() in (qnames.STRINGABLE, qnames.REPRESENTABLE):
                 return ProtocolConformanceKind.EXPLICIT
-            bound = self.type_ops.get_type_param_bound(actual.name)
+            bound = self.type_ops.get_type_param_bound(actual)
             if bound is not None and is_protocol_type(bound):
                 return self.classify_protocol_conformance(bound, protocol)
             # No protocol-typed bound to delegate to. Stop here rather than

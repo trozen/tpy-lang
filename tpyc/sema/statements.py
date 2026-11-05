@@ -3038,7 +3038,7 @@ class StatementAnalyzer:
                 # Resolve TypeParamRef to its bound for element type extraction
                 resolved_for_iter = inner_iterable_type
                 if isinstance(inner_iterable_type, TypeParamRef):
-                    bound = self.type_ops.get_type_param_bound(inner_iterable_type.name)
+                    bound = self.type_ops.get_type_param_bound(inner_iterable_type)
                     if bound is not None and is_protocol_type(bound):
                         resolved_for_iter = bound
                 elem_type = self.iterable.get_iterable_element_type(resolved_for_iter, loc=stmt.loc)
@@ -5013,6 +5013,8 @@ class StatementAnalyzer:
         func.params = [(p, make_ref(t)) for p, t in resolved_params_bare]
         params = resolved_params_bare
         return_type = self.type_ops.resolve_type(func.return_type)
+        for t in (*(t for _, t in params), return_type):
+            self.type_ops.check_spelled_type(t, stmt.loc)
         func.return_type = make_ref(return_type)
 
         # A nested def emits as a lambda taking the full param list, so a

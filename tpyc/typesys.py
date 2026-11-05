@@ -4757,6 +4757,7 @@ def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> Tp
             # (e.g. is_protocol=True from sema vs is_protocol=False from parser
             # for protocols defined in implicit stdlib .py modules)
             if t.bound is None or (isinstance(t.bound, NominalType) and not t.bound.is_protocol
+                                   and isinstance(resolved_bound, NominalType)
                                    and resolved_bound.is_protocol):
                 return TypeParamRef(t.name, bound=resolved_bound, kind=t.kind)
         return t
@@ -4903,14 +4904,14 @@ class OptionalType(TpyType):
         True only over an OPEN type param: the template is emitted once, so the
         form has to be decided at instantiation -- `std::optional<T>` for a
         value T (what the monomorphic twin takes) and `T*` for a reference one.
-        A concrete or ValueType-bounded inner already knows its form.
+        A `ValueType` bound does not settle it: a `str` / `bytes` value still
+        takes its view form, which only the trait knows.
 
         Parameters only. The return position stays committed to `T*` (see
         force_pointer_repr): an optional return cannot alias a field.
         """
         return (isinstance(self.inner, TypeParamRef)
-                and self.inner.kind == TypeParamKind.TYPE
-                and not self.inner.is_value_type())
+                and self.inner.kind == TypeParamKind.TYPE)
 
     def wraps_pointer_repr_tuple(self) -> bool:
         """True when this Optional wraps a tuple that has a pointer-repr element.
@@ -9649,6 +9650,10 @@ class ProtocolInfo:
     methods: list[MethodSignature]
     fields: list[tuple[str, TpyType]] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
+    # Parallel with type_params, as on RecordInfo.
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)
+    # The declared bound of each bounded type param, resolved by sema.
+    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     parent_protocols: list['NominalType'] = field(default_factory=list)
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends

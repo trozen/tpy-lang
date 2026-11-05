@@ -1,0 +1,1 @@
+main.py:12: error: Type argument 'list[int32]' does not satisfy bound 'ValueType' for type parameter 'T' of 'P'

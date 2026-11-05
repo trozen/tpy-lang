@@ -4017,7 +4017,7 @@ class ExpressionAnalyzer:
             return self._lookup_class_constant_owner(record, expr)
 
         if isinstance(typ, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(typ.name)
+            bound = self.type_ops.get_type_param_bound(typ)
             if bound is not None and is_protocol_type(bound):
                 protocol_info = protocol_info_of(bound)
                 if protocol_info:
@@ -6406,7 +6406,7 @@ class ExpressionAnalyzer:
         if record_iteration_pull(self.ctx, gen.iterable, iterable_type):
             self.narrowing.invalidate_for_code_run()
         if isinstance(inner, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(inner.name)
+            bound = self.type_ops.get_type_param_bound(inner)
             if bound is not None and is_protocol_type(bound):
                 inner = bound
         note_pending_elem_read(self.ctx, inner, gen.iterable)

@@ -1179,6 +1179,12 @@ class Compiler:
         # at the C++ build with a complete-type error.
         self._check_workspace_completeness_cycles()
         self._reindex_builtins_post_finalize()
+        # Every declaration of the layer is registered: the type arguments
+        # spelled so far are checked against their bounds, before any body.
+        for name in names:
+            compiled = self.modules[name]
+            with self._errors_attributed_to(compiled):
+                compiled.analyzer.check_declared_bounds()
         # Body sema (sub-phases 4 and 5): every member of a cycle has its
         # bodies analyzed before any of the component's facts settle.
         for component in self.compile_components:
@@ -2767,6 +2773,7 @@ class Compiler:
                 name=protocol.name,
                 methods=[],
                 type_params=list(protocol.type_params) if protocol.type_params else [],
+                type_param_kinds=list(protocol.type_param_kinds),
                 module=public,
                 is_dynamic=protocol.is_dynamic,
                 is_runtime_checkable=protocol.is_runtime_checkable,

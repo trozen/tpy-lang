@@ -76,7 +76,7 @@ struct Slot {
 
     // def __init__(self, x: T | None) -> None:
     Slot() = default;
-    explicit Slot(std::optional<T> x);
+    explicit Slot(::tpy::opt_cparam_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";
 };
 
@@ -152,7 +152,7 @@ inline std::string P::__str__() const {
 // def __init__(self, x: T | None) -> None:
 //     self.x = x
 template<::tpy::ValueType T>
-inline Slot<T>::Slot(std::optional<T> x) : x(::tpy::to_opt_storage<std::optional<T>>(x)) {}
+inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::optional<T>>(x)) {}
 
 // def show_slot[T: ValueType](tag: str, s: Slot[T]) -> None:
 //     if s.x is None:

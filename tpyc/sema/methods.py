@@ -42,9 +42,9 @@ from .arg_binding import (
 )
 from .calls import (
     call_shape, resolve_cpp_template_type_params,
-    validate_type_param_bounds,
     resolve_inferred_type_arg,
 )
+from .bound_check import validate_type_param_bounds
 from .context import (CallOperands, CompTarget, GenericMethodRoute,
                       PENDING_CONTAINER_TYPES)
 from .overloads import CallShape, operand_param_type
@@ -725,7 +725,7 @@ class MethodAnalyzer:
                     and (self.protocols.lookup_record_field(record, expr.method) is not None
                          or self.protocols.lookup_record_property(record, expr.method) is not None))
             elif isinstance(obj_type, TypeParamRef):
-                bound = self.type_ops.get_type_param_bound(obj_type.name)
+                bound = self.type_ops.get_type_param_bound(obj_type)
                 if bound is not None and is_protocol_type(bound):
                     protocol = protocol_info_of(bound)
                     has_field = protocol is not None and any(
@@ -2253,7 +2253,7 @@ class MethodAnalyzer:
             return self._resolve_and_check_args(expr, [fi], {})
 
         if isinstance(obj_type, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(obj_type.name)
+            bound = self.type_ops.get_type_param_bound(obj_type)
             if bound is not None and is_protocol_type(bound):
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:

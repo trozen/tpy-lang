@@ -117,6 +117,7 @@ from .pending_num import (bare_slot, literal_entries, pending_leaves, receives_p
                           strip_int, value_family)
 from .type_join import user_type_name
 from .send_chain import why_not_send, why_not_sync, render_chain
+from .bound_check import type_param_bound_error, validate_type_param_bounds
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
@@ -670,63 +671,6 @@ def resolve_inferred_type_arg(
     if isinstance(t, PendingListType):
         return make_list(resolve_int_literals(t.element_type, literal))
     return resolve_int_literals(t, literal)
-
-
-def validate_type_param_bounds(
-    type_subst: dict[str, TpyType],
-    bounds: dict[str, TpyType],
-    func_name: str,
-    satisfies_bound,
-    error_fn,
-    substitute,
-    detail: str = "",
-) -> None:
-    """Validate that resolved type args satisfy their type parameter bounds
-    (`type_param_bound_error`), raising `error_fn` of the message."""
-    msg = type_param_bound_error(type_subst, bounds, func_name,
-                                 satisfies_bound, substitute, detail)
-    if msg is not None:
-        raise error_fn(msg)
-
-
-def type_param_bound_error(
-    type_subst: dict[str, TpyType],
-    bounds: dict[str, TpyType],
-    func_name: str,
-    satisfies_bound,
-    substitute,
-    detail: str = "",
-) -> str | None:
-    """Why a resolved type arg breaks its type parameter's bound, or None.
-
-    A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
-    resolves them against `type_subst` before the conformance check so `T`'s
-    bound is checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
-
-    `detail` is appended to the message by a call site whose type args are
-    INFERRED from the argument slots, where the reason the bound has to hold is
-    not obvious from the source.
-    """
-    for param_name, type_arg in type_subst.items():
-        if param_name in bounds:
-            bound = substitute(bounds[param_name], type_subst)
-            if not satisfies_bound(type_arg, bound):
-                return (
-                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                    f"for type parameter '{param_name}' of '{func_name}'"
-                    f"{detail}"
-                    f"{_send_sync_bound_detail(bound, type_arg)}")
-    return None
-
-
-def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
-    """Why-not chain appended to a failing `T: Send` / `T: Sync` bound."""
-    qname = bound.qualified_name() if isinstance(bound, NominalType) else None
-    if qname not in qnames.SEMA_ONLY_MARKER_PROTOCOLS:
-        return ""
-    send = qname == qnames.SEND
-    chain = why_not_send(type_arg) if send else why_not_sync(type_arg)
-    return f"\n{render_chain(chain, send)}" if chain is not None else ""
 
 
 # The marker protocols a composite bound's failure note names, and what each
@@ -1781,9 +1725,9 @@ class CallAnalyzer:
                     if not self.ctx.registry.is_known_type(expr.func_name):
                         return self._rewrite_subscript_callee(expr)
                 # A builtin type instantiation: only the type arguments' range
-                # is checked here, not the annotation position rules
-                # (BUGS.md#builtin-ctor-type-args-skip-position-rules).
-                self.type_ops.check_int_type_args(expr.call_type, expr.loc)
+                # and bounds are checked here, not the annotation position
+                # rules (BUGS.md#builtin-ctor-type-args-skip-position-rules).
+                self.type_ops.check_spelled_type(expr.call_type, expr.loc)
                 written = source_view(expr)
                 # Derive per-arg hints from __init__ param types when possible.
                 # e.g. dict[str, str|int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|int32]]
@@ -3066,7 +3010,7 @@ class CallAnalyzer:
         per-instantiation dispatcher that would lift these is tracked in
         BUGS.md.
         """
-        bound = self.type_ops.get_type_param_bound(tp.name)
+        bound = self.type_ops.get_type_param_bound(tp)
         if bound is None:
             raise self.ctx.error(
                 f"isinstance() on the unbounded type parameter '{tp.name}' is "
@@ -7453,6 +7397,9 @@ class CallAnalyzer:
                     dict(zip(record.type_params, explicit)))
                 if bound_error is not None:
                     raise self.ctx.error(bound_error, expr)
+                for arg in explicit:
+                    if isinstance(arg, TpyType):
+                        self.type_ops.check_spelled_type(arg, expr.loc)
         # Type-argument errors (count, bounds) report before argument ones.
         if not ctors and written.operands:
             raise self.ctx.error(self._no_init_message(record), expr)

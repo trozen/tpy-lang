@@ -158,13 +158,6 @@ def _merged_method_scope(record_scope, method):
     return merged
 
 
-def _protocol_scope(protocol):
-    """Protocols only carry TYPE-kind type params (parser constraint)."""
-    if not protocol.type_params:
-        return None
-    return {name: TypeParamKind.TYPE for name in protocol.type_params}
-
-
 def _resolve_value_position(resolver, t, scope=None, *, pending_alias=None):
     """Resolve a value-bearing annotation slot.
 
@@ -444,7 +437,8 @@ def resolve_refs(module: TpyModule) -> None:
     # Protocol MethodSignatures + field types: resolve under the
     # protocol's own type-param scope.
     for protocol in module.protocols:
-        scope = _protocol_scope(protocol)
+        scope = _record_scope(protocol)
+        protocol.type_param_bounds = _resolve_bounds(protocol.type_param_bounds, scope)
         protocol.parent_protocols = [
             _resolve(p, scope) for p in protocol.parent_protocols
         ]

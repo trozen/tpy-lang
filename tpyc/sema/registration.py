@@ -89,7 +89,7 @@ from ..type_def_registry import (
 from ..diagnostics import SemanticError
 from .method_expansion import (copy_overload_implementation,
                                expand_methods_for_record)
-from .type_ops import VALUE_TYPE_PROTOCOL, signature_may_return_borrow
+from .type_ops import VALUE_TYPE_PROTOCOL, int_type_param_as_type_error, signature_may_return_borrow
 from ..value_category import (frame_param_lends, iterator_source_callee,
                               param_type_can_lend)
 from .macros import run_macro_phase_for_record
@@ -910,6 +910,23 @@ def build_record_self_type(record: TpyRecord, qname: str | None = None) -> Nomin
     return NominalType(record.name, _module_qname=qname)
 
 
+def declaration_bound_scope(type_params: 'list[str] | None',
+                            bounds: 'dict[str, TpyType]',
+                            enclosing: 'dict[str, TpyType] | None' = None,
+                            ) -> 'dict[str, tuple[TpyType, ...]]':
+    """Each type parameter's known bounds in a declaration: its enclosing
+    class's, then its own resolved `bounds`. A method re-declaring a class
+    type parameter names the class's (a per-method bound,
+    `def same[T: Equatable](...)` in `class V[T: ValueType]`), so it holds
+    both. Every bound is kept, a type-parameter bound (`U: T`) included."""
+    out = {n: (b,) for n, b in (enclosing or {}).items()}
+    own = set(type_params or ())
+    for n, b in bounds.items():
+        if n in own:
+            out[n] = out.get(n, ()) + (b,)
+    return out
+
+
 def _unshadowed_bounds(class_bounds: 'dict[str, NominalType] | None',
                        method_type_params: 'list[str] | None',
                        method_bounds: dict
@@ -1212,33 +1229,44 @@ class TypeRegistrar:
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
-        type_params: list[str] | None = None,
+        type_params: list[str] | None = None, *,
+        protocol_only: bool = False,
+        enclosing: dict[str, TpyType] | None = None,
     ) -> dict[str, TpyType]:
         """Resolve parsed type parameter bounds, validating each is a
-        protocol, a class, or a (sibling/enclosing) type parameter.
+        protocol, a class, or a (sibling/enclosing) type parameter -- a
+        protocol only when `protocol_only` (a record's or protocol's bound).
 
         When `type_params` is supplied (the declaration-order list of param
         names this bounds dict belongs to), bound TypeParamRef references to
         a not-yet-declared sibling are rejected here -- otherwise they slip
         through to `substitute_type_params` at a downstream use site and
-        crash with a context-less "Unknown type parameter 'X'".
+        crash with a context-less "Unknown type parameter 'X'". A
+        `protocol_only` bound may name its own parameter (`T: Cmp[T]`).
+        Each bound's own type arguments are checked in the declaration's
+        `declaration_bound_scope` over `enclosing`, its class's bounds.
         """
         def resolve_bound(bound_type: TpyType) -> TpyType:
             resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not _is_valid_type_param_bound(resolved_bound):
+            if protocol_only:
+                if not is_protocol_type(resolved_bound):
+                    raise SemanticError(
+                        f"Type parameter bound must be a protocol, got {resolved_bound}",
+                        loc,
+                    )
+            elif not _is_valid_type_param_bound(resolved_bound):
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, a class, or a "
                     f"type parameter, got {resolved_bound}",
                     loc,
                 )
-            # A bound is never rendered, so the render guard cannot see it.
-            self.type_ops.check_int_type_args(resolved_bound, loc)
             return resolved_bound
 
         resolved: dict[str, TpyType] = {}
         if type_params is None:
             for param_name, bound_type in raw_bounds.items():
                 resolved[param_name] = resolve_bound(bound_type)
+            self._check_bound_spellings(resolved, list(raw_bounds), enclosing, loc)
             return resolved
         # Declaration-order walk so a bound that names a sibling is checked
         # against the params declared so far. raw_bounds only contains bounded
@@ -1246,13 +1274,25 @@ class TypeRegistrar:
         # still register their declaration position.
         declared_so_far: set[str] = set()
         for param_name in type_params:
+            if protocol_only:
+                declared_so_far.add(param_name)
             if param_name in raw_bounds:
                 resolved_bound = resolve_bound(raw_bounds[param_name])
                 self._reject_forward_typeparam_bound_refs(
                     param_name, resolved_bound, type_params, declared_so_far, loc)
                 resolved[param_name] = resolved_bound
             declared_so_far.add(param_name)
+        self._check_bound_spellings(resolved, type_params, enclosing, loc)
         return resolved
+
+    def _check_bound_spellings(self, resolved: dict[str, TpyType],
+                               type_params: list[str],
+                               enclosing: dict[str, TpyType] | None,
+                               loc) -> None:
+        # A bound is never rendered, so the render guard cannot see it.
+        scope = declaration_bound_scope(type_params, resolved, enclosing)
+        for bound in resolved.values():
+            self.type_ops.check_spelled_type(bound, loc, scope)
 
     def _reject_forward_typeparam_bound_refs(
         self, param_name: str, bound: TpyType,
@@ -1779,10 +1819,7 @@ class TypeRegistrar:
         """
         # Check INT type params before general validation (to provide field location)
         if isinstance(fld.type, TypeParamRef) and fld.type.kind == TypeParamKind.INT:
-            raise SemanticError(
-                f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
-                loc=fld.loc
-            )
+            raise int_type_param_as_type_error(fld.type.name, fld.loc)
         # A field owns its value inline regardless, so Own on a field is
         # redundant -- including `Optional[Own[T]]`, since a field
         # `Optional[T]` is `std::optional<T>` either way (the borrow default
@@ -1800,6 +1837,8 @@ class TypeRegistrar:
         self.type_ops.validate_type(
             fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
             check_hashable_constraints=False,
+            bound_scope=declaration_bound_scope(record.type_params,
+                                                record.type_param_bounds),
         )
         # Persist the resolved type back so downstream sema/codegen sees
         # parser-level NominalType placeholders substituted with registered
@@ -1906,6 +1945,13 @@ class TypeRegistrar:
         self._check_class_constant_conflicts(record, class_constants, class_constants_finality)
 
         self._reject_interior_field_markers(record)
+
+        # Resolve record-level type param bounds first: every type spelled in
+        # the record is checked in them.
+        if record.type_param_bounds:
+            record.type_param_bounds.update(self._resolve_type_param_bounds(
+                record.type_param_bounds, record.loc,
+                type_params=list(record.type_params), protocol_only=True))
 
         # Validate field types
         for fld in record.fields:
@@ -2110,20 +2156,6 @@ class TypeRegistrar:
         mutable_clone_ids: set[int] = {id(m) for m in record.methods
                                        if not m.is_written_def}
 
-        # Resolve record-level type param bounds early so that
-        # attach_type_param_bounds in the method loop below uses resolved versions
-        # (with is_protocol=True, _module_qname set from sema registry).
-        if record.type_param_bounds:
-            resolved_record_bounds: dict[str, NominalType] = {}
-            for param_name, bound_type in record.type_param_bounds.items():
-                resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
-                if not is_protocol_type(resolved_bound):
-                    raise SemanticError(
-                        f"Type parameter bound must be a protocol, got {resolved_bound}",
-                        record.loc,
-                    )
-                resolved_record_bounds[param_name] = resolved_bound
-            record.type_param_bounds.update(resolved_record_bounds)
 
         # Register all methods
         methods = {}
@@ -2178,6 +2210,15 @@ class TypeRegistrar:
             ]
             method_return = self.type_ops.resolve_type(
                 self.type_ops.substitute_self(method.return_type, record_self_type), protocols_only=True)
+            method_type_param_bounds = self._resolve_type_param_bounds(
+                method.type_param_bounds, method.loc or record.loc,
+                type_params=list(method.type_params),
+                enclosing=record.type_param_bounds)
+            if method_type_param_bounds:
+                method.type_param_bounds.update(method_type_param_bounds)
+            scope = declaration_bound_scope(method.type_params,
+                                            method.type_param_bounds,
+                                            record.type_param_bounds)
 
             for pname, ptype in method_params:
                 if has_auto_readonly(ptype):
@@ -2190,14 +2231,22 @@ class TypeRegistrar:
                     # Hashable check deferred (see field-validation comment
                     # above): sibling records aren't fully registered yet.
                     self.type_ops.validate_type(
-                        ptype, allow_type_param_ref=allow_tpref, loc=record.loc,
+                        ptype, allow_type_param_ref=allow_tpref,
+                        loc=method.loc or record.loc,
                         check_hashable_constraints=False,
                     )
+                else:
+                    self.type_ops.check_spelled_type(
+                        ptype, method.loc or record.loc, scope)
             if not contains_type_param(method_return):
                 self.type_ops.validate_type(
-                    method_return, allow_type_param_ref=allow_tpref, loc=record.loc,
+                    method_return, allow_type_param_ref=allow_tpref,
+                    loc=method.loc or record.loc,
                     check_hashable_constraints=False,
                 )
+            else:
+                self.type_ops.check_spelled_type(
+                    method_return, method.loc or record.loc, scope)
             # Protocol types cannot be used as method return types.
             # Exceptions: @dynamic protocols, and @native/@cpp_template stub methods
             # (C++ handles the actual return type).
@@ -2278,11 +2327,6 @@ class TypeRegistrar:
                         causes, READONLY_RESULT_CAUSE_RANK)
                 method_return = implied
             method.is_readonly = resolved_readonly
-            method_type_param_bounds = self._resolve_type_param_bounds(
-                method.type_param_bounds, method.loc or record.loc,
-                type_params=list(method.type_params))
-            if method_type_param_bounds:
-                method.type_param_bounds.update(method_type_param_bounds)
             method_defaults = method.defaults if method.defaults else []
             # Propagate resolved types back to AST so analyzer/codegen see concrete types.
             # Attach class-level type param bounds to TypeParamRef instances so that
@@ -2357,6 +2401,8 @@ class TypeRegistrar:
                         method.loc or record.loc
                     )
                 va_type = self.type_ops.resolve_type(method.vararg_type)
+                self.type_ops.check_spelled_type(va_type, method.loc or record.loc,
+                                                 scope)
                 va_param = ParamInfo(method.vararg_name, _vararg_span_type(va_type),
                                      is_variadic=True)
                 if kw_start is not None and kw_start < len(method_param_infos):
@@ -2365,6 +2411,8 @@ class TypeRegistrar:
                     method_param_infos.append(va_param)
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
+                self.type_ops.check_spelled_type(resolved_kwarg_type,
+                                                 method.loc or record.loc, scope)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
             # async def method: callers see Cancellable[T]. Mirrors free async def
@@ -3051,6 +3099,8 @@ class TypeRegistrar:
                                for p in parents_collected]
         record_info.implemented_protocols = [
             attach_type_param_bounds(p, bounds) for p in implemented_protocols]
+        for base in (*record_info.parents, *record_info.implemented_protocols):
+            self.type_ops.check_spelled_type(base, record.loc)
         # Invalidate the lazy `_is_polymorphic_class` cache: it may have
         # been computed during early validation (register_record's
         # validate_type call) when `implemented_protocols` was empty,
@@ -3619,25 +3669,27 @@ class TypeRegistrar:
         rejection) and on sibling records' methods (Hashable/Equatable
         conformance for dict-key / set-element gating) silently pass. This
         second pass re-runs validate_type on each field and on every method
-        param / return type so those checks fire correctly.
+        param / return type so those checks fire correctly. Their bounds were
+        queued by the first pass.
         """
         is_generic = bool(record.type_params)
         for fld in record.fields:
             if fld.type is None:
                 continue
-            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
+            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
+                                        check_bounds=False)
         for method in record.methods:
             for _, ptype in method.params:
                 if ptype is not None and not contains_type_param(ptype):
                     self.type_ops.validate_type(
                         ptype, allow_type_param_ref=is_generic,
-                        loc=method.loc or record.loc,
+                        loc=method.loc or record.loc, check_bounds=False,
                     )
             if (method.return_type is not None
                     and not contains_type_param(method.return_type)):
                 self.type_ops.validate_type(
                     method.return_type, allow_type_param_ref=is_generic,
-                    loc=method.loc or record.loc,
+                    loc=method.loc or record.loc, check_bounds=False,
                 )
 
     def prune_value_property_clones(self, record: TpyRecord) -> None:
@@ -4215,20 +4267,26 @@ class TypeRegistrar:
         # NominalType references to other protocols (e.g. Iterator[T] in
         # Iterable[T].__iter__) so that later signature matches can detect
         # protocol returns.
+        bounds = self._resolve_type_param_bounds(
+            protocol.type_param_bounds, protocol.loc,
+            type_params=list(protocol.type_params), protocol_only=True)
+        bounds = {n: attach_type_param_bounds(b, bounds) for n, b in bounds.items()}
+        protocol.type_param_bounds.update(bounds)
         resolved_methods = []
         for msig in protocol.methods:
             resolved_readonly = msig.is_readonly or (
                 msig.name in IMPLICIT_READONLY_METHODS and not msig.readonly_opt_out
             )
             resolved_params = [
-                (n, self.type_ops.resolve_type(t, protocols_only=True))
+                (n, attach_type_param_bounds(
+                    self.type_ops.resolve_type(t, protocols_only=True), bounds))
                 for n, t in msig.params
             ]
-            resolved_return = self.type_ops.resolve_type(msig.return_type, protocols_only=True)
-            # A structural protocol's signature is never rendered, so the
-            # render guard cannot see it.
+            resolved_return = attach_type_param_bounds(
+                self.type_ops.resolve_type(msig.return_type, protocols_only=True),
+                bounds)
             for t in [*(t for _, t in resolved_params), resolved_return]:
-                self.type_ops.check_int_type_args(t, protocol.loc)
+                self.type_ops.check_spelled_type(t, protocol.loc)
             resolved_methods.append(MethodSignature(
                 name=msig.name,
                 params=resolved_params,
@@ -4241,11 +4299,20 @@ class TypeRegistrar:
                 keyword_only_start=msig.keyword_only_start,
             ))
         self._defer_protocol_defaults(resolved_methods)
+        if bounds:
+            protocol.fields = [(n, attach_type_param_bounds(t, bounds))
+                               for n, t in protocol.fields]
+            protocol.parent_protocols = [attach_type_param_bounds(p, bounds)
+                                         for p in protocol.parent_protocols]
+        for t in (*(t for _, t in protocol.fields), *protocol.parent_protocols):
+            self.type_ops.check_spelled_type(t, protocol.loc)
         info = ProtocolInfo(
             name=protocol.name,
             methods=resolved_methods,
             fields=protocol.fields,
             type_params=protocol.type_params,
+            type_param_kinds=list(protocol.type_param_kinds),
+            type_param_bounds=bounds,
             parent_protocols=protocol.parent_protocols,
             # Parser stores the raw cpp_concept string; the `::`-prefix
             # normalization happens here so parser does not need to
@@ -4812,13 +4879,23 @@ class TypeRegistrar:
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
 
+        # The bounds first: every type the signature spells is checked in
+        # them. Propagated back to the AST so get_type_param_bound sees the
+        # resolved bounds during body analysis (safe: fresh AST per compile).
+        type_param_bounds = self._resolve_type_param_bounds(
+            func.type_param_bounds, func.loc, type_params=list(func.type_params))
+        if type_param_bounds:
+            func.type_param_bounds.update(type_param_bounds)
+        bound_scope = declaration_bound_scope(func.type_params, type_param_bounds)
+
         # Resolve types (sets is_protocol flag correctly for imported protocols)
         resolved_params = []
         for pname, ptype in func.params:
             try:
                 resolved_ptype = self.type_ops.resolve_type(ptype)
                 self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic,
-                                            allow_pointer_repr_dynamic=True)
+                                            loc=func.loc, allow_pointer_repr_dynamic=True,
+                                            bound_scope=bound_scope)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
             if _contains_self_type(resolved_ptype):
@@ -4835,13 +4912,16 @@ class TypeRegistrar:
             resolved_vararg_type = self.type_ops.resolve_type(func.vararg_type)
             try:
                 self.type_ops.validate_type(resolved_vararg_type,
-                                            allow_type_param_ref=is_generic)
+                                            allow_type_param_ref=is_generic,
+                                            loc=func.loc,
+                                            bound_scope=bound_scope)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
 
         resolved_return = self.type_ops.resolve_type(func.return_type)
         try:
-            self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
+            self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic,
+                                        loc=func.loc, bound_scope=bound_scope)
         except SemanticError as e:
             raise self.ctx.error(str(e), func)
 
@@ -4895,12 +4975,6 @@ class TypeRegistrar:
                     func.loc
                 )
 
-        type_param_bounds = self._resolve_type_param_bounds(
-            func.type_param_bounds, func.loc, type_params=list(func.type_params))
-        # Propagate resolved bounds back to AST so get_type_param_bound sees
-        # correct is_protocol flags during body analysis (safe: fresh AST per compile)
-        if type_param_bounds:
-            func.type_param_bounds.update(type_param_bounds)
 
         fi_linkage = _LINKAGE_MAP[func.linkage.name]
 
@@ -4926,6 +5000,8 @@ class TypeRegistrar:
         resolved_kwarg_type = None
         if func.kwarg_name is not None and func.kwarg_type is not None:
             resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
+            self.type_ops.check_spelled_type(resolved_kwarg_type, func.loc,
+                                             bound_scope)
             # Validate no field name conflicts with a parameter a keyword
             # can bind: a positional-only or `*args` one's name is a
             # field's (PEP 692).
@@ -5137,6 +5213,7 @@ class TypeRegistrar:
                 self.ctx.overload_signature_sets.setdefault(
                     record, []).append((impl, stubs))
             self._defer_overload_defaults(impl, stubs, record)
+            self._check_overload_impl_signature(impl, record)
             copies[id(impl)] = copy_overload_implementation(impl, stubs)
         if not copies:
             return defs
@@ -5146,6 +5223,23 @@ class TypeRegistrar:
                 continue
             out.extend(copies.get(id(func), [func]))
         return out
+
+    def _check_overload_impl_signature(self, impl: TpyFunction,
+                                       record: TpyRecord | None) -> None:
+        """The implementation's own annotations are replaced by its copies'
+        stub signatures, so nothing renders them; they are still spelled
+        types, so their bounds are checked in the implementation's scope."""
+        enclosing = record.type_param_bounds if record is not None else None
+        bounds = self._resolve_type_param_bounds(
+            impl.type_param_bounds, impl.loc, type_params=list(impl.type_params),
+            enclosing=enclosing)
+        scope = declaration_bound_scope(impl.type_params, bounds, enclosing)
+        spelled = [t for _, t in impl.params]
+        spelled += [t for t in (impl.vararg_type, impl.kwarg_type, impl.return_type)
+                    if t is not None]
+        for t in spelled:
+            self.type_ops.check_spelled_type(self.type_ops.resolve_type(t),
+                                             impl.loc, scope)
 
     def _defer_overload_defaults(self, impl: TpyFunction,
                                  stubs: list[TpyFunction],

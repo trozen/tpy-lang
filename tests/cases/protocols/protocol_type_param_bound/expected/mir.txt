@@ -1,0 +1,63 @@
+bnd_cyc_p::__tpy_init: uncovered (module initialization)
+bnd_cyc_p::peer_tag@11:0: covered (storage: no_proof_required), summary: known
+bnd_cyc_q::__tpy_init: uncovered (module initialization)
+bnd_cyc_q::tag@10:0: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::at_param@41:0: uncovered (unsupported parameter type)
+main::at_optional@45:0: uncovered (unsupported parameter type)
+main::at_return@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::positions@63:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::forward@74:0: uncovered (generic body)
+main::sibling@101:0: uncovered (generic body)
+main::chain@112:0: uncovered (generic body)
+main::first@118:0: uncovered (no body to lower)
+main::first@120:0: uncovered (no body to lower)
+main::via_parent@127:0: uncovered (unsupported parameter type)
+main::forwarding@131:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::top@167:0: uncovered (unsupported parameter type)
+main::sub_top@171:0: uncovered (unsupported parameter type)
+main::f_bounded@175:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::via_top@226:0: uncovered (unsupported parameter type)
+main::peek@252:0: uncovered (unsupported parameter type)
+main::dynamic_slots@256:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::take_none@277:0: uncovered (unsupported parameter type)
+main::optional_t@281:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::show_slot@298:0: uncovered (generic body)
+main::slots@303:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::forward_ref@322:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::gen@328:0: uncovered (unsupported hoisted value)
+main::bounded_gen@333:0: uncovered (generic body)
+main::bounded_async@348:0: uncovered (async body)
+main::nested@352:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::boxed_async@358:0: uncovered (async body)
+main::cycle@385:0: uncovered (unsupported parameter type)
+main::main@389:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Bag.size@29:4: covered (storage: no_proof_required), summary: known
+main::Bag.count@32:4: covered (storage: no_proof_required), summary: known
+main::Bag.item@35:4: covered (storage: no_proof_required), summary: known
+main::Keeps.measure@84:4: uncovered (generic body)
+main::Outer.use@107:4: uncovered (generic body)
+main::Score.compare@156:4: covered (storage: no_proof_required), summary: known
+main::Score.rank@159:4: covered (storage: no_proof_required), summary: known
+main::Counter.get@213:4: uncovered (unsupported return type)
+main::Counter.put@216:4: covered (storage: no_proof_required)
+main::Counter.tag@219:4: covered (storage: no_proof_required)
+main::Counter.extra@222:4: covered (storage: no_proof_required)
+main::Ticker.f@247:4: covered (storage: no_proof_required), summary: known
+main::TakeImpl.take@271:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Slot.show_other@293:4: uncovered (generic body)
+main::Gen.each@344:4: uncovered (generic body)
+main::Shadow.take@377:4: uncovered (generic body)
+main::Shadow.same@380:4: uncovered (generic body)
+main::Box.__init__@19:4: uncovered (generic constructor)
+main::Bag.__init__@26:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@56:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Keeps.__init__@81:4: uncovered (generic constructor)
+main::Score.__init__@153:4: covered (storage: no_proof_required), summary: known
+main::Counter.__init__@210:4: covered (storage: no_proof_required), summary: known
+main::Ticker.__init__@244:4: covered (storage: no_proof_required), summary: known
+main::Slot.__init__@290:4: uncovered (generic constructor)
+main::Early.__init__@314:4: uncovered (generic constructor)
+main::Gen.__init__@341:4: uncovered (generic constructor)
+main::EqBox.__init__@367:4: uncovered (generic constructor)
+main::Shadow.__init__@374:4: uncovered (generic constructor)

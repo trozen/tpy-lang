@@ -1,0 +1,20 @@
+positions 2 0 1 4 3 8
+positions aliased 7
+forwarding 3 1 3 6 33 3
+forwarding scopes 3 7 1 3
+f-bounded 4 9
+dynamic 7 1000 7
+dynamic redeclared 7 7
+optional 5
+slot function 1
+slot method 2
+forward ref 11
+scopes generator 21
+scopes nested 22
+scopes async 23
+bounded generator abab
+bounded generator abab
+bounded generator method 3
+bounded async 4
+cycle 16
+shadow 6 True

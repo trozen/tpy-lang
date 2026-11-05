@@ -5,7 +5,7 @@ C++20 concept generation from TurboPython protocols and template header utilitie
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dc_replace
 from enum import Enum, auto
 from typing import TextIO, TYPE_CHECKING
 
@@ -801,8 +801,7 @@ class ProtocolGenerator:
         def subst_type(typ: TpyType) -> TpyType:
             """Substitute protocol type params recursively in a type."""
             if isinstance(typ, TypeParamRef) and typ.name in type_param_map:
-                # Return a TypeParamRef with the mapped name
-                return TypeParamRef(type_param_map[typ.name])
+                return dc_replace(typ, name=type_param_map[typ.name])
             return typ.map_inner_types(subst_type)
 
         def concept_param_cpp(typ: TpyType) -> str:
