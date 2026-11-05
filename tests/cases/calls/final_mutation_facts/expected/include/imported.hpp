@@ -63,7 +63,7 @@ struct Stacker {
 
     // @overload
     // def put(self, xs: list[Item]) -> None: ...
-    void put(std::vector<Item>& xs);
+    void put(std::vector<Item>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "imported.Stacker";
 };
 
@@ -116,7 +116,7 @@ inline Stacker::Stacker() : k(::tpy::BigInt(0)) {}
 // # A `typing.overload` stub whose implementation grows its argument.
 // @overload
 // def put(self, xs: list[Item]) -> None: ...
-inline void Stacker::put(std::vector<Item>& xs) {
+inline void Stacker::put(std::vector<Item>& xs) const {
     xs.push_back(Item(::tpy::BigInt(9)));
 }
 void __tpy_init();

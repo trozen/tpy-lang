@@ -122,13 +122,9 @@ from .nodes import (
     THIRListRepeat,
     THIRMembership,
     THIRNestedDef,
-    THIRFoldedBlock,
-    THIRFoldedIfChain,
-    THIRMatchFoldBind,
     THIRFrameNestedDef,
     THIRImportInit,
     THIRNoOpStmt,
-    THIROverloadDefault,
     THIRParamCopy,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
@@ -672,26 +668,6 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}import-init [{', '.join(stmt.calls)}]"]
     if isinstance(stmt, THIRFrameNestedDef):
         return [f"{pad}frame-nested-def {stmt.name}"]
-    if isinstance(stmt, THIRFoldedBlock):
-        burn = " [burns_match_counter]" if stmt.burns_match_counter else ""
-        lines = [f"{pad}overload-fold{burn}:"]
-        for s in stmt.stmts:
-            lines.extend(_stmt_lines(s, depth + 1))
-        return lines
-    if isinstance(stmt, THIRFoldedIfChain):
-        lines = [f"{pad}overload-live-chain:"]
-        for cond, body in stmt.branches:
-            lines.append(f"{pad}  branch {_expr(cond)}:")
-            for s in body:
-                lines.extend(_stmt_lines(s, depth + 2))
-        if stmt.else_body:
-            lines.append(f"{pad}  else:")
-            for s in stmt.else_body:
-                lines.extend(_stmt_lines(s, depth + 2))
-        return lines
-    if isinstance(stmt, THIRMatchFoldBind):
-        binder = "auto" if stmt.by_value else "auto&"
-        return [f"{pad}{binder} %{stmt.name_cpp} = {stmt.source_cpp}"]
     if isinstance(stmt, THIRStmtSeq):
         # A transparent carrier: emit its members at the same depth so the
         # dump mirrors the emitted statement sequence.
@@ -734,9 +710,6 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 f"{_expr(stmt.value)} [{stmt.native_name}]"]
     if isinstance(stmt, THIRParamCopy):
         return [f"{pad}param_copy %{stmt.name}: {stmt.cpp_type}"]
-    if isinstance(stmt, THIROverloadDefault):
-        return [f"{pad}overload_default %{stmt.name}: {stmt.cpp_type} = "
-                f"{stmt.cpp_default}"]
     if isinstance(stmt, THIRPtrLocalDecl):
         init = "" if stmt.init is None else f" = {_expr(stmt.init)}"
         return [f"{pad}ptr_decl[{stmt.kind.name.lower()}] %{stmt.name}: "
@@ -1086,7 +1059,7 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
     reasons = reasons if reasons is not None else IdentityMap()
 
     def _not_routed(kind: str, name: str, fn) -> str:
-        if is_bodyless_binding(fn) or getattr(fn, "is_overload_stub", False):
+        if is_bodyless_binding(fn):
             return f"{kind} {name}: <no body to lower>"
         why = reasons.get(fn)
         if why is not None:
@@ -1112,19 +1085,9 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
         lines.append("")
         seen_any = True
     for func, _self_type in iter_module_callables(module_ast, analyzer):
-        stubs = analyzer.overload_groups.get(func)
-        per_stub = ctx.thir_overload_functions.get(func)
-        stub_fns = ([None if per_stub is None else per_stub.get(s) for s in stubs]
-                    if stubs else [])
         if func in ctx.thir_functions:
             lines.extend(_function_lines(ctx.thir_functions[func]))
             lines.extend(_callee_lines(ctx.thir_functions[func]))
-        elif stub_fns and all(fn is not None for fn in stub_fns):
-            for fn in stub_fns:
-                lines.extend(_function_lines(fn))
-                lines.extend(_callee_lines(fn))
-                lines.append("")
-            lines.pop()
         elif ctx.thir_resumables.get(func) is not None:
             leaves = ctx.thir_resumables[func]
             lines.extend(_frame_lines(leaves.frame, leaves))

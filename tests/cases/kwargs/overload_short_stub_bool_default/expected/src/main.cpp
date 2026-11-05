@@ -4,30 +4,24 @@
 namespace tpyapp::main {
 
 
-
-
-// def greet(a: Dog | Cat, loud: bool = False) -> str:
-//     # `loud` is a real parameter for the long stub and the default for the
-//     # short one; both bodies read it.
-//     suffix = "!" if loud else "."
-//     if isinstance(a, Dog):
-//         return a.name + suffix
-//     return str(a.lives) + suffix
 // @overload
 // def greet(a: Dog) -> str: ...
 std::string greet__Dog(const Dog& a) {
     bool loud = false;
-    std::string_view suffix = ((loud) ? (std::string_view("!")) : (std::string_view(".")));
-    return (::tpy::str_concat(a.name, suffix));
+    std::string_view suffix = ".";
+    if (true) {
+        return (::tpy::str_concat(a.name, suffix));
+    }
 }
 
 // @overload
 // def greet(a: Cat, loud: bool) -> str: ...
 std::string greet__Cat__bool(const Cat& a, bool loud) {
     std::string_view suffix = ((loud) ? (std::string_view("!")) : (std::string_view(".")));
+    if (false) {
+    }
     return (::tpy::str_concat((a.lives).to_string(), suffix));
 }
-
 
 // def main() -> None:
 //     print(greet(Dog("rex")))

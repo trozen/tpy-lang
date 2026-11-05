@@ -14,7 +14,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType, ReadonlyType,
     NONE, NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     VoidType, none_identity_of,
-    LiteralType, LiteralValue, LiteralTag, TypeParamRef,
+    LiteralType, LiteralValue, LiteralTag, TypeParamRef, literal_values,
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
     is_any_str_type, is_numeric_type, is_protocol_type,
     polymorphic_source_inner,
@@ -40,7 +40,7 @@ from ..parse import (
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
 from ..parse.nodes import (
-    name_path,
+    NarrowFacts, name_path,
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
 from ..value_category import (lends_pointer_form_result, origin_shared,
@@ -437,7 +437,10 @@ class MatchAnalyzer:
                 case.pattern, subject_name, effective_type,
             ) if (is_union or is_polymorphic) else {}
             if narrowing_facts:
-                case.type_facts = self.stmts._filter_union_codegen_facts(narrowing_facts)
+                case.type_facts = self.stmts._filter_union_codegen_facts(
+                    NarrowFacts(narrowing_facts,
+                                members=(frozenset(narrowing_facts)
+                                         if is_union else frozenset())))
                 self.ctx.func.narrowed_types.update(narrowing_facts)
 
             # Narrow Optional subject to inner type in arms that cannot
@@ -459,10 +462,10 @@ class MatchAnalyzer:
             if is_literal and subject_name is not None:
                 matched = self._extract_literal_pattern_values(case.pattern, effective_type)
                 if matched is not None:
-                    narrowed = LiteralType(effective_type.base_type, tuple(matched))
+                    narrowed = effective_type.narrowed(tuple(matched))
                     self.ctx.func.narrowed_types[subject_name] = narrowed
-                    facts = {subject_name: narrowed}
-                    case.type_facts = self.stmts._filter_union_codegen_facts(facts)
+                    case.type_facts = self.stmts._filter_union_codegen_facts(
+                        NarrowFacts({subject_name: narrowed}))
 
             # One fact (bind_by_value per capture) drives both codegen's
             # binding form and the dangle warning below, so the two cannot
@@ -1251,6 +1254,13 @@ class MatchAnalyzer:
                 if _type_key(m) not in seen_types
             ]
 
+        values = literal_values(subject_type)
+        if values is not None:
+            return sorted(
+                (str(v) if not isinstance(v, str) else f'"{v}"')
+                for v in {lv.value for lv in values} if v not in seen_values
+            )
+
         if is_enum_type(subject_type):
             einfo = enum_info_of(subject_type)
             return [
@@ -1265,14 +1275,6 @@ class MatchAnalyzer:
                 missing.append("True")
             if False not in seen_values:
                 missing.append("False")
-            return missing
-
-        if isinstance(subject_type, LiteralType):
-            all_values = {v.value for v in subject_type.values}
-            missing = sorted(
-                (str(v) if not isinstance(v, str) else f'"{v}"')
-                for v in all_values if v not in seen_values
-            )
             return missing
 
         if isinstance(subject_type, NominalType) and subject_type.is_user_record:
@@ -1599,10 +1601,11 @@ class MatchAnalyzer:
                 return none_identity_of(subject) is False
             if isinstance(subject, NoneType):
                 return True
-            if isinstance(subject, LiteralType):
+            values = literal_values(subject)
+            if values is not None:
                 # A literal pattern compares by `==` (a conservative reading
                 # of True / False, which CPython compares by `is`).
-                return all(v.value != pattern.value for v in subject.values)
+                return all(v.value != pattern.value for v in values)
             return False
         if not isinstance(pattern, TpyClassPattern):
             return False

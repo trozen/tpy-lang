@@ -51,7 +51,10 @@ inline MyList::MyList() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
 // @overload
 // def __getitem__(self, index: int32) -> int32: ...  # tpyc: ok
 inline int32_t MyList::__getitem____int32(int32_t index) const {
-    return ::tpy::__getitem__(this->_data, index);
+    if (false) {
+    } else {
+        return ::tpy::__getitem__(this->_data, index);
+    }
 }
 
 inline int32_t MyList::__getitem__(int32_t index) const {
@@ -61,11 +64,13 @@ inline int32_t MyList::__getitem__(int32_t index) const {
 // @overload
 // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
 inline std::span<const int32_t> MyList::__getitem____slice(::tpy::Slice index) const {
-    std::optional<int32_t> s_start = index.start;
-    std::optional<int32_t> s_stop = index.stop;
-    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+    if (true) {
+        std::optional<int32_t> s_start = index.start;
+        std::optional<int32_t> s_stop = index.stop;
+        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+    }
 }
 
 inline std::span<const int32_t> MyList::__getitem__(::tpy::Slice index) const {

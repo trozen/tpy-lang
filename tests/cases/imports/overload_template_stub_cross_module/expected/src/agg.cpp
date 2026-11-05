@@ -4,6 +4,13 @@
 namespace tpyapp::agg {
 
 
+// @overload
+// def total(xs: int32) -> int32: ...
+int32_t total__int32(int32_t xs) {
+    if (true) {
+        return xs;
+    }
+}
 
 void __tpy_init() {
 }

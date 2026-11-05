@@ -305,8 +305,7 @@ def operand_retention(resolved: ResolvedBinop | ResolvedUnaryop | None,
 
 def frame_captured(fi: FunctionInfo | None) -> bool:
     """The callee is a generator or coroutine factory: its frame borrows its
-    reference arguments past the statement (`frame_factory_callee`, which
-    also sees an `@overload`-ed generator)."""
+    reference arguments past the statement (`frame_factory_callee`)."""
     return fi is not None and (frame_factory_callee(fi) or fi.is_async)
 
 

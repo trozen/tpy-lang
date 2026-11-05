@@ -34,9 +34,9 @@ from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
-from ..parse.nodes import RecordLinkage, OverloadForm, value_capture_lambdas
+from ..parse.nodes import RecordLinkage, value_capture_lambdas
 from .registration import (
-    receiver_self_type, referent_type, _vararg_span_type, skipped_base_ctor_error,
+    receiver_self_type, named_default_type, default_refusal, _vararg_span_type, skipped_base_ctor_error,
     skipped_base_init_warning, skipped_base_inits, readonly_reason,
 )
 from ..parse.nodes import (
@@ -479,12 +479,6 @@ class SemanticAnalyzer:
         # Branch-declared vars each arm of an if declares itself (the if is
         # the whole else body of another if), with the one joined type
         self.arm_branch_decls: IdentityMap = IdentityMap()
-
-        # @overload groups, implementation -> its stubs, filled at
-        # registration (`TypeRegistrar`): codegen emits one specialization
-        # per stub.
-        self.overload_groups: IdentityMap = self.ctx.overload_groups
-        self.overload_twins: IdentityMap = self.ctx.overload_twins
 
         # Convenience aliases for public API
         self.registry = self.ctx.registry
@@ -1054,13 +1048,17 @@ class SemanticAnalyzer:
     def analyze_body_passes(self, module: TpyModule) -> None:
         """Body phase 2: record method bodies, free function bodies, then
         the post-sema deferred function macros."""
-        for record in module.all_records():
-            self._analyze_record_methods(record)
+        try:
+            for record in module.all_records():
+                self._analyze_record_methods(record)
 
-        for func in module.functions:
-            if self._skip_body_analysis(func):
-                continue
-            self._analyze_function(func)
+            for func in module.functions:
+                if self._skip_body_analysis(func):
+                    continue
+                self._analyze_function(func)
+        except SemanticError as e:
+            self._note_overload_copy(e)
+            raise
         # Drain post-sema deferred function macros now, while this module's
         # expr_types are populated -- they read inferred types Pass 7 just set.
         self._drain_deferred_sema_macros(module)
@@ -1279,10 +1277,6 @@ class SemanticAnalyzer:
             for method in record.methods:
                 if method.is_readonly:
                     continue  # already readonly, no need to sync
-                # A bodyless @overload stub carries no facts; its implementation
-                # syncs from the group's first FunctionInfo, where they land.
-                if method.overload_form is OverloadForm.OVERLOAD:
-                    continue
                 # @auto_readonly mutable clones are paired with a const clone --
                 # keep them mutable so the pair generates both overloads correctly.
                 if method.is_auto_readonly_mutable_clone:
@@ -1311,8 +1305,6 @@ class SemanticAnalyzer:
                 continue
             vtable = self.protocols.record_vtable(record_info)
             for method in record.methods:
-                if method.overload_form is OverloadForm.OVERLOAD:
-                    continue
                 written = self._dynamic_slot_written_params(vtable, method)
                 if written:
                     fi = body_method_info(record_info, method)
@@ -1400,8 +1392,7 @@ class SemanticAnalyzer:
             if not vtable:
                 continue
             by_name: dict[str, list[EmittedMember]] = {}
-            for member in record_emitted_members(
-                    record, self.overload_groups, self.overload_twins):
+            for member in record_emitted_members(record):
                 if (member.kind not in (MemberKind.CTOR, MemberKind.DESTRUCTOR)
                         and not member.func.is_staticmethod
                         and member.func.name in vtable):
@@ -1418,9 +1409,9 @@ class SemanticAnalyzer:
         proto = slot.owner.name
         for member in members:
             if member.ref is not RefQualifier.NONE:
-                body = member.body
-                spelled = ("auto_own[Self]" if (body.is_auto_own_borrowing_clone
-                                                or body.is_auto_own_consuming_clone)
+                func = member.func
+                spelled = ("auto_own[Self]" if (func.is_auto_own_borrowing_clone
+                                                or func.is_auto_own_consuming_clone)
                            else "Own[Self]")
                 raise SemanticError(
                     f"{who} takes self as {spelled}, but the '{name}' it "
@@ -1436,7 +1427,7 @@ class SemanticAnalyzer:
             # getter or a reference dunder always gets. Its other form fills
             # nothing: the name is one slot.
             member = of_form[not slot.readonly]
-            causes = of_form[True].form_source.readonly_causes
+            causes = of_form[True].func.readonly_causes
             if slot.readonly:
                 remedy = ("" if ReadonlyCause.PAIR in causes
                           else " -- drop auto_readonly")
@@ -1452,13 +1443,13 @@ class SemanticAnalyzer:
                 member.func.loc)
         if slot.readonly:
             member = of_form[False]
-            fi = body_method_info(record_info, member.body)
+            fi = body_method_info(record_info, member.func)
             what = ("writes self" if fi is not None and fi.self_mutated
                     else "is not readonly")
             raise SemanticError(
                 f"{who} {what}, but it fills the @readonly '{name}' of "
                 f"@dynamic protocol '{proto}'", member.func.loc)
-        source = of_form[True].form_source
+        source = of_form[True].func
         remedy = _readonly_remedy(source.readonly_causes)
         raise SemanticError(
             f"{readonly_reason(who, source.readonly_causes)}, but the "
@@ -1473,11 +1464,11 @@ class SemanticAnalyzer:
         inference to the vararg case so non-mutating callees collapse to
         `varargs<const T>` and accept const arg sources without caller-side
         marking workarounds. Skip rules mirror `_sync_inferred_const`: explicit
-        readonly slot, @native, overload stubs; a @dynamic slot's writable
+        readonly slot, @native; a @dynamic slot's writable
         vararg is in `mutated_params` (`FunctionInfo.slot_written_params`).
         """
         for func in module.functions:
-            if func.overload_form is OverloadForm.OVERLOAD or func.native_function:
+            if func.native_function:
                 continue
             if func.vararg_name is None:
                 continue
@@ -1491,7 +1482,7 @@ class SemanticAnalyzer:
             if rec_info is None:
                 continue
             for method in record.methods:
-                if method.overload_form is OverloadForm.OVERLOAD or method.native_function:
+                if method.native_function:
                     continue
                 if method.vararg_name is None:
                     continue
@@ -2168,22 +2159,16 @@ class SemanticAnalyzer:
         once the top-level statements ran. The other default shapes are
         checked at registration."""
         for i, default in enumerate(func.defaults):
-            if isinstance(default, TpyName) and default.default_referent:
-                ref = default.default_referent
-                const_type = referent_type(
-                    self.ctx, module_var=ref.module_var,
-                    class_owner=ref.class_owner, member=default.name)
-            elif (isinstance(default, TpyFieldAccess)
-                    and default.module_var_access is not None):
-                const_type = referent_type(
-                    self.ctx, module_var=default.module_var_access)
-            else:
-                continue
             ptype = func.params[i][1] if i < len(func.params) else None
-            if const_type is not None and ptype is not None and not contains_type_param(ptype):
+            if (default is None or ptype is None
+                    or named_default_type(self.ctx, default) is None):
+                continue
+            refusal = default_refusal(self.ctx, self.compat, default, ptype)
+            if refusal is not None:
                 self.compat.check_type_compatible(
-                    const_type, ptype,
-                    f"parameter '{func.params[i][0]}'", default.loc)
+                    refusal.actual, refusal.target,
+                    f"parameter '{func.params[i][0]}'", default.loc,
+                    source_expr=refusal.source_expr)
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
@@ -2352,12 +2337,11 @@ class SemanticAnalyzer:
                 names.update(sib.captured_names)
 
     def _register_functions_with_overloads(self, functions: list[TpyFunction]) -> None:
-        """Register functions, grouping @overload stubs with their implementations.
-
-        @overload stubs precede their implementation function (same name).
-        Stubs are registered as callable overloads; the implementation is
-        registered for body analysis only (not directly callable).
-        """
+        """Register functions, grouping overload sets: a `typing.overload`
+        set is replaced, in `functions`, by its copies (one `@dispatch`
+        variant per stub, `TypeRegistrar.copy_overload_sets`), then every
+        set registers as one overloaded binding."""
+        functions[:] = self.registrar.copy_overload_sets(functions)
         declaration_counts: dict[str, int] = {}
         # A variant's C++ name must not clash with a name the module binds:
         # its defs, and the records, protocols, enums and imports already in
@@ -2367,8 +2351,12 @@ class SemanticAnalyzer:
         for func in functions:
             declaration_counts[func.name] = declaration_counts.get(func.name, 0) + 1
 
-        paired, dispatch_sets = self.registrar.pair_overload_stubs(functions)
-        for func, stubs in paired:
+        # `copy_overload_sets` checked the sets; each is now `@dispatch`.
+        dispatch_sets: dict[str, list[TpyFunction]] = {}
+        for func in functions:
+            if func.is_overload_stub:
+                dispatch_sets.setdefault(func.name, []).append(func)
+                continue
             if func.builtin_decorator_key:
                 # Register minimal FunctionInfo so the key flows through exports.
                 # return_type comes from func (already VOID-substituted by
@@ -2389,47 +2377,10 @@ class SemanticAnalyzer:
                     self.ctx.registry.get_function(func.name),
                 )
                 continue
-            if stubs:
-                self._register_overload_group(func, stubs, function_names)
-            else:
-                self.registrar.register_function(func, unique_declaration=declaration_counts[func.name] == 1)
+            self.registrar.register_function(func, unique_declaration=declaration_counts[func.name] == 1)
 
-        # A @dispatch set has no trailing implementation to register with.
         for name, stubs in dispatch_sets.items():
-            self.registrar.register_overload_group(stubs, None, function_names)
-
-    def _register_overload_group(
-        self, impl: TpyFunction, stubs: list[TpyFunction],
-        function_names: 'frozenset[str]',
-    ) -> None:
-        """Validate and register an @overload group.
-
-        - Validates stub parameter types cover all union variants in the implementation
-        - Registers each stub as a callable FunctionInfo overload
-        - Stores the group mapping for codegen
-        """
-        self.registrar.validate_overload_signatures(impl, stubs, impl.name)
-
-        # Register each stub as a callable overload via a single binding
-        self.registrar.register_overload_group(stubs, impl, function_names)
-
-        # The implementation builds no ParamInfo (see below), but codegen
-        # emits ITS defaults into every specialization, so they need the same
-        # gate a plain function's params get.
-        self.registrar.defer_ast_param_defaults(impl)
-
-        # The impl skips register_function (it is not callable), so its
-        # signature-derived generator yield type is never set there. Body
-        # analysis of its `yield`s reads func.generator_yield_type; set it here.
-        if impl.is_generator and impl.generator_yield_type is None:
-            self.registrar._set_generator_yield_type(impl)
-
-        # The implementation is NOT registered in the namespace/registry --
-        # callers resolve against stubs only. The body is still analyzed
-        # via _analyze_function (which works on the TpyFunction directly).
-
-        # Store the group mapping for codegen
-        self.overload_groups[impl] = stubs
+            self.registrar.register_overload_group(stubs, function_names)
 
     def _validate_recursive_union_paths(self, module: TpyModule) -> None:
         """For every alias tagged as recursive in `resolve_refs`, verify that
@@ -3019,9 +2970,8 @@ class SemanticAnalyzer:
         self.ctx.record_ctx.type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
         for method in record.methods:
-            # Skip bodyless @overload stubs -- their trailing impl is analyzed
-            # instead. A bodied @dispatch variant needs body analysis just
-            # like a regular method.
+            # A bodyless set member has no body; a bodied @dispatch variant
+            # (a `typing.overload` copy among them) is analyzed as any method.
             if method.is_overload_stub and method.is_stub:
                 continue
 
@@ -4052,6 +4002,22 @@ class SemanticAnalyzer:
         ult_mod, ult_name, bd = result
         return (ult_mod, ult_name, bd.kind)
 
+    def _note_overload_copy(self, error: SemanticError) -> None:
+        """An error in a `typing.overload` implementation's body, met in
+        the copy one stub declares, names that stub: the body is checked
+        once per stub, at each stub's types."""
+        func = self.ctx.func.current_function
+        record = self.ctx.record_ctx.record
+        stub = func.overload_stub if func is not None else None
+        if stub is None:
+            return
+        fi = (body_method_info(self.ctx.registry.get_record(record.name), func)
+              if func.is_method and record is not None
+              else body_function_info(self.ctx.registry, func))
+        shown = (self.compat.variant_text(func.name, fi) if fi is not None
+                 else func.name)
+        error.message += f"\nnote: checked at the @overload signature '{shown}'"
+
     def _expand_function_macros(self, module: TpyModule) -> None:
         """Pass 5.5: run @function_macro decorators on record-method and
         free-function bodies (mirrors `_expand_builder_traces`' walk).
@@ -4072,8 +4038,7 @@ class SemanticAnalyzer:
 
     def _skip_body_analysis(self, func: TpyFunction) -> bool:
         """Functions Pass 7 does not analyze, so their expr_types stay empty:
-        bodyless stubs (a @overload stub is handled via its trailing
-        implementation) and generator expressions (analyzed where
+        bodyless stubs and generator expressions (analyzed where
         written)."""
         return not analyzes_body(func)
 
@@ -4082,7 +4047,7 @@ class SemanticAnalyzer:
         ctx.defer_until_sema_complete. They run here -- after every body in
         the module is type-checked -- so they can read inferred expression
         types (absent at pass 5.5 when the macro itself ran). Skip bodies
-        passes 6/7 never analyzed (@overload stubs), so a callback
+        passes 6/7 never analyzed (bodyless stubs), so a callback
         never reads empty expr_types.
         """
         for record in module.all_records():

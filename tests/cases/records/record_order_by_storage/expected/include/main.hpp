@@ -954,13 +954,13 @@ struct OvlHolder {
 
     // @overload
     // def use(self, value: OvlOuter.Inner) -> int32: ...  # tpyc: ok
-    int32_t use__OvlOuter_Inner(const OvlOuter::Inner& value);
-    int32_t use(const OvlOuter::Inner& value);
+    int32_t use__OvlOuter_Inner(const OvlOuter::Inner& value) const;
+    int32_t use(const OvlOuter::Inner& value) const;
 
     // @overload
     // def use(self, value: int32) -> int32: ...
-    int32_t use__int32(int32_t value);
-    int32_t use(int32_t value);
+    int32_t use__int32(int32_t value) const;
+    int32_t use(int32_t value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.OvlHolder";
 };
 
@@ -1735,21 +1735,25 @@ inline DedOuter::DedOuter() : items(std::vector<DedOuter::Inner>{}) {}
 
 // @overload
 // def use(self, value: OvlOuter.Inner) -> int32: ...  # tpyc: ok
-inline int32_t OvlHolder::use__OvlOuter_Inner(const OvlOuter::Inner& value) {
-    return value.n;
+inline int32_t OvlHolder::use__OvlOuter_Inner(const OvlOuter::Inner& value) const {
+    if (true) {
+        return value.n;
+    }
 }
 
-inline int32_t OvlHolder::use(const OvlOuter::Inner& value) {
+inline int32_t OvlHolder::use(const OvlOuter::Inner& value) const {
     return this->use__OvlOuter_Inner(value);
 }
 
 // @overload
 // def use(self, value: int32) -> int32: ...
-inline int32_t OvlHolder::use__int32(int32_t value) {
+inline int32_t OvlHolder::use__int32(int32_t value) const {
+    if (false) {
+    }
     return value;
 }
 
-inline int32_t OvlHolder::use(int32_t value) {
+inline int32_t OvlHolder::use(int32_t value) const {
     return this->use__int32(value);
 }
 

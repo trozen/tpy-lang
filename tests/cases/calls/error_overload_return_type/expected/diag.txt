@@ -1,1 +1,2 @@
-main.py:22: error: @overload return type mismatch: returning 'int' but this overload declares '-> str'
+main.py:22: error: Type mismatch in return value: expected str, got int
+note: checked at the @overload signature 'get_value(animal: Dog)'

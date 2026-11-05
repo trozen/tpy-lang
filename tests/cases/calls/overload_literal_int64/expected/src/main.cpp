@@ -4,20 +4,12 @@
 namespace tpyapp::main {
 
 
-
-
-// def classify(x: int64) -> str:
-//     if x == 1:
-//         return "one"
-//     elif x == 2:
-//         return "two"
-//     return "other"
 // @overload
 // def classify(x: Literal[1, 2]) -> str: ...
 std::string classify__lit_1__2(int64_t x) {
     if ((x == 1)) {
         return "one";
-    } else if ((x == 2)) {
+    } else if (true) {
         return "two";
     }
     return "other";
@@ -33,7 +25,6 @@ std::string classify__int64(int64_t x) {
     }
     return "other";
 }
-
 
 // def main() -> None:
 //     print(classify(1))

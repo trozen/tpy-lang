@@ -68,9 +68,7 @@ if TYPE_CHECKING:
 class _RecordDefPlan:
     """`RecordGenerator._member_def` applied to every member of one record
     (`record_emitted_members`, kept in ``members`` keyed on the def owning
-    each signature, and its delegating ``shims``). An overload group's
-    implementation(s) map to the group's partition; each variant has its
-    own entry in ``variants``, keyed on its stub. A member forwarder
+    each signature, and its delegating ``shims``). A member forwarder
     (`operator[]`, `operator()`, `operator*`, `size()`) is placed from its
     target's entry (`_shim_mode`); a friend operator is always defined in
     the struct. Not in the plan, their bodies always in the struct: the
@@ -81,7 +79,6 @@ class _RecordDefPlan:
     members: IdentityMap[TpyFunction, EmittedMember]
     shims: list[Shim]
     methods: IdentityMap[TpyFunction, MemberDef]
-    variants: IdentityMap[TpyFunction, MemberDef]
     ctor: MemberDef | None
     # `G() : G(nullptr)`: the default ctor delegating to a ctor whose
     # protocol params are all optional.
@@ -1078,28 +1075,15 @@ class RecordGenerator:
         class_sig = MemberSignature(template=generic, deduced=False)
         members: IdentityMap[TpyFunction, EmittedMember] = IdentityMap()
         methods: IdentityMap[TpyFunction, MemberDef] = IdentityMap()
-        variants: IdentityMap[TpyFunction, MemberDef] = IdentityMap()
-        # An overload group has one partition, keyed on its implementation;
-        # the implementation's clone twin shares it.
         ctor = None
         destructor_small: bool | None = None
-        twins = self.ctx.analyzer.overload_twins
-        emission = record_emission(
-            record, self.ctx.analyzer.overload_groups, twins)
+        emission = record_emission(record)
         for entry in emission.members:
             members[entry.func] = entry
-            small = self._method_body_is_small(entry.body)
-            if entry.kind is MemberKind.VARIANT:
-                if entry.body not in methods:
-                    methods[entry.body] = (
-                        self._member_def(
-                            MemberSignature(template=entry.sig.template,
-                                            deduced=False),
-                            small=small))
-                variants[entry.func] = self._member_def(
-                    entry.sig, small=small, variant=True)
-            elif entry.kind in (MemberKind.METHOD, MemberKind.EXPANDED):
-                methods[entry.func] = self._member_def(entry.sig, small=small)
+            small = self._method_body_is_small(entry.func)
+            if entry.kind in (MemberKind.METHOD, MemberKind.EXPANDED):
+                methods[entry.func] = self._member_def(
+                    entry.sig, small=small, variant=entry.variant)
             elif entry.kind is MemberKind.CTOR:
                 ctor = self._member_def(entry.sig, small=small)
             elif entry.kind is MemberKind.DESTRUCTOR:
@@ -1107,11 +1091,6 @@ class RecordGenerator:
                 destructor_small = small and destructor_small is not False
             # A RESUMABLE member is defined with its frame
             # (`_emit_resumable_structs`).
-        # A twin takes its implementation's partition, when that is emitted.
-        for method in record.methods:
-            impl = twins.get(method)
-            if impl is not None and impl in methods:
-                methods[method] = methods[impl]
         default_ctor = None
         if ctor is not None and self._ctor_all_protocols_optional(record):
             default_ctor = self._member_def(class_sig)
@@ -1122,8 +1101,7 @@ class RecordGenerator:
         move_dtor = (None if destructor_small is None
                      else self._member_def(class_sig, small=destructor_small))
         return _RecordDefPlan(members=members, shims=emission.shims,
-                              methods=methods,
-                              variants=variants, ctor=ctor,
+                              methods=methods, ctor=ctor,
                               default_ctor=default_ctor, copy_ops=copy_ops,
                               move_dtor=move_dtor)
 
@@ -1140,12 +1118,6 @@ class RecordGenerator:
         elif member is record.del_method or member is record.move_method:
             entry = plan.move_dtor
         else:
-            stubs = self.ctx.analyzer.overload_groups.get(member)
-            if stubs:
-                # The group's partition only while no variant body is in
-                # the struct.
-                if any(plan.variants[s].mode == "inline" for s in stubs):
-                    return None
             entry = plan.methods.get(member)
         if entry is None or entry.mode == "inline":
             return None
@@ -1238,32 +1210,13 @@ class RecordGenerator:
             entry = plan.methods.get(method)
             if entry is None:
                 continue
-            stubs = self.ctx.analyzer.overload_groups.get(method)
-            if stubs:
-                for stub in stubs:
-                    variant = plan.members[stub]
-                    emit_variant = (self.functions._gen_literal_specialized_method
-                                    if variant.literal_only else
-                                    self.functions._gen_overload_specialized_method)
-                    mode = self._emit_mode(plan.variants[stub], want)
-                    if mode is not None:
-                        emit_variant(
-                            out, variant, record.name,
-                            record_type_param_bounds=(
-                                record.type_param_bounds or None),
-                            dynamic_overrides=dynamic_overrides, mode=mode)
-            elif method in self.ctx.analyzer.overload_twins:
-                # Const clone of an @auto_readonly @overload impl: the mutable
-                # clone emitted every stub's specialization, const ones included.
-                continue
-            else:
-                mode = self._emit_mode(entry, want)
-                if mode is not None:
-                    self.functions.gen_method_def(
-                        out, method, member, record.name, dynamic_overrides,
-                        record_type_param_bounds=(
-                            record.type_param_bounds or None),
-                        mode=mode)
+            mode = self._emit_mode(entry, want)
+            if mode is not None:
+                self.functions.gen_method_def(
+                    out, method, member, record.name, dynamic_overrides,
+                    record_type_param_bounds=(
+                        record.type_param_bounds or None),
+                    mode=mode)
 
     @staticmethod
     def _emit_mode(entry: MemberDef,
@@ -1642,7 +1595,7 @@ class RecordGenerator:
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord,
                                  shim: Shim, want: MemberDef | None) -> None:
         """operator[] over the `__getitem__` defs sharing one index type
-        (`@overload` stubs, `@dispatch` variants or plain defs): an
+        (an overload set's variants or plain defs): an
         @auto_readonly clone pair emits const first then mutable, a single
         def emits by its own const-ness. Writes go through
         ::tpy::__setitem__."""

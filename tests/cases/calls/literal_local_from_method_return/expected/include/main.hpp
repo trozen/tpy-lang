@@ -19,7 +19,7 @@ struct Config {
 
 
     // def get_mode(self) -> Literal["r", "w"]:
-    std::string_view get_mode() const;
+    std::string get_mode() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -31,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 // def get_mode(self) -> Literal["r", "w"]:
 //     return "r"
-inline std::string_view Config::get_mode() const {
+inline std::string Config::get_mode() const {
     return "r";
 }
 void __tpy_init();

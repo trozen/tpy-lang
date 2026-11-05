@@ -68,11 +68,11 @@ std::string narrowing(std::string_view mode) {
 
 
 // def generator(mode: Literal["r", "rb"] = "rb") -> Iterator[str]:  # tpyc: ok
-__gen_generator generator(std::string mode) {
+__gen_generator generator(std::string_view mode) {
     return __gen_generator(mode);
 }
 
-// # async (same owned capture as the generator)
+// # async (the same capture as the generator)
 // async def async_fn(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
 //     return mode
 ::tpystd::tpy::Poll<std::string> __coro_async_fn::__poll__(::tpystd::coro::Waker waker) {
@@ -81,7 +81,7 @@ __gen_generator generator(std::string mode) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::string __tpy_async_ret = std::string(mode);
+        std::string __tpy_async_ret = mode;
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -91,14 +91,12 @@ __gen_generator generator(std::string mode) {
 
 
 // async def async_fn(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
-__coro_async_fn async_fn(std::string mode) {
+__coro_async_fn async_fn(std::string_view mode) {
     return __coro_async_fn(mode);
 }
 
-
-
-// def stub(mode: str = "rb") -> str:
-//     return "stub:" + mode
+// # @overload stub carrying the default: it marks the parameter omittable, and an
+// # omitted argument is the implementation's default
 // @overload
 // def stub(mode: Literal["r"]) -> str: ...
 std::string stub__lit_r(std::string_view mode) {
@@ -110,7 +108,6 @@ std::string stub__lit_r(std::string_view mode) {
 std::string stub__lit_rb(std::string_view mode) {
     return (::tpy::str_concat("stub:", mode));
 }
-
 
 // async def run_async() -> None:
 //     print("async_fn", await async_fn(), await async_fn("r"))  # -> S_RESUME_0, S_RESUME_1
@@ -127,8 +124,7 @@ std::string stub__lit_rb(std::string_view mode) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        __coro_arg_0 = "r";
-        __sub_1.emplace(__coro_arg_0);
+        __sub_1.emplace("r");
         __state = S_RESUME_1;
         continue;
     }
@@ -187,8 +183,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_1 = "r";
-        auto __src_2 = ::tpyapp::main::generator(__tmp_1);
+        auto __src_2 = ::tpyapp::main::generator("r");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -438,8 +438,10 @@ def module_qualified_callee_cpp(registry, module_attributes, module_name: str,
     rec_qual = (registry.record_qualification(rec, module_name)
                 if rec is not None else None)
     qual = (rec_qual
-            or ((fi.originating_module, fi.variant_cpp_name or fi.name)
-                if fi and fi.originating_module else None)
+            # The declaration's module: an instantiation of a generic
+            # callee carries it only on its `root`.
+            or ((fi.root.originating_module, fi.variant_cpp_name or fi.name)
+                if fi and fi.root.originating_module else None)
             or lookup_qualified(module_attributes, method, module_name))
     if qual is not None:
         qual_module, qual_name = qual
@@ -1434,11 +1436,9 @@ class CodeGenContext:
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
-    # Lowered bodies, keyed by the source TpyFunction. A per-@overload-stub
-    # specialization lands in `thir_overload_functions` instead (impl -> stub
-    # -> body). Populated per-module in CodeGenerator.generate.
+    # Lowered bodies, keyed by the source TpyFunction. Populated per-module
+    # in CodeGenerator.generate.
     thir_functions: IdentityMap = field(default_factory=IdentityMap)
-    thir_overload_functions: IdentityMap = field(default_factory=IdentityMap)
     # The `__tpy_init` body, lowered from the module's top-level statements.
     # Seeded right before gen_module_init, which is where the generator's
     # global-type map exists.
@@ -1683,21 +1683,6 @@ class CodeGenContext:
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
     # Literal type narrowing: var -> single-value LiteralType for dead branch elimination
     literal_facts: dict[str, 'TpyType'] = field(default_factory=dict)
-    # Literal overload specialization: injected facts that survive reset_scope
-    # (managed by _gen_literal_specialized_function, same pattern as overload_param_types)
-    literal_overload_facts: dict[str, 'TpyType'] = field(default_factory=dict)
-
-    # --- @overload specialization ---
-    # When generating code for a specific @overload stub, maps parameter names
-    # to their concrete (non-union) types. Used for dead branch elimination:
-    # isinstance checks on specialized params resolve statically.
-    overload_param_types: dict[str, 'TpyType'] = field(default_factory=dict)
-    # For short-arity stubs, the missing impl params that must be emitted as
-    # locals (with their default expressions) at the start of the body.
-    # Each entry: (param_name, param_type, default_expr). Consumed by
-    # FunctionGenerator.gen_body right after the opening brace and then
-    # cleared so inner bodies don't re-emit them.
-    overload_missing_param_locals: list[tuple[str, 'TpyType', object]] = field(default_factory=list)
 
     # --- Iterator loop counter ---
     iter_counter: int = 0
@@ -1982,16 +1967,6 @@ class CodeGenContext:
         self.walrus_storage_tuple_locals = set()
         self.walrus_pointer_locals = set()
         self.walrus_const_pointer_locals = set()
-        self.overload_terminated = False
-        # The `if` node whose folded-True terminating branch set
-        # overload_terminated. The function-body emit truncates the rest of a
-        # list only when the just-emitted top-level stmt IS this node; a flag
-        # set by a fold nested in a non-terminating compound (loop/branch) has
-        # a different node, so the reachable post-compound code still emits.
-        self.overload_terminated_node = None
-        # Note: overload_param_types and literal_overload_facts are NOT reset
-        # here -- they're managed by the caller (set before gen_body, cleared
-        # in a finally block).
         self.match_counter = 0
         self.iter_counter = 0
         self.unpack_counter = 0

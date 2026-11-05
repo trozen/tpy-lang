@@ -10,13 +10,31 @@ import ast
 import copy
 from dataclasses import dataclass, field, is_dataclass, replace
 from enum import Enum, IntEnum
-from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
+from typing import Any, Callable, Iterable, Iterator, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind, LiteralValue, FunctionLinkage,
-    ReadonlyCause, param_takes_ownership,
+    LiteralType, ReadonlyCause, param_takes_ownership,
 )
+
+class NarrowFacts(dict[str, TpyType]):
+    """A test's narrowing facts by key, and the keys whose fact narrows a
+    union subject to one of its members -- an extraction -- rather than
+    refining the value set of a subject already of that type (a `Literal`
+    equality), which no type tells apart."""
+    __slots__ = ("members",)
+
+    def __init__(self, items: Iterable[tuple[str, TpyType]] = (),
+                 members: frozenset[str] = frozenset()):
+        super().__init__(items)
+        self.members = members
+
+    def refines(self, key: str) -> bool:
+        """Whether `key`'s fact is a value refinement: a `Literal` fact
+        whose key is not a member extraction."""
+        return isinstance(self[key], LiteralType) and key not in self.members
+
 
 # Source location for error reporting and source mapping
 
@@ -1350,7 +1368,7 @@ class TpyVarDecl(TpyStmt):
     # temporary shows (`program_names`), stamped by `stamp_stands_for`.
     stands_for: str | None = field(default=None, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
-    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    then_type_facts: NarrowFacts = field(default_factory=NarrowFacts)
     # Stamped by liveness: names (and running loop iterators) still live
     # AFTER this statement (see analyze_last_uses). None means the liveness walk never reached this
     # node, where the alias-rebind pass stays silent.
@@ -1547,7 +1565,7 @@ class TpyAssert(TpyStmt):
     condition: TpyExpr
     message: TpyExpr | None = None
     # Set by sema: isinstance union narrowing facts that hold after a passing assert
-    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    then_type_facts: NarrowFacts = field(default_factory=NarrowFacts)
     # Set by sema: the value its test always has (`sema.dead_arms`), None
     # when it varies; the arm it rules out is neither analyzed nor kept.
     decided: bool | None = None
@@ -1566,8 +1584,8 @@ class TpyIf(TpyStmt):
     then_body: list[TpyStmt]
     else_body: list[TpyStmt]
     # Set by sema: isinstance union narrowing facts for codegen
-    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
-    else_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    then_type_facts: NarrowFacts = field(default_factory=NarrowFacts)
+    else_type_facts: NarrowFacts = field(default_factory=NarrowFacts)
     # Set by sema: the value its test always has (`sema.dead_arms`), None
     # when it varies; the arm it rules out is neither analyzed nor kept.
     decided: bool | None = None
@@ -1590,7 +1608,7 @@ class TpyWhile(TpyStmt):
     body: list[TpyStmt]
     orelse: list[TpyStmt] = field(default_factory=list)
     # Set by sema: isinstance union narrowing facts for codegen
-    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    then_type_facts: NarrowFacts = field(default_factory=NarrowFacts)
     # Set by sema: the value its test always has (`sema.dead_arms`), None
     # when it varies; the arm it rules out is neither analyzed nor kept.
     decided: bool | None = None
@@ -1980,7 +1998,7 @@ class TpyMatchCase:
     body: list[TpyStmt]
     loc: SourceLocation | None = None
     # Set by sema: narrowing facts for the subject variable in this arm
-    type_facts: dict[str, TpyType] = field(default_factory=dict)
+    type_facts: NarrowFacts = field(default_factory=NarrowFacts)
     # Set by liveness: the names live right after the arm's captures bind
     # (its guard and body, and the arms a failed guard falls through to).
     live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
@@ -2152,6 +2170,14 @@ class TpyFunction:
     # "member of an overload set" and `overload_form` only where the two
     # forms differ (group validation, diagnostics).
     overload_form: OverloadForm | None = None
+    # On a `@dispatch` variant copied from a `typing.overload`
+    # implementation: the stub it declares, which a diagnostic about the
+    # copied body names.
+    overload_stub: TpyFunction | None = field(default=None, compare=False,
+                                              repr=False)
+    # The implementation parameters a short stub omits, (name, type,
+    # default): locals of the copy, holding the default.
+    omitted_params: tuple = field(default=(), compare=False, repr=False)
     is_method: bool = False
     # A `def` inside a function body (the func of a TpyNestedDef). Its
     # FunctionInfo lives in the enclosing body's namespace, never in the
@@ -2391,9 +2417,9 @@ class TpyFunction:
 
     @property
     def is_typing_overload_stub(self) -> bool:
-        """A `typing.overload` stub (not a `@dispatch` variant): one
-        signature of the trailing implementation, which is specialized and
-        emitted per stub."""
+        """A `typing.overload` stub (not a `@dispatch` variant): read only
+        while its set is turned into `@dispatch` copies of the trailing
+        implementation, one per stub."""
         return self.overload_form is OverloadForm.OVERLOAD
 
     @property

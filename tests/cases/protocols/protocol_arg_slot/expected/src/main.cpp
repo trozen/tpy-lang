@@ -96,13 +96,12 @@ void s_resumable() {
 //     print("overload const", OvReader().w_of(Wide(4)), OvReader().w_of(Wide(5), 1))  # tpyc: ok
 void s_overload() {
     Rect r = Rect(1, 2);
-    auto __tmp_1 = Rect(3, 3);
+    Rect __tmp_1 = Rect(3, 3);
     std::cout << "overload" << " " << ::tpyapp::main::ov_grow__Growable(r) << " " << ::tpyapp::main::ov_grow__Growable__int32(r, 5) << " " << ::tpyapp::main::ov_grow__Growable(__tmp_1) << " " << r.w << "\n" << ::tpy::check_signals;
     OvMeter m = OvMeter();
     Rect __tmp_2 = Rect(2, 2);
     std::cout << "overload method" << " " << m.area_of__HasArea(__tmp_2) << " " << m.area_of__HasArea__int32(r, 1) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = Wide(5);
-    std::cout << "overload const" << " " << OvReader().w_of__ReadsW(Wide(4)) << " " << OvReader().w_of__ReadsW__int32(__tmp_3, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "overload const" << " " << OvReader().w_of__ReadsW(Wide(4)) << " " << OvReader().w_of__ReadsW__int32(Wide(5), 1) << "\n" << ::tpy::check_signals;
 }
 
 // def s_span() -> None:
@@ -121,7 +120,7 @@ void s_span() {
 //     # @readonly overload stubs: a fresh argument binds the const parameter.
 //     print("declared", ro_area(Rect(1, 1)), ro_area(Rect(1, 1), 2))  # tpyc: ok
 void s_declared() {
-    auto __tmp_1 = Rect(1, 1);
+    Rect __tmp_1 = Rect(1, 1);
     Rect __tmp_2 = Rect(1, 1);
     std::cout << "declared" << " " << ::tpyapp::main::ro_area__HasArea(__tmp_1) << " " << ::tpyapp::main::ro_area__HasArea__int32(__tmp_2, 2) << "\n" << ::tpy::check_signals;
 }

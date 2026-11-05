@@ -444,7 +444,7 @@ struct OneStubExit {
 
     // @overload
     // def __exit__(self, kind: None, value: None, tb: None) -> None: ...
-    void __exit__(std::monostate kind, std::monostate value, std::monostate tb);
+    void __exit__(std::monostate kind, std::monostate value, std::monostate tb) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.OneStubExit";
 };
 
@@ -2372,7 +2372,7 @@ inline int32_t OneStubExit::__enter__() const {
 // # one typing.overload stub and its implementation: one variant, not a set
 // @overload
 // def __exit__(self, kind: None, value: None, tb: None) -> None: ...
-inline void OneStubExit::__exit__(std::monostate kind, std::monostate value, std::monostate tb) {
+inline void OneStubExit::__exit__(std::monostate kind, std::monostate value, std::monostate tb) const {
     std::cout << "one stub exit exit" << "\n" << ::tpy::check_signals;
 }
 

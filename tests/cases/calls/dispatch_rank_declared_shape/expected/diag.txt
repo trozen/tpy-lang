@@ -1,3 +1,4 @@
-main.py:267: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:474: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:892: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol
+main.py:235: warning: isinstance() check against descendant type 'Dog' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)
+main.py:268: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:475: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:893: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol

@@ -31,17 +31,17 @@ struct Adder {
 
     // @overload
     // def __call__(self, x: int32) -> int32: ...
-    int32_t __call____int32(int32_t x);
-    int32_t __call__(int32_t x);
+    int32_t __call____int32(int32_t x) const;
+    int32_t __call__(int32_t x) const;
 
     // @overload
     // def __call__(self, x: int32, y: int32) -> int32: ...
-    int32_t __call____int32__int32(int32_t x, int32_t y);
-    int32_t __call__(int32_t x, int32_t y);
+    int32_t __call____int32__int32(int32_t x, int32_t y) const;
+    int32_t __call__(int32_t x, int32_t y) const;
 
-    int32_t operator()(int32_t x);
+    int32_t operator()(int32_t x) const;
 
-    int32_t operator()(int32_t x, int32_t y);
+    int32_t operator()(int32_t x, int32_t y) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
 };
 
@@ -57,30 +57,30 @@ inline Adder::Adder(int32_t base) : base(base) {}
 
 // @overload
 // def __call__(self, x: int32) -> int32: ...
-inline int32_t Adder::__call____int32(int32_t x) {
+inline int32_t Adder::__call____int32(int32_t x) const {
     int32_t y = 0;
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
 }
 
-inline int32_t Adder::__call__(int32_t x) {
+inline int32_t Adder::__call__(int32_t x) const {
     return this->__call____int32(x);
 }
 
 // @overload
 // def __call__(self, x: int32, y: int32) -> int32: ...
-inline int32_t Adder::__call____int32__int32(int32_t x, int32_t y) {
+inline int32_t Adder::__call____int32__int32(int32_t x, int32_t y) const {
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
 }
 
-inline int32_t Adder::__call__(int32_t x, int32_t y) {
+inline int32_t Adder::__call__(int32_t x, int32_t y) const {
     return this->__call____int32__int32(x, y);
 }
 
-inline int32_t Adder::operator()(int32_t x) {
+inline int32_t Adder::operator()(int32_t x) const {
     return __call__(x);
 }
 
-inline int32_t Adder::operator()(int32_t x, int32_t y) {
+inline int32_t Adder::operator()(int32_t x, int32_t y) const {
     return __call__(x, y);
 }
 // def use(f: Fn[[int32], int32]) -> None:

@@ -45,7 +45,7 @@ from .codegen_cpp.context import ThirRejectError
 from .codegen_cpp.protocols import (
     ReturnSlot, member_def, record_emission, return_slot_kind,
 )
-from .emitted_members import MemberKind, group_is_template
+from .emitted_members import MemberKind, signature_is_template
 from .codegen_cpp.context import (
     cpp_module_path, default_module_namespace, get_include_path,
     import_init_targets, module_init_candidates, module_to_include_path,
@@ -2388,14 +2388,12 @@ class Compiler:
             # `<peer>_fwd.hpp`, so a by-value peer in its signature cannot
             # compile; every other body of a cycle member is in the .cpp.
             # Codegen's own placement decides which bodies, read from
-            # signatures and the overload groups registration collected.
-            overload_groups = compiled.analyzer.overload_groups
+            # signatures.
             for func in compiled.ast.functions:
-                if func.is_overload_stub:
+                if func.is_stub:
                     continue
                 if not (func.cpp_template is not None
-                        or group_is_template(
-                            func, overload_groups.get(func) or [])):
+                        or signature_is_template(func)):
                     continue
                 self._check_signature_for_cross_cycle_by_value(
                     func, member, import_component, compiled,
@@ -2413,9 +2411,7 @@ class Compiler:
                 # Every member the record's C++ declares, as codegen places
                 # it; a member shim (`operator[]`, ...) is placed with its
                 # member.
-                emission = record_emission(
-                    ast_record, overload_groups,
-                    compiled.analyzer.overload_twins)
+                emission = record_emission(ast_record)
                 for entry in emission.members:
                     placed = member_def(entry.sig, cycle_member=True,
                                         variant=entry.variant)
@@ -4179,19 +4175,11 @@ class Compiler:
         with activate_compiler(self):
             mod_name = compiled.name
             (hpp_code, cpp_code), codegen = self._generate_to_strings(compiled, options)
-            # Per-@overload-stub specializations live in their own map but are
-            # routed bodies like any other, so both halves are counted.
-            overload_bodies = [fn for per_stub in
-                               codegen.ctx.thir_overload_functions.values()
-                               for fn in per_stub.values()]
             self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
-                                         + len(overload_bodies)
                                          + len(codegen.ctx.thir_constructors))
-            if (codegen.ctx.thir_functions or overload_bodies
-                    or codegen.ctx.thir_constructors):
+            if codegen.ctx.thir_functions or codegen.ctx.thir_constructors:
                 self._thir_routed_names[mod_name] = frozenset(
                     [tf.name for tf in codegen.ctx.thir_functions.values()]
-                    + [tf.name for tf in overload_bodies]
                     + [f"{tc.record_name}.__init__"
                        for tc in codegen.ctx.thir_constructors.values()]
                 )

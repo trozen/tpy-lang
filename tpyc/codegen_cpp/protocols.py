@@ -313,7 +313,7 @@ def member_def(sig: MemberSignature, *, cycle_member: bool,
     header -- after every declaration, where it can use any class or
     function the module declares -- except a deduced return, which C++
     needs before the member's first use, so that body stays in the struct;
-    so does an `@overload` ``variant``'s, where a caller defined after the
+    so does an overload set ``variant``'s, where a caller defined after the
     structs finds it deduced. Any other body is defined at namespace scope
     (bodies referencing each other's records impose no struct order): in
     the header when it is small, so call sites inline without LTO, or when
@@ -375,12 +375,11 @@ class RecordEmission:
     shims: list[Shim]
 
 
-def record_emission(record: TpyRecord, overload_groups: IdentityMap,
-                    overload_twins: IdentityMap) -> RecordEmission:
+def record_emission(record: TpyRecord) -> RecordEmission:
     """`record_emitted_members` with the shims delegating to them -- the
     one list codegen's placement plan and the import-cycle gate (which
     runs before body analysis) both walk."""
-    members = record_emitted_members(record, overload_groups, overload_twins)
+    members = record_emitted_members(record)
     return RecordEmission(members, _record_shims(record, members))
 
 
@@ -394,8 +393,8 @@ def _record_shims(record: TpyRecord,
                   members: list[EmittedMember]) -> list[Shim]:
     """The shims of `record` over its emitted ``members``, in struct order:
     `operator[]`, the binary and reflected friends, `operator*`, `size()`,
-    `operator()`, the unary friends. A dunder no member emits (an `@overload`
-    implementation) gets none."""
+    `operator()`, the unary friends. A dunder no member emits (a bodyless
+    binding) gets none."""
     by_func: IdentityMap[TpyFunction, EmittedMember] = IdentityMap()
     for entry in members:
         if entry.kind not in (MemberKind.CTOR, MemberKind.DESTRUCTOR):

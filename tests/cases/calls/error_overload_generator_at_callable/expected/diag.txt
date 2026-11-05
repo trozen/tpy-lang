@@ -1,0 +1,1 @@
+main.py:21: error: 'gen' cannot be passed as Fn[[int32], Iterator[int32]]: a generator cannot be passed as a callable yet (BUGS.md#generator-at-callable-slot-unlowered)

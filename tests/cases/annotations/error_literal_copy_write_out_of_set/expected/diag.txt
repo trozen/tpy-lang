@@ -1,0 +1,2 @@
+main.py:11: error: Type mismatch in reassignment to 'x': expected Literal[2], got 3
+note: checked at the @overload signature 'f(x: Literal[2])'

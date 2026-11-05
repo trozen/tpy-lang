@@ -4,82 +4,62 @@
 namespace tpyapp::main {
 
 
-
-
-// def handle(mode: str) -> str:
-//     # or-chain: covers full set for Literal["r","w"], folds to true
-//     # For Literal["rb","wb"], each == is false, chain folds to false
-//     if mode == "r" or mode == "w":
-//         return "text"
-//     return "binary"
 // @overload
 // def handle(mode: Literal["r", "w"]) -> str: ...
 std::string handle__lit_r__w(std::string_view mode) {
-    return "text";
+    if (true) {
+        return "text";
+    }
 }
 
 // @overload
 // def handle(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle__lit_rb__wb(std::string_view mode) {
+    if (false) {
+    }
     return "binary";
 }
 
-
-
-
-// def handle_in(mode: str) -> str:
-//     # in-operator with set literal: covers full set for Literal["r","w"]
-//     if mode in {"r", "w"}:
-//         return "text"
-//     return "binary"
 // @overload
 // def handle_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_in__lit_r__w(std::string_view mode) {
-    return "text";
+    if (true) {
+        return "text";
+    }
 }
 
 // @overload
 // def handle_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_in__lit_rb__wb(std::string_view mode) {
+    if (false) {
+    }
     return "binary";
 }
 
-
-
-
-// def handle_not_in(mode: str) -> str:
-//     # not-in: disjoint for Literal["r","w"] -> false, so else taken
-//     if mode not in {"r", "w"}:
-//         return "binary"
-//     return "text"
 // @overload
 // def handle_not_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in__lit_r__w(std::string_view mode) {
+    if (false) {
+    }
     return "text";
 }
 
 // @overload
 // def handle_not_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in__lit_rb__wb(std::string_view mode) {
-    return "binary";
+    if (true) {
+        return "binary";
+    }
 }
 
-
-
-
-// def handle_and(mode: str) -> str:
-//     # and-contradiction: mode can't be both "r" and "w"
-//     if mode == "r" and mode == "w":
-//         return "impossible"
-//     if mode == "r":
-//         return "read"
-//     return "write"
 // @overload
 // def handle_and(mode: Literal["r"]) -> str: ...
 std::string handle_and__lit_r(std::string_view mode) {
     if (false) {
     }
-    return "read";
+    if (true) {
+        return "read";
+    }
 }
 
 // @overload
@@ -87,17 +67,11 @@ std::string handle_and__lit_r(std::string_view mode) {
 std::string handle_and__lit_w(std::string_view mode) {
     if (false) {
     }
+    if (false) {
+    }
     return "write";
 }
 
-
-
-
-// def handle_and_multi(mode: str) -> str:
-//     # and-contradiction on multi-value: mode can't be "r" AND "w" at once
-//     if mode == "r" and mode == "w":
-//         return "impossible"
-//     return "ok"
 // @overload
 // def handle_and_multi(mode: Literal["r", "w"]) -> str: ...
 std::string handle_and_multi__lit_r__w(std::string_view mode) {
@@ -114,46 +88,37 @@ std::string handle_and_multi__lit_rb__wb(std::string_view mode) {
     return "ok";
 }
 
-
-
-
-// def handle_not_in_disjoint(mode: str) -> str:
-//     # not-in with disjoint set: folds to true for Literal["r","w"]
-//     if mode not in {"x", "y"}:
-//         return "not-xy"
-//     return "xy"
 // @overload
 // def handle_not_in_disjoint(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in_disjoint__lit_r__w(std::string_view mode) {
-    return "not-xy";
+    if (true) {
+        return "not-xy";
+    }
 }
 
 // @overload
 // def handle_not_in_disjoint(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in_disjoint__lit_rb__wb(std::string_view mode) {
-    return "not-xy";
+    if (true) {
+        return "not-xy";
+    }
 }
 
-
-
-
-// def handle_not(mode: str) -> str:
-//     # not wrapping: not (or-chain covering full set) -> false
-//     if not (mode == "r" or mode == "w"):
-//         return "binary"
-//     return "text"
 // @overload
 // def handle_not(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not__lit_r__w(std::string_view mode) {
+    if (false) {
+    }
     return "text";
 }
 
 // @overload
 // def handle_not(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not__lit_rb__wb(std::string_view mode) {
-    return "binary";
+    if (true) {
+        return "binary";
+    }
 }
-
 
 // def main() -> None:
 //     print(handle("r"))

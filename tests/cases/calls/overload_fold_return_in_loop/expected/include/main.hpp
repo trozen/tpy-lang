@@ -73,7 +73,7 @@ void bump(A& a);
 ::tpy::BigInt match_fold__A(A& v);
 // @overload
 // def match_fold(v: B) -> int: ...
-::tpy::BigInt match_fold__B(B& v);
+::tpy::BigInt match_fold__B(const B& v);
 // @overload
 // def partly(x: int, k: int) -> int: ...
 ::tpy::BigInt partly__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k);

@@ -4,22 +4,19 @@
 namespace tpyapp::main {
 
 
-
-
-
-// def describe(x: bool) -> str:
-//     if x:
-//         return "yes"
-//     return "no"
 // @overload
 // def describe(x: Literal[True]) -> str: ...
 std::string describe__lit_True(bool x) {
-    return "yes";
+    if (true) {
+        return "yes";
+    }
 }
 
 // @overload
 // def describe(x: Literal[False]) -> str: ...
 std::string describe__lit_False(bool x) {
+    if (false) {
+    }
     return "no";
 }
 
@@ -32,19 +29,25 @@ std::string describe__bool(bool x) {
     return "no";
 }
 
-
 // def main() -> None:
 //     print(describe(True))
 //     print(describe(False))
 //
-//     # Variable falls through to bool fallback
+//     # A local only ever bound to True takes the Literal[True] variant, as
+//     # the literal does
 //     val = True
 //     print(describe(val))
+//
+//     # A local bound to a non-literal bool takes the bool variant
+//     flag = len("ab") > 1
+//     print(describe(flag))  # tpyc: ok
 void main() {
     std::cout << ::tpyapp::main::describe__lit_True(true) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe__lit_False(false) << "\n" << ::tpy::check_signals;
     bool val = true;
-    std::cout << ::tpyapp::main::describe__bool(val) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__lit_True(val) << "\n" << ::tpy::check_signals;
+    bool flag = (::tpy::__len__("ab") > 1);
+    std::cout << ::tpyapp::main::describe__bool(flag) << "\n" << ::tpy::check_signals;
 }
 
 // main()

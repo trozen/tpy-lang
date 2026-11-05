@@ -219,13 +219,13 @@ struct Ov {
 
     // @overload
     // def f(self, x: int32) -> int32: ...
-    int32_t f__int32(int32_t x);
-    int32_t f(int32_t x);
+    int32_t f__int32(int32_t x) const;
+    int32_t f(int32_t x) const;
 
     // @overload
     // def f(self, x: str) -> int32: ...
-    int32_t f__str(std::string_view x);
-    int32_t f(std::string_view x);
+    int32_t f__str(std::string_view x) const;
+    int32_t f(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ov";
 };
 
@@ -417,17 +417,18 @@ struct Counts {
 
     // @overload
     // def __iter__(self) -> Iterator[int32]: ...
-    auto __iter____noargs(int32_t mode = 0) const {
+    auto __iter____noargs() const {
+        int32_t mode = 0;
         return ::tpy::__iter__(this->items);
     }
 
-    auto __iter__(int32_t mode = 0) const {
-        return this->__iter____noargs(mode);
+    auto __iter__() const {
+        return this->__iter____noargs();
     }
 
     // @overload
     // def __iter__(self, mode: Literal[1]) -> Iterator[int32]: ...
-    auto __iter____lit_1(int32_t mode = 0) const {
+    auto __iter____lit_1(int32_t mode) const {
         return ::tpy::__iter__(this->items);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counts";
@@ -453,7 +454,9 @@ struct Mixed {
     // @overload
     // def __iter__(self, mode: Literal[True]) -> Iterator[int32]: ...
     auto __iter____lit_True(bool mode) const {
-        return ::tpy::__iter__(this->items);
+        if (true) {
+            return ::tpy::__iter__(this->items);
+        }
     }
 
     // @overload
@@ -643,7 +646,7 @@ struct SelfStub {
 
     // @overload
     // def f(self, x: Self) -> int32: ...
-    int32_t f(const SelfStub& x);
+    int32_t f(const SelfStub& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SelfStub";
 };
 
@@ -663,7 +666,7 @@ struct SelfImpl {
 
     // @overload
     // def f(self, x: SelfImpl) -> int32: ...
-    int32_t f(const SelfImpl& x);
+    int32_t f(const SelfImpl& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SelfImpl";
 };
 
@@ -679,7 +682,7 @@ struct __enum_Hue {
 
     // @overload
     // def f(self, x: Self) -> int32: ...
-    int32_t f(Hue x);
+    int32_t f(Hue x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.__enum_Hue";
 };
 
@@ -810,23 +813,27 @@ inline Plain::Plain() : base(100) {}
 
 // @overload
 // def f(self, x: int32) -> int32: ...
-inline int32_t Ov::f__int32(int32_t x) {
+inline int32_t Ov::f__int32(int32_t x) const {
+    if (false) {
+    }
     Outer::In __tmp_1 = Outer::In(x);
     return ::tpyapp::main::takes(__tmp_1);
 }
 
-inline int32_t Ov::f(int32_t x) {
+inline int32_t Ov::f(int32_t x) const {
     return this->f__int32(x);
 }
 
 // @overload
 // def f(self, x: str) -> int32: ...
-inline int32_t Ov::f__str(std::string_view x) {
-    Outer::In __tmp_1 = Outer::In(::tpy::__len__(x));
-    return ::tpyapp::main::takes(__tmp_1);
+inline int32_t Ov::f__str(std::string_view x) const {
+    if (true) {
+        Outer::In __tmp_1 = Outer::In(::tpy::__len__(x));
+        return ::tpyapp::main::takes(__tmp_1);
+    }
 }
 
-inline int32_t Ov::f(std::string_view x) {
+inline int32_t Ov::f(std::string_view x) const {
     return this->f__str(x);
 }
 
@@ -924,7 +931,7 @@ inline SelfStub::SelfStub(int32_t k) : k(k) {}
 
 // @overload
 // def f(self, x: Self) -> int32: ...
-inline int32_t SelfStub::f(const SelfStub& x) {
+inline int32_t SelfStub::f(const SelfStub& x) const {
     return (::tpy::add_check<int32_t>(this->k, x.k));
 }
 
@@ -934,13 +941,13 @@ inline SelfImpl::SelfImpl(int32_t k) : k(k) {}
 
 // @overload
 // def f(self, x: SelfImpl) -> int32: ...
-inline int32_t SelfImpl::f(const SelfImpl& x) {
+inline int32_t SelfImpl::f(const SelfImpl& x) const {
     return (::tpy::mul_check<int32_t>(this->k, x.k));
 }
 
 // @overload
 // def f(self, x: Self) -> int32: ...
-inline int32_t __enum_Hue::f(Hue x) {
+inline int32_t __enum_Hue::f(Hue x) const {
     return 9;
 }
 
@@ -1179,6 +1186,8 @@ inline Mixed<T>::Mixed(::tpy::own_param_t<T> x)
 // def __iter__(self, mode: Literal[False]) -> int32: ...
 template<typename T>
 inline int32_t Mixed<T>::__iter____lit_False(bool mode) const {
+    if (false) {
+    }
     return Later(7).v;
 }
 

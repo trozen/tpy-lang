@@ -35,8 +35,11 @@ import copy
 import dataclasses
 from typing import Iterator
 
-from ..parse import TpyFunction, TpyRecord
+from ..parse import TpyExpr, TpyFunction, TpyRecord
+from ..parse.nodes import OverloadForm
 from ..typesys import (
+    LiteralType,
+    UnionType,
     AutoOwnType,
     AutoReadonlyType,
     IMPLICIT_AUTO_READONLY_METHODS,
@@ -55,6 +58,7 @@ from ..typesys import (
     strip_auto_readonly,
 )
 from ..diagnostics import SemanticError
+from .literal_utils import literal_member
 from ..identity_map import IdentityMap
 
 
@@ -419,3 +423,95 @@ def _clone_auto_own(method: TpyFunction) -> list[TpyFunction]:
         self_annotation=None,
     )
     return [borrowing, consuming]
+
+
+def copy_overload_implementation(impl: TpyFunction,
+                                 stubs: list[TpyFunction]) -> list[TpyFunction]:
+    """The `@dispatch` variants a `typing.overload` set is: per stub, the
+    implementation's body under the stub's signature, so each registers,
+    expands and is analyzed as a written variant. The step needs no type
+    facts, so it can run on the parsed defs before registration."""
+    impl_defaults = impl.defaults or []
+
+    def impl_default(i: int) -> TpyExpr | None:
+        return impl_defaults[i] if i < len(impl_defaults) else None
+
+    narrowed = [[_narrowed_param(stub.params[i][1], impl.params[i][1])
+                 for i in range(len(stub.params))] for stub in stubs]
+    def omits(stub: TpyFunction, i: int) -> bool:
+        return i < len(stub.defaults or []) and stub.defaults[i] is not None
+
+    # A parameter some stub makes omittable is omittable at every copy
+    # declaring it, with the implementation's default: CPython runs the
+    # implementation with that value whichever stub a checker picks. A copy
+    # whose type does not admit it drops it where its defaults are checked
+    # (`TypeRegistrar.resolve_defaults`).
+    omittable = {i for i in range(len(impl.params))
+                 if impl_default(i) is not None
+                 and any(omits(stub, i) for stub in stubs)}
+
+    copies: list[TpyFunction] = []
+    for stub, types in zip(stubs, narrowed):
+        if (stub.is_staticmethod != impl.is_staticmethod
+                or stub.is_classmethod != impl.is_classmethod):
+            kind = ("@classmethod" if impl.is_classmethod else
+                    "@staticmethod" if impl.is_staticmethod
+                    else "an instance method")
+            raise SemanticError(
+                f"@overload stub of '{impl.name}' must be {kind}, as its "
+                f"implementation is", loc=stub.loc)
+        n = len(stub.params)
+        params = [(impl.params[i][0], types[i]) for i in range(n)]
+        defaults = [copy.deepcopy(impl_default(i)) if i in omittable
+                    else None for i in range(n)]
+        omitted = tuple((impl.params[i][0], impl.params[i][1],
+                         impl_default(i))
+                        for i in range(n, len(impl.params)))
+        copies.append(dataclasses.replace(
+            impl,
+            params=params,
+            return_type=stub.return_type,
+            body=copy.deepcopy(impl.body),
+            defaults=defaults if any(d is not None for d in defaults) else [],
+            overload_form=OverloadForm.DISPATCH,
+            overload_stub=stub,
+            omitted_params=omitted,
+            type_params=list(stub.type_params),
+            type_param_kinds=list(stub.type_param_kinds),
+            type_param_bounds=dict(stub.type_param_bounds),
+            type_param_defaults=dict(stub.type_param_defaults),
+            keyword_only_start=stub.keyword_only_start,
+            num_posonly_params=stub.num_posonly_params,
+            vararg_name=stub.vararg_name,
+            vararg_type=stub.vararg_type,
+            kwarg_name=stub.kwarg_name,
+            kwarg_type=stub.kwarg_type,
+            is_readonly=stub.is_readonly,
+            readonly_opt_out=stub.readonly_opt_out,
+            auto_readonly=stub.auto_readonly or impl.auto_readonly,
+            has_auto_readonly_decorator=(stub.has_auto_readonly_decorator
+                                         or impl.has_auto_readonly_decorator),
+            pending_macros=list(impl.pending_macros),
+            pending_deferred_sema_macros=[],
+            loc=stub.loc,
+        ))
+    return copies
+
+
+def _narrowed_param(stub_type, impl_type):
+    """A `Literal` stub's parameter holds the implementation's type
+    (`literal_member`), so `Literal[2]` over `x: int` holds a BigInt as the
+    implementation's body does. A literal no member admits is left as
+    written, for `validate_overload_signatures` to report."""
+    if not isinstance(stub_type, LiteralType) or not stub_type.values:
+        return stub_type
+    if isinstance(impl_type, OptionalType):
+        members: tuple = (impl_type.inner,)
+    elif isinstance(impl_type, UnionType):
+        members = tuple(impl_type.members)
+    else:
+        members = (impl_type,)
+    member = literal_member(stub_type, members)
+    if member is None:
+        return stub_type
+    return dataclasses.replace(stub_type, base_type=member)

@@ -1,6 +1,6 @@
-# Class method returning `Literal[str]` -- the method's C++ signature must emit
-# `std::string_view` as the return type (same as free functions), and the
-# receiving local picks up view storage end-to-end.
+# Class method returning `Literal[str]` -- the method returns as `-> str`
+# does (an owned string, same as free functions), and the receiving local
+# owns it, exactly as a `str` local bound to a `-> str` method call does.
 from typing import Literal
 
 

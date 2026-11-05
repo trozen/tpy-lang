@@ -589,7 +589,7 @@ def test_view_answers_recorded_sources_else_every_buffer_operand(
     assert _view_operands(ctx, inits["v_val"]) == ["s"]
     # A view with nothing it may read is unknown.
     assert _view_operands(ctx, inits["v_none"]) is None
-    # A Literal[str] result is static and a non-view result fresh.
+    # A Literal[str] result is an owned str, fresh as any non-view result.
     assert _view_operands(ctx, inits["v_lit"]) == []
     assert _view_operands(ctx, inits["v_up"]) == []
 
@@ -609,7 +609,7 @@ def test_view_leaves_classify_each_leaf_on_its_own_node(
     assert leaves("v_bslice") == [(LeafKind.TEMPORARY, None, 1)]
     assert leaves("v_sslice") == [(LeafKind.STATIC, None, 1)]
     assert leaves("v_rec") == [(LeafKind.PLACE, "s", 1)]
-    assert leaves("v_lit") == [(LeafKind.STATIC, None, 0)]
+    assert leaves("v_lit") == [(LeafKind.TEMPORARY, None, 0)]
     assert leaves("v_up") == [(LeafKind.TEMPORARY, None, 0)]
     assert leaves("v_none") == [(LeafKind.UNNAMED, None, 0)]
 

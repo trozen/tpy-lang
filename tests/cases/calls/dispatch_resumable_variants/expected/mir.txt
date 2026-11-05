@@ -58,7 +58,6 @@ main::AutoSyncExit.__exit__@295:4: uncovered (unsupported parameter type), summa
 main::AutoSyncExit.__exit__@295:4#2: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::OneStubExit.__enter__@303:4: covered (storage: no_proof_required), summary: known
 main::OneStubExit.__exit__@308:4: uncovered (no body to lower)
-main::OneStubExit.__exit__@310:4: uncovered (overloaded callable)
 main::SyncManager.__enter__@322:4: uncovered (no body to lower)
 main::SyncManager.__enter__@327:4: uncovered (no body to lower)
 main::SyncManager.__exit__@331:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

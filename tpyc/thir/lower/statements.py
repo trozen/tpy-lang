@@ -11,7 +11,6 @@ from .callables import (CallSignature, call_signature, definition_signature, set
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from ...diagnostics import SemanticError
 from ...parse.nodes import (
     is_property_getter_read,
     RebindStorage, DeferredCapture,
@@ -82,14 +81,13 @@ from ...parse.nodes import (
     read_names,
 )
 from ...typesys import (
-    dyn_protocol_borrow_result,peel_binding, peel_slot, pointer_repr_optional, repr_shape,
+    dyn_protocol_borrow_result,peel_binding, peel_slot, pointer_repr_optional,
                        returns_cpp_reference_shape, store_takes_elements, without_readonly)
 from ...typesys import (
     CallableType,
     unwrap_qualifiers,
     unwrap_own,
     AnyType,
-    BIGINT,
     BOOL,
     INT32,
     FloatLiteralType,
@@ -212,8 +210,8 @@ from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoiste
     THIRForIterProto, THIRForRange, THIRFormConvert, THIRIf, THIRIfExpr,
     THIRIsinstance, THIRDynIsinstance, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
     THIRModuleVar, THIRMove, THIRName, THIRDynNarrowAlias,
-    THIRNarrowAlias, THIRNestedDef, THIRConceptTest, THIRFoldedBlock,
-    THIRFoldedIfChain, THIRFrameNestedDef, THIRFrameSlotWrite,
+    THIRNarrowAlias, THIRNestedDef, THIRConceptTest,
+    THIRFrameNestedDef, THIRFrameSlotWrite,
     THIRCoroHandleMove, THIRMatch, THIRImportInit, THIRNoOpStmt,
     THIROptViewArg, THIRPrint, THIRExceptHandler, THIRPrintArg,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRRaise,
@@ -228,7 +226,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _tuple_opt_elem_subscript, place_hops,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
     _value_tuple_return,
-    _alias_call_source_ok, overload_if_fold, _call_storage_optional_return,
+    _alias_call_source_ok, _call_storage_optional_return,
     receiver_is_const, _expr_is_const_source, _call_arm_variant, copy_call_arg,
     _storage_family_ok, _narrow_alias_name, _fresh_narrow_local,
     _generic_value_tuple_return, _comp_shadow_pointers, structural_protocol,
@@ -5389,16 +5387,7 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
     a whole body, each statement of which anchors the rebind slots filled
     inside it (`StorageSlots`)."""
     out: list[THIRStmt] = []
-    # A folded-True terminating @overload branch truncates the list it DIRECTLY
-    # lives in. A nested list (loop/branch/try body) never breaks on the flag
-    # (only the FUNCTION-LEVEL top_level loop does, the single buffered body)
-    # -- but a fold inside it must not leak the flag OUT to
-    # the enclosing top_level loop, where a reachable post-compound tail would
-    # then be wrongly truncated. Save on entry / restore on exit scopes it.
-    saved_overload_terminated = lc.overload_terminated
     for i, s in enumerate(body):
-        if top_level and lc.overload_terminated:
-            break
         narrows = _protocol_param_post_facts(s, lc, declared)
         node = _lower_stmt(s, lc, declared, in_branch=in_branch,
                            branch_decls_ok=branch_decls_ok,
@@ -5429,8 +5418,6 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
             break
     if function_body:
         lc.storage_slots.anchor(out)
-    if not top_level:
-        lc.overload_terminated = saved_overload_terminated
     return tuple(out)
 
 
@@ -5472,10 +5459,6 @@ def _append_post_narrow(s: TpyStmt, out: list[THIRStmt], lc: _LowerCtx,
     if isinstance(s, TpyAssert):
         _append_assert_narrow(s, out, lc, declared)
     if not isinstance(s, TpyIf):
-        return
-    if isinstance(out[-1], THIRFoldedBlock):
-        # A per-stub dead-branch fold emits no `if`, so the post-if
-        # narrowing machinery never runs on it.
         return
     for var, post, u in _post_if_narrow_plan(s, declared, lc.narrow,
                                              lc.analyzer):
@@ -8188,10 +8171,7 @@ def _lower_constexpr_if(stmt: TpyIf, info, lc: _LowerCtx,
 
 
 def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
-    """The body's declared return type: the per-@overload stub's when this
-    is a per-stub lowering, else the func's."""
-    if lc.overload_stub_return is not None:
-        return lc.overload_stub_return
+    """The body's declared return type."""
     return (lc.func.return_type
             if isinstance(lc.func.return_type, TpyType) else None)
 
@@ -8472,101 +8452,6 @@ def _resumable_deferred_recipe(ret: TpyReturn, lc: _LowerCtx,
         raise ThirUnsupported(stmt_reject_reason(ret))
     _witness("res.leaf_deferred_capture")
     return recipe
-
-
-def _lower_overload_folded_if(
-        stmt: TpyIf, lc: _LowerCtx,
-        declared: dict[str, TpyType], *,
-        in_branch: bool,
-        loop_depth: int) -> 'THIRFoldedBlock | THIRFoldedIfChain | None':
-    """The @overload-specialized if fold, walking `overload_if_fold`'s plan:
-    a flat plan splices its statements (no `// if` comment, no brace scope;
-    a terminating true arm sets the body-global truncation flag), a live
-    plan emits the surviving links as the trimmed `if / else if` chain
-    (THIRFoldedIfChain). None when the chain does not fold, so the ordinary
-    narrowing arms take over. Live-chain machinery outside this slice
-    rejects: branch decls, concrete extraction facts, and a temp-carrying
-    condition past the first link."""
-    plan = overload_if_fold(stmt, lc.overload_narrowing,
-                            lc.overload_literal_facts)
-    if plan is None:
-        return None
-    if plan.reject is not None:
-        note_detail(plan.reject)
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    if plan.flat is not None:
-        body = _lower_stmts(plan.flat, lc, declared,
-                            in_branch=in_branch, loop_depth=loop_depth)
-        if plan.terminates:
-            lc.overload_terminated = True
-        return THIRFoldedBlock(stmts=body)
-    branches: list[tuple] = []
-    for i, node in enumerate(_bindings.scoped(lc, plan.live)):
-        if lc.analyzer.if_branch_decls.get(node):
-            note_detail("if.overload_live_branch_decls")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        if _facts_have_concrete(node.then_type_facts):
-            note_detail("if.overload_live_extraction")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        try:
-            cond = _lower_truthy(node.condition, lc, declared,
-                                 temps_ok=(i == 0))
-        except ThirUnsupported as ex:
-            raise ex.with_context(stmt_reject_reason(
-                stmt, f"if.overload_live_cond:{ex.reason}")) from None
-        body = _lower_stmts(node.then_body, lc, declared,
-                            in_branch=True, loop_depth=loop_depth)
-        branches.append((cond, body))
-    else_body: tuple = ()
-    if plan.else_body:
-        else_body = _lower_stmts(plan.else_body, lc, declared,
-                                 in_branch=True, loop_depth=loop_depth)
-    return THIRFoldedIfChain(branches=tuple(branches), else_body=else_body)
-
-
-def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
-    """The @overload specialization pair for a return: compat validation
-    against the stub's return type, plus stripping a coerce sema built
-    against the impl's union return (which may target a different member
-    than this stub). An incompatible return is a user error, except under a
-    literal
-    specialization, where it is dead code the live branches eliminated. A
-    stripped value shallow-copies the node -- the shared AST must never be
-    mutated."""
-    stub_ret = lc.overload_stub_return
-    if stmt.value is None or stmt.value_type is None:
-        return stmt
-    rt = stub_ret
-    vt = stmt.value_type
-    if isinstance(vt, IntLiteralType):
-        vt = BIGINT
-    elif isinstance(vt, PendingViewType):
-        vt = vt.family.owned_type
-    try:
-        lc.analyzer.compat.check_type_compatible(
-            vt, rt, "return value", loc=stmt.loc, is_return=True)
-    except SemanticError:
-        if lc.overload_literal_facts:
-            # Dead code the literal branch elimination drops rather than
-            # diagnoses; dropping a statement is not a shape this arm can
-            # express, so the body rejects.
-            note_detail("return.overload_mismatch")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        emit_prims.reject_overload_return_mismatch(stmt.value_type, rt,
-                                                   stmt.loc)
-    value = stmt.value
-    if isinstance(value, TpyCoerce):
-        shape = repr_shape(rt)
-        keep = (value.expected_type in (rt, shape)
-                or (isinstance(shape, OptionalType)
-                    and value.expected_type == shape.inner))
-        if not keep:
-            value = value.expr
-    if value is stmt.value:
-        return stmt
-    adjusted = copy.copy(stmt)
-    adjusted.value = value
-    return adjusted
 
 
 def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
@@ -12458,10 +12343,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               held=held, loc=loc)
     if isinstance(stmt, TpyReturn):
         begin_stmt()
-        if lc.overload_stub_return is not None:
-            # Sema analyzes an `@overload` body once, against the impl's
-            # return; each stub's specialization exists only while lowering.
-            stmt = _overload_adjusted_return(stmt, lc)
         # Inside a finally / `with` region the result lands in a temporary
         # before the region's exits run, and is returned from there.
         staged = lc.exit_staged
@@ -12538,11 +12419,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             loc=loc)
     if isinstance(stmt, TpyIf):
         begin_stmt()
-        folded = _lower_overload_folded_if(
-            stmt, lc, declared, in_branch=scope.in_branch,
-            loop_depth=scope.loop_depth)
-        if folded is not None:
-            return folded
         cx = _protocol_constexpr_info(stmt.condition)
         if cx is not None:
             return _lower_constexpr_if(stmt, cx, lc, declared, loc,
@@ -13565,11 +13441,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _witness("match.no_arm")
             effect = _match._lower_subject_effect(stmt, scope, loc)
             return effect if effect is not None else THIRNoOpStmt(loc=loc)
-        folded = _match._lower_overload_folded_match(
-            stmt, lc, declared, loc, in_branch=scope.in_branch,
-            loop_depth=scope.loop_depth)
-        if folded is not None:
-            return folded
         match_route = _match._select_match_route(
                 stmt, analyzer, declared, scope.admission_pointers(),
                 lc.narrow.narrowed.keys(), lc.names_with("storage_tuple"),

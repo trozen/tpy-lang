@@ -102,9 +102,11 @@ void narrowed(const Holder* o);
 __gen_gen_frame_field gen_frame_field();
 // def loop_var_vs_enclosing_local() -> None:
 void loop_var_vs_enclosing_local();
-// def classify(x: int) -> str:
+// @overload
+// def classify(x: Literal[1]) -> str: ...
 std::string classify__lit_1(const ::tpy::BigInt& x);
-// def classify(x: int) -> str:
+// @overload
+// def classify(x: Literal[2]) -> str: ...
 std::string classify__lit_2(const ::tpy::BigInt& x);
 // def match_capture() -> None:
 void match_capture();

@@ -431,6 +431,7 @@ int32_t loop_continue(const T_items* items) {
     }
     return total;
 }
+// # typing.overload body, one per-stub fold in the rest
 // @overload
 // def ovl(items: Sized | None, x: int32) -> int32: ...
 template<typename T_items>
@@ -440,10 +441,11 @@ int32_t ovl__Sized_None__int32(const T_items* items, int32_t x) {
         return -1;
     }
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        if (false) {
+        }
         return (::tpy::add_check<int32_t>(x, ::tpy::__len__((*items))));
     }
 }
-
 // @overload
 // def ovl(items: Sized | None, x: str) -> int32: ...
 template<typename T_items>
@@ -453,10 +455,11 @@ int32_t ovl__Sized_None__str(const T_items* items, std::string_view x) {
         return -1;
     }
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        return (::tpy::add_check<int32_t>(::tpy::__len__(x), 100));
+        if (true) {
+            return (::tpy::add_check<int32_t>(::tpy::__len__(x), 100));
+        }
     }
 }
-
 // # `is not None` guard
 // def not_none(x: Sized | None = None) -> int32:
 //     if x is not None:  # tpyc: ok

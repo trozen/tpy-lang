@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
-from ..typesys import protocol_param_alternatives
+from ..typesys import pending_view_of, protocol_param_alternatives
 from ..typesys import (contains_reference_type, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
@@ -86,12 +86,12 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import (
-    is_property_getter_read,
+    NarrowFacts, is_property_getter_read,
     SourceLocation, VarLinkage, op_spelling, name_path, DeferredCapture,
     method_call_through,
 )
 from .arg_binding import source_view
-from .calls import class_callee
+from .calls import class_callee, filled_default
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_call,
@@ -113,7 +113,7 @@ from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
                            storage_key, storage_roots, StorageKey,
                            view_leaves)
 from .flow_facts import FlowFacts, condition_walrus_targets
-from .literal_utils import is_char_literal_init, literal_value_from_expr
+from .literal_utils import bound_value_from_expr, is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT, not_assigned_message
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -2847,9 +2847,9 @@ class StatementAnalyzer:
                     (stmt.else_body if taken else stmt.then_body).clear()
                     # The dead path's narrowing binds nothing anywhere.
                     if taken:
-                        stmt.else_type_facts = {}
+                        stmt.else_type_facts = NarrowFacts()
                     else:
-                        stmt.then_type_facts = {}
+                        stmt.then_type_facts = NarrowFacts()
             scope_before = set(self.ctx.func.current_scope.bindings.keys())
             pending_before = set(self.ctx.func.pending_loop_vars)
             assigned_before = frozenset(self.ctx.func.definitely_assigned)
@@ -3378,13 +3378,13 @@ class StatementAnalyzer:
         func = self.ctx.func
         if func.init_terminated or not func.narrowed_types:
             return None
-        new = {k: t for k, t in func.narrowed_types.items()
-               if "." not in k and before.get(k) != t}
+        new = NarrowFacts({k: t for k, t in func.narrowed_types.items()
+                           if "." not in k and before.get(k) != t})
         return (self._filter_union_codegen_facts(new) or None) if new else None
 
     def _filter_union_codegen_facts(
-        self, facts: dict[str, TpyType],
-    ) -> dict[str, TpyType]:
+        self, facts: NarrowFacts,
+    ) -> NarrowFacts:
         """Keep narrowing facts that drive codegen extraction.
 
         Optional narrowing is handled implicitly by std::optional in C++,
@@ -3414,13 +3414,13 @@ class StatementAnalyzer:
                 _peel(self.narrowing.declared_type_for_name(name)),
                 ty, self.ctx.registry)
 
-        return {
+        return NarrowFacts({
             name: ty for name, ty in facts.items()
             if (isinstance(_peel(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
                 or is_protocol_type(ty)
                 or _polymorphic_subclass_fact(name, ty))
-        }
+        }, members=facts.members)
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:
         """Analyze a raise statement (return-tier, throw-tier, or bare re-raise)."""
@@ -4746,6 +4746,19 @@ class StatementAnalyzer:
             if ns:
                 ns.bind_variable(pname, scope_type)
 
+        # An `@overload` copy's omitted implementation parameters, bound
+        # where the parameters are in scope; each holds the value its
+        # default names where the implementation is written, whatever the
+        # body binds.
+        if func.omitted_params:
+            func.body[0:0] = [
+                TpyVarDecl(pname, ptype,
+                           filled_default(default, func.loc, self.ctx,
+                                          keep_spelling=False),
+                           loc=func.loc)
+                for pname, ptype, default in func.omitted_params]
+            func.omitted_params = ()
+
         # The body's copy diagnostics wait for its settlement.
         self.ctx.func.copies_from = len(self.ctx.diagnostics)
         # Param tracking for mutation analysis
@@ -4768,14 +4781,17 @@ class StatementAnalyzer:
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body,
                                     pre_declared=param_names | nonlocal_params,
-                                    pending_nums=True)
+                                    pending_nums=True,
+                                    takes_address=self.ctx.call_takes_address)
         assert scan.literal_locals is not None
         self.ctx.func.pending_num_names = scan.literal_locals.pending
-        self.ctx.func.int_literal_values = scan.literal_locals.literals
+        self.ctx.func.literal_locals = (
+            scan.literal_locals if not module_init else dataclasses.replace(
+                scan.literal_locals, literal_only=frozenset()))
         if not module_init:
             self.ctx.func.constant_locals = {
                 n: v for n, e in scan.literal_locals.single_stores.items()
-                if (v := literal_value_from_expr(e)) is not None}
+                if (v := bound_value_from_expr(e)) is not None}
         self.ctx.func.pending_num_excluded = scan.literal_locals.excluded
         self.ctx.func.pending_num_rebound = scan.literal_locals.rebound
         self.ctx.func.first_bindings = scan.first_bindings
@@ -5830,7 +5846,8 @@ class StatementAnalyzer:
         vars_reg = self.ctx.view_vars(family)
         var_map = self.ctx.view_var_map(family)
 
-        if isinstance(var_type, PendingViewType):
+        source_pending = pending_view_of(var_type)
+        if source_pending is not None:
             # Alias from another pending view type -- collect ALL leaf sources.
             # For `x = a or b` both a and b are sources; if either resolves to
             # owned, x must too (otherwise x would be a view into a
@@ -5839,12 +5856,12 @@ class StatementAnalyzer:
                 source_ids = [t.var_id for t in collect_pending_source_types(self.ctx, init_expr)
                               if isinstance(t, family.pending_type_class)]
             else:
-                source_ids = [var_type.var_id]
+                source_ids = [source_pending.var_id]
             # The pending leaves answer through the alias pass; every other
             # leaf (`x = a or h.s`) answers the view rule here.
             other_leaf_owns = init_expr is not None and not all(
-                isinstance(self.ctx.get_expr_type(leaf.origin),
-                           PendingViewType)
+                pending_view_of(self.ctx.get_expr_type(leaf.origin))
+                is not None
                 or self.deduction.leaf_lends_view(leaf)
                 for leaf in view_leaves(init_expr, ViewLend(self.ctx)))
             info = ViewVarInfo(var_id=var_id, variable_name=name,
@@ -5930,7 +5947,9 @@ class StatementAnalyzer:
         if family is not None:
             pending = self._infer_new_local_view_type(
                 name, var_type, init_expr, init_type, line, family)
-            return var_type if isinstance(var_type, LiteralType) else pending
+            if isinstance(var_type, LiteralType):
+                return dataclasses.replace(var_type, storage=pending)
+            return pending
         elif (isinstance(var_type, PendingListType)
                 and init_expr is not None and isinstance(init_expr, TpyName)):
             return self.deduction.register_list_alias(
@@ -7084,7 +7103,7 @@ class StatementAnalyzer:
                 line=(stmt.loc.line if stmt.loc else None),
                 annotated=stmt.type is not None,
             )
-            if isinstance(var_type, PendingViewType):
+            if pending_view_of(var_type) is not None:
                 stmt.type = var_type
 
         if is_global_declared:
@@ -7208,7 +7227,8 @@ class StatementAnalyzer:
             if (isinstance(inner_var, UnionType) and init_type is not None
                     and init_type in inner_var.members):
                 self.ctx.func.narrowed_types[stmt.name] = init_type
-                facts = {stmt.name: init_type}
+                facts = NarrowFacts({stmt.name: init_type},
+                                    members=frozenset((stmt.name,)))
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(stmt.name, var_type)

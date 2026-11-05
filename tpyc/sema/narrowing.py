@@ -268,8 +268,10 @@ class NarrowingTracker:
 
     def _isinstance_facts(
         self, expr: TpyExpr,
-    ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
-        """Extract (true_facts, false_facts) for type narrowing.
+    ) -> tuple[dict[str, TpyType], dict[str, TpyType], frozenset[str]]:
+        """Extract (true_facts, false_facts, member keys) for type
+        narrowing; the member keys are those narrowed from a union to one of
+        its members (`NarrowFacts.members`).
 
         Handles isinstance checks (union), is/is not None (union + optional),
         and truthiness (optional).
@@ -283,7 +285,7 @@ class NarrowingTracker:
             # branch keeps the original Any (no narrowing). The outer cell
             # remains alive in both branches.
             if isinstance(effective, AnyType):
-                return {name: check_type}, {}
+                return {name: check_type}, {}, frozenset()
             if isinstance(effective, UnionType):
                 # Tuple form isinstance(x, (A, B)) packs check types as a union.
                 check_members = (tuple(check_type.members)
@@ -291,7 +293,8 @@ class NarrowingTracker:
                                  else (check_type,))
                 remaining = [m for m in effective.members if m not in check_members]
                 false_type = (make_union(*remaining) if remaining else check_type)
-                return {name: check_type}, {name: false_type}
+                return ({name: check_type}, {name: false_type},
+                        frozenset((name,)))
             # Optional[Protocol] isinstance narrows to the inner protocol type.
             # Exception: a @dynamic protocol inner with a concrete-class check
             # type is a runtime subclass dispatch -- fall through to the
@@ -303,14 +306,14 @@ class NarrowingTracker:
                         is_dynamic_dispatch_inner(inner, self.ctx.registry)
                         and isinstance(check_type, NominalType)
                         and not is_protocol_type(check_type)):
-                    return {name: inner}, {}
+                    return {name: inner}, {}, frozenset()
             # Optional[Polymorphic class] or post-`is not None`-narrowed
             # polymorphic class: isinstance(x, Subclass) narrows to Subclass.
             # Codegen emits a dynamic_cast'd reference at branch entry and
             # routes downstream reads through it (cast-and-cache).
             if (polymorphic_source_inner(effective, self.ctx.registry) is not None
                     and isinstance(check_type, NominalType)):
-                return {name: check_type}, {}
+                return {name: check_type}, {}, frozenset()
             # Bare-protocol isinstance: narrowing to a *child* protocol
             # (e.g. Iterable[T] -> NativeIterable[T]) lets downstream codegen
             # (for-loop dispatch, `in` operator) see the refined protocol via
@@ -323,7 +326,7 @@ class NarrowingTracker:
                     and is_protocol_type(effective) and is_protocol_type(check_type)
                     and self.protocols.protocol_inherits_from(
                         check_type, effective)):
-                return {name: check_type}, {}
+                return {name: check_type}, {}, frozenset()
 
         # is None / is not None on union or optional types
         match = match_is_none(expr)
@@ -332,16 +335,17 @@ class NarrowingTracker:
             effective = self._effective_type_for_key(key)
             if isinstance(effective, UnionType) and effective.has_none_member():
                 non_none_type, none_type = union_none_narrow(effective)
+                members = frozenset((key,))
                 if is_not_none:
-                    return {key: non_none_type}, {key: none_type}
+                    return {key: non_none_type}, {key: none_type}, members
                 else:
-                    return {key: none_type}, {key: non_none_type}
+                    return {key: none_type}, {key: non_none_type}, members
             if self._is_optional_type(effective):
                 inner_type = self._optional_inner_type(effective)
                 if is_not_none:
-                    return {key: inner_type}, {}
+                    return {key: inner_type}, {}, frozenset()
                 else:
-                    return {}, {key: inner_type}
+                    return {}, {key: inner_type}, frozenset()
 
         # Truthiness on Optional: `if x:` / `if obj.field:` / `if (x := get()):` narrows
         if isinstance(expr, (TpyName, TpyFieldAccess, TpyNamedExpr)):
@@ -350,15 +354,15 @@ class NarrowingTracker:
                 effective = self._effective_type_for_key(key)
                 if self._is_optional_type(effective):
                     inner_type = self._optional_inner_type(effective)
-                    return {key: inner_type}, {}
+                    return {key: inner_type}, {}, frozenset()
 
         # Equality narrowing on Literal types: `if mode == "rb":`
         if isinstance(expr, TpyBinOp) and expr.op in ("==", "!="):
             facts = self._literal_equality_facts(expr)
             if facts is not None:
-                return facts
+                return (*facts, frozenset())
 
-        return {}, {}
+        return {}, {}, frozenset()
 
     def _literal_equality_facts(
         self, expr: TpyBinOp,
@@ -382,9 +386,9 @@ class NarrowingTracker:
             return None
         if lit_val not in effective.values:
             return None
-        true_type = LiteralType(base_type=effective.base_type, values=(lit_val,))
+        true_type = effective.narrowed((lit_val,))
         remaining = tuple(v for v in effective.values if v != lit_val)
-        false_type = (LiteralType(base_type=effective.base_type, values=remaining)
+        false_type = (effective.narrowed(remaining)
                       if remaining else effective.base_type)
         if expr.op == "==":
             return {key: true_type}, {key: false_type}
@@ -669,11 +673,12 @@ class NarrowingTracker:
         further; the facts of `a and b` are the states the walk reaches."""
         def stripped(pair: _FactPair) -> _FactPair:
             return self._strip_call_unstable(pair, test)
-        t_types, f_types = stripped(self._isinstance_facts(test))
+        t_types, f_types, members = self._isinstance_facts(test)
+        t_types, f_types = stripped((t_types, f_types))
         t_ptrs, f_ptrs = stripped(self._ptr_null_facts(test))
         t_ranges, f_ranges = stripped(self._range_facts(test))
-        return (GuardFacts(t_types, frozenset(t_ptrs), t_ranges),
-                GuardFacts(f_types, frozenset(f_ptrs), f_ranges))
+        return (GuardFacts(t_types, frozenset(t_ptrs), t_ranges, members),
+                GuardFacts(f_types, frozenset(f_ptrs), f_ranges, members))
 
     def _range_facts(
         self, expr: TpyExpr,

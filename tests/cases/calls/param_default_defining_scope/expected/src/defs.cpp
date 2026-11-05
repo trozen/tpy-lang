@@ -149,24 +149,21 @@ int32_t d__str(std::string_view x) {
     return 0;
 }
 
-
-
-// def ov(x: int32 | str, k: int32 = K, y: int32 = 0) -> int32:
-//     if isinstance(x, str):
-//         return 0
-//     return k * 10 + y
 // @overload
 // def ov(x: int32, k: int32 = K, y: int32 = 0) -> int32: ...
 int32_t ov__int32__int32__int32(int32_t x, int32_t k, int32_t y) {
+    if (false) {
+    }
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(k, 10)), y));
 }
 
 // @overload
 // def ov(x: str, k: int32 = K, y: int32 = 0) -> int32: ...
 int32_t ov__str__int32__int32(std::string_view x, int32_t k, int32_t y) {
-    return 0;
+    if (true) {
+        return 0;
+    }
 }
-
 
 // def view(x: str = S, n: int32 = 0) -> StrView:
 //     return x

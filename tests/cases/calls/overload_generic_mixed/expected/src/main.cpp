@@ -4,6 +4,13 @@
 namespace tpyapp::main {
 
 
+// @overload
+// def pick(xs: str) -> int32: ...
+int32_t pick__str(std::string_view xs) {
+    if (true) {
+        return ::tpy::__len__(xs);
+    }
+}
 
 // def main() -> None:
 //     nums: list[int32] = [3, 1, 2]

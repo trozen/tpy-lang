@@ -1583,9 +1583,9 @@ prove still apply to the committed-snapshot oracle that replaced them.
 - Compute **one** routing fact, consumed by both the gate and lowering (`_free_callee_kind`,
   `_marker_call_kind`, `_match_union_route`, `_comp_route`). A gate that accepts what lowering
   then rejects (or vice versa) is a latent divergence.
-- The `gen_body` THIR interception keys on `id(func)`, so **any** callable in a multi-entry
-  overload set must be rejected (each stub emits the shared impl with per-stub dead-branch
-  facts). A resumable body's leaves (`THIRResumableLeaves`) are keyed by the frame's own
+- The `gen_body` THIR interception keys on `id(func)`; each variant of an overload set
+  (a `typing.overload` stub's copy of the implementation among them) is a callable of its
+  own. A resumable body's leaves (`THIRResumableLeaves`) are keyed by the frame's own
   leaf slots, not by AST nodes.
 
 **Branch-scoped state: one registry, one pop.**

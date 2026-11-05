@@ -27,6 +27,7 @@ from ..parse import nodes as N
 from ..parse.nodes import is_parse_node
 from ..diagnostics import Diagnostic, DiagnosticLevel, Scope
 from ..namespace import Namespace
+from ..prescan import LiteralLocals
 from ..thir.testutil import _compile, _entry
 from ..typesys import (INT32, FunctionInfo, MutationCallEdge, TypeRegistry,
                        PendingGenericInstanceInfo, RecordInfo, TpyType)
@@ -102,6 +103,7 @@ def _populated() -> FunctionTrackingState:
         unread_coro_locals={'c': stmt},
         var_decl_by_name={'x': N.TpyVarDecl("x", None, None)},
         first_bindings={'w': (N.TpyVarDecl("w", None, None),)},
+        literal_locals=LiteralLocals(single_stores={'s': N.TpyName("v")}),
         pending_return_borrows=[
             {'b': ("return b", [(N.TpyReturn(N.TpyName("b")), None)])}],
         # Fields whose annotation says nothing about what they hold.
@@ -172,6 +174,7 @@ _FIXTURE_FIELDS = {
     'nested_def_block_defs', 'pending_yield_root_checks',
     'pending_view_storage_checks',
     'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
+    'literal_locals',
     'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
     'frame_rebind_sites', 'binding_provenance', 'genexpr_source_loans',

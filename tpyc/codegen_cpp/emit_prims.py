@@ -42,7 +42,7 @@ from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import pointer_repr_optional
 from ..typesys import (
-    BIGINT, AnyType, IntLiteralType, LiteralType,
+    AnyType, LiteralType,
     NominalType, OptionalType,
     OwnType, ReadonlyType, TpyType, TupleType,
     UnionType, VoidType,
@@ -548,10 +548,6 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     (reassigned-param copies, etc.).
     """
     ctx.reset_scope()
-    # Apply literal overload facts (injected by _gen_literal_specialized_function,
-    # survives reset_scope like overload_param_types)
-    if ctx.literal_overload_facts:
-        ctx.literal_facts.update(ctx.literal_overload_facts)
     ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
     ctx.deep_const_borrow_params = deep_const_borrow_params if deep_const_borrow_params is not None else set()
     ctx.declared_vars = {pname for pname, _ in params}
@@ -844,24 +840,6 @@ FLOAT_STR_CONSTANTS: dict[str, str] = {
 # must evaluate its own predicate first, because a returned message string can
 # be dropped, reworded or paired with a different `loc` at one call site only.
 
-def reject_overload_return_mismatch(value_type: TpyType,
-                                    stub_return: TpyType,
-                                    loc: SourceLocation | None) -> NoReturn:
-    """An `@overload` specialization returns a value its own stub's declared
-    return type does not accept.
-
-    The literal normalization is part of the message, not of the verdict: an
-    unresolved int literal prints as its default-int spelling, which names no
-    type the user wrote."""
-    if isinstance(value_type, IntLiteralType):
-        value_type = BIGINT
-    raise CodeGenError(
-        f"@overload return type mismatch: returning '{value_type}' "
-        f"but this overload declares '-> {stub_return}'",
-        loc=loc,
-    )
-
-
 def reject_undeducible_local_type(name: str,
                                   loc: SourceLocation | None) -> NoReturn:
     """A binding whose initializer sema recorded no type for.
@@ -1017,7 +995,6 @@ __all__ = [
     "push_finally",
     "reject_nondef_ctor_field_in_body",
     "reject_nonlvalue_resumable_match_ptr_bind",
-    "reject_overload_return_mismatch",
     "reject_polymorphic_rvalue_into_optional_local",
     "reject_rebind_slot_crosses_scope",
     "reject_suspending_polymorphic_match",

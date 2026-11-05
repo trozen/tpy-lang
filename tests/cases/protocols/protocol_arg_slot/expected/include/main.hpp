@@ -351,16 +351,16 @@ struct OvMeter {
     // @overload
     // def area_of(self, x: HasArea) -> int32: ...
     template<HasArea T_x>
-    int32_t area_of__HasArea(T_x&& x);
+    int32_t area_of__HasArea(T_x&& x) const;
     template<HasArea T_x>
-    int32_t area_of(T_x&& x);
+    int32_t area_of(T_x&& x) const;
 
     // @overload
     // def area_of(self, x: HasArea, n: int32) -> int32: ...
     template<HasArea T_x>
-    int32_t area_of__HasArea__int32(T_x&& x, int32_t n);
+    int32_t area_of__HasArea__int32(T_x&& x, int32_t n) const;
     template<HasArea T_x>
-    int32_t area_of(T_x&& x, int32_t n);
+    int32_t area_of(T_x&& x, int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.OvMeter";
 };
 
@@ -398,16 +398,16 @@ struct OvReader {
     // @overload
     // def w_of(self, x: ReadsW) -> int32: ...
     template<ReadsW T_x>
-    int32_t w_of__ReadsW(const T_x& x);
+    int32_t w_of__ReadsW(const T_x& x) const;
     template<ReadsW T_x>
-    int32_t w_of(const T_x& x);
+    int32_t w_of(const T_x& x) const;
 
     // @overload
     // def w_of(self, x: ReadsW, n: int32) -> int32: ...
     template<ReadsW T_x>
-    int32_t w_of__ReadsW__int32(const T_x& x, int32_t n);
+    int32_t w_of__ReadsW__int32(const T_x& x, int32_t n) const;
     template<ReadsW T_x>
-    int32_t w_of(const T_x& x, int32_t n);
+    int32_t w_of(const T_x& x, int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.OvReader";
 };
 
@@ -763,25 +763,25 @@ inline int32_t Tagged<T>::grow_with(T_x&& x) const {
 // @overload
 // def area_of(self, x: HasArea) -> int32: ...
 template<HasArea T_x>
-inline int32_t OvMeter::area_of__HasArea(T_x&& x) {
+inline int32_t OvMeter::area_of__HasArea(T_x&& x) const {
     int32_t n = 0;
     return (::tpy::add_check<int32_t>(x.area(), n));
 }
 
 template<HasArea T_x>
-inline int32_t OvMeter::area_of(T_x&& x) {
+inline int32_t OvMeter::area_of(T_x&& x) const {
     return this->area_of__HasArea(x);
 }
 
 // @overload
 // def area_of(self, x: HasArea, n: int32) -> int32: ...
 template<HasArea T_x>
-inline int32_t OvMeter::area_of__HasArea__int32(T_x&& x, int32_t n) {
+inline int32_t OvMeter::area_of__HasArea__int32(T_x&& x, int32_t n) const {
     return (::tpy::add_check<int32_t>(x.area(), n));
 }
 
 template<HasArea T_x>
-inline int32_t OvMeter::area_of(T_x&& x, int32_t n) {
+inline int32_t OvMeter::area_of(T_x&& x, int32_t n) const {
     return this->area_of__HasArea__int32(x, n);
 }
 
@@ -790,25 +790,25 @@ inline int32_t OvMeter::area_of(T_x&& x, int32_t n) {
 // @overload
 // def w_of(self, x: ReadsW) -> int32: ...
 template<ReadsW T_x>
-inline int32_t OvReader::w_of__ReadsW(const T_x& x) {
+inline int32_t OvReader::w_of__ReadsW(const T_x& x) const {
     int32_t n = 0;
     return (::tpy::add_check<int32_t>(x.width(), n));
 }
 
 template<ReadsW T_x>
-inline int32_t OvReader::w_of(const T_x& x) {
+inline int32_t OvReader::w_of(const T_x& x) const {
     return this->w_of__ReadsW(x);
 }
 
 // @overload
 // def w_of(self, x: ReadsW, n: int32) -> int32: ...
 template<ReadsW T_x>
-inline int32_t OvReader::w_of__ReadsW__int32(const T_x& x, int32_t n) {
+inline int32_t OvReader::w_of__ReadsW__int32(const T_x& x, int32_t n) const {
     return (::tpy::add_check<int32_t>(x.width(), n));
 }
 
 template<ReadsW T_x>
-inline int32_t OvReader::w_of(const T_x& x, int32_t n) {
+inline int32_t OvReader::w_of(const T_x& x, int32_t n) const {
     return this->w_of__ReadsW__int32(x, n);
 }
 
@@ -873,7 +873,6 @@ int32_t ov_grow__Growable(T_x&& x) {
     x.grow();
     return n;
 }
-
 // @overload
 // def ov_grow(x: Growable, n: int32) -> int32: ...
 template<Growable T_x>
@@ -881,7 +880,6 @@ int32_t ov_grow__Growable__int32(T_x&& x, int32_t n) {
     x.grow();
     return n;
 }
-
 // def through_writes(x: WritesW) -> int32:
 //     return x.width()
 template<WritesW T_x>
@@ -951,7 +949,6 @@ int32_t ro_area__HasArea(const T_x& x) {
     int32_t n = 0;
     return n;
 }
-
 // @overload
 // @readonly
 // def ro_area(x: HasArea, n: int32) -> int32: ...
@@ -959,7 +956,6 @@ template<HasArea T_x>
 int32_t ro_area__HasArea__int32(const T_x& x, int32_t n) {
     return n;
 }
-
 // def m_len(x: Sized) -> int32:
 //     return len(x)
 template<::tpystd::typing::Sized T_x>

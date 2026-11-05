@@ -15,13 +15,10 @@ from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
     TpyAssign,
-    TpyCall,
     TpyExpr,
     TpyExprStmt,
     TpyFieldAccess,
     TpyFunction,
-    TpyIntLiteral,
-    TpyMatch,
     TpyMethodCall,
     TpyModule,
     TpyName,
@@ -35,7 +32,7 @@ from ...parse.nodes import (
 )
 from ... import qnames
 from ...namespace import BindingKind
-from ...prescan import scan_reassigned_vars, scope_bound_names
+from ...prescan import scope_bound_names
 from ...sema.registration import receiver_self_type, skipped_base_inits
 from ..param_contract import arg_retention
 from ...typesys import (
@@ -44,11 +41,8 @@ from ...typesys import (
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
-    LiteralType,
     NominalType,
-    NoneType,
     OptionalType,
-    UnionType,
     TpyType,
     TypeParamKind,
     TypeParamRef,
@@ -69,17 +63,12 @@ from ...codegen_cpp.context import (
     module_native_global_names,
     qualify_native_name,
 )
-from ...codegen_cpp.functions import (
-    build_overload_narrowing,
-    default_to_cpp_from_analyzer,
-    overload_stubs_are_literal_only,
-)
 from ...codegen_cpp.forms import LocalBinding
 from ...type_def_registry import (
     record_base_cpp,
     view_to_owned_conv,
 )
-from ..reject import ThirUnsupported, _walk as _fallback_walk, note
+from ..reject import ThirUnsupported, note
 from ..faces import witness as _witness
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
@@ -98,13 +87,11 @@ from ..nodes import (
     THIRTupleUnpack,
     THIRVarDecl,
     PtrSlotKind,
-    THIROverloadDefault,
     THIRParamCopy,
     receiver_param,
 )
 from .predicates import (
     _value_record_slot,
-    _eligible_char,
     _eligible_ptr_value,
     _eligible_scalar,
     _f1_record,
@@ -122,7 +109,6 @@ from .context import (
 )
 from .checks import (
     _builtin_container_type,
-    _stub_template_param,
     _nondef_ctor_field,
 )
 from .expressions import (
@@ -137,233 +123,9 @@ from .statements import (
     _lower_stmts,
 )
 
-def _overload_reject_detail(func: TpyFunction, stubs, *,
-                            allow_arity: bool = False,
-                            allow_narrow_params: frozenset = frozenset()
-                            ) -> str:
-    """Sub-classify an overload-set reject by WHICH per-stub emission fact
-    the impl body is sensitive to -- the slice-1 routing frontier. First
-    match wins, ordered by disqualification severity; `plain` marks the
-    candidates whose per-stub specializations are the same body modulo the
-    signature:
-
-    - `arity`: a stub is shorter than the impl (missing-param default locals);
-    - `ret_mismatch`: stub return types differ from the impl's (the return
-      arm strips/validates per-stub coercions);
-    - `db_isinstance`: isinstance/match anywhere in the body (the if-chain
-      dead-branch elimination can rewrite it per stub);
-    - `narrow_param`: a union/Optional impl param (the narrowing extraction
-      skips differently under overload_param_types);
-    - `plain`: none of the above.
-
-    Literal folds (equality, truthiness, membership, chain coverage) need
-    no fence rows: `_overload_resolve_static` folds all four.
-
-    Tags extend the dot-hierarchical drilldown convention (like
-    `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
-    (which is auto-composed, never hand-built)."""
-    if not allow_arity and any(len(fi.params) != len(func.params)
-                               for fi in stubs):
-        return "sig.overload_set.arity"
-    rt = func.return_type if isinstance(func.return_type, TpyType) else None
-    for fi in stubs:
-        if fi.return_type != rt:
-            return "sig.overload_set.ret_mismatch"
-    for stmt in func.body:
-        for node in _fallback_walk(stmt):
-            if isinstance(node, TpyMatch) or (
-                    isinstance(node, TpyCall)
-                    and getattr(node, "isinstance_type", None) is not None):
-                return "sig.overload_set.db_isinstance"
-    for _n, pt in func.params:
-        if _n in allow_narrow_params:
-            continue
-        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt))) \
-            if isinstance(pt, TpyType) else None
-        if isinstance(u, (UnionType, OptionalType)):
-            return "sig.overload_set.narrow_param"
-    return "sig.overload_set.plain"
-
-
-def _stub_has_template_param(fi) -> bool:
-    """A stub whose PARAMS force the template-header path: a protocol- or
-    Fn-typed param (bare or under readonly/Own/Optional shells) synthesizes
-    type params.
-
-    The caller only WITNESSES this (`fn.overload_template_stub`): the header
-    is signature -- printed by the signature emitter, like declared type
-    params -- and the stub body lowers against its protocol-typed params
-    through the ordinary arms.
-    The CALL side is where the shape still rejects (checks.py's
-    `_stub_template_param`): a template stub is not the plain named call the
-    call gate admits.
-
-    Declared type params are NOT part of this: `template<...>` is signature,
-    written by the signature emitter, and the specialization bodies lower
-    through the ordinary arms."""
-    return any(_stub_template_param(pt) for _n, pt in fi.params)
-
-
-def _overload_missing_params(func: TpyFunction, stub: TpyFunction) -> list:
-    """The impl params a SHORT stub omits (`impl.params[len(stub.params):]`),
-    whose defaults emit as prologue locals."""
-    return list(func.params[len(stub.params):])
-
-
-def _short_stub_missing_ok(func: TpyFunction, stub: TpyFunction) -> bool:
-    """Whether a short @overload stub's omitted impl params need NO prologue
-    local -- the only arity shape admitted.
-
-    Each missing param needs one local (`T x = <default>;`) EXCEPT
-    when the param narrows to NoneType and the body never reassigns it: the
-    `is not None` guard then folds to False and dead-branch elim strips
-    every use. Any other missing param (a literal/typed default that stays
-    live, or a reassigned one) needs that prologue render."""
-    if len(stub.params) > len(func.params):
-        return False
-    impl_names = [n for n, _t in func.params]
-    if impl_names[:len(stub.params)] != [n for n, _t in stub.params]:
-        return False
-    missing = _overload_missing_params(func, stub)
-    if not missing:
-        return True
-    narrowing = build_overload_narrowing(func, stub, missing,
-                                         func.defaults or [])
-    # Params pre-declared, like the sema scan codegen reads: a write to a
-    # param name is a REASSIGNMENT, not a first decl.
-    reassigned = scan_reassigned_vars(
-        list(func.body),
-        pre_declared={n for n, _t in func.params}).reassigned
-    return all((isinstance(narrowing.get(pname), NoneType)
-                and pname not in reassigned)
-               # A live missing param takes the default-local prologue;
-               # only plain value-scalar locals are supported (a non-value
-               # local would need the pointer/binding registrations the
-               # prologue node does not carry).
-               or _default_local_ok(pt)
-               for pname, pt in missing)
-
-
-def _default_local_ok(pt) -> bool:
-    if not isinstance(pt, TpyType):
-        return False
-    b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return bool(_eligible_scalar(b) or _eligible_char(b))
-
-
-def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
-                         narrowing) -> 'tuple[THIROverloadDefault, ...]':
-    """The short stub's omitted-impl-param prologue: one comment-free
-    `{to_cpp} {name} = <default>;` local per LIVE missing param
-    (NoneType-narrowed unreassigned params are skipped; dead-branch elim
-    strips their every use)."""
-    missing = _overload_missing_params(func, stub)
-    if not missing:
-        return ()
-    defaults = func.defaults or []
-    reassigned = scan_reassigned_vars(
-        list(func.body),
-        pre_declared={n for n, _t in func.params}).reassigned
-    start = len(stub.params)
-    out: list[THIROverloadDefault] = []
-    for off, (pname, ptype) in enumerate(missing):
-        if (isinstance(narrowing.get(pname), NoneType)
-                and pname not in reassigned):
-            continue
-        default_expr = defaults[start + off]
-        cpp_default = default_to_cpp_from_analyzer(analyzer, default_expr,
-                                                   ptype)
-        if (cpp_default == "0"
-                and not isinstance(default_expr, (TpyIntLiteral, TpyCall))):
-            # Value-initialize instead, for unrecognized default exprs.
-            cpp_default = "{}"
-        out.append(THIROverloadDefault(name=escape_cpp_name(pname),
-                                       cpp_type=ptype.to_cpp(),
-                                       cpp_default=cpp_default))
-    return tuple(out)
-
-
-def _literal_stub_facts(func: TpyFunction, stub: TpyFunction) -> dict:
-    """The literal-fact map a literal-only stub injects: impl param names
-    zipped to the stub's Literal types (a SHORT stub pairs as a prefix)."""
-    return {pname: stub_pt
-            for (pname, _), (_, stub_pt) in zip(func.params, stub.params)
-            if isinstance(stub_pt, LiteralType)}
-
-
-def _admit_literal_only_stub(func: TpyFunction, analyzer,
-                             stub: TpyFunction) -> None:
-    """Admission for a literal-only @overload group (the mangled-name
-    path): per-stub emission binds the IMPL's params + the STUB's return
-    type and folds if-chains via the injected literal facts (equality,
-    truthiness, membership, chain coverage -- `_overload_resolve_static`).
-
-    A SHORT stub (the impl carries defaulted trailing params) needs no
-    prologue here, unlike the non-literal path: the emitted signature IS the
-    impl's, defaults included, so the omitted params stay C++ params. Its
-    names must be a positional PREFIX of the impl's, which is what makes the
-    fact pairing below a plain zip.
-
-    A body that WRITES a fact-carrying param rejects
-    (`sig.overload_set.literal_fact_write`): a literal fact dies at the
-    reassign, while the injected map here is frozen -- folding past the
-    write would decide compares that must stay runtime code."""
-    impl_names = [n for n, _t in func.params]
-    if (len(stub.params) > len(func.params)
-            or impl_names[:len(stub.params)] != [n for n, _t in stub.params]):
-        raise ThirUnsupported("sig.overload_set.arity")
-    facts = _literal_stub_facts(func, stub)
-    if facts:
-        reassigned = scan_reassigned_vars(
-            list(func.body),
-            pre_declared={n for n, _t in func.params}).reassigned
-        if any(n in reassigned for n in facts):
-            raise ThirUnsupported("sig.overload_set.literal_fact_write")
-
-
-def _admit_overload_stub(func: TpyFunction, group, analyzer,
-                         stub: 'TpyFunction | None' = None) -> None:
-    """Per-stub lowering admission for a multi-entry @overload set.
-
-    The db_isinstance and ret_mismatch families route (the per-stub fold /
-    return-coercion increments); every other sub-reason keeps rejecting
-    with its tag. Literal-only groups take their own reduced admission
-    (impl-signature emission, so the arity/narrow/ret classifiers here
-    don't apply).
-
-    A protocol-param (template) stub is NOT a disqualifier: the template
-    header is signature (like declared type params), and the
-    stub's body lowers against the stub's protocol-typed params through
-    the ordinary arms (the protocol-param loop included)."""
-    stubs = analyzer.overload_groups.get(func) or []
-    if any(_stub_has_template_param(fi) for fi in stubs):
-        _witness("fn.overload_template_stub")
-    if overload_stubs_are_literal_only(stubs, func):
-        if stub is not None:
-            _admit_literal_only_stub(func, analyzer, stub)
-        return
-    short_ok = stub is not None and _short_stub_missing_ok(func, stub)
-    # An Optional impl param SHADOWED by a stub's concrete type (or omitted
-    # by a short stub) narrows through `build_overload_narrowing`, which both
-    # paths now share -- so the narrowing extraction cannot diverge for it.
-    # Union params (multi-member) keep the family reject.
-    narrow_ok = frozenset(
-        n for n, pt in func.params
-        if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-                      if isinstance(pt, TpyType) else None, OptionalType)
-    ) if stub is not None else frozenset()
-    detail = _overload_reject_detail(
-        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok)
-    if detail not in ("sig.overload_set.db_isinstance",
-                      "sig.overload_set.ret_mismatch",
-                      "sig.overload_set.plain"):
-        raise ThirUnsupported(detail)
-
-
 def _check_callable_structure(func: TpyFunction, analyzer,
                               self_type: 'TpyType | None' = None,
-                              *, allow_resumable: bool = False,
-                              stub: 'TpyFunction | None' = None) -> None:
+                              *, allow_resumable: bool = False) -> None:
     # `allow_resumable` is passed by `lower_resumable`: the async/generator
     # arms below are that entry's whole point, but every other signature
     # check (overloads,
@@ -407,83 +169,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
         raise ThirUnsupported("sig.staticmethod_flag")
-    # A bodied `@dispatch` variant is self-contained: it has no trailing
-    # implementation, so it owns its body, keys its own
-    # id(func), and the function driver emits it standalone. Only the bodyless
-    # stub -- emitted per-specialization off a shared impl -- is special here.
-    bodied_overload = func.is_overload_stub and not func.is_stub
-    if (func.is_overload_stub and not bodied_overload) or func.native_function:
+    # A bodied `@dispatch` variant owns its body, as every member of a set
+    # does (a property pair, a clone pair); a bodyless set member has none.
+    if (func.is_overload_stub and func.is_stub) or func.native_function:
         raise ThirUnsupported("sig.special_callable")
-    # An overload IMPL body is emitted once per stub with per-stub facts
-    # (overload_param_types / literal_overload_facts driving dead-branch
-    # elimination, missing-param default locals, and return-coercion
-    # stripping), but body emission keys on id(func) --
-    # routing the shared impl would hijack every specialization with the
-    # unspecialized body. Reject any callable in a multi-entry overload set
-    # (functions and methods alike), sub-classified by WHICH per-stub fact
-    # the body is sensitive to (the slice-1 routing frontier: an impl
-    # sensitive to none of them lowers identically per stub). Two carve-outs
-    # on the same argument -- each entry owns its body, so there is no
-    # shared-impl to hijack: a property getter+setter pair (one registry name,
-    # two bodies) and a bodied `@dispatch` variant.
-    #
-    # A generator is a second carve-out on the same argument, one tier up:
-    # the function driver diverts every generator to its frame emitter (the
-    # simple peephole lambda or the resumable frame) before the per-stub seeding
-    # loop, so its overload set emits ONE body -- one frame plus one factory
-    # carrying the impl signature and its defaults -- and there is no
-    # specialization to hijack. Keyed on the frame/peephole ENTRY, not on the
-    # shape: the plain function entry reaching the same func must keep its
-    # own reject.
-    #
-    # The async twin does NOT join it: an `async def` STUB is still async
-    # (a `...` body is not a generator, which is what keeps generator stubs
-    # off this entry), so it reaches the frame emitter itself, which emits
-    # one frame plus one factory PER OVERLOAD ENTRY -- three bodies,
-    # not one. That emission is broken independently of routing (every frame
-    # takes the same struct name), so the shape keeps the overload-set reject
-    # until that is fixed.
-    single_body = allow_resumable and func.is_generator
-    if is_record_callable:
-        ri = analyzer.registry.get_record_for_type(self_type)
-        overloads = ri.get_method_overloads(func.name) if ri is not None else []
-        if len(overloads) > 1:
-            is_property_pair = (
-                len(overloads) == 2
-                and any(fi.is_property_getter for fi in overloads)
-                and any(fi.is_property_setter for fi in overloads))
-            # An @auto_readonly / auto_own[Self] clone pair: method_expansion
-            # split one source method into two independent TpyFunctions (the
-            # second clone even deep-copies the body), so each entry owns its
-            # body and keys its own id(func) -- no shared-impl hijack, same
-            # argument as the property pair. Detected on the ATTEMPTED func:
-            # both auto_readonly clones carry auto_readonly_params_resolved;
-            # an auto_own pair carries the flag on BOTH halves, so the
-            # consuming one is exempt on the same argument as its twin (it is
-            # the half that deep-copies the body). Deriving that here instead
-            # is not available: FunctionInfo does not carry the clone flags,
-            # and `is_consuming` alone would exempt any consuming method in a
-            # 2-entry set. A COMPOSED
-            # set (a clone pair over genuine @overload stubs, 4+ entries)
-            # keeps rejecting.
-            is_clone_pair = (
-                len(overloads) == 2
-                and (func.auto_readonly_params_resolved
-                     or func.is_auto_own_borrowing_clone
-                     or func.is_auto_own_consuming_clone))
-            if not (is_property_pair or is_clone_pair or bodied_overload):
-                if stub is not None:
-                    _admit_overload_stub(func, overloads, analyzer, stub)
-                else:
-                    raise ThirUnsupported(
-                        _overload_reject_detail(func, overloads))
-    else:
-        fis = analyzer.registry.get_function(func.name)
-        if fis is not None and len(fis) > 1:
-            if stub is not None:
-                _admit_overload_stub(func, fis, analyzer, stub)
-            elif not (single_body or bodied_overload):
-                raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         raise ThirUnsupported("sig.builtin_decorator")
     if not allow_resumable:
@@ -524,8 +213,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # prologue arises and the body reads ride the frame-field arms.
 
 def _param_reassign_copies(func: TpyFunction,
-                           analyzer,
-                           params=None) -> 'tuple[THIRParamCopy, ...]':
+                           analyzer) -> 'tuple[THIRParamCopy, ...]':
     """The mutable-owned-copy prologue for reassigned const-ref params, in
     param order: `{to_cpp} {name} = __param_{name};`, no source comment. The
     signature-side rename (`gen_params`' `__param_` branch) keys on the same
@@ -540,10 +228,7 @@ def _param_reassign_copies(func: TpyFunction,
     if scan is None or not scan.reassigned:
         return ()
     copies: list[THIRParamCopy] = []
-    # `params` overrides the type source for a per-@overload-stub lowering
-    # (the prologue keys on the STUB's param types); the scan facts stay
-    # the impl's.
-    for name, ptype in (params if params is not None else func.params):
+    for name, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
         if not (name in scan.reassigned and pt is not None
                 and pt.param_needs_copy_for_reassign()):
@@ -812,7 +497,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    native_globals: 'Mapping[str, str]' = {},
                    render_type_stored=None,
                    render_resolve=None,
-                   stub: 'TpyFunction | None' = None,
                    render_concept=None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
@@ -825,24 +509,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     type when `func` is a record method: for kinds with a receiver (instance /
     property / dunder) `self` is seeded as an F1-record receiver (a `this`
     pointer) so its field reads route the same as a param's; a static method
-    keeps only the record for its param-const lookups. `stub` is the
-    @overload stub whose per-stub facts this lowering specializes (the
-    driver seeds one entry per (impl, stub) pair); None for an ordinary
-    single-signature body."""
+    keeps only the record for its param-const lookups."""
     try:
-        _check_callable_structure(func, analyzer, self_type, stub=stub)
-        if stub is not None:
-            # The body references impl param names while the signature binds
-            # the stub's; the two coincide in practice (zip-keyed narrowing
-            # depends on it) -- reject the divergent spelling rather than
-            # lower reads against the wrong names. A SHORT stub binds a
-            # prefix; its omitted params are admitted only when they need no
-            # prologue local. A stub cannot re-spell @error_return.
-            _impl_names = [n for n, _t in func.params]
-            _stub_names = [n for n, _t in stub.params]
-            if (_impl_names[:len(_stub_names)] != _stub_names
-                    or func.error_return is not None):
-                raise ThirUnsupported("sig.overload_set.param_names")
+        _check_callable_structure(func, analyzer, self_type)
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc, ex.message)
         return None
@@ -868,55 +537,15 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                   if owner is not None and owner.enum_companion_of is not None
                   else None)
     self_receiver = "self" if has_self and value_self is None else None
-    # A literal-only group's per-stub emission binds the IMPL's signature:
-    # only the return type and the injected literal facts are per-stub, so
-    # no params override applies.
-    literal_group = (stub is not None
-                     and overload_stubs_are_literal_only(
-                         analyzer.overload_groups.get(func) or [], func))
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve,
-                   render_concept=render_concept,
-                   params_override=(stub.params
-                                    if stub is not None and not literal_group
-                                    else None))
+                   render_concept=render_concept)
     if func.error_return is not None:
         lc.error_return_cpp = error_return_to_cpp(
             func.error_return, analyzer.ctx.module_name, analyzer.registry)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
-    default_locals: 'tuple[THIROverloadDefault, ...]' = ()
-    if stub is not None and literal_group:
-        # Literal-only specialization: impl params bind as-is; the stub
-        # contributes its return type + the literal facts driving the
-        # if-chain dead-branch fold.
-        lc.overload_literal_facts = _literal_stub_facts(func, stub)
-        lc.overload_stub_return = (stub.return_type
-                                   if isinstance(stub.return_type, TpyType)
-                                   else None)
-    elif stub is not None:
-        # Per-stub specialization: the STUB's param types bind, so every
-        # binding class, borrow
-        # form, and narrowing decision keys on them -- a union impl param
-        # narrowed to a concrete stub member is a plain record param here,
-        # not a ptr-variant (the _LowerCtx/_Prescan overrides re-key the
-        # signature-derived facts the same way).
-        params_set = {n: t for n, t in stub.params}
-        # A short stub's omitted params narrow from the impl's defaults, so
-        # the dead-branch fold sees the per-stub facts.
-        lc.overload_narrowing = build_overload_narrowing(
-            func, stub, _overload_missing_params(func, stub),
-            func.defaults or [])
-        # LIVE missing params become prologue locals; seed their bindings
-        # so body reads/reassignments resolve against them.
-        default_locals = _stub_default_locals(func, stub, analyzer,
-                                              lc.overload_narrowing)
-        for dl_name, dl_type in _overload_missing_params(func, stub):
-            params_set[dl_name] = dl_type
-        lc.overload_stub_return = (stub.return_type
-                                   if isinstance(stub.return_type, TpyType)
-                                   else None)
     _seed_int_kind_tparams(func, record_name, analyzer, params_set)
     if value_self is not None:
         params_set["self"] = value_self
@@ -934,15 +563,12 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc, ex.message)
         return None
-    src_params = (func.params if stub is None or literal_group
-                  else stub.params)
-    src_rt = func.return_type if stub is None else stub.return_type
-    params = body_params(src_params, lc, analyzer)
-    rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
-    receiver = (method_receiver(func, self_type, analyzer, stub=stub)
+    params = body_params(func.params, lc, analyzer)
+    rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
+    receiver = (method_receiver(func, self_type, analyzer)
                 if self_receiver is not None else None)
     defined, access_twin = (method_definition(func, receiver, analyzer)
-                            if self_type is not None or stub is not None
+                            if self_type is not None
                             else (resolved_definition(func, analyzer), False))
     # A body its calls bind publishes their signature object; any other
     # body's contract is its own parameters and result as lowered.
@@ -951,9 +577,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         tuple(p.type for p in own), rt, tuple(p.passing for p in own), analyzer,
         getter=func.is_property_getter))
     try:
-        param_copies = _param_reassign_copies(func, analyzer, params=src_params)
-        if stub is not None and default_locals:
-            param_copies = param_copies + default_locals
+        param_copies = _param_reassign_copies(func, analyzer)
         body = _lower_stmts(func.body, lc, declared, top_level=True,
                             function_body=True)
         if lc.unhandled_hoists:
@@ -1609,33 +1233,6 @@ def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
                            _module_qname=ri.qualified_name())
     return record_owner(ri)
 
-def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
-    """ids of the auto_readonly / auto_own CLONE of an @overload impl whose
-    body is never emitted.
-
-    `_collect_method_overload_groups` hands a name's stubs to the FIRST
-    non-stub method it sees (`pending_stubs.pop`), and method expansion has
-    already split the impl into a mutable and a const clone -- so only one of
-    the two is registered. THAT one is emitted once per stub, taking each
-    specialization's const-ness from the stub, and the twin is never named:
-    every specialization of the group is keyed by the registered impl.
-    Attempting the twin would lower a body that does not exist."""
-    out: set[int] = set()
-    for record in module.records:
-        registered = {m.name for m in record.methods
-                      if analyzer.overload_groups.get(m)}
-        if not registered:
-            continue
-        for m in record.methods:
-            if (m.name in registered and not m.is_overload_stub
-                    and not analyzer.overload_groups.get(m)
-                    and (m.auto_readonly_params_resolved
-                         or m.is_auto_own_borrowing_clone
-                         or m.is_auto_own_consuming_clone)):
-                out.add(id(m))
-    return out
-
-
 def iter_module_callables(module: TpyModule, analyzer):
     """Yield `(callable, self_type)` for every function / method the slice may
     admit -- the one feed list codegen and the lowering pins share, so the
@@ -1644,10 +1241,8 @@ def iter_module_callables(module: TpyModule, analyzer):
     (instance / static / property / dunder) yield the owning record's type
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
-    gen_method_def; so is the unemitted @overload clone, which has no body to
-    emit. Excluding them HERE rather than at each driver is what keeps a third
-    consumer (the dump) from reporting them as un-routed."""
-    dead_clones = unemitted_overload_clones(module, analyzer)
+    gen_method_def. Excluding it HERE rather than at each driver is what
+    keeps a third consumer (the dump) from reporting it as un-routed."""
     for func in module.functions:
         yield func, None
     for record in module.all_records():
@@ -1656,7 +1251,7 @@ def iter_module_callables(module: TpyModule, analyzer):
             continue
         init = record.init_method
         for method in record.methods:
-            if method is not init and id(method) not in dead_clones:
+            if method is not init:
                 yield method, self_type
 
 def iter_module_constructors(module: TpyModule, analyzer):

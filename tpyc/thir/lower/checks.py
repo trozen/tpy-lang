@@ -85,7 +85,6 @@ from ...typesys import (
     substitute_type_params_simple,
     CppDefaultInit, cpp_default_init,
     is_dyn_protocol,
-    is_fn_type,
     is_bodyless_binding,
     is_any_bytes_type,
     is_any_int_type,
@@ -4207,7 +4206,8 @@ def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
     manager gets. The plain/imported/ctor manager sources ride
     `_record_rvalue_source_shape`; this covers the native residue those two
     reject. Guards the callee kind, arity, and the literal overloaded pin
-    (open's `Literal` mode arg does not pin -- a LiteralType slot). Args are
+    (open's `Literal` mode arg does not pin: C++ does not re-resolve a native
+    callee). Args are
     validated by the manager expr's own lowering arm (shallow, like
     `_record_rvalue_source_shape`)."""
     if not isinstance(e, TpyCall):
@@ -5756,7 +5756,6 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer,
                                              mutated=mutated)
-            or _str_literal_literal_slot_arg(a, ptype, analyzer)
             or _any_pass_through_arg(a, ptype, locals_, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer))
 
@@ -5777,19 +5776,6 @@ def _any_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = analyzer.get_expr_type(a)
     return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
                       AnyType)
-
-def _str_literal_literal_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                  analyzer) -> bool:
-    """A str literal into a `Literal[str, ...]` selector slot (open's `mode`
-    param, the literal-specialized overload's argument). The slot spells
-    `std::string_view`, so the literal binds as the bare const char[N] --
-    the render of a str literal at a LiteralType target
-    (the overloaded pin is inert here: is_str_type(LiteralType) is False).
-    Value-blind and identical at every call family."""
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    return (isinstance(pt, LiteralType) and is_str_type(pt.base_type)
-            and isinstance(_peel_coerce(a), TpyStrLiteral))
 
 def _value_tuple_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                   locals_: dict[str, TpyType],
@@ -8958,21 +8944,6 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
             return None
         return ("generic_qualified", cpp)
     return ("qualified", cpp)
-
-def _stub_template_param(pt: 'TpyType | None') -> bool:
-    """A param type that makes its @overload stub emit through the template-
-    header path (a protocol / Fn param synthesizes type params), so its call
-    site is not the plain named call this gate admits."""
-    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-         if isinstance(pt, TpyType) else None)
-    if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
-    elif isinstance(t, OptionalType):
-        t = unwrap_readonly(t.inner)
-    if t is None:
-        return False
-    return is_fn_type(t) or is_protocol_type(t) or is_dyn_protocol(t)
-
 
 def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           locals_: dict[str, TpyType], analyzer,

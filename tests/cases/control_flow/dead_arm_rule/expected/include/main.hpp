@@ -136,6 +136,12 @@ std::string match_membership(std::string_view mode);
 std::string literal_true(int32_t x);
 // def local_constant() -> int32:
 int32_t local_constant();
+// def local_none() -> str:
+std::string local_none();
+// def none_closure() -> str:
+std::string none_closure();
+// def none_loop(xs: list[str]) -> str:
+std::string none_loop(const std::vector<std::string>& xs);
 // def never_none(a: Dog) -> str:
 std::string never_none(const Dog& a);
 // def multi(a: Bat) -> str:

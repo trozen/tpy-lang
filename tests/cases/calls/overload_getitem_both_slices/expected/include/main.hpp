@@ -48,6 +48,38 @@ inline std::ostream& operator<<(std::ostream& os, const Window& obj) {
 //     self._data = [10, 20, 30, 40, 50]
 inline Window::Window() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
 
+// @overload
+// def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+inline std::span<const int32_t> Window::__getitem____basic_slice(::tpy::BasicSlice index) const {
+    if (true) {
+        std::optional<int32_t> s_start = index.start;
+        std::optional<int32_t> s_stop = index.stop;
+        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+    }
+}
+
+inline std::span<const int32_t> Window::__getitem__(::tpy::BasicSlice index) const {
+    return this->__getitem____basic_slice(index);
+}
+
+// @overload
+// def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+inline std::span<const int32_t> Window::__getitem____slice(::tpy::Slice index) const {
+    if (false) {
+    } else {
+        std::optional<int32_t> s_step = index.step;
+        int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
+        std::cout << step << "\n" << ::tpy::check_signals;
+        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
+    }
+}
+
+inline std::span<const int32_t> Window::__getitem__(::tpy::Slice index) const {
+    return this->__getitem____slice(index);
+}
+
 inline std::span<const int32_t> Window::operator[](::tpy::BasicSlice index) const {
     return __getitem__(index);
 }

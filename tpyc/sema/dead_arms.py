@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING
 
 from ..parse import (
     TpyArrayLiteral, TpyBinOp, TpyBoolLiteral, TpyCall, TpyChainedCompare,
@@ -31,11 +31,12 @@ from ..parse import (
 )
 from ..compilation_context import get_current_compiler
 from ..parse import nodes as _nodes
+from ..parse.nodes import NarrowFacts
 from ..prescan import fact_key_root
 from ..typesys import (
-    FunctionInfo, LiteralType, LiteralValue, RecordInfo, TpyType,
+    FunctionInfo, LiteralTag, LiteralValue, RecordInfo, TpyType,
     TypeRegistry, is_bodyless_binding, is_union_or_optional_type,
-    none_identity_of, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    literal_values, none_identity_of,
 )
 from .read_binding import ReadKind, resolve_read
 from .literal_utils import literal_value_from_expr
@@ -153,16 +154,6 @@ def literal_chain(e: TpyBinOp, values_of: ValuesOf) -> bool | None:
     return None
 
 
-def fact_values(facts: dict[str, TpyType]) -> ValuesOf:
-    """`values_of` over a name -> LiteralType fact map."""
-    def values_of(e: TpyExpr) -> tuple[LiteralValue, ...] | None:
-        if not isinstance(e, TpyName):
-            return None
-        t = facts.get(e.name)
-        return t.values if isinstance(t, LiteralType) else None
-    return values_of
-
-
 # -- The decider ---------------------------------------------------------------
 
 def _killed(nt: NarrowingTracker, e: TpyExpr) -> bool:
@@ -179,11 +170,9 @@ def name_values(nt: NarrowingTracker, e: TpyExpr, *,
     one literal a local bound once and never written holds."""
     if not isinstance(e, TpyName) or _killed(nt, e):
         return None
-    t = nt.ctx.get_expr_type(e)
-    if t is not None:
-        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-        if isinstance(t, LiteralType):
-            return t.values
+    values = literal_values(nt.ctx.get_expr_type(e))
+    if values is not None:
+        return values
     const = nt.ctx.func.constant_locals.get(e.name) if constants else None
     if const is None or resolve_read(nt.ctx, e.name).kind is not ReadKind.LOCAL:
         # A comprehension's or a lambda's own binding of the name, or a
@@ -192,13 +181,21 @@ def name_values(nt: NarrowingTracker, e: TpyExpr, *,
     return (const,)
 
 
-def _none_identity(nt: NarrowingTracker, e: TpyBinOp) -> bool | None:
+def _none_identity(nt: NarrowingTracker, e: TpyBinOp, *,
+                   constants: bool = True) -> bool | None:
     """`x is None` / `is not None` over an operand typed `None` (always
     None) or never None -- the operand types its analysis accepted: one
-    never None is accepted only as a test."""
+    never None is accepted only as a test -- or a local bound once to a
+    literal or `None` (`name_values`)."""
     for other, none_side in ((e.left, e.right), (e.right, e.left)):
         if not isinstance(none_side, TpyNoneLiteral):
             continue
+        values = name_values(nt, other, constants=constants)
+        if values is not None:
+            nones = {v.tag is LiteralTag.NONE for v in values}
+            if len(nones) == 1:
+                is_none = nones.pop()
+                return is_none if e.op == "is" else not is_none
         t = nt.ctx.get_expr_type(other)
         # The identity test reads the declared Optional / union of a name
         # flow narrowing proved non-None, as its analysis did.
@@ -268,7 +265,7 @@ def decided_truth(nt: NarrowingTracker, e: TpyExpr,
         ran(e)
     if isinstance(e, TpyBinOp):
         if e.op in ("is", "is not"):
-            return _none_identity(nt, e)
+            return _none_identity(nt, e, constants=constants)
         verdict = literal_test(e, values_of)
         if verdict is not None:
             return verdict
@@ -281,10 +278,11 @@ def decided_truth(nt: NarrowingTracker, e: TpyExpr,
 
 # -- Folding -----------------------------------------------------------------
 
-def narrows_past_literal(facts: Mapping[str, TpyType]) -> bool:
-    """Whether a test's path facts narrow a name past a Literal fact: the
-    test's own extraction binds the narrowed name there, so it stays."""
-    return any(not isinstance(t, LiteralType) for t in facts.values())
+def narrows_past_literal(facts: NarrowFacts) -> bool:
+    """Whether a test's path facts narrow a name past a Literal value
+    refinement: the test's own extraction binds the narrowed name there, so
+    it stays."""
+    return any(not facts.refines(k) for k in facts)
 
 
 def truthy_operands(expr: TpyExpr,

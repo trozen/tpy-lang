@@ -90,7 +90,9 @@ inline Vet::Vet() : count(::tpy::BigInt(0)) {}
 // def treat(self, animal: Dog) -> str: ...
 inline std::string Vet::treat__Dog(const Dog& animal) {
     this->count = ((this->count) + (::tpy::BigInt(1)));
-    return (::tpy::str_concat("Treated dog: ", animal.name));
+    if (true) {
+        return (::tpy::str_concat("Treated dog: ", animal.name));
+    }
 }
 
 inline std::string Vet::treat(const Dog& animal) {
@@ -101,7 +103,10 @@ inline std::string Vet::treat(const Dog& animal) {
 // def treat(self, animal: Cat) -> str: ...
 inline std::string Vet::treat__Cat(const Cat& animal) {
     this->count = ((this->count) + (::tpy::BigInt(1)));
-    return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+    if (false) {
+    } else {
+        return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+    }
 }
 
 inline std::string Vet::treat(const Cat& animal) {

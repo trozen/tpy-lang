@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
-    IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
+    IntLiteralType, FloatLiteralType, LiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
     NoneType, VoidType, SendType, SyncType, unwrap_send_sync,
     RecordInfo, FunctionInfo, ParamInfo, PropertyInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, unwrap_own, RefType, is_dyn_protocol,
@@ -1536,6 +1536,11 @@ class TypeOperations:
         """
         if type_a == type_b:
             return True
+        # A `Literal` side matches only a value of its set.
+        if isinstance(type_b, LiteralType) and not isinstance(type_a, LiteralType):
+            return type_b.admits(type_a)
+        if isinstance(type_a, LiteralType) and not isinstance(type_b, LiteralType):
+            return type_a.admits(type_b) if isinstance(type_b, IntLiteralType) else False
         if isinstance(type_a, IntLiteralType) and is_integer_type(type_b):
             return True
         if isinstance(type_b, IntLiteralType) and is_integer_type(type_a):

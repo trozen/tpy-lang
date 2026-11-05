@@ -1,0 +1,4 @@
+A `T()` default is evaluated at the `def` under CPython, where `T` is a
+TypeVar that cannot be called; the CPython `take_ptr` stub wraps an int,
+so a store through it does not reach the local; and `bump` is a C++
+template binding.

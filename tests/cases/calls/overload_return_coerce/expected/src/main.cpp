@@ -4,85 +4,77 @@
 namespace tpyapp::main {
 
 
-
-
-// def get_val(obj: A | B) -> float | int:
-//     if isinstance(obj, A):
-//         return obj.x  # int32, stub -> int (not float)
-//     else:
-//         return obj.y
+// # Test 1: int32 returned where stub says -> int, union has float first
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val__A(const A& obj) {
-    return obj.x;
+    if (true) {
+        return ::tpy::BigInt(obj.x);
+    }
 }
 
 // @overload
 // def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val__B(const B& obj) {
-    return obj.y;
+    if (false) {
+    } else {
+        return obj.y;
+    }
 }
 
-
-
-
-// def get_big(obj: C | B) -> float | int:
-//     if isinstance(obj, C):
-//         return obj.z  # int64, stub -> int (not float)
-//     else:
-//         return obj.y
+// # Test 2: int64 returned where stub says -> int, union has float first
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big__C(const C& obj) {
-    return obj.z;
+    if (true) {
+        return ::tpy::BigInt(obj.z);
+    }
 }
 
 // @overload
 // def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big__B(const B& obj) {
-    return obj.y;
+    if (false) {
+    } else {
+        return obj.y;
+    }
 }
 
-
-
-
-// def get_wide(obj: A | B) -> float | int64:
-//     if isinstance(obj, A):
-//         return obj.x  # int32, stub -> int64 (not float)
-//     else:
-//         return obj.y
+// # Test 3: int32 returned where stub says -> int64, union has float first
 // @overload
 // def get_wide(obj: A) -> int64: ...  # tpyc: ok
 int64_t get_wide__A(const A& obj) {
-    return obj.x;
+    if (true) {
+        return static_cast<int64_t>(obj.x);
+    }
 }
 
 // @overload
 // def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide__B(const B& obj) {
-    return obj.y;
+    if (false) {
+    } else {
+        return obj.y;
+    }
 }
 
-
-
-
-// def get_cast(obj: A | C) -> int | float:
-//     if isinstance(obj, A):
-//         return obj.x  # int32, stub -> float (not int)
-//     else:
-//         return obj.z
+// # Test 4: int32 returned where stub says -> float, union has int first
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast__A(const A& obj) {
-    return obj.x;
+    if (true) {
+        return static_cast<double>(obj.x);
+    }
 }
 
 // @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_cast__C(const C& obj) {
-    return obj.z;
+    if (false) {
+    } else {
+        return ::tpy::BigInt(obj.z);
+    }
 }
-
 
 // def main() -> None:
 //     a = A(int32(42))

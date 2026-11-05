@@ -408,11 +408,9 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
                 refusal = refused("generic body")
             elif source is None or ctx.thir_resumable_frames.get(func) is not source.frame:
                 refusal = missing(func)
-        elif func in ctx.thir_functions or func in ctx.thir_overload_functions:
+        elif func in ctx.thir_functions:
             if func.type_params or (owner is not None and owner.type_args):
                 refusal = refused("generic body")
-            elif analyzer.overload_groups.get(func):
-                refusal = refused("overloaded callable")
             elif fn is None:
                 refusal = missing(func)
         else:

@@ -597,7 +597,7 @@ def _emitted_reads(compiler: object, entry: object, source: str
                    if k[0] in source and k[1:] == at]
         assert excused, (_FRAMES_NOT_LOWERED, frames, rejected)
         _UNLOWERED_USED.update(excused)
-    walk([ctx.thir_functions, ctx.thir_overload_functions,
+    walk([ctx.thir_functions,
           ctx.thir_top_level, ctx.thir_constructors], False)
     walk(ctx.thir_resumables, True)
     return rendered, moved, taken

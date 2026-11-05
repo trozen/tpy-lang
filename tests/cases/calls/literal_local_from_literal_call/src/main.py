@@ -1,7 +1,6 @@
 # `Literal[str]`-annotated local initialized from a Literal-returning function:
-# Literal returns emit `std::string_view` storage (their values are static-
-# lifetime string literals), so the local also keeps view storage end-to-end --
-# no heap allocation. Regression guard for the view-safety inference path.
+# a `Literal[str]` is a `str` in C++, so the call returns an owned string and
+# the local owns it, exactly as a `str` local bound to a `-> str` call does.
 from typing import Literal
 
 

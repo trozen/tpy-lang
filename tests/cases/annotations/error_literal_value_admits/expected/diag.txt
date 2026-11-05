@@ -1,0 +1,1 @@
+main.py:14: error: Type mismatch in argument 'm': expected Literal["r", "w"], got 's', which may hold "zz"; pass one of "r", "w"

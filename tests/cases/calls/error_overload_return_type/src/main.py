@@ -19,6 +19,6 @@ def get_value(animal: Cat) -> int: ...
 
 def get_value(animal: Dog | Cat) -> str | int:
     if isinstance(animal, Dog):
-        return 42  # tpyc: error(/return type mismatch.*int.*str/)
+        return 42  # tpyc: error(/Type mismatch in return value: expected str, got int/)
     else:
         return animal.lives

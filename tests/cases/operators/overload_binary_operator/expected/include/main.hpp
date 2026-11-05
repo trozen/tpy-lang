@@ -110,6 +110,8 @@ inline Day::Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
 // @overload
 // def __sub__(self, other: Day) -> Delta: ...
 inline Delta Day::__sub____Day(Day other) const {
+    if (false) {
+    }
     return Delta(((this->ordinal) - (other.ordinal)));
 }
 
@@ -120,7 +122,9 @@ inline Delta Day::__sub__(Day other) const {
 // @overload
 // def __sub__(self, other: Delta) -> Day: ...
 inline Day Day::__sub____Delta(Delta other) const {
-    return Day(((this->ordinal) - (other.n)));
+    if (true) {
+        return Day(((this->ordinal) - (other.n)));
+    }
 }
 
 inline Day Day::__sub__(Delta other) const {

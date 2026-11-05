@@ -949,8 +949,7 @@ class G:
             r"equally:\n  __init__\(list\[str\]\)\n  __init__\(list\[int64\]\)$",
             id="raise-group-ambiguous"),
         # The `typing.overload` form: the stub the call resolves to decides
-        # the local (its implementation's narrowing does not lower,
-        # BUGS.md#overload-stub-narrows-container-param).
+        # the local.
         pytest.param(
             "from typing import overload\n"
             "@overload\ndef t(x: list[int32]) -> int32: ...\n"

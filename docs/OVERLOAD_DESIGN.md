@@ -7,8 +7,8 @@
 | 1 | Parser: recognize `@overload`, validate stub body | Done |
 | 2 | Sema: stub grouping, exhaustiveness validation | Done |
 | 3 | Sema: call resolution against stubs | Done |
-| 4 | Codegen: per-stub specialization, dead branch elimination | Done |
-| 5 | Codegen: return type validation per overload | Done |
+| 4 | Sema: each stub a `@dispatch` variant whose body is a copy of the implementation ("The copy") | Done |
+| 5 | Sema: each copy's returns checked against its stub's return type | Done |
 | - | Cross-module overload import | Done |
 | - | Method overloads | Done |
 | - | Generic function/method overloads | Done |
@@ -19,20 +19,21 @@
 
 | Feature | Notes |
 |---------|-------|
-| Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Call resolution takes a member at a union stub parameter (a union injection, "Call resolution"); the stub's specialization does not lower yet (`sig.overload_set.narrow_param`, and an `isinstance` over the stub's union `if.cond_facts_unmirrored`). |
 | Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. A free function's variants get distinct C++ names (`f__int32`, `f__int32__int32`, see "C++ names of variants"); a method's map to C++ overloads with different parameter counts. |
 | `register`-style `@dispatch` variants; `singledispatch` | A `@area.variant` registration form (variants named `_`, as in `functools.singledispatch`) is the only spelling type checkers accept for self-contained variants; `singledispatch` itself maps onto a first-argument-only `@dispatch` set with a generic fallback variant. Low priority; tracked in TODO.md. |
-| Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
+| `typing.overload` as a macro | The copy is one self-contained step (`method_expansion.copy_overload_implementation`) so it can move into a macro; TODO.md "`@overload` copies: the residue". |
 
 ---
 
 ## Overview
 
 Support Python's `@overload` decorator (PEP 484) to generate separate C++ overloads
-from a single implementation function. The compiler specializes the implementation body
-per overload stub by resolving isinstance/match checks at compile time and eliminating
-dead branches.
+from a single implementation function. Each stub becomes a `@dispatch` variant whose
+body is a copy of the implementation analyzed at the stub's types ("The copy"), so a
+test the stub decides -- an `isinstance`, an `is None`, a `Literal` compare, a `match`
+class pattern -- leaves its dead arm unanalyzed and unemitted, as in any body
+(`LANGUAGE_FEATURES.md` "Statically decided branches").
 
 ```python
 from typing import overload
@@ -56,15 +57,24 @@ Generated C++:
 
 ```cpp
 std::string describe__Dog(const Dog& x) {
-    return std::string("woof: ") + x.name;
+    if (true) {
+        return ::tpy::str_concat("woof: ", x.name);
+    }
 }
 
 std::string describe__Cat(const Cat& x) {
-    return std::string("meow: ") + x.name;
+    if (false) {
+    } else if (true) {
+        return ::tpy::str_concat("meow: ", x.name);
+    }
 }
 
 int32_t describe__Bird(const Bird& x) {
-    return x.wing_count;
+    if (false) {
+    } else if (false) {
+    } else {
+        return x.wing_count;
+    }
 }
 
 // describe(d) with d: Dog
@@ -79,7 +89,7 @@ names the variant the compiler resolved.
 
 Each variant of an overload set that is emitted as a C++ function of its
 own -- a bodied `@dispatch` variant, a `typing.overload` stub's
-specialization, of a free set or of a record's method / operator dunder
+copy, of a free set or of a record's method / operator dunder
 set -- gets its own C++ name when the set has more than one such
 variant. The call then names the variant sema resolved, so C++ overload
 resolution never re-decides it (left to C++, a protocol variant's `T&`
@@ -104,9 +114,7 @@ and two constrained templates over unrelated protocols are unordered).
   variant matched to the `Callable` slot) read that one fact.
 - Kept: `@native` / `@cpp_template` variants keep their runtime symbols (C++
   chooses among the hand-written runtime overloads), so `math.log` -- one
-  native and one bodied variant -- keeps `log` for its bodied one. A
-  `typing.overload` generator or coroutine implementation is emitted once,
-  not per stub, and keeps its name.
+  native and one bodied variant -- keeps `log` for its bodied one.
 - Methods and operator dunders (since 2026-10-27). A record's sets are
   named in one record-wide pass after inheritance is resolved
   (`TypeRegistrar.name_record_method_variants`), with the same allocator;
@@ -156,8 +164,7 @@ and two constrained templates over unrelated protocols are unordered).
   always did, picking among it by C++ rules
   (BUGS.md#dispatch-method-variant-reresolved-by-cpp). A variant with a
   `Literal` parameter has no forwarder: no plain-name member could tell
-  its values apart (a `typing.overload` literal-only group keeps only its
-  general stub under the plain name). Two variants whose C++ parameters
+  its values apart. Two variants whose C++ parameters
   coincide (`str` / `StrView`) with the same receiver const-ness are
   refused in sema with the identical-parameters diagnostic, since their
   forwarders would clash.
@@ -324,8 +331,9 @@ form is chosen by name rather than inferred from whether a def has a body:
 | mypy / pyright | accepted | same-name redefinition flagged (as for `multipledispatch`) |
 
 Both register one overload set in sema and share call-site resolution
-(below); the compiler emits one specialized C++ function per variant
-either way, each free variant under its own name. The parser records the decorator as `TpyFunction.overload_form`
+(below): a `typing.overload` set is replaced by its copies before
+registration ("The copy"), so the compiler emits one C++ function per
+variant either way, each free variant under its own name. The parser records the decorator as `TpyFunction.overload_form`
 and validates each def against it (a `@overload` stub with a body or a
 native binding, a `@dispatch` variant with neither); sema's
 `_require_overload_form` validates the group (no mixing under one name, a
@@ -334,12 +342,8 @@ Each `@dispatch` variant's body is analyzed like a plain def and its facts
 (which parameters it mutates or lends back, whether it writes `self`) live
 on that variant's own `FunctionInfo` (`FunctionInfo.body`, found by
 `typesys.body_function_info` / `body_method_info`), so every variant's
-signature is the one it would have as the only def of its name. A
-`@overload` implementation has no `FunctionInfo` of its own -- its stubs
-are the callables -- so its facts land on one stub by position (the last
-for a free function, the first for a method) until the implementation is
-expanded into per-stub variants (TODO.md "`@overload` becomes `@dispatch`
-variants").
+signature is the one it would have as the only def of its name -- a
+`typing.overload` copy included.
 `@dispatch` is the form the builtin stubs use throughout (`lib/tpy/tpy`),
 and the convenient one for arity-variant APIs in larger programs;
 `@overload` is the form to reach for when the source must also type-check
@@ -395,6 +399,92 @@ Rules:
   binding, so nothing clashes, and the bound picks the candidate. Bodied
   variants must still differ in a parameter type.
 
+### The copy (`typing.overload`)
+
+Before registration -- where a module's overload groups are paired
+(`TypeRegistrar.copy_overload_sets`), and for a record's methods before
+method expansion -- each stub of a `typing.overload` set becomes a
+`@dispatch` variant whose body is a deep copy of the implementation's
+(`method_expansion.copy_overload_implementation`, one self-contained
+step so it can move into a macro). The stubs and the implementation are
+kept only to check the stubs against the implementation
+(`validate_overload_signatures`, after `Self` substitution for methods);
+neither is registered.
+
+- **Signature.** The implementation's parameter names (a stub's are a
+  prefix of them) at the stub's types; the stub's return type and type
+  parameters (same names as the implementation's). A `Literal` stub
+  parameter takes its base from the implementation's parameter (the union
+  member its values belong to), so `Literal[2]` over `x: int` holds a
+  BigInt as the body expects.
+- **Decorators.** The call contract comes from the stub (`@readonly`,
+  `@auto_readonly`, the parameter kinds; static / class must agree with the
+  implementation), what the body declares about itself from the
+  implementation (`@error_return`, `@pure`, `@noalloc`, the `self`
+  annotation, an `@auto_readonly` on the implementation, a
+  `@function_macro`, which runs on each copy).
+- **Defaults.** The value CPython's implementation receives for an
+  omitted argument is its own default, whichever stub a type checker
+  picks. So an argument may be omitted where SOME stub of the set writes a
+  default for its parameter (set-wide omittability), and every copy
+  declaring that parameter declares the implementation's default there;
+  where no stub writes one, omission is an error. Each copy is ranked with
+  the omitted cell seen as that default's value, typed exactly as the same
+  expression written at that position (`default_written_type`, then the
+  written argument's `enriched_literal`: an int literal keeps its open
+  width, and becomes its `Literal` only where the set has a `Literal`
+  parameter, as a written one does): the type is decided once, where
+  the copy's defaults are resolved, and recorded on the copy's parameter
+  (`ParamInfo.omitted_arg`), so every ranking path -- an explicit call,
+  an implicit dunder call (`1 in c`) -- reads it, and it
+  scores as a written argument does: with stubs `st(mode: Literal["r"])`
+  / `st(mode: Literal["rb"] = "rb")` over `def st(mode: str = "r")`,
+  `st()` runs the `Literal["r"]` copy; with `f(mode: Literal["r"] = "r")`
+  / `f(mode: str = "r")`, `f()` runs the `Literal` copy; with
+  `g(x: int)` / `g(x: str = "s")` over `def g(x: int | str = 5)`, `g()`
+  runs the `int` copy with `5`. A copy whose parameter type does not take
+  the default -- by the one predicate the implementation's own default
+  checks use (`default_refusal`), so a value out of a fixed width's range
+  is refused as a written one is -- has none there
+  (`TypeRegistrar.resolve_defaults` drops it where the copy's defaults are
+  checked), so a call omitting it does not match that copy: stubs
+  `f(x: int32 = 0)` / `f(x: int64 = 3000000000)` over a default of
+  `3000000000` run `f()` at the `int64` copy, as `f(3000000000)` does. A
+  short copy that does not declare the parameter
+  matches as written, its local holding the default (stubs `f(x: int32)` /
+  `f(x: str, y: int32 = 7)`: `f(1)` runs the `int32` copy). A parameter
+  whose declared type names a type parameter (`y: T = T()`,
+  `y: T = 0`) takes no ranked cell: its default's type is the parameter's
+  own, known once the call infers `T`. After resolution the call is laid
+  out as any other: the copy keeps the default as its C++ default where
+  `default_emittable_at` holds (`y = T{}` included), and the call passes it
+  explicitly otherwise. A "No matching overload" diagnostic lists the
+  written arguments only. A stub's own default only marks its parameter
+  omittable, and is type-checked against the stub's parameter. A stub
+  default where the implementation has none leaves the call unmatched
+  (BUGS.md#overload-stub-default-without-impl-default), and so does a
+  default no copy takes: stubs `f(mode: Literal["a"])` /
+  `f(mode: Literal["b"] = "b")` over `def f(mode: str = "r")` refuse
+  `f()`, which CPython runs with `"r"`
+  (BUGS.md#overload-stub-default-type-mismatch-refused).
+- **Short stubs.** A stub with fewer parameters than the implementation
+  binds each omitted parameter as a local of its copy, initialized with the
+  value the implementation's default names where the implementation is
+  written, whatever the body binds (a stamped read of the constant, as a
+  call's filled default takes it), typed at the
+  implementation's parameter type (`Self` the class, as in the
+  signatures). A local bound once to a literal or
+  `None` carries that value, so `if mode == "r":` / `if tag is None:` on
+  it decide.
+- **Diagnostics.** An error in a copied body is reported at its line in
+  the implementation, with a note naming the stub whose copy met it
+  (`note: checked at the @overload signature 'f(n: Literal[1])'`);
+  warnings repeated across copies collapse by text.
+- **Restriction.** A copy types each parameter at its stub's type, so a
+  body that writes a parameter with a value outside the stub's type (a
+  `Literal` stub's `n += 1`) is the ordinary type error
+  (BUGS.md#overload-written-param-outside-stub).
+
 ### Exhaustiveness
 
 For each parameter position where the implementation has a union type, the compiler
@@ -413,21 +503,19 @@ checks that stub types collectively cover all union members:
 Rules:
 - Only parameters where the implementation type is a union are checked
 - Each stub parameter is a concrete type, a union of implementation members, or
-  the implementation type itself. A partial union stub (e.g., `Dog | Cat` when impl
-  has `Dog | Cat | Bird`) resolves but does not compile yet (see table above).
+  the implementation type itself.
 - Stub types must be subsets of the implementation's union members
 - Stub parameter names must match implementation parameter names
 - Parameters identical across all stubs and implementation are not checked
 - Coverage is checked per-parameter independently (no cross-product requirement)
-- Return types are NOT checked for exhaustiveness -- each overload's live return
-  paths are validated against its declared return type during codegen
+- Return types are NOT checked for exhaustiveness -- each copy's returns are
+  checked against its stub's return type like any body's
 
 ### Return type validation
 
-Each overload stub can declare a different return type. During codegen, after dead
-branch elimination prunes unreachable branches, every surviving `return` statement
-is checked against the stub's declared return type using sema's full compatibility
-rules (coercions, Optional wrapping, inheritance, etc.).
+Each overload stub can declare a different return type. A copy's live `return`
+statements are checked against its stub's return type by sema's ordinary rule (a
+dead arm is not checked), the error naming the stub in its note.
 
 ```python
 @overload
@@ -436,7 +524,7 @@ def get_value(animal: Dog) -> str: ...
 def get_value(animal: Cat) -> int: ...
 def get_value(animal: Dog | Cat) -> str | int:
     if isinstance(animal, Dog):
-        return 42  # error: returning 'int' but this overload declares '-> str'
+        return 42  # error: Type mismatch in return value: expected str, got int
     else:
         return animal.lives
 ```
@@ -1161,11 +1249,18 @@ conversion row's `check_range` refuses is no conversion there (an int
 literal a fixed-width parameter cannot hold, a float literal `float32`
 cannot), so `h(10000000000, n8)` at `h(int32, int64)` / `h(str, int64)`
 has no match and `g(1e300, n8)` at `g(float32, int64)` /
-`g(float, int64)` picks `float`. A `Literal[...]` value converts to its own
-base type one step more cheaply than to any other type (a cost of 1 on
-every other conversion of it, `_converted_cell`), so `f(mode)` with
-`mode: Literal["r", "w"]` at `f(str)` / `f(String)` picks `str`, and
-`"text:" + mode` takes `str`'s own `__add__` -- the two would otherwise tie.
+`g(float, int64)` picks `float`. A `Literal[...]` value is a strict match
+at its own base type, and an int set at a fixed width holding every value,
+in the `SUBCLASS` tier -- as a subclass at its base, behind a `Literal`
+parameter its set fits (`_literal_value_cost`) -- and converts to any other
+type at a cost of 1 (`_converted_cell`), so `f(mode)` with
+`mode: Literal["r", "w"]` at `f(str)` / `f(String)` picks `str`,
+`"text:" + mode` takes `str`'s own `__add__`, and `str(xs[1])` over a
+`list[Literal[True, False]]` takes the `bool` variant over the protocol one.
+A local every binding of which stores a literal ranks as the `Literal` of
+those values (`enriched_source`), so `s = "x"; f(s)` at
+`f(Literal["r"])` / `f(str)` picks `str`, and `t = "r"; f(t)` the
+`Literal`.
 A pick that already resolves stays: a `Literal` parameter holding the value
 is a strict match and wins before any conversion, and a `Literal` value at
 a set that converts it to one type only converts it there.
@@ -1235,8 +1330,7 @@ needle stays unconverted) and records the same facts
 (`commit_facts`, handed its operands). What stays per kind is data the lowering reads or
 an open rule: the stamp (a constructor's synthesized signature, a
 substituted function, `ResolvedBinop`, `dunders`), the `inferred_type_args`
-layout, the builtin receive form, the fresh-owned-argument rule and the
-one-char literal at `char`.
+layout, the builtin receive form and the fresh-owned-argument rule.
 
 #### Worked example: `sum([])`
 
@@ -1419,71 +1513,16 @@ operand types for '+': int32 and str") instead of a generic
   `tests/cases/readonly/auto_readonly_overload_check_passes`
   (regression guard that auto_readonly clones are exempted).
 
-## Codegen: Dead Branch Elimination
+## Dead arms
 
-The key mechanism is a **specialization map** threaded through codegen:
-
-```python
-# codegen_cpp/context.py
-overload_param_types: dict[str, TpyType]  # param_name -> concrete type
-```
-
-### isinstance resolution
-
-```python
-def resolve_isinstance_statically(
-    self, var_name: str, check_type: TpyType
-) -> bool | None:
-    """Returns True/False if statically decidable, None if dynamic."""
-    if self.overload_ctx is None:
-        return None
-    concrete = self.overload_ctx.param_types.get(var_name)
-    if concrete is None:
-        return None
-    if concrete == check_type:
-        return True
-    if isinstance(check_type, UnionType) and concrete in check_type.members:
-        return True
-    # concrete is a different type entirely
-    return False
-```
-
-### if/elif/else chain
-
-```python
-# Pseudocode for generating an if/elif chain with overload context
-for branch in [if_branch, *elif_branches]:
-    result = resolve_isinstance_statically(var, branch.check_type)
-    if result is True:
-        emit_body(branch.body)  # this is the live branch
-        return  # skip remaining branches (including else)
-    elif result is False:
-        continue  # skip this branch entirely
-    else:
-        emit_conditional(branch)  # dynamic check (non-specialized param)
-
-# If we get here, emit else body (if present)
-if else_body:
-    emit_body(else_body)
-```
-
-### match/case
-
-```python
-# Pseudocode for generating match/case with overload context
-for arm in match.arms:
-    if is_type_pattern(arm.pattern):
-        result = resolve_isinstance_statically(subject, arm.pattern.type)
-        if result is True:
-            emit_body(arm.body)
-            return
-        elif result is False:
-            continue
-    elif is_wildcard(arm.pattern):
-        emit_body(arm.body)
-        return
-    # ... other pattern kinds handled normally
-```
+A copy is an ordinary body, so the one sema rule for every body decides
+its tests (`tpyc/sema/dead_arms.py`, `LANGUAGE_FEATURES.md` "Statically
+decided branches"): an `isinstance` its stub's type answers, an `is None`
+on a parameter typed `None` or never None, a `Literal` compare, a `match`
+class pattern. A dead arm is neither type-checked nor emitted; a decided
+test that runs user code keeps its evaluation (`f(a) > 100 and False`
+renders the call). A polymorphic base stub's `isinstance(a, Sub)` stays a
+run-time test, as in any body.
 
 ## Examples
 

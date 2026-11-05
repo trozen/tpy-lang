@@ -13,14 +13,13 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from .typesys import (
-    TpyType, NominalType, OwnType, LiteralType, NONE,
+    TpyType, NominalType, OwnType, NONE,
     is_protocol_type, is_dyn_protocol, is_fn_type,
     unwrap_readonly, unwrap_ref_type, protocol_param_alternatives,
 )
 from .parse import TpyFunction, TpyRecord
 from .parse.nodes import DEL_HOOK, INIT_METHOD, MOVE_HOOK
 from .type_def_registry import protocol_info_of
-from .identity_map import IdentityMap
 
 # Unified protocol parameter info: name, list of protocol types (1+), nullable flag
 ProtocolParamInfo = namedtuple('ProtocolParamInfo', ['name', 'protocols', 'has_none'])
@@ -69,14 +68,6 @@ def signature_is_template(func: TpyFunction) -> bool:
     return any(is_fn_type(pt) for _, pt in func.params)
 
 
-def group_is_template(func: TpyFunction, stubs: list[TpyFunction]) -> bool:
-    """An @overload group renders a template when ANY stub's signature does,
-    even if the implementation's does not: a template stub must stay
-    instantiable in the header, so the whole group is header-only."""
-    return (signature_is_template(func)
-            or any(signature_is_template(s) for s in stubs))
-
-
 def protocol_return(return_type: TpyType) -> NominalType | None:
     """The protocol a return type renders through, or None. Unwraps
     Own[Protocol] so a consuming __iter__ returning Own[Iterator[T]] gets
@@ -102,36 +93,11 @@ def return_is_deduced(return_type: TpyType) -> bool:
     return not (pi and pi.is_dynamic)
 
 
-def overload_stubs_are_literal_only(
-    stubs: 'list', impl: TpyFunction,
-) -> bool:
-    """Check if overload stubs differ from the impl only by Literal annotations.
-
-    When all stubs have the same C++ parameter types as the implementation
-    (because they only differ by LiteralType vs base type), per-stub
-    specialization would produce duplicate C++ definitions. In that case,
-    emit just the implementation function. Shared with THIR's per-stub gate
-    (a literal-only group emits through the mangled-name path, which never
-    sets the per-stub interception key).
-    """
-    for stub in stubs:
-        for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(stub_ptype, LiteralType):
-                continue
-            if stub_ptype != impl_ptype:
-                return False
-    return any(
-        isinstance(ptype, LiteralType)
-        for stub in stubs
-        for _, ptype in stub.params
-    )
-
-
 @dataclass(frozen=True)
 class MemberSignature:
     """What a member's signature says about where its body can be defined.
-    ``template``: it has a C++ template head (its class's, its own, or its
-    @overload group's), so the body must be visible wherever it is
+    ``template``: it has a C++ template head (its class's or its own), so
+    the body must be visible wherever it is
     instantiated -- the header. ``deduced``: its return renders `auto`, which
     C++ needs before the member's first use. Signature-only: codegen's
     placement (`member_def`) and the import-cycle gate (which runs before
@@ -140,14 +106,11 @@ class MemberSignature:
     deduced: bool
 
 
-def member_signature(func: TpyFunction, *, class_generic: bool,
-                     group_template: bool = False) -> MemberSignature:
-    """`MemberSignature` of a member of a class that is generic or not, or of
-    one @overload variant (`func` being its stub); ``group_template`` is the
-    variant's group's `group_is_template`, which every variant shares."""
+def member_signature(func: TpyFunction, *,
+                     class_generic: bool) -> MemberSignature:
+    """`MemberSignature` of a member of a class that is generic or not."""
     return MemberSignature(
-        template=(class_generic or group_template
-                  or signature_is_template(func)),
+        template=class_generic or signature_is_template(func),
         deduced=return_is_deduced(func.return_type))
 
 
@@ -157,8 +120,6 @@ _CTOR_DTOR_NAMES = (INIT_METHOD, DEL_HOOK, MOVE_HOOK)
 class MemberKind(Enum):
     # A body emitted as itself (a `@dispatch` variant too).
     METHOD = auto()
-    # One `@overload` stub's specialization of its group's implementation.
-    VARIANT = auto()
     CTOR = auto()
     # `__del__` and its `__move__`: one partition.
     DESTRUCTOR = auto()
@@ -181,60 +142,47 @@ class RefQualifier(Enum):
 
 @dataclass(frozen=True)
 class EmittedMember:
-    """One member of a record's C++: ``func`` owns the signature it declares
-    (a variant's stub), ``body`` the body defined for it (the variant's
-    implementation). ``form_source`` is the declaration whose receiver
-    const-ness it takes: a variant of a ``literal_only`` group
-    (`overload_stubs_are_literal_only`) is specialized from its
-    implementation's signature, any other from its stub's, whose
-    decorators state that overload's contract. ``ref`` is the receiver's
+    """One member of a record's C++: ``func`` the def whose signature it
+    declares and whose body it defines. ``ref`` is the receiver's
     ref-qualifier as emitted."""
     func: TpyFunction
-    body: TpyFunction
     kind: MemberKind
     sig: MemberSignature
     ref: RefQualifier
-    form_source: TpyFunction
-    literal_only: bool = False
 
     @property
     def variant(self) -> bool:
-        return self.kind is MemberKind.VARIANT
+        """A member of an overload set: placed as a variant (`member_def`)."""
+        return self.func.is_overload_stub
 
     @property
     def readonly(self) -> bool:
         """The receiver is const. Read when asked, since Phase 2's const
         inference settles `is_readonly` after the import-cycle gate has
         built the members."""
-        return self.form_source.is_readonly and not self.func.is_staticmethod
+        return self.func.is_readonly and not self.func.is_staticmethod
 
 
-def _ref_qualifier(kind: MemberKind, body: TpyFunction) -> RefQualifier:
-    # A resumable member's factory takes no ref-qualifier, and a variant's
-    # specialization copies only `is_consuming` from its body.
+def _ref_qualifier(kind: MemberKind, func: TpyFunction) -> RefQualifier:
+    # A resumable member's factory takes no ref-qualifier.
     if kind is MemberKind.RESUMABLE:
         return RefQualifier.NONE
-    if body.is_auto_own_borrowing_clone and kind is not MemberKind.VARIANT:
+    if func.is_auto_own_borrowing_clone:
         return RefQualifier.LVALUE
-    if body.is_consuming:
+    if func.is_consuming:
         return RefQualifier.RVALUE
     return RefQualifier.NONE
 
 
-def _member(func: TpyFunction, body: TpyFunction, kind: MemberKind,
-            sig: MemberSignature, form_source: TpyFunction, *,
-            literal_only: bool = False) -> EmittedMember:
-    return EmittedMember(func, body, kind, sig, _ref_qualifier(kind, body),
-                         form_source, literal_only)
+def _member(func: TpyFunction, kind: MemberKind,
+            sig: MemberSignature) -> EmittedMember:
+    return EmittedMember(func, kind, sig, _ref_qualifier(kind, func))
 
 
-def record_emitted_members(record: TpyRecord, overload_groups: IdentityMap,
-                           overload_twins: IdentityMap) -> list[EmittedMember]:
+def record_emitted_members(record: TpyRecord) -> list[EmittedMember]:
     """Every member of a (non-native) record's C++ whose signature repeats a
     def's, with its signature facts. Signature-only: `member_def`'s
-    ``small`` is the caller's to apply. An `@overload` implementation is
-    emitted as its stubs' specializations (``overload_groups``), its clone
-    twin (``overload_twins``) not at all."""
+    ``small`` is the caller's to apply."""
     generic = bool(record.type_params)
     out: list[EmittedMember] = []
     for method in record.methods:
@@ -242,35 +190,20 @@ def record_emitted_members(record: TpyRecord, overload_groups: IdentityMap,
         if (method.name in _CTOR_DTOR_NAMES
                 or (method.is_overload_stub and method.is_stub)):
             continue
-        stubs = overload_groups.get(method)
         if method.is_generator or method.is_async:
             kind = MemberKind.RESUMABLE
         elif method.cpp_template is not None:
             kind = MemberKind.EXPANDED
-        elif stubs:
-            template = group_is_template(method, stubs)
-            literal_only = overload_stubs_are_literal_only(stubs, method)
-            out.extend(
-                _member(stub, method, MemberKind.VARIANT,
-                        member_signature(stub, class_generic=generic,
-                                         group_template=template),
-                        method if literal_only else stub,
-                        literal_only=literal_only)
-                for stub in stubs)
-            continue
-        elif method in overload_twins:
-            continue
         else:
             kind = MemberKind.METHOD
-        out.append(_member(method, method, kind,
-                           member_signature(method, class_generic=generic),
-                           method))
+        out.append(_member(method, kind,
+                           member_signature(method, class_generic=generic)))
     init, del_, move = record.init_method, record.del_method, record.move_method
     if init is not None:
-        out.append(_member(init, init, MemberKind.CTOR,
-                           member_signature(init, class_generic=generic), init))
+        out.append(_member(init, MemberKind.CTOR,
+                           member_signature(init, class_generic=generic)))
     if del_ is not None:
         class_sig = MemberSignature(template=generic, deduced=False)
-        out.extend(_member(h, h, MemberKind.DESTRUCTOR, class_sig, h)
+        out.extend(_member(h, MemberKind.DESTRUCTOR, class_sig)
                    for h in (del_, move) if h is not None)
     return out

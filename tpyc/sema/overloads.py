@@ -16,21 +16,22 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, FLOAT,
     TypeParamRef, FunctionInfo, ParamInfo, is_protocol_type,
     unwrap_readonly,
-    PendingStrType, PendingViewType, LiteralType, LiteralTag,
+    PendingStrType, PendingViewType, LiteralType,
     PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType, UnionType,
     unwrap_ref_type, strip_own_type_args,
-    is_callable_type, is_float_type, is_integer_type, is_any_float_type,
+    is_callable_type, is_float_type, is_any_float_type,
     contains_type_param, contains_pending_leaf, type_param_names,
 )
 from ..type_def_registry import (
-    is_fixed_int_type, is_big_int_type, is_bool_type,
+    is_fixed_int_type, is_big_int_type,
     is_str_type, is_bytes_type, is_str_category, is_bytes_category,
     int_traits_of, is_varargs,
 )
 from .arg_binding import ArgBinding, BindReject, CallSource, bind
 from ..coercions import (resolve_coercion, CoercionContext, int_literal_fits_fixed_int,
+                         literal_values_fit,
                          coercion_refuses_value, callable_fits,
                          callable_value_fits, Inherits)
 from ..identity_map import IdentityMap
@@ -527,6 +528,27 @@ def _coercion_upcast_distance(arg_type: TpyType, param_type: TpyType,
     return None
 
 
+def _literal_value_cost(lit: LiteralType, param: TpyType,
+                        default_int_type: TpyType | None,
+                        homes: LiteralHomes | None) -> int | None:
+    """How far a `Literal` value widens to a plain parameter it matches
+    strictly (`_classify_strict_match`): its own base, or for an int set a
+    fixed width holding every value -- the width its literals would take
+    -- else None."""
+    if lit.is_int_base() and is_fixed_int_type(param):
+        # The base is the literals' default width, which need not hold them
+        # (`Literal[3000000000]` over `int32`): the values decide the fit.
+        if not literal_values_fit(lit, param):
+            return None
+        if lit.base_type == param:
+            return 0
+        return _scalar_widening_cost(lit.base_type, param, default_int_type,
+                                     homes)
+    if lit.base_type == param:
+        return 0
+    return None
+
+
 def _classify_strict_match(
     arg_type: TpyType,
     param_type: TpyType,
@@ -552,6 +574,16 @@ def _classify_strict_match(
         param_inner = param_inner.wrapped
     if arg_inner == param_inner:
         return (MatchTier.EXACT_CONCRETE, 0)
+    if isinstance(param_inner, LiteralType):
+        return ((MatchTier.EXACT_CONCRETE, 0)
+                if param_inner.admits(arg_inner) else None)
+    # A `Literal` value at a plain parameter of its kind matches as a
+    # subclass at its base does: behind a `Literal` parameter its set fits.
+    if isinstance(arg_inner, LiteralType):
+        cost = _literal_value_cost(arg_inner, param_inner, default_int_type,
+                                   homes)
+        if cost is not None:
+            return (MatchTier.SUBCLASS, cost)
     # Every container a call to this candidate alone would accept is a
     # strict match; how far it widens is the candidate's own first key
     # (`_container_fit`), so it costs nothing here.
@@ -598,17 +630,6 @@ def _classify_strict_match(
             return (MatchTier.EXACT_CONCRETE, 0)
     if isinstance(arg_inner, PendingStrType) and is_str_type(param_inner):
         return (MatchTier.EXACT_CONCRETE, 0)
-    # Single-value LiteralType matches multi-value LiteralType if value is in the set.
-    # LiteralType -> base type is left to the conversion stage (a converted cell)
-    # so that Literal stubs are preferred over plain stubs regardless of order.
-    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
-        return ((MatchTier.EXACT_CONCRETE, 0)
-                if all(v in param_inner.values for v in arg_inner.values) else None)
-    # IntLiteralType matches LiteralType with int base if value is in the set.
-    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
-        if arg_inner.value is not None and param_inner.contains(LiteralTag.INT, arg_inner.value):
-            return (MatchTier.EXACT_CONCRETE, 0)
-        return None
     # PendingBytesType (unresolved bytes local) matches bytes params
     if isinstance(arg_inner, PendingBytesType) and is_bytes_type(param_inner):
         return (MatchTier.EXACT_CONCRETE, 0)
@@ -742,6 +763,8 @@ def type_matches_numeric(
     """
     if arg_type == param_type:
         return True
+    if isinstance(param_type, LiteralType):
+        return param_type.admits(arg_type)
     if isinstance(arg_type, IntLiteralType):
         if is_fixed_int_type(param_type):
             return int_literal_fits_fixed_int(arg_type, param_type)
@@ -802,6 +825,8 @@ def type_matches_with_coercion(
     # Own[T] param accepts T values (ownership marker, not a distinct type)
     if isinstance(param_inner, OwnType):
         param_inner = param_inner.wrapped
+    if isinstance(param_inner, LiteralType):
+        return param_inner.admits(arg_inner)
     if type_matches_numeric(arg_inner, param_inner):
         return True
     # None -> Optional[T]
@@ -810,22 +835,6 @@ def type_matches_with_coercion(
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and is_str_category(param_inner):
         return True
-    # Single-value LiteralType matches multi-value LiteralType if value is in the set
-    if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
-        return all(v in param_inner.values for v in arg_inner.values)
-    # LiteralType falls back to matching its base type
-    if isinstance(arg_inner, LiteralType):
-        if arg_inner.is_str_base() and is_str_category(param_inner):
-            return True
-        if arg_inner.is_int_base() and is_integer_type(param_inner):
-            return True
-        if arg_inner.is_bool_base() and is_bool_type(param_inner):
-            return True
-    # IntLiteralType matches LiteralType with int base if value is in the set
-    if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
-        if arg_inner.value is not None:
-            return param_inner.contains(LiteralTag.INT, arg_inner.value)
-        return False
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
     if isinstance(arg_inner, PendingBytesType) and is_bytes_category(param_inner):
         return True
@@ -1237,6 +1246,12 @@ def _rank_stages(
             fits.append(None)
             continue
         evidence = bound.evidence(cand.args)
+        # An omitted `typing.overload` copy parameter ranks as the
+        # implementation's default written there.
+        cells = [(i, t) for i in bound.omitted()
+                 if (t := overload.params[i].omitted_arg) is not None]
+        if cells:
+            evidence = sorted(evidence + cells, key=lambda cell: cell[0])
         evidences.append(evidence)
         bindings.append(bound)
         if generic and ranking.type_ops is None:

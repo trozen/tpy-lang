@@ -69,7 +69,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_2 = ::tpystd::itertools::repeat<int32_t>(7, 3);
+        auto __obj_2 = ::tpystd::itertools::repeat__T__int32<int32_t>(7, 3);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -80,7 +80,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_3 = ::tpystd::itertools::repeat<int32_t>(7, 0);
+        auto __obj_3 = ::tpystd::itertools::repeat__T__int32<int32_t>(7, 0);
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -91,7 +91,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_4 = ::tpystd::itertools::repeat<int32_t>(7, -3);
+        auto __obj_4 = ::tpystd::itertools::repeat__T__int32<int32_t>(7, -3);
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -100,7 +100,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpystd::itertools::repeat<int32_t>(9);
+    auto __tmp_3 = ::tpystd::itertools::repeat__T<int32_t>(9);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_5 = ::tpystd::itertools::islice<int32_t>(__tmp_3, 4);
@@ -114,7 +114,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_6 = ::tpystd::itertools::repeat<int32_t>(8, 2);
+        auto __obj_6 = ::tpystd::itertools::repeat__T__int32<int32_t>(8, 2);
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {

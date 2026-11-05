@@ -1,6 +1,7 @@
 # `Literal[str]`-annotated local reassigned from a Literal-returning function:
-# both initial string-literal RHS and the Literal-call source are view-safe,
-# so the local keeps view storage across the reassignment.
+# the call returns an owned string (a `Literal[str]` is a `str` in C++), so
+# the local owns its storage, exactly as its `str` twin reassigned from a
+# `-> str` call does.
 from typing import Literal
 
 

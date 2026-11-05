@@ -99,7 +99,6 @@ from .frame_cfg import collect_frame_nested_defs
 from ...sema.call_lends import MayLend
 from .context import (BindingTableError,
                       FrameLocalClass, ValueOptKind, _LowerCtx,
-                      _without_names,
                       binding_source_sites, names_with, nested_def_prescan,
                       prescan_without)
 from .predicates import (_bytes_name_form, _is_borrow_form_name,
@@ -323,11 +322,6 @@ class PlanInputs:
     const_scope: bool = False
     # The frame fields' classes, derived once by `plan_bindings`.
     frame_facts: '_FrameFacts | None' = None
-    # An @overload specialization's stub narrowing and literal facts: the
-    # lowering folds an `if` they decide statically.
-    overload_narrowing: 'Mapping[str, TpyType] | None' = None
-    overload_literal_facts: Mapping[str, TpyType] = field(
-        default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -3174,13 +3168,6 @@ class _Planner:
         self.prescan = None
         # Planning a nested def's body.
         self.nested = False
-        # A statically-true @overload arm ending in a return / raise drops
-        # the rest of the function's top-level statements.
-        self.terminated = False
-        # The stub's facts the fold reads; a nested def's own names leave
-        # them, as they leave the lowering's (`shadow_scope`).
-        self.overload_narrowing = inp.overload_narrowing
-        self.overload_literal_facts = inp.overload_literal_facts
         # The for statement whose head unpack is being planned: a
         # suspending loop's head binds the frame's own fields.
         self.loop: TpyForEach | None = None
@@ -3221,19 +3208,14 @@ class _Planner:
             self.table.sites[key] = self.table.sites.get(key, ()) + (rec,)
 
     def block(self, stmts: list[TpyStmt], node: ScopeNode, *,
-              branch: bool = True, top_level: bool = False) -> ScopeNode:
+              branch: bool = True) -> ScopeNode:
         saved = self.in_branch
-        saved_terminated = self.terminated
         self.in_branch = saved or branch
         try:
             for s in stmts:
-                if top_level and self.terminated:
-                    break
                 node = self.stmt(s, node)
         finally:
             self.in_branch = saved
-            if not top_level:
-                self.terminated = saved_terminated
         return node
 
     def stmt(self, s: TpyStmt, node: ScopeNode) -> ScopeNode:
@@ -3247,16 +3229,6 @@ class _Planner:
 
     def _stmt(self, s: TpyStmt, node: ScopeNode) -> ScopeNode:
         an = self.analyzer
-        # An @overload fold lowers the arm it selects flat in the enclosing
-        # block, before (and instead of) the statement's hoists.
-        if isinstance(s, TpyIf):
-            folded = self._folded_if(s, node)
-            if folded is not None:
-                return folded
-        if isinstance(s, TpyMatch):
-            folded = self._folded_match(s, node)
-            if folded is not None:
-                return folded
         # A statement's sema hoists are predeclared before any of it lowers,
         # its condition's walrus included.
         hoists = an.if_branch_decls.get(s) or {}
@@ -3403,48 +3375,6 @@ class _Planner:
                     _walrus_type(w, self.analyzer), node)
         return node.child(wal)
 
-    def _folded_if(self, s: TpyIf, node: ScopeNode) -> ScopeNode | None:
-        """`_lower_overload_folded_if`'s walk over the same plan. None where
-        the lowering does not fold (or rejects)."""
-        plan = _p.overload_if_fold(s, self.overload_narrowing,
-                                   self.overload_literal_facts)
-        if plan is None or plan.reject is not None:
-            return None
-        # A folded-away link is never lowered, so only the statement and
-        # the live links are keyed.
-        self.table.scope_at[s] = node
-        if plan.flat is not None:
-            end = self.block(plan.flat, node, branch=False)
-            if plan.terminates:
-                self.terminated = True
-            return end
-        # The first live condition lowers at the statement, so its walrus
-        # targets outlive it as an unfolded `if`'s do.
-        node = self._walrus_scope(plan.live[0], node)
-        self.table.scope_at[s] = node
-        for link in plan.live:
-            self.table.scope_at[link] = node
-            for e in link.exprs():
-                self.table.stmt_expr_scope[e] = node
-                self.expr(e, node)
-            self.block(link.then_body, node)
-        self.block(plan.else_body, node)
-        return node
-
-    def _folded_match(self, s: TpyMatch, node: ScopeNode
-                      ) -> ScopeNode | None:
-        """`_lower_overload_folded_match`'s walk over the same plan: the
-        selected case's captures and body in the enclosing block, so its
-        declarations outlive the statement. None where the lowering does
-        not fold (or rejects)."""
-        plan = _p.overload_match_fold(s, self.overload_narrowing)
-        if plan is None or plan.reject is not None:
-            return None
-        self.table.scope_at[s] = node
-        cnode = node.child(self._case_captures(s, plan.case, node))
-        self.table.scope_at[plan.case] = cnode
-        return self.block(plan.case.body, cnode, branch=False)
-
     def _case_captures(self, s: TpyMatch, case: TpyMatchCase,
                        node: ScopeNode) -> dict[str, BindingRepr]:
         """The records one case's captures declare, as the match tiers bind
@@ -3573,21 +3503,16 @@ class _Planner:
                                   refinements=outer.refinements + (R.NESTED_DEF,))
         root = ScopeNode(parent, recs, own, function=True)
         self.table.scope_at[func] = root
-        saved = (self.func, self.in_branch, self.prescan, self.nested,
-                 self.overload_narrowing, self.overload_literal_facts)
+        saved = (self.func, self.in_branch, self.prescan, self.nested)
         self.prescan = nested_def_prescan(
             func, prescan_without(outer_pre, own), self.analyzer,
             nonlocal_names)
         self.nested = True
         self.func, self.in_branch = func, False
-        self.overload_narrowing = _without_names(self.overload_narrowing, own)
-        self.overload_literal_facts = _without_names(
-            self.overload_literal_facts, own)
         try:
             self.block(func.body, root, branch=False)
         finally:
-            (self.func, self.in_branch, self.prescan, self.nested,
-             self.overload_narrowing, self.overload_literal_facts) = saved
+            (self.func, self.in_branch, self.prescan, self.nested) = saved
 
     def expr(self, e, node: ScopeNode) -> None:
         if not isinstance(e, TpyExpr):
@@ -4014,7 +3939,7 @@ def _plan_once(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
             root_recs[name] = planner._fresh(rec, inp.func)
     table.frame_members = tuple(n for n, rec in root_recs.items()
                                 if rec.frame_class is not None)
-    planner.block(body, root, branch=False, top_level=True)
+    planner.block(body, root, branch=False)
     return table
 
 
@@ -4157,9 +4082,7 @@ def plan_and_install(lc, body: list[TpyStmt], seeds: Mapping[str, TpyType],
         readonly_self=readonly_self,
         top_level=top_level, module_globals=frozenset(module_globals),
         frame=frame,
-        const_scope=const_scope,
-        overload_narrowing=lc.overload_narrowing,
-        overload_literal_facts=dict(lc.overload_literal_facts))
+        const_scope=const_scope)
     try:
         table = plan_bindings(inp, body)
     except ThirUnsupported:

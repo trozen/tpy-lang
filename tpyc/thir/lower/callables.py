@@ -209,17 +209,17 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
                                                  body_passings(declaration, group[0]), analyzer))
 
 
-def method_receiver(func: TpyFunction, self_type: TpyType | None, analyzer: 'SemanticAnalyzer', *,
-                    stub: TpyFunction | None = None) -> THIRBorrowedRecord | None:
+def method_receiver(func: TpyFunction, self_type: TpyType | None,
+                    analyzer: 'SemanticAnalyzer') -> THIRBorrowedRecord | None:
     """The receiver an instance method body of a plain record lowers under:
     `self` borrowed for the call at the body's finalized access (a property
     accessor and each clone of an `@auto_readonly` def included). None for
     a body that binds anything else -- a static or class method, an enum
     member, a lifecycle hook the generated special members run around, a
-    consuming, generic, async or generator body, a per-stub specialization
-    or a clone of an `auto_own` def -- and a constructor body, whose `self`
+    consuming, generic, async or generator body, or a clone of an
+    `auto_own` def -- and a constructor body, whose `self`
     is storage under construction."""
-    if (self_type is None or stub is not None or not func.is_method or func.is_staticmethod
+    if (self_type is None or not func.is_method or func.is_staticmethod
             or func.is_initializer or func.is_lifecycle_hook or func.is_consuming or func.type_params
             or func.is_async or func.is_generator
             or func.is_auto_own_borrowing_clone or func.is_auto_own_consuming_clone):

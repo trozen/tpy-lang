@@ -84,24 +84,21 @@ std::string narrow__int64(int64_t x) {
     return "int64";
 }
 
-
-
-// def stub(x: int | float) -> int:
-//     if isinstance(x, int):
-//         return 1
-//     return 3
 // @overload
 // def stub(x: int) -> int: ...
 ::tpy::BigInt stub__int(const ::tpy::BigInt& x) {
-    return ::tpy::BigInt(1);
+    if (true) {
+        return ::tpy::BigInt(1);
+    }
 }
 
 // @overload
 // def stub(x: float) -> int: ...
 ::tpy::BigInt stub__float(double x) {
+    if (false) {
+    }
     return ::tpy::BigInt(3);
 }
-
 
 // def take32(x: float32) -> float:
 //     return float(x)

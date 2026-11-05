@@ -11,7 +11,9 @@ inline constexpr std::string_view __name__ = "itertools";
 
 struct __gen_count;
 template <typename T>
-struct __gen_repeat;
+struct __gen_repeat__T;
+template <typename T>
+struct __gen_repeat__T__int32;
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_cycle;
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
@@ -25,9 +27,14 @@ struct __gen_filterfalse;
 
 // def count(start: int = 0, step: int = 1) -> Iterator[int]:
 __gen_count count(::tpy::BigInt start = ::tpy::BigInt(0), ::tpy::BigInt step = ::tpy::BigInt(1));
-// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
+// @overload
+// def repeat[T](object: T) -> Iterator[T]: ...
 template <typename T>
-__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_t> times = std::nullopt);
+__gen_repeat__T<T> repeat__T(::tpy::param_val_or_ref_t<T> object);
+// @overload
+// def repeat[T](object: T, times: int32) -> Iterator[T]: ...
+template <typename T>
+__gen_repeat__T__int32<T> repeat__T__int32(::tpy::param_val_or_ref_t<T> object, int32_t times);
 // def cycle[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_cycle<T, T_it> cycle(T_it&& it);
@@ -71,57 +78,51 @@ struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, ::tpy::BigInt> {
     }
 };
 
-// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
+// @overload
+// def repeat[T](object: T) -> Iterator[T]: ...
 template <typename T>
-struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yield_slot_t<T>> {
+struct __gen_repeat__T : public ::tpy::next_iter_mixin<__gen_repeat__T<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> object;
     std::optional<int32_t> times;
-    int32_t _;
-    ::tpy::frame_loop_slot<int32_t> __for_i_0;
-    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
-        S_RESUME_1 = 2,
-        S_JOIN_0 = 3,
-        S_JOIN_1 = 4,
-        S_JOIN_2 = 5,
-        S_DONE = 6,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
     };
 
-    __gen_repeat(::tpy::param_val_or_ref_t<T> object_, std::optional<int32_t> times_ = std::nullopt)
+    __gen_repeat__T(::tpy::param_val_or_ref_t<T> object_)
         : __state(S_INITIAL),
-          object(object_),
-          times(std::move(times_)) {}
+          object(object_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
-    __gen_repeat& __iter__() { return *this; }
+    __gen_repeat__T& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_repeat<T>&) {
+    friend std::ostream& operator<<(std::ostream& os, const __gen_repeat__T<T>&) {
         return os << "<generator repeat>";
     }
 };
-// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
-//     if times is None:
-//         while True:
-//             yield object                                                 # -> S_RESUME_0
-//     else:
-//         for _ in range(times):
-//             yield object                                                 # -> S_RESUME_1
+// # Two public arms (CPython's `repeat(object)` / `repeat(object, times)`); the
+// # impl's `Optional` sentinel stays private behind the overloads, so
+// # `repeat(object, None)` is rejected the way CPython rejects a non-int `times`.
+// # The param is named `object` (shadowing the builtin) to match CPython's keyword
+// # surface (`repeat(object=...)`). A count of 0 or negative yields nothing.
+// @overload
+// def repeat[T](object: T) -> Iterator[T]: ...
 template <typename T>
-std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat__T<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((!times.has_value())) {
+        times = std::nullopt;
+        if (true) {
             __state = S_JOIN_1;
             continue;
         } else {
-            __for_i_0.emplace(int32_t(0));
-            __for_stop_0.emplace(static_cast<int32_t>((*times)));
-            __state = S_JOIN_2;
+            __state = S_JOIN_0;
             continue;
         }
     }
@@ -139,14 +140,79 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__n
             continue;
         }
     }
-    case S_RESUME_1:  // after: yield object
-    case S_JOIN_2: {
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// @overload
+// def repeat[T](object: T) -> Iterator[T]: ...
+template <typename T>
+__gen_repeat__T<T> repeat__T(::tpy::param_val_or_ref_t<T> object) {
+    return __gen_repeat__T<T>(object);
+}
+
+// @overload
+// def repeat[T](object: T, times: int32) -> Iterator[T]: ...
+template <typename T>
+struct __gen_repeat__T__int32 : public ::tpy::next_iter_mixin<__gen_repeat__T__int32<T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    ::tpy::val_or_ref_t<T> object;
+    int32_t times;
+    int32_t _;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_repeat__T__int32(::tpy::param_val_or_ref_t<T> object_, int32_t times_)
+        : __state(S_INITIAL),
+          object(object_),
+          times(std::move(times_)) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_repeat__T__int32& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_repeat__T__int32<T>&) {
+        return os << "<generator repeat>";
+    }
+};
+// @overload
+// def repeat[T](object: T, times: int32) -> Iterator[T]: ...
+template <typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat__T__int32<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        if (false) {
+            __state = S_JOIN_0;
+            continue;
+        } else {
+            __for_i_0.emplace(int32_t(0));
+            __for_stop_0.emplace(static_cast<int32_t>(times));
+            __state = S_JOIN_1;
+            continue;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_RESUME_0:  // after: yield object
+    case S_JOIN_1: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_0;
             continue;
         }
         _ = ((*__for_i_0))++;
-        __state = S_RESUME_1;
+        __state = S_RESUME_0;
         return object;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -155,10 +221,11 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__n
 }
 
 
-// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
+// @overload
+// def repeat[T](object: T, times: int32) -> Iterator[T]: ...
 template <typename T>
-__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_t> times) {
-    return __gen_repeat<T>(object, times);
+__gen_repeat__T__int32<T> repeat__T__int32(::tpy::param_val_or_ref_t<T> object, int32_t times) {
+    return __gen_repeat__T__int32<T>(object, times);
 }
 
 // def cycle[T](it: Iterable[T]) -> Iterator[T]:

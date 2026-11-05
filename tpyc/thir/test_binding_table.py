@@ -606,7 +606,8 @@ def test_a_frame_emplace_into_a_non_frame_record_is_rejected(
 # One body per scope the planner keys apart from a statement: with items (a
 # lambda in a later item's manager), an except handler, every match route
 # (record, poly, optional, optional chain, str switch, union, guarded
-# union, folded), a folded `if` with a live link, comprehension clauses, a
+# union), a `match` and an `if` an @overload copy decides, comprehension
+# clauses, a
 # nested def, a constructor member-init, and a generator whose `with` and
 # `match` span a yield.
 _SCOPES = '''\
@@ -997,43 +998,6 @@ def guard(o: Outer | P) -> int:
     # The guard is planned at its case's node, where the capture is bound.
     assert table.stmt_expr_scope[case.guard] is table.scope_at[case]
     assert table.scope_at[case].lookup("w").site is case
-
-
-def test_a_folded_away_elif_link_has_no_scope() -> None:
-    _bodies, tables = lower_bodies('''\
-from typing import overload
-
-
-class P:
-    def __init__(self, v: int) -> None:
-        self.v = v
-
-
-class Q:
-    def __init__(self, w: int) -> None:
-        self.w = w
-
-
-@overload
-def fold(o: P, flag: bool) -> int: ...
-@overload
-def fold(o: Q, flag: bool) -> int: ...
-def fold(o: P | Q, flag: bool) -> int:
-    if flag:
-        return 1
-    elif isinstance(o, Q):
-        return o.w
-    else:
-        return 0
-''')
-    table = tables["fold@0"]
-    head = next(k for k in table.scope_at
-                if isinstance(k, TpyIf) and k.else_body
-                and isinstance(k.else_body[0], TpyIf))
-    # Under the P stub the `isinstance(o, Q)` link folds away; the live
-    # link before it and the statement keep their scopes.
-    assert head in table.scope_at
-    assert head.else_body[0] not in table.scope_at
 
 
 def test_a_tuple_target_write_binds_its_records_pointer_tuple() -> None:

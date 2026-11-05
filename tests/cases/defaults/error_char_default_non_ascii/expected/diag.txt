@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in parameter 'x': expected char, got str

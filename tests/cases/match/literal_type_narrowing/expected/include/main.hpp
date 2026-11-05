@@ -9,9 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def process(mode: str) -> str:
+// @overload
+// def process(mode: Literal["r", "w"]) -> str: ...
 std::string process__lit_r__w(std::string_view mode);
-// def process(mode: str) -> str:
+// @overload
+// def process(mode: Literal["rb", "wb"]) -> str: ...
 std::string process__lit_rb__wb(std::string_view mode);
 // def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch(std::string_view mode);

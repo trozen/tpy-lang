@@ -11,8 +11,8 @@
 | 3b | Literal overload flattening (per-literal C++ specializations) | Done |
 | 3c | Multi-value Literal dead branch elimination | Done |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Done |
-| 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Done (annotated locals); Final variant deferred |
-| 6 | General type positions (return types, fields, union flattening) | Return position done (emits `std::string_view`); fields done (base-type storage, value-set-checked assignments and defaults); union flattening deferred |
+| 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Done (annotated locals; an unannotated local bound only to literals is checked at a Literal slot by its values); Final variant deferred |
+| 6 | General type positions (return types, fields, union flattening) | Return position done (the base's form: `std::string` for a str set); fields done (base-type storage, value-set-checked assignments and defaults); union flattening deferred |
 
 ## Future Extensions
 
@@ -30,7 +30,13 @@
 `Literal["r", "w"]` enables compile-time dispatch and narrowing based on
 known constant values. `LiteralType(base_type, values)` is the unified
 internal representation, with `LiteralValue(tag, value)` distinguishing
-`True` from `1`. Delegates all C++ codegen to `base_type`.
+`True` from `1`. A `LiteralType` is two facts: its VALUE SET, which
+narrows what a slot admits, and its C++ FORM, which is its base type's at
+every position (a `Literal[str]` is a `str`: a view parameter, an owned
+field, element and return; a local takes the str local rule through the
+pending storage entry it carries, `LiteralType.storage`, outside equality).
+Every category predicate answers a `Literal` as its base; a reading of the
+values asks `literal_values` / `LiteralType.admits` before any of them.
 
 Supported value types: `str`, `int` (including negative), `bool`.
 Mixed types in a single `Literal[...]` rejected at parse time.
@@ -39,15 +45,26 @@ Resolution: strict pass matches literal values against `Literal` params
 (value subset check). Coercion pass falls back to base type matching.
 Literal stubs preferred over plain stubs regardless of declaration order.
 
-Direct literal arguments AND `Literal`-annotated locals dispatch to
-`Literal` overloads; bare (unannotated) variables fall through to the
-base type fallback. Annotated `Literal[str]` locals additionally get
-view storage (`std::string_view`) when every source is a string-literal
-AST node, widening to owned `std::string` when a Literal-returning
-function call (or other non-view-safe Literal-typed source) is bound.
-Non-Literal-typed sources (e.g. `def get() -> str: ...` returning into a
-`Literal[...]` LHS) are rejected at compile time -- sema cannot prove
-the runtime value is in the declared set.
+Admission at a `Literal` slot is one rule. The shared relations
+(`resolve_coercion`, `type_matches_numeric`, `types_match_for_inference`,
+the pending-number literal store, the container element shortcuts) admit
+only a value the set proves (`LiteralType.admits`: a `Literal` within the
+set, an int literal of one of its values). Sema turns a proven source into
+a `Literal` actual before they run (`literal_admits`,
+`tpyc/sema/literal_utils.py`): a literal, or an unannotated local every
+binding of which stores a literal and whose address no call takes (the
+prescan's `LiteralLocals.literal_only`, whose values are
+`LiteralLocals.literals`; `take_ptr(s)` hands a pointer a store could
+write it through, so `LiteralLocals.address_taken` leaves it out), so
+`s = "r"; if c: s = "w"; f(s)` passes into a `Literal["r", "w"]` parameter
+and dispatches to a `Literal` overload, while one out of the set is refused
+naming the value (*got 's', which may hold "zz"; pass one of "r", "w"*) or,
+in overload ranking, falls back to a base overload. Any other source of the
+base type (a `str` parameter, `def get() -> str` into a `Literal[...]` LHS)
+is refused: sema cannot prove the runtime value is in the set. Admitted, the
+value converts as its base when the bases differ (a BigInt-based copy's
+`Literal[2]` into an `int32` `Literal[2, 3]` local renders
+`(x).to_fixed_trunc<int32_t>()`).
 
 ## Phase 2: Unify Types + Integer/Bool Literals (Done)
 
@@ -71,7 +88,7 @@ int since `bool` is `int` subclass), int, and negative int
 (`ast.UnaryOp(USub, Constant)`). Mixed types rejected at parse time.
 `base_type` is `STR`, `BOOL`, or `INT32` respectively.
 
-**Enrichment** (`calls.py`): Renamed to `_enrich_literal_types`. Enriches
+**Enrichment** (`calls.py`, now `enriched_source`). Enriches
 `TpyStrLiteral` -> str `LiteralType`, `TpyIntLiteral` -> int `LiteralType`,
 `TpyBoolLiteral` -> bool `LiteralType`. Passes through already-`LiteralType`
 args (enables forwarding Literal-annotated params to other Literal functions).
@@ -83,8 +100,8 @@ vs `LiteralType` (value subset) and `IntLiteralType` vs int-base
 **Compatibility** (`compatibility.py`): `LiteralType` compatible with base
 type family. `IntLiteralType` compatible with int-base `LiteralType`.
 
-**Codegen** (`functions.py`, `expressions.py`): `_overload_stubs_are_literal_only`
-and `_is_str_view_at_runtime` updated to use `LiteralType`.
+**Codegen**: a `LiteralType` renders as its base's C++ form; codegen has no
+Literal-specific path.
 
 ### What already works without further phases
 
@@ -96,11 +113,13 @@ which values are accepted at compile time:
 def set_priority(level: Literal[1, 2, 3]) -> None: ...
 @overload
 def set_priority(level: Literal[4, 5]) -> None: ...
-# No int32 fallback -- variable args rejected at call site
+# No int32 fallback -- a runtime value is rejected at the call site
 def set_priority(level: int32) -> None: ...
 
 set_priority(3)   # ok
-set_priority(x)   # error: No matching overload
+n = 3
+set_priority(n)   # ok: every binding of `n` is a literal of the set
+set_priority(x)   # error: No matching overload (x is a runtime int32)
 ```
 
 
@@ -174,9 +193,9 @@ branches"). Phase 3c below lists the verdicts.
 
 ## Phase 3b: Literal Overload Flattening (Done)
 
-Per-literal function/method specialization for `@overload` groups.
-Every literal stub gets its own name-mangled C++ function with dead
-branch elimination. Enables different return types per literal value.
+Per-literal function/method variants for `@overload` groups. Every
+literal stub gets its own name-mangled C++ function, its decided tests'
+dead arms dropped. Enables different return types per literal value.
 
 ### What was implemented
 
@@ -189,20 +208,15 @@ colliding suffixes, `"a-b"` vs `"a_b"`, by declaration index) and stored as
 `FunctionInfo.variant_cpp_name`; see `docs/OVERLOAD_DESIGN.md` "C++ names of
 variants". A method's non-literal variants keep the original name.
 
-**Codegen -- functions** (`functions.py`): When `_overload_stubs_are_literal_only`
-returns True, `_gen_literal_specialized_function` emits per-stub
-specializations using impl's body with stub's return type.
-`literal_overload_facts` injected for dead branch elimination (survives
-`reset_scope`, same pattern as `overload_param_types`). Unreachable
-returns (dead code after branch elimination) are silently skipped.
-
-**Codegen -- methods** (`records.py`, `functions.py`): Parallel
-`_gen_literal_specialized_method` creates a synthetic `TpyFunction` with
-mangled name, impl's body, and stub's return type. Same dead branch
-elimination via `literal_overload_facts`.
-
-**Forward declarations** (`functions.py`): Per-stub forward decls use
-impl's C++ param types with stub's return type and mangled name.
+**The copies** (`sema/method_expansion.py`, `copy_overload_implementation`):
+each stub is a `@dispatch` variant whose body is a copy of the
+implementation, analyzed at the stub's types; a `Literal` stub's parameter
+holds the implementation's type (`literal_member`), so `Literal[2]` over
+`x: int` is a BigInt. The copy is analyzed as any body: the test a stub's
+literal values decide is decided by the dead-arm rule (`sema/dead_arms.py`)
+from the parameter's `LiteralType`, and the arm it rules out is neither
+analyzed nor emitted. There is no specialized emitter: each copy is an
+ordinary function or method (`docs/OVERLOAD_DESIGN.md`).
 
 **Call-site dispatch** (`thir/lower/checks.py`): a free call spells the
 resolved variant's `FunctionInfo.variant_cpp_name`, the same fact the
@@ -210,19 +224,6 @@ definition reads; a method call whose `resolved_function_info` has
 `LiteralType` params and an overloaded name spells
 `overload_variant_cpp_name` (`method_literal_mangled_cpp`). Cross-module
 calls use qualified mangled names.
-
-**Dead branch elimination in specializations**: `_gen_if_overload_specialized`
-extended to resolve literal equality conditions statically via
-`_resolve_literal_eq_statically`. Combined with `literal_overload_facts`,
-the specialization bodies have all branches except the matching one
-eliminated. Unreachable statements after a taken terminating branch are
-silently dropped -- but only within the statement list that DIRECTLY
-contains the folded `if`. A fold nested in a non-terminating compound (a
-loop, a dynamic `if`, a match arm) does not truncate the code reachable
-after that compound (the loop/branch may not run), so a trailing `return`
-survives; the truncation is scoped per-list (`overload_terminated` is
-honored only for the top-level node that set it, mirrored in THIR by
-save/restore across nested `_lower_stmts`).
 
 ### Example
 
@@ -277,12 +278,10 @@ A test it decides makes its dead arm unanalyzed and empty at every position
 part of a test whose evaluated part only reads is replaced by its bool
 literal (`folded_truth`), and so is a pure decided compare at a value
 position; a ternary or an `and` / `or` value is decided only when its test
-folds that way, and is then its live part. The
-per-stub copy of an `@overload` implementation is still lowered by THIR from
-the one analyzed body, so its statement-level tests are folded there over the
-stub's facts with the same `dead_arms` verdicts, and a value-position compare
-in such a body renders as a run-time compare until each stub is analyzed as a
-variant of its own (TODO.md "`@overload` becomes `@dispatch` variants").
+folds that way, and is then its live part. An
+`@overload` implementation is analyzed once per stub, as a copy at the stub's
+parameter types (`docs/OVERLOAD_DESIGN.md`), so a `Literal` stub decides its
+copy's tests by the same rule.
 
 ### Limitations
 
@@ -308,15 +307,23 @@ def handle(mode: str) -> str:
     return "binary"
 ```
 
-Generated specializations:
+Generated variants, each the implementation's body with its decided test:
 ```cpp
-std::string handle__lit_r__w(std::string_view mode) { return "text"; }
-std::string handle__lit_rb__wb(std::string_view mode) { return "binary"; }
+std::string handle__lit_r__w(std::string_view mode) {
+    if (true) {
+        return "text";
+    }
+}
+std::string handle__lit_rb__wb(std::string_view mode) {
+    if (false) {
+    }
+    return "binary";
+}
 ```
 
-Both branches are eliminated: the `||` chain covers all values for
-`Literal["r", "w"]` (folds to true), and both `==` comparisons are
-out-of-set for `Literal["rb", "wb"]` (folds to false).
+The `||` chain covers all values for `Literal["r", "w"]` (decided true),
+and both `==` comparisons are out-of-set for `Literal["rb", "wb"]`
+(decided false); the arm each rules out is empty.
 
 
 ## Phase 4: Match/Case on Literal Types (Done)
@@ -378,9 +385,19 @@ is deferred. It requires three independent A1 future-extension features
 (bare `Final`, local `Final`, `Final[Literal[...]]`) that are not yet
 started; once those land, the literal-retention layer is a small follow-up.
 
-Bare unannotated locals (`x = "rb"`) deliberately stay `StrType` -- the
-Option-A path (every str literal becomes `LiteralType`) was rejected because
-it would ripple through 45+ `isinstance(t, StrType)` sites.
+Bare unannotated locals (`x = "rb"`) keep their base type (`str`, the
+default int, `bool`); their values are a per-body prescan fact
+(`LiteralLocals.literals`, complete for the `literal_only` locals: every
+binding a plain store of an int, bool or str literal -- no augmented store,
+no closure `nonlocal` rebind, no other binding form; a call taking the name
+does not disqualify it). A `Literal` slot admits such a local when every
+value is in its set (`literal_utils.literal_admits`), and an overload
+`Literal` stub matches it the same way (`enriched_source`); an out-of-set
+value or any other local is refused at a `Literal` parameter, naming the
+value (*'s', which may hold "zz"; pass one of "r", "w"*), and in overload
+matching is a non-match, so the call takes the `str` / base stub. A local
+copied from a `Literal` (`y = x`) keeps the `Literal` type
+(BUGS.md#literal-local-copy-keeps-set).
 
 ### Problem (historical)
 
@@ -455,12 +472,12 @@ mode = get_mode()  # mode: Literal["r", "rb"]
 ```
 
 `LiteralType.to_cpp_return()` (and `to_cpp_return_const()`) delegates to
-`base_type.to_cpp_param_type()`, which gives the view form for str/bytes
-bases and the value form for int/bool bases. All values in a `Literal`
-are compile-time constants with static storage, so `std::string_view` is
-unconditionally safe (no dangling-return risk). Callers binding the
-return into a `Literal[...]`-annotated local pick up view storage
-end-to-end (no heap allocation).
+the base, so a `Literal[str]` returns `std::string`, exactly as `-> str`
+does, and a caller's local bound to the result owns it. A static
+`std::string_view` form for every `Literal[str]` position is a filed
+alternative (TODO.md "Reconsider a static `std::string_view` form for
+`Literal[str]`"); it needs every source of a `Literal[str]` value checked
+and canonicalized to the static literal first.
 
 ### Fields (Done)
 
@@ -493,13 +510,12 @@ contexts.
 
 ## Open Questions
 
-1. **Interaction with `PendingStrType`**: If a future phase produces
-   `LiteralType` from string literals, when does view inference happen?
-   Option: first resolve literal-ness, then do view inference on the
-   resolved type. Literal string sources are always view-safe (static
-   lifetime) for `StrViewType` resolution, but if the variable is passed
-   to a function taking `String` (owned), promotion still applies via the
-   existing `PendingStrType`/`ViewVarInfo` machinery.
+1. **Interaction with `PendingStrType`**: Resolved. A `Literal[str]` is a
+   `str` in C++ at every position: a parameter is a `std::string_view`, a
+   return and a field are `std::string`, and a `Literal[str]` local's
+   storage (view or owned) is decided by the same `PendingStrType` /
+   `ViewVarInfo` rule as its `str` twin, so an alias of an owned source or
+   an owning sink promotes it as it does a `str` local.
 
 2. **Cross-function literal propagation**: `def f(mode: Literal["r", "w"])`
    is straightforward (annotation in signature). But inferring literal types
@@ -511,8 +527,8 @@ contexts.
    roadmap) that depends on Literal types but has its own design concerns.
 
 4. **Forwarding `LiteralType` args through calls**: Resolved in Phase 2.
-   `_enrich_literal_types` passes through already-`LiteralType` args
-   without requiring AST-level literal detection.
+   `enriched_source` (`calls.py`) passes through already-`LiteralType`
+   args without requiring AST-level literal detection.
 
 5. **Name mangling collisions in flattening**: Resolved for free
    functions. The suffix is not injective (`"42"` and `42`, `"a-b"` and

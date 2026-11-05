@@ -4,17 +4,13 @@
 namespace tpyapp::main {
 
 
-
-
-// def h(a: str, b: int32 = 0) -> int32:
-//     # The literal stub folds this compare; the wide stub keeps it at runtime.
-//     if a == "x":
-//         return b + 100
-//     return b
 // @overload
 // def h(a: Literal["x"]) -> int32: ...  # tpyc: ok
-int32_t h__lit_x(std::string_view a, int32_t b) {
-    return (::tpy::add_check<int32_t>(b, 100));
+int32_t h__lit_x(std::string_view a) {
+    int32_t b = 0;
+    if (true) {
+        return (::tpy::add_check<int32_t>(b, 100));
+    }
 }
 
 // @overload
@@ -25,7 +21,6 @@ int32_t h__str__int32(std::string_view a, int32_t b) {
     }
     return b;
 }
-
 
 // def main() -> None:
 //     print(h("x"), h("y", 2))

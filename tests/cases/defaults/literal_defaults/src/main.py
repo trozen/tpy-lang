@@ -45,19 +45,18 @@ def narrowing(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
     return "binary:" + mode
 
 
-# generator (the param is captured as an owned string, not a view:
-# BUGS.md#literal-value-consumers-miss-base)
+# generator (the frame owns its string as a `str` parameter's does)
 def generator(mode: Literal["r", "rb"] = "rb") -> Iterator[str]:  # tpyc: ok
     yield mode
 
 
-# async (same owned capture as the generator)
+# async (the same capture as the generator)
 async def async_fn(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
     return mode
 
 
-# @overload stub carrying the default; it equals the implementation's, since a
-# differing one runs the wrong specialization (BUGS.md#overload-stub-default-ignored)
+# @overload stub carrying the default: it marks the parameter omittable, and an
+# omitted argument is the implementation's default
 @overload
 def stub(mode: Literal["r"]) -> str: ...
 @overload

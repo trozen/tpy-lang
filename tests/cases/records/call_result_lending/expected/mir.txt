@@ -28,7 +28,6 @@ main::keep_boxes@285:0: covered (storage: no_proof_required), summary: known
 main::overload_move@289:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::first_box@301:0: uncovered (no body to lower)
 main::first_box@303:0: uncovered (no body to lower)
-main::first_box@304:0: uncovered (overloaded callable)
 main::tuple_static@329:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::head_static@336:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::same_ticker@375:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
@@ -52,7 +51,6 @@ main::Picker.select_meth@184:4: uncovered (call needs finalized known summary), 
 main::ShelfUser.run@311:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
 main::Shelf.get@322:4: uncovered (no body to lower)
 main::Shelf.get@324:4: uncovered (no body to lower)
-main::Shelf.get@325:4: uncovered (overloaded callable)
 main::CrossOuter.write@357:4: certified, summary: known
 main::Ticker.__next__@368:4: uncovered (error-return body)
 main::Inner.__init__@16:4: covered (storage: no_proof_required), summary: known

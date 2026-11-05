@@ -349,13 +349,13 @@ struct Shelf {
 
     // @overload
     // def get(self, bs: list[Box]) -> Box: ...
-    Box& get__list_Box(std::vector<Box>& bs);
-    Box& get(std::vector<Box>& bs);
+    Box& get__list_Box(std::vector<Box>& bs) const;
+    Box& get(std::vector<Box>& bs) const;
 
     // @overload
     // def get(self, bs: list[Box], i: int32) -> Box: ...
-    Box& get__list_Box__int32(std::vector<Box>& bs, int32_t i);
-    Box& get(std::vector<Box>& bs, int32_t i);
+    Box& get__list_Box__int32(std::vector<Box>& bs, int32_t i) const;
+    Box& get(std::vector<Box>& bs, int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
 };
 
@@ -707,22 +707,22 @@ inline void ShelfUser::run(Shelf& sh) const {
 
 // @overload
 // def get(self, bs: list[Box]) -> Box: ...
-inline Box& Shelf::get__list_Box(std::vector<Box>& bs) {
+inline Box& Shelf::get__list_Box(std::vector<Box>& bs) const {
     int32_t i = 0;
     return ::tpy::__getitem__(bs, i);
 }
 
-inline Box& Shelf::get(std::vector<Box>& bs) {
+inline Box& Shelf::get(std::vector<Box>& bs) const {
     return this->get__list_Box(bs);
 }
 
 // @overload
 // def get(self, bs: list[Box], i: int32) -> Box: ...
-inline Box& Shelf::get__list_Box__int32(std::vector<Box>& bs, int32_t i) {
+inline Box& Shelf::get__list_Box__int32(std::vector<Box>& bs, int32_t i) const {
     return ::tpy::__getitem__(bs, i);
 }
 
-inline Box& Shelf::get(std::vector<Box>& bs, int32_t i) {
+inline Box& Shelf::get(std::vector<Box>& bs, int32_t i) const {
     return this->get__list_Box__int32(bs, i);
 }
 

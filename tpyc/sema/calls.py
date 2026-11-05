@@ -20,11 +20,11 @@ from ..typesys import (
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
-    LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
     strip_auto_readonly, apply_auto_readonly,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
+    UnionType, VOID, BIGINT, BOOL, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
     ConcreteCoroType,
     is_any_str_type, error_return_matches,
     is_protocol_union, protocol_union_protocols,
@@ -68,7 +68,8 @@ from .call_lends import (
 from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
                       PENDING_CONTAINER_TYPES, ProbeSlot, ReadonlyReceiverCheck)
 from ..parse.nodes import bound_callee, name_path
-from .literal_utils import is_char_literal_init
+from .literal_utils import (enriched_literal, is_char_literal_init,
+                            ranks_literals)
 from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
                               is_iterator_protocol,
@@ -138,70 +139,44 @@ from .. import qnames
 from ..type_def_registry import (
     get_type_def, is_array, is_span, is_varargs, is_list, is_borrowing_view_type,
     is_fixed_int_type, is_bool_type, is_char_type,
-    is_str_type, is_big_int_type,
+    is_big_int_type,
     int_traits_of,
     enum_info_of, protocol_info_of,
     TypeDef, find_factory_by_simple_name,
 )
 
 
-def _enrich_literal_types(
-    arg_types: list[TpyType], args: list[TpyExpr],
-    candidates: list[FunctionInfo],
-) -> list[TpyType]:
-    """Create enriched arg types where literal args become single-value LiteralType.
-
-    Returns a new list where literal arguments (str, int, bool) get
-    LiteralType(base, (LiteralValue(...),)) instead of their plain type.
-    Used only for overload resolution; the original arg_types are used
-    for everything else.
-
-    Only enriches when at least one candidate has a LiteralType param,
-    to avoid breaking protocol-based matching (e.g. hash(Hashable)).
-    Also passes through args that already carry LiteralType (e.g. forwarded
-    Literal-annotated parameters).
-    """
-    has_literal_param = any(
-        isinstance(p.type, LiteralType) for c in candidates for p in c.params
-    )
-    if not has_literal_param:
-        return arg_types
-    return [_enriched_literal(t, a) for t, a in zip(arg_types, args)]
-
-
-def _enriched_literal(arg_t: TpyType, arg: 'TpyExpr | None') -> TpyType:
-    if is_str_type(arg_t) and isinstance(arg, TpyStrLiteral):
-        return LiteralType(STR, (LiteralValue(LiteralTag.STR, arg.value),))
-    if isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
-        return LiteralType(INT32, (LiteralValue(LiteralTag.INT, arg_t.value),))
-    if is_bool_type(arg_t) and isinstance(arg, TpyBoolLiteral):
-        return LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, arg.value),))
-    return arg_t
-
-
-def enriched_source(typed: CallSource, src: CallSource,
+def enriched_source(ctx: 'SemanticContext', typed: CallSource,
+                    src: CallSource,
                     candidates: list[FunctionInfo]) -> CallSource:
-    """`_enrich_literal_types` over every operand of a call written with
-    `src` whose types are `typed`, keywords included."""
-    if not any(isinstance(p.type, LiteralType)
-               for c in candidates for p in c.params):
+    """The operands of a call written with `src` whose types are `typed`,
+    as overload ranking sees them (`enriched_literal`). An operand already
+    typed `Literal` (a forwarded `Literal` parameter) passes through."""
+    if not ranks_literals(candidates):
         return typed
-    return typed.mapped(lambda at, t: _enriched_literal(t, src.at(at)))
+    return typed.mapped(lambda at, t: enriched_literal(ctx, t, src.at(at)))
 
 
 def filled_default(default: TpyExpr, call_loc: 'SourceLocation | None',
-                   ctx: 'SemanticContext') -> TpyExpr:
+                   ctx: 'SemanticContext', *,
+                   keep_spelling: bool = True) -> TpyExpr:
     """A fresh copy of the syntax of a resolved default (`resolve_default`)
     for a call's argument list, at the CALL's loc so an error points at the
     call. A leaf this scope names by the same referent keeps its spelling,
     the read every other spelling of that constant here takes; any other
     leaf -- shadowed here, or not named here at all -- is a stamped read of
     the referent (`TpyFieldAccess.default_fill`), so the value is the one
-    the default names where it is written, as in CPython."""
+    the default names where it is written, as in CPython. Without
+    `keep_spelling` every leaf is a stamped read: a body's own bindings,
+    which a name read at its top cannot see yet, may shadow any of them."""
     loc = call_loc if call_loc is not None else default.loc
+
+    def again(e: TpyExpr) -> TpyExpr:
+        return filled_default(e, loc, ctx, keep_spelling=keep_spelling)
+
     if isinstance(default, TpyName):
         ref = default.default_referent
-        if ref is None or (ref.module_var is not None
+        if ref is None or (keep_spelling and ref.module_var is not None
                            and _scope_module_var(ctx, default.name)
                            == ref.module_var):
             return TpyName(default.name, loc=loc)
@@ -214,7 +189,8 @@ def filled_default(default: TpyExpr, call_loc: 'SourceLocation | None',
         stamped = (default.enum_member_of is not None
                    or default.class_constant_owner is not None
                    or default.module_var_access is not None)
-        if stamped and not _scope_names_member(ctx, default):
+        if stamped and not (keep_spelling
+                            and _scope_names_member(ctx, default)):
             return _stamped_read(
                 default.field, loc,
                 module_var_access=default.module_var_access,
@@ -222,13 +198,12 @@ def filled_default(default: TpyExpr, call_loc: 'SourceLocation | None',
                 enum_member_of=default.enum_member_of)
         return _clone_path(default, loc)
     if isinstance(default, TpyCall):
-        return relaid_copy(default, lambda a: filled_default(a, loc, ctx),
-                           func=_filled_callee(default.func, loc, ctx),
+        return relaid_copy(default, again,
+                           func=_filled_callee(default.func, loc, ctx,
+                                               keep_spelling=keep_spelling),
                            loc=loc)
     if isinstance(default, TpyUnaryOp):
-        return dc_replace(default,
-                          operand=filled_default(default.operand, loc, ctx),
-                          loc=loc)
+        return dc_replace(default, operand=again(default.operand), loc=loc)
     return dc_replace(default, loc=loc)
 
 
@@ -273,7 +248,8 @@ def class_callee(record: RecordInfo,
 
 
 def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
-                   ctx: 'SemanticContext') -> TpyExpr:
+                   ctx: 'SemanticContext', *,
+                   keep_spelling: bool = True) -> TpyExpr:
     """The callee of a filled default's constructor call: its name when this
     scope binds it to the same class (`class_of_binding`), as
     `filled_default` keeps a name leaf; else the binding of the class it
@@ -285,7 +261,7 @@ def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
         return _clone_path(func, loc)
     here = ctx.name_read(func.name)
     there = ctx.class_of_binding(ref.ctor)
-    if (here.comp is None and isinstance(here.binding, NameBinding)
+    if (keep_spelling and here.comp is None and isinstance(here.binding, NameBinding)
             and there is not None
             and ctx.class_of_binding(here.binding) is there):
         return TpyName(func.name, loc=loc)
@@ -5245,7 +5221,7 @@ class CallAnalyzer:
             else:
                 candidates.append(func)
 
-        enriched = enriched_source(typed, src, candidates)
+        enriched = enriched_source(self.ctx, typed, src, candidates)
         try:
             # Each candidate ranked at the binding the call made to it.
             pick = rank_overload_candidates(
@@ -5512,9 +5488,12 @@ class CallAnalyzer:
             candidate_evidences.append(evidence)
 
         # Each candidate carries its own argument types, so the ranking
-        # takes them per candidate rather than through `CallRanking.resolve`.
+        # takes them per candidate rather than through `CallRanking.resolve`,
+        # each as the set ranks a written argument (`enriched_source`).
+        pool = [substituted for substituted, _, _ in candidate_evidences]
         pick = rank_overload_candidates(
-            [OverloadCandidate(substituted, typed,
+            [OverloadCandidate(substituted,
+                               enriched_source(self.ctx, typed, src, pool),
                                bindings[id(origin[0] if origin else substituted)])
              for substituted, typed, origin in candidate_evidences],
             self.ranking())
@@ -5545,7 +5524,7 @@ class CallAnalyzer:
             matched=matched,
             matched_origin=matched_origin,
             typed=display,
-            enriched=enriched_source(display, src, pool_for_enrich),
+            enriched=enriched_source(self.ctx, display, src, pool_for_enrich),
             contextual_callable_used=contextual_callable_used,
             first_contextual_error=first_contextual_error,
             binding=pick.binding,
@@ -5940,7 +5919,7 @@ class CallAnalyzer:
         typed = typed_source(arg_types)
         src = (args if isinstance(args, CallSource) else CallSource(
             tuple(args) + (None,) * (len(typed.positional) - len(args))))
-        enriched = enriched_source(typed, src, views)
+        enriched = enriched_source(self.ctx, typed, src, views)
         takers = filter_receiver_overloads(views, consuming_receiver)
         try:
             pick = self.ranking().rank(takers, enriched,
@@ -6124,7 +6103,6 @@ class CallAnalyzer:
                             call: 'TpyExpr | TpyStmt | None' = None,
                             declared_types: 'list[TpyType] | None' = None,
                             fresh_own: str = "keep",
-                            char_literal_init: bool = False,
                             builtin_form: bool = False,
                             own_checks: bool = True,
                             contexts: 'list[str] | None' = None,
@@ -6162,9 +6140,6 @@ class CallAnalyzer:
           parameter, and a bound coroutine handle lent there is refused /
           recorded as maybe started -- two rules for one shape, kept apart
           until one is chosen (BUGS.md#coroutine-handle-lend-paths-disagree).
-        - `char_literal_init`: a free function's one-char `str` literal at a
-          `char` parameter initializes it; methods and constructors still
-          refuse it (BUGS.md#char-literal-arg-free-function-only).
         - `builtin_form`: a builtin's argument is taken bare (no Own / Ref)
           and coerced only where its type differs, as the builtin overload
           path always received it. The callee does not say it: a generic
@@ -6210,7 +6185,6 @@ class CallAnalyzer:
                         i, args, given, param, call=call, declared=declared,
                         declared_types=declared_types, readonly=readonly,
                         fresh_own=fresh_own,
-                        char_literal_init=char_literal_init,
                         value_ptr=value_ptr, builtin_form=builtin_form,
                         own_checks=own_checks, contexts=contexts,
                         inferred_slot=(inferred_slots.get(i)
@@ -6231,7 +6205,6 @@ class CallAnalyzer:
             decided: 'Mapping[int, TpyType] | None' = None,
             inferred_slots: 'Mapping[int, InferredSlot] | None' = None,
             fresh_own: str = "keep",
-            char_literal_init: bool = False,
             builtin_form: bool = False,
             kwargs_arg: 'TpyExpr | None | _RegionNotBuilt' = REGION_NOT_BUILT,
     ) -> ArgLayout:
@@ -6265,7 +6238,6 @@ class CallAnalyzer:
                 expr, cand, layout, scope=scope, params=params,
                 declared_types=declared_types, decided=decided,
                 inferred_slots=inferred_slots, fresh_own=fresh_own,
-                char_literal_init=char_literal_init,
                 builtin_form=builtin_form)
             if cand.origin is not None:
                 validate_generic_defaults(
@@ -6287,7 +6259,7 @@ class CallAnalyzer:
             declared_types: 'Sequence[TpyType] | None',
             decided: 'Mapping[int, TpyType] | None',
             inferred_slots: 'Mapping[int, InferredSlot] | None',
-            fresh_own: str, char_literal_init: bool,
+            fresh_own: str,
             builtin_form: bool) -> None:
         """`commit_winner`'s receive: each operand of `layout` at its
         parameter of `cand.matched` (`receive_winner_args`), a `*args`
@@ -6311,7 +6283,7 @@ class CallAnalyzer:
             cand.declared, call=expr,
             declared_types=([declared_types[i] for i in order]
                             if declared_types is not None else None),
-            fresh_own=fresh_own, char_literal_init=char_literal_init,
+            fresh_own=fresh_own,
             builtin_form=builtin_form,
             inferred_slots=({j: inferred_slots[i] for j, i in enumerate(order)
                              if i in inferred_slots}
@@ -6336,7 +6308,7 @@ class CallAnalyzer:
                      call: 'TpyExpr | TpyStmt | None',
                      declared: FunctionInfo | None,
                      declared_types: 'list[TpyType] | None', readonly: bool,
-                     fresh_own: str, char_literal_init: bool,
+                     fresh_own: str,
                      value_ptr: bool, builtin_form: bool, own_checks: bool,
                      contexts: 'list[str] | None',
                      inferred_slot: 'InferredSlot | None' = None) -> TpyType:
@@ -6377,8 +6349,7 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         if own_checks:
             self.check_own_param(arg, arg_type, pname, check_ptype)
-        skip_coerce = ((char_literal_init
-                        and is_char_literal_init(check_ptype, arg_type, arg))
+        skip_coerce = (is_char_literal_init(check_ptype, arg_type, arg)
                        or (builtin_form and arg_type == check_ptype))
         if not skip_coerce:
             args[i] = self.compat.coerce_expr(
@@ -6928,7 +6899,7 @@ class CallAnalyzer:
                 source_view(expr),
                 self.bind_args(expr, func.params, expr.func_name), func, func)
         self.commit_winner(expr, cand, func.name, stamp=func,
-                           fresh_own="reject_coro", char_literal_init=True)
+                           fresh_own="reject_coro")
         self.commit_facts(expr, func)
         return func.return_type
 
@@ -6987,8 +6958,7 @@ class CallAnalyzer:
         into the args list."""
         args = [arg]
         self.receive_winner_args(None, args, None, [(pname, ptype)], func,
-                                 fresh_own="reject_coro",
-                                 char_literal_init=True)
+                                 fresh_own="reject_coro")
         return args[0]
 
     def _analyze_and_pack_varargs(self, expr: TpyCall | TpyMethodCall,
@@ -7278,7 +7248,7 @@ class CallAnalyzer:
         self.commit_winner(
             expr, cand, func.name, stamp=resolved_func, params=fn_slots,
             declared_types=[p.type for p in func.params],
-            fresh_own="note_lend", char_literal_init=True)
+            fresh_own="note_lend")
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(

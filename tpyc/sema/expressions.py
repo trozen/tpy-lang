@@ -1796,7 +1796,8 @@ class ExpressionAnalyzer:
         self.init.apply_guard(fails)
         on_false = self.init.save()
         self.init.restore(here)
-        return Branch(on_true, on_false, true_keys, false_keys)
+        return Branch(on_true, on_false, true_keys, false_keys,
+                      holds.members | fails.members)
 
     def _record_branches(self, e: TpyExpr, branch: Branch) -> None:
         """Leave `e`'s analysis at the merge of its two paths, and keep them

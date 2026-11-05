@@ -39,6 +39,7 @@ from ..typesys import (
     global_tuple_binding_type, disambiguated_pair,
     TpyType, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewTypeFamily, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, TupleType,
+    PtrType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
     ConcreteGenType,
     PendingContainerType, PendingListType, PendingDictType, PendingSetType,
@@ -60,6 +61,7 @@ from ..type_def_registry import (TypeDef, enum_info_of, get_type_def,
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpyFieldAccess, TpyTupleLiteral,
+    TpyStarUnpack,
     TpyNestedDef,
     TpyGeneratorExpression, TpyForEach, TpyWhile,
     TpyComprehensionGenerator,
@@ -72,7 +74,7 @@ from ..value_category import (
     peel_coerce, protocol_slot,
 )
 from ..prescan import (
-    FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
+    FactKills, InPlaceWrites, LiteralLocals, bound_names_of, collect_fact_kills,
     local_names_of, loop_bindings_of, walrus_names_of,
 )
 from .arg_binding import ArgBinding, CallSource, bind
@@ -2222,8 +2224,8 @@ class FunctionTrackingState:
     # While a `while` head is analyzed: the names its body rebinds, whose
     # flow facts decide no test of the head (`dead_arms.decided_truth`).
     head_kills: frozenset[str] = frozenset()
-    # The locals bound exactly once, to a literal: the value each holds
-    # wherever it is bound (`dead_arms.name_values`).
+    # The locals bound exactly once, to a literal or `None`: the value each
+    # holds wherever it is bound (`dead_arms.name_values`).
     constant_locals: dict[str, LiteralValue] = field(default_factory=dict)
     # The decided ternaries, `and` / `or` and value-position tests of the
     # statements under analysis, each with the expression or statement
@@ -2250,9 +2252,11 @@ class FunctionTrackingState:
     pending_num_excluded: frozenset[str] = frozenset()
     # The prescan's other locals bound more than once (`LiteralLocals.rebound`).
     pending_num_rebound: frozenset[str] = frozenset()
-    # Every literal-seeded local's literal values, pending or not: what an
-    # annotation of it must hold.
-    int_literal_values: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    # The prescan's literals of each local: a literal-seeded one's integer
+    # literals, pending or not, are what an annotation of it must hold; the
+    # values of one every binding of which stores a literal are what a
+    # `Literal` slot admits of it.
+    literal_locals: LiteralLocals = field(default_factory=LiteralLocals)
     # The prescan's first bindings (`scan_first_bindings`): per local, the
     # statements -- one, or the sibling arms that bind it together -- whose
     # values declare its type. Read when an arm joins a group's cell and
@@ -2907,13 +2911,10 @@ class SemanticContext:
     # --- Record context ---
     record_ctx: RecordContext = field(default_factory=RecordContext)
 
-    # @overload groups: implementation -> its stubs, in source order. Filled
-    # at registration, for free functions and methods alike.
-    overload_groups: IdentityMap = field(default_factory=IdentityMap)
-    # Every other def of a method `@overload` implementation's name -> that
-    # implementation: its `@auto_readonly` / `@auto_own` clone twin, never
-    # emitted nor called (the stubs' specializations carry both halves).
-    overload_twins: IdentityMap = field(default_factory=IdentityMap)
+    # Per record, its `typing.overload` sets, (implementation, its stubs),
+    # kept from the copy (`TypeRegistrar.copy_overload_sets`) to check the
+    # stubs against the implementation once the record's `Self` resolves.
+    overload_signature_sets: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Type cache ---
     expr_types: IdentityMap = field(default_factory=IdentityMap)
@@ -5099,10 +5100,14 @@ class SemanticContext:
                 return ""
             if source[0] == "builtins":
                 return source[1]
+            infos = self.function_infos_of_binding(binding)
+            if infos:
+                return self.builtin_target_of(infos)
             return self.module_member_builtin(*resolve_definer(
-                self.registry, *source, SymbolKind.FUNCTION, SymbolKind.RECORD))
+                self.registry, *source, SymbolKind.RECORD))
         if binding.kind == BindingKind.FUNCTION:
-            return self.builtin_target_of(binding.func_infos)
+            return self.builtin_target_of(
+                self.function_infos_of_binding(binding))
         if binding.kind == BindingKind.RECORD:
             return self.builtin_target_of(binding.record_info)
         return ""
@@ -5115,6 +5120,60 @@ class SemanticContext:
             return ""
         return self.builtin_target_of((info.functions or {}).get(name)
                                       or (info.records or {}).get(name))
+
+    def module_functions(self, module: str, name: str) -> list[FunctionInfo]:
+        """The overloads of module `module`'s function `name`, [] for none."""
+        info = self.registry.get_module(module)
+        return list((info.functions or {}).get(name, [])) if info else []
+
+    def function_infos_of_binding(self, binding: object
+                                  ) -> list[FunctionInfo]:
+        """The overloads of the free function `binding` names: a
+        definition's, or an import's where its name is defined
+        (`resolve_definer`); [] for any other binding."""
+        if not isinstance(binding, NameBinding):
+            return []
+        if binding.kind == BindingKind.FUNCTION:
+            return list(binding.func_infos or [])
+        if (binding.kind == BindingKind.IMPORTED_NAME
+                and binding.import_source is not None):
+            return self.module_functions(*resolve_definer(
+                self.registry, *binding.import_source, SymbolKind.FUNCTION))
+        return []
+
+    def call_takes_address(self, call: 'TpyCall | TpyMethodCall',
+                           at: 'int | str') -> bool:
+        """Whether `call`, read before the body is analyzed, may take its
+        argument written at `at` (a position, or a keyword's name) by
+        address: a function its callee names binds it at a `Ptr` parameter,
+        or as an element of a `*args: Ptr` pack, that takes a value so
+        (`@value_ptr_coercion`). Only a free function
+        carries that, named by a definition, an import or a module
+        (`m.f(x)`). A `*expr` among the arguments leaves every position
+        open."""
+        if isinstance(call, TpyMethodCall):
+            module = self.module_named_by(call.obj)
+            infos = (self.module_functions(module, call.method)
+                     if module else [])
+        else:
+            name = call.maybe_func_name
+            ns = self.func.current_ns
+            infos = (self.function_infos_of_binding(ns.lookup(name))
+                     if name is not None and ns is not None else [])
+        infos = [fi for fi in infos if fi.value_ptr_coercion]
+        if not infos:
+            return False
+        if any(isinstance(a, TpyStarUnpack) for a in call.args):
+            return True
+        src = CallSource((None,) * len(call.args),
+                         tuple((k, None) for k in call.kwargs))
+        for fi in infos:
+            bound = bind(src, fi.params, fi.name)
+            ty = (bound.param_type_at(at, fi.params)
+                  if isinstance(bound, ArgBinding) else None)
+            if ty is not None and isinstance(unwrap_ref_type(ty), PtrType):
+                return True
+        return False
 
     def builtin_target_of(self, target: object) -> str:
         """The builtins module's name for `target`, a resolved function's

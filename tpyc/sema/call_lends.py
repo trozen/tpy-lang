@@ -60,7 +60,7 @@ from ..type_def_registry import (
     type_def_of,
 )
 from ..typesys import (
-    contains_reference_type, FunctionInfo, LiteralType, NominalType, OptionalType, OwnType,
+    contains_reference_type, FunctionInfo, NominalType, OptionalType, OwnType,
     PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
     contains_type_param, declares_no_writes, held_whole_borrow_sources,
@@ -1134,8 +1134,7 @@ class ViewLend(CallPolicy):
     is a view of a `str` / `bytes` buffer -- the BUFFER question: every
     operand but a bufferless scalar may own a buffer the view reads, where
     MAY asks whether an operand holds a POINTER (`holds_no_pointer`). A
-    `Literal[str]` result is static storage and a non-view result a fresh
-    value: no operands. A view result answers its recorded borrow sources,
+    non-view result is a fresh value: no operands. A view result answers its recorded borrow sources,
     with the owned elements of a tuple-literal argument they hold
     (`temp_backed`); with no fact, a pending or known-empty one, a callable
     value or a fresh-stamped result, every argument and the typed receiver
@@ -1208,23 +1207,14 @@ class ViewLend(CallPolicy):
     def call_kind(self, call: TpyExpr,
                   srcs: 'list[LendSource] | None') -> LeafKind:
         """What the result of `call` is as a view's leaf when it lends no
-        operand (`at_call` answered `srcs`, None or empty): a `Literal[str]`
-        result is STATIC and any other fresh one a TEMPORARY; a view call
-        that may read no operand is UNNAMED, any other call shape
-        UNPLACEABLE."""
+        operand (`at_call` answered `srcs`, None or empty): a fresh result
+        is a TEMPORARY; a view call that may read no operand is UNNAMED, any
+        other call shape UNPLACEABLE."""
         if srcs is not None:
-            return _fresh_kind(self.ctx, call)
+            return LeafKind.TEMPORARY
         return (LeafKind.UNNAMED
                 if isinstance(call, (TpyCall, TpyMethodCall))
                 else LeafKind.UNPLACEABLE)
-
-
-def _fresh_kind(ctx: 'SemanticContext', call: TpyExpr) -> LeafKind:
-    """A fresh call result as a leaf: STATIC for a `Literal[str]` value,
-    else a TEMPORARY."""
-    rt = ctx.get_expr_type(call)
-    return (LeafKind.STATIC if isinstance(rt, LiteralType)
-            and rt.is_str_base() else LeafKind.TEMPORARY)
 
 
 def shared_leaf_kind(node: TpyExpr,
@@ -1581,7 +1571,7 @@ class TempLend(CallPolicy):
     def call_kind(self, call: TpyExpr,
                   srcs: 'list[LendSource] | None') -> LeafKind:
         if srcs is not None:
-            return _fresh_kind(self.ctx, call)
+            return LeafKind.TEMPORARY
         return LeafKind.UNNAMED
 
 

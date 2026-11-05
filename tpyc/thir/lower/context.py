@@ -1361,16 +1361,14 @@ def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct,
 def return_slot(lc: '_LowerCtx', *,
                 implicit_move: bool = False) -> 'Slot | None':
     """The slot a `return` in this body hands its value to: its type and
-    how it holds the result from the body's signature (a per-@overload
-    stub's when one is lowered); None for a body with no result. It
+    how it holds the result from the body's signature; None for a body
+    with no result. It
     carries nothing per region: the placement a nested region grants is
     the caller's to read where it lowers. The result is const where the
     body's own declared result is readonly -- an `@auto_readonly` const
     twin's, which the twins' shared signature leaves receiver-neutral.
     `implicit_move`: the return statement's own fact (`Slot`)."""
-    declared = (lc.overload_stub_return
-                if lc.overload_stub_return is not None
-                else lc.func.return_type if lc.func is not None else None)
+    declared = lc.func.return_type if lc.func is not None else None
     return slot_for(None, SlotPosition.RETURN, lc.analyzer,
                     signature=lc.signature,
                     result_const=(isinstance(declared, TpyType)
@@ -1509,14 +1507,9 @@ class _Prescan:
                  "global_cpp", "global_write_cpp", "native_globals",
                  "global_slots")
 
-    def __init__(self, func: TpyFunction, analyzer,
-                 params_override=None) -> None:
-        # `params_override` carries a per-@overload
-        # STUB's signature: the impl body is emitted against the stub's
-        # types, so every signature-derived fact here must key on them.
-        src_params = func.params if params_override is None else params_override
+    def __init__(self, func: TpyFunction, analyzer) -> None:
         (self.param_names, self.owned_viewfam_params, self.own_tuple_params,
-         self.value_opt_params) = _param_facts(src_params, analyzer)
+         self.value_opt_params) = _param_facts(func.params, analyzer)
         # Whether the callable has a `self` receiver (instance method) -- the
         # lowering arms that treat the name `self` specially (the return-self arm,
         # the self-rebind rejects) key on this so a free function's local or
@@ -1884,9 +1877,6 @@ _FUNCTION_SCOPED_STATE = (
     # Forwarded proto-param aliases (`xs = it` in a resumable): a
     # compile-time name->param map seeded once at entry, never mutated.
     "forwarded_map",
-    # Per-@overload-stub literal facts: seeded once at lower_function setup
-    # for a literal-only group's stub, immutable across the walk.
-    "overload_literal_facts",
     # Module-init facts: seeded once from the module's globals / import list
     # and never branch-scoped -- a global's slot identity and an import's
     # chain do not change inside a branch.
@@ -1908,9 +1898,6 @@ _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "inline_narrowed",
     "forwarded_map",
     "frame_local_types",
-    # An enclosing `@overload` stub's facts about ITS params: an inner param
-    # of the same spelling must not fold against them.
-    "overload_narrowing", "overload_literal_facts",
     # A module's import spelling for a name it redefines later: an inner
     # binding of that name is the inner local, never the import.
     "pre_decl_import_cpp",
@@ -1943,8 +1930,8 @@ _SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self")
 _LC_NOT_NAME_KEYED = (
     "analyzer", "func", "frame", "prescan", "render_type", "render_type_stored",
     "render_resolve", "render_concept", "record_name", "self_cpp",
-    "self_is_pointer", "error_return_cpp", "overload_stub_return",
-    "overload_terminated", "resumable_leaf_mode", "placement",
+    "self_is_pointer", "error_return_cpp",
+    "resumable_leaf_mode", "placement",
     "slot_hoist_ok", "in_container_elem", "in_finally_helper", "in_for_body",
     "top_level_scope", "global_binding_scope", "top_level_line",
     "in_nested_def",
@@ -2064,9 +2051,7 @@ class _LowerCtx:
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "error_return_cpp",
-                 "overload_narrowing", "overload_stub_return",
-                 "overload_literal_facts",
-                 "overload_terminated", "render_concept",
+                 "render_concept",
                  "top_level_scope", "global_binding_scope", "global_slot_assigned",
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
@@ -2082,7 +2067,6 @@ class _LowerCtx:
                  self_cpp: str = "this",
                  self_is_pointer: bool = True,
                  render_resolve=None,
-                 params_override=None,
                  render_concept=None,
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
@@ -2093,7 +2077,7 @@ class _LowerCtx:
         self.frame: 'THIRResumableFrame | None' = None
         self.capture_sites = CaptureSites(func, eligible=not (
             top_level_scope or func.is_async or func.is_generator or func.error_return
-            or func.type_params or params_override is not None or analyzer.overload_groups.get(func)
+            or func.type_params
             or func.is_staticmethod or func.is_classmethod or func.is_consuming
             or func.is_property_getter or func.is_property_setter
             or func.is_auto_own_borrowing_clone or func.is_auto_own_consuming_clone
@@ -2101,15 +2085,9 @@ class _LowerCtx:
             or (func.is_method and func.name != "__init__"
                 and func.name.startswith("__") and func.name.endswith("__"))))
         self.global_binding_scope = not (func.is_async or func.is_generator)
-        # The SIGNATURE params this body is lowered against: a per-@overload
-        # stub's when one is being specialized (the body is emitted against
-        # the stub's types), the impl's otherwise. Every param-type lookup
-        # must read this, not `func.params` -- a stub-narrowed param is
-        # concrete here while the impl declares it Optional.
-        self.params = tuple(func.params if params_override is None
-                            else params_override)
-        self.prescan = _Prescan(func, analyzer,
-                                params_override=params_override)
+        # The SIGNATURE params this body is lowered against.
+        self.params = tuple(func.params)
+        self.prescan = _Prescan(func, analyzer)
         # Module-init walk: names live at NAMESPACE scope (pre-declared by the
         # generator, so every write is an assignment), slot temps are `static
         # __global_slot_N`, and non-value globals are writable pointer slots --
@@ -2179,20 +2157,6 @@ class _LowerCtx:
                 self.tparam_bounds.update(ri.type_param_bounds)
         if getattr(func, "type_param_bounds", None):
             self.tparam_bounds.update(func.type_param_bounds)
-        # Per-@overload-stub lowering: the dead-branch-elim narrowing map
-        # (build_overload_narrowing's stub-name -> concrete type) and the
-        # stub's return type (overriding func.return_type at the return
-        # arms). Both None for an ordinary single-signature body.
-        # `overload_terminated` mirrors ctx.overload_terminated: a folded
-        # True branch ending in return/raise truncates every enclosing
-        # statement list and suppresses the trailing-comment scan.
-        self.overload_narrowing: 'dict[str, TpyType] | None' = None
-        self.overload_stub_return: 'TpyType | None' = None
-        # A literal-only group's per-stub fact map (codegen's
-        # literal_overload_facts): enables the if-chain dead-branch fold
-        # exactly like overload_narrowing does for the isinstance families.
-        self.overload_literal_facts: dict[str, TpyType] = {}
-        self.overload_terminated: bool = False
         # Lowering a nested def's body (a C++ lambda): its captures and
         # global bindings are the enclosing body's, never declared here.
         self.in_nested_def: bool = False

@@ -4,33 +4,33 @@
 namespace tpyapp::main {
 
 
-
-
-
-// def process(mode: str) -> str:
-//     if mode == "r":
-//         return "read"
-//     if mode == "w":
-//         return "write"
-//     return "binary"
 // @overload
 // def process(mode: Literal["r"]) -> str: ...
 std::string process__lit_r(std::string_view mode) {
-    return "read";
+    if (true) {
+        return "read";
+    }
 }
 
 // @overload
 // def process(mode: Literal["w"]) -> str: ...
 std::string process__lit_w(std::string_view mode) {
-    return "write";
+    if (false) {
+    }
+    if (true) {
+        return "write";
+    }
 }
 
 // @overload
 // def process(mode: Literal["rb"]) -> str: ...
 std::string process__lit_rb(std::string_view mode) {
+    if (false) {
+    }
+    if (false) {
+    }
     return "binary";
 }
-
 
 // def dispatch(mode: Literal["r", "w", "rb"]) -> None:
 //     match mode:

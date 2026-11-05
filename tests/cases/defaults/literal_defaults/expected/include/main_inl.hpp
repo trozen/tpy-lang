@@ -5,8 +5,7 @@
 
 namespace tpyapp::main {
 
-// # generator (the param is captured as an owned string, not a view:
-// # BUGS.md#literal-value-consumers-miss-base)
+// # generator (the frame owns its string as a `str` parameter's does)
 // def generator(mode: Literal["r", "rb"] = "rb") -> Iterator[str]:  # tpyc: ok
 //     yield mode                                                                # -> S_RESUME_0
 inline std::expected<std::string, ::tpy::StopIteration> __gen_generator::__next__() {
@@ -14,7 +13,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_generator::__next_
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::string(mode);
+        return mode;
     }
     case S_RESUME_0: {  // after: yield mode
         __state = S_DONE;

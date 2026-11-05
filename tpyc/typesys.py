@@ -929,13 +929,16 @@ class LiteralTag(Enum):
     STR = "str"
     INT = "int"
     BOOL = "bool"
+    # `None`: never a `Literal[...]` member, only the value a local bound
+    # once to `None` holds (`FunctionTrackingState.constant_locals`).
+    NONE = "none"
 
 
 @dataclass(frozen=True)
 class LiteralValue:
     """A typed literal value. Distinguishes True from 1 via tag."""
     tag: LiteralTag
-    value: str | int | bool
+    value: str | int | bool | None
 
     def __str__(self) -> str:
         if self.tag is LiteralTag.STR:
@@ -955,6 +958,15 @@ class LiteralType(TpyType):
     """
     base_type: TpyType
     values: tuple[LiteralValue, ...]
+    # A str local's storage is decided after its body (view or owned); a
+    # Literal-typed local carries that pending entry here, outside equality,
+    # so its value set compares as the annotation's. It rides on the type,
+    # the channel a `PendingStrType` local's var id uses, because THIR reads
+    # a name's storage off the expression type and nothing maps a type back
+    # to its binding (TODO.md "A name read's storage lives on the read or
+    # its binding, not on its type").
+    storage: Optional['PendingViewType'] = field(
+        default=None, compare=False, hash=False, repr=False)
 
     def to_cpp(self) -> str:
         return self.base_type.to_cpp()
@@ -985,25 +997,12 @@ class LiteralType(TpyType):
         return self.base_type.to_cpp_const_param(name)
 
     def to_cpp_return(self) -> str:
-        """Return form for `Literal[...]` returns.
-
-        For str-base Literal: every value is a string literal (static storage),
-        so emit `std::string_view` -- no heap alloc, no dangling risk. For
-        value-type bases (int, bool) the base's own return form is already
-        right (returned by value).
-        """
-        if self.return_passing() is ReturnPassing.VIEW:
-            return self.base_type.to_cpp_param_type()  # std::string_view
         return self.base_type.to_cpp_return()
 
     def to_cpp_return_const(self) -> str:
-        if self.return_passing() is ReturnPassing.VIEW:
-            return self.base_type.to_cpp_param_type()
         return self.base_type.to_cpp_return_const()
 
     def return_passing(self) -> ReturnPassing:
-        if self.is_str_base():
-            return ReturnPassing.VIEW
         return self.base_type.return_passing()
 
     def param_needs_copy_for_reassign(self) -> bool:
@@ -1036,6 +1035,20 @@ class LiteralType(TpyType):
     def contains(self, tag: LiteralTag, value: str | int | bool) -> bool:
         """Check if a tagged value is in this Literal's value set."""
         return LiteralValue(tag, value) in self.values
+
+    def admits(self, actual: TpyType) -> bool:
+        """Whether a value of type `actual` is proven one of this set's: a
+        `Literal` within it, or an int literal of one of its values. Any
+        other type is a runtime value the set does not prove."""
+        if isinstance(actual, LiteralType):
+            return all(v in self.values for v in actual.values)
+        return (isinstance(actual, IntLiteralType) and self.is_int_base()
+                and actual.value is not None
+                and self.contains(LiteralTag.INT, actual.value))
+
+    def narrowed(self, values: tuple[LiteralValue, ...]) -> 'LiteralType':
+        """The same binding holding a subset of the values."""
+        return dc_replace(self, values=values)
 
 
 @dataclass(frozen=True)
@@ -3698,16 +3711,10 @@ class ClassVarType(_TypeModifierWrapper):
 
 
 def is_any_str_type(typ: 'TpyType') -> bool:
-    """Check if a type is any string type (str, String, StrView, PendingStr, Literal[str]).
-
-    Includes LiteralType with str base (the Literal["r", "w"] annotation type).
-    Single-value LiteralType instances from enrichment never reach storage/codegen.
-    """
+    """Check if a type is any string type (str, String, StrView, PendingStr,
+    a str `Literal`)."""
     from .type_def_registry import is_str_category
-    if is_str_category(typ) or isinstance(typ, PendingStrType):
-        return True
-    # Cold path: Literal[str] annotations.
-    return isinstance(typ, LiteralType) and typ.is_str_base()
+    return is_str_category(typ) or isinstance(typ, PendingStrType)
 
 
 def is_integer_type(t: 'TpyType | None') -> bool:
@@ -7152,6 +7159,39 @@ class PendingBytesType(PendingViewType):
         return BYTES_FAMILY
 
 
+def literal_values(t: Optional[TpyType]) -> Optional[tuple[LiteralValue, ...]]:
+    """The values `t` holds when it is a `Literal` (under its qualifiers),
+    else None: what a value-set reading asks before any base-type rule,
+    which a `Literal` answers as its base."""
+    if t is None:
+        return None
+    t = unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
+    return t.values if isinstance(t, LiteralType) else None
+
+
+def holds_literal(t: TpyType) -> bool:
+    """Whether a parameter type is or wraps a `Literal` (an optional or
+    union member, under its qualifiers)."""
+    t = unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
+    if isinstance(t, LiteralType):
+        return True
+    if isinstance(t, OptionalType):
+        return holds_literal(t.inner)
+    if isinstance(t, UnionType):
+        return any(holds_literal(m) for m in t.members)
+    return False
+
+
+def pending_view_of(t: Optional[TpyType]) -> Optional[PendingViewType]:
+    """The pending view-vs-owned storage a local's binding type stands for:
+    a pending view itself, or the one a `Literal` local carries."""
+    if isinstance(t, PendingViewType):
+        return t
+    if isinstance(t, LiteralType):
+        return t.storage
+    return None
+
+
 @dataclass
 class ViewVarInfo:
     """Tracks usage of a view-type local to decide view vs owned."""
@@ -8507,6 +8547,11 @@ class ParamInfo:
     is_variadic: bool = False  # True for *args param (type Span[T], or Span[readonly[T]] for readonly *args)
     positional_only: bool = False  # True for params before a '/' separator
     is_kwargs: bool = False  # True for the **kwargs param (type Unpack[TypedDict])
+    # On a `typing.overload` copy: the argument type a call omitting this
+    # parameter is ranked with -- the implementation's default typed as the
+    # same expression written there, which the copy's type admits
+    # (`TypeRegistrar._resolve_copy_default`). None ranks no argument there.
+    omitted_arg: 'TpyType | None' = None
 
     @property
     def has_default(self) -> bool:
@@ -8685,14 +8730,9 @@ class FunctionInfo:
     # The source body whose analysis facts (mutated params, return borrows,
     # readonly inference, ...) this FunctionInfo carries -- set for every
     # registered def, each `@dispatch` variant and each clone of a method
-    # pair alike, never for a bodyless `typing.overload` stub. Found back
-    # through `body_function_info` / `body_method_info`, never by name.
+    # pair alike. Found back through `body_function_info` /
+    # `body_method_info`, never by name.
     body: TpyFunction | None = field(default=None, repr=False, compare=False)
-    # Set only on the bodyless `typing.overload` stub that receives its
-    # group's implementation facts (`overload_facts_stub`): the
-    # implementation def whose analysis fills them. Stored on the RAW fi,
-    # read through `root`.
-    facts_implementation: TpyFunction | None = field(default=None, repr=False, compare=False)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
@@ -9116,33 +9156,7 @@ def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None'
     if len(found) > 1:
         raise AssertionError(
             f"Internal error: {len(found)} FunctionInfos carry the body of '{func.name}'")
-    if found:
-        return found[0]
-    return overload_facts_stub(candidates)
-
-
-def stamp_overload_facts(stubs: 'list[FunctionInfo]', implementation: 'TpyFunction', *,
-                         method: bool) -> None:
-    """Pick the stub of a `typing.overload` group that receives its
-    implementation's facts -- a method group's first, a free function
-    group's last -- and stamp it (`FunctionInfo.facts_implementation`), the
-    one stub `overload_facts_stub` reads. Nothing for a group with a body
-    of its own."""
-    if stubs and all(fi.root.body is None for fi in stubs):
-        stubs[0 if method else -1].facts_implementation = implementation
-
-
-def overload_facts_stub(candidates: 'list[FunctionInfo]') -> 'FunctionInfo | None':
-    """The stub of a `typing.overload` group that carries its
-    implementation's facts: the one registration stamped with the
-    implementation (`FunctionInfo.facts_implementation`). None for a group
-    with a body of its own, or one not stamped (yet). Its FunctionInfos are
-    the bodyless stubs and the implementation has none, so the facts land on
-    that one stub; the others get none
-    (BUGS.md#overload-group-borrow-facts-last-entry)."""
-    if not candidates or any(fi.root.body is not None for fi in candidates):
-        return None
-    return next((fi for fi in candidates if fi.facts_implementation is not None), None)
+    return found[0] if found else None
 
 
 def body_function_info(registry: 'TypeRegistry', func: 'TpyFunction') -> 'FunctionInfo | None':
@@ -9343,17 +9357,13 @@ def is_bodyless_binding(fn) -> bool:
     return binds_runtime_symbol(fn) or (fn.is_stub and not fn.is_export)
 
 
-def emits_cpp_defaults(fn: 'TpyFunction', native_owner: bool = False) -> bool:
+def emits_cpp_defaults(fn: 'TpyFunction') -> bool:
     """Whether TPy writes the C++ declaration a call to def `fn` resolves to
     with default arguments. A bodyless binding's declaration is its
     target's own; an `@export(binding="C")` function's is the `extern "C"`
-    line, written without any. A `typing.overload` stub is bodyless too, yet
-    its specialization is emitted with the stub's defaults -- except on a
-    `native_owner` class, for which TPy emits no member at all."""
+    line, written without any."""
     if fn.is_export:
         return False
-    if fn.is_typing_overload_stub:
-        return not native_owner
     return not is_bodyless_binding(fn)
 
 
@@ -9389,15 +9399,10 @@ def return_borrow_fact_pending(fi: FunctionInfo) -> bool:
     yet (a later body of the import component, or any body while module
     statements are analyzed, which runs before every body of the layer).
     The body sema analyzes for a root's facts is the def it was registered
-    from or, for the `typing.overload` stub that receives its group's
-    facts, the implementation stamped at registration
-    (`FunctionInfo.facts_implementation`); the group's other stubs get no
-    facts at all (BUGS.md#overload-group-borrow-facts-last-entry). Asked
-    through the root, which carries the fact for a call site's view (a
-    substituted generic, a constructor info)."""
+    from. Asked through the root, which carries the fact for a call site's
+    view (a substituted generic, a constructor info)."""
     root = fi.root
-    return (root.return_borrows_from is None
-            and analyzes_body(root.body or root.facts_implementation))
+    return root.return_borrows_from is None and analyzes_body(root.body)
 
 
 def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
@@ -10423,6 +10428,9 @@ class TypeRegistry:
 
     def _ancestor_hit(self, child: 'TpyType', target: 'TpyType'
                       ) -> 'tuple[int, NominalType] | None':
+        if isinstance(child, LiteralType):
+            # A Literal's values are instances of its base's class.
+            child = child.base_type
         if not isinstance(child, NominalType) or child.is_protocol:
             return None
         if not isinstance(target, NominalType) or target.is_protocol:

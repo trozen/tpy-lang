@@ -81,7 +81,7 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRGlobalBinding, THIRPrint, THIRRaise, THIRReturn, THIRSetItem,
     THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
     THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack,
-    THIRCoroHandleMove, THIRMatch, THIRMatchBinding, THIRMatchFoldBind,
+    THIRCoroHandleMove, THIRMatch, THIRMatchBinding,
     THIRWith, THIRWithItem, WithTargetArm, THIRFrameSlotWrite, TupleElemBind,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableLeaves,
     THIRResumableReturn, THIRResumeExtraction, THIRStmt, THIRLent, THIRSelf,
@@ -558,8 +558,6 @@ def _check_binding_contracts(owner: str, node: object) -> None:
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind,
                          THIRErrorReturnBind, THIRFrameSlotWrite)):
         _check_contract(owner, node, node.name, node.binding)
-    elif isinstance(node, THIRMatchFoldBind):
-        _check_contract(owner, node, node.name_cpp, node.binding)
     elif isinstance(node, THIRCoroHandleMove):
         _check_contract(owner, node, node.target, node.binding)
     elif isinstance(node, (THIRForEach, THIRForIterProto, THIRForRange)):

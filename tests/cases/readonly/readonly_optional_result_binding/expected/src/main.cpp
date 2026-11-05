@@ -28,45 +28,37 @@ const R* relay_free(const H& h) {
     return ::tpyapp::main::fget(h);
 }
 
-
-
-// # the stubs' readonly result is the specialization's return type
-// def pick(h: H, k: int32 | str) -> Optional[R]:
-//     if isinstance(k, str):
-//         return h._alt
-//     return h._opt
 // @overload
 // def pick(h: H, k: int32) -> readonly[Optional[R]]: ...
-const R* pick__H__int32(H& h, int32_t k) {
+const R* pick__H__int32(const H& h, int32_t k) {
+    if (false) {
+    }
     return ::tpy::optional_to_ptr(h._opt);
 }
 
 // @overload
 // def pick(h: H, k: str) -> readonly[Optional[R]]: ...
-const R* pick__H__str(H& h, std::string_view k) {
-    return ::tpy::optional_to_ptr(h._alt);
+const R* pick__H__str(const H& h, std::string_view k) {
+    if (true) {
+        return ::tpy::optional_to_ptr(h._alt);
+    }
 }
 
-
-
-
-// # a readonly receiver's field is the readonly result every stub declares
-// def pick_ro(h: readonly[H], k: int32 | str) -> readonly[Optional[R]]:  # tpyc: ok
-//     if isinstance(k, str):
-//         return h._alt
-//     return h._opt
 // @overload
 // def pick_ro(h: readonly[H], k: int32) -> readonly[Optional[R]]: ...
 const R* pick_ro__readonly_H__int32(const H& h, int32_t k) {
+    if (false) {
+    }
     return ::tpy::optional_to_ptr(h._opt);
 }
 
 // @overload
 // def pick_ro(h: readonly[H], k: str) -> readonly[Optional[R]]: ...
 const R* pick_ro__readonly_H__str(const H& h, std::string_view k) {
-    return ::tpy::optional_to_ptr(h._alt);
+    if (true) {
+        return ::tpy::optional_to_ptr(h._alt);
+    }
 }
-
 
 // def show(tag: str, v: readonly[Optional[R]]) -> None:
 //     print(tag, v.x if v is not None else -1)

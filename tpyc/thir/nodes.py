@@ -3156,61 +3156,6 @@ class THIRNoOpStmt(THIRStmt):
 
 
 @dataclass(frozen=True)
-class THIRFoldedBlock(THIRStmt):
-    """The surviving statements of a per-@overload-stub dead-branch fold,
-    spliced flat at the enclosing block's indent (no brace scope). May be
-    empty (an all-dead chain with no else).
-
-    `burns_match_counter` marks a folded MATCH: `ctx.match_counter` bumps
-    before the fold dispatch, so a later match in the
-    same body numbers its `__match_subject_N` past the folded one -- the
-    emit arm must consume one counter slot without emitting a subject."""
-    stmts: tuple[THIRStmt, ...] = ()
-    burns_match_counter: bool = False
-
-
-@dataclass(frozen=True)
-class THIRFoldedIfChain(THIRStmt):
-    """A PARTIALLY-folded per-@overload-stub if-chain: the surviving dynamic
-    branches emit as a clean `if / else if` chain, the else body coming from
-    the last ORIGINAL chain node. The lowering
-    admits only temp-free conditions past the first branch and no
-    branch-decl / concrete-extraction carriers; every other shape
-    rejects."""
-    branches: tuple[tuple[THIRExpr, tuple[THIRStmt, ...]], ...] = ()
-    else_body: tuple[THIRStmt, ...] = ()
-
-
-@dataclass(frozen=True)
-class THIRMatchFoldBind(THIRStmt):
-    """One capture binding of a folded @overload match arm, in its
-    free-binding forms -- `auto {name} = {source};` when
-    sema's per-capture bind_by_value fact is set (a free-copy scalar),
-    `auto& {name} = {source};` otherwise. Pre-declared/hoisted targets are
-    gate-rejected, so only the fresh-declaration forms exist here. Never
-    carries a source comment (bindings emit comment-less between
-    the match's source comment and the arm body)."""
-    binding: 'BindingRepr | None' = field(
-        default=None, kw_only=True, compare=False, repr=False)
-    name_cpp: str
-    source_cpp: str
-    by_value: bool = True
-
-
-@dataclass(frozen=True)
-class THIROverloadDefault(THIRStmt):
-    """A short @overload stub's omitted impl param, emitted as a local
-    initialized to the impl's default at the top of the body
-    (`{cpp_type} {name} = {cpp_default};`, comment-free like the param
-    copies). `cpp_default` is pre-rendered by the shared
-    `default_to_cpp_from_analyzer` (with the `{}` value-initialization
-    fallback applied by lowering)."""
-    name: str
-    cpp_type: str
-    cpp_default: str
-
-
-@dataclass(frozen=True)
 class THIRParamCopy(THIRStmt):
     """The mutable owned copy of a reassigned const-ref param --
     `{cpp_type} {name} = __param_{name};` at the top of the body, before any

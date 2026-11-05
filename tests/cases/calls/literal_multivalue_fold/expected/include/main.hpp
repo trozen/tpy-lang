@@ -9,33 +9,47 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def handle(mode: str) -> str:
+// @overload
+// def handle(mode: Literal["r", "w"]) -> str: ...
 std::string handle__lit_r__w(std::string_view mode);
-// def handle(mode: str) -> str:
+// @overload
+// def handle(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle__lit_rb__wb(std::string_view mode);
-// def handle_in(mode: str) -> str:
+// @overload
+// def handle_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_in__lit_r__w(std::string_view mode);
-// def handle_in(mode: str) -> str:
+// @overload
+// def handle_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_in__lit_rb__wb(std::string_view mode);
-// def handle_not_in(mode: str) -> str:
+// @overload
+// def handle_not_in(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in__lit_r__w(std::string_view mode);
-// def handle_not_in(mode: str) -> str:
+// @overload
+// def handle_not_in(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in__lit_rb__wb(std::string_view mode);
-// def handle_and(mode: str) -> str:
+// @overload
+// def handle_and(mode: Literal["r"]) -> str: ...
 std::string handle_and__lit_r(std::string_view mode);
-// def handle_and(mode: str) -> str:
+// @overload
+// def handle_and(mode: Literal["w"]) -> str: ...
 std::string handle_and__lit_w(std::string_view mode);
-// def handle_and_multi(mode: str) -> str:
+// @overload
+// def handle_and_multi(mode: Literal["r", "w"]) -> str: ...
 std::string handle_and_multi__lit_r__w(std::string_view mode);
-// def handle_and_multi(mode: str) -> str:
+// @overload
+// def handle_and_multi(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_and_multi__lit_rb__wb(std::string_view mode);
-// def handle_not_in_disjoint(mode: str) -> str:
+// @overload
+// def handle_not_in_disjoint(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not_in_disjoint__lit_r__w(std::string_view mode);
-// def handle_not_in_disjoint(mode: str) -> str:
+// @overload
+// def handle_not_in_disjoint(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not_in_disjoint__lit_rb__wb(std::string_view mode);
-// def handle_not(mode: str) -> str:
+// @overload
+// def handle_not(mode: Literal["r", "w"]) -> str: ...
 std::string handle_not__lit_r__w(std::string_view mode);
-// def handle_not(mode: str) -> str:
+// @overload
+// def handle_not(mode: Literal["rb", "wb"]) -> str: ...
 std::string handle_not__lit_rb__wb(std::string_view mode);
 // def main() -> None:
 void main();

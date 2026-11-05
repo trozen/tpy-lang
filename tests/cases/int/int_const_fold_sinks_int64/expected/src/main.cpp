@@ -217,12 +217,12 @@ void unsigned_() {
     uint32_t c = 7;
     std::cout << "narrow" << " " << ::tpy::print_bool(::std::cmp_less(a, static_cast<uint64_t>(9223372036854775808ull))) << " " << ::tpy::print_bool(::std::cmp_greater(static_cast<uint64_t>(9223372036854775808ull), a)) << " " << ::tpy::print_bool(::std::cmp_greater_equal(a, 0)) << " " << ::tpy::print_bool(::std::cmp_greater(a, 255)) << " " << ::tpy::print_bool((a < 200)) << " " << ::tpy::print_bool(::std::cmp_less(c, static_cast<int64_t>(1099511627776))) << "\n" << ::tpy::check_signals;
     std::optional<uint8_t> o = 3;
-    if ((o.has_value())) {
+    if (true) {
         std::cout << "narrowed" << " " << ::tpy::print_bool(::std::cmp_greater((*o), -1)) << " " << ::tpy::print_bool(::std::cmp_less(-1, (*o))) << " " << ::tpy::print_bool(::std::cmp_less((*o), static_cast<uint64_t>(9223372036854775808ull))) << " " << ::tpy::print_bool(::std::cmp_greater(static_cast<uint64_t>(9223372036854775808ull), (*o))) << "\n" << ::tpy::check_signals;
     }
     std::optional<int64_t> q = -1;
     std::optional<uint64_t> p = 3;
-    if (((q.has_value()) && (p.has_value()))) {
+    if (true) {
         std::cout << "narrowed" << " " << ::tpy::print_bool(::std::cmp_greater((*q), static_cast<uint64_t>(9223372036854775808ull))) << " " << ::tpy::print_bool(::std::cmp_greater(static_cast<uint64_t>(9223372036854775808ull), (*q))) << " " << ::tpy::print_bool(::std::cmp_greater((*p), -1)) << " " << ::tpy::print_bool(::std::cmp_less(-1, (*p))) << "\n" << ::tpy::check_signals;
     }
 }

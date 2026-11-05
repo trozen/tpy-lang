@@ -66,24 +66,22 @@ void push__list_int32__int32(std::vector<int32_t>& xs, int32_t v) {
     xs.push_back(v);
 }
 
-
-
-// def show(x: int | str) -> str:  # tpyc: ok
-//     if isinstance(x, int):
-//         return "n=" + str(x)
-//     return "s=" + x
+// # typing.overload in the same module keeps its stubs-plus-implementation form
 // @overload
 // def show(x: int) -> str: ...
 std::string show__int(const ::tpy::BigInt& x) {
-    return (::tpy::str_concat("n=", (x).to_string()));
+    if (true) {
+        return (::tpy::str_concat("n=", (x).to_string()));
+    }
 }
 
 // @overload
 // def show(x: str) -> str: ...
 std::string show__str(std::string_view x) {
+    if (false) {
+    }
     return (::tpy::str_concat("s=", x));
 }
-
 
 // # free function: variants that carry @error_return keep the handled check
 // # and the unwrap

@@ -49,7 +49,7 @@ void capture_loop(std::optional<::tpy::BigInt> v) {
 //             i += 1
 void capture_other(std::optional<::tpy::BigInt> v) {
     std::optional<::tpy::BigInt> x = 5;
-    if ((x.has_value())) {
+    if (true) {
         int32_t i = 0;
         while ((i < 2)) {
             ::tpy::BigInt y = (*x);

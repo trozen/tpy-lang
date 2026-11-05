@@ -718,11 +718,13 @@ def resolve_send_sync(field, type_args: tuple) -> Optional[bool]:
 # collapsed into `NominalType`, so these predicates go through TypeDef.
 
 def _is_cat(t: "TpyType", cat: TypeCategory) -> bool:
-    # LiteralType / PendingViewType delegate qualified_name() to a base/family,
-    # so their TypeDef lookup hits the inner's category. Mirror isinstance
-    # semantics which never matched those wrappers.
+    # A `Literal` value classifies as its base type: `Literal[True]` is a
+    # bool to every consumer. A PendingViewType delegates qualified_name()
+    # to its family but is not yet a value of it.
     from tpyc.typesys import LiteralType, PendingViewType
-    if isinstance(t, (LiteralType, PendingViewType)):
+    if isinstance(t, LiteralType):
+        t = t.base_type
+    if isinstance(t, PendingViewType):
         return False
     td = type_def_of(t)
     return td is not None and td.category is cat
@@ -752,11 +754,11 @@ def is_iterator_adapter(t: "TpyType") -> bool: return _is_cat(t, TypeCategory.IT
 
 
 def _is_qn(t: "TpyType", qname: str) -> bool:
-    # LiteralType and PendingViewType delegate qualified_name() to an inner
-    # base/family, so their TypeDef lookup would hit a primitive's qname.
-    # Mirror `isinstance(t, PrimitiveSubclass)` which never matched them.
+    # As `_is_cat`: a `Literal` value is its base type's.
     from tpyc.typesys import LiteralType, PendingViewType
-    if isinstance(t, (LiteralType, PendingViewType)):
+    if isinstance(t, LiteralType):
+        t = t.base_type
+    if isinstance(t, PendingViewType):
         return False
     td = type_def_of(t)
     return td is not None and td.qname == qname

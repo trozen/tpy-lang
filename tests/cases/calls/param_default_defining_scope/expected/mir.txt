@@ -13,7 +13,6 @@ defs::d@233:0: uncovered (no body to lower)
 defs::d@238:0: uncovered (no body to lower)
 defs::ov@243:0: uncovered (no body to lower)
 defs::ov@245:0: uncovered (no body to lower)
-defs::ov@246:0: uncovered (overloaded callable)
 defs::view@252:0: covered (storage: no_proof_required), summary: known
 defs::gen@256:0: uncovered (by-value capture of a borrowed parameter)
 defs::read@262:0: uncovered (unsupported view source), summary: opaque (unsupported view source)

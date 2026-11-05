@@ -20,6 +20,6 @@ class Vet:
 
     def treat(self, animal: Dog | Cat) -> str | int:
         if isinstance(animal, Dog):
-            return 99  # tpyc: error(/return type mismatch.*int.*str/)
+            return 99  # tpyc: error(/Type mismatch in return value: expected str, got int/)
         else:
             return animal.lives

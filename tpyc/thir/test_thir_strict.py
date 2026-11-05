@@ -5,10 +5,6 @@ error: the message, its location and the reject positions that produce it are
 pinned here. Every fixture below is a shape that rejects TODAY --
 `_strict_reject` fails loudly if one starts routing, so a widened lowering arm
 retires its pin instead of leaving it asserting a diagnostic nothing produces.
-
-One position has no pin: the per-stub specialization arm for `@overload` stubs
-shares the body position, but no reachable program was found that rejects
-there, so the diagnostic it would produce is unwitnessed.
 """
 
 from __future__ import annotations

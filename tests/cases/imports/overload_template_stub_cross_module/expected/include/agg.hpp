@@ -21,6 +21,8 @@ int32_t total__int32(int32_t xs);
 // def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total__Iterable_Own_int32(T_xs&& xs) {
+    if (false) {
+    }
     int32_t s = 0;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -32,13 +34,6 @@ int32_t total__Iterable_Own_int32(T_xs&& xs) {
     }
     return s;
 }
-
-// @overload
-// def total(xs: int32) -> int32: ...
-inline int32_t total__int32(int32_t xs) {
-    return xs;
-}
-
 
 void __tpy_init();
 } // namespace tpyapp::agg

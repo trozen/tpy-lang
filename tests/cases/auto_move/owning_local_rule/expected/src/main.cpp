@@ -866,14 +866,6 @@ Box walrus(const Holder& hd) {
     return Box(0);
 }
 
-
-
-// # overload-synthesized body: a tuple element one binding borrows copies in each
-// def ov(h: Pair, c: bool, tag: int32 | None) -> Own[Box]:
-//     p = make_pair(1)
-//     if c:
-//         p = h.pair
-//     return p[0]  # tpyc: warning(/copies Box into owned storage.*'p' is bound to existing storage/)
 // @overload
 // def ov(h: Pair, c: bool, tag: int32) -> Own[Box]: ...
 Box ov__Pair__bool__int32(Pair& h, bool c, int32_t tag) {
@@ -899,7 +891,6 @@ Box ov__Pair__bool__None(Pair& h, bool c, std::monostate tag) {
     }
     return Box((*std::get<0>(p)));
 }
-
 
 // # `Own` parameter rebound by an unpack: copied into its own storage, then moved
 // def own_param_unpack(o: Own[Box], hd: Holder, c: bool) -> Own[Box]:

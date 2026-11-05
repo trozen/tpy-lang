@@ -6,14 +6,10 @@ namespace tpyapp::main {
 
 // def get_r() -> Literal["r"]:
 //     return "r"
-std::string_view get_r() {
+std::string get_r() {
     return "r";
 }
 
-
-
-// def pick(v: str) -> int32:
-//     return int32(99)
 // @overload
 // def pick(v: Literal["r", "w"]) -> int32: ...
 int32_t pick__lit_r__w(std::string_view v) {
@@ -25,7 +21,6 @@ int32_t pick__lit_r__w(std::string_view v) {
 int32_t pick__str(std::string_view v) {
     return 99;
 }
-
 
 // def main() -> None:
 //     print(pick(get_r()))

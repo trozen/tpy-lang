@@ -179,12 +179,14 @@ def grow(xs: list[int32]) -> None:
 
 def infeasible_absent() -> int32:
     flag: int32 | None = None
+    flag = None  # a second store keeps sema from deciding the test
     if flag is not None:
         maybe_write(None)
     return 0
 
 def infeasible_call(xs: list[int32]) -> int32:
     flag: int32 | None = None
+    flag = None  # a second store keeps sema from deciding the test
     if flag is not None:
         grow(xs)
     return 0

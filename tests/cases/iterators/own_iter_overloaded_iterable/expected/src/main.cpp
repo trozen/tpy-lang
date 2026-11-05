@@ -4,7 +4,21 @@
 namespace tpyapp::main {
 
 
+// @overload
+// def total(xs: int32) -> int32: ...
+int32_t total__int32(int32_t xs) {
+    if (true) {
+        return xs;
+    }
+}
 
+// @overload
+// def keysum(xs: int32) -> int32: ...
+int32_t keysum__int32(int32_t xs) {
+    if (true) {
+        return xs;
+    }
+}
 
 // def main() -> None:
 //     nums: list[int32] = [3, 1, 2]

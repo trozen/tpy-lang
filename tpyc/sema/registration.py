@@ -29,11 +29,11 @@ def _adopt_skeleton(skeleton, full):
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
-    mark_overload_group, name_overload_variants, stamp_overload_facts,
+    mark_overload_group, name_overload_variants,
     unique_cpp_name,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
-    InteriorMutableType,
+    InteriorMutableType, IntLiteralType, holds_literal,
     BaseInitDuty, CppDefaultInit, cpp_default_init, cpp_default_init_blocker,
     init_is_default_ctor,
     is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
@@ -49,7 +49,7 @@ from ..typesys import (
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    OptionalType, UnionType, LiteralType, is_integer_type,
+    OptionalType, UnionType, LiteralType,
     C3LinearizationError,
     same_base_type,
     bare_name,
@@ -87,14 +87,18 @@ from ..type_def_registry import (
     is_str_type, is_borrowing_view_type,
 )
 from ..diagnostics import SemanticError
-from .method_expansion import expand_methods_for_record
+from .method_expansion import (copy_overload_implementation,
+                               expand_methods_for_record)
 from .type_ops import VALUE_TYPE_PROTOCOL, signature_may_return_borrow
 from ..value_category import (frame_param_lends, iterator_source_callee,
                               param_type_can_lend)
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
 from ..macro_api import expr_to_cpp_default
-from .literal_utils import const_expr_type, is_char_literal_init
+from .literal_utils import (const_expr_type, is_char_literal_init,
+                            literal_member, literal_value_from_expr,
+                            proven_literal, enriched_literal,
+                            ranks_literals)
 from ..symbol_binding import (
     SymbolBinding, SymbolKind, install_binding, lookup_imported,
     protocol_kind_for, resolve_type_path,
@@ -252,18 +256,14 @@ _LINKAGE_MAP = {
 }
 
 
-def _emits_own_variant(variant: TpyFunction, impl: TpyFunction | None) -> bool:
-    """Whether one member of a free overload set is emitted as a C++ function
-    of its own (a bodied `@dispatch` variant, a `typing.overload` stub's
-    specialization), so it can take its own name. A `@native` /
-    `@cpp_template` member keeps its runtime symbol: C++ chooses among the
-    hand-written runtime overloads. A `typing.overload` generator or
-    coroutine implementation is emitted once, not specialized per stub."""
-    if (_LINKAGE_MAP[variant.linkage.name] is not FunctionLinkage.DEFAULT
-            or variant.cpp_template is not None
-            or variant.builtin_function_key is not None):
-        return False
-    return impl is None or not (impl.is_generator or impl.is_async)
+def _emits_own_variant(variant: TpyFunction) -> bool:
+    """Whether one member of an overload set is emitted as a C++ function
+    of its own (a bodied `@dispatch` variant), so it can take its own name.
+    A `@native` / `@cpp_template` member keeps its runtime symbol: C++
+    chooses among the hand-written runtime overloads."""
+    return (_LINKAGE_MAP[variant.linkage.name] is FunctionLinkage.DEFAULT
+            and variant.cpp_template is None
+            and variant.builtin_function_key is None)
 
 
 def _clone_families(infos: list[FunctionInfo]) -> list[list[FunctionInfo]]:
@@ -418,24 +418,26 @@ def _check_member_default(
     if owner.kind == SymbolKind.ENUM:
         info = enum_info_of(owner.info)
         if info is not None and expr.field in info.members:
-            if target_type is not None and not _enum_default_matches_field(target_type, info):
+            expr.enum_member_of = owner.info
+            if target_type is not None and (refusal := default_refusal(
+                    ctx, compat, expr, target_type)) is not None:
                 raise SemanticError(
                     f"Default '{spelled}.{expr.field}' has enum type "
                     f"'{spelled}', which does not match the declared "
-                    f"{target_noun} type '{target_type}'", loc)
-            expr.enum_member_of = owner.info
+                    f"{target_noun} type '{refusal.target}'", loc)
             return True
         raise SemanticError(
             f"'{expr.field}' is not a member of enum '{spelled}'", loc)
     holder = ctx.registry.find_class_constant_owner(owner.info, expr.field)
     if holder is None or holder.type_params:
         return False
-    if (compat is not None and target_type is not None
-            and not contains_type_param(target_type)):
-        compat.check_type_compatible(
-            holder.class_constants[expr.field].type, target_type,
-            f"{target_noun} default", loc)
     expr.class_constant_owner = holder
+    if (compat is not None and target_type is not None
+            and (refusal := default_refusal(ctx, compat, expr,
+                                            target_type)) is not None):
+        compat.check_type_compatible(
+            refusal.actual, refusal.target, f"{target_noun} default", loc,
+            source_expr=refusal.source_expr)
     return True
 
 
@@ -444,10 +446,12 @@ class _DefaultSite:
     """One registered signature's defaults, queued for `resolve_defaults`:
     (parameter name, slot type or None, default) per parameter; the class
     whose body holds the def; whether a member default is type-checked
-    against its slot."""
+    against its slot; the registered signature of the `typing.overload`
+    copy the site is, whose defaults are its implementation's."""
     slots: list[tuple[str, 'TpyType | None', 'TpyExpr | None']]
     scope_record: str | None
     members_typed: bool
+    overload_copy: 'FunctionInfo | None' = None
 
 
 def resolve_default(ctx: 'SemanticContext', expr: TpyExpr,
@@ -743,6 +747,92 @@ def referent_type(ctx: 'SemanticContext', *,
     return var.type if var is not None else None
 
 
+def named_default_type(ctx: 'SemanticContext',
+                       default: TpyExpr) -> 'TpyType | None':
+    """The type of a default that names a constant (`x: T = NAME`,
+    `x: T = m.NAME`), read through the referent `resolve_default` stamped;
+    None for any other default, or a referent not typed yet."""
+    if isinstance(default, TpyName) and default.default_referent:
+        ref = default.default_referent
+        return referent_type(ctx, module_var=ref.module_var,
+                             class_owner=ref.class_owner, member=default.name)
+    if (isinstance(default, TpyFieldAccess)
+            and default.module_var_access is not None):
+        return referent_type(ctx, module_var=default.module_var_access)
+    return None
+
+
+def default_written_type(ctx: 'SemanticContext',
+                         default: TpyExpr) -> 'TpyType | None':
+    """The type a resolved default (`resolve_default`) has as the same
+    expression written as an argument at a call: a named constant's
+    (`named_default_type`), an enum member's enum, a class constant's, a
+    literal's as `analyze_expr` types it (`const_expr_type`: an int literal
+    is an `IntLiteralType`, its width open); None for any other default, or
+    a name not typed yet."""
+    named = named_default_type(ctx, default)
+    if named is not None:
+        return named
+    if isinstance(default, TpyFieldAccess):
+        if default.enum_member_of is not None:
+            return default.enum_member_of
+        if default.class_constant_owner is not None:
+            return referent_type(ctx, class_owner=default.class_constant_owner,
+                                 member=default.field)
+        return None
+    return const_expr_type(default)
+
+
+@dataclass(frozen=True)
+class DefaultRefusal:
+    """Why a slot does not take a default: the compatibility question it
+    fails, which the refusal's diagnostic asks again to word it."""
+    actual: TpyType
+    target: TpyType
+    source_expr: TpyExpr | None
+
+
+def default_refusal(ctx: 'SemanticContext',
+                    compat: 'TypeCompatibility | None',
+                    default: TpyExpr, target: TpyType
+                    ) -> DefaultRefusal | None:
+    """None when a slot of type `target` takes `default`, as it takes the
+    same expression written as an argument there; the one verdict every
+    default check refuses on and a `typing.overload` copy keeps its
+    implementation's default by. A default not typed yet, a generic
+    target, or no `compat` to ask (an enum member aside: monomorphic) is
+    taken here and judged elsewhere."""
+    if isinstance(default, TpyFieldAccess) and default.enum_member_of is not None:
+        # Monomorphic: only the enum itself takes it, never a type parameter.
+        info = enum_info_of(default.enum_member_of)
+        if info is not None and _enum_default_matches_field(target, info):
+            return None
+        return DefaultRefusal(default.enum_member_of, target, None)
+    actual = default_written_type(ctx, default)
+    if actual is None or compat is None or contains_type_param(target):
+        return None
+    if is_char_literal_init(target, actual, default):
+        return None
+    # A fixed-int ctor carries its own range contract: `int8(200)` is out of
+    # range whatever the slot is.
+    if (isinstance(default, TpyCall) and default.args
+            and is_fixed_int_type(actual)):
+        inner = const_expr_type(default.args[0])
+        if inner is not None and not compat.is_type_compatible(inner, actual):
+            return DefaultRefusal(inner, actual, None)
+    # At a `Literal` slot a str / bool literal is its value, as the
+    # assignment check reads its source; an int literal keeps its open
+    # width, which a fixed-int slot range-checks and a `Literal` one admits.
+    value = literal_value_from_expr(default)
+    ranked = actual
+    if (value is not None and holds_literal(target)
+            and not isinstance(actual, IntLiteralType)):
+        ranked = proven_literal((value,), actual) or actual
+    if compat.is_type_compatible(ranked, target):
+        return None
+    return DefaultRefusal(actual, target, default)
+
+
 def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
                              compat: 'TypeCompatibility | None', loc: object,
                              *, target_noun: str, target_name: str) -> None:
@@ -752,12 +842,9 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
     expression?"), so without this an ill-typed constant reaches codegen and
     renders through arms that cannot fail -- `n: int32 = None` emitting
     `int32_t n = nullptr`, or an out-of-range `int8 = 200` wrapping silently.
-    Routed through the same compatibility check an assignment uses, so a
-    default and its equivalent `x: T = <const>` agree on what is legal and
-    report it in the same words. The default expression rides along as the
-    source because `const_expr_type` widens a str/bool literal to its base
-    type: only the expression tells a `Literal[...]` slot which value it
-    holds (`mode: Literal["r", "rb"] = "rb"`).
+    The verdict is `default_refusal`'s; its question is asked again of the
+    compatibility check an assignment uses, so a default and its equivalent
+    `x: T = <const>` report it in the same words.
 
     A generic target is skipped: a literal default on a `T`-typed slot is
     legitimately polymorphic and judged at instantiation. So is a default
@@ -766,21 +853,14 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
     """
     if compat is None or target_type is None or contains_type_param(target_type):
         return
-    actual = const_expr_type(expr)
-    if actual is None:
+    if const_expr_type(expr) is None:
         return
-    context = f"{target_noun} '{target_name}'"
-    # A fixed-int ctor carries its own range contract: `int8(200)` is out of
-    # range whatever the slot is, so check the wrapped literal against the
-    # ctor's type before the ctor's type against the slot.
-    if isinstance(expr, TpyCall) and expr.args and is_fixed_int_type(actual):
-        inner = const_expr_type(expr.args[0])
-        if inner is not None:
-            compat.check_type_compatible(inner, actual, context, loc)
-    if is_char_literal_init(target_type, actual, expr):
+    refusal = default_refusal(compat.ctx, compat, expr, target_type)
+    if refusal is None:
         return
-    compat.check_type_compatible(actual, target_type, context, loc,
-                                 source_expr=expr)
+    compat.check_type_compatible(refusal.actual, refusal.target,
+                                 f"{target_noun} '{target_name}'", loc,
+                                 source_expr=refusal.source_expr)
 
 
 def _validate_const_field_default(expr: TpyExpr, loc: object,
@@ -879,8 +959,9 @@ def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
     if method.is_property_getter or method.is_property_setter:
         raise SemanticError(f"{dunder_name} cannot be a @property", loc)
     if method.is_overload_stub:
-        raise SemanticError(
-            f"{dunder_name} cannot be @{method.overload_form.value}", loc)
+        form = ("overload" if method.overload_stub is not None
+                else method.overload_form.value)
+        raise SemanticError(f"{dunder_name} cannot be @{form}", loc)
     if method.is_generator:
         raise SemanticError(f"{dunder_name} cannot be a generator (no `yield` in body)", loc)
     if method.error_return:
@@ -1604,9 +1685,15 @@ class TypeRegistrar:
     def _set_generator_yield_type(self, func: TpyFunction,
                                   resolved_return: TpyType | None = None) -> None:
         """Set generator `func`'s yield type from its `Iterator[T]` return,
-        rejecting any other return. Body analysis of its `yield`s reads it.
-        Also run for a `typing.overload` implementation, which is not
-        callable and so gets no FunctionInfo of its own."""
+        rejecting any other return. Body analysis of its `yield`s reads it."""
+        func.generator_yield_type = self._generator_yield_type(
+            func, resolved_return)
+
+    def _generator_yield_type(self, func: TpyFunction,
+                              resolved_return: TpyType | None = None
+                              ) -> TpyType:
+        """The yield type generator `func`'s `Iterator[T]` return declares;
+        any other return is rejected."""
         if resolved_return is None:
             resolved_return = self.type_ops.resolve_type(func.return_type)
         if not (is_protocol_type(resolved_return)
@@ -1621,8 +1708,9 @@ class TypeRegistrar:
                 f"Iterator must have a type argument, e.g. Iterator[int32]",
                 func.loc,
             )
-        func.generator_yield_type = resolved_return.type_args[0]
-        self._validate_generator_yield_copyable(func.generator_yield_type, func.loc)
+        yield_type = resolved_return.type_args[0]
+        self._validate_generator_yield_copyable(yield_type, func.loc)
+        return yield_type
 
     def _validate_generator_yield_copyable(self, yield_type: TpyType, loc) -> None:
         """Reject a generator whose VALUE-slot yield would copy a non-copyable value.
@@ -1928,6 +2016,10 @@ class TypeRegistrar:
         # See `sema/macros.py` for why this runs inside sema.
         run_macro_phase_for_record(record, self.ctx)
 
+        self._refuse_constructor_set(record)
+        # Each `typing.overload` set becomes its copies, before expansion,
+        # so a copy expands as a written `@dispatch` variant does.
+        record.methods = self.copy_overload_sets(record.methods, record)
         # Expand methods on the final method set (source + macro-added).
         # Runs self-flag derivation, validation, @auto_readonly / property
         # setter wrapping, and cloning.  Idempotent on already-expanded
@@ -1956,8 +2048,6 @@ class TypeRegistrar:
                 )
             seen_method_names.add(method.name)
 
-        self._collect_method_overload_groups(record)
-        self._refuse_constructor_set(record)
 
         # Extract native_field() renames on @native classes. The call is not a
         # real default -- it's stripped here so the const validation below
@@ -2224,6 +2314,9 @@ class TypeRegistrar:
                 )
             method.params = method_params
             method.return_type = method_return
+            method.omitted_params = tuple(
+                (n, self.type_ops.substitute_self(t, record_self_type), d)
+                for n, t, d in method.omitted_params)
             # Inplace dunders must return self (the record type), not None or Own[T]
             if method.name in CONST_PARAMS_METHODS:
                 if isinstance(method_return, OwnType):
@@ -2274,7 +2367,6 @@ class TypeRegistrar:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
-            self._defer_param_defaults(method_param_infos, record.name)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
             # and the body-return checker. Cancellable structurally extends
@@ -2289,7 +2381,7 @@ class TypeRegistrar:
                                else None)
             func_info = FunctionInfo(
                 name=method.name,
-                body=None if method.overload_form is OverloadForm.OVERLOAD else method,
+                body=method,
                 params=method_param_infos,
                 return_type=fi_method_return,
                 async_inner_return=method_return if method.is_async else None,
@@ -2322,7 +2414,7 @@ class TypeRegistrar:
                 native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or shared_spelling,
                 _compiler_spelling=shared_spelling is not None,
-                _emits_cpp_defaults=emits_cpp_defaults(method, is_native),
+                _emits_cpp_defaults=emits_cpp_defaults(method),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry,
@@ -2334,6 +2426,7 @@ class TypeRegistrar:
                 originating_module=self.ctx.module_name,
                 variant_decl=method,
             )
+            self._defer_param_defaults(func_info, record.name)
             func_info.following_components = method.following_components
             func_info.implicit_readonly_result = implicit_result
             compiler = get_current_compiler()
@@ -2380,14 +2473,6 @@ class TypeRegistrar:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
                 method_nodes.setdefault(method.name, []).append(method)
-            elif (self.ctx.overload_groups.get(method)
-                  or method in self.ctx.overload_twins):
-                # Implementation following stubs (or its clone twin): stubs
-                # are the callable overloads. Don't add the implementation to
-                # the method list -- callers resolve against stubs only.
-                stamp_overload_facts(methods.get(method.name, []),
-                                     self.ctx.overload_twins.get(method, method),
-                                     method=True)
             elif (method.name in methods
                   and any(m.is_readonly != func_info.is_readonly
                           or m.is_consuming != func_info.is_consuming
@@ -3615,10 +3700,6 @@ class TypeRegistrar:
         if ri.is_native or ri.builtin_type_key:
             self._name_receiver_twin_frames(ri, self._record_member_names(ri))
             return
-        stub_impl: dict[int, TpyFunction] = {}
-        for impl, stubs in self.ctx.overload_groups.items():
-            for stub in stubs:
-                stub_impl[id(stub)] = impl
         inherited = self.ctx.registry.inherited_variants(ri)
         for member, loc in _own_member_names(ri).items():
             if member in inherited:
@@ -3651,8 +3732,7 @@ class TypeRegistrar:
             for family in families:
                 head = family[0]
                 decl = head.variant_decl
-                if decl is None or not _emits_own_variant(
-                        decl, stub_impl.get(id(decl))):
+                if decl is None or not _emits_own_variant(decl):
                     continue
                 named.append(family)
             name_overload_variants([family[0] for family in named], reserved)
@@ -4583,35 +4663,17 @@ class TypeRegistrar:
         return frozenset(
             i for i, ptype in enumerate(param_types) if frame_param_lends(ptype))
 
-    def _defer_param_defaults(self, param_infos: 'list[ParamInfo]',
+    def _defer_param_defaults(self, info: FunctionInfo,
                               scope_record: str | None = None) -> None:
-        """Queue a registered signature's defaults for `resolve_defaults`.
-        `scope_record` is the class whose body defines a method, the first
-        scope a default's names resolve in."""
+        """Queue the defaults of registered signature `info` for
+        `resolve_defaults`. `scope_record` is the class whose body defines a
+        method, the first scope a default's names resolve in."""
         self._queue_default_site(_DefaultSite(
-            [(pi.name, pi.type, pi.default_expr) for pi in param_infos],
-            scope_record, members_typed=True))
-
-    def defer_ast_param_defaults(self, func: TpyFunction) -> None:
-        """Queue a function's defaults straight off the AST: the @overload
-        IMPLEMENTATION, which never reaches `register_function` and so
-        builds no ParamInfo, while codegen still emits its defaults into
-        every specialization. Its literal defaults are type-checked against
-        the resolved annotation; a member default is resolved, not
-        type-checked."""
-        defaults = func.defaults or []
-        slots: list[tuple[str, 'TpyType | None', 'TpyExpr | None']] = []
-        for i, (pname, ptype) in enumerate(func.params):
-            default = defaults[i] if i < len(defaults) else None
-            if default is None:
-                continue
-            try:
-                resolved: 'TpyType | None' = self.type_ops.resolve_type(ptype)
-            except SemanticError:
-                resolved = None  # a bad annotation is reported by its own pass
-            slots.append((pname, resolved, default))
-        self._queue_default_site(_DefaultSite(slots, None,
-                                              members_typed=False))
+            [(pi.name, pi.type, pi.default_expr) for pi in info.params],
+            scope_record, members_typed=True,
+            overload_copy=(info if info.body is not None
+                           and info.body.overload_stub is not None
+                           else None)))
 
     def _defer_protocol_defaults(self, methods: 'list[MethodSignature]') -> None:
         """Queue a protocol's method defaults: resolved where the protocol
@@ -4647,10 +4709,63 @@ class TypeRegistrar:
             for pname, ptype, default in site.slots:
                 if default is None:
                     continue
-                modules = self._resolve_slot_default(site, pname, ptype,
-                                                     default)
+                if site.overload_copy is not None:
+                    modules = self._resolve_copy_default(site, ptype, default)
+                else:
+                    modules = self._resolve_slot_default(site, pname, ptype,
+                                                         default)
                 if modules & cycle_peers:
                     require_current_compiler().cycle_peer_defaults.add(default)
+
+    def _resolve_copy_default(self, site: _DefaultSite,
+                              ptype: 'TpyType | None',
+                              default: TpyExpr) -> set[str]:
+        """`resolve_default` for the implementation's default at a
+        parameter of the `typing.overload` copy of `site` (the
+        implementation's own site type-checks it), and its verdict at the
+        copy's type, as for the same expression written there
+        (`default_refusal`): where the type takes it, a call omitting the
+        parameter is ranked with it as that written argument
+        (`ParamInfo.omitted_arg`, `enriched_literal` where the copy's set ranks literals);
+        where it does not, the copy has no default there, so such a call
+        does not match it and its C++ declaration has none. A parameter
+        typed by a type parameter keeps the default and ranks none: its
+        type is known only once the call infers it."""
+        modules = resolve_default(self.ctx, default, None, default.loc,
+                                  scope_record=site.scope_record)
+        if ptype is None or contains_type_param(ptype):
+            return modules
+        copy, overloads = self._registered_copy(site)
+        param = next(p for p in copy.params if p.default_expr is default)
+        arg = default_written_type(self.ctx, default)
+        if arg is None:
+            return modules
+        if default_refusal(self.ctx, self.compat, default, ptype) is None:
+            param.omitted_arg = (enriched_literal(self.ctx, arg, default)
+                                 if ranks_literals(overloads) else arg)
+        else:
+            param.default_expr = None
+            assert copy.body is not None
+            copy.body.defaults = [None if d is default else d
+                                  for d in copy.body.defaults]
+        return modules
+
+    def _registered_copy(self, site: _DefaultSite
+                         ) -> tuple[FunctionInfo, list[FunctionInfo]]:
+        """The signature the registry holds for the `typing.overload` copy
+        of `site` now, with its set: a method's is rebuilt by the macro type
+        promotion (`SemanticAnalyzer._promote_macro_generated_types`) after
+        the site is queued."""
+        info = site.overload_copy
+        assert info is not None and info.body is not None
+        if site.scope_record is None:
+            return info, self.ctx.registry.get_function(info.name) or [info]
+        record = self.ctx.registry.get_record(site.scope_record)
+        if record is None:
+            return info, [info]
+        overloads = record.methods.get(info.name, [])
+        return next((fi for fi in overloads if fi.body is info.body),
+                    info), overloads or [info]
 
     def _resolve_slot_default(self, site: _DefaultSite, pname: str,
                               ptype: 'TpyType | None',
@@ -4741,9 +4856,7 @@ class TypeRegistrar:
         # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
         # Exception: generator functions return Iterator[T] (codegen emits concrete struct).
         # Exception: @native/@cpp_template stubs (C++ handles the actual return type).
-        if func.is_typing_overload_stub:
-            pass
-        elif func.is_generator:
+        if func.is_generator:
             self._set_generator_yield_type(func, resolved_return)
         elif is_protocol_type(resolved_return):
             pi = protocol_info_of(resolved_return)
@@ -4809,8 +4922,6 @@ class TypeRegistrar:
             span_type = _vararg_span_type(resolved_vararg_type)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
-        self._defer_param_defaults(param_infos)
-
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
         resolved_kwarg_type = None
         if func.kwarg_name is not None and func.kwarg_type is not None:
@@ -4857,7 +4968,7 @@ class TypeRegistrar:
             declaration=declaration,
             # A typing.overload stub only declares one signature of the
             # trailing implementation.
-            body=None if func.is_typing_overload_stub else func,
+            body=func,
             params=param_infos,
             return_type=fi_return_type,
             async_inner_return=resolved_return if func.is_async else None,
@@ -4896,6 +5007,7 @@ class TypeRegistrar:
             variant_decl=variant_decl,
             _emits_cpp_defaults=emits_cpp_defaults(func),
         )
+        self._defer_param_defaults(info)
         self._stamp_result_borrows(func, info)
 
         self._qualify_error_return(func, info)
@@ -5002,27 +5114,74 @@ class TypeRegistrar:
             self.require_overload_form(stubs, prefix + name, impl=None)
         return paired, pending_stubs
 
-    def _collect_method_overload_groups(self, record: TpyRecord) -> None:
-        """Pair a record's overload groups, filling `ctx.overload_groups`
-        (implementation -> its stubs) and `ctx.overload_twins` (an
-        implementation's `@auto_readonly` / `@auto_own` clone twin -> the
-        implementation) before any reader runs. A
-        `@dispatch` set has no implementation and no entry. The stubs are
-        validated against the implementation once `Self` is substituted
-        (`_validate_method_overload_groups`)."""
-        paired, _ = self.pair_overload_stubs(record.methods,
-                                             f"{record.name}.")
-        impls: dict[str, TpyFunction] = {}
-        for method, stubs in paired:
-            if stubs:
-                self.ctx.overload_groups[method] = stubs
-                impls.setdefault(method.name, method)
-        # Any other def of an implementation's name: its clone twin (a
-        # further def of the name is not emitted either).
-        for method, stubs in paired:
-            impl = impls.get(method.name)
-            if impl is not None and not stubs:
-                self.ctx.overload_twins[method] = impl
+    def copy_overload_sets(self, defs: list[TpyFunction],
+                           record: TpyRecord | None = None,
+                           ) -> list[TpyFunction]:
+        """`defs` (a module's free functions, or `record`'s methods) with
+        each `typing.overload` set -- its stubs and their implementation --
+        replaced, at the implementation's place, by its copies: one
+        `@dispatch` variant per stub (`copy_overload_implementation`). A
+        free set's stubs are checked against the implementation here; a
+        record's once its `Self` resolves (`_validate_method_overload_groups`).
+        The implementation's defaults a short stub omits are resolved where
+        the implementation is written."""
+        prefix = f"{record.name}." if record is not None else ""
+        paired, _ = self.pair_overload_stubs(defs, prefix)
+        copies: dict[int, list[TpyFunction]] = {}
+        for impl, stubs in paired:
+            if not stubs or not stubs[0].is_typing_overload_stub:
+                continue
+            if record is None:
+                self.validate_overload_signatures(impl, stubs, impl.name)
+            else:
+                self.ctx.overload_signature_sets.setdefault(
+                    record, []).append((impl, stubs))
+            self._defer_overload_defaults(impl, stubs, record)
+            copies[id(impl)] = copy_overload_implementation(impl, stubs)
+        if not copies:
+            return defs
+        out: list[TpyFunction] = []
+        for func in defs:
+            if func.is_typing_overload_stub:
+                continue
+            out.extend(copies.get(id(func), [func]))
+        return out
+
+    def _defer_overload_defaults(self, impl: TpyFunction,
+                                 stubs: list[TpyFunction],
+                                 record: TpyRecord | None) -> None:
+        """Queue the defaults no copy registers as its own, each checked
+        where its def is written: a stub's, against the stub's parameter;
+        the implementation's, which the omitted-parameter locals read,
+        against the implementation's."""
+        scope = record.name if record is not None else None
+
+        def slot(fn: TpyFunction, i: int
+                 ) -> 'tuple[str, TpyType | None, TpyExpr] | None':
+            defaults = fn.defaults or []
+            default = defaults[i] if i < len(defaults) else None
+            if default is None:
+                return None
+            pname, ptype = fn.params[i]
+            try:
+                resolved: 'TpyType | None' = self.type_ops.resolve_type(ptype)
+            except SemanticError:
+                resolved = None  # a bad annotation is reported by its own pass
+            if resolved is not None and _contains_self_type(resolved):
+                resolved = None
+            return (pname, resolved, default)
+
+        for stub in stubs:
+            slots = [x for i in range(len(stub.params))
+                     if (x := slot(stub, i)) is not None]
+            if slots:
+                self._queue_default_site(_DefaultSite(slots, scope,
+                                                      members_typed=True))
+        slots = [x for i in range(len(impl.params))
+                 if (x := slot(impl, i)) is not None]
+        if slots:
+            self._queue_default_site(_DefaultSite(slots, scope,
+                                                  members_typed=False))
 
     def _refuse_constructor_set(self, record: TpyRecord) -> None:
         """A construction names what it builds, so a class takes one
@@ -5058,11 +5217,22 @@ class TypeRegistrar:
         # Resolved as body sema resolves them, under the record's type params.
         self.ctx.record_ctx.type_params = record.type_params or None
         try:
-            for method in record.methods:
-                stubs = self.ctx.overload_groups.get(method)
-                if stubs:
-                    self.validate_overload_signatures(
-                        method, stubs, f"{record.name}.{method.name}")
+            self_type = receiver_self_type(record, self.ctx.registry)
+
+            def as_declared(fn: TpyFunction) -> TpyFunction:
+                # The pair is checked as the copies declare it: `Self` as
+                # the class, an `auto_readonly[T]` marker as its `T`.
+                return dc_replace(fn, params=[
+                    (n, strip_auto_readonly(
+                        self.type_ops.substitute_self(t, self_type)))
+                    for n, t in fn.params],
+                    return_type=strip_auto_readonly(self.type_ops.substitute_self(
+                        fn.return_type, self_type)))
+            for impl, stubs in self.ctx.overload_signature_sets.get(
+                    record, ()):
+                self.validate_overload_signatures(
+                    as_declared(impl), [as_declared(s) for s in stubs],
+                    f"{record.name}.{impl.name}")
         finally:
             self.ctx.record_ctx.type_params = saved_type_params
 
@@ -5084,6 +5254,10 @@ class TypeRegistrar:
           reference members of the union; when every stub includes the param,
           all members must be covered.
         """
+        if impl.is_generator:
+            # The copies declare the stubs' returns; the implementation's
+            # own must still be a generator's.
+            self._generator_yield_type(impl)
         impl_defaults = impl.defaults if impl.defaults else []
         has_short_arity = any(len(s.params) < len(impl.params) for s in stubs)
         if has_short_arity:
@@ -5157,13 +5331,11 @@ class TypeRegistrar:
                         # `None` literal's type is NoneType -- both mean "None".
                         none_covered = True
                         continue
-                    if isinstance(stub_ptype, LiteralType):
-                        if stub_ptype.base_type == resolved.inner:
-                            inner_covered = True
-                            continue
-                        if stub_ptype.is_int_base() and is_integer_type(resolved.inner):
-                            inner_covered = True
-                            continue
+                    if (isinstance(stub_ptype, LiteralType)
+                            and literal_member(stub_ptype, (resolved.inner,))
+                            is not None):
+                        inner_covered = True
+                        continue
                     raise SemanticError(
                         f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                         f"is not compatible with implementation type '{resolved}'",
@@ -5189,12 +5361,10 @@ class TypeRegistrar:
                 for stub in param_stubs:
                     stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
                     if stub_ptype != resolved:
-                        # LiteralType is compatible with its base type family
-                        if isinstance(stub_ptype, LiteralType):
-                            if stub_ptype.base_type == resolved:
-                                continue
-                            if stub_ptype.is_int_base() and is_integer_type(resolved):
-                                continue
+                        if (isinstance(stub_ptype, LiteralType)
+                                and literal_member(stub_ptype, (resolved,))
+                                is not None):
+                            continue
                         raise SemanticError(
                             f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
                             f"does not match implementation type '{resolved}'",
@@ -5208,6 +5378,11 @@ class TypeRegistrar:
                     stub_members = set(stub_ptype.members)
                 else:
                     stub_members = {stub_ptype}
+                # A `Literal` stub narrows the member of its kind.
+                stub_members = {
+                    (literal_member(m, tuple(resolved.members)) or m)
+                    if isinstance(m, LiteralType) else m
+                    for m in stub_members}
                 extra = [m for m in stub_members if m not in resolved.members]
                 if extra:
                     extra_names = ", ".join(str(m) for m in extra)
@@ -5268,14 +5443,13 @@ class TypeRegistrar:
             )
 
     def register_overload_group(self, stubs: list[TpyFunction],
-                                impl: TpyFunction | None,
                                 module_function_names: 'frozenset[str]',
                                 ) -> None:
-        """Register a group of @overload stubs as a single overloaded function binding.
+        """Register the variants of a `@dispatch` set (a `typing.overload`
+        set's copies among them) as a single overloaded function binding.
 
-        Each stub is resolved and validated. All stubs are bound together so
-        call-site resolution can pick the best match. `impl` is the trailing
-        implementation of a `typing.overload` set (None for `@dispatch`).
+        Each variant is resolved and validated. All are bound together so
+        call-site resolution can pick the best match.
         """
         infos: list[FunctionInfo] = []
         for func in stubs:
@@ -5290,7 +5464,7 @@ class TypeRegistrar:
             self._reject_same_param_overloads(infos, stubs)
             name_overload_variants([
                 info for info, func in zip(infos, stubs)
-                if _emits_own_variant(func, impl)], module_function_names)
+                if _emits_own_variant(func)], module_function_names)
             # Adopt the pre-populated skeleton list (if any) by mutating
             # it in place. Cycle peers' bind_imports may have captured a
             # reference to that single-element placeholder list before
@@ -5306,8 +5480,6 @@ class TypeRegistrar:
                     skeleton_list.clear()
                     skeleton_list.extend(infos)
                     infos = skeleton_list
-            if impl is not None:
-                stamp_overload_facts(infos, impl, method=False)
             self.ctx.registry.register_function_group(infos[0].name, infos)
             self.ctx.global_ns.bind(NameBinding(
                 kind=BindingKind.FUNCTION,

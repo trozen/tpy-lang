@@ -340,7 +340,9 @@ def closure(x: int32) -> int32:
         return x
     return inner()
 """)
-    assert "<uncovered (overloaded callable)" in out, out
+    # An @overload set is its copies, @dispatch variants, which MIR does
+    # not lower yet (TODO.md "MIR lowers @dispatch variants").
+    assert re.search(r"identity@[^\n]+<uncovered \(no body to lower\)", out), out
     assert re.search(r"closure@[^\n]+<uncovered \(", out), out
 
 

@@ -98,9 +98,7 @@ def ctx():
 
 
 def _fns(ctx, name: str) -> list[th.THIRFunction]:
-    found = [fn for fn in ctx.thir_functions.values() if fn.name == name]
-    found += [fn for stubs in ctx.thir_overload_functions.values() for fn in stubs.values() if fn.name == name]
-    return found
+    return [fn for fn in ctx.thir_functions.values() if fn.name == name]
 
 
 def _resumable(ctx, name: str) -> th.THIRResumableLeaves:
@@ -108,8 +106,7 @@ def _resumable(ctx, name: str) -> th.THIRResumableLeaves:
 
 
 def test_every_lowered_body_has_its_signature(ctx) -> None:
-    bodies = [*ctx.thir_functions.values(), ctx.thir_top_level,
-              *(fn for stubs in ctx.thir_overload_functions.values() for fn in stubs.values())]
+    bodies = [*ctx.thir_functions.values(), ctx.thir_top_level]
     for fn in bodies:
         assert fn.signature is not None, fn.name
         if fn.resolved_callee is not None:
@@ -128,7 +125,7 @@ def test_bodies_no_call_binds_uniquely(ctx) -> None:
     (make,) = _fns(ctx, "make")
     assert make.resolved_callee is None and make.signature.param_types == (INT32,)
     assert make.signature.return_representation is Representation.STORAGE
-    # Each overload specialization lowers under its stub's types.
+    # Each @overload copy lowers under its stub's types.
     assert {fn.signature.passings for fn in _fns(ctx, "pick")} == {
         (ParamPassing.VALUE,), (ParamPassing.VIEW,)}
     top = ctx.thir_top_level.signature

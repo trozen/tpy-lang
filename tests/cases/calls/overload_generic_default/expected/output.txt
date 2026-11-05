@@ -1,0 +1,11 @@
+inferred 0 
+explicit 0 4 3
+posonly z 5
+posonly z 5
+posonly 0 4
+class 0 b
+address taken 7 impl sees 7
+address taken arm 7
+non-ptr argument 7 r
+vararg ptr 7
+keyword ptr 7 impl sees 7 r

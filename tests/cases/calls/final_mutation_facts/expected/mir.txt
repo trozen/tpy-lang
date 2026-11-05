@@ -3,7 +3,6 @@ imported::Shelf.put@16:4: covered (storage: no_proof_required), summary: known
 imported::Shelf.touch_all@20:4: covered (storage: no_proof_required), summary: known
 imported::Shelf.bump@25:4: covered (storage: no_proof_required), summary: known
 imported::Stacker.put@37:4: uncovered (no body to lower)
-imported::Stacker.put@38:4: uncovered (overloaded callable)
 imported::Item.__init__@5:4: covered (storage: no_proof_required), summary: known
 imported::Shelf.__init__@12:4: covered (storage: no_proof_required), summary: known
 imported::Stacker.__init__@32:4: covered (storage: no_proof_required), summary: known
@@ -16,7 +15,7 @@ main::drop_last@83:0: uncovered (generic body)
 main::via@87:0: uncovered (generic body)
 main::peek@103:0: uncovered (no body to lower)
 main::weigh@108:0: uncovered (no body to lower)
-main::forward_put@111:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::forward_put@111:0: certified, summary: known
 main::keep@140:0: covered (storage: no_proof_required), summary: known
 main::ctor_gen@144:0: uncovered (unsupported hoisted value)
 main::ctor_closure@150:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

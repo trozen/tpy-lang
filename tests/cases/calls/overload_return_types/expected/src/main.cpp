@@ -4,25 +4,22 @@
 namespace tpyapp::main {
 
 
-
-
-// def get_value(animal: Dog | Cat) -> str | int:
-//     if isinstance(animal, Dog):
-//         return animal.name
-//     else:
-//         return animal.lives
 // @overload
 // def get_value(animal: Dog) -> str: ...  # tpyc: ok
 std::string get_value__Dog(const Dog& animal) {
-    return animal.name;
+    if (true) {
+        return animal.name;
+    }
 }
 
 // @overload
 // def get_value(animal: Cat) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_value__Cat(const Cat& animal) {
-    return animal.lives;
+    if (false) {
+    } else {
+        return animal.lives;
+    }
 }
-
 
 // def use_dog_result(name: str) -> None:
 //     print("Dog name: " + name)

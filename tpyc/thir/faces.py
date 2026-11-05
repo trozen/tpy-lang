@@ -442,8 +442,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.variant_name",            # same-module overload-variant callee ->
                                     # the variant's own name inside that
                                     # spelling (`::tpyapp::mod::f__lit_r__w`)
-    "fold.overload_live_chain",     # partially-folded per-stub if-chain ->
-                                    # trimmed live `if / else if` render
     "method.literal_mangled",       # literal-overloaded member call -> the
                                     # mangled member spelling (`get__lit_age`)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
@@ -2341,18 +2339,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # over the concept test
     "if.nullproto_guard",           # is-not-None constexpr swap on
                                     # nullable proto param
-    "fold.overload_block",          # per-@overload-stub dead-branch fold splice
-                                    # (if-chain flatten / folded match arm)
-    "fold.overload_bind",           # folded match arm's capture binding
-                                    # (`auto`/`auto&` name = subject.field)
     "fn.param_copy_viewfam",        # view-family reassigned param: the
                                     # owned-copy init respell
     "fn.param_copy",                # reassigned const-ref param -> the mutable
                                     # owned-copy prologue (THIRParamCopy)
     "fn.macro_staticmethod",        # macro-authored staticmethod: record-owned
                                     # via self_type alone, is_method clear
-    "fn.overload_template_stub",    # per-stub emission over a set with a
-                                    # protocol-param (template-header) stub
     "argtemp.genexpr_proto",        # genexpr at a structural protocol slot:
                                     # the un-spelled auto frame temp
     "method.array_value_ret",       # VALUE Array method result lands bare

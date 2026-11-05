@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def get_r() -> Literal["r"]:
 //     return "r"
-std::string_view get_r() {
+std::string get_r() {
     return "r";
 }
 
@@ -14,7 +14,7 @@ std::string_view get_r() {
 //     m: Literal["r", "w", "rb", "wb"] = get_r()
 //     print(m)
 void main() {
-    std::string_view m = ::tpyapp::main::get_r();
+    std::string m = ::tpyapp::main::get_r();
     std::cout << m << "\n" << ::tpy::check_signals;
 }
 

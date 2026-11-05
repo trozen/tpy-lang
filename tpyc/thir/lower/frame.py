@@ -3505,8 +3505,7 @@ class FrameBuilder:
             module_qual = None if owner is not None or mod == cur else mod
             return _DelegatedGenerator(body, owner, module_qual, mod, e,
                                        frame_names)
-        # A `typing.overload` stub has no body; its implementation's one
-        # frame is named by the source name.
+        # A callee sema resolved to no body is named by its source name.
         if isinstance(e, TpyCall) and isinstance(e.func, TpyName):
             f = self.deps.same_module_generators.get((e.func_name, None))
             if f is not None:

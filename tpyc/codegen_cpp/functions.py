@@ -26,10 +26,10 @@ MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 from ..typesys import make_readonly, pointer_repr_optional, readonly_access
 from ..typesys import (
     default_emittable_at, emits_cpp_defaults, none_default_cpp_spelling,
-    TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
-    UnionType, VoidType, NoneType, NONE,
-    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly,
-    PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
+    TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, is_fn_type, CallableType,
+    VoidType,
+    is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly,
+    PtrType, LiteralType, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
@@ -41,9 +41,9 @@ from ..typesys import (
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import ParamPassing, is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
+    TpyExpr, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyName, TpyFieldAccess, TpyStmt, OverloadForm,
+    TpyCall, TpyName, TpyFieldAccess, TpyStmt,
 )
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, forward_param, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
 from . import emit_prims
@@ -53,8 +53,7 @@ from .type_resolution import (resolve_global_binding_type,
 from .int_literals import render_int_literal_value
 from ..sema.literal_utils import literal_value_from_expr
 from ..emitted_members import (
-    EmittedMember, ProtocolParamInfo, RefQualifier, group_is_template,
-    overload_stubs_are_literal_only,
+    EmittedMember, RefQualifier, signature_is_template,
 )
 from .protocols import signature_return_cpp
 
@@ -69,29 +68,6 @@ def _pointer_slot_cpp(var_type: TpyType, cpp_type: str) -> str:
     """A pointer-slot global's C++ type: `T*`, `const T*` when the global
     only has readonly access to what it points at."""
     return f"const {cpp_type}*" if readonly_access(var_type) else f"{cpp_type}*"
-
-
-def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
-    """Best-effort concrete type for a default expression, for overload narrowing.
-
-    Returns the narrowest literal/none type when the default is a simple
-    literal (None, int, float, bool, str); None for more complex defaults.
-    Used only to compute dead-branch-elim hints for short-arity overload stubs;
-    unrecognized defaults simply skip narrowing and the body compiles as-is.
-    """
-    if isinstance(expr, TpyNoneLiteral):
-        return NONE
-    if isinstance(expr, TpyIntLiteral):
-        return IntLiteralType(value=expr.value)
-    if isinstance(expr, TpyBoolLiteral):
-        return LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, expr.value),))
-    if isinstance(expr, TpyStrLiteral):
-        return LiteralType(STR, (LiteralValue(LiteralTag.STR, expr.value),))
-    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
-        inner = _infer_literal_default_type(expr.operand)
-        if isinstance(inner, IntLiteralType) and inner.value is not None:
-            return IntLiteralType(value=-inner.value)
-    return None
 
 
 def default_emittable(defaults: list, i: int, n_params: int,
@@ -117,60 +93,6 @@ def _const_ref(passing: ParamPassing) -> bool:
     deduced from (or adapted to) its argument: whether it is const."""
     assert passing in (ParamPassing.CONST_REF, ParamPassing.MUT_REF), passing
     return passing is ParamPassing.CONST_REF
-
-
-def _narrow_overload_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
-    """Return concrete when it tightens impl_ptype for dead-branch elim."""
-    if isinstance(impl_ptype, UnionType) and not isinstance(concrete, UnionType):
-        return concrete
-    if isinstance(impl_ptype, OptionalType) and not isinstance(concrete, OptionalType):
-        # Concrete is either the inner T, NoneType, or a Literal of the inner.
-        if isinstance(concrete, NoneType):
-            return concrete
-        if isinstance(concrete, LiteralType):
-            return concrete
-        if concrete == impl_ptype.inner:
-            return concrete
-        return None
-    if isinstance(concrete, (LiteralType, IntLiteralType)) and not isinstance(impl_ptype, (LiteralType, IntLiteralType)):
-        return concrete
-    return None
-
-
-def build_overload_narrowing(
-    impl: TpyFunction, stub: TpyFunction,
-    missing_params: list[tuple[str, TpyType]],
-    impl_defaults: list,
-) -> dict[str, TpyType]:
-    """Build the overload_param_types map for dead-branch elim in a spec.
-
-    Shared by the per-stub signature specializer and THIR's per-stub lowering,
-    so both resolve the same facts from one map.
-
-    - Stub-shadowed union impl params narrow to the stub's concrete member.
-    - Stub-shadowed Optional impl params narrow to the stub's non-Optional
-      type (inner T or NoneType).
-    - Stub-shadowed non-union impl params narrow to a LiteralType stub type.
-    - Missing impl params narrow to the default expression's concrete type
-      where that gives information beyond the declared impl param type.
-    """
-    narrowing: dict[str, TpyType] = {}
-    for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
-        narrow = _narrow_overload_param(impl_ptype, stub_ptype)
-        if narrow is not None:
-            narrowing[stub_pname] = narrow
-    for i, (pname, ptype) in enumerate(missing_params,
-                                       start=len(impl.params) - len(missing_params)):
-        default_expr = impl_defaults[i] if i < len(impl_defaults) else None
-        if default_expr is None:
-            continue
-        default_type = _infer_literal_default_type(default_expr)
-        if default_type is None:
-            continue
-        narrow = _narrow_overload_param(ptype, default_type)
-        if narrow is not None:
-            narrowing[pname] = narrow
-    return narrowing
 
 
 # Zero-arg scalar constructors that codegen to `0` (as opposed to
@@ -248,7 +170,7 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
 def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
                                  ptype: TpyType) -> str:
     """`default_to_cpp` keyed on the analyzer directly -- the slice of ctx
-    it reads -- so the THIR per-stub prologue can share the renderer."""
+    it reads."""
     if isinstance(expr, TpyTypeParamConstruct):
         return f"{expr.param_name}{{}}"
     lit = literal_value_from_expr(expr)
@@ -649,12 +571,12 @@ class FunctionGenerator:
         infos = self.protocols.get_all_protocol_params([(pname, ptype)])
         return infos[0] if infos else None
 
-    def published_passings(self, func: TpyFunction, lowered=None) -> dict[str, ParamPassing]:
+    def published_passings(self, func: TpyFunction) -> dict[str, ParamPassing]:
         """How each parameter of `func` is passed, as THIR publishes it
-        (`THIRParam.passing`), by parameter name: read off `lowered` (an
-        `@overload` specialization), else the module's lowered function or
-        constructor, or the published resumable frame. A declaration with no
-        lowered body passes as declared."""
+        (`THIRParam.passing`), by parameter name: read off the module's
+        lowered function or constructor, or the published resumable frame.
+        A declaration with no lowered body passes as declared."""
+        lowered = None
         for table in (self.ctx.thir_functions, self.ctx.thir_constructors,
                       self.ctx.thir_resumable_frames):
             if lowered is None:
@@ -779,11 +701,9 @@ class FunctionGenerator:
         return result if result else None
 
     def _func_body_info(self, func: TpyFunction) -> FunctionInfo | None:
-        """The FunctionInfo carrying `func`'s analysis facts. A bodyless
-        @overload stub reads its implementation's (the group's positional
-        pick); any other declaration-only stub (@native, a @dispatch binding)
-        has none."""
-        if func.is_stub and func.overload_form is not OverloadForm.OVERLOAD:
+        """The FunctionInfo carrying `func`'s analysis facts; None for a
+        declaration-only stub (@native, a @dispatch binding)."""
+        if func.is_stub:
             return None
         return body_function_info(self.ctx.analyzer.registry, func)
 
@@ -828,11 +748,8 @@ class FunctionGenerator:
         return False
 
     def is_template_function(self, func: TpyFunction) -> bool:
-        """Does `func` emit a C++ template definition (header-only): its
-        signature, or for an @overload implementation any stub's
-        (`group_is_template`)."""
-        return group_is_template(
-            func, self.ctx.analyzer.overload_groups.get(func) or [])
+        """Does `func` emit a C++ template definition (header-only)."""
+        return signature_is_template(func)
 
     def gen_function_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate a function forward declaration (signature only, no body).
@@ -852,27 +769,7 @@ class FunctionGenerator:
         # representation (typing.cast, builtins.isinstance, ...).
         if func.builtin_function_key is not None:
             return False
-        # @overload implementation: emit forward decls for each stub instead
-        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
-        if overload_stubs:
-            if self._overload_stubs_are_literal_only(overload_stubs, func):
-                for stub in overload_stubs:
-                    self._gen_function_forward_decl_single(
-                        out, func, cpp_name=self.emitted_name(stub),
-                        return_type_override=stub.return_type,
-                    )
-            else:
-                per_stub = self.ctx.thir_overload_functions.get(func)
-                for stub in overload_stubs:
-                    self._gen_function_forward_decl_single(
-                        out, stub, cpp_name=self.emitted_name(stub),
-                        lowered=per_stub.get(stub) if per_stub is not None else None)
-            return True
-        if func.is_stub and not func.is_overload_stub:
-            return False
-        # Bodied @dispatch variants are self-contained (no separate impl);
-        # emit a forward decl just like a regular function.
-        if func.is_overload_stub and func.is_stub:
+        if func.is_stub:
             return False
 
         self._gen_function_forward_decl_single(
@@ -881,11 +778,9 @@ class FunctionGenerator:
 
     def _gen_function_forward_decl_single(
         self, out: TextIO, func: TpyFunction, *,
-        cpp_name: str | None = None, return_type_override: TpyType | None = None,
-        lowered=None,
+        cpp_name: str | None = None,
     ) -> None:
-        """Emit a single function forward declaration; `lowered` is the
-        specialization an `@overload` stub declares."""
+        """Emit a single function forward declaration."""
         self.ctx.emit_declaration_echo(out, func.loc)
         name = escape_cpp_name(cpp_name or func.name)
         proto_params = self.protocols.get_all_protocol_params(func.params)
@@ -898,7 +793,7 @@ class FunctionGenerator:
         has_fn_params = any(is_fn_type(pt) for _, pt in func.params)
 
         dfl = func.defaults if func.defaults else None
-        effective_ret = return_type_override or func.return_type
+        effective_ret = func.return_type
         if is_generic or has_proto_params or has_fn_params:
             # Forward decl must carry the same Fn requires clause as the
             # definition; otherwise C++ treats them as two distinct overloads
@@ -910,7 +805,7 @@ class FunctionGenerator:
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True,
                                                      func=func,
-                                                     passings=self.published_passings(func, lowered))
+                                                     passings=self.published_passings(func))
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -923,7 +818,7 @@ class FunctionGenerator:
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True,
                                                      func=func,
-                                                     passings=self.published_passings(func, lowered))
+                                                     passings=self.published_passings(func))
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -947,27 +842,8 @@ class FunctionGenerator:
         if func.builtin_function_key is not None:
             return False
 
-        # Bodyless @overload stubs are handled via the implementation function;
-        # bodied @dispatch variants are self-contained functions.
+        # A bodyless member of an overload set has no C++ of its own.
         if func.is_overload_stub and func.is_stub:
-            return False
-
-        # @overload implementation with template params: emit specialized defs in header
-        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
-        if overload_stubs:
-            is_literal_only = self._overload_stubs_are_literal_only(overload_stubs, func)
-            # Header-only when any stub (or the impl) is a template: a template
-            # stub must be defined in the header to stay instantiable cross-module.
-            if self.is_template_function(func):
-                if is_literal_only:
-                    for stub in overload_stubs:
-                        self._gen_literal_specialized_function(out, func, stub)
-                        out.write("\n")
-                else:
-                    for stub in overload_stubs:
-                        self._gen_overload_specialized_function(out, func, stub, in_header=True)
-                        out.write("\n")
-                return True
             return False
 
         # @native(binding="C") and @export(binding="C") use extern "C" linkage
@@ -1032,33 +908,12 @@ class FunctionGenerator:
     def gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         from ..parse.nodes import FunctionLinkage
-        # Bodyless @overload stubs are emitted via the implementation; bodied
-        # @dispatch variants are self-contained and fall through.
-        if func.is_overload_stub and func.is_stub:
-            return
         # Stubs have no body -- declaration only
         if func.is_stub:
             return
         # @native (C++ import) exports are handled outside the namespace by generator.py
         if func.linkage == FunctionLinkage.NATIVE:
             return
-
-        # @overload implementation: emit per-stub specialized functions
-        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
-        if overload_stubs:
-            # The shared implementation's source echoes once above the
-            # group; each specialization below echoes only its stub line.
-            self.ctx.emit_definition_echo(out, func.loc)
-            if self._overload_stubs_are_literal_only(overload_stubs, func):
-                for stub in overload_stubs:
-                    self._gen_literal_specialized_function(out, func, stub)
-                    out.write("\n")
-                return
-            else:
-                for stub in overload_stubs:
-                    self._gen_overload_specialized_function(out, func, stub)
-                    out.write("\n")
-                return
 
         self.ctx.emit_definition_echo(out, func.loc)
 
@@ -1112,8 +967,6 @@ class FunctionGenerator:
 
         out.write("}\n")
 
-    _overload_stubs_are_literal_only = staticmethod(overload_stubs_are_literal_only)
-
     def emitted_name(self, decl: TpyFunction) -> str:
         """The C++ name a free function -- or one variant of a free overload
         set, by the def it was registered from -- is defined and declared
@@ -1121,319 +974,6 @@ class FunctionGenerator:
         return (variant_cpp_name_of(self.ctx.analyzer.registry.get_function(decl.name), decl)
                 or decl.name)
 
-
-    def _gen_literal_specialized_function(
-        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
-    ) -> None:
-        """Generate a per-literal specialized C++ function.
-
-        Uses the implementation's body with the stub's return type and
-        injects literal narrowing facts for dead branch elimination.
-        Name is mangled to avoid C++ signature collisions.
-        """
-        self.ctx.emit_declaration_echo(out, stub.loc)
-
-        mangled = self.emitted_name(stub)
-        rp = self._get_reassigned_params(impl)
-        mp = self._get_func_mutated_params(impl)
-
-        ret_type = self._resolve_return_type(stub.return_type, error_return=impl.error_return)
-        params = self.gen_params(impl.params, impl.type_params,
-                                 reassigned_params=rp, mutated_params=mp, func=impl)
-        out.write(f"{ret_type} {escape_cpp_name(mangled)}({params}) {{\n")
-
-        # Inject literal narrowing facts for dead branch elimination.
-        # Uses literal_overload_facts which survives reset_scope (same
-        # pattern as overload_param_types).
-        for (pname, _), (_, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(stub_ptype, LiteralType):
-                self.ctx.literal_overload_facts[pname] = stub_ptype
-
-        per_stub = self.ctx.thir_overload_functions.get(impl)
-        try:
-            self.gen_body(out, impl, return_cpp=ret_type,
-                          lowered=per_stub.get(stub) if per_stub is not None else None)
-        finally:
-            self.ctx.literal_overload_facts = {}
-
-        out.write("}\n")
-
-    def _gen_overload_specialized_function(
-        self, out: TextIO, impl: TpyFunction, stub: TpyFunction, *,
-        in_header: bool = False,
-    ) -> None:
-        """Generate a specialized C++ function for one @overload stub.
-
-        Uses the implementation's body but with the stub's parameter types
-        and return type. Sets overload_param_types so dead branch elimination
-        kicks in for isinstance/match checks.
-
-        When the stub is shorter than the impl, trailing impl params are
-        filled in by the impl's defaults. Each missing param becomes a
-        local variable at the top of the body and, when its default's type
-        narrows the impl param, contributes a narrowing fact.
-
-        Template-ness is derived from the STUB, not the impl, so it matches
-        the forward declaration: a non-generic overload of a generic impl
-        emits a non-template definition (else the called non-template symbol
-        is never defined). Such a definition is header-only (the impl being a
-        template routes the whole group to the header), so it is `inline` to
-        stay ODR-safe -- hence the `in_header` flag.
-        """
-        self.ctx.emit_declaration_echo(out, stub.loc)
-
-        impl_defaults = impl.defaults if impl.defaults else []
-        missing_params = impl.params[len(stub.params):]
-
-        overload_types = self._build_overload_narrowing(impl, stub, missing_params, impl_defaults)
-
-        is_generic = bool(stub.type_params)
-        rp = self._get_reassigned_params(impl)
-        mp = self._get_func_mutated_params(impl)
-        proto_params = self.protocols.get_all_protocol_params(stub.params)
-        has_dynamic = self._has_dynamic_protocol_params(stub.params)
-        has_proto_params = bool(proto_params)
-        per_stub = self.ctx.thir_overload_functions.get(impl)
-
-        if is_generic or has_proto_params:
-            out.write(self.protocols.gen_combined_template_header(
-                stub.type_params, proto_params, stub.type_param_bounds,
-                emit_defaults=False,
-            ))
-            ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(
-                          stub.params, stub.type_params, mutated_params=mp,
-                          passings=self.published_passings(
-                              stub,
-                              lowered=None if per_stub is None else per_stub.get(stub)))
-                      if has_proto_params or has_dynamic
-                      else self.gen_params(stub.params, stub.type_params,
-                                           reassigned_params=rp, mutated_params=mp, func=stub))
-            out.write(f"{ret_type} {escape_cpp_name(self.emitted_name(stub))}({params}) {{\n")
-        else:
-            ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(
-                          stub.params, mutated_params=mp,
-                          passings=self.published_passings(
-                              stub,
-                              lowered=None if per_stub is None else per_stub.get(stub)))
-                      if has_dynamic
-                      else self.gen_params(stub.params, stub.type_params,
-                                           reassigned_params=rp, mutated_params=mp, func=stub))
-            inline_kw = "inline " if in_header else ""
-            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(self.emitted_name(stub))}({params}) {{\n")
-
-        # Request synthetic locals for missing impl params at the top of the body.
-        self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
-            missing_params, impl_defaults, start_idx=len(stub.params))
-
-        self.ctx.overload_param_types = overload_types
-        # Promote literal narrowing to literal_overload_facts so that
-        # equality-based dead-branch elim (if count == 0:) works alongside
-        # isinstance-based elim (if x is None:).
-        self._inject_literal_overload_facts(overload_types)
-        try:
-            self.gen_body(out, impl, return_cpp=ret_type,
-                          lowered=per_stub.get(stub) if per_stub is not None else None)
-        finally:
-            self.ctx.overload_param_types = {}
-            self.ctx.overload_missing_param_locals = []
-            self.ctx.literal_overload_facts = {}
-
-        out.write("}\n")
-
-    def _inject_literal_overload_facts(self, narrowing: dict[str, TpyType]) -> None:
-        """Promote IntLiteralType/LiteralType entries to literal_overload_facts.
-
-        literal_overload_facts feeds into literal_facts at gen_body entry,
-        enabling _resolve_literal_eq_statically to fold equality checks
-        (e.g. ``if count == 0:``) when the narrowed param is a literal.
-        """
-        for pname, narrowed in narrowing.items():
-            if isinstance(narrowed, LiteralType):
-                self.ctx.literal_overload_facts[pname] = narrowed
-            elif isinstance(narrowed, IntLiteralType) and narrowed.value is not None:
-                self.ctx.literal_overload_facts[pname] = LiteralType(
-                    BIGINT, (LiteralValue(LiteralTag.INT, narrowed.value),))
-
-    def _build_overload_narrowing(
-        self, impl: TpyFunction, stub: TpyFunction,
-        missing_params: list[tuple[str, TpyType]],
-        impl_defaults: list,
-    ) -> dict[str, TpyType]:
-        return build_overload_narrowing(impl, stub, missing_params,
-                                        impl_defaults)
-
-    @staticmethod
-    def _missing_param_local_specs(
-        missing_params: list[tuple[str, TpyType]],
-        impl_defaults: list,
-        *, start_idx: int,
-    ) -> list[tuple[str, TpyType, TpyExpr]]:
-        """Build (name, type, default_expr) specs for overload_missing_param_locals."""
-        specs: list[tuple[str, TpyType, TpyExpr]] = []
-        for offset, (pname, ptype) in enumerate(missing_params):
-            default_expr = impl_defaults[start_idx + offset]
-            specs.append((pname, ptype, default_expr))
-        return specs
-
-    def _gen_overload_specialized_method(
-        self, out: TextIO, member: EmittedMember, record_name: str, *,
-        record_type_param_bounds: dict[str, TpyType] | None = None,
-        dynamic_overrides: set[str] | None = None,
-        mode: MethodEmitMode = "inline",
-    ) -> None:
-        """Generate a specialized C++ method for one @overload stub.
-
-        Delegates to _gen_method_overload with stub's signature but impl's body,
-        with the overload context set for dead branch elimination.
-        """
-        impl, stub = member.body, member.func
-        impl_defaults = impl.defaults if impl.defaults else []
-        missing_params = impl.params[len(stub.params):]
-        overload_types = self._build_overload_narrowing(
-            impl, stub, missing_params, impl_defaults)
-
-        # Create a synthetic TpyFunction with stub's types but impl's body.
-        # With parser cloning, @auto_readonly stubs are already split into separate
-        # mutable/const clones before codegen runs.
-        synth = TpyFunction(
-            name=stub.name,
-            params=list(stub.params),
-            return_type=stub.return_type,
-            body=impl.body,
-            is_method=impl.is_method,
-            is_staticmethod=impl.is_staticmethod,
-            is_classmethod=impl.is_classmethod,
-            is_readonly=member.readonly,
-            readonly_opt_out=member.form_source.readonly_opt_out,
-            is_pure=impl.is_pure,
-            is_consuming=impl.is_consuming,
-            type_params=list(impl.type_params),
-            type_param_bounds=dict(impl.type_param_bounds),
-            defaults=list(stub.defaults) if stub.defaults else [],
-            loc=stub.loc,
-        )
-        # Copy scan results from impl so codegen can find pre-scan data
-        self.ctx.analyzer.function_scan_results[synth] = (
-            self.ctx.analyzer.function_scan_results.get(impl, None)
-        )
-        if impl in self.ctx.analyzer.function_hoisted_vars:
-            self.ctx.analyzer.function_hoisted_vars[synth] = (
-                self.ctx.analyzer.function_hoisted_vars[impl]
-            )
-        if impl in self.ctx.analyzer.function_frame_local_roots:
-            self.ctx.analyzer.function_frame_local_roots[synth] = (
-                self.ctx.analyzer.function_frame_local_roots[impl]
-            )
-        if impl in self.ctx.analyzer.function_closed_frames:
-            self.ctx.analyzer.function_closed_frames[synth] = (
-                self.ctx.analyzer.function_closed_frames[impl]
-            )
-        if impl in self.ctx.analyzer.function_escaping_captured_locals:
-            self.ctx.analyzer.function_escaping_captured_locals[synth] = (
-                self.ctx.analyzer.function_escaping_captured_locals[impl]
-            )
-        if impl in self.ctx.analyzer.function_move_through_vars:
-            self.ctx.analyzer.function_move_through_vars[synth] = (
-                self.ctx.analyzer.function_move_through_vars[impl]
-            )
-        # The specialization lowers the impl's body: its locals own what
-        # the impl's do.
-        owned = self.ctx.analyzer.ctx.body_ownership.get(impl)
-        if owned is not None:
-            self.ctx.analyzer.ctx.body_ownership[synth] = owned
-
-        # Set overload context
-        self.ctx.overload_param_types = overload_types
-        self._inject_literal_overload_facts(overload_types)
-        self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
-            missing_params, impl_defaults, start_idx=len(stub.params))
-        try:
-            per_stub = self.ctx.thir_overload_functions.get(impl)
-            self.gen_method_def(out, synth, member, record_name, dynamic_overrides,
-                                record_type_param_bounds=record_type_param_bounds,
-                                mode=mode,
-                                variant_of=stub,
-                                lowered=per_stub.get(stub) if per_stub is not None else None)
-        finally:
-            self.ctx.overload_param_types = {}
-            self.ctx.overload_missing_param_locals = []
-            self.ctx.literal_overload_facts = {}
-
-    def _gen_literal_specialized_method(
-        self, out: TextIO, member: EmittedMember, record_name: str, *,
-        record_type_param_bounds: dict[str, TpyType] | None = None,
-        dynamic_overrides: set[str] | None = None,
-        mode: MethodEmitMode = "inline",
-    ) -> None:
-        """Generate a per-literal specialized C++ method.
-
-        Uses the implementation's body with the stub's return type and
-        a mangled method name. Injects literal narrowing facts for dead
-        branch elimination.
-        """
-        impl, stub = member.body, member.func
-        synth = TpyFunction(
-            name=impl.name,
-            params=list(impl.params),
-            return_type=stub.return_type,
-            body=impl.body,
-            is_method=impl.is_method,
-            is_staticmethod=impl.is_staticmethod,
-            is_classmethod=impl.is_classmethod,
-            is_readonly=member.readonly,
-            readonly_opt_out=member.form_source.readonly_opt_out,
-            is_pure=impl.is_pure,
-            is_consuming=impl.is_consuming,
-            type_params=list(impl.type_params),
-            type_param_bounds=dict(impl.type_param_bounds),
-            defaults=list(impl.defaults) if impl.defaults else [],
-            loc=stub.loc,
-        )
-        # Copy scan results from impl
-        self.ctx.analyzer.function_scan_results[synth] = (
-            self.ctx.analyzer.function_scan_results.get(impl, None)
-        )
-        if impl in self.ctx.analyzer.function_hoisted_vars:
-            self.ctx.analyzer.function_hoisted_vars[synth] = (
-                self.ctx.analyzer.function_hoisted_vars[impl]
-            )
-        if impl in self.ctx.analyzer.function_frame_local_roots:
-            self.ctx.analyzer.function_frame_local_roots[synth] = (
-                self.ctx.analyzer.function_frame_local_roots[impl]
-            )
-        if impl in self.ctx.analyzer.function_closed_frames:
-            self.ctx.analyzer.function_closed_frames[synth] = (
-                self.ctx.analyzer.function_closed_frames[impl]
-            )
-        if impl in self.ctx.analyzer.function_escaping_captured_locals:
-            self.ctx.analyzer.function_escaping_captured_locals[synth] = (
-                self.ctx.analyzer.function_escaping_captured_locals[impl]
-            )
-        if impl in self.ctx.analyzer.function_move_through_vars:
-            self.ctx.analyzer.function_move_through_vars[synth] = (
-                self.ctx.analyzer.function_move_through_vars[impl]
-            )
-        # The specialization lowers the impl's body: its locals own what
-        # the impl's do.
-        owned = self.ctx.analyzer.ctx.body_ownership.get(impl)
-        if owned is not None:
-            self.ctx.analyzer.ctx.body_ownership[synth] = owned
-
-        # Inject literal narrowing facts
-        for (pname, _), (_, stub_ptype) in zip(impl.params, stub.params):
-            if isinstance(stub_ptype, LiteralType):
-                self.ctx.literal_overload_facts[pname] = stub_ptype
-
-        try:
-            per_stub = self.ctx.thir_overload_functions.get(impl)
-            self.gen_method_def(out, synth, member, record_name, dynamic_overrides,
-                                record_type_param_bounds=record_type_param_bounds,
-                                mode=mode, variant_of=stub,
-                                lowered=per_stub.get(stub) if per_stub is not None else None)
-        finally:
-            self.ctx.literal_overload_facts = {}
 
     def _get_dynamic_override_info(self, record_name: str) -> set[str]:
         """The name of every @dynamic virtual the record's class inherits
@@ -1468,9 +1008,8 @@ class FunctionGenerator:
 
     def method_variant_name(self, decl: TpyFunction,
                             record_name: str) -> str | None:
-        """The C++ name of the method variant registered from `decl` (its
-        own def, or the `typing.overload` stub it specializes), or None
-        when it is emitted under its source name."""
+        """The C++ name of the method variant registered from `decl`, or
+        None when it is emitted under its source name."""
         ri = self.ctx.analyzer.registry.get_record(record_name)
         if ri is None:
             return None
@@ -1516,20 +1055,15 @@ class FunctionGenerator:
                        member: EmittedMember, record_name: str,
                        dynamic_overrides: set[str] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None,
-                       mode: MethodEmitMode = "inline",
-                       variant_of: TpyFunction | None = None,
-                       lowered=None) -> None:
+                       mode: MethodEmitMode = "inline") -> None:
         """Generate a method definition for a record. ``mode`` is
-        forwarded to ``_gen_method_overload``. ``variant_of`` is the def
-        `method` specializes (a `typing.overload` stub), when it is not
-        `method` itself. ``member`` is the record's member `method` emits:
-        its receiver form is the one declared.
+        forwarded to ``_gen_method_overload``. ``member`` is the record's
+        member `method` emits: its receiver form is the one declared.
 
         A named variant of a set is defined under its name, followed by a
         plain-name forwarder with the variant's own signature
         (`method_emitted_names`)."""
-        decl = variant_of if variant_of is not None else method
-        cpp_name, plain_forwarder = self.method_emitted_names(decl, record_name)
+        cpp_name, plain_forwarder = self.method_emitted_names(method, record_name)
         plain_name = escape_cpp_name(method.name)
         forward_to = cpp_name if plain_forwarder else None
         cpp_return_type = method.return_type
@@ -1543,7 +1077,7 @@ class FunctionGenerator:
 
         overrides = dynamic_overrides or set()
 
-        passings = self.published_passings(method, lowered)
+        passings = self.published_passings(method)
         names = [(cpp_name, None)]
         if forward_to is not None:
             names.append((plain_name, forward_to))
@@ -1555,8 +1089,7 @@ class FunctionGenerator:
                                       const=is_const, ref=member.ref, static=is_static,
                                       override=is_override,
                                       record_type_param_bounds=record_type_param_bounds,
-                                      mode=mode, forward_to=target, passings=passings,
-                                      lowered=lowered)
+                                      mode=mode, forward_to=target, passings=passings)
 
     def method_return_cpp(self, method: TpyFunction, record_name: str,
                           cpp_return_type: TpyType | None = None, *,
@@ -1607,7 +1140,6 @@ class FunctionGenerator:
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
         mode: MethodEmitMode = "inline", forward_to: str | None = None,
         passings: 'dict[str, ParamPassing] | None' = None,
-        lowered=None,
     ) -> None:
         """Emit a single method overload. See ``MethodEmitMode`` for the
         contract of ``mode``. ``const`` / ``ref`` are the receiver's
@@ -1767,8 +1299,7 @@ class FunctionGenerator:
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
         self.gen_body(out, method,
-                      indent_level=body_indent_level, return_cpp=ret_type,
-                      lowered=lowered)
+                      indent_level=body_indent_level, return_cpp=ret_type)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")
@@ -1792,15 +1323,13 @@ class FunctionGenerator:
         return f"this->{keyword}{variant}{targs}({args})"
 
     def gen_body(self, out: TextIO, func: TpyFunction,
-                 indent_level: int = 1, return_cpp: str | None = None,
-                 lowered=None) -> None:
-        """Emit one function/method body from its lowered THIR: `lowered`
-        (an `@overload` specialization), else the module's lowering of
+                 indent_level: int = 1, return_cpp: str | None = None) -> None:
+        """Emit one function/method body from the module's lowering of
         `func`."""
         # Local import: `thir.emit` reaches back into `codegen_cpp`, so an
         # eager import here would close a codegen_cpp <-> thir cycle.
         from ..thir.emit import ModuleCounter, TempSink, emit_thir_body
-        thir_fn = lowered if lowered is not None else self.ctx.thir_functions.get(func)
+        thir_fn = self.ctx.thir_functions.get(func)
         if thir_fn is None:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)

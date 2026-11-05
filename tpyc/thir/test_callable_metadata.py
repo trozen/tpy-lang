@@ -192,14 +192,9 @@ def test_nonordinary_callees_have_no_descriptor(
     assert resolved_callee(fi, analyzer, arity=2) is None
 
 
-def test_actual_overload_default_generic_and_callback_boundaries() -> None:
+def test_actual_default_generic_and_callback_boundaries() -> None:
     source = """\
-from typing import overload
 from tpy import int32, Fn
-@overload
-def overloaded(x: int32) -> int32: ...
-def overloaded(x: int32) -> int32:
-    return x
 def default(x: int32 = 3) -> int32:
     return x
 def generic[T](x: T) -> T:
@@ -207,7 +202,6 @@ def generic[T](x: T) -> T:
 def callback(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 def run(x: int32) -> int32:
-    a = overloaded(x)
     b = default()
     c = generic(x)
     return default(x)
@@ -215,14 +209,12 @@ def run(x: int32) -> int32:
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    overloads = [fn for group in ctx.thir_overload_functions.values() for fn in group.values()]
-    assert len(overloads) == 1 and overloads[0].resolved_callee is None
     assert functions["generic"].resolved_callee is None
     assert functions["callback"].resolved_callee is None
     nodes = calls(functions["run"])
-    assert len(nodes) == 4
-    assert [node.resolved_callee for node in nodes[:3]] == [None] * 3
-    assert nodes[3].resolved_callee == functions["default"].resolved_callee
+    assert len(nodes) == 3
+    assert [node.resolved_callee for node in nodes[:2]] == [None] * 2
+    assert nodes[2].resolved_callee == functions["default"].resolved_callee
     assert calls(functions["callback"])[0].resolved_callee is None
 
 

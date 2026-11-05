@@ -4,7 +4,6 @@ a::use_g_str@15:0: uncovered (call needs resolved ordinary callee), summary: opa
 b::__tpy_init: uncovered (module initialization)
 b::g@8:0: uncovered (no body to lower)
 b::g@10:0: uncovered (no body to lower)
-b::g@11:0: uncovered (overloaded callable)
 b::relay@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::__tpy_init: uncovered (module initialization)
 main::main@7:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

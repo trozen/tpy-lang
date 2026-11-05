@@ -24,7 +24,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, UnknownElementType,
     view_family_for_type,
-    LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
+    LiteralType, LiteralValue, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, TypeParamKind, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own, owned_payload, drop_own_marker,
@@ -80,7 +80,7 @@ from ..parse import (
     lambda_of, comp_free_reads, comp_sinks, TpyComprehensionGenerator,
     TpyStmt, TpyVarDecl, TpyIf, TpyWhile, TpyMatch, SourceLocation, TpySlice
 )
-from .literal_utils import literal_value_from_expr
+from .literal_utils import literal_admits
 from ..parse.nodes import program_names, walk_body_stmts, walk_expr_tree
 from .dyn_erasure import dyn_erasure_coercion
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_fit, callable_value_fit, CallableFit, CallableUpcast
@@ -111,7 +111,7 @@ from ..diagnostics import (
     ITERABLE_LVALUE_COPY_HINT)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
-    is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
+    is_str_type, is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_fixed_int_type, is_str_category, is_bytes_category,
     protocol_info_of, iter_yields_owned_elements, is_iterator_adapter,
     is_dict_view,
@@ -128,22 +128,6 @@ from .iter_loans import (handle_owns_elements, iteration_copied_leaves,
                          iteration_lend_pending)
 
 
-def _literal_value_from_source(
-    source_expr: TpyExpr | None, expected: LiteralType,
-) -> LiteralValue | None:
-    """LiteralValue from a literal AST source, gated on tag-vs-base agreement."""
-    lv = literal_value_from_expr(source_expr)
-    if lv is None:
-        return None
-    if lv.tag is LiteralTag.STR and expected.is_str_base():
-        return lv
-    if lv.tag is LiteralTag.BOOL and expected.is_bool_base():
-        return lv
-    if lv.tag is LiteralTag.INT and expected.is_int_base():
-        return lv
-    return None
-
-
 # Wording for the borrowing-view families that have an owning type to switch
 # to: the display name and those owning types. Which types ARE borrowing views
 # is `is_borrowing_view_type`; this table only picks the message. Ordered: a
@@ -155,6 +139,14 @@ _VIEW_RETURN_FAMILIES = (
     (is_span, "Span", "list or Array"),
     (is_varargs, "a *args view", "list or Array"),
 )
+
+
+def _int_literal_elem_fits(a: TpyType, e: TpyType) -> bool:
+    """An int literal element at an integer element slot: any integer
+    width, but a `Literal` element only one of its values."""
+    if not isinstance(a, IntLiteralType):
+        return False
+    return e.admits(a) if isinstance(e, LiteralType) else is_integer_type(e)
 
 
 def literal_conversion_source(actual: TpyType, expected: TpyType) -> TpyType:
@@ -987,6 +979,43 @@ class TypeCompatibility:
         return self._check_compat(
             strip_int(self.ctx.get_expr_type(value)), want, context,
             getattr(value, "loc", None) or loc, value)
+
+    def _literal_slot(self, actual: TpyType, expected: LiteralType,
+                      context: str, loc: SourceLocation | None,
+                      source_expr: TpyExpr | None,
+                      coercion_ctx: CoercionContext | None,
+                      sink_owns: bool) -> CompatResult:
+        """A value at a `Literal` slot: refused unless its type or its
+        source proves it one of the set's values (`literal_admits`), and
+        converted as its base when the bases differ."""
+        proven = literal_admits(self.ctx, expected, actual, source_expr)
+        if not isinstance(proven, TpyType):
+            return self._literal_refusal(actual, expected, proven, context,
+                                         loc, source_expr)
+        if (isinstance(proven, IntLiteralType)
+                or proven.base_type == expected.base_type):
+            return None
+        return resolve_coercion(proven, expected, coercion_ctx, sink_owns)
+
+    def _literal_refusal(self, actual: TpyType, expected: LiteralType,
+                         value: LiteralValue | None, context: str,
+                         loc: SourceLocation | None,
+                         source_expr: TpyExpr | None) -> CompatError:
+        """A value a `Literal` slot does not admit, named by the value
+        outside the set when one is proven, with the values it takes."""
+        name = peel_coerce(source_expr) if source_expr is not None else None
+        if not isinstance(name, TpyName):
+            got = (str(value) if value is not None
+                   else self._pair(expected, actual)[1])
+            return CompatError(
+                f"Type mismatch in {context}: expected {expected}, "
+                f"got {got}", loc)
+        got = (f"'{name.name}', which may hold {value}" if value is not None
+               else self._pair(expected, actual)[1])
+        choices = ", ".join(str(v) for v in expected.values)
+        return CompatError(
+            f"Type mismatch in {context}: expected {expected}, got {got}; "
+            f"pass one of {choices}", loc)
 
     def _check_polymorphic_slicing(
         self,
@@ -2326,6 +2355,12 @@ class TypeCompatibility:
                     return result
             return None
 
+        # A `Literal` slot admits a value its set proves, and converts it
+        # as its base when the bases differ.
+        if isinstance(expected, LiteralType):
+            return self._literal_slot(actual, expected, context, loc,
+                                      source_expr, coercion_ctx, sink_owns)
+
         # IntLiteral can coerce to BigInt or stay unresolved
         if isinstance(actual, IntLiteralType):
             if is_big_int_type(expected) or isinstance(expected, IntLiteralType):
@@ -2343,12 +2378,12 @@ class TypeCompatibility:
         # Allow Array element type coercion if sizes match
         if is_array(actual) and is_array(expected):
             if actual.type_args[1] == expected.type_args[1]:
-                if isinstance(actual.type_args[0], IntLiteralType) and is_integer_type(expected.type_args[0]):
+                if _int_literal_elem_fits(actual.type_args[0], expected.type_args[0]):
                     return None
 
         # Allow list element type coercion
         if is_list(actual) and is_list(expected):
-            if isinstance(actual.type_args[0], IntLiteralType) and is_integer_type(expected.type_args[0]):
+            if _int_literal_elem_fits(actual.type_args[0], expected.type_args[0]):
                 return None
 
         # Allow list -> Array only for literal expressions
@@ -2368,7 +2403,7 @@ class TypeCompatibility:
                         )
                 if a_elem == e_elem:
                     return None
-                if isinstance(a_elem, IntLiteralType) and is_integer_type(e_elem):
+                if _int_literal_elem_fits(a_elem, e_elem):
                     return None
 
         # Symmetric to the actual-Pending branch below: the EXPECTED type can
@@ -2415,7 +2450,7 @@ class TypeCompatibility:
                         return None
                 if actual_elem == e_elem:
                     return None
-                if isinstance(actual_elem, IntLiteralType) and is_integer_type(e_elem):
+                if _int_literal_elem_fits(actual_elem, e_elem):
                     return None
                 # Element type widening (e.g. int32 -> int32|None, int32 -> int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
@@ -2463,12 +2498,12 @@ class TypeCompatibility:
                 e_elem = expected.type_args[0]
                 if actual.element_type == e_elem:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(e_elem):
+                if _int_literal_elem_fits(actual.element_type, e_elem):
                     return None
             if is_array(expected):
                 if actual.element_type == expected.type_args[0]:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.type_args[0]):
+                if _int_literal_elem_fits(actual.element_type, expected.type_args[0]):
                     return None
 
         # Allow PendingDictType compatibility during first phase (before resolution).
@@ -2553,54 +2588,21 @@ class TypeCompatibility:
         if isinstance(actual, PendingStrType):
             if is_any_str_type(expected):
                 return None
-            if isinstance(expected, LiteralType) and expected.is_str_base():
-                return None
         if isinstance(expected, PendingStrType):
             if is_str_category(actual):
                 return None
-        # LiteralType is compatible with its base type family
-        if isinstance(actual, LiteralType) and isinstance(expected, LiteralType):
-            if all(v in expected.values for v in actual.values):
-                return None
-            # Reject explicitly: skipping the permissive str/int branches below
-            # is what enforces value-set membership.
-            return CompatError(
-                f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
-        if isinstance(expected, LiteralType):
-            src_lit = _literal_value_from_source(source_expr, expected)
-            if src_lit is not None:
-                if src_lit in expected.values:
-                    return None
-                return CompatError(
-                    f"Type mismatch in {context}: expected {expected}, "
-                    f"got {src_lit}", loc)
-            if isinstance(actual, IntLiteralType) and actual.value is not None and expected.is_int_base():
-                if expected.contains(LiteralTag.INT, actual.value):
-                    return None
-                return CompatError(
-                    f"Type mismatch in {context}: expected {expected}, "
-                    f"got {actual.value}", loc)
-            # Non-literal source flowing into a Literal[...] LHS is rejected:
-            # sema cannot prove the runtime value is in the declared set, and
-            # the LHS's narrower type drives downstream Literal-specialized
-            # dispatch (which would run the wrong arm on an out-of-set value).
         if isinstance(actual, LiteralType):
-            if actual.is_str_base() and is_str_category(expected):
+            if actual.base_type == expected or (
+                    actual.is_str_base() and (is_str_type(expected)
+                                              or is_str_view_type(expected))):
                 return None
-            if actual.base_type == expected:
-                return None
-            source = literal_conversion_source(actual, expected)
-            if source is not actual:
-                coercion = resolve_coercion(source, expected, coercion_ctx,
-                                            sink_owns)
-                if coercion is None:
-                    # A narrower fixed int: the value's own row when every
-                    # value of the set fits, else checked as its storage type.
-                    coercion = resolve_coercion(actual, expected,
-                                                coercion_ctx, sink_owns)
-                if coercion is not None:
-                    return coercion
-                actual = source
+            # The set's own row first: a width that holds every value of an
+            # int set converts it unchecked.
+            coercion = resolve_coercion(actual, expected, coercion_ctx,
+                                        sink_owns)
+            if coercion is not None:
+                return coercion
+            actual = literal_conversion_source(actual, expected)
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):
             if is_bytes_category(expected) or isinstance(expected, PendingBytesType):

@@ -399,19 +399,6 @@ void loop_var_vs_enclosing_local() {
     std::cout << "loop_var outer:" << " " << v << "\n" << ::tpy::check_signals;
 }
 
-
-
-// def classify(x: int) -> str:
-//     def inner(x: int) -> str:
-//         # a param named like the enclosing @overload implementation's param
-//         # is not folded against the stub's literal
-//         if x == 1:  # tpyc: ok
-//             return "inner-one"
-//         return "inner-other"
-//
-//     if x == 1:
-//         return "outer-one " + inner(2)
-//     return "outer-two " + inner(1)
 // @overload
 // def classify(x: Literal[1]) -> str: ...
 std::string classify__lit_1(const ::tpy::BigInt& x) {
@@ -421,7 +408,10 @@ std::string classify__lit_1(const ::tpy::BigInt& x) {
         }
         return "inner-other";
     };
-    return (::tpy::str_concat("outer-one ", inner(::tpy::BigInt(2))));
+    if (true) {
+        return (::tpy::str_concat("outer-one ", inner(::tpy::BigInt(2))));
+    }
+    return (::tpy::str_concat("outer-two ", inner(::tpy::BigInt(1))));
 }
 
 // @overload
@@ -433,9 +423,10 @@ std::string classify__lit_2(const ::tpy::BigInt& x) {
         }
         return "inner-other";
     };
+    if (false) {
+    }
     return (::tpy::str_concat("outer-two ", inner(::tpy::BigInt(1))));
 }
-
 
 // def match_capture() -> None:
 //     def inner(v: int32) -> None:
@@ -613,8 +604,8 @@ void main() {
         }
     }
     ::tpyapp::main::loop_var_vs_enclosing_local();
-    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_1(1) << "\n" << ::tpy::check_signals;
-    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_2(2) << "\n" << ::tpy::check_signals;
+    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_1(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
+    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_2(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_capture();
     ::tpyapp::main::del_local();
     int32_t r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_host()));

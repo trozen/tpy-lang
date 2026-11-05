@@ -170,24 +170,22 @@ void reference_section() {
     std::cout << "ref:" << " " << ::tpyapp::main::apply(label__int, ::tpy::BigInt(7)) << "\n" << ::tpy::check_signals;
 }
 
-
-
-// def kind(x: int | Dog) -> str:
-//     if isinstance(x, int):
-//         return "int"
-//     return "dog " + x.nm
+// # --- typing.overload: stubs plus one implementation ---
 // @overload
 // def kind(x: int) -> str: ...
 std::string kind__int__v0(const ::tpy::BigInt& x) {
-    return "int";
+    if (true) {
+        return "int";
+    }
 }
 
 // @overload
 // def kind(x: Dog) -> str: ...
 std::string kind__Dog(const Dog& x) {
+    if (false) {
+    }
     return (::tpy::str_concat("dog ", x.nm));
 }
-
 
 // # a user def named like a typing.overload specialization: the
 // # specialization takes `kind__int__v0`

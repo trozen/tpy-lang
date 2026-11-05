@@ -1014,8 +1014,6 @@ LEDGER_ATTRS = {
     "import_calls": "per-statement import chain, keyed by statement",
     "pre_decl_import_cpp": "an import's spelling, not a binding's",
     "literal_facts": "flow fact: a name's literal value",
-    "overload_literal_facts": "flow fact: the stub's literal values",
-    "overload_narrowing": "narrowing: the stub's parameter types",
     "inline_narrowed": "narrowing: one condition's extraction",
     "tparam_bounds": "type-parameter bounds, not a binding",
     "sema_movable_locals": "sema's verdict, an input of the planner",

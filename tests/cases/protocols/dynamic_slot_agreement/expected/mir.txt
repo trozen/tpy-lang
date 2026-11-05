@@ -51,7 +51,6 @@ main::TickDial.gauge@295:4: uncovered (missing receiver fact)
 main::Cell.peek@328:4: uncovered (generic body)
 main::Tag.text@356:4: covered (storage: no_proof_required), summary: known
 main::Clock.tick@383:4: uncovered (no body to lower)
-main::Clock.tick@384:4: uncovered (overloaded callable)
 main::Named.name@421:4: covered (storage: no_proof_required)
 main::Titled.name@432:4: covered (storage: no_proof_required)
 main::Boat.turn@507:4: covered (storage: no_proof_required)

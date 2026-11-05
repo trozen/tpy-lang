@@ -1,23 +1,23 @@
 kin.py:22: warning: isinstance() check against 'Wing' on 'Fin' folds to False (static dispatch; use @dynamic for runtime type checks): 'Ray' derives both
 kin.py:29: warning: class pattern 'Wing' on 'Fin' never matches (static dispatch; use @dynamic for runtime type checks): 'Ray' derives both
 kin.py:36: warning: isinstance() check against 'Wing' on 'Fin' folds to False (static dispatch; use @dynamic for runtime type checks): 'Ray' derives both
-main.py:1808: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:1842: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
 main.py:238: warning: copies Dog into field; use copy() to make this explicit
 main.py:80: warning: isinstance() check against descendant type 'Dog' on 'Animal' folds to False (static dispatch; use @dynamic for runtime type checks)
 main.py:142: warning: class pattern 'Dog' on 'Animal' never matches (static dispatch; use @dynamic for runtime type checks)
-main.py:600: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:604: warning: Own[Dog] param 'd' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:984: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
-main.py:995: warning: copies list[int32] into owned storage; use copy() to make this explicit
-main.py:1204: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
-main.py:1207: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
-main.py:1222: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:1222: warning: non-exhaustive match on 'int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
-main.py:1231: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:1334: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
-main.py:1386: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
-main.py:1410: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
-main.py:1430: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
-main.py:1474: warning: non-exhaustive match on 'int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
-main.py:1792: warning: isinstance() check against 'Bird' on 'Bat' folds to False (static dispatch; use @dynamic for runtime type checks): 'Griffin' derives both
-main.py:343: warning: isinstance() check against 'Bird' on 'Bat' folds to False (static dispatch; use @dynamic for runtime type checks): 'Griffin' derives both
+main.py:633: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:637: warning: Own[Dog] param 'd' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:1017: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
+main.py:1028: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:1237: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:1240: warning: non-exhaustive match on 'Dog'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:1255: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:1255: warning: non-exhaustive match on 'int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:1264: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:1367: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
+main.py:1419: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
+main.py:1443: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
+main.py:1463: warning: non-exhaustive match on 'None'; missing: None (add 'case _: pass' to suppress)
+main.py:1507: warning: non-exhaustive match on 'int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:1826: warning: isinstance() check against 'Bird' on 'Bat' folds to False (static dispatch; use @dynamic for runtime type checks): 'Griffin' derives both
+main.py:376: warning: isinstance() check against 'Bird' on 'Bat' folds to False (static dispatch; use @dynamic for runtime type checks): 'Griffin' derives both

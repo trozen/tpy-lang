@@ -10,19 +10,27 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template <typename T>
-struct __gen_rep;
-
-// def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
+struct __gen_rep__T;
 template <typename T>
-__gen_rep<T> rep(::tpy::param_val_or_ref_t<T> obj, int32_t n = -1);
+struct __gen_rep__T__int32;
+
+// @overload
+// def rep[T](obj: T) -> Iterator[T]: ...
+template <typename T>
+__gen_rep__T<T> rep__T(::tpy::param_val_or_ref_t<T> obj);
+// @overload
+// def rep[T](obj: T, n: int32) -> Iterator[T]: ...
+template <typename T>
+__gen_rep__T__int32<T> rep__T__int32(::tpy::param_val_or_ref_t<T> obj, int32_t n);
 // def mk() -> str:
 std::string mk();
 // def main():
 void main();
 
-// def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
+// @overload
+// def rep[T](obj: T) -> Iterator[T]: ...
 template <typename T>
-struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot_t<T>> {
+struct __gen_rep__T : public ::tpy::next_iter_mixin<__gen_rep__T<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> obj;
     int32_t n;
@@ -35,25 +43,88 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot
         S_DONE = 3,
     };
 
-    __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t n_ = -1)
+    __gen_rep__T(::tpy::param_val_or_ref_t<T> obj_)
+        : __state(S_INITIAL),
+          obj(obj_) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_rep__T& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_rep__T<T>&) {
+        return os << "<generator rep>";
+    }
+};
+// @overload
+// def rep[T](obj: T) -> Iterator[T]: ...
+template <typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        n = -1;
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield obj  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (((n < 0) || (i < n))) {
+            __state = S_RESUME_0;
+            return obj;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// @overload
+// def rep[T](obj: T) -> Iterator[T]: ...
+template <typename T>
+__gen_rep__T<T> rep__T(::tpy::param_val_or_ref_t<T> obj) {
+    return __gen_rep__T<T>(obj);
+}
+
+// @overload
+// def rep[T](obj: T, n: int32) -> Iterator[T]: ...
+template <typename T>
+struct __gen_rep__T__int32 : public ::tpy::next_iter_mixin<__gen_rep__T__int32<T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    ::tpy::val_or_ref_t<T> obj;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_rep__T__int32(::tpy::param_val_or_ref_t<T> obj_, int32_t n_)
         : __state(S_INITIAL),
           obj(obj_),
           n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
-    __gen_rep& __iter__() { return *this; }
+    __gen_rep__T__int32& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_rep<T>&) {
+    friend std::ostream& operator<<(std::ostream& os, const __gen_rep__T__int32<T>&) {
         return os << "<generator rep>";
     }
 };
-// def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
-//     i = 0
-//     while n < 0 or i < n:
-//         yield obj  # tpyc: ok                      # -> S_RESUME_0
-//         i += 1
+// @overload
+// def rep[T](obj: T, n: int32) -> Iterator[T]: ...
 template <typename T>
-std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T__int32<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -81,10 +152,11 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep<T>::__next
 }
 
 
-// def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
+// @overload
+// def rep[T](obj: T, n: int32) -> Iterator[T]: ...
 template <typename T>
-__gen_rep<T> rep(::tpy::param_val_or_ref_t<T> obj, int32_t n) {
-    return __gen_rep<T>(obj, n);
+__gen_rep__T__int32<T> rep__T__int32(::tpy::param_val_or_ref_t<T> obj, int32_t n) {
+    return __gen_rep__T__int32<T>(obj, n);
 }
 
 void __tpy_init();

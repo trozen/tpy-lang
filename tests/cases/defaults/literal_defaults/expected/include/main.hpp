@@ -32,12 +32,14 @@ std::string keyword_skip(std::string_view mode = "rb", const ::tpy::BigInt& n = 
 // def narrowing(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
 std::string narrowing(std::string_view mode = "rb");
 // def generator(mode: Literal["r", "rb"] = "rb") -> Iterator[str]:  # tpyc: ok
-__gen_generator generator(std::string mode = "rb");
+__gen_generator generator(std::string_view mode = "rb");
 // async def async_fn(mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
-__coro_async_fn async_fn(std::string mode = "rb");
-// def stub(mode: str = "rb") -> str:
-std::string stub__lit_r(std::string_view mode = "rb");
-// def stub(mode: str = "rb") -> str:
+__coro_async_fn async_fn(std::string_view mode = "rb");
+// @overload
+// def stub(mode: Literal["r"]) -> str: ...
+std::string stub__lit_r(std::string_view mode);
+// @overload
+// def stub(mode: Literal["rb"] = "rb") -> str: ...  # tpyc: ok
 std::string stub__lit_rb(std::string_view mode = "rb");
 // async def run_async() -> None:
 __coro_run_async run_async();
@@ -68,10 +70,10 @@ struct __coro_async_fn {
         S_DONE = 1,
     };
 
-    __coro_async_fn(std::string mode_ = "rb")
+    __coro_async_fn(std::string_view mode_ = "rb")
         : __state(S_INITIAL),
           __cancel_pending(false),
-          mode(std::move(mode_)) {}
+          mode(std::string(mode_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -86,7 +88,6 @@ struct __coro_run_async {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string __await_lift_0;
-    std::string __coro_arg_0;
     std::string __await_lift_1;
     std::optional<__coro_async_fn> __sub_0;
     std::optional<__coro_async_fn> __sub_1;
@@ -121,9 +122,9 @@ struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, std::str
         S_DONE = 2,
     };
 
-    __gen_generator(std::string mode_ = "rb")
+    __gen_generator(std::string_view mode_ = "rb")
         : __state(S_INITIAL),
-          mode(std::move(mode_)) {}
+          mode(std::string(mode_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_generator& __iter__() { return *this; }

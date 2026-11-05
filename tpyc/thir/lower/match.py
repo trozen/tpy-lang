@@ -50,7 +50,7 @@ from ...value_category import (call_hands_back_value, call_result_holdable,
                                lends_from_dying_source, peel_coerce, origin,
                                origin_shared, OriginKind,
                                property_access_returns_cpp_ref)
-from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
+from ...codegen_cpp.context import cpp_string_literal_expr
 from ...codegen_cpp.emit_prims import (
     partition_optional_cases,
     pattern_has_field_condition,
@@ -70,9 +70,7 @@ from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..nodes import (
     HoistDecl,
     Form,
-    THIRFoldedBlock,
     THIREvalThen,
-    THIRMatchFoldBind,
     THIRExpr,
     THIRStmt,
     THIRFormConvert,
@@ -87,7 +85,6 @@ from .convert import to_local
 from .predicates import (
     _call_lends_held_storage,
     _tuple_opt_elem_subscript,
-    overload_match_fold,
     _container_scalar_read,
     _native_cond_scalar,
     _isinstance_narrow_info,
@@ -3727,82 +3724,3 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )
-
-
-def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
-                                 in_branch: bool, loop_depth: int):
-    """The overload-specialized fold, walking `overload_match_fold`'s plan:
-    the selected case's capture field bindings (`auto`/`auto&` name =
-    subject.field) followed by its body, spliced flat. The match stmt's loc
-    rides the block (its `// match ...` source comment emits), and the fold
-    burns one `__match_subject_N` counter slot -- the pre-dispatch bump a
-    real dispatch would draw.
-
-    Returns None when the fold does not apply, so the regular match routes
-    take over. Fold shapes that are not lowered reject: the plan's own
-    rejects (guards, as-patterns, whole-subject and value patterns), and
-    here literal/nested sub-patterns, non-value-typed field captures, and
-    by-ref capture binds."""
-    plan = overload_match_fold(stmt, lc.overload_narrowing)
-    if plan is None:
-        return None
-    subject_name = stmt.subject.name
-
-    def _reject(detail: str):
-        note_detail(detail)
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-
-    def _splice(pattern: TpyClassPattern, case) -> 'THIRFoldedBlock':
-        _bindings.require_entered(lc, case)
-        binds: list = []
-        for field_name, sub_pattern in pattern.keywords:
-            if isinstance(sub_pattern, TpyWildcardPattern):
-                continue
-            if not isinstance(sub_pattern, TpyCapturePattern):
-                # Folding a literal sub-pattern would silently DROP its
-                # field condition; nested class/as sub-patterns have no
-                # fold render. All reject.
-                _reject("match.overload_fold_subpattern")
-            ft = _match_record_field_type(pattern, field_name, lc.analyzer)
-            if ft is None or not ft.is_value_type():
-                # A non-value capture aliases record storage (`auto&`) --
-                # the body's reads would need the alias binding class.
-                _reject("match.overload_fold_capture")
-            frec = _bindings.fresh_record(lc.table, case, sub_pattern.name)
-            if frec is None or sub_pattern.name in lc.prescan.hoisted:
-                # Pre-declared/hoisted targets take the assignment forms.
-                _reject("match.overload_fold_predeclared")
-            if frec.form is BindingForm.POINTER:
-                # The fold splices field captures; a whole pointer subject
-                # has no fold render.
-                _reject("match.overload_fold_bind_mode")
-            by_value = _capture_by_value(frec)
-            if not by_value and _statements._body_writes_name(
-                    case.body, sub_pattern.name, match_binds=False):
-                # An `auto&` capture would write through to the
-                # field; reads-only bodies render identically either way.
-                # match_binds=False follows sema: a nested match REBINDS the
-                # name without writing through this arm's alias.
-                _reject("match.overload_fold_ref_write")
-            binds.append(THIRMatchFoldBind(
-                name_cpp=escape_cpp_name(sub_pattern.name),
-                source_cpp=f"{subject_name}.{field_name}",
-                by_value=by_value,
-                binding=_statements._declared_record(sub_pattern.name, case,
-                                                     lc)))
-            declared[sub_pattern.name] = ft
-        body = _statements._lower_stmts(case.body, lc, declared,
-                                        in_branch=in_branch,
-                                        loop_depth=loop_depth)
-        return THIRFoldedBlock(stmts=tuple(binds) + body, loc=loc,
-                               burns_match_counter=True)
-
-    if plan.reject is not None:
-        _reject(plan.reject)
-    with _bindings.at(lc, plan.case):
-        if plan.pattern is not None:
-            return _splice(plan.pattern, plan.case)
-        body = _statements._lower_stmts(plan.case.body, lc, declared,
-                                        in_branch=in_branch,
-                                        loop_depth=loop_depth)
-    return THIRFoldedBlock(stmts=body, loc=loc, burns_match_counter=True)

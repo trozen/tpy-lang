@@ -30,6 +30,7 @@ from .parse.nodes import (SourceLocation, is_property_getter_read,
                           stmts_have_any_suspension, walk_body_stmts,
                           walk_expr_tree, walrus_bindings, written_names)
 from .identity_map import IdentityMap
+from .typesys import LiteralTag, LiteralValue
 from .storage_trace import MEMBER_PATH, path_root
 from .value_category import CONTAINER_LITERAL_NODES, peel_coerce
 
@@ -183,10 +184,13 @@ _INT32_MIN, _INT32_MAX = -2**31, 2**31 - 1
 @dataclass(frozen=True)
 class LiteralLocals:
     """The unannotated locals of a function body whose first binding is a
-    bare literal, the pending ones among them (`pending`), and the integer
-    literals each is assigned (`literals`)."""
+    bare numeric literal (`seeded`), the pending ones among them
+    (`pending`), and the literals each local is assigned (`literals`)."""
     pending: frozenset[str] = frozenset()
-    literals: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    # Per local, the distinct literals (integer, bool or str constants) its
+    # plain stores bind; an augmented store binds an operation's value.
+    literals: dict[str, tuple[LiteralValue, ...]] = field(default_factory=dict)
+    seeded: frozenset[str] = frozenset()
     # Names also bound through a form a pending local may not be (a `with`
     # target, a nested `def`, a `nonlocal` store...): none of them gets a cell.
     excluded: frozenset[str] = frozenset()
@@ -198,11 +202,45 @@ class LiteralLocals:
     rebound: frozenset[str] = frozenset()
     # The locals bound exactly once, by a plain store (`x = v`, `x: T = v`),
     # that neither this body nor a nested def declares `global` / `nonlocal`
-    # and no call takes as an argument (a `Ptr` parameter takes its address,
-    # and the callee may write it through that): the value each holds
-    # wherever it is bound. A comprehension's or nested def's own binding of
-    # the name is another variable, which this does not describe.
+    # and whose address no call takes (`address_taken`): the value each
+    # holds wherever it is bound. A comprehension's or nested def's own
+    # binding of the name is another variable, which this does not describe.
     single_stores: dict[str, TpyExpr] = field(default_factory=dict)
+    # The locals every binding of which is a plain store of a literal, so
+    # `literals` are all the values it may hold anywhere. An augmented
+    # store, a closure's `nonlocal` store, a `global` and any other binding
+    # form leave it out, as does a taken address: a write through the
+    # pointer is a store no binding shows.
+    literal_only: frozenset[str] = frozenset()
+    # The names some call takes by address (`scan_pending_num_locals`).
+    address_taken: frozenset[str] = frozenset()
+
+    def seeded_ints(self, name: str) -> tuple[int, ...] | None:
+        """The integer literals a literal-seeded local is assigned, None
+        for any other local or one assigned none."""
+        if name not in self.seeded:
+            return None
+        ints = tuple(v.value for v in self.literals.get(name, ())
+                     if v.tag is LiteralTag.INT)
+        return ints or None
+
+    def bound_values(self, name: str) -> tuple[LiteralValue, ...] | None:
+        """Every value a `literal_only` local may hold."""
+        return self.literals[name] if name in self.literal_only else None
+
+
+def literal_store_value(e: TpyExpr | None) -> LiteralValue | None:
+    """The literal a plain store of `e` binds (`LiteralLocals.literals`)."""
+    if isinstance(e, TpyCoerce):
+        e = e.expr
+    if isinstance(e, TpyStrLiteral):
+        return LiteralValue(LiteralTag.STR, e.value)
+    if isinstance(e, TpyBoolLiteral):
+        return LiteralValue(LiteralTag.BOOL, e.value)
+    lit = literal_constant(e)
+    if lit is None or lit.is_float or lit.value is None:
+        return None
+    return LiteralValue(LiteralTag.INT, lit.value)
 
 
 def _store_value(s: TpyStmt) -> tuple[str, TpyExpr | None] | None:
@@ -277,6 +315,8 @@ def scan_first_bindings(stmts: list[TpyStmt], params: Iterable[str] = (),
 def scan_pending_num_locals(
     stmts: list[TpyStmt], params: Iterable[str],
     first: dict[str, tuple[TpyStmt, ...]],
+    takes_address: Callable[[TpyCall | TpyMethodCall, int | str], bool]
+    = lambda call, at: True,
 ) -> LiteralLocals:
     """The unannotated locals of a function body whose first binding
     (`first`, from `scan_first_bindings`) is a bare integer or float literal and some
@@ -295,8 +335,11 @@ def scan_pending_num_locals(
     `global`), and a parameter. A loop head, an unpack target, a `match`
     capture and a walrus are stores like an assignment, the walrus of its
     own value and the others of a value that is no literal. The same count
-    gives the locals one store binds (`LiteralLocals.single_stores`)."""
-    literal: dict[str, list[int]] = {}
+    gives the locals one store binds (`LiteralLocals.single_stores`).
+    A name passed as an argument a call takes by address (`takes_address`
+    of the call and where the argument is written: its callee takes a
+    value at the `Ptr` parameter the argument binds; by default every
+    argument, as nothing here resolves a callee) is `address_taken`."""
     widening: set[str] = set()
     excluded: set[str] = set(params)
     # Every binding of each name, by any form, each walrus on its own.
@@ -309,19 +352,31 @@ def scan_pending_num_locals(
     # single store describes (`LiteralLocals.single_stores`).
     stored: dict[str, TpyExpr] = {}
     unstable: set[str] = set(params)
+    address_taken: set[str] = set()
+    # The literal each binding stores, and the names some binding of which
+    # is no literal store (`LiteralLocals.literal_only`).
+    bound_literals: dict[str, list[LiteralValue]] = {}
+    unliteral: set[str] = set()
+
+    def bind(name: str, value: TpyExpr | None) -> None:
+        v = literal_store_value(value)
+        if v is not None:
+            bound_literals.setdefault(name, []).append(v)
+        else:
+            unliteral.add(name)
 
     def note_args(e: TpyExpr) -> bool:
         if isinstance(e, (TpyCall, TpyMethodCall)):
-            for a in [*e.args, *e.kwargs.values()]:
+            for at, a in [*enumerate(e.args), *e.kwargs.items()]:
                 a = peel_coerce(a)
-                if isinstance(a, TpyName):
-                    unstable.add(a.name)
+                if isinstance(a, TpyName) and takes_address(e, at):
+                    address_taken.add(a.name)
         return True
 
     def on_expr(e: TpyExpr) -> None:
         walk_expr_tree(e, note_args)
 
-    def store(name: str, value: TpyExpr | None, aug: bool = False) -> None:
+    def store(name: str, value: TpyExpr | None) -> None:
         lit = literal_constant(value)
         if lit is None:
             widening.add(name)
@@ -333,8 +388,6 @@ def scan_pending_num_locals(
                      or not _INT32_MIN <= lit.value <= _INT32_MAX))
         if wide:
             widening.add(name)
-        if not aug and not lit.is_float and lit.value is not None:
-            literal.setdefault(name, []).append(lit.value)
 
     def on_stmt(s: TpyStmt) -> None:
         if isinstance(s, TpyMatch):
@@ -347,6 +400,7 @@ def scan_pending_num_locals(
         for ne in walrus_bindings(s):
             bindings[ne.target] += 1
             store(ne.target, ne.value)
+            bind(ne.target, ne.value)
         plain = _store_value(s) if not isinstance(s, TpyVarDecl) else (
             s.name, s.init)
         if plain is not None and plain[1] is not None:
@@ -354,6 +408,7 @@ def scan_pending_num_locals(
         if isinstance(s, TpyNestedDef):
             # A closure's `nonlocal` store rebinds this body's local.
             collect_nonlocals(s.func.body, unstable)
+            collect_nonlocals(s.func.body, unliteral)
             _walk_nested_def_exprs(s.func.body, on_expr)
         if isinstance(s, TpyVarDecl):
             if s.type is not None:
@@ -361,10 +416,13 @@ def scan_pending_num_locals(
                 opaque.add(s.name)
             elif s.init is not None:
                 store(s.name, s.init)
+                bind(s.name, s.init)
         elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)):
             store(s.target.name, s.value)
+            bind(s.target.name, s.value)
         elif (isinstance(s, TpyAugAssign) and isinstance(s.target, TpyName)):
-            store(s.target.name, s.value, aug=True)
+            store(s.target.name, s.value)
+            unliteral.add(s.target.name)
         elif isinstance(s, (TpyGlobal, TpyNonlocal)):
             excluded.update(s.names)
             opaque.update(s.names)
@@ -387,11 +445,18 @@ def scan_pending_num_locals(
     rebound = {n for n, count in bindings.items() if count > 1}
     return LiteralLocals(
         frozenset(pending),
-        {n: tuple(vs) for n, vs in literal.items() if n in seeded},
+        {n: tuple(dict.fromkeys(vs)) for n, vs in bound_literals.items()},
+        frozenset(seeded),
         frozenset(excluded),
         frozenset(rebound - pending - opaque),
         {n: v for n, v in stored.items()
-         if bindings[n] == 1 and n not in unstable})
+         if bindings[n] == 1 and n not in unstable
+         and n not in address_taken},
+        frozenset(n for n, vs in bound_literals.items()
+                  if n not in unliteral and n not in opaque
+                  and n not in excluded and n not in address_taken
+                  and len(vs) == bindings[n]),
+        frozenset(address_taken))
 
 
 def _walk_nested_def_exprs(stmts: list[TpyStmt],
@@ -406,7 +471,10 @@ def _walk_nested_def_exprs(stmts: list[TpyStmt],
 
 def scan_reassigned_vars(stmts: list[TpyStmt],
                          pre_declared: set[str] | None = None, *,
-                         pending_nums: bool = False) -> ScanResult:
+                         pending_nums: bool = False,
+                         takes_address: Callable[
+                             [TpyCall | TpyMethodCall, int | str], bool]
+                         = lambda call, at: True) -> ScanResult:
     """Pre-scan a function body to find variables that are reassigned after first declaration.
 
     Args:
@@ -428,7 +496,7 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
         params = pre_declared or ()
         result.first_bindings = scan_first_bindings(stmts, params)
         result.literal_locals = scan_pending_num_locals(
-            stmts, params, result.first_bindings)
+            stmts, params, result.first_bindings, takes_address)
     _scan_stmts(stmts, declared, result, frozenset(declared))
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
     for name in result.reassigned:

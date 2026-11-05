@@ -5,24 +5,21 @@
 namespace tpyapp::b {
 
 
-
-
-// def g(x: int32 | str) -> int32:
-//     if isinstance(x, int32):
-//         return x * 2
-//     return int32(len(x))
 // @overload
 // def g(x: int32) -> int32: ...
 int32_t g__int32(int32_t x) {
-    return (::tpy::mul_check<int32_t>(x, 2));
+    if (true) {
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
 }
 
 // @overload
 // def g(x: str) -> int32: ...
 int32_t g__str(std::string_view x) {
+    if (false) {
+    }
     return ::tpy::__len__(x);
 }
-
 
 // def relay(n: int32) -> int32:
 //     return use_g_int(n)

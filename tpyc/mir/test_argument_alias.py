@@ -141,6 +141,7 @@ def maybe_rename(h: H | None, value: str) -> int32:
 
 def infeasible_rename(h: H) -> int32:
     flag: int32 | None = None
+    flag = None  # a second store keeps sema from deciding the test
     if flag is not None:
         return maybe_rename(h, h.name)
     return 0
@@ -177,7 +178,7 @@ def test_warnings_spell_the_arguments_as_written(compiled) -> None:
     found = {d.loc.line: d.message for d in _warnings(compiled)}
     # A body passing two of its own parameters publishes the obligation
     # again (`forward`, `keyword`); passing one list twice breaks it.
-    assert sorted(found) == [34, 43, 52, 67, 92, 109, 121]
+    assert sorted(found) == [34, 43, 52, 67, 92, 109, 122]
     # An assignment's statement starts at its target, before the call.
     assert found[34].startswith("argument 'h.name' is what 'H.setname' modifies "
                                 "through parameter 'self' while it still uses 'value'")
@@ -198,7 +199,7 @@ def test_warnings_spell_the_arguments_as_written(compiled) -> None:
                                  "through parameter 'ps' while it still uses 'v'")
     # A call in a branch presence proves infeasible still warns: its block's
     # own facts prove nothing absent, so the write reaches `h.name`.
-    assert found[121].startswith("argument 'h.name' is what 'maybe_rename' modifies "
+    assert found[122].startswith("argument 'h.name' is what 'maybe_rename' modifies "
                                  "through parameter 'h' while it still uses 'value'")
     # A value-type argument is copied by binding it to a local.
     assert found[34].endswith("bind it to a local first ('v = h.name') or restructure so the call "
@@ -316,7 +317,7 @@ def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled,
         heard: list[str] = []
         added = compiler.report_mir_warnings([(entry, ctx)], on_failure=heard.append)
         # The other bodies' warnings survive the failure in `assigned`, and `-v` hears it.
-        assert [d.loc.line for _, d in added] == [43, 52, 67, 92, 109, 121]
+        assert [d.loc.line for _, d in added] == [43, 52, 67, 92, 109, 122]
         assert len(heard) == 1 and "MIR defect" in heard[0]
         with pytest.raises(RuntimeError, match="MIR defect"):
             compiler.report_mir_warnings([(entry, ctx)], strict=True)

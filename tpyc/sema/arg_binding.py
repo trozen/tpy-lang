@@ -357,6 +357,18 @@ class ArgBinding:
         assert self.variadic is not None
         return unwrap_ref_type(params[self.variadic].type).type_args[0]
 
+    def param_type_at(self, at: 'int | str', params: Sequence['ParamInfo']
+                      ) -> 'TpyType | None':
+        """The type the written argument `at` binds to (`param_at`) among
+        `params`, this binding's callee as the caller spells it: an element
+        of the `*args` pack binds to the pack's element type, not the pack."""
+        i = self.param_at(at)
+        if i is None:
+            return None
+        if i == self.variadic:
+            return self.vararg_element_type(params)
+        return params[i].type
+
     @property
     def kwargs(self) -> int | None:
         return next((i for i, s in enumerate(self.slots)
@@ -621,39 +633,6 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
                  else f"{min_args} to {len(fixed_pos)} positional arguments")
         return BindReject(f"'{name}' takes {takes}, got {n}")
 
-    if not regular:
-        for i in kwonly:
-            if not params[i].has_default:
-                return reject(
-                    f"missing required keyword argument: '{params[i].name}'")
-        if kwonly:
-            for i in fixed_pos[n:]:
-                if not params[i].has_default:
-                    return reject(
-                        f"missing required argument: '{params[i].name}'")
-    else:
-        if va is not None:
-            for i in fixed_pos[n:]:
-                if params[i].name not in regular and not params[i].has_default:
-                    return reject(
-                        f"missing required argument: '{params[i].name}'")
-            for i in kwonly:
-                if params[i].name not in regular and not params[i].has_default:
-                    return reject(f"missing required keyword argument: "
-                                  f"'{params[i].name}'")
-        else:
-            rightmost = max([n - 1] + [name_to_index[k] for k in regular])
-            for i in range(min(rightmost + 1, len(params))):
-                p = params[i]
-                if (i >= n and p.name not in regular and not p.has_default
-                        and not p.is_kwargs):
-                    return reject(f"missing required argument: '{p.name}'")
-            for i in kwonly:
-                if (i > rightmost and params[i].name not in regular
-                        and not params[i].has_default):
-                    return reject(f"missing required keyword argument: "
-                                  f"'{params[i].name}'")
-
     slots: list[Slot] = []
     for i, p in enumerate(params):
         if p.is_variadic:
@@ -704,6 +683,18 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
     count = length
     max_args = (2**31 if va is not None
                 else len(params) - (1 if kw_param is not None else 0))
+    # A parameter the call leaves unbound takes its default. A positional
+    # past what the call spells, in a call short of the required count, is
+    # the count's to report; a count alone does not tell a call complete,
+    # as a `typing.overload` copy may hold a default before a required
+    # parameter another stub omits.
+    for i, (p, s) in enumerate(zip(params, slots)):
+        if (s is not DEFAULT_SLOT or p.has_default
+                or (not p.keyword_only and positions[i] is None
+                    and count < min_args)):
+            continue
+        kind = "keyword argument" if p.keyword_only else "argument"
+        return reject(f"missing required {kind}: '{p.name}'")
     if count < min_args or count > max_args:
         return BindReject(arity_error_msg(name, min_args, max_args, count))
 

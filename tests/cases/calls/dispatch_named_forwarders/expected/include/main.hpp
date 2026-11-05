@@ -489,16 +489,16 @@ struct Sum {
     // @overload
     // def f(self, xs: Iterable[int32]) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_xs>
-    int32_t f__Iterable_int32(T_xs&& xs);
+    int32_t f__Iterable_int32(T_xs&& xs) const;
     template<::tpystd::typing::Iterable<int32_t> T_xs>
-    int32_t f(T_xs&& xs);
+    int32_t f(T_xs&& xs) const;
 
     // @overload
     // def f(self, xs: Iterable[int32], k: int32) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_xs>
-    int32_t f__Iterable_int32__int32(T_xs&& xs, int32_t k);
+    int32_t f__Iterable_int32__int32(T_xs&& xs, int32_t k) const;
     template<::tpystd::typing::Iterable<int32_t> T_xs>
-    int32_t f(T_xs&& xs, int32_t k);
+    int32_t f(T_xs&& xs, int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sum";
 };
 
@@ -1203,7 +1203,7 @@ inline std::string Box<T>::put(int32_t x) {
 // @overload
 // def f(self, xs: Iterable[int32]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-inline int32_t Sum::f__Iterable_int32(T_xs&& xs) {
+inline int32_t Sum::f__Iterable_int32(T_xs&& xs) const {
     int32_t k = 0;
     int32_t t = k;
     auto& __src_0 = xs;
@@ -1218,14 +1218,14 @@ inline int32_t Sum::f__Iterable_int32(T_xs&& xs) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-inline int32_t Sum::f(T_xs&& xs) {
+inline int32_t Sum::f(T_xs&& xs) const {
     return this->f__Iterable_int32(xs);
 }
 
 // @overload
 // def f(self, xs: Iterable[int32], k: int32) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-inline int32_t Sum::f__Iterable_int32__int32(T_xs&& xs, int32_t k) {
+inline int32_t Sum::f__Iterable_int32__int32(T_xs&& xs, int32_t k) const {
     int32_t t = k;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1239,7 +1239,7 @@ inline int32_t Sum::f__Iterable_int32__int32(T_xs&& xs, int32_t k) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-inline int32_t Sum::f(T_xs&& xs, int32_t k) {
+inline int32_t Sum::f(T_xs&& xs, int32_t k) const {
     return this->f__Iterable_int32__int32(xs, k);
 }
 

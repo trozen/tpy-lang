@@ -544,7 +544,6 @@ class CodeGenerator:
             return qualify_shadowed_nominals()
 
         self.ctx.thir_functions = IdentityMap()
-        self.ctx.thir_overload_functions = IdentityMap()
         self.ctx.thir_resumables = IdentityMap()
         for f, self_type in _thir_callables(module, self.analyzer):
             # A bodyless binding has no emit at all. A bodied `@dispatch`
@@ -558,35 +557,6 @@ class CodeGenerator:
                 # they reject under the "resumable" component there.
                 continue
             begin_attempt()
-            stubs = self.analyzer.overload_groups.get(f)
-            if stubs:
-                # Per-stub seeding: an @overload impl body is emitted
-                # once per stub, so each (impl, stub) pair lowers with
-                # that stub's facts and keys its own
-                # `thir_overload_functions` entry. All-or-nothing: the body
-                # routes only when EVERY stub's specialization lowers
-                # (a partial set would leave hybrid per-stub emission).
-                entries = []
-                for stub in stubs:
-                    with _shadow_ctx(self_type):
-                        stf = _thir_lower(
-                            f, self.analyzer, self.types.type_to_cpp,
-                            self_type=self_type, native_globals=_ng,
-                            render_type_stored=self.types.type_to_cpp_stored,
-                            render_resolve=self.types.resolve_type,
-                            stub=stub, render_concept=_render_concept)
-                    if stf is None:
-                        entries = None
-                        break
-                    entries.append((stub, stf))
-                if entries is None:
-                    reject_or_defer("body", f)
-                    continue
-                for stub, stf in entries:
-                    self.ctx.thir_overload_functions.setdefault(
-                        f, IdentityMap())[stub] = stf
-                commit_attempt()
-                continue
             with _shadow_ctx(self_type):
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                  self_type=self_type, native_globals=_ng,

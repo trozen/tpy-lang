@@ -88,13 +88,13 @@ def _body_key(record_name: str | None, func: TpyFunction) -> str:
 def lower_bodies(source: str) -> tuple[dict[str, object],
                                        dict[str, BindingTable]]:
     """Lower every callable of `source`'s entry module the way a build
-    does -- an ordinary body through `lower_function`, an @overload body
-    once per stub, a generator or coroutine frame through codegen's frame
-    lowering -- and return `({body: lowered body}, {body: the binding table
-    it planned})`, both keyed by the body's qualified name (`f`, `Rec.f`
-    for a method, `f@i` for an @overload body specialized to its i-th
-    stub, `Rec.f[const]` for the const clone of an @auto_readonly method).
-    A frame of an @overload generator is keyed `f@i` by its lowering order.
+    does -- an ordinary body through `lower_function`, a generator or
+    coroutine frame through codegen's frame lowering -- and return
+    `({body: lowered body}, {body: the binding table it planned})`, both
+    keyed by the body's qualified name (`f`, `Rec.f` for a method, `f@i`
+    for the i-th variant of an overload set, `Rec.f[const]` for the const
+    clone of an @auto_readonly method). A variant's frame is keyed `f@i`
+    by its lowering order.
     Codegen re-lowers the ordinary bodies on its way to the frames; each
     body keeps its first lowering and that lowering's table."""
     compiler, modules = _compile(source)
@@ -114,7 +114,7 @@ def lower_bodies(source: str) -> tuple[dict[str, object],
                       **kwargs: object) -> THIRResumableLeaves | None:
         func = frame.func
         key = _body_key(frame.record_name, func)
-        if func in entry.analyzer.overload_groups:
+        if func.is_overload_stub:
             key = f"{key}@{sum(k.startswith(key + '@') for k in frames)}"
         lowering[0] = key
         try:
@@ -135,11 +135,13 @@ def lower_bodies(source: str) -> tuple[dict[str, object],
                     continue
                 key = _body_key(
                     self_type.name if self_type is not None else None, func)
-                stubs = entry.analyzer.overload_groups.get(func) or [None]
-                for i, stub in enumerate(stubs):
-                    lowering[0] = key if stub is None else f"{key}@{i}"
-                    bodies[lowering[0]] = lower_function(
-                        func, entry.analyzer, self_type=self_type, stub=stub)
+                # A set's variants share a name: each keys `name@i`, in
+                # source order.
+                if func.is_overload_stub:
+                    key = f"{key}@{sum(k.startswith(key + '@') for k in bodies)}"
+                lowering[0] = key
+                bodies[key] = lower_function(func, entry.analyzer,
+                                             self_type=self_type)
             lowering[0] = None
             if any(f.is_generator or f.is_async for f, _st in callables):
                 compiler.generate_inl_and_code_to_strings(entry)

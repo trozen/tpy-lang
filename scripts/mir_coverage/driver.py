@@ -429,6 +429,6 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
             pos = position_of(func, source.owner)
             extra = {"generic": bool(func.type_params or (source.owner is not None
                                                            and getattr(source.owner, "type_args", None))),
-                     "overloaded": bool(analyzer.overload_groups.get(func))}
+                     "overloaded": func.is_overload_stub}
         rec(body, pos, extra=extra, feats=feats, events=_events_for(func, nested), **measure(source))
     return recs

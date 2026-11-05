@@ -22,24 +22,21 @@ std::string grow__list_int(std::vector<::tpy::BigInt>& xs) {
     return "list";
 }
 
-
-
-// def mode_bits(m: str) -> int:
-//     if m == "r":
-//         return 4
-//     return 2
 // @overload
 // def mode_bits(m: Literal["r"]) -> int: ...
 ::tpy::BigInt mode_bits__lit_r(std::string_view m) {
-    return ::tpy::BigInt(4);
+    if (true) {
+        return ::tpy::BigInt(4);
+    }
 }
 
 // @overload
 // def mode_bits(m: Literal["w"]) -> int: ...
 ::tpy::BigInt mode_bits__lit_w(std::string_view m) {
+    if (false) {
+    }
     return ::tpy::BigInt(2);
 }
-
 
 void __tpy_init() {
 }

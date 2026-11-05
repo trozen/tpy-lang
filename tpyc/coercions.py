@@ -110,12 +110,21 @@ def _int_literal_value(t: TpyType) -> bool:
     return isinstance(t, LiteralType) and t.is_int_base()
 
 
-def _literal_values_fit(lit: TpyType, target: TpyType) -> bool:
+def literal_values_fit(lit: TpyType, target: TpyType) -> bool:
     """Every value of an int `Literal[...]` fits the fixed-int target."""
     tr = int_traits_of(target)
     return (tr is not None and isinstance(lit, LiteralType)
             and all(tr.min_value <= v.value <= tr.max_value
                     for v in lit.values))
+
+
+def _literal_value_cast(e: str, lit: TpyType, target: TpyType) -> str:
+    """An int `Literal` value every value of which the target holds, at
+    that width: a cast of its fixed-width storage, an unchecked extract of
+    its `BigInt` one."""
+    if is_big_int_type(lit):
+        return f"({e}).to_fixed_trunc<{target.to_cpp()}>()"
+    return f"static_cast<{target.to_cpp()}>({e})"
 
 
 def float_literal_fits_float(lit: TpyType, target: TpyType) -> bool:
@@ -365,9 +374,9 @@ COERCIONS: list[Coercion] = [
         name="int_literal_value_to_fixed_int",
         from_type=_int_literal_value,
         to_type=is_fixed_int_type,
-        type_match=_literal_values_fit,
+        type_match=literal_values_fit,
         context_free_wrap=True,
-        codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
+        codegen=lambda e, a, b, _c: _literal_value_cast(e, a, b),
     ),
 
     # Integer literal to BigInt (always valid)
@@ -801,6 +810,10 @@ def resolve_coercion(actual: TpyType, expected: TpyType,
     # a hash-table dispatch with a fallback linear scan for wildcard-side rules
     # (spanlike_to_span_arg, DEREF_COERCION) would cut per-call cost >10x.
     # Not worth doing until a profile shows dispatch in the top costs.
+    # A `Literal` target holds only its values, which its base's rows
+    # would not check.
+    if isinstance(expected, LiteralType) and not expected.admits(actual):
+        return None
     for coercion in COERCIONS:
         if coercion.contexts is not None and ctx not in coercion.contexts:
             continue
@@ -1366,8 +1379,6 @@ def _any_storage_form(
         return f"::tpy::BigInt({e})"
     if isinstance(actual, FloatLiteralType):
         return f"static_cast<double>({e})"
-    if isinstance(actual, LiteralType):
-        return _any_storage_form(e, actual.base_type, c)
     if (is_fixed_int_type(actual) or is_float_category(actual)
             or is_bool_type(actual) or is_char_type(actual)):
         return f"{actual.to_cpp()}({e})"

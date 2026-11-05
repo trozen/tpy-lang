@@ -41,7 +41,7 @@ void main() {
     if (true) {
         std::cout << "d-true" << "\n" << ::tpy::check_signals;
     }
-    if ((!(::tpy::to_bool(e)))) {
+    if (true) {
         std::cout << "e-false" << "\n" << ::tpy::check_signals;
     }
 }

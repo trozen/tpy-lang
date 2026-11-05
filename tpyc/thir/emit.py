@@ -60,8 +60,8 @@ from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     THIRMatchBinding, THIRLambda, THIRMethodCall, THIRModuleVar, THIRDecayCopy,
     THIRNoneCheck, THIRMove, THIRName, THIRDynNarrowAlias, THIRNarrowAlias,
     THIRAnyNarrowAlias, THIRNestedDef, THIRNarrowedRead, THIRFrameNestedDef,
-    THIRImportInit, THIRNoOpStmt, THIRFoldedBlock, THIRFoldedIfChain,
-    THIRMatchFoldBind, THIROptionalPtrArg, THIROverloadDefault, THIRParamCopy,
+    THIRImportInit, THIRNoOpStmt,
+    THIROptionalPtrArg, THIRParamCopy,
     THIRPrint, THIRPrintChain, THIRPrintArg, THIRPtrLocalDecl,
     THIRPtrLocalRebind, THIRRaise, THIRResumableReturn, THIRReturn,
     THIRFinallyDeferredReturn, DeferredPartKind, THIRStmtSeq, THIRSetItem,
@@ -4598,10 +4598,6 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         # renamed the param to `__param_{name}`.
         init = stmt.init_cpp or f"__param_{stmt.name}"
         out.write(f"{indent}{stmt.cpp_type} {stmt.name} = {init};\n")
-    elif isinstance(stmt, THIROverloadDefault):
-        # Short-stub omitted impl param as a default-initialized local.
-        out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
-                  f"{stmt.cpp_default};\n")
     elif isinstance(stmt, THIRDelVar):
         # `{ auto __del_sink = std::move(name); }` per sunk name -- the value
         # moves into a block-scoped temp destroyed immediately (early release).
@@ -4641,36 +4637,6 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             out.write(f"{indent}{call}();\n")
     elif isinstance(stmt, THIRNoOpStmt):
         pass  # no code
-    elif isinstance(stmt, THIRFoldedBlock):
-        # Per-@overload-stub fold splice: the surviving statements emit flat
-        # at the enclosing indent.
-        _witness("fold.overload_block")
-        if stmt.burns_match_counter:
-            state.match_counter += 1
-        _emit_stmts(out, stmt.stmts, indent_level, state)
-    elif isinstance(stmt, THIRFoldedIfChain):
-        # The partially-folded live chain: clean `if / else if` over the
-        # surviving branches, NO condition source comments, else from the
-        # last original node. Temps flush before each branch line; lowering
-        # admits them only on the first branch.
-        _witness("fold.overload_live_chain")
-        for i, (cond_node, body) in enumerate(stmt.branches):
-            cond = _emit_expr(cond_node, state)
-            state.temps.flush(out, indent)
-            if i == 0:
-                out.write(f"{indent}if ({cond}) {{\n")
-            else:
-                out.write(f"{indent}}} else if ({cond}) {{\n")
-            _emit_stmts(out, body, indent_level + 1, state)
-        if stmt.else_body:
-            out.write(f"{indent}}} else {{\n")
-            _emit_stmts(out, stmt.else_body, indent_level + 1, state)
-        out.write(f"{indent}}}\n")
-    elif isinstance(stmt, THIRMatchFoldBind):
-        _witness("fold.overload_bind")
-        binder = "auto" if stmt.by_value else "auto&"
-        out.write(f"{INDENT * indent_level}{binder} {stmt.name_cpp}"
-                  f" = {stmt.source_cpp};\n")
     else:
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 

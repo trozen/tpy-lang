@@ -16,7 +16,7 @@ from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce
 from ..parse.nodes import (name_path, TpyStrLiteral, TpySubscript, TpyArrayLiteral,
                            TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral, TpySlice)
 from ..typesys import (
-    PendingGenericInstanceInfo, RecordInfo,
+    PendingGenericInstanceInfo, RecordInfo, pending_view_of,
     contains_pending_num,
 
     collapse_tuple_own_elements,
@@ -31,7 +31,6 @@ from ..typesys import (
     ListLiteralInfo,
     make_list,
     ListRepeatType,
-    LiteralType,
     make_array,
     NoneType,
     OptionalType,
@@ -102,11 +101,9 @@ if TYPE_CHECKING:
 
 
 def _view_family_is_str(t: 'TpyType | None') -> bool | None:
-    """Whether `t` is of the `str` view family (a `Literal[str]` included:
-    every value a compile-time literal), False for the `bytes` family, None
-    for neither."""
-    if (is_str_type(t) or is_str_view_type(t) or isinstance(t, PendingStrType)
-            or (isinstance(t, LiteralType) and t.is_str_base())):
+    """Whether `t` is of the `str` view family, False for the `bytes`
+    family, None for neither."""
+    if (is_str_type(t) or is_str_view_type(t) or isinstance(t, PendingStrType)):
         return True
     if (is_bytes_type(t) or is_bytes_view_type(t)
             or isinstance(t, PendingBytesType)):
@@ -213,9 +210,10 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
     """
     def leaf(e: TpyExpr) -> list[TpyType]:
         t = ctx.get_expr_type(e)
-        if isinstance(t, (PendingViewType, PendingListType, PendingDictType, PendingSetType)):
+        if isinstance(t, (PendingListType, PendingDictType, PendingSetType)):
             return [t]
-        return []
+        pending = pending_view_of(t)
+        return [pending] if pending is not None else []
     return [t for e in receiver_leaves(expr) for t in leaf(e)]
 
 
@@ -1698,9 +1696,9 @@ class LocalTypeDeduction:
         VIEW (no owned copy). The one rule, the same for both families: every
         source leaf (`view_leaves`; each select operand of the view's family
         and not pending) is
-        - static storage: a str/bytes literal, a `Final` constant, a
-          `Literal[str]` value, an enum member's `.name`, a slice of a `str`
-          literal (a `bytes` literal's slice renders over a temporary span);
+        - static storage: a str/bytes literal, a `Final` constant, an enum
+          member's `.name`, a slice of a `str` literal (a `bytes` literal's
+          slice renders over a temporary span);
         - a parameter of the view family (a narrowed `str | None` too; a
           narrowed `bytes | None` OWNS its buffer and is not a source);
         - another str/bytes local (the alias pass owns it when that local
@@ -1749,20 +1747,17 @@ class LocalTypeDeduction:
                     # buffer), so a span into *a would borrow it -- only a
                     # plain `bytes` param (std::span) qualifies.
                     str_base = ptype.inner if isinstance(ptype, OptionalType) else ptype
-                    lit_str_param = isinstance(str_base, LiteralType) and str_base.is_str_base()
-                    if is_str and (is_str_type(str_base) or is_str_view_type(str_base) or lit_str_param):
+                    if is_str and (is_str_type(str_base) or is_str_view_type(str_base)):
                         return True
                     if not is_str and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
                         return True
 
         # Another pending or view local (must match the same family).
-        # LiteralType[str] locals get view storage end-to-end (see
-        # _resolve_literal_view_storage in codegen).
         scope_type = self.ctx.func.current_scope.bound_type(name) if self.ctx.func.current_scope else None
-        lit_str_scope = isinstance(scope_type, LiteralType) and scope_type.is_str_base()
-        if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type) or lit_str_scope):
+        pending = pending_view_of(scope_type)
+        if is_str and (isinstance(pending, PendingStrType) or is_str_view_type(scope_type)):
             return True
-        if not is_str and (isinstance(scope_type, PendingBytesType) or is_bytes_view_type(scope_type)):
+        if not is_str and (isinstance(pending, PendingBytesType) or is_bytes_view_type(scope_type)):
             return True
         return is_str and name in self.ctx.final_globals
 
@@ -1811,8 +1806,8 @@ class LocalTypeDeduction:
             return is_str_type(inner) or is_str_view_type(inner)
         if isinstance(bare, TupleType):
             return from_param or self.name_holds_storage(name)
-        if isinstance(bare, (PendingViewType, LiteralType)):
-            return not isinstance(bare, LiteralType) or bare.is_str_base()
+        if isinstance(bare, PendingViewType):
+            return True
         # The mutable siblings lend too: a subscript store, a mutating
         # method or `+=` on the NAME is a write the body sees, and it
         # demotes the view exactly as a rebind of a str name does.
@@ -1890,9 +1885,8 @@ class LocalTypeDeduction:
 
     def _is_static_view_leaf(self, leaf: Leaf) -> bool:
         """A view-source leaf that stays safe across a resumable-frame
-        suspension: static storage (str/bytes literal, `Literal[str]`-typed
-        name or call -- every value a compile-time literal -- or a
-        `Final[str]` constant, or an enum member's `.name` -- see
+        suspension: static storage (str/bytes literal, a `Final[str]`
+        constant, or an enum member's `.name` -- see
         `is_enum_name_read`), or an explicit view-typed (StrView/BytesView)
         PARAM -- the caller-side borrow check backs the user's view contract
         for the whole call, so the referent outlives the frame. An explicit
@@ -1924,10 +1918,7 @@ class LocalTypeDeduction:
         scope_type = (self.ctx.func.current_scope.bound_type(leaf.name)
                       if self.ctx.func.current_scope else None)
         if scope_type is not None:
-            scope_type = unwrap_readonly(scope_type)
-            if isinstance(scope_type, PendingViewType):
-                return True
-            if isinstance(scope_type, LiteralType) and scope_type.is_str_base():
+            if pending_view_of(unwrap_readonly(scope_type)) is not None:
                 return True
         return leaf.name in self.ctx.final_globals
 

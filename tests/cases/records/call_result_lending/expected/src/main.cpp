@@ -226,10 +226,6 @@ void overload_move() {
     std::cout << "overload" << " " << b.n << " " << ::tpy::__len__(kept) << "\n" << ::tpy::check_signals;
 }
 
-
-
-// def first_box(bs: list[Box], i: int32 = 0) -> Box:
-//     return bs[i]
 // @overload
 // def first_box(bs: list[Box]) -> Box: ...
 Box& first_box__list_Box(std::vector<Box>& bs) {
@@ -242,7 +238,6 @@ Box& first_box__list_Box(std::vector<Box>& bs) {
 Box& first_box__list_Box__int32(std::vector<Box>& bs, int32_t i) {
     return ::tpy::__getitem__(bs, i);
 }
-
 
 // def tuple_static(s: str) -> None:
 //     # temp: a callee defined below takes a tuple temporary and returns static

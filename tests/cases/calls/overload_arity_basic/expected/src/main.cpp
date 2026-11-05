@@ -4,24 +4,22 @@
 namespace tpyapp::main {
 
 
-
-
-// def log(x: float, base: float | None = None) -> float:
-//     if base is None:
-//         return x
-//     return x / base
 // @overload
 // def log(x: float) -> float: ...  # tpyc: ok
 double log__float(double x) {
-    return x;
+    std::optional<double> base = std::nullopt;
+    if (true) {
+        return x;
+    }
 }
 
 // @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
 double log__float__float(double x, double base) {
+    if (false) {
+    }
     return (::tpy::truediv(x, base));
 }
-
 
 // def main() -> None:
 //     print(log(16.0))

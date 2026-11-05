@@ -4,24 +4,21 @@
 namespace tpyapp::main {
 
 
-
-
-// def classify(mode: str) -> str:
-//     if mode == "r" or mode == "w":
-//         return "text"
-//     return "binary"
 // @overload
 // def classify(mode: Literal["r", "w"]) -> str: ...
 std::string classify__lit_r__w(std::string_view mode) {
-    return "text";
+    if (true) {
+        return "text";
+    }
 }
 
 // @overload
 // def classify(mode: Literal["rb", "wb"]) -> str: ...
 std::string classify__lit_rb__wb(std::string_view mode) {
+    if (false) {
+    }
     return "binary";
 }
-
 
 // def dispatch_str(mode: Literal["r", "w", "rb", "wb"]) -> None:
 //     if mode == "rb":
@@ -48,13 +45,6 @@ void dispatch_str(std::string_view mode) {
     }
 }
 
-
-
-
-// def bucket(x: int32) -> str:
-//     if x <= 2:
-//         return "low"
-//     return "high"
 // @overload
 // def bucket(x: Literal[1, 2]) -> str: ...
 std::string bucket__lit_1__2(int32_t x) {
@@ -81,7 +71,6 @@ std::string bucket__int32(int32_t x) {
     }
     return "high";
 }
-
 
 // def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
 //     if x == 1:

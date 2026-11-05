@@ -331,6 +331,39 @@ def local_constant() -> int32:
     return 5
 
 
+# a local bound once to None decides its `is None` test; `tag + 1` would be a
+# type error, so the case compiling shows the dead arm goes unanalyzed.
+def local_none() -> str:
+    tag: str | None = None
+    if tag is None:  # tpyc: ok
+        return "none"
+    return tag + 1
+
+
+# not decided: a closure writes the None local through `nonlocal`.
+def none_closure() -> str:
+    tag: str | None = None
+
+    def put() -> None:
+        nonlocal tag
+        tag = "set"
+    put()
+    if tag is None:  # tpyc: ok
+        return "wrong"
+    return "right " + tag
+
+
+# not decided: a loop writes the None local, so each head test runs.
+def none_loop(xs: list[str]) -> str:
+    last: str | None = None
+    for x in xs:
+        if last is None:  # tpyc: ok
+            last = x
+    if last is None:
+        return "empty"
+    return last
+
+
 # a non-Optional is never None.
 def never_none(a: Dog) -> str:
     if a is None:
@@ -1599,6 +1632,7 @@ def main() -> None:
     print("match_membership", match_membership("w"), match_membership("a"))
     print("literal", literal_true(1))
     print("local", local_constant())
+    print("local none", local_none(), none_closure(), none_loop(["a", "b"]))
     print("none", never_none(Dog("n")))
     print("multi", multi(Bat()))
     print("range_loop", range_loop([1, 2]))

@@ -9,17 +9,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def classify(mode: str) -> str:
+// @overload
+// def classify(mode: Literal["r", "w"]) -> str: ...
 std::string classify__lit_r__w(std::string_view mode);
-// def classify(mode: str) -> str:
+// @overload
+// def classify(mode: Literal["rb", "wb"]) -> str: ...
 std::string classify__lit_rb__wb(std::string_view mode);
 // def dispatch_str(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch_str(std::string_view mode);
-// def bucket(x: int32) -> str:
+// @overload
+// def bucket(x: Literal[1, 2]) -> str: ...
 std::string bucket__lit_1__2(int32_t x);
-// def bucket(x: int32) -> str:
+// @overload
+// def bucket(x: Literal[3, 4]) -> str: ...
 std::string bucket__lit_3__4(int32_t x);
-// def bucket(x: int32) -> str:
+// @overload
+// def bucket(x: int32) -> str: ...
 std::string bucket__int32(int32_t x);
 // def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
 void dispatch_int(int32_t x);

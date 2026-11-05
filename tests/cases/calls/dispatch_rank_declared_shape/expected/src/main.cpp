@@ -101,17 +101,11 @@ std::string dm__C2(C2& x) {
     return "c2";
 }
 
-
-
-// def h(a: Animal | Dog) -> float | int:
-//     if isinstance(a, Dog):
-//         a.hits += 10
-//         return 1
-//     a.hits += 1
-//     return 2.5
 // @overload
 // def h(a: Animal) -> float: ...
 double h__Animal(Animal& a) {
+    if (false) {
+    }
     a.hits = ::tpy::add_check<int32_t>(a.hits, 1);
     return 2.5;
 }
@@ -119,10 +113,11 @@ double h__Animal(Animal& a) {
 // @overload
 // def h(a: Dog) -> int: ...
 ::tpy::BigInt h__Dog(Dog& a) {
-    a.hits = ::tpy::add_check<int32_t>(a.hits, 10);
-    return ::tpy::BigInt(1);
+    if (true) {
+        a.hits = ::tpy::add_check<int32_t>(a.hits, 10);
+        return ::tpy::BigInt(1);
+    }
 }
-
 
 // @dispatch
 // def cn(a: Dog, x: float) -> str:

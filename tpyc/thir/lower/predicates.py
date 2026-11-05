@@ -13,13 +13,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from ...parse.nodes import (
     const_tuple_index,
+    NarrowFacts,
     ResultForm,
-    TpyAsPattern,
-    TpyClassPattern,
-    TpyMatch,
-    TpyMatchCase,
-    TpyOrPattern,
-    TpyWildcardPattern,
     is_property_getter_read,
     FunctionLinkage,
     TpyArrayLiteral,
@@ -60,11 +55,10 @@ from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
-from ...sema.dead_arms import fact_values, literal_chain, literal_test
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
-from ...typesys import NONE, protocol_param_alternatives, result_follows_receiver_root
+from ...typesys import NONE, pending_view_of, protocol_param_alternatives, result_follows_receiver_root
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -75,15 +69,12 @@ from ...typesys import (
     RecursiveAliasInstanceType,
     AliasRef,
     AnyType,
-    BIGINT,
     BYTES_FAMILY,
     CallableType,
     FLOAT,
     FloatLiteralType,
     IntLiteralType,
-    LiteralTag,
     LiteralType,
-    LiteralValue,
     NoneType,
     is_polymorphic_subclass_fact,
     polymorphic_source_inner,
@@ -1592,14 +1583,16 @@ def _narrow_facts_ok(u: UnionType, facts: dict[str, TpyType], var: str) -> bool:
             return False
     return True
 
-def _facts_have_concrete(facts: dict[str, TpyType]) -> bool:
+def _facts_have_concrete(facts: NarrowFacts) -> bool:
     """Whether a facts map would emit an extraction -- the elif-flattening
     gate (a concrete else-fact forces `} else {` + a nested if instead of a
-    flat `else if`)."""
+    flat `else if`). A `Literal` fact extracts only as a union member; a
+    value refinement extracts nothing."""
     return any(
-        not (isinstance(ty, (UnionType, LiteralType)) or is_void_like_type(ty))
+        not (isinstance(ty, UnionType) or is_void_like_type(ty)
+             or facts.refines(k))
         and not is_protocol_type(ty)
-        for ty in facts.values()
+        for k, ty in facts.items()
     )
 
 def _is_elif_link(outer: TpyIf, inner: TpyIf) -> bool:
@@ -1749,12 +1742,7 @@ def _post_if_ast_facts(stmt: TpyIf, declared: dict[str, TpyType], narrow,
       condition needs hoisted temps. Not applied, and unreachable only because
       every construct that forces the hoist rejects first -- so admitting one
       of those admits a shape that must emit NO extraction while this map
-      still names one.
-    - Neither this nor `_facts_have_concrete` applies
-      `emit_isinstance_extractions`' `overload_param_types` skip (the param is
-      already the concrete type there), so both OVER-reject inside an
-      @overload specialization. Over-rejection is a compile error, never wrong
-      code, and costs nothing today."""
+      still names one."""
     last = _post_if_chain_tail(stmt)
     if last.else_body or not last.else_type_facts:
         return {}
@@ -1993,23 +1981,15 @@ def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
     the slice. A str local's binding type stays `PendingStrType` on the
     sema side; resolve it like `_resolve_pending_view` does. `char` and the
     bytes family are out of the slice; a str-based `Literal[...]`
-    resolves as its base. Callers that key on the FORM axis must treat
-    String as owned:
+    resolves as its base, a Literal local as its pending storage. Callers
+    that key on the FORM axis must treat String as owned:
     `is_str_type` is False for it, so a bare `is_str_type(resolved)` test
     reads it as a view -- see `_str_name_form`."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(t, LiteralType):
-        # A str-based Literal binding is VIEW-form everywhere: its values
-        # are static-lifetime string literals, so view-safety inference
-        # gives locals AND params `std::string_view` storage (pinned by
-        # `calls/literal_local_from_literal_call`).
-        b = unwrap_readonly(t.base_type)
-        if isinstance(b, NominalType) and (is_str_type(b)
-                                           or is_str_view_type(b)):
-            return STR_FAMILY.view_type
-        return None
+        t = pending_view_of(t) or unwrap_readonly(t.base_type)
     if isinstance(t, PendingViewType):
         return _resolve_pending_view(t, analyzer) if t.family is STR_FAMILY else None
     if isinstance(t, NominalType) and (is_str_type(t) or is_str_view_type(t)
@@ -11284,205 +11264,3 @@ def _inst_slice_arg_ok(arg: 'TpyExpr', analyzer) -> bool:
     sb = unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(analyzer.get_expr_type(arg))))
     return is_list(sb) or is_span(sb)
-
-
-def _overload_literal_facts(narrowing) -> dict:
-    """The per-stub literal fact map, as `_inject_literal_overload_facts`
-    builds it: LiteralType entries pass through, an
-    IntLiteralType with a known value promotes to a single-INT LiteralType."""
-    facts: dict = {}
-    for pname, t in (narrowing or {}).items():
-        if isinstance(t, LiteralType):
-            facts[pname] = t
-        elif isinstance(t, IntLiteralType) and t.value is not None:
-            facts[pname] = LiteralType(
-                BIGINT, (LiteralValue(LiteralTag.INT, t.value),))
-    return facts
-
-
-def _overload_fold_facts(narrowing, literal_facts: dict) -> dict:
-    """The literal-fact map the per-stub fold reads: the facts derived
-    from the stub narrowing (`_inject_literal_overload_facts`) plus a
-    literal-only group's injected map. A FROZEN snapshot of the
-    flow-sensitive literal facts -- sound because the literal-only
-    admission rejects writes to fact-carrying names; flow-refined facts
-    (==-narrowing branch seeds) stay a fenced gap (TODO's parked
-    registry)."""
-    facts = _overload_literal_facts(narrowing)
-    facts.update(literal_facts)
-    return facts
-
-
-def _overload_resolve_static(cond: TpyExpr,
-                             narrowing: 'dict[str, TpyType] | None',
-                             lit_facts: dict) -> 'bool | None':
-    """Resolve an isinstance condition statically for the per-stub fold,
-    plus its literal half over `lit_facts` (the stub-narrowing-derived
-    facts, plus a literal-only group's injected map): equality, bool
-    truthiness, membership, and the or-coverage/and-contradiction chain
-    fold -- sema's Literal verdicts (`dead_arms`) over the stub's facts."""
-    if lit_facts:
-        if isinstance(cond, TpyBinOp) and cond.op in ("==", "!="):
-            decided = literal_test(cond, fact_values(lit_facts))
-            if decided is not None:
-                return decided
-        if isinstance(cond, TpyName):
-            # Bool truthiness: `if x:` on a Literal[True]/Literal[False] fact.
-            lit_type = lit_facts.get(cond.name)
-            if (isinstance(lit_type, LiteralType)
-                    and len(lit_type.values) == 1
-                    and lit_type.values[0].tag is LiteralTag.BOOL):
-                return bool(lit_type.values[0].value)
-    if narrowing:
-        if isinstance(cond, TpyCall) and cond.isinstance_var is not None:
-            concrete = narrowing.get(cond.isinstance_var)
-            check_type = cond.isinstance_type
-            if concrete is not None and check_type is not None:
-                if concrete == check_type:
-                    return True
-                if (isinstance(check_type, UnionType)
-                        and concrete in check_type.members):
-                    return True
-                return False
-        if isinstance(cond, TpyBinOp) and cond.op in ("is", "is not"):
-            for var_side, none_side in ((cond.left, cond.right),
-                                        (cond.right, cond.left)):
-                if (isinstance(var_side, TpyName)
-                        and isinstance(none_side, TpyNoneLiteral)
-                        and var_side.name in narrowing):
-                    concrete = narrowing[var_side.name]
-                    is_none = isinstance(concrete, NoneType)
-                    return is_none if cond.op == "is" else not is_none
-    if isinstance(cond, TpyBinOp) and cond.op in ("&&", "||"):
-        left = _overload_resolve_static(cond.left, narrowing, lit_facts)
-        right = _overload_resolve_static(cond.right, narrowing, lit_facts)
-        if cond.op == "||":
-            if left is True or right is True:
-                return True
-            if left is False and right is False:
-                return False
-        else:
-            if left is False or right is False:
-                return False
-            if left is True and right is True:
-                return True
-        # Coverage / contradiction on unresolved operands (the chain
-        # fold's fallthrough).
-        if lit_facts and left is None and right is None:
-            return literal_chain(cond, fact_values(lit_facts))
-        return None
-    if (isinstance(cond, TpyBinOp) and cond.op in ("in", "not in")
-            and lit_facts):
-        result = literal_test(cond, fact_values(lit_facts))
-        if result is not None:
-            return result
-    if isinstance(cond, TpyUnaryOp) and cond.op == "!":
-        inner = _overload_resolve_static(cond.operand, narrowing, lit_facts)
-        if inner is not None:
-            return not inner
-    return None
-
-@dataclass(frozen=True, eq=False)
-class OverloadIfFold:
-    """The @overload fold of an if / elif chain, read by the lowering and
-    the binding planner alike so both walk the same statements at the same
-    scope. Exactly one shape holds: `reject` (a detail the lowering
-    rejects with), `flat` (the statically-true arm, or the else of an
-    all-false chain, lowered flat in the enclosing block), or `live` (the
-    links decided at run time, lowered as a trimmed `if / else if` chain
-    with `else_body`)."""
-    flat: list | None = None
-    # A flat true arm ending in return / raise ends the function body's
-    # top-level statement list.
-    terminates: bool = False
-    live: tuple[TpyIf, ...] = ()
-    else_body: list = field(default_factory=list)
-    reject: str | None = None
-
-
-def overload_if_fold(stmt: TpyIf,
-                     narrowing: 'dict[str, TpyType] | None',
-                     literal_facts: 'dict[str, TpyType] | None'
-                     ) -> OverloadIfFold | None:
-    """The fold plan of `stmt` under one @overload stub's facts, or None
-    where no link of the chain resolves statically (the ordinary narrowing
-    arms take it)."""
-    if not (narrowing or literal_facts):
-        return None
-    facts = _overload_fold_facts(narrowing, literal_facts or {})
-    chain = _flat_elif_chain(stmt)
-    res = [_overload_resolve_static(n.condition, narrowing, facts)
-           for n in chain]
-    if all(r is None for r in res):
-        return None
-    live: list[TpyIf] = []
-    for node, resolved in zip(chain, res):
-        if resolved is True:
-            if live:
-                # Dropping the run-time links before a true one is a filed
-                # defect, so the shape is declined.
-                return OverloadIfFold(reject="if.overload_true_after_dynamic")
-            body = node.then_body
-            return OverloadIfFold(
-                flat=body,
-                terminates=bool(body) and isinstance(body[-1],
-                                                     (TpyReturn, TpyRaise)))
-        if resolved is None:
-            live.append(node)
-    if not live:
-        return OverloadIfFold(flat=chain[-1].else_body)
-    return OverloadIfFold(live=tuple(live),
-                          else_body=chain[-1].else_body)
-
-
-@dataclass(frozen=True, eq=False)
-class OverloadMatchFold:
-    """The @overload fold of a `match` on a union parameter the stub
-    narrows to one concrete type: the selected `case`, lowered flat in the
-    enclosing block, with `pattern` the class pattern whose keyword
-    captures bind (None for a wildcard case); or `reject`, a detail the
-    lowering rejects with."""
-    case: TpyMatchCase | None = None
-    pattern: TpyClassPattern | None = None
-    reject: str | None = None
-
-
-def overload_match_fold(stmt: TpyMatch,
-                        narrowing: 'dict[str, TpyType] | None'
-                        ) -> OverloadMatchFold | None:
-    """The fold plan of `stmt` under one @overload stub's narrowing, or None
-    where the fold does not apply (a non-name or non-union subject, or one
-    the stub does not narrow)."""
-    if not narrowing or not isinstance(stmt.subject, TpyName):
-        return None
-    subject_type = (unwrap_readonly(stmt.subject_type)
-                    if stmt.subject_type is not None else None)
-    if not isinstance(subject_type, UnionType):
-        return None
-    concrete = narrowing.get(stmt.subject.name)
-    if concrete is None:
-        return None
-    for case in stmt.cases:
-        if case.guard is not None:
-            # Folding a guarded case would silently drop the guard.
-            return OverloadMatchFold(reject="match.overload_fold_guard")
-        pattern = case.pattern
-        if isinstance(pattern, TpyAsPattern):
-            return OverloadMatchFold(reject="match.overload_fold_as")
-        if isinstance(pattern, TpyClassPattern):
-            if (pattern.resolved_type is not None
-                    and pattern.resolved_type == concrete):
-                return OverloadMatchFold(case=case, pattern=pattern)
-        elif isinstance(pattern, TpyOrPattern):
-            for alt in pattern.patterns:
-                if (isinstance(alt, TpyClassPattern)
-                        and alt.resolved_type == concrete):
-                    return OverloadMatchFold(case=case, pattern=alt)
-        elif isinstance(pattern, TpyWildcardPattern):
-            return OverloadMatchFold(case=case)
-        else:
-            # Capture patterns bind the whole subject; value / literal
-            # patterns compare it -- neither is lowered on this tier.
-            return OverloadMatchFold(reject="match.overload_fold_pattern")
-    # No case matches the narrowed type, which should be unreachable.
-    return OverloadMatchFold(reject="match.overload_fold_arm")

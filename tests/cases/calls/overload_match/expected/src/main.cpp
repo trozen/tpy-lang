@@ -4,28 +4,27 @@
 namespace tpyapp::main {
 
 
-
-
-// def area(shape: Circle | Square) -> float:
-//     match shape:
-//         case Circle(radius=r):
-//             return 3.14 * r * r
-//         case Square(side=s):
-//             return s * s
 // @overload
 // def area(shape: Circle) -> float: ...
 double area__Circle(const Circle& shape) {
-    auto r = shape.radius;
-    return ((((3.14) * (r))) * (r));
+    auto& __match_subject_1 = shape;
+    {
+        auto r = __match_subject_1.radius;
+        return ((((3.14) * (r))) * (r));
+    }
+    ::std::unreachable();
 }
 
 // @overload
 // def area(shape: Square) -> float: ...
 double area__Square(const Square& shape) {
-    auto s = shape.side;
-    return ((s) * (s));
+    auto& __match_subject_1 = shape;
+    {
+        auto s = __match_subject_1.side;
+        return ((s) * (s));
+    }
+    ::std::unreachable();
 }
-
 
 // def main() -> None:
 //     c = Circle(5.0)

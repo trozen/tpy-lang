@@ -11,11 +11,14 @@ struct Record;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def get_field(name: str) -> int32 | str:
+// @overload
+// def get_field(name: Literal["age"]) -> int32: ...
 int32_t get_field__lit_age(std::string_view name);
-// def get_field(name: str) -> int32 | str:
+// @overload
+// def get_field(name: Literal["name"]) -> str: ...
 std::string get_field__lit_name(std::string_view name);
-// def get_field(name: str) -> int32 | str:
+// @overload
+// def get_field(name: str) -> int32 | str: ...
 ::tpy::Union<int32_t, std::string> get_field__str(std::string_view name);
 // def main() -> None:
 void main();
@@ -62,12 +65,16 @@ inline Record::Record(int32_t age, std::string_view name)
 // @overload
 // def get(self, key: Literal["age"]) -> int32: ...
 inline int32_t Record::get__lit_age(std::string_view key) const {
-    return this->data_age;
+    if (true) {
+        return this->data_age;
+    }
 }
 
 // @overload
 // def get(self, key: Literal["name"]) -> str: ...
 inline std::string Record::get__lit_name(std::string_view key) const {
+    if (false) {
+    }
     return this->data_name;
 }
 

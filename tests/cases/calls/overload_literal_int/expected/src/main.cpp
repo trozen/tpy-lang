@@ -4,30 +4,12 @@
 namespace tpyapp::main {
 
 
-
-
-
-
-// def classify(x: int32) -> str:
-//     if x == 1:
-//         return "one"
-//     elif x == 2:
-//         return "two"
-//     elif x == 3:
-//         return "three"
-//     elif x == 4:
-//         return "four"
-//     elif x == -1:
-//         return "neg_one"
-//     elif x == -2:
-//         return "neg_two"
-//     return "other"
 // @overload
 // def classify(x: Literal[1, 2]) -> str: ...
 std::string classify__lit_1__2(int32_t x) {
     if ((x == 1)) {
         return "one";
-    } else if ((x == 2)) {
+    } else if (true) {
         return "two";
     }
     return "other";
@@ -36,23 +18,30 @@ std::string classify__lit_1__2(int32_t x) {
 // @overload
 // def classify(x: Literal[3, 4]) -> str: ...
 std::string classify__lit_3__4(int32_t x) {
-    if ((x == 3)) {
+    if (false) {
+    } else if (false) {
+    } else if ((x == 3)) {
         return "three";
-    } else if ((x == 4)) {
+    } else if (true) {
         return "four";
     }
-    return "other";
 }
 
 // @overload
 // def classify(x: Literal[-1, -2]) -> str: ...
 std::string classify__lit_neg1__neg2(int32_t x) {
-    if ((x == -1)) {
+    if (false) {
+    } else if (false) {
+    } else if (false) {
+    } else if (false) {
+    } else if ((x == -1)) {
         return "neg_one";
-    } else if ((x == -2)) {
-        return "neg_two";
+    } else {
+        (void)((x == -2));
+        {
+            return "neg_two";
+        }
     }
-    return "other";
 }
 
 // @overload
@@ -74,25 +63,25 @@ std::string classify__int32(int32_t x) {
     return "other";
 }
 
-
-
-
-// def only_lit(x: int32) -> int32 | str:
-//     if x == 1:
-//         return 42
-//     return "two"
+// # A literal-only group with NO base-type fallback stub: an accepted call must
+// # land on one of the Literal stubs, and the per-stub return types make that
+// # selection observable. The call whose literal matches no stub is the reject
+// # pinned by tests/cases/calls/error_overload_literal_no_match.
 // @overload
 // def only_lit(x: Literal[1]) -> int32: ...
 int32_t only_lit__lit_1(int32_t x) {
-    return 42;
+    if (true) {
+        return 42;
+    }
 }
 
 // @overload
 // def only_lit(x: Literal[2]) -> str: ...
 std::string only_lit__lit_2(int32_t x) {
+    if (false) {
+    }
     return "two";
 }
-
 
 // def main() -> None:
 //     # Direct int literals match Literal stubs

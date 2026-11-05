@@ -17,9 +17,11 @@ std::string grow__Box(Box& b);
 // @dispatch
 // def grow(xs: list[int]) -> str:
 std::string grow__list_int(std::vector<::tpy::BigInt>& xs);
-// def mode_bits(m: str) -> int:
+// @overload
+// def mode_bits(m: Literal["r"]) -> int: ...
 ::tpy::BigInt mode_bits__lit_r(std::string_view m);
-// def mode_bits(m: str) -> int:
+// @overload
+// def mode_bits(m: Literal["w"]) -> int: ...
 ::tpy::BigInt mode_bits__lit_w(std::string_view m);
 
 // class Box:

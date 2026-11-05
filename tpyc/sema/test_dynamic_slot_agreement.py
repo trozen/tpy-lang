@@ -574,10 +574,12 @@ class Mat(Surface):
 """)
 
 
-def test_literal_only_overload_takes_the_impl_form() -> None:
-    # The @readonly stub does not decide: the implementation's mutable
-    # form fills the mutable slot.
-    _compile(HEADER + """
+def test_readonly_overload_copy_refused_at_mutable_slot() -> None:
+    # An @overload stub's copy is an ordinary member, so its @readonly
+    # is refused at a mutable slot as a plain @readonly method's is.
+    with pytest.raises(SemanticError,
+                       match=r"'Mat\.f' takes a readonly receiver"):
+        _compile(HEADER + """
 @dynamic
 class Scale(Protocol):
     def f(self, x: int32) -> int32: ...

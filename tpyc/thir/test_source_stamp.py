@@ -356,7 +356,7 @@ def test_every_name_read_is_held_as_its_record_projects(name: str) -> None:
 # whose body reaches it, by the node kind.
 _DECLARING = '''\
 import asyncio
-from typing import Iterator, Protocol, overload
+from typing import Iterator, Protocol
 from tpy import Own, ReturnException, auto_readonly, dynamic, error_return
 
 
@@ -432,19 +432,6 @@ class Q:
 
     def __init__(self, w: int) -> None:
         self.w = w
-
-
-@overload
-def match_fold(o: P) -> int: ...
-@overload
-def match_fold(o: Q) -> int: ...
-def match_fold(o: P | Q) -> int:
-    match o:
-        case P(v=x):
-            return x
-        case Q(w=y):
-            return y
-    return 0
 
 
 def for_range(n: int) -> int:
@@ -559,13 +546,11 @@ def coro_move() -> int:
     return asyncio.run(c)
 '''
 
-# Each kind `_declaring_nodes` walks, by the body that reaches it (an
-# @overload body keyed by its stub, `lower_bodies`).
+# Each kind `_declaring_nodes` walks, by the body that reaches it.
 _DECLARING_KINDS = {
     "with_item": (th.THIRWithItem,), "match_bind": (th.THIRMatchBinding,),
     "unpack": (th.THIRTupleUnpack,), "er_bind": (th.THIRErrorReturnBind,),
     "frame_slot": (th.THIRFrameSlotWrite,),
-    "match_fold@0": (th.THIRMatchFoldBind,),
     "for_range": (th.THIRForRange, th.THIRVarDecl),
     "for_proto": (th.THIRForIterProto,), "for_each": (th.THIRForEach,),
     "ptr_local": (th.THIRPtrLocalRebind, th.THIRPtrLocalDecl),
@@ -588,7 +573,7 @@ def _declaring_nodes(body):
            th.THIRFrameSlotWrite: "name", th.THIRCoroHandleMove: "target",
            th.THIRForEach: "var", th.THIRForIterProto: "var",
            th.THIRForRange: "var", th.THIRWithItem: "target",
-           th.THIRMatchBinding: "name", th.THIRMatchFoldBind: "name_cpp"}
+           th.THIRMatchBinding: "name"}
     out = []
 
     def walk(node, line):
@@ -628,7 +613,6 @@ _LOOP_NODES = (th.THIRForEach, th.THIRForIterProto, th.THIRForRange)
 _OWN_FAMILIES: dict[type, frozenset[str]] = {
     th.THIRWithItem: frozenset({"with"}),
     th.THIRMatchBinding: frozenset({"match"}),
-    th.THIRMatchFoldBind: frozenset({"match"}),
     th.THIRTupleUnpack: frozenset({"unpack"}),
     **{k: frozenset({"loop", "comp"}) for k in _LOOP_NODES},
 }

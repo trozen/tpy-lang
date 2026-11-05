@@ -364,9 +364,8 @@ const-ness onto its AST. A phase-counter assertion enforces the
 ordering per analyzer. No set records which bodies are still to come:
 a callee's borrow fact is pending while it is unset and sema analyzes
 a body for it (`typesys.return_borrow_fact_pending`: the def the
-FunctionInfo was registered from, or a
-`typing.overload` group's implementation on the stub its facts land
-on), judged by the same `typesys.analyzes_body` the body passes skip
+FunctionInfo was registered from -- a `typing.overload` stub's is its
+copy of the implementation), judged by the same `typesys.analyzes_body` the body passes skip
 by. That covers a later body of the component and, while module
 statements run (before every body of their layer), any function of the
 module or its import component. A pending call answers with its
@@ -489,12 +488,11 @@ points the user at `Ptr[T]` as the workaround.
 A body's analysis facts (the Phase 1 mutation and return-borrow sets,
 frame materials, the inferred receiver const-ness) live on the
 `FunctionInfo` registered from that body, which names it in
-`FunctionInfo.body`: each `@dispatch` variant, each clone of an
+`FunctionInfo.body`: each `@dispatch` variant (a `typing.overload`
+stub's copy of the implementation among them), each clone of an
 `@auto_readonly` / `auto_own` pair and each property accessor has its own.
 Writers and readers find it with `typesys.body_function_info` /
-`body_method_info` by identity, never by the callable's name; the one
-positional pick left is a `typing.overload` implementation's, which has no
-`FunctionInfo` of its own.
+`body_method_info` by identity, never by the callable's name.
 
 Phase 2 mutation propagation runs once per import component:
 `_propagate_mutation_facts` collects FunctionInfos from every member's
@@ -516,8 +514,7 @@ fact that also arrives late -- as "the callee mutates nothing"; a
 callee answers "writes no argument" by declaration (`@readonly` /
 `@pure`) only when it has no analyzed facts at all
 (`typesys.declares_no_writes`: a `native` / builtin stub, a protocol
-method's signature -- not a `typing.overload` stub, which carries its
-implementation's facts). A callee with neither facts nor such a
+method's signature). A callee with neither facts nor such a
 declaration is conservatively taken to mutate every argument it is
 handed, with one exemption: a slot bound through a call that LENDS the
 caller's storage (`MutationCallEdge.lent` -- a combinator result, a

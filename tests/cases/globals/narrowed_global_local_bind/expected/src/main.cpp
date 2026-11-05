@@ -42,11 +42,10 @@ int32_t local_bind() {
 //     return -1
 int32_t shadowed() {
     std::optional<int32_t> GO = 9;
-    if ((GO.has_value())) {
+    if (true) {
         ::tpyapp::main::clear();
         return (*GO);
     }
-    return -1;
 }
 
 // def main() -> None:

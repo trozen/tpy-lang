@@ -14722,9 +14722,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     analyzer = lc.analyzer
     # Frame-capturing callee (generator/coro factory): its frame borrows ref
     # args past the statement, so readonly-slot rvalues hoist like mutable
-    # ones; the fact comes off the callee's func_info, through the one
-    # predicate that also sees an @overload-ed generator (whose per-signature
-    # fi carries is_generator=False).
+    # ones; the fact comes off the callee's func_info.
     _callee_fi = e.resolved_function_info
     frame_capturing = frame_captured(_callee_fi)
     # THE argument verdict, taken ONCE for this argument. This function is the
@@ -15700,12 +15698,12 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
     template parameter deduces it and binds it as it is held. A native
     callee (`str`, `repr`, `len`, `hash`) binds it as a TPy-bodied one
     does. None where the argument has no twin, at a callee binding no
-    template to deduce at (a method called through a protocol receiver, an
-    `@overload` stub), and for a fresh tuple at a runtime binding's
+    template to deduce at (a method called through a protocol receiver),
+    and for a fresh tuple at a runtime binding's
     template, which spells its own element captures (its rows)."""
     if (contract.adapts is not Adapts.STRUCTURAL or callee_fi is None
             # A declared callee binding no runtime symbol (a method called
-            # through a protocol receiver, an @overload stub) keeps the
+            # through a protocol receiver) keeps the
             # rows (BUGS.md#protocol-param-structural-protocol-concept).
             or (contract.declared_only
                 and not binds_runtime_symbol(callee_fi))):

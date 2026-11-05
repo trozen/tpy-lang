@@ -46,7 +46,7 @@ from ..parse import (
 )
 from ..parse.nodes import is_parse_node, rewrite_tree
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, PendingNumType, OwnType,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType, PendingNumType, OwnType,
     AutoReadonlyType,
     OptionalType, PendingContainerType, PendingListType, PendingDictType,
     PendingSetType, TupleType, UnionType, UnknownElementType,
@@ -903,14 +903,15 @@ class PendingNums:
     def is_literal_value(self, value: TpyExpr | None,
                          value_type: TpyType | None) -> bool:
         """Whether a value that seeds a list counts as a literal of its
-        family: a literal, a literal-seeded local (`int_literal_values`:
+        family: a literal, a literal-seeded local (`LiteralLocals.seeded_ints`:
         its first binding is a literal, pending or not) or a pending read.
         A typed value decides the element where it seeds it."""
         t = strip_int(value_type)
         return (isinstance(t, (IntLiteralType, FloatLiteralType,
                                PendingNumType))
                 or (isinstance(value, TpyName)
-                    and value.name in self.ctx.func.int_literal_values))
+                    and self.ctx.func.literal_locals.seeded_ints(value.name)
+                    is not None))
 
     def new_tree(self, name: str | None, record: ContainerRecord,
                  decl: TpyVarDecl | None, entries: list[Entry],
@@ -2077,7 +2078,12 @@ class PendingNums:
         if (cell.joins_stores and cell.evidence
                 and isinstance(literal, IntLiteralType)):
             known = self.known_so_far(cell)
-            if is_big_int_type(known) or int_literal_fits_fixed_int(literal, known):
+            if isinstance(known, LiteralType):
+                fits = known.admits(literal)
+            else:
+                fits = (is_big_int_type(known)
+                        or int_literal_fits_fixed_int(literal, known))
+            if fits:
                 self._add(cell, known, site)
                 return
         self._add(cell, self.literal_type(literal, node, bool(cell.evidence)),
@@ -2514,12 +2520,22 @@ class PendingNums:
                 f"type; annotate its first binding: {cell.name}: "
                 f"{self._container_spelled(cell, smallest_signed_holding(unsigned))}"
                 f" = {self._list_init(cell)}", node)
+        fix = (f"annotate its first binding: {cell.name}: "
+               f"{python_type_name(wide)} = {self._first_value(cell)}")
+        if isinstance(held, LiteralType):
+            # A Literal annotation would refuse the value again: the fix is
+            # its base when that holds the value, else a value of the set.
+            if lub_int([held.base_type, t]) is NO_COMMON:
+                values = ", ".join(str(v) for v in held.values)
+                fix = f"store one of {values}"
+            else:
+                fix = (f"annotate its first binding: {cell.name}: "
+                       f"{python_type_name(held.base_type)} = "
+                       f"{self._first_value(cell)}")
         raise self.ctx.error(
             f"'{cell.name}' holds {python_type_name(held)} values and this "
             f"value is {python_type_name(t)}, which have no common type; "
-            f"annotate its first binding: {cell.name}: "
-            f"{python_type_name(wide)} = {self._first_value(cell)}",
-            node)
+            f"{fix}", node)
 
     # ------------------------------------------------------------------
     # List elements
@@ -3006,7 +3022,7 @@ class PendingNums:
         tr = int_traits_of(t)
         return tr is not None and all(
             tr.min_value <= v <= tr.max_value
-            for v in self.ctx.func.int_literal_values.get(name, ()))
+            for v in self.ctx.func.literal_locals.seeded_ints(name) or ())
 
     def _annotation_for(self, cell: PendingNumCell, t: TpyType) -> TpyType:
         """The type to annotate a local with that holds its literals and a
@@ -3020,9 +3036,11 @@ class PendingNums:
         """For a mismatch at a use of literal-seeded local `name` whose type
         is not `expected`: the annotation that makes it one, when every
         value stored in it fits."""
-        if name not in self.ctx.func.int_literal_values:
-            return ""
         e = strip_int(expected)
+        # A `Literal` slot takes only its values, which the refusal lists.
+        if (self.ctx.func.literal_locals.seeded_ints(name) is None
+                or isinstance(e, LiteralType)):
+            return ""
         if not self._literals_fit(name, e):
             return ""
         cell = self.cell_for(name)

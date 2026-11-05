@@ -21,7 +21,7 @@ from .context import (
 from .value_range import ValueRange
 from ..typesys import LiteralType
 from ..parse.nodes import (
-    TpyDictComprehension, TpyExpr,
+    NarrowFacts, TpyDictComprehension, TpyExpr,
     TpyGeneratorExpression, TpyLambda, TpyListComprehension,
     TpyNamedExpr, TpySetComprehension,
 )
@@ -128,7 +128,7 @@ def _merge_narrowed(
         elif (isinstance(v, LiteralType) and isinstance(other, LiteralType)
               and v.base_type == other.base_type):
             # Either path's literal values may be the one held.
-            merged[k] = LiteralType(base_type=v.base_type, values=v.values + tuple(
+            merged[k] = v.narrowed(v.values + tuple(
                 x for x in other.values if x not in v.values))
     return frozenset(merged.items())
 
@@ -261,6 +261,9 @@ class GuardFacts:
     types: Mapping[str, TpyType] = field(default_factory=dict)
     non_null_ptrs: frozenset[str] = frozenset()
     ranges: Mapping[str, ValueRange] = field(default_factory=dict)
+    # The `types` keys narrowed from a union to one of its members
+    # (`NarrowFacts.members`).
+    members: frozenset[str] = frozenset()
 
     def keys(self) -> frozenset[str]:
         """The keys these facts are under."""
@@ -350,38 +353,45 @@ class Branch(NamedTuple):
     on_false: FlowFacts
     true_keys: frozenset[str] = frozenset()
     false_keys: frozenset[str] = frozenset()
+    # A key's narrowing extracts a union member on both paths or on
+    # neither: a `Literal` refinement needs a subject of that type already.
+    member_keys: frozenset[str] = frozenset()
 
     def then(self, after: Branch) -> Branch:
         """`self and after`: `after` ran on this TRUE path."""
         return Branch(after.on_true,
                       FlowFacts.merge(self.on_false, after.on_false),
                       self.true_keys | after.true_keys,
-                      self.false_keys | after.false_keys)
+                      self.false_keys | after.false_keys,
+                      self.member_keys | after.member_keys)
 
     def orelse(self, after: Branch) -> Branch:
         """`self or after`: `after` ran on this FALSE path."""
         return Branch(FlowFacts.merge(self.on_true, after.on_true),
                       after.on_false,
                       self.true_keys | after.true_keys,
-                      self.false_keys | after.false_keys)
+                      self.false_keys | after.false_keys,
+                      self.member_keys | after.member_keys)
 
     def join(self, other: Branch) -> Branch:
         """Either of two conditions ran (a ternary's arms)."""
         return Branch(FlowFacts.merge(self.on_true, other.on_true),
                       FlowFacts.merge(self.on_false, other.on_false),
                       self.true_keys | other.true_keys,
-                      self.false_keys | other.false_keys)
+                      self.false_keys | other.false_keys,
+                      self.member_keys | other.member_keys)
 
     def negated(self) -> Branch:
         """`not self`: the two paths swap."""
         return Branch(self.on_false, self.on_true,
-                      self.false_keys, self.true_keys)
+                      self.false_keys, self.true_keys, self.member_keys)
 
-    def proven_types(self, on_true: bool) -> dict[str, TpyType]:
+    def proven_types(self, on_true: bool) -> NarrowFacts:
         """The narrowings one path holds under the keys its tests proved:
         what the condition established there, as it stands once the whole
         condition ran (the lowering's extraction facts)."""
         state, keys = ((self.on_true, self.true_keys) if on_true
                        else (self.on_false, self.false_keys))
-        return narrowed_dict(kv for kv in state.narrowed_types
-                             if kv[0] in keys)
+        return NarrowFacts(narrowed_dict(kv for kv in state.narrowed_types
+                                         if kv[0] in keys),
+                           members=self.member_keys & keys)

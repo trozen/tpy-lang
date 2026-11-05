@@ -5,20 +5,15 @@
 namespace tpyapp::main {
 
 
-
-
-// def in_loop(v: A | B, k: int) -> int:
-//     while k > 0:
-//         if isinstance(v, A):
-//             return v.x + k
-//         else:
-//             return v.y - k
-//     return 0            # reachable when k <= 0 -- must not be truncated
+// # in_loop / in_branch: a fold nested in a loop / dynamic `if` must not truncate
+// # the code reachable after that compound (the trailing return was dropped).
 // @overload
 // def in_loop(v: A, k: int) -> int: ...
 ::tpy::BigInt in_loop__A__int(const A& v, const ::tpy::BigInt& k) {
     while ((k > 0)) {
-        return ((v.x) + (k));
+        if (true) {
+            return ((v.x) + (k));
+        }
     }
     return ::tpy::BigInt(0);
 }
@@ -27,26 +22,21 @@ namespace tpyapp::main {
 // def in_loop(v: B, k: int) -> int: ...
 ::tpy::BigInt in_loop__B__int(const B& v, const ::tpy::BigInt& k) {
     while ((k > 0)) {
-        return ((v.y) - (k));
+        if (false) {
+        } else {
+            return ((v.y) - (k));
+        }
     }
     return ::tpy::BigInt(0);
 }
 
-
-
-
-// def in_branch(v: A | B, gate: bool) -> int:
-//     if gate:
-//         if isinstance(v, A):
-//             return v.x
-//         else:
-//             return v.y
-//     return -1           # reachable when gate is False -- must not be truncated
 // @overload
 // def in_branch(v: A, gate: bool) -> int: ...
 ::tpy::BigInt in_branch__A__bool(const A& v, bool gate) {
     if (gate) {
-        return v.x;
+        if (true) {
+            return v.x;
+        }
     }
     return ::tpy::BigInt(-1);
 }
@@ -55,30 +45,30 @@ namespace tpyapp::main {
 // def in_branch(v: B, gate: bool) -> int: ...
 ::tpy::BigInt in_branch__B__bool(const B& v, bool gate) {
     if (gate) {
-        return v.y;
+        if (false) {
+        } else {
+            return v.y;
+        }
     }
     return ::tpy::BigInt(-1);
 }
 
-
-
-
-// def toplevel(v: A | B) -> int:
-//     if isinstance(v, A):
-//         return v.x      # A-stub folds True here and truncates the tail below
-//     return v.y
+// # toplevel: the inverse guard, a top-level fold still truncates.
 // @overload
 // def toplevel(v: A) -> int: ...
 ::tpy::BigInt toplevel__A(const A& v) {
-    return v.x;
+    if (true) {
+        return v.x;
+    }
 }
 
 // @overload
 // def toplevel(v: B) -> int: ...
 ::tpy::BigInt toplevel__B(const B& v) {
+    if (false) {
+    }
     return v.y;
 }
-
 
 
 // def nums() -> Iterator[int]:
@@ -86,41 +76,34 @@ __gen_nums nums() {
     return __gen_nums();
 }
 
-
-
-// def dyn_local(x: int | str) -> int:
-//     if isinstance(x, int):
-//         s: Shape = Sq(x)    # tpyc: ok -- declared in the folded arm
-//         it = nums()
-//         t = 0
-//         for v in it:
-//             t += v
-//         return s.area() + t
-//     return 0
 // @overload
 // def dyn_local(x: int) -> int: ...
 ::tpy::BigInt dyn_local__int(const ::tpy::BigInt& x) {
-    ::tpy::Adapter<Shape, Sq> __slot_1{Sq(x)};
-    Shape* s = &__slot_1;
-    __gen_nums it = ::tpyapp::main::nums();
-    ::tpy::BigInt t = ::tpy::BigInt(0);
-    auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        t = (t) + (v);
+    std::optional<::tpy::Adapter<Shape, Sq>> __slot_1;
+    if (true) {
+        __slot_1.emplace(Sq(x));
+        Shape* s = &*__slot_1;
+        __gen_nums it = ::tpyapp::main::nums();
+        ::tpy::BigInt t = ::tpy::BigInt(0);
+        auto& __src_0 = it;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+            t = (t) + (v);
+        }
+        return ((s->area()) + (t));
     }
-    return ((s->area()) + (t));
 }
 
 // @overload
 // def dyn_local(x: str) -> int: ...
 ::tpy::BigInt dyn_local__str(std::string_view x) {
+    if (false) {
+    }
     return ::tpy::BigInt(0);
 }
-
 
 // # both_arms: a name declared in both folded arms (a sema hoist) and read after
 // # the if, mutated in place through a borrowing call.
@@ -130,20 +113,14 @@ void bump(A& a) {
     a.x = (a.x) + (::tpy::BigInt(1));
 }
 
-
-
-// def both_arms(x: int | str) -> int:
-//     if isinstance(x, int):
-//         y = A(x)            # tpyc: ok -- the chosen arm's decl outlives the if
-//     else:
-//         y = A(0)            # tpyc: ok
-//     bump(y)
-//     return y.x
 // @overload
 // def both_arms(x: int) -> int: ...
 ::tpy::BigInt both_arms__int(const ::tpy::BigInt& x) {
-    A __slot_1 = A(x);
-    A* y = &__slot_1;
+    std::optional<A> __slot_1;
+    A* y;
+    if (true) {
+        y = &*(__slot_1 = A(x));
+    }
     ::tpyapp::main::bump((*y));
     return y->x;
 }
@@ -151,71 +128,67 @@ void bump(A& a) {
 // @overload
 // def both_arms(x: str) -> int: ...
 ::tpy::BigInt both_arms__str(std::string_view x) {
-    A __slot_1 = A(::tpy::BigInt(0));
-    A* y = &__slot_1;
+    std::optional<A> __slot_1;
+    A* y;
+    if (false) {
+    } else {
+        y = &*(__slot_1 = A(::tpy::BigInt(0)));
+    }
     ::tpyapp::main::bump((*y));
     return y->x;
 }
 
-
-
-
-// def match_fold(v: A | B) -> int:
-//     match v:
-//         case A(x=x):
-//             s: Shape = Sq(x)  # tpyc: ok -- declared in the selected case
-//             v.x += 10       # tpyc: ok -- the caller's A observes the write
-//             it = nums()
-//             t = 0
-//             for q in it:
-//                 t += q
-//             return s.area() + t
-//         case B(y=y):
-//             return y
-//     return 0
+// # match_fold: a @dynamic protocol local and a generator local declared in the
+// # case a folded `match` selects, which lowers flat like a folded `if` arm; the
+// # arm writes through the subject, which must be the caller's object. (`x` is
+// # not read after the write: a capture aliases a value field, see
+// # BUGS.md#match-capture-aliases-value-field. The B specialization takes
+// # `B&` though its arm writes nothing, see
+// # BUGS.md#overload-method-union-param-nonconst.)
 // @overload
 // def match_fold(v: A) -> int: ...
 ::tpy::BigInt match_fold__A(A& v) {
-    auto& x = v.x;
-    ::tpy::Adapter<Shape, Sq> __slot_1{Sq(x)};
-    Shape* s = &__slot_1;
-    v.x = (v.x) + (::tpy::BigInt(10));
-    __gen_nums it = ::tpyapp::main::nums();
-    ::tpy::BigInt t = ::tpy::BigInt(0);
-    auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& q = ::tpy::unwrap_ref(*__r_1);
-        t = (t) + (q);
+    std::optional<::tpy::Adapter<Shape, Sq>> __slot_1;
+    auto& __match_subject_1 = v;
+    {
+        auto& x = __match_subject_1.x;
+        __slot_1.emplace(Sq(x));
+        Shape* s = &*__slot_1;
+        v.x = (v.x) + (::tpy::BigInt(10));
+        __gen_nums it = ::tpyapp::main::nums();
+        ::tpy::BigInt t = ::tpy::BigInt(0);
+        auto& __src_0 = it;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& q = ::tpy::unwrap_ref(*__r_1);
+            t = (t) + (q);
+        }
+        return ((s->area()) + (t));
     }
-    return ((s->area()) + (t));
+    ::std::unreachable();
     return ::tpy::BigInt(0);
 }
 
 // @overload
 // def match_fold(v: B) -> int: ...
-::tpy::BigInt match_fold__B(B& v) {
-    auto& y = v.y;
-    return y;
+::tpy::BigInt match_fold__B(const B& v) {
+    auto& __match_subject_1 = v;
+    {
+        auto& y = __match_subject_1.y;
+        return y;
+    }
+    ::std::unreachable();
     return ::tpy::BigInt(0);
 }
 
-
-
-
-// def partly(x: int | str, k: int) -> int:
-//     if isinstance(x, str):
-//         return -1
-//     elif k > 0:             # tpyc: ok -- the live link of a folded chain
-//         return k
-//     else:
-//         return 0
+// # partly: the first link folds and the elif stays a run-time test.
 // @overload
 // def partly(x: int, k: int) -> int: ...
 ::tpy::BigInt partly__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
-    if ((k > 0)) {
+    if (false) {
+    } else if ((k > 0)) {
         return k;
     } else {
         return ::tpy::BigInt(0);
@@ -225,25 +198,19 @@ void bump(A& a) {
 // @overload
 // def partly(x: str, k: int) -> int: ...
 ::tpy::BigInt partly__str__int(std::string_view x, const ::tpy::BigInt& k) {
-    return ::tpy::BigInt(-1);
+    if (true) {
+        return ::tpy::BigInt(-1);
+    }
 }
 
-
-
-
-// def walrus_elif(x: int | str, k: int) -> int:
-//     if isinstance(x, str):
-//         return -1
-//     elif (m := k * 2) > 2:  # tpyc: ok -- bound in the live link, read below
-//         return m
-//     else:
-//         m += 1
-//     return m
+// # walrus_elif: a walrus in the live `elif` of a partly decided chain, read
+// # after the if.
 // @overload
 // def walrus_elif(x: int, k: int) -> int: ...
 ::tpy::BigInt walrus_elif__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
     ::tpy::BigInt m;
-    if (((m = ((k) * (::tpy::BigInt(2)))) > 2)) {
+    if (false) {
+    } else if (((m = ((k) * (::tpy::BigInt(2)))) > 2)) {
         return m;
     } else {
         m = (m) + (::tpy::BigInt(1));
@@ -254,26 +221,24 @@ void bump(A& a) {
 // @overload
 // def walrus_elif(x: str, k: int) -> int: ...
 ::tpy::BigInt walrus_elif__str__int(std::string_view x, const ::tpy::BigInt& k) {
-    return ::tpy::BigInt(-1);
+    if (true) {
+        return ::tpy::BigInt(-1);
+    }
 }
 
-
-
-
-// def match_decl(v: A | B) -> int:
-//     match v:
-//         case A(x=x):
-//             r = A(x)        # tpyc: ok -- the selected case's decl outlives the match
-//         case B(y=y):
-//             r = A(y * 10)
-//     bump(r)
-//     return r.x
+// # match_decl: a name declared in the case a folded `match` selects outlives
+// # the match, mutated in place through a borrowing call.
 // @overload
 // def match_decl(v: A) -> int: ...
 ::tpy::BigInt match_decl__A(const A& v) {
-    auto& x = v.x;
-    A __slot_1 = A(x);
-    A* r = &__slot_1;
+    std::optional<A> __slot_1;
+    A* r;
+    ::tpy::BigInt x;
+    auto& __match_subject_1 = v;
+    {
+        x = __match_subject_1.x;
+        r = &*(__slot_1 = A(x));
+    }
     ::tpyapp::main::bump((*r));
     return r->x;
 }
@@ -281,47 +246,45 @@ void bump(A& a) {
 // @overload
 // def match_decl(v: B) -> int: ...
 ::tpy::BigInt match_decl__B(const B& v) {
-    auto& y = v.y;
-    A __slot_1 = A(((y) * (::tpy::BigInt(10))));
-    A* r = &__slot_1;
+    std::optional<A> __slot_1;
+    A* r;
+    ::tpy::BigInt y;
+    auto& __match_subject_1 = v;
+    {
+        y = __match_subject_1.y;
+        r = &*(__slot_1 = A(((y) * (::tpy::BigInt(10)))));
+    }
     ::tpyapp::main::bump((*r));
     return r->x;
 }
 
-
-
-
-// def raises(x: int | str) -> int:
-//     if isinstance(x, str):
-//         raise ValueError("str")
-//     return x                # tpyc: ok
+// # raises: a terminating folded arm ending in `raise` truncates the tail (which
+// # would not type-check under the `str` stub).
 // @overload
 // def raises(x: int) -> int: ...
 ::tpy::BigInt raises__int(const ::tpy::BigInt& x) {
+    if (false) {
+    }
     return x;
 }
 
 // @overload
 // def raises(x: str) -> int: ...
 ::tpy::BigInt raises__str(std::string_view x) {
-    throw ::tpy::ValueError("str");
+    if (true) {
+        throw ::tpy::ValueError("str");
+    }
 }
 
-
-
-
-// def redecl(x: int | str) -> int:
-//     if isinstance(x, int):
-//         y = A(x)
-//     else:
-//         y = A(0)
-//     y = A(y.x + 1)          # tpyc: ok
-//     return y.x
+// # redecl: a name declared in the folded arm, rebound after the fold.
 // @overload
 // def redecl(x: int) -> int: ...
 ::tpy::BigInt redecl__int(const ::tpy::BigInt& x) {
-    A __slot_1 = A(x);
-    A* y = &__slot_1;
+    std::optional<A> __slot_1;
+    A* y;
+    if (true) {
+        y = &*(__slot_1 = A(x));
+    }
     std::optional<A> __slot_2;
     y = &*(__slot_2 = A(((y->x) + (::tpy::BigInt(1)))));
     return y->x;
@@ -330,37 +293,37 @@ void bump(A& a) {
 // @overload
 // def redecl(x: str) -> int: ...
 ::tpy::BigInt redecl__str(std::string_view x) {
-    A __slot_1 = A(::tpy::BigInt(0));
-    A* y = &__slot_1;
+    std::optional<A> __slot_1;
+    A* y;
+    if (false) {
+    } else {
+        y = &*(__slot_1 = A(::tpy::BigInt(0)));
+    }
     std::optional<A> __slot_2;
     y = &*(__slot_2 = A(((y->x) + (::tpy::BigInt(1)))));
     return y->x;
 }
 
-
-
-
-// def nested_def(x: int | str) -> int:
-//     if isinstance(x, int):
-//         def g(n: int) -> int:   # tpyc: ok
-//             return n + 1
-//         return g(x)
-//     return 0
+// # nested_def: a `def` inside a statically-true arm.
 // @overload
 // def nested_def(x: int) -> int: ...
 ::tpy::BigInt nested_def__int(const ::tpy::BigInt& x) {
-    auto g = [](const ::tpy::BigInt& n) -> ::tpy::BigInt {
-        return ((n) + (::tpy::BigInt(1)));
-    };
-    return g(x);
+    if (true) {
+        auto g = [](const ::tpy::BigInt& n) -> ::tpy::BigInt {
+            return ((n) + (::tpy::BigInt(1)));
+        };
+        return g(x);
+    }
+    return ::tpy::BigInt(0);
 }
 
 // @overload
 // def nested_def(x: str) -> int: ...
 ::tpy::BigInt nested_def__str(std::string_view x) {
+    if (false) {
+    }
     return ::tpy::BigInt(0);
 }
-
 
 // def main() -> None:
 //     print(in_loop(A(5), 0))        # 0 -- loop skipped, trailing return

@@ -27,6 +27,7 @@ while_literal 3 0
 match_membership rw append
 literal eq
 local 5
+local none none right set a
 none some
 multi bat
 range_loop negative

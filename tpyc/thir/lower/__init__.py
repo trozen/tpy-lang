@@ -17,7 +17,6 @@ from .checks import _is_len_native, gen_recv_ctor_temp
 from .predicates import frame_temp_arg_slot, frame_temp_elem_slots
 from .functions import (
     iter_module_callables,
-    unemitted_overload_clones,
     iter_module_constructors,
     iter_inherited_constructors,
     lower_constructor,
@@ -33,7 +32,6 @@ __all__ = [
     "frame_temp_elem_slots",
     "gen_recv_ctor_temp",
     "iter_module_callables",
-    "unemitted_overload_clones",
     "iter_module_constructors",
     "iter_inherited_constructors",
     "lower_constructor",

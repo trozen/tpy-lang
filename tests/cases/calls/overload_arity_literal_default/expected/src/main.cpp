@@ -4,22 +4,13 @@
 namespace tpyapp::main {
 
 
-
-
-// def repeat(s: str, count: int = 0) -> str:
-//     if count == 0:
-//         return s
-//     result = ""
-//     i = 0
-//     while i < count:
-//         result = result + s
-//         i = i + 1
-//     return result
 // @overload
 // def repeat(s: str) -> str: ...  # tpyc: ok
 std::string repeat__str(std::string_view s) {
     ::tpy::BigInt count = ::tpy::BigInt(0);
-    return std::string(s);
+    if (true) {
+        return std::string(s);
+    }
 }
 
 // @overload
@@ -36,7 +27,6 @@ std::string repeat__str__int(std::string_view s, const ::tpy::BigInt& count) {
     }
     return result;
 }
-
 
 // def main() -> None:
 //     print(repeat("ab"))

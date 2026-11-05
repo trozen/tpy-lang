@@ -145,7 +145,9 @@ inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den)
 // @overload
 // def __truediv__(self, other: Frac) -> float: ...
 inline double Frac::__truediv____Frac(Frac other) const {
-    return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
+    if (true) {
+        return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
+    }
 }
 
 inline double Frac::__truediv__(Frac other) const {
@@ -155,6 +157,8 @@ inline double Frac::__truediv__(Frac other) const {
 // @overload
 // def __truediv__(self, other: int) -> Frac: ...
 inline Frac Frac::__truediv____int(const ::tpy::BigInt& other) const {
+    if (false) {
+    }
     return Frac(this->num, ((this->den) * (other)));
 }
 

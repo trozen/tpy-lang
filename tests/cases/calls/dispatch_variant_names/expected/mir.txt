@@ -19,7 +19,6 @@ main::apply@134:0: uncovered (unsupported parameter type), summary: opaque (unsu
 main::reference_section@138:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::kind@144:0: uncovered (no body to lower)
 main::kind@146:0: uncovered (no body to lower)
-main::kind@147:0: uncovered (overloaded callable)
 main::kind__int@155:0: covered (storage: no_proof_required), summary: known
 main::typing_overload_section@159:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::flag@170:0: uncovered (no body to lower)
@@ -45,5 +44,4 @@ variant_lib::grow@12:0: uncovered (no body to lower)
 variant_lib::grow@18:0: uncovered (no body to lower)
 variant_lib::mode_bits@24:0: uncovered (no body to lower)
 variant_lib::mode_bits@26:0: uncovered (no body to lower)
-variant_lib::mode_bits@27:0: uncovered (overloaded callable)
 variant_lib::Box.__init__@7:4: covered (storage: no_proof_required), summary: known

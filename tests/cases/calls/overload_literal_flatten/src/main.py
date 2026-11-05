@@ -43,7 +43,8 @@ class Record:
     def get(self, key: str) -> int32 | str:
         if key == "age":
             return self.data_age
-        return self.data_name
+        # the `str`-returning copies return the field by value
+        return self.data_name  # tpyc: warning(/returns a copy of str field/)
 
 
 def main() -> None:

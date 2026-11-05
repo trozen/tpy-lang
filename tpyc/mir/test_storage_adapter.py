@@ -423,7 +423,8 @@ def test_returned_local_borrow_is_checked_without_successor_liveness(artifacts: 
 
 def test_nested_tuple_branch_inventory_is_not_lost(artifacts: Artifacts) -> None:
     fn = _thir(artifacts, "eager")
-    folded = th.THIRFoldedIfChain(((th.THIRLiteral(BOOL, True), fn.body),))
+    # A statement MIR does not lower, holding the body's statements.
+    folded = th.THIRStmtSeq(stmts=fn.body)
     fn = _with_body(fn, (folded,))
     assert fn.storage_facts.backings and fn.storage_facts.obligations
     result = certify_thir_storage(_request(artifacts, fn))

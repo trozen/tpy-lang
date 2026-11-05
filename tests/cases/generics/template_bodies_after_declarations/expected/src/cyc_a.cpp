@@ -130,21 +130,25 @@ std::string use_passing() {
 
 // @overload
 // def f(self, x: int32) -> int32: ...
-int32_t Plain::f__int32(int32_t x) {
+int32_t Plain::f__int32(int32_t x) const {
+    if (false) {
+    }
     return ::tpyapp::cyc_b::twice(x);
 }
 
-int32_t Plain::f(int32_t x) {
+int32_t Plain::f(int32_t x) const {
     return this->f__int32(x);
 }
 
 // @overload
 // def f(self, x: str) -> int32: ...
-int32_t Plain::f__str(std::string_view x) {
-    return ::tpyapp::cyc_b::twice(::tpy::__len__(x));
+int32_t Plain::f__str(std::string_view x) const {
+    if (true) {
+        return ::tpyapp::cyc_b::twice(::tpy::__len__(x));
+    }
 }
 
-int32_t Plain::f(std::string_view x) {
+int32_t Plain::f(std::string_view x) const {
     return this->f__str(x);
 }
 
@@ -158,21 +162,25 @@ Merger::Merger(int32_t base) : base(base) {}
 
 // @overload
 // def merge(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-int32_t Merger::merge__Val(::tpyapp::cyc_b::Val x) {
-    return (::tpy::add_check<int32_t>(this->base, x.payload));
+int32_t Merger::merge__Val(::tpyapp::cyc_b::Val x) const {
+    if (true) {
+        return (::tpy::add_check<int32_t>(this->base, x.payload));
+    }
 }
 
-int32_t Merger::merge(::tpyapp::cyc_b::Val x) {
+int32_t Merger::merge(::tpyapp::cyc_b::Val x) const {
     return this->merge__Val(std::move(x));
 }
 
 // @overload
 // def merge(self, x: int32) -> int32: ...
-int32_t Merger::merge__int32(int32_t x) {
+int32_t Merger::merge__int32(int32_t x) const {
+    if (false) {
+    }
     return (::tpy::add_check<int32_t>(this->base, x));
 }
 
-int32_t Merger::merge(int32_t x) {
+int32_t Merger::merge(int32_t x) const {
     return this->merge__int32(x);
 }
 
@@ -218,23 +226,78 @@ int32_t Item::get() const {
 
 // @overload
 // def make(self, x: cyc_b.Val) -> Own[Item]: ...  # tpyc: ok
-Item Maker::make__Val(::tpyapp::cyc_b::Val x) {
-    return Item(x.payload);
+Item Maker::make__Val(::tpyapp::cyc_b::Val x) const {
+    if (true) {
+        return Item(x.payload);
+    }
 }
 
-Item Maker::make(::tpyapp::cyc_b::Val x) {
+Item Maker::make(::tpyapp::cyc_b::Val x) const {
     return this->make__Val(std::move(x));
 }
 
 // @overload
 // def make(self, x: int32) -> Own[Item]: ...
-Item Maker::make__int32(int32_t x) {
+Item Maker::make__int32(int32_t x) const {
+    if (false) {
+    }
     return Item(x);
 }
 
-Item Maker::make(int32_t x) {
+Item Maker::make(int32_t x) const {
     return this->make__int32(x);
 }
+namespace {
+
+// return sum(x.payload + v for v in self.items)
+template <typename F_x>
+struct __genexpr___iter___1_frame : public ::tpy::next_iter_mixin<__genexpr___iter___1_frame<F_x>, int32_t> {
+    ::tpy::frame_state __state;
+    const std::vector<int32_t>& __src;
+    F_x x;
+    int32_t v;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr___iter___1_frame(const std::vector<int32_t>& __src, F_x&& x_)
+        : __state(S_INITIAL),
+          __src(__src),
+          x(std::forward<F_x>(x_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr___iter___1_frame& __iter__() { return *this; }
+
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr___iter___1_frame<F_x>&) {
+        return os << "<generator __genexpr___iter___1>";
+    }
+};
+
+// return sum(x.payload + v for v in self.items)  # -> S_RESUME_0
+template <typename F_x>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr___iter___1_frame<F_x>::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        v = *((*__for_it_0))++;
+        return (::tpy::add_check<int32_t>(x.payload, v));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// return sum(x.payload + v for v in self.items)
+template <typename F_x>
+__genexpr___iter___1_frame<F_x> __genexpr___iter___1(const std::vector<int32_t>& __src, F_x&& x) {
+    return __genexpr___iter___1_frame<F_x>(__src, std::forward<F_x>(x));
+}
+
+}  // namespace
+
 
 // def __init__(self) -> None:
 //     self.items = [2, 3]
@@ -242,11 +305,13 @@ Split::Split() : items(std::vector<int32_t>{2, 3}) {}
 
 // @overload
 // def __iter__(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-int32_t Split::__iter____Val(::tpyapp::cyc_b::Val x) {
-    return ::tpy::builtin_sum<int32_t>(::tpyapp::cyc_a::__genexpr___iter___1(this->items, x));
+int32_t Split::__iter____Val(::tpyapp::cyc_b::Val x) const {
+    if (true) {
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::cyc_a::__genexpr___iter___1(this->items, x));
+    }
 }
 
-int32_t Split::__iter__(::tpyapp::cyc_b::Val x) {
+int32_t Split::__iter__(::tpyapp::cyc_b::Val x) const {
     return this->__iter____Val(std::move(x));
 }
 

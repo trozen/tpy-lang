@@ -1,9 +1,7 @@
-# Regression guard for the group-aware header-routing predicate: an @overload
-# group whose Iterable[Own[int32]] stub is a C++ template (protocol param) while
-# the impl (a union param) is not is still header-emitted, so a by-value cycle
-# peer in the RETURN type must trip the completeness gate. Without the group
-# rule (`group_is_template`) the impl is not gated and the error is missed (the
-# header-emitted template returns B, whose layout is only forward-declared).
+# An @overload stub whose Iterable[Own[int32]] parameter makes its variant a
+# C++ template is header-emitted, so a by-value cycle peer in its RETURN type
+# must trip the completeness gate (the header-emitted template returns B,
+# whose layout is only forward-declared there).
 from b import B
 from tpy import int32, Own
 from typing import Iterable, overload
@@ -14,10 +12,10 @@ def helper() -> int32:
 
 
 @overload
-def measure(xs: Iterable[Own[int32]]) -> B: ...
+def measure(xs: Iterable[Own[int32]]) -> B: ...  # tpyc: error(/Cyclic import/)
 @overload
 def measure(xs: int32) -> B: ...
-def measure(xs: Iterable[Own[int32]] | int32) -> B:  # tpyc: error(/Cyclic import/)
+def measure(xs: Iterable[Own[int32]] | int32) -> B:
     if isinstance(xs, int32):
         return B(xs)
     n = 0

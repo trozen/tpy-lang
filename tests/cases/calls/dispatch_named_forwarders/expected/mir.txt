@@ -62,7 +62,6 @@ main::Mix.s@336:4: uncovered (no body to lower)
 main::Mix.s@342:4: uncovered (no body to lower)
 main::Sum.f@353:4: uncovered (no body to lower)
 main::Sum.f@356:4: uncovered (no body to lower)
-main::Sum.f@358:4: uncovered (overloaded callable)
 main::Item.__init__@21:4: covered (storage: no_proof_required), summary: known
 main::Store.__init__@29:4: covered (storage: no_proof_required), summary: known
 main::Chain.__init__@106:4: covered (storage: no_proof_required), summary: known

@@ -32,9 +32,6 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "cyc_a";
 
-template <typename F_x>
-struct __genexpr___iter___1_frame;
-
 // def base() -> int32:
 int32_t base();
 // def use_plain() -> int32:
@@ -49,9 +46,6 @@ std::string use_cycle();
 std::string use_operators();
 // def use_passing() -> str:
 std::string use_passing();
-// return sum(x.payload + v for v in self.items)
-template <typename F_x>
-__genexpr___iter___1_frame<F_x> __genexpr___iter___1(const std::vector<int32_t>& __src, F_x&& x);
 
 // class Plain:
 struct Plain {
@@ -59,13 +53,13 @@ struct Plain {
 
     // @overload
     // def f(self, x: int32) -> int32: ...
-    int32_t f__int32(int32_t x);
-    int32_t f(int32_t x);
+    int32_t f__int32(int32_t x) const;
+    int32_t f(int32_t x) const;
 
     // @overload
     // def f(self, x: str) -> int32: ...
-    int32_t f__str(std::string_view x);
-    int32_t f(std::string_view x);
+    int32_t f__str(std::string_view x) const;
+    int32_t f(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Plain";
 };
 
@@ -101,13 +95,13 @@ struct Merger {
 
     // @overload
     // def merge(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-    int32_t merge__Val(::tpyapp::cyc_b::Val x);
-    int32_t merge(::tpyapp::cyc_b::Val x);
+    int32_t merge__Val(::tpyapp::cyc_b::Val x) const;
+    int32_t merge(::tpyapp::cyc_b::Val x) const;
 
     // @overload
     // def merge(self, x: int32) -> int32: ...
-    int32_t merge__int32(int32_t x);
-    int32_t merge(int32_t x);
+    int32_t merge__int32(int32_t x) const;
+    int32_t merge(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Merger";
 };
 
@@ -173,13 +167,13 @@ struct Maker {
 
     // @overload
     // def make(self, x: cyc_b.Val) -> Own[Item]: ...  # tpyc: ok
-    Item make__Val(::tpyapp::cyc_b::Val x);
-    Item make(::tpyapp::cyc_b::Val x);
+    Item make__Val(::tpyapp::cyc_b::Val x) const;
+    Item make(::tpyapp::cyc_b::Val x) const;
 
     // @overload
     // def make(self, x: int32) -> Own[Item]: ...
-    Item make__int32(int32_t x);
-    Item make(int32_t x);
+    Item make__int32(int32_t x) const;
+    Item make(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Maker";
 };
 
@@ -198,18 +192,20 @@ struct Split {
 
     // @overload
     // def __iter__(self, x: int32) -> Iterator[int32]: ...
-    auto __iter____int32(int32_t x) {
+    auto __iter____int32(int32_t x) const {
+        if (false) {
+        }
         return ::tpy::__iter__(this->items);
     }
 
-    auto __iter__(int32_t x) {
+    auto __iter__(int32_t x) const {
         return this->__iter____int32(x);
     }
 
     // @overload
     // def __iter__(self, x: cyc_b.Val) -> int32: ...  # tpyc: ok
-    int32_t __iter____Val(::tpyapp::cyc_b::Val x);
-    int32_t __iter__(::tpyapp::cyc_b::Val x);
+    int32_t __iter____Val(::tpyapp::cyc_b::Val x) const;
+    int32_t __iter__(::tpyapp::cyc_b::Val x) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Split";
 };
 
@@ -416,69 +412,22 @@ struct Box {
     // @overload
     // def f(self, x: Iterable[int32]) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f__Iterable_int32(T_x&& x);
+    int32_t f__Iterable_int32(T_x&& x) const;
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f(T_x&& x);
+    int32_t f(T_x&& x) const;
 
     // @overload
     // def f(self, x: Iterable[int32], y: int32) -> int32: ...
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f__Iterable_int32__int32(T_x&& x, int32_t y);
+    int32_t f__Iterable_int32__int32(T_x&& x, int32_t y) const;
     template<::tpystd::typing::Iterable<int32_t> T_x>
-    int32_t f(T_x&& x, int32_t y);
+    int32_t f(T_x&& x, int32_t y) const;
     static constexpr std::string_view __tpy_class_name__ = "cyc_a.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
     return os;
-}
-
-// return sum(x.payload + v for v in self.items)
-template <typename F_x>
-struct __genexpr___iter___1_frame : public ::tpy::next_iter_mixin<__genexpr___iter___1_frame<F_x>, int32_t> {
-    ::tpy::frame_state __state;
-    const std::vector<int32_t>& __src;
-    F_x x;
-    int32_t v;
-    using __for_src_0_t = decltype((__src));
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_JOIN_0 = 2,
-        S_DONE = 3,
-    };
-
-    __genexpr___iter___1_frame(const std::vector<int32_t>& __src, F_x&& x_)
-        : __state(S_INITIAL),
-          __src(__src),
-          x(std::forward<F_x>(x_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__();
-    __genexpr___iter___1_frame& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr___iter___1_frame<F_x>&) {
-        return os << "<generator __genexpr___iter___1>";
-    }
-};
-// return sum(x.payload + v for v in self.items)  # -> S_RESUME_0
-template <typename F_x>
-std::expected<int32_t, ::tpy::StopIteration> __genexpr___iter___1_frame<F_x>::__next__() {
-    while (!((*__for_it_0) == (*__for_end_0))) {
-        v = *((*__for_it_0))++;
-        return (::tpy::add_check<int32_t>(x.payload, v));
-    }
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
-}
-
-
-// return sum(x.payload + v for v in self.items)
-template <typename F_x>
-__genexpr___iter___1_frame<F_x> __genexpr___iter___1(const std::vector<int32_t>& __src, F_x&& x) {
-    return __genexpr___iter___1_frame<F_x>(__src, std::forward<F_x>(x));
 }
 
 
@@ -510,7 +459,7 @@ inline int32_t Disp::g(T_x&& x) const {
 // @overload
 // def f(self, x: Iterable[int32]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f__Iterable_int32(T_x&& x) {
+inline int32_t Box::f__Iterable_int32(T_x&& x) const {
     int32_t y = 0;
     int32_t t = y;
     auto& __src_0 = x;
@@ -525,14 +474,14 @@ inline int32_t Box::f__Iterable_int32(T_x&& x) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f(T_x&& x) {
+inline int32_t Box::f(T_x&& x) const {
     return this->f__Iterable_int32(x);
 }
 
 // @overload
 // def f(self, x: Iterable[int32], y: int32) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f__Iterable_int32__int32(T_x&& x, int32_t y) {
+inline int32_t Box::f__Iterable_int32__int32(T_x&& x, int32_t y) const {
     int32_t t = y;
     auto& __src_0 = x;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -546,7 +495,7 @@ inline int32_t Box::f__Iterable_int32__int32(T_x&& x, int32_t y) {
 }
 
 template<::tpystd::typing::Iterable<int32_t> T_x>
-inline int32_t Box::f(T_x&& x, int32_t y) {
+inline int32_t Box::f(T_x&& x, int32_t y) const {
     return this->f__Iterable_int32__int32(x, y);
 }
 

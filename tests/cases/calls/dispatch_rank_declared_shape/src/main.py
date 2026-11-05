@@ -231,7 +231,8 @@ def h(a: Animal) -> float: ...
 @overload
 def h(a: Dog) -> int: ...
 def h(a: Animal | Dog) -> float | int:
-    if isinstance(a, Dog):
+    # the Animal stub's copy holds a non-@dynamic Animal: its test folds
+    if isinstance(a, Dog):  # tpyc: warning(/descendant type 'Dog' on 'Animal' folds to False/)
         a.hits += 10
         return 1
     a.hits += 1

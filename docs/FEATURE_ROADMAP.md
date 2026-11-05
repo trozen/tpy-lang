@@ -2683,13 +2683,15 @@ Key use cases: `__getitem__` with `int32 | slice` (different return types), cons
 variants (`ArrayList` from span vs iterable), `pop()` vs `pop(index)`.
 
 **Current state**: Done. Two decorators: **`typing.overload`** (bodyless stubs followed
-by one implementation; body is specialized per-stub via dead-branch elim) and
+by one implementation; each stub is a `@dispatch` variant whose body is a copy of the
+implementation, analyzed at the stub's types) and
 **`tpy.dispatch`** (each variant is its own implementation -- a body, `@native` or
 `@cpp_template` -- with no trailing impl). `@overload`
 supports arity-variant stubs: stubs may have fewer params than the impl when the
-omitted trailing params have defaults. Dead-branch elim handles isinstance if/elif/else,
-match/case on union subjects, `is None` on Optional params, and equality checks on
-literal-defaulted params. Exhaustiveness checking ensures stubs cover all union variants
+omitted trailing params have defaults (a local of the copy holding the default). The
+tests each copy's types decide -- isinstance, match/case on union subjects, `is None`,
+equality on a literal -- are decided by the one dead-arm rule every body follows
+(`sema/dead_arms.py`). Exhaustiveness checking ensures stubs cover all union variants
 (relaxed for params not present in every stub). Literal[...] dispatch, cross-module
 imports, and methods all work. `@overload` runs under stock CPython; `@dispatch`
 under CPython is a runtime dispatcher (the first variant applicable by arity +

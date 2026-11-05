@@ -1,0 +1,26 @@
+print True True
+print local False
+print False False
+print local False
+fstring 9 True 9 True
+str -1 -1
+generator ['r!'] ['r!']
+coroutine rb? rb?
+return rb rb rb r True True
+long a-mode-name-longer-than-22 x
+match 1 read write
+string 2 2
+wider 2x rb none
+generic rb False
+element False True
+pending mode w 10 True
+fallback x! r!
+no address 1
+disqualified lvl1 r! r!
+isinstance 3 2 bool other 3 2 3 1
+isinstance return 3 2 10 2
+isinstance not 3 2
+store 20 30
+dispatch literal float
+bind r a-mode-name-longer-than-22;x; ['a-mode-name-longer-than-22<']
+bind async a-mode-name-longer-than-22
