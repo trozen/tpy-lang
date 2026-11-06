@@ -1,0 +1,20 @@
+free 6
+method 3 3
+ctor 3 1
+gen [1, 2, 3]
+async 6
+guard 6 3
+union 6
+twice 12
+forward 6
+alias 6
+hooks True 3 3
+ints 6
+match 6 3
+finally 3 6
+loop_return 6
+break 6 0
+finally_break 3 3
+with 6
+tuple 33
+protocol 3

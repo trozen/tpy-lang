@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Iterable, NamedTuple
 
-from .holders import DelReach, Holder, IterHolder
+from .holders import DelReach, Holder, IterHolder, LoopCarry
 from .identity_map import IdentityMap, IdentitySet
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
@@ -77,9 +77,14 @@ class _Walk:
     # fields it reads (a field once per read): no read of the name but the
     # field reads themselves follows any of them.
     distinct_field_reads: IdentityMap = field(default_factory=IdentityMap)
-    # Name reads that may run more than once per evaluation of their
-    # statement (`_collect_reads_expr`'s `repeat_reads`): never a last use.
+    # Name reads that may run more than once on one binding of the name:
+    # per evaluation of their statement (`_collect_reads_expr`'s
+    # `repeat_reads`), or once per iteration of an enclosing loop the name
+    # is live around (`LoopCarry`). Never a last use.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
+    # The ids of the loops whose body the marking walk is inside, innermost
+    # last: the loops a `LoopCarry` in the live set can name.
+    carry_loops: tuple[int, ...] = ()
     ex: _Exits = _Exits()
     # Per try with a finally, the names a `return` leaving through it
     # returns: a deferred one materializes them only after the finally ran.
@@ -99,16 +104,26 @@ class _Walk:
 
 
 def _holders(live: set[Holder]) -> frozenset[Holder]:
-    """`live` without its `DelReach` entries: a stamp's readers ask about
-    reads and loans, which a pending `del` is neither."""
-    return frozenset(h for h in live if not isinstance(h, DelReach))
+    """`live` without its `DelReach` and `LoopCarry` entries: a stamp's
+    readers ask about reads and loans, which neither is."""
+    return frozenset(h for h in live
+                     if not isinstance(h, (DelReach, LoopCarry)))
 
 
 def _kill(name: str, live: set[Holder]) -> None:
-    """A binding of `name`: neither a read nor a `del` after it reaches
-    above it."""
+    """A binding of `name`: neither a read, a `del` nor a next iteration
+    after it reaches above it."""
     live.discard(name)
     live.discard(DelReach(name))
+    _kill_carry(name, live)
+
+
+def _kill_carry(name: str, live: set[Holder]) -> None:
+    """A binding of `name`: no read above it reaches a next iteration on the
+    same binding."""
+    carries = [h for h in live
+               if isinstance(h, LoopCarry) and h.name == name]
+    live.difference_update(carries)
 
 
 def _live_only(w: _Walk, ex: _Exits) -> _Walk:
@@ -532,6 +547,9 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
         # answers for `target_read_after`. Stamped before the kill below.
         if w.mark:
             stmt.live_names_after = _holders(live)
+        # The binding runs after the init's reads, so none of them reaches
+        # a next iteration on the binding it read.
+        _kill_carry(stmt.name, live)
         # Reads from the init expression
         if stmt.init:
             hidden = _hide_new_aliases([stmt.name], stmt.init, live, w)
@@ -545,6 +563,9 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
     elif isinstance(stmt, TpyTupleUnpack):
         if w.mark:
             stmt.live_names_after = _holders(live)
+        for name in stmt.targets:
+            if name is not None:
+                _kill_carry(name, live)
         hidden = _hide_new_aliases(stmt.targets, stmt.value, live, w)
         _process_reads(stmt.value, live, w)
         live |= hidden
@@ -563,6 +584,8 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
             exprs.append(stmt.target.index)
         elif isinstance(stmt.target, TpyFieldAccess):
             exprs.append(stmt.target.obj)
+        if isinstance(stmt.target, TpyName):
+            _kill_carry(stmt.target.name, live)
         _process_reads_multi(exprs, live, w)
         # Kill: if target is a plain name, it's redefined -- unless the
         # statement reads it too (see _kill_unless_read).
@@ -811,10 +834,17 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[Holder],
             live.discard(loop_iterator(stmt))
         _process_reads(_loop_head(stmt), live, w)
         return
+    # Every name live at the header comes back to it from the body's end
+    # and every `continue`: a read reaching one with no binding between may
+    # run again on the same binding.
+    loop_id = id(stmt)
+    carries = {LoopCarry(loop_id, h) for h in header if isinstance(h, str)}
     saved = w.ex
-    w.ex = _in_loop(w.ex, after, header)
+    saved_carry = w.carry_loops
+    w.ex = _in_loop(w.ex, after, header | carries)
+    w.carry_loops = saved_carry + (loop_id,)
     live.clear()
-    live |= header
+    live |= header | carries
     _analyze_stmts_backward(stmt.body, live, w)
     w.ex = saved
     # A for loop binds its variable at the header on every iteration, and
@@ -824,7 +854,16 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[Holder],
         _kill(stmt.var, live)
         live.discard(loop_iterator(stmt))
     live |= _loop_zero_trip_live(stmt, exit_live)
-    _process_reads(_loop_head(stmt), live, w)
+    # A `while` condition runs again after the body; a `for` head's source
+    # is read once, before the first iteration.
+    if isinstance(stmt, TpyForEach):
+        w.carry_loops = saved_carry
+        live -= carries
+        _process_reads(_loop_head(stmt), live, w)
+    else:
+        _process_reads(_loop_head(stmt), live, w)
+        w.carry_loops = saved_carry
+        live -= carries
 
 
 def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
@@ -1138,9 +1177,30 @@ def _through_finally(stmt: TpyTry, through: frozenset[Holder],
     finally, they go straight to the enclosing landings."""
     if not stmt.finally_body:
         return ex
-    loops = ex.loops[:-1] + ((_LoopTargets(through, through),)
-                             if ex.loops else ())
-    return _Exits(loops, through | returned, through)
+    # The finally's live-in is shared by every way through it, but a break,
+    # a return or an exception only reaches a next iteration if its own
+    # landing does -- unless the finally itself may continue. A `break` in
+    # the finally redirects any of them to the innermost loop's exit, which
+    # reaches the enclosing loops' next iterations but not its own.
+    if _has_loop_jump(stmt.finally_body, TpyContinue):
+        loops = ex.loops[:-1] + ((_LoopTargets(through, through),)
+                                 if ex.loops else ())
+        return _Exits(loops, through | returned, through)
+    plain = frozenset(h for h in through if not isinstance(h, LoopCarry))
+    if not ex.loops:
+        return _Exits((), plain | returned | _carries(ex.ret),
+                      plain | _carries(ex.exc))
+    exit_carries = _carries(ex.loops[-1].brk)
+    redirected = (exit_carries
+                  if _has_loop_jump(stmt.finally_body, TpyBreak)
+                  else frozenset())
+    loops = ex.loops[:-1] + (_LoopTargets(plain | exit_carries, through),)
+    return _Exits(loops, plain | returned | _carries(ex.ret) | redirected,
+                  plain | _carries(ex.exc) | redirected)
+
+
+def _carries(live: frozenset[Holder]) -> frozenset[Holder]:
+    return frozenset(h for h in live if isinstance(h, LoopCarry))
 
 
 def _analyze_try(stmt: TpyTry, live: set[Holder], w: _Walk) -> None:
@@ -1219,6 +1279,7 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
     statements above see.
     """
     live.discard(DelReach(name))
+    _kill_carry(name, live)
     if any(n.name == name
            for expr in read_exprs
            for n in _collect_reads_expr(expr)):
@@ -1249,6 +1310,11 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
     repeated = IdentitySet()
     for expr in exprs:
         reads.extend(_collect_reads_expr(expr, walrus_defs, repeated))
+    if w.carry_loops:
+        for node in reads:
+            if any(LoopCarry(loop, node.name) in live
+                   for loop in w.carry_loops):
+                repeated.add(node)
     w.repeated_reads |= repeated
     if not reads and not walrus_defs:
         return
@@ -1284,6 +1350,7 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
     # runs before analysis, so it cannot tell whether a walrus surely runs.
     for name in walrus_defs:
         live.discard(name)
+        _kill_carry(name, live)
 
 
 def _read_names(reads: list[TpyName]) -> set[str]:

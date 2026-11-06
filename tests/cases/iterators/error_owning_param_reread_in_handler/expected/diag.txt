@@ -1,0 +1,1 @@
+main.py:26: error: Cannot use 'it' after it was consumed: an owning iterable (Iterable[Own[R]]) is traversed once; copy it first: `xs = list(it)`

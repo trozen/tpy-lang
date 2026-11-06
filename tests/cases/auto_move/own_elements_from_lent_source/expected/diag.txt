@@ -1,26 +1,27 @@
-main.py:110: warning: copies list[int32] into owned storage (argument 'object' tuple element 1); use copy() to make this explicit ('xs' is bound to existing storage at line 106)
-main.py:276: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:281: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:282: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:283: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:284: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:49: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:114: warning: copies list[int32] into owned storage (argument 'object' tuple element 1); use copy() to make this explicit ('xs' is bound to existing storage at line 110)
+main.py:280: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:285: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:286: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:287: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:290: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:288: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:289: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:291: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:293: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:295: warning: copies list[int32] | str elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:296: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:297: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:298: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:301: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:302: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:304: warning: copies list[int32] | None elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:305: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:335: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:346: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:294: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:295: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:297: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:299: warning: copies list[int32] | str elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:300: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:301: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:302: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:305: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:306: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:308: warning: copies list[int32] | None elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:309: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:339: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:350: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:355: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:370: warning: copies tuple[str, list[int32]] elements; use copy_iter() to make this explicit
-main.py:373: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:377: warning: copies Key elements; use copy_iter() to make this explicit
+main.py:354: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:359: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:374: warning: copies tuple[str, list[int32]] elements; use copy_iter() to make this explicit
+main.py:377: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:381: warning: copies Key elements; use copy_iter() to make this explicit

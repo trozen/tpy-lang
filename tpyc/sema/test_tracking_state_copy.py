@@ -35,6 +35,7 @@ from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
 from .source_records import LeafPermission, SinkRead
 from .context import (BindingProvenance, BorrowKind, BorrowTracker,
+                      ConsumeCause,
                       CompTarget, FunctionTrackingState, LoanInfo,
                       NestedMutationMark, NonOwningNotes, OwnIterMove,
                       PendingCopy, PendingLocal, SemanticContext, SitedKey,
@@ -106,6 +107,7 @@ def _populated() -> FunctionTrackingState:
         pending_yield_root_checks=[(expr, INT32, loc)],
         pending_view_storage_checks=[(expr, INT32, loc, INT32, False)],
         unread_coro_locals={'c': stmt},
+        consume_causes={'it': (ConsumeCause.TRAVERSAL, N.TpyName("it"))},
         var_decl_by_name={'x': N.TpyVarDecl("x", None, None)},
         first_bindings={'w': (N.TpyVarDecl("w", None, None),)},
         literal_locals=LiteralLocals(single_stores={'s': N.TpyName("v")}),
@@ -179,7 +181,7 @@ _FIXTURE_FIELDS = {
     'nested_def_escapes', 'closure_captured_defs',
     'pending_yield_root_checks',
     'pending_view_storage_checks',
-    'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
+    'unread_coro_locals', 'consume_causes', 'var_decl_by_name', 'first_bindings',
     'literal_locals',
     'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',

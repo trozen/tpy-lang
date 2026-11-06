@@ -52,6 +52,7 @@ from ..typesys import (
     is_dyn_protocol, contains_pending_leaf, TypeParamRef,
     is_indirection_type, record_owner, is_protocol_type, contains_type_param,
 )
+from ..modules.type_resolution import is_owning_iterable
 from ..compilation_context import get_current_compiler
 from ..namespace import BindingKind, Blocked, NameBinding, Namespace
 from ..symbol_binding import (SymbolBinding, SymbolKind, lookup_imported,
@@ -1779,6 +1780,16 @@ class OwnSlot(NamedTuple):
     index: int | None = None
 
 
+class ConsumeCause(Enum):
+    """Why sema consumed a name: what a later read's diagnostic names."""
+    CONSUMING_METHOD = auto()
+    AWAIT = auto()
+    CORO_BIND = auto()
+    # The first read of an owning iterable (`is_owning_iterable`): a
+    # traversal, a hand-over to an iterating slot, or an alias binding.
+    TRAVERSAL = auto()
+
+
 class ParkedFunctionState(NamedTuple):
     """A body's function state kept for a check that runs after the body
     (`SemanticContext.reenter`): a generator's yield rooting checks, a
@@ -1905,6 +1916,8 @@ class LoopClauseEdges:
     breaks: list[frozenset[str]] = field(default_factory=list)
     continues: list[frozenset[str]] = field(default_factory=list)
     body_assigned: frozenset[str] = frozenset()
+    # The names traversed by each `break`, in `breaks`' order.
+    break_consumed: list[frozenset[str]] = field(default_factory=list)
 
 
 @dataclass
@@ -2414,6 +2427,16 @@ class FunctionTrackingState:
 
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
+    # The last consumption of each name: its cause and the read that made it.
+    consume_causes: dict[str, tuple[ConsumeCause, TpyName]] = field(
+        default_factory=dict)
+    # Every traversal consumption in body order: a region's slice is what a
+    # point control reaches from anywhere in the region may find consumed.
+    consume_log: list[str] = field(default_factory=list)
+    # For a nested def's body, the enclosing names it reads
+    # (`liveness.nested_def_free_names`): the closure may run any number of
+    # times, so each read of one may repeat.
+    nested_free_names: frozenset[str] = frozenset()
 
     # Owned-erased coroutine locals bound in this body and not read since
     # (any read clears the entry -- every legal read is a consumption or a
@@ -3182,8 +3205,10 @@ class SemanticContext:
     # copies instead; a reference slot copies where an alias still refers
     # into the object (`move_before_alias_reads`).
     same_stmt_alias_reads: IdentityMap = field(default_factory=IdentityMap)
-    # Name reads that run more than once per evaluation of their statement
-    # (a comprehension's per-item part, a lambda body): never a last use.
+    # Name reads that may run more than once on one binding of the name (a
+    # comprehension's per-item part, a lambda body, a loop body or `while`
+    # condition the name is live around; `liveness._Walk.repeated_reads`):
+    # never a last use, and never a consuming read.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
     # Name reads a statement reads more than once, each as the object of a
     # field read, not live after it
@@ -5716,6 +5741,101 @@ class SemanticContext:
         for name in storage.proven().names:
             self.mark_param_returned(StorageKey.of_name(name), storage=True)
 
+    def read_may_repeat(self, read: 'TpyName') -> bool:
+        """`read` may run more than once on one binding of its name: a loop
+        body or `while` condition the name is live around, a comprehension's
+        per-item part, a lambda body (`liveness` `repeated_reads`), or a
+        nested def's body reading an enclosing name."""
+        return (read in self.repeated_reads
+                or read.name in self.func.nested_free_names)
+
+    def consume_name(self, read: 'TpyName', cause: ConsumeCause,
+                     node: 'TpyExpr | TpyStmt') -> None:
+        """`read` consumes its binding, so a later read of it is an error
+        (`check_read_not_consumed`). A traversal that may run again on the
+        same binding is an error (`read_may_repeat`); a consuming method
+        call or an await inside a loop body, of a name bound outside it, is
+        one by the scope-depth loop guard."""
+        name = read.name
+        if cause is ConsumeCause.TRAVERSAL:
+            if self.read_may_repeat(read):
+                in_loop = self.func.loop_depth > 0
+                where = ("inside a loop" if in_loop
+                         else "where it may run more than once")
+                raise self.error(
+                    f"Cannot traverse '{name}' {where}: "
+                    f"{self._owning_iterable_note(read)}", node)
+            self.func.consume_log.append(name)
+        elif (cause is not ConsumeCause.CORO_BIND
+              and self.func.loop_depth > 0
+              and self.func.var_scope_depth.get(name, 0)
+              < self.func.current_scope.depth):
+            if cause is ConsumeCause.AWAIT:
+                raise self.error(
+                    f"Cannot await coroutine '{name}' inside a "
+                    f"loop; the handle is single-use and is not re-bound "
+                    f"each iteration", node)
+            raise self.error(
+                f"Cannot consume '{name}' inside a loop; "
+                f"the variable is not re-bound each iteration", node)
+        self.func.consumed_vars.add(name)
+        self.func.consume_causes[name] = (cause, read)
+
+    def _owning_iterable_note(self, read: 'TpyName') -> str:
+        t = self.get_expr_type(read)
+        shown = unwrap_ref_type(t) if t is not None else "Iterable[Own[T]]"
+        return (f"an owning iterable ({shown}) is traversed once; copy it "
+                f"first: `xs = list({read.name})`")
+
+    def consume_traversal(self, expr: 'TpyExpr',
+                          node: 'TpyExpr | TpyStmt') -> None:
+        """`expr` lands in a slot that traverses it or binds it to another
+        name: a name of an owning iterable is consumed there
+        (`is_owning_iterable`), once, at the committed analysis."""
+        read = peel_coerce(expr)
+        if not isinstance(read, TpyName):
+            return
+        if self.trial_depth or not self.slot_step_commits():
+            return
+        if read in self.comp_var_reads:
+            return
+        t = self.get_expr_type(read)
+        if t is None or not is_owning_iterable(t, self.registry):
+            return
+        self.consume_name(read, ConsumeCause.TRAVERSAL, node)
+
+    def check_read_not_consumed(self, expr: 'TpyName') -> None:
+        """A read of a consumed name is an error, naming what consumed it."""
+        name = expr.name
+        if name not in self.func.consumed_vars:
+            return
+        cause, by = self.func.consume_causes[name]
+        # A re-analysis of the consuming read itself.
+        if by is expr:
+            return
+        if cause is ConsumeCause.TRAVERSAL:
+            raise self.error(
+                f"Cannot use '{name}' after it was consumed: "
+                f"{self._owning_iterable_note(by)}", expr)
+        raise self.error(
+            f"Cannot use '{name}' after it was consumed by a consuming method call",
+            expr,
+        )
+
+    def consumed_since(self, mark: int, end: 'int | None' = None
+                       ) -> frozenset[str]:
+        """The names traversed anywhere between `consume_log` holding
+        `mark` and `end` (now) entries: what a point control may reach from
+        anywhere in that region finds consumed."""
+        return frozenset(self.func.consume_log[mark:end])
+
+    def traversed_now(self) -> frozenset[str]:
+        """The consumed names a traversal consumed."""
+        return frozenset(
+            n for n in self.func.consumed_vars
+            if self.func.consume_causes.get(n, (None,))[0]
+            is ConsumeCause.TRAVERSAL)
+
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
         self.assert_slot_effect("an Own parameter's consumption")
@@ -5970,3 +6090,4 @@ class SemanticContext:
         info = self.container_literals[literal_id]
         info.variable_name = var_name
         info.decl_line = decl_line
+

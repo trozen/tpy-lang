@@ -23,15 +23,15 @@ main::shadow_for@140:0: uncovered (missing or invalid native iteration facts), s
 main::owned_arg@148:0: uncovered (unsupported parameter type)
 main::fresh@152:0: covered (storage: no_proof_required), summary: known
 main::loop_owned_arg@157:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::in_loop@166:0: uncovered (unsupported parameter type)
-main::shadowing@174:0: uncovered (unsupported parameter type)
-main::lambda_capture@179:0: uncovered (unsupported parameter type)
-main::gen@196:0: uncovered (unsupported hoisted value)
-main::coro@203:0: uncovered (async body)
-main::main@210:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::in_loop@167:0: uncovered (unsupported parameter type)
+main::shadowing@176:0: uncovered (unsupported parameter type)
+main::lambda_capture@181:0: uncovered (unsupported parameter type)
+main::gen@198:0: uncovered (unsupported hoisted value)
+main::coro@205:0: uncovered (async body)
+main::main@212:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Box.finish@14:4: uncovered (missing receiver fact)
 main::Cell.finish@27:4: uncovered (missing receiver fact)
-main::Holder.collect@190:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Holder.collect@192:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@24:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@187:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@189:4: covered (storage: no_proof_required), summary: known

@@ -137,6 +137,7 @@ from ...type_def_registry import (
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list, ptr_text_pointee
+from ...modules.type_resolution import is_owning_iterable
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...sema.dyn_erasure import (DynSlotEntry, classify_dyn_own_arg,
@@ -6029,12 +6030,8 @@ def _copy_iter_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
     `_protocol_bare_name_arg`'s ordinary bare row instead (a CopyIter
     binding can never take the own_iter last-use rewrite -- only movable
     container bindings do)."""
-    pu = (unwrap_readonly(unwrap_send_sync(ptype))
-          if isinstance(ptype, TpyType) else None)
-    if not (pu is not None and not isinstance(pu, OwnType)
-            and is_protocol_type(pu)
-            and any(isinstance(t, OwnType)
-                    for t in getattr(pu, "type_args", ()))):
+    if not (isinstance(ptype, TpyType)
+            and is_owning_iterable(ptype, analyzer.registry)):
         return False
     if not isinstance(a, (TpyCall, TpyMethodCall)):
         return False

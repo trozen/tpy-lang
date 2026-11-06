@@ -557,24 +557,28 @@ std::vector<std::vector<int32_t>> collect(T_source&& source) {
 }
 // def via_closure(source: Iterable[Own[list[int32]]]) -> int32:
 //     out: list[list[int32]] = []
+//     # A closure may run more than once, and an owning iterable is traversed
+//     # once: the nested def loops over a copy.
+//     xs = list(source)
 //
 //     def inner() -> None:
-//         for x in source:
-//             out.append(x)  # closure: the loop runs inside a nested def
+//         for x in xs:  # closure: the loop runs inside a nested def
+//             # `x` refers to the copy's element, so storing it copies, warned.
+//             out.append(x)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 //
 //     inner()
 //     return len(out[0])
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t via_closure(T_source&& source) {
     std::vector<std::vector<int32_t>> out = std::vector<std::vector<int32_t>>{};
-    auto inner = [&out, &source]() {
-        auto& __src_0 = source;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            auto&& x = ::tpy::own_bind(*__r_1);
-            out.push_back(std::move(x));
+    std::vector<std::vector<int32_t>> xs = ::tpy::construct<std::vector<std::vector<int32_t>>>(source);
+    auto inner = [&out, &xs]() {
+        auto& __obj_0 = xs;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& x = *__beg_0;
+            out.push_back(x);
         }
     };
     inner();

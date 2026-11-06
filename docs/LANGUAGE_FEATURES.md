@@ -2755,6 +2755,35 @@ holds for an iterable whose elements a callable argument takes as `Own[X]`:
 `copies list[int32] elements` for a live `rows`, moves a dead one, and copies
 what a dict view or a generator lends.
 
+**An owning iterable is traversed once.** A name of an owning iterable type
+(`Iterable[Own[T]]`, the parameter above) is consumed by its first
+traversal: a `for` or comprehension clause over it, an `in` test, an
+argument at an iterating parameter (`list(it)`, `out.extend(it)`,
+`out += it`, forwarding to another owning parameter -- consumed even when
+that callee ignores it) or a binding to another name (`b = it`, whose one
+traversal it then carries). Any later read is an error, *Cannot use 'it'
+after it was consumed: an owning iterable (Iterable[Own[T]]) is traversed
+once; copy it first: `xs = list(it)`* -- `xs = list(it)` is the spelling
+for a body that needs more than one pass. A traversal that may run more
+than once is the same error (*Cannot traverse 'it' inside a loop: ...*):
+one in a loop body (even a loop that runs once by construction), in a
+`while` condition, in a comprehension's element, filter or later clause, in
+a lambda or a nested def (even one called once). The rule holds per path:
+a guard clause (`if fast: return total(list(it))` then `for x in it`),
+the arms of an `if` / `match`, and a union parameter read at its union
+type (`isinstance(items, Spannable)` does not traverse; only the narrowed
+`Iterable[Own[T]]` arm's loop does) each read the name once. An exception
+may leave a `try` body after its traversal, so a handler or a `finally`
+traversing the name again is the same error, and so is a traversal after a
+suppressing `with` whose body traversed it, or after a loop one of whose
+`break`s follows a traversal. A `return` through a `finally` or a `break`
+leaves the loop, so a traversal before it is no repeat. The rule is the signature's:
+it holds for value-type elements too (`Iterable[Own[int32]]`), and not at
+a `@native` / `@cpp_template` binding, which has no body. Consuming method
+calls, `await` and coroutine binds keep their own rule ("Consuming Methods";
+BUGS.md#consume-reuse-holes) until one use-after-consume rule covers all of
+them (TODO.md "One use-after-consume rule in MIR").
+
 **A user iterator lends at an owning element slot.** A user class's
 `__iter__` (own or inherited), a self-iterator's `__next__` and a generator
 whose declared step is a reference not spelled `Own[...]` (and names no type

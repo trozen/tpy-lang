@@ -1,0 +1,1 @@
+main.py:21: error: Cannot consume 'b' inside a loop; the variable is not re-bound each iteration

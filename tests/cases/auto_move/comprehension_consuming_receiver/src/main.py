@@ -162,10 +162,12 @@ def loop_owned_arg() -> None:
         print("loop_owned_arg", len(b.xs), heads(rs), lens(rs))
 
 
-# a nested comprehension in the element, inside a `for` statement
+# a nested comprehension in the element, inside a `for` statement (over a
+# copy: an owning iterable is traversed once, and a loop body may run again)
 def in_loop(src: Iterable[Own[Box]]) -> None:
+    boxes = list(src)
     for i in range(1):
-        rows = [[b.finish() for _ in range(2)] for b in src]  # tpyc: warning(/copies Box into owned storage/)
+        rows = [[b.finish() for _ in range(2)] for b in boxes]  # tpyc: warning(/copies Box into owned storage/)
         row = rows[0]
         print("in_loop", i, row[0].xs[0], row[1].xs[0])
 

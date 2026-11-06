@@ -18,6 +18,7 @@ from enum import Enum, auto
 from typing import Any, Callable, Iterator, NamedTuple, Protocol
 
 from .typesys import element_access, pointer_repr_optional, pointer_variant_union
+from .modules.type_resolution import is_owning_iterable
 from .typesys import (
     AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
     TypeParamRef, OwnType, UnionType,
@@ -1769,7 +1770,7 @@ def _twin_in_place(proto: NominalType, arg: TpyExpr, t: TpyType,
     a TPy body's twin does). Not at a protocol whose elements the callee
     takes over
     (`Iterable[Own[T]]`): its consuming rows hand them over."""
-    if any(isinstance(a, OwnType) for a in proto.type_args):
+    if is_owning_iterable(proto, analyzer.registry):
         return False
     return (_reference_object(t, records=True)
             and not is_rvalue_source(analyzer, arg))

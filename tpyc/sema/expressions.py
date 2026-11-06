@@ -83,9 +83,9 @@ from ..prescan import (
     walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source
+from .context import AnalysisRecord, ConsumeCause, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source
 from .arg_binding import peel_coercions, source_view
-from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
+from ..value_category import (frame_factory_callee, peel_coerce, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands, origin_shared)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
@@ -2214,13 +2214,9 @@ class ExpressionAnalyzer:
         read = self.ctx.name_read(expr.name)
         if read.comp is not None:
             self.ctx.comp_var_reads[expr] = read.comp
-        # Use-after-consume: variable was consumed by a consuming method call.
         # A comprehension variable is not the consumed enclosing binding.
-        elif expr.name in self.ctx.func.consumed_vars:
-            raise self.ctx.error(
-                f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
-                expr,
-            )
+        else:
+            self.ctx.check_read_not_consumed(expr)
         # Any read of a bound coroutine counts as (potential) consumption
         # for the never-consumed warning.
         self.ctx.func.unread_coro_locals.pop(expr.name, None)
@@ -3391,6 +3387,7 @@ class ExpressionAnalyzer:
                 # TPy code.
                 if record_iteration_pull(self.ctx, expr.right, right_type):
                     self.narrowing.invalidate_for_code_run()
+                self.ctx.consume_traversal(expr.right, expr)
                 return BOOL
             raise self.ctx.error(f"Cannot use '{op_spelling(expr.op)}' with non-iterable type {right_type}", expr)
 
@@ -3585,6 +3582,10 @@ class ExpressionAnalyzer:
                 self.calls.param_label(method.root, param.name),
                 operand, None)
         if not answers_as_call(result.receiver_type):
+            # A builtin's iterating parameter (`xs += it`) traverses the
+            # operand as the explicit call's argument does.
+            self.calls.consume_at_iterating_slot(operand, param.type,
+                                                 operand)
             return None
         args = [operand]
         self.calls.receive_winner_args(
@@ -4820,20 +4821,9 @@ class ExpressionAnalyzer:
             expr)
 
     def _check_coro_await_consume(self, operand: TpyName, expr: TpyAwait) -> None:
-        """Awaiting a bound coroutine consumes it. Mirrors the
-        consuming-method loop guard: consumption inside a loop of a
-        handle bound outside it would re-poll a finished coroutine on
-        the next iteration."""
-        if self.ctx.func.loop_depth > 0:
-            var_depth = self.ctx.func.var_scope_depth.get(operand.name, 0)
-            if var_depth < self.ctx.func.current_scope.depth:
-                raise self.ctx.error(
-                    f"Cannot await coroutine '{operand.name}' inside a "
-                    f"loop; the handle is single-use and is not re-bound "
-                    f"each iteration",
-                    expr,
-                )
-        self.ctx.func.consumed_vars.add(operand.name)
+        """Awaiting a bound coroutine consumes it: an await that may run
+        again would re-poll a finished coroutine."""
+        self.ctx.consume_name(operand, ConsumeCause.AWAIT, expr)
         # Awaiting an Own[Cancellable[T]] PARAM is consumption -- without
         # this the never-consumed-Own-param warning false-positives.
         self.ctx.mark_own_param_consumed(operand.name)
@@ -6395,6 +6385,7 @@ class ExpressionAnalyzer:
         slot its element meets, so never at an overload probe's."""
         with self.ctx.probe_slot_scope(False):
             iterable_type = self.analyze_expr(gen.iterable)
+        self.ctx.consume_traversal(gen.iterable, gen.iterable)
         inner = unwrap_readonly(iterable_type)
         # The implicit `__iter__()` call, as the for statement records it;
         # before the comp scope, where a target named like the source's root

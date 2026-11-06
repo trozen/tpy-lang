@@ -2698,12 +2698,12 @@ def copied_head(a: list[tuple[int, str]]) -> None:
     for x, s in a:
         a[0] = (50, "changed")
         print(x, s)
-def via_closure(source: Iterable[Own[list[int]]]) -> int:
+def via_closure(rows: Own[list[list[int]]]) -> int:
     out: list[list[int]] = []
-    def inner() -> None:
+    def inner(source: Iterable[Own[list[int]]]) -> None:
         for x in source:
             out.append(x)
-    inner()
+    inner(rows)
     return len(out[0])
 def nested_unpack() -> str:
     def inner() -> str:

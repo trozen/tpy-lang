@@ -74,6 +74,17 @@ class DelReach(NamedTuple):
     name: str
 
 
+class LoopCarry(NamedTuple):
+    """In a liveness live set: `name`, live at the header of the loop
+    statement whose `id` is `loop`, reaches that loop's next iteration from
+    here with no binding of it in between -- a read of `name` here may run
+    again on the same binding. Not a read; killed by a binding of the name.
+    Only lives while the walk is inside that loop (the node outlives it), and
+    is never stamped or held by the borrow tracker."""
+    loop: int
+    name: str
+
+
 class External(Enum):
     """A holder outside the function, which keeps what it holds for as long
     as it likes: nothing in the body ends its loans -- no loop exit, no
@@ -84,4 +95,4 @@ class External(Enum):
 
 
 # Who holds a loan in the borrow tracker, and what a live set holds.
-Holder = str | IterHolder | External | DelReach
+Holder = str | IterHolder | External | DelReach | LoopCarry

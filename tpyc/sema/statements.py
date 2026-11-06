@@ -99,7 +99,7 @@ from .call_lends import (
     path_holds_root,
 )
 from .context import (
-    BindingSource, CallOperands, OwnSlot, binding_source, literal_element_source, reads_readonly, PendingLocal,
+    BindingSource, CallOperands, ConsumeCause, OwnSlot, binding_source, literal_element_source, reads_readonly, PendingLocal,
     LoopClauseEdges,
     record_borrow_binding, record_stmt_borrow_binding,
     holds_generator_object, holds_frame_object, note_owned_local,
@@ -351,6 +351,9 @@ def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
             and an.compat.settles_body_local(name, module=True)):
         an.compat.register_sink(value, unwrap_ref_type(var_type),
                                 TupleSink.LOCAL, per_leaf=True, binds=node)
+    # An alias of an owning iterable carries its one traversal.
+    if not source.path:
+        ctx.consume_traversal(value, node)
     # Reassignment revives a consumed variable.
     ctx.func.consumed_vars.discard(name)
     update_ephemeral_alias_fact(ctx, name, var_type,
@@ -967,6 +970,7 @@ class StatementAnalyzer:
         finally:
             closed = self.ctx.func.loop_clause_edges.pop()
             edges.breaks = closed.breaks
+            edges.break_consumed = closed.break_consumed
             edges.continues = closed.continues
             edges.body_assigned = closed.body_assigned
 
@@ -1062,7 +1066,8 @@ class StatementAnalyzer:
             # left from any point of its cycle, where only the loop-entry
             # facts hold -- not what the head proves on its FALSE path nor
             # what the `else` clause establishes.
-            self.init.join_entry_from_any_point(pre_loop, cycle)
+            self.init.join_entry_from_any_point(
+                pre_loop, cycle, frozenset().union(*edges.break_consumed))
             on_every_break = frozenset.intersection(*edges.breaks)
             f = self.ctx.func
             if f.init_terminated:
@@ -3033,6 +3038,7 @@ class StatementAnalyzer:
                         iterable_type = self.expr.analyze_expr(stmt.iterable)
                 finally:
                     self.ctx.for_head_bodies.pop()
+                self.ctx.consume_traversal(stmt.iterable, stmt)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
                 inner_iterable_type = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
                 # Resolve TypeParamRef to its bound for element type extraction
@@ -3239,13 +3245,14 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyBreak):
             if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
-            # Only the assignment lattice crosses the break edge, and it
-            # crosses as a plain set: the other flow families merge with
-            # UNION (a consumed `Own` param, a borrow), so carrying them
-            # here would start rejecting valid code after any loop that
-            # can break.
-            self.ctx.func.loop_clause_edges[-1].breaks.append(
-                self._assigned_here())
+            # The assignment lattice crosses the break edge as a plain set,
+            # and so do the names traversed by then; the other flow families
+            # merge with UNION (a consumed `Own` param, a borrow), so
+            # carrying them here would start rejecting valid code after any
+            # loop that can break.
+            edges = self.ctx.func.loop_clause_edges[-1]
+            edges.breaks.append(self._assigned_here())
+            edges.break_consumed.append(self.ctx.traversed_now())
             self.init.mark_terminated()
         elif isinstance(stmt, TpyContinue):
             if self.ctx.func.loop_depth == 0:
@@ -3748,7 +3755,8 @@ class StatementAnalyzer:
                     self.ctx.finally_return_candidates.discard(leaf)
 
     def _analyze_finally_body(self, stmt: TpyTry, before: FlowFacts,
-                              try_kills: FactKills | None = None) -> None:
+                              try_kills: FactKills | None = None, *,
+                              consume_mark: int) -> None:
         """Analyze a finally body under all-paths entry facts.
 
         The finally runs on the normal path AND on any mid-try (or
@@ -3778,7 +3786,10 @@ class StatementAnalyzer:
         normal_narrowed = dict(self.ctx.func.narrowed_types)
         normal_non_null = set(self.ctx.func.non_null_ptr_vars)
         normal_ranges = dict(self.ctx.func.value_ranges)
-        self.init.join_entry_from_any_point(before, entry_kills)
+        normal_consumed = frozenset(self.ctx.func.consumed_vars)
+        joined = self.ctx.consumed_since(consume_mark)
+        self.init.join_entry_from_any_point(before, entry_kills, joined)
+        finally_mark = len(self.ctx.func.consume_log)
         prev_in_finally = self.ctx.func.in_finally
         self.ctx.func.in_finally = True
         self.ctx.func.pending_return_borrows.append(
@@ -3800,14 +3811,20 @@ class StatementAnalyzer:
         self.ctx.func.narrowed_types.update(after_narrowed)
         self.ctx.func.non_null_ptr_vars |= after_non_null
         self.ctx.func.value_ranges.update(after_ranges)
+        # Past the statement the exception paths' consumptions do not hold
+        # (control only gets there normally), the finally's own do.
+        exc_only = joined - normal_consumed
+        self.ctx.func.consumed_vars -= (
+            exc_only - self.ctx.consumed_since(finally_mark))
 
     def _analyze_try_finally_only(self, stmt: TpyTry) -> None:
         """Analyze try/finally with no except handlers."""
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
         before = self.init.save()
+        consume_mark = len(self.ctx.func.consume_log)
         self.analyze_block(stmt.try_body)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
-        self._analyze_finally_body(stmt, before)
+        self._analyze_finally_body(stmt, before, consume_mark=consume_mark)
         # Hoist try-body variables so they're accessible in the finally body,
         # and finally-body first bindings so the duplicated finally emissions
         # (catch path / normal path / return sites) all assign one function-
@@ -3876,7 +3893,9 @@ class StatementAnalyzer:
             self.ctx.func.try_except_error_type = self._exception_qname(
                 handler.exception_type, handler_record)
 
+        consume_mark = len(self.ctx.func.consume_log)
         self.analyze_block(stmt.try_body)
+        consume_body_end = len(self.ctx.func.consume_log)
 
         # The last analysis of this body wins. `trial_scope` rolls back the
         # context but not AST mutations, so accumulating would let a
@@ -3899,6 +3918,8 @@ class StatementAnalyzer:
         try_kills = self.ctx.fact_kills(stmt.try_body)
         self.init.apply_fact_kills(try_kills)
         self.ctx.func.current_consumed_own_params = consumed_before.copy()
+        self.init.join_consumed(
+            self.ctx.consumed_since(consume_mark, consume_body_end))
 
         # Register except binding -- use find_record_by_qname because
         # handler.exception_type may be module-qualified (e.g. from macros).
@@ -3945,7 +3966,8 @@ class StatementAnalyzer:
             consumed_after_then, consumed_after_else)
 
         # Analyze finally body (runs on all paths, doesn't affect branch merging)
-        self._analyze_finally_body(stmt, before, try_kills)
+        self._analyze_finally_body(stmt, before, try_kills,
+                                   consume_mark=consume_mark)
         self._merge_arm_readonly([try_bindings,
                                   dict(self.ctx.func.current_scope.bindings)])
 
@@ -3973,6 +3995,7 @@ class StatementAnalyzer:
         consumed_before = self.ctx.func.current_consumed_own_params.copy()
         bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
+        consume_mark = len(self.ctx.func.consume_log)
 
         # Validate all handlers and save resolved records for binding.
         # Qualify before lookup so dotted forms (`re.error`) bypass any local
@@ -3996,6 +4019,7 @@ class StatementAnalyzer:
 
         # Analyze try body
         self.analyze_block(stmt.try_body)
+        consume_body_end = len(self.ctx.func.consume_log)
         # Capture try-body bindings BEFORE else (else vars are scoped to the
         # if(__ok) block in C++ and must not leak into post-try scope)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
@@ -4018,6 +4042,8 @@ class StatementAnalyzer:
                 bindings_before, ns_types_before, before))
             self.init.apply_fact_kills(try_kills)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
+            self.init.join_consumed(
+                self.ctx.consumed_since(consume_mark, consume_body_end))
 
             record = handler_records[i]
             prev_ns_binding = None
@@ -4088,7 +4114,8 @@ class StatementAnalyzer:
         # function-scope slot, which also keeps them visible after the try,
         # per Python scoping.
         pre_finally_names = set(self.ctx.func.current_scope.bindings.keys())
-        self._analyze_finally_body(stmt, before, try_kills)
+        self._analyze_finally_body(stmt, before, try_kills,
+                                   consume_mark=consume_mark)
         finally_new = {
             name: t for name, t in self.ctx.func.current_scope.bindings.items()
             if name not in pre_finally_names and name not in scope_before}
@@ -4359,6 +4386,7 @@ class StatementAnalyzer:
         # A suppressing `__exit__` resumes after the statement from any
         # point its manager covers: from the first item's `__enter__` on.
         before: FlowFacts | None = None
+        consume_mark = 0
         pushed: list[tuple[str, Scope, object]] = []
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
@@ -4603,6 +4631,7 @@ class StatementAnalyzer:
                 self.narrowing.invalidate_suspension_facts()
             if before is None:
                 before = self.init.save()
+                consume_mark = len(self.ctx.func.consume_log)
 
         # Analyze the body -- track new variable declarations so codegen
         # can pre-declare them outside the guard {} scope (C++ scoping).
@@ -4620,7 +4649,8 @@ class StatementAnalyzer:
                 extra_exprs=[item.context_expr for item in stmt.items[1:]])
             kills.names.update(item.target for item in stmt.items[1:]
                                if item.target is not None)
-            self.init.join_entry_from_any_point(before, kills)
+            self.init.join_entry_from_any_point(
+                before, kills, self.ctx.consumed_since(consume_mark))
         for item in reversed(stmt.items):
             if item.exit_call is not None:
                 self.narrowing.invalidate_for_code_run(item.exit_call)
@@ -4762,11 +4792,13 @@ class StatementAnalyzer:
         self._warn_scalar_type_shadows(None if module_init else func,
                                        param_names, scan)
         self.ctx.func.closure_pinned = closure_pinned_names(func.body)
+        self.ctx.func.nested_free_names = (
+            nested_def_free_names(func) if func.is_nested_def
+            else frozenset())
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan),
             pinned=self.ctx.func.closure_pinned,
-            captured=(nested_def_free_names(func) if func.is_nested_def
-                      else frozenset()),
+            captured=self.ctx.func.nested_free_names,
             same_stmt_alias_reads=self.ctx.same_stmt_alias_reads,
             repeated_reads=self.ctx.repeated_reads,
             distinct_field_reads=self.ctx.distinct_field_reads)
@@ -7004,7 +7036,8 @@ class StatementAnalyzer:
                             f"single-use); '{stmt.init.name}' is used again "
                             f"later",
                             stmt)
-                    self.ctx.func.consumed_vars.add(stmt.init.name)
+                    self.ctx.consume_name(stmt.init, ConsumeCause.CORO_BIND,
+                                          stmt)
             # Preserve Ref on non-reassigned function locals from reference
             # sources (call returns, field access, subscript, params).
             # Strip for: reassigned locals (T* codegen), top-level globals,

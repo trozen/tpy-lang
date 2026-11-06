@@ -39,10 +39,14 @@ class Sink:
 
 def via_closure(source: Iterable[Own[list[int32]]]) -> int32:
     out: list[list[int32]] = []
+    # A closure may run more than once, and an owning iterable is traversed
+    # once: the nested def loops over a copy.
+    xs = list(source)
 
     def inner() -> None:
-        for x in source:
-            out.append(x)  # closure: the loop runs inside a nested def
+        for x in xs:  # closure: the loop runs inside a nested def
+            # `x` refers to the copy's element, so storing it copies, warned.
+            out.append(x)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
     inner()
     return len(out[0])

@@ -419,22 +419,26 @@ std::vector<Box> owned_arg(T_src&& src) {
         std::move(__result);
     });
 }
-// # a nested comprehension in the element, inside a `for` statement
+// # a nested comprehension in the element, inside a `for` statement (over a
+// # copy: an owning iterable is traversed once, and a loop body may run again)
 // def in_loop(src: Iterable[Own[Box]]) -> None:
+//     boxes = list(src)
 //     for i in range(1):
-//         rows = [[b.finish() for _ in range(2)] for b in src]  # tpyc: warning(/copies Box into owned storage/)
+//         rows = [[b.finish() for _ in range(2)] for b in boxes]  # tpyc: warning(/copies Box into owned storage/)
 //         row = rows[0]
 //         print("in_loop", i, row[0].xs[0], row[1].xs[0])
 template<::tpystd::typing::Iterable<Box> T_src>
 void in_loop(T_src&& src) {
+    std::vector<Box> boxes = ::tpy::construct<std::vector<Box>>(src);
     for (int32_t i = 0; i < 1; ++i) {
         std::vector<std::array<Box, 2>> rows = ({
             std::vector<std::array<Box, 2>> __result;
-            auto& __obj_1 = src;
+            auto& __obj_1 = boxes;
+            __result.reserve(static_cast<std::size_t>(__obj_1.size()));
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
-                auto&& b = ::tpy::take_elem(__beg_1);
+                auto&& b = *__beg_1;
                 __result.push_back(::tpy::array_from_index<Box, 2>([&](std::size_t __i_2) -> Box {
                     int32_t _ = int32_t(__i_2);
                     return Box(b).finish();

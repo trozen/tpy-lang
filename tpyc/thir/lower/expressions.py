@@ -66,6 +66,7 @@ from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly,
 from ...typesys import (
     drop_own_marker, dyn_protocol_borrow_result, make_readonly,
     param_takes_ownership)
+from ...modules.type_resolution import is_owning_iterable
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -15265,13 +15266,10 @@ def _lower_range_object(call, lc: '_LowerCtx',
                     loc=getattr(call, "loc", None))
 
 
-def _own_element_slot(ptype: 'TpyType | None') -> bool:
-    """`ptype` is an owning element slot: `Iterable[...]` with an `Own[...]`
-    element."""
-    it_pb = _protocol_binding(ptype)
-    return (it_pb is not None and it_pb.name == "Iterable"
-            and any(isinstance(t, OwnType)
-                    for t in getattr(it_pb, "type_args", ()) or ()))
+def _own_element_slot(ptype: 'TpyType | None', lc: '_LowerCtx') -> bool:
+    """`ptype` is an owning element slot (`is_owning_iterable`)."""
+    return (isinstance(ptype, TpyType)
+            and is_owning_iterable(ptype, lc.analyzer.registry))
 
 
 def _own_iter_handover(citer: 'FunctionInfo', a: TpyExpr, arg: THIRExpr,
@@ -15300,7 +15298,7 @@ def _consuming_iter_wrap(a: TpyExpr, ptype: 'TpyType | None',
     fires only for an `Own[...]`-element slot; a borrowing slot
     (`join(items: Iterable[str])`) binds the name bare even at its last
     use. Returns None when the slice does not apply."""
-    if not _own_element_slot(ptype):
+    if not _own_element_slot(ptype, lc):
         return None
     if not isinstance(a, TpyName) or not _is_move_source(a, lc):
         return None
@@ -15320,7 +15318,7 @@ def _rvalue_iter_handover(a: TpyExpr, ptype: 'TpyType | None',
     the callee's steps own them and its loop variable binds in place
     rather than copying each one. A hoisted temp is a named local, moved
     from; a prvalue binds bare."""
-    if isinstance(a, TpyName) or not _own_element_slot(ptype):
+    if isinstance(a, TpyName) or not _own_element_slot(ptype, lc):
         return arg
     it_pb = _protocol_binding(ptype)
     if not any(isinstance(t, OwnType) and contains_reference_type(t.wrapped)

@@ -230,14 +230,22 @@ class InitTracker:
             self.apply_fact_kills(kills, keep_steps=True)
 
     def join_entry_from_any_point(self, before: FlowFacts,
-                                  kills: FactKills) -> None:
+                                  kills: FactKills,
+                                  consumed: frozenset[str]) -> None:
         """Enter a point control may reach from anywhere in a region: a
         loop's `break` exit, a `finally` body, the code after a suppressing
         `with`. Only the check-elision facts that held at the region's start
         and that nothing in it kills (`kills`) survive, joined with the
-        current ones."""
+        current ones; a name a traversal consumed anywhere in the region
+        (`consumed`, a returning branch's included) may be consumed here."""
         self.join_facts(before)
         self.apply_fact_kills(kills)
+        self.join_consumed(consumed)
+
+    def join_consumed(self, consumed: frozenset[str]) -> None:
+        """Names a traversal consumed at some point of a region control may
+        leave from anywhere (an exception) may be consumed where it lands."""
+        self.ctx.func.consumed_vars |= consumed
 
     def merge_branches(self, then_state: FlowFacts, else_state: FlowFacts) -> None:
         self.restore(FlowFacts.merge(then_state, else_state))

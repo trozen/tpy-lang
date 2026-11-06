@@ -1,0 +1,1 @@
+main.py:22: error: Cannot traverse 'it' inside a loop: an owning iterable (Iterable[Own[R]]) is traversed once; copy it first: `xs = list(it)`

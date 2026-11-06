@@ -1,0 +1,33 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@13:0: covered (storage: no_proof_required), summary: known
+main::make_steps@19:0: uncovered (loop across a suspension)
+main::total@25:0: uncovered (unsupported parameter type)
+main::gen_ns@55:0: uncovered (unsupported parameter type)
+main::async_total@61:0: uncovered (async body)
+main::guarded@70:0: uncovered (unsupported parameter type)
+main::union_arm@80:0: uncovered (unsupported parameter type)
+main::twice@90:0: uncovered (unsupported parameter type)
+main::forward@101:0: uncovered (unsupported parameter type)
+main::via_alias@106:0: uncovered (unsupported parameter type)
+main::in_once@113:0: uncovered (unsupported parameter type)
+main::iadd_once@117:0: uncovered (unsupported parameter type)
+main::comp_once@123:0: uncovered (unsupported parameter type)
+main::ints@128:0: uncovered (unsupported parameter type)
+main::by_mode@136:0: uncovered (unsupported parameter type)
+main::finally_guard@145:0: uncovered (unsupported parameter type)
+main::loop_return@158:0: uncovered (unsupported parameter type)
+main::traverse_then_break@171:0: uncovered (unsupported parameter type)
+main::finally_may_break@181:0: uncovered (unsupported parameter type)
+main::with_once@202:0: uncovered (unsupported parameter type)
+main::pairs@210:0: uncovered (reference yield)
+main::tuple_steps@218:0: uncovered (unsupported parameter type)
+main::count@241:0: uncovered (unsupported parameter type)
+main::main@245:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Acc.take_all@39:4: uncovered (unsupported parameter type)
+main::Quiet.__enter__@194:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Quiet.__exit__@197:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sized3.size@236:4: covered (storage: no_proof_required), summary: known
+main::R.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::Acc.__init__@36:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@49:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Sized3.__init__@232:4: covered (storage: no_proof_required), summary: known

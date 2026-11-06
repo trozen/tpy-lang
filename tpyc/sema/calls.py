@@ -4068,6 +4068,7 @@ class CallAnalyzer:
                 typed.at(at), param_type, f"{expr.func_name}() argument",
                 source_expr=written.at(at),
             )
+            self.consume_at_iterating_slot(written.at(at), param_type, expr)
 
     def _refuse_unbound_ctor(self, expr: TpyCall, record: RecordInfo,
                              written: CallSource, typed: CallSource) -> None:
@@ -6293,6 +6294,8 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         if own_checks:
             self.check_own_param(arg, arg_type, pname, check_ptype)
+        self.consume_at_iterating_slot(arg, check_ptype,
+                                       call if call is not None else arg)
         skip_coerce = (is_char_literal_init(check_ptype, arg_type, arg)
                        or (builtin_form and arg_type == check_ptype))
         if not skip_coerce:
@@ -6306,6 +6309,28 @@ class CallAnalyzer:
         if own_checks:
             self.mark_pending_slot_context(arg, arg_type, ptype)
         return arg_type
+
+    def consume_at_iterating_slot(self, arg: TpyExpr, ptype: TpyType,
+                                  node: 'TpyExpr | TpyStmt') -> None:
+        """An argument at a parameter that traverses it (`_iterating_slot`)
+        is a traversal: a name of an owning iterable is consumed there."""
+        if (isinstance(peel_coerce(arg), TpyName)
+                and self._iterating_slot(ptype)):
+            self.ctx.consume_traversal(arg, node)
+
+    def _iterating_slot(self, ptype: TpyType) -> bool:
+        """A parameter of `ptype` traverses what it receives: an iterable
+        protocol, alone or as an alternative of a union."""
+        bare = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(ptype)))
+        if isinstance(bare, OwnType):
+            bare = unwrap_readonly(bare.wrapped)
+        members = (bare.members if isinstance(bare, UnionType)
+                   else (bare.inner,) if isinstance(bare, OptionalType)
+                   else (bare,))
+        return any(
+            is_protocol_type(m) and builtin_modules.get_iterable_element_type(
+                m, registry=self.ctx.registry) is not None
+            for m in members)
 
     def args_scope(self, args: list[TpyExpr]) -> OpenCallArgs | None:
         """The open scope of the call whose arguments are `args`, if its

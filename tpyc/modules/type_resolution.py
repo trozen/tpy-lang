@@ -20,7 +20,9 @@ from tpyc.typesys import (
     TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
     bound_as_spelled, is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
+    unwrap_send_sync,
 )
+from tpyc import qnames
 from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
 from tpyc.modules.defs import ParamDef, MethodDef
 
@@ -422,6 +424,24 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
         return make_readonly(elem) if elem is not None else None
     elem = _iterable_element_type_inner(base, registry, keep_own)
     return canonical_readonly(elem) if elem is not None else None
+
+
+def is_owning_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
+    """`tpy_type` is an owning iterable: a structural protocol whose members
+    are iteration only and whose step owns what it yields (an `Own` marker
+    in the step `get_iterable_element_type` computes). A binding of one is
+    traversed once, and a slot of one takes the elements over.
+
+    Narrowed to `Iterable[Own[T]]` with the `Own` on the step itself, the
+    one shape every reader agrees on: a protocol with members beyond
+    `__iter__` is no owning iterable, and an `Iterator[Own[T]]` is stepped,
+    not traversed."""
+    bare = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(tpy_type)))
+    if not (isinstance(bare, NominalType) and is_protocol_type(bare)
+            and bare.qualified_name() == qnames.ITERABLE):
+        return False
+    step = get_iterable_element_type(bare, registry, keep_own=True)
+    return isinstance(step, OwnType)
 
 
 def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",

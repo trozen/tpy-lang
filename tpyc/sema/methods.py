@@ -45,7 +45,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .bound_check import validate_type_param_bounds
-from .context import (CallOperands, CompTarget, GenericMethodRoute,
+from .context import (CallOperands, ConsumeCause, CompTarget, GenericMethodRoute,
                       PENDING_CONTAINER_TYPES)
 from .overloads import CallShape, operand_param_type
 from .list_elem import (ContainerCall, Effect, Role, container_call,
@@ -1088,24 +1088,12 @@ class MethodAnalyzer:
                     expr,
                 )
             binding = self.ctx.comp_var_reads.get(expr.obj)
-            # Reject consuming outer variables inside a loop -- the variable
-            # won't be re-bound on the next iteration, causing use-after-move.
-            # A comprehension variable's clause decides it instead.
-            if binding is None and self.ctx.func.loop_depth > 0:
-                var_depth = self.ctx.func.var_scope_depth.get(name, 0)
-                loop_scope_depth = self.ctx.func.current_scope.depth
-                if var_depth < loop_scope_depth:
-                    raise self.ctx.error(
-                        f"Cannot consume '{name}' inside a loop; "
-                        f"the variable is not re-bound each iteration",
-                        expr,
-                    )
-            self._check_consuming_receiver(expr.obj, binding)
-            # Use-after-consume is already caught by _analyze_name before we get here.
             # A comprehension variable is rebound every iteration, and a
-            # receiver that moves it is its only read.
+            # receiver that moves it is its only read: its clause decides it.
             if binding is None:
-                self.ctx.func.consumed_vars.add(name)
+                self.ctx.consume_name(expr.obj,
+                                      ConsumeCause.CONSUMING_METHOD, expr)
+            self._check_consuming_receiver(expr.obj, binding)
 
     def _check_consuming_receiver(self, recv: TpyName,
                                   binding: 'CompTarget | None') -> None:
