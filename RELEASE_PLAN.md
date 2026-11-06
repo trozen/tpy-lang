@@ -34,9 +34,10 @@ THIR and MIR push as far as they get, the rest are bounded units.
 
 THIR: coverage and unification
 
-- The lowering consolidation, through the protocol-slot stages to
-  deleting the per-sink rows -- TODO: "One conversion boundary for every
-  value sink"; owning iteration on the way -- TODO: "Owning iteration"
+- The lowering consolidation, finished in 0.8: owning iteration, then
+  deleting the per-sink call-argument rows, then the last protocol-slot
+  stage (tuples at protocol slots) -- TODO: "One conversion boundary for
+  every value sink", "Owning iteration", "Protocol slots into convert"
 - Fewer hardcoded builtin facts in the lowering -- TODO: "[thir] RULE"
 
 MIR: coverage and cleanup
@@ -56,6 +57,10 @@ sema: one implementation per concept
   (incl. reassignment) through convert", then
   `docs/TUPLE_COMPLETION_PLAN.md` U2 / U5 / U3 as far as they get;
   calls -- TODO: "One binder: what remains"
+- A `Callable` type means what a `def` means: the concrete contract
+  (`Callable[[P], P]` may lend, `Callable[[P], Own[P]]` hands over),
+  then its spelled-generic twin --
+  `BUGS.md#generic-spelled-type-args-copy-where-inferred-lend`
 - `@overload` stubs as `@dispatch` variants, the rest -- TODO:
   "`@overload` copies: the residue"
 - One import-time diagnostic for reading a cycle peer --
@@ -81,9 +86,11 @@ Features
 - pyproject v0, extensions first (tpy-infer is the first user) -- TODO:
   "pyproject v0: build TPy", "Per-project compilation options in
   pyproject"
-- `collections.defaultdict` v1, once the THIR mechanisms it waits on
-  land -- TODO: "collections: the rest of the module"
-- Decide what `chr()` returns -- TODO: "What `chr()` returns"
+
+If a line has time: `collections.defaultdict` v1 -- TODO: "collections:
+the rest of the module" (its THIR prerequisites do not wait on the
+consolidation, except a dict view passed as an argument); decide what
+`chr()` returns -- TODO: "What `chr()` returns".
 
 Stretch, design only: `@noalloc` enforcement v1 (FEATURE_ROADMAP C3,
 parsed-only today; after MIR placement); Unicode `str` / build-time
