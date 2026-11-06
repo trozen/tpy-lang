@@ -42,8 +42,10 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
                         raising=False)
 
 
+# `erased`: a std::function's return reads as a def's, so it is a reference
+# exactly where the call convention (`call_ref`) is one.
 @pytest.mark.parametrize("result,call_ref,payload,erased", [
-    pytest.param(CELL, True, BORROW, "Cell", id="reference"),
+    pytest.param(CELL, True, BORROW, "Cell&", id="reference"),
     pytest.param(INT32, False, STORAGE, "int32_t", id="value"),
     # A void result (a builtin `__init__`) is no reference.
     pytest.param(VOID, False, STORAGE, "void", id="void"),
@@ -68,10 +70,10 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
                  "::tpy::Union<Cell, Other>", id="reference-union"),
     pytest.param(UnionType((CELL, INT32)), False, STORAGE,
                  "::tpy::Union<Cell, int32_t>", id="mixed-union"),
-    pytest.param(RECURSIVE, True, STORAGE, "Tree<int32_t>",
+    pytest.param(RECURSIVE, True, STORAGE, "Tree<int32_t>&",
                  id="recursive-wrapper"),
-    pytest.param(ReadonlyType(RECURSIVE), True, STORAGE, "Tree<int32_t>",
-                 id="readonly-recursive-wrapper"),
+    pytest.param(ReadonlyType(RECURSIVE), True, STORAGE,
+                 "const Tree<int32_t>&", id="readonly-recursive-wrapper"),
     pytest.param(TupleType(()), False, STORAGE, "std::tuple<>", id="empty-tuple"),
     pytest.param(TupleType((CELL,)), False, TUPLE, "std::tuple<Cell>",
                  id="singleton-tuple"),
@@ -90,7 +92,8 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
                  id="optional-beside-reference-tuple"),
     pytest.param(TupleType((INT32, INT32)), False, STORAGE,
                  "std::tuple<int32_t, int32_t>", id="value-tuple"),
-    pytest.param(ReadonlyType(CELL), True, BORROW, "Cell", id="readonly"),
+    pytest.param(ReadonlyType(CELL), True, BORROW, "const Cell&",
+                 id="readonly"),
     # Qualifier order is observable today; erasure must not normalize it away.
     pytest.param(ReadonlyType(GENERIC), False, TRAIT, "T", id="readonly-generic"),
     # Readonly is access, never shape: the readonly Optional / union returns
@@ -121,11 +124,11 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(make_span(INT32, is_readonly=True), False, STORAGE,
                  "std::span<const int32_t>", id="readonly-span"),
     pytest.param(PROTOCOL, False, STORAGE, "T", id="structural-protocol"),
-    pytest.param(ReadonlyType(PROTOCOL), True, STORAGE, "T",
+    pytest.param(ReadonlyType(PROTOCOL), True, STORAGE, "const T&",
                  id="readonly-protocol"),
     pytest.param(NominalType("Dynamic", is_protocol=True,
                             is_dynamic_protocol=True),
-                 True, STORAGE, "Dynamic", id="dynamic-protocol"),
+                 True, STORAGE, "Dynamic&", id="dynamic-protocol"),
 ])
 def test_result_consumers(
         result: TpyType, call_ref: bool, payload: AsyncReturnForm,

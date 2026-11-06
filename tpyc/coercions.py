@@ -941,11 +941,17 @@ class CallableMisfit(NamedTuple):
     """The first position at which a callable does not fit a callback slot:
     `index` is the parameter's index, None for the return; `actual` is the
     callable's type there, `expected` the slot's. `borrowed`: the return
-    is handed out as a reference where the slot holds its own value."""
+    is handed out as a reference where the slot holds its own value;
+    `fresh`: the return is handed out by value where the slot hands back
+    a borrow; `lends_state`: an `Fn` value, which may hand back a borrow
+    of its own state, at a `Callable` slot whose borrow must point into
+    its arguments."""
     index: int | None
     actual: TpyType
     expected: TpyType
     borrowed: bool = False
+    fresh: bool = False
+    lends_state: bool = False
 
 
 class CallableUpcast(NamedTuple):
@@ -1111,8 +1117,13 @@ def _return_form(t: TpyType) -> TpyType:
 
 def _return_fits(returned: TpyType, slot_return: TpyType, exact: bool,
                  wildcards: AbstractSet[str]) -> bool:
+    # An owning slot takes its own value: a readonly borrow of it differs
+    # in form alone, which the form check names (`borrowed`).
+    owning = isinstance(_logical(slot_return), OwnType)
     slot_return, returned = _return_form(slot_return), _return_form(returned)
     if contains_type_param(slot_return, set(wildcards)) or slot_return == returned:
+        return True
+    if owning and unwrap_readonly(returned) == slot_return:
         return True
     return not exact and _held_by_value(slot_return, returned)
 
@@ -1147,7 +1158,7 @@ def callable_fit(
     the slot's arity. A named function or callable object is described by
     its own signature as an `Fn` (`make_fn_type`): like a template
     parameter's callable, its return is its own form; a `Callable` value is
-    a std::function, which holds its result.
+    a std::function, whose return reads as a def's (`contract_return`).
 
     A call through the slot renders no TPy conversion: each value it passes
     must be received unchanged by the callable's parameter, and the
@@ -1164,12 +1175,15 @@ def callable_fit(
     numeric widening, and a by-value type (`_by_value`: not `Own`, no
     reference or view inside, a `Callable` whatever its signature) into a
     by-value Optional whose payload receives it or a by-value union it is
-    a member of (`_held_by_value`), and only a return the callable hands
-    out by value (`returns_storage_form`), never a reference or a borrow
-    pointer -- unless the callable is itself a std::function, which holds
-    its result. An `Fn` slot's return is the
-    callable's own, so it must be equal; an `Own` on it still asks for a
-    return handed out by value. `Own` on a return counts as a type only
+    a member of (`_held_by_value`). Both returns read as a def's: a slot
+    whose return is a borrow (a bare reference type) takes only a callable
+    whose return is one, and a slot holding its own result (an `Own`
+    return, a std::function's result of another form) only a return the
+    callable hands out by value (`returns_storage_form`), never a
+    reference or a borrow pointer -- unless the slot's DECLARED return is
+    an open type parameter (`CallableType.returns_open`), which each
+    instantiation's convention answers. An `Fn` slot's return
+    is the callable's own, so it must be equal. `Own` on a return counts as a type only
     where it changes the storage form (a @dynamic protocol), and on a
     parameter's value only for a by-value type; an `Own[X]` parameter
     whose `X` is by-value and whose parameter form is no view is `X`'s
@@ -1199,17 +1213,34 @@ def callable_fit(
     if not _return_fits(ret, slot_return,
                         exact or expected.is_template, wildcards):
         return CallableFit(CallableMisfit(None, ret, slot_return))
-    # A std::function holds its result by value, and an `Own` slot return
-    # says the result is owned: a reference or a borrow returned into
-    # either would be copied where the caller sees the original.
+    if contains_type_param(_return_form(slot_return), set(wildcards)):
+        return fits
+    # Both returns read as a def's (`contract_return`): a slot that hands
+    # back a borrow takes only a callable that does, and one that hands
+    # back its own value -- an `Own` return, or a std::function's result
+    # of another form than a reference -- only one that hands it out by
+    # value; either other pairing would copy where the caller sees the
+    # original, or fail the C++ build.
+    if expected.returns_borrow():
+        if not actual.returns_borrow() and _hands_storage(actual):
+            return CallableFit(CallableMisfit(None, ret, slot_return,
+                                              fresh=True))
+        return fits
     slot_owns = (not expected.is_template
                  or isinstance(_logical(slot_return), OwnType))
-    if (slot_owns and actual.is_template
-            and not contains_type_param(_return_form(slot_return),
-                                        set(wildcards))
-            and not returns_storage_form(ret)):
+    if slot_owns and not _hands_storage(actual):
         return CallableFit(CallableMisfit(None, ret, slot_return, borrowed=True))
     return fits
+
+
+def _hands_storage(callable_type: CallableType) -> bool:
+    """Whether a call through `callable_type` hands its result out in its
+    storage form: a named function's or a `__call__`'s own return
+    (`returns_storage_form`), a std::function's result unless its
+    contract is a borrow."""
+    if callable_type.is_template:
+        return returns_storage_form(callable_type.contract_return())
+    return not callable_type.returns_borrow()
 
 
 def callable_fits(
@@ -1253,8 +1284,18 @@ def callable_value_fit(
     if (erased and isinstance(expected.return_type, VoidType)
             and not isinstance(actual.return_type, VoidType)):
         return None
-    return callable_fit(actual, expected, inherits=inherits, exact=erased,
-                        wildcards=wildcards)
+    fit = callable_fit(actual, expected, inherits=inherits, exact=erased,
+                       wildcards=wildcards)
+    # An `Fn` value is any callable, one handing back its own state
+    # included; a `Callable`'s borrow points into its arguments only.
+    if (fit.misfit is None and actual.is_template
+            and not expected.is_template and expected.returns_borrow()
+            and not contains_type_param(expected.return_type,
+                                        set(wildcards))):
+        return CallableFit(CallableMisfit(None, actual.return_type,
+                                          expected.return_type,
+                                          lends_state=True))
+    return fit
 
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionContext) -> str:

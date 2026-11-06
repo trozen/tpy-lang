@@ -323,9 +323,12 @@ def test_may_names_every_lent_operand(lend_case: LendCase) -> None:
     assert _holder(ctx, inits["v_select"]).names == ["a", "b"]
 
 
-def test_may_reads_a_callable_value_as_lending_nothing(lend_case: LendCase) -> None:
+def test_may_reads_a_callable_value_as_its_contract(lend_case: LendCase) -> None:
+    # A callable value's borrow result may point into its pointer-holding
+    # arguments, as a body-less stub's does.
     ctx, inits = lend_case
-    assert _holder(ctx, inits["v_value"]) == Roots()
+    roots = _holder(ctx, inits["v_value"])
+    assert roots.names == ["a"] and not any(p.assumed for p in roots.places)
 
 
 def test_may_reference_result_lending_nothing_is_unknown(lend_case: LendCase) -> None:
@@ -449,8 +452,10 @@ def test_must_refuses_what_it_cannot_prove(lend_case: LendCase) -> None:
     ctx, inits = lend_case
     assert proven_lend_roots(ctx, inits["v_recv"]) == ["h"]
     assert proven_lend_roots(ctx, inits["v_nested"]) == ["h"]
-    for name in ("v_select", "v_walrus", "v_getter", "v_value"):
+    for name in ("v_select", "v_walrus", "v_getter"):
         assert proven_lend_roots(ctx, inits[name]) is None, name
+    # A callable value's contract names its operands.
+    assert proven_lend_roots(ctx, inits["v_value"]) == ["a"]
 
 
 def test_contract_keeps_every_operand_but_an_owned_result(lend_case: LendCase) -> None:
@@ -921,8 +926,9 @@ def test_durability_leaves_classify_each_operand_and_call() -> None:
                                 (LeafKind.PLACE, "ps", [])]
         # An enum member's `.name` is static storage.
         assert ret("r_enum") == [(LeafKind.STATIC, None, [])]
-        # A `Callable` returns a class instance by value: a fresh object.
-        assert ret("r_callable") == [(LeafKind.TEMPORARY, None, [])]
+        # A `Callable` returning a bare class lends it as a def would: its
+        # contract names the argument.
+        assert ret("r_callable") == [(LeafKind.PLACE, "n", ["contract"])]
         # A view of a temporary's field reads storage dying with the
         # statement.
         assert [lf.kind for lf in leaves(inits["t_field"], TempLend(ctx),
@@ -949,8 +955,8 @@ def subject(h: Holder, f: Callable[[str], StrView], s: str) -> None:
 
 
 def test_callable_value_shapes_classify_by_callee_access() -> None:
-    # A callable value has no body to read a fact off; how the call reaches
-    # it is what RETURN and TEMPORARY tell apart.
+    # A callable value has no body to read a fact off: its contract is the
+    # answer, but for a view through a callee expression.
     compiler, modules = _compile(_CALLABLE_SHAPES_SRC)
     entry = _entry(modules)
     fn = next(f for f in entry.ast.functions if f.name == "subject")
@@ -971,16 +977,16 @@ def test_callable_value_shapes_classify_by_callee_access() -> None:
             assert (lend.kind, lend.access, lend.fresh, lend.declares_view,
                     lend.sources) == (CalleeFact.CALLABLE, access, False,
                                       True, frozenset()), name
-        # RETURN reads no callable's contract: through a name or a receiver
-        # the storage is unnamed, through a callee expression a temporary.
+        # RETURN trusts a view a callable value hands back, however the
+        # call reaches it: the storage is unnamed.
         assert kinds("named", ReturnLend(ctx)) == [(LeafKind.UNNAMED, None)]
         assert kinds("field", ReturnLend(ctx)) == [(LeafKind.UNNAMED, None)]
         assert kinds("expression", ReturnLend(ctx)) == [
-            (LeafKind.TEMPORARY, None)]
-        # TEMPORARY reads a named callable's contract (the view reads its
-        # argument), trusts a field-held one as a view method of its
-        # receiver, and a callee expression's view as stable.
+            (LeafKind.UNNAMED, None)]
+        # TEMPORARY reads a named or field-held callable's contract (the
+        # view reads its argument, never the field's holder), and a callee
+        # expression's view as stable.
         assert kinds("named", TempLend(ctx)) == [(LeafKind.PLACE, "s")]
-        assert kinds("field", TempLend(ctx)) == [(LeafKind.PLACE, "h")]
+        assert kinds("field", TempLend(ctx)) == [(LeafKind.PLACE, "s")]
         assert kinds("expression", TempLend(ctx)) == [
             (LeafKind.UNNAMED, None)]

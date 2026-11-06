@@ -150,7 +150,7 @@ void same_name_generic(Holds3& h);
 void same_name_isinstance(const Holds2& h);
 // def bare_generic_isinstance(h: Holds4) -> None:
 void bare_generic_isinstance(Holds4& h);
-// def mk(f: Callable[[str], ValueError], s: str) -> str:
+// def mk(f: Callable[[str], Own[ValueError]], s: str) -> str:
 std::string mk(const std::function<::tpy::ValueError(std::string_view)>& f, std::string_view s);
 // def gen(n: int) -> Iterator[int]:
 __gen_gen gen(::tpy::BigInt n);
@@ -190,7 +190,7 @@ void main();
 void type_tests(::tpy::Union<const ::tpyapp::m::Outer*, const ::tpyapp::m::Outer::Inner*> o);
 // def patterns(x: m.Outer.Inner | pkg.sub.mod.Outer.Inner, c: m.Color) -> None:
 void patterns(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::pkg::sub::mod::Outer::Inner*> x, ::tpyapp::m::Color c);
-// def build(f: Callable[[int], m.Outer.Inner], v: int) -> int:
+// def build(f: Callable[[int], Own[m.Outer.Inner]], v: int) -> int:
 ::tpy::BigInt build(const std::function<::tpyapp::m::Outer::Inner(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& v);
 // def defaults(k: m.Outer.Kind = m.Outer.Kind.B, c: mm.Color = mm.Color.BLUE,  # tpyc: ok
 //              n: int32 = MO.LIMIT,

@@ -1,0 +1,7 @@
+fixtures.py:88: warning: copies P into owned storage; use copy() to make this explicit
+part_capture.py:90: warning: nested function 'through' may keep its own copy of 'lend'; changes made after it is created may not be seen
+part_capture.py:98: warning: nested function 'maybe' copies the object 'maybe_lend' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_capture.py:140: warning: nested function 'chained' may keep its own copy of 'mk_cb'; changes made after it is created may not be seen
+part_capture.py:155: warning: nested function 'tupled' may keep its own copy of 'tup_cb'; changes made after it is created may not be seen
+part_generic.py:66: warning: copies P into owned storage; use copy() to make this explicit
+main.py:43: warning: lambda at line 43 may keep its own copy of 'cb'; changes made after it is created may not be seen

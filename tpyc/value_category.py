@@ -365,6 +365,19 @@ def call_operands(expr: TpyExpr) -> CallOperands | None:
         return call_operands(expr.frame_creation)
     else:
         return None
+    if fi is not None and fi.is_callable_value:
+        # The callable itself is an operand only where the call reaches it
+        # by reference (an `Fn` parameter); a `Callable` holds its own
+        # state, and a field's holder is no operand of the call through it.
+        callee = (expr.func if isinstance(expr, TpyCall)
+                  else None if expr.is_callable_field else obj)
+        obj = callee if fi.callable_type.is_template else None
+    elif fi is not None and not (fi.root.is_method
+                                 and not fi.root.is_staticmethod):
+        # The expression a module function, a static method or a
+        # classmethod (also `is_staticmethod`) is reached through (`mod.f`,
+        # `C.f`) is no operand: no receiver is passed.
+        obj = None
     return None if fi is None else CallOperands(fi, obj, args, kwargs)
 
 
@@ -621,10 +634,8 @@ def result_is_fresh(analyzer: 'ValueCategoryAnalyzer',
         # result, which `origin` reads as new.
         ops = None
     if ops is not None:
-        # A callable value's signature says nothing about what its target
-        # returns, and a macro's rewrite is held through what it expands to.
-        if (ops.fi.is_callable_value
-                or (isinstance(e, TpyCall) and e.macro_expansion is not None)):
+        # A macro's rewrite is held through what it expands to.
+        if isinstance(e, TpyCall) and e.macro_expansion is not None:
             return False
         fi = ops.fi.root
         # A builtin constructor may hand back its argument in place
@@ -1204,9 +1215,12 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         # `cast(T, x)` renders its argument.
         if expr.cast_operand is not None:
             return is_rvalue_source(analyzer, expr.cast_operand)
-        # Expression callees -> rvalue
+        fi = expr.resolved_function_info
+        # A callable value reached through an expression (`cbs[i](x)`,
+        # `make()(x)`) hands back what its contract declares.
         if not isinstance(expr.func, TpyName):
-            return True
+            return (fi is None or not fi.is_callable_value
+                    or not call_returns_cpp_ref(analyzer, fi))
         # A declared-borrow binding's call: sema decided, from its lent
         # arguments, whether it hands back one of them or a fresh value.
         if expr.result_form.is_declared:
@@ -1217,13 +1231,11 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         # Generic type constructors -> rvalue
         if expr.call_type is not None:
             return True
-        # A function's call, a nested def's included (the registry knows
-        # only module-level names); a callable value's result and a
-        # builtin sema renders itself (`cast` from `Any`) are by value.
-        fi = expr.resolved_function_info
+        # A function's call, a nested def's and a callable value's
+        # included (the registry knows only module-level names); a builtin
+        # sema renders itself (`cast` from `Any`) is by value.
         if (analyzer.registry.get_function(expr.func_name) is not None
-                or (fi is not None and not fi.is_callable_value
-                    and not fi.special_handling)):
+                or (fi is not None and not fi.special_handling)):
             return not call_returns_cpp_ref(analyzer, fi)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
@@ -2177,8 +2189,10 @@ def _borrow_link(expr: TpyExpr) -> 'tuple[FunctionInfo | None, TpyExpr | None] |
 
 
 def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
-    """The callee's declared return is a bare, still-open type parameter, and
-    the callee is one whose declaration says what its return convention is.
+    """The callee's return is a bare type parameter still open in this
+    signature -- a substituted view's reads its substitution, unlike
+    `FunctionInfo.returns_open` -- and the callee is one whose declaration
+    says what its return convention is.
 
     A callable VALUE is excluded: its signature is the `Fn` type's, not a
     declaration anyone checked, and the body that runs may build a fresh
@@ -2379,8 +2393,7 @@ def _call_proves_fresh(analyzer: ValueCategoryAnalyzer,
     """Whether a by-value call result is PROVEN a fresh object: a
     construction (a borrowing view's or a null `Ptr`'s is none), an
     `Own[T]` return, or a reference-type result the callee's convention
-    returns by value. A callable value's signature is the `Fn` type's,
-    which says nothing else about ownership."""
+    returns by value -- a callable value's contract read as a def's."""
     if isinstance(call, TpyCall) and call.call_type is not None:
         ct = call.call_type
         return not (isinstance(ct, PtrType) or is_borrowing_view_type(ct))
@@ -2397,8 +2410,7 @@ def _call_proves_fresh(analyzer: ValueCategoryAnalyzer,
     ret = unwrap_readonly(fi.return_type) if fi.return_type else None
     if isinstance(ret, OwnType):
         return True
-    if (fi.is_callable_value or ret is None
-            or is_open_type_param_return(fi.root.return_type)):
+    if ret is None or fi.returns_open():
         return False
     return (isinstance(ret, NominalType) and not ret.is_value_type()
             and not (is_protocol_type(ret) or is_dyn_protocol(ret))

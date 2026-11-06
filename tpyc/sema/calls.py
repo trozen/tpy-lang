@@ -7960,7 +7960,8 @@ class CallAnalyzer:
         edges a direct call would record.
         """
         param_types = callable_type.param_types
-        return_type = callable_type.return_type
+        # The callable's return reads as a def's declared return does.
+        return_type = callable_type.contract_return()
         if expr.kwargs:
             raise self.ctx.error(
                 f"Keyword arguments are not supported for {desc} "
@@ -7979,7 +7980,7 @@ class CallAnalyzer:
             params=[ParamInfo(f"arg{i + 1}", t) for i, t in enumerate(param_types)],
             return_type=return_type,
             is_readonly=False,
-            is_callable_value=True,
+            callable_type=callable_type,
         )
         self._check_borrow_arg_conflicts(expr)
         for i, ptype in enumerate(param_types):

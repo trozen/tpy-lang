@@ -172,11 +172,10 @@ def chained(h: H, a: A) -> None:
 
 
 def lam_value(a: A) -> Own[A]:
-    f: Callable[[A], A] = lambda q: q  # tpyc: warning(/copies A into owned storage/)
-    # a lambda's by-value result copies its borrowed parameter; the call
-    # through the `Callable` value hands that copy on
-    # (BUGS.md#callable-value-borrow-return-copies-unwarned)
-    return f(a)
+    f: Callable[[A], A] = lambda q: q  # tpyc: ok
+    # a lambda's borrow result lends its parameter; the owning return copies
+    # what the call through the `Callable` value lends, as a def call's
+    return f(a)  # tpyc: warning(/copies A into owned storage/)
 
 
 def through(f: Fn[[A], Own[A]], a: A) -> Own[A]:
@@ -193,7 +192,7 @@ def lam_select(b: A, flag: bool) -> Own[A]:
     return through(lambda q: q if flag else A(0), b)  # tpyc: warning(/copies A into owned storage/)
 
 
-def lam_pointer_local(xs: list[A], c: bool) -> Callable[[], A]:
+def lam_pointer_local(xs: list[A], c: bool) -> Callable[[], Own[A]]:
     q = xs[0] if c else None
     assert q is not None
     # a by-value lambda result over a pointer-bound local copies its object
@@ -335,10 +334,10 @@ def lend_next(h: H, ws: list[Wrap], ho: Holder) -> None:
 
 
 def callable_member(h: H, ho: Holder) -> None:
-    # a member of a `Callable` value's result warns although the
-    # std::function returns a fresh Wrap (BUGS.md#callable-result-member-copy-warning-false)
-    fn: Callable[[Holder], Wrap] = fresh_w
-    h.p = fn(ho).a  # tpyc: warning(/copies A into field/)
+    # a member of an owning `Callable` value's result moves out of the
+    # fresh Wrap
+    fn: Callable[[Holder], Own[Wrap]] = fresh_w
+    h.p = fn(ho).a  # tpyc: ok
 
 
 def mk() -> Iterator[Own[A]]:

@@ -26,7 +26,6 @@ CPython, with no diagnostic. Right: the form the scalar global `G: Box = V` alre
 borrow slot `Box* G`, as the local tuple does -- `std::tuple<Box*, Box*> G{}`, bound bare at
 module init; from a MIXED call (`make_mixed(V)` -> `tuple[Own[Box], Box]`) the same tuple of
 pointer slots, aimed at the call's value parked in a static as the scalar parks its object.
-(open: `BUGS.md#callable-value-borrow-return-copies-unwarned`)
 
 **Check.** Mutate the object after the boundary (return, yield, param, field store, container
 insert, global) and print a field that shows whether the mutation reached the original, under
@@ -265,6 +264,12 @@ then costs a copy, not memory safety. An earlier hit: `min` / `max` first return
 itself whenever an operand was an lvalue -- a method read off a temporary, a conditional, a
 generator's step all passed -- until the lending verdict became an allow-list of forms that
 prove the storage outlives the call (`proven_lend_roots`).
+A third, at a borrow `Callable` slot (2026-11): which closure captures count as "state" was
+first decided by SEARCHING the capture's type for pointers -- each round found a shape the
+search did not name (a record field holding a `Ptr`, a `readonly` view, a `Ptr` parameter, a
+tuple-held temporary callable). Right: a capture is state unless `loan_class` proves it holds no
+borrow and it holds no class instance, and a call through a callable value whose return the
+contract does not cover is refused outright.
 
 **Check.** For a rule the change adds or narrows, list what it treats as durable and the fact
 behind each entry. Then probe a source outside every list (an alias, a call result, a nested

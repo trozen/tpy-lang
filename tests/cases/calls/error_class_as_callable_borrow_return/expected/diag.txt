@@ -1,0 +1,1 @@
+main.py:18: error: 'Widget' builds a new Widget, but Callable[[int32], Widget] returns a borrow; declare Callable[[int32], Own[Widget]] to return it by value

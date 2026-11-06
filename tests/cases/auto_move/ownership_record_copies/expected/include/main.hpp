@@ -64,13 +64,14 @@ A lam_value(A& a);
 template<typename __F0>
   requires requires(__F0& __fn, A& __a0) {
       { __fn(__a0) } -> std::convertible_to<A>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 A through(__F0&& f, A& a);
 // def lam_or(b: A) -> Own[A]:
 A lam_or(A& b);
 // def lam_select(b: A, flag: bool) -> Own[A]:
 A lam_select(A& b, bool flag);
-// def lam_pointer_local(xs: list[A], c: bool) -> Callable[[], A]:
+// def lam_pointer_local(xs: list[A], c: bool) -> Callable[[], Own[A]]:
 std::function<A()> lam_pointer_local(std::vector<A>& xs, bool c);
 // def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
 template<typename T>
@@ -429,6 +430,7 @@ void keep_peek(std::vector<T>& out, Cell<T>& c) {
 template<typename __F0>
   requires requires(__F0& __fn, A& __a0) {
       { __fn(__a0) } -> std::convertible_to<A>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 A through(__F0&& f, A& a) {
     return f(a);

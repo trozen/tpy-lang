@@ -4255,7 +4255,7 @@ class HC:
         self.p = f(c)
 def cv_field(h: H, f: Fn[[P], P], c: P) -> None:
     h.p = f(c)
-def cv_any(h: H, f: Fn[[P], P], c: P) -> None:
+def cv_any(h: H, f: Fn[[P], Own[P]], c: P) -> None:
     h.x = f(c)
 def member_last() -> tuple[tuple[Own[P], int32], int32]:
     t = (P(1), 2)
@@ -4402,18 +4402,13 @@ def test_blocker_rows_are_recorded() -> None:
         13: ("TpyCall", P.EXPLICIT),     # `copy()` into an `Any` member-init
                                          # (BUGS.md#any-member-init-copy-drops-erasure)
         17: ("TpyName", P.WARNED),    # captured `Own` name returned
+        30: None,                     # `lambda q: q` at a borrow result
         22: ("TpyName", P.WARNED),    # captured `Own[P | None]` returned
                                          # (BUGS.md#nested-def-captured-own-return-copies)
         46: ("TpyName", P.PASS),        # `nonlocal` rebind: the binding
                                          # aliases `q`, owning nothing
                                          # (BUGS.md#nonlocal-rebind-overwrites-in-place)
-        61: ("TpyCall", P.MOVE),         # a call through a `Fn` value that
-        63: ("TpyCall", P.MOVE),         # lends: its result reads as fresh
         73: ("TpyName", P.WARNED),    # a tuple local into `Any`
-        77: ("TpyCall", P.MOVE),         # the `Fn` call at a member-init,
-        79: ("TpyCall", P.MOVE),         # a field
-        81: ("TpyCall", P.MOVE),         # and `Any`
-                                         # (BUGS.md#callable-value-borrow-return-copies-unwarned)
         131: ("TpyName", P.MOVE),        # a `@dynamic` local
     }
     tables = _DIAGNOSTIC_DISAGREEMENTS | _RENDER_DISAGREEMENTS
@@ -4425,12 +4420,18 @@ def test_blocker_rows_are_recorded() -> None:
     # in: a copy warned exactly where the record copies, a move silent.
     fixed = {
         27: ("TpyName", P.WARNED),       # lambda returning its capture
-        30: ("TpyName", P.WARNED),       # `lambda q: q` at a by-value result
         34: ("TpyName", P.WARNED),       # chained store (both targets)
         38: ("TpyName", P.MOVE),         # nested def's local into a field
         51: ("TpyName", P.MOVE),         # union local's last-use store
         54: ("TpyName", P.MOVE),         # last-use store into `Any`
         56: ("TpyName", P.WARNED),       # walrus into `Any`
+        # A call through an `Fn` value that lends, at a return, an append,
+        # a member-init and a field: the def twin's warned copy.
+        61: ("TpyCall", P.WARNED),
+        63: ("TpyCall", P.WARNED),
+        77: ("TpyCall", P.WARNED),
+        79: ("TpyCall", P.WARNED),
+        81: ("TpyCall", P.MOVE),         # an owning `Fn` call into `Any`
         65: ("TpyName", P.WARNED),       # `lambda q: q` at an `Own` result
         69: ("TpyName", P.WARNED),       # a lambda capturing a parameter
         84: ("TpyTupleLiteral", P.MOVE),  # a last-use tuple name member
@@ -4466,13 +4467,16 @@ def test_blocker_rows_are_recorded() -> None:
         assert got[:1] == [want], line
     assert [w.split(";")[0] for w in warnings] == [
         "copies P into field",
+        "copies P into field",
         "lambda at line 53 copies the object 'r' refers to when it is created",
-        "copies P into owned storage", "copies P into owned storage",
+        "copies P into owned storage",
         "copies P into field",
         "copies P into Any",
+        "copies P into owned storage", "copies P into owned storage",
         "copies P into owned storage",
         "lambda at line 95 copies the object 'a' refers to when it is created",
         "copies P into owned storage",
+        "copies P into field",
         "copies P into owned storage (tuple element 1)",
         "copies P into owned storage (tuple element 1)",
         "copies P into field (tuple element 1)"]

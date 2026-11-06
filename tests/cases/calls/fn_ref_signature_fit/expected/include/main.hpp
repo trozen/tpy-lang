@@ -271,13 +271,14 @@ void call_ptr(const std::function<P*(P&)>& f, P& p);
 // def new_p(h: Hp) -> Own[P]:
 P new_p(const Hp& h);
 // @dispatch
-// def via(f: Callable[[Hp], P], h: Hp) -> str:
-std::string via__Callable_Hp_P__Hp(const std::function<P(Hp&)>& f, Hp& h);
+// def via(f: Callable[[Hp], Own[P]], h: Hp) -> str:
+std::string via__Callable_Hp_Own_P__Hp(const std::function<P(Hp&)>& f, Hp& h);
 // @dispatch
 // def via(f: Fn[[SubHp], P], h: Hp) -> str:
 template<typename __F0>
   requires requires(__F0& __fn, SubHp& __a0) {
-      { __fn(__a0) } -> std::convertible_to<P>;
+      { __fn(__a0) } -> std::convertible_to<P&>;
+      requires std::is_lvalue_reference_v<decltype(__fn(__a0))>;
   }
 std::string via__Fn_SubHp_P__Hp(__F0&& f, const Hp& h);
 // async def double(n: int32) -> int32:
@@ -977,7 +978,8 @@ int64_t ap__Fn_int64_int64(__F0&& f) {
 //     return "fn"
 template<typename __F0>
   requires requires(__F0& __fn, SubHp& __a0) {
-      { __fn(__a0) } -> std::convertible_to<P>;
+      { __fn(__a0) } -> std::convertible_to<P&>;
+      requires std::is_lvalue_reference_v<decltype(__fn(__a0))>;
   }
 std::string via__Fn_SubHp_P__Hp(__F0&& f, const Hp& h) {
     return "fn";

@@ -2,7 +2,7 @@
 # warning (no copy, or a spelled one), value captures, and the shapes where
 # the C++ may share the object, which the warning words as "may".
 from typing import Callable
-from tpy import int32, Fn, Ptr, Span, copy
+from tpy import int32, Fn, Own, Ptr, Span, copy
 
 
 class P:
@@ -216,7 +216,7 @@ def union_local(c: bool) -> None:
 # callable: a captured Callable may hold a stateful object the lambda copies,
 # so the wording hedges; this one holds none, so the output matches
 def callable_cap() -> None:
-    mk: Callable[[], list[int32]] = lambda: [1]
+    mk: Callable[[], Own[list[int32]]] = lambda: [1]
     f: Callable[[], int32] = lambda: len(mk())  # tpyc: warning(/may keep its own copy of 'mk'/)
     print("callable:", f())
 

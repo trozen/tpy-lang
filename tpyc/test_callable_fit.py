@@ -389,6 +389,10 @@ def get_p(h: H) -> P:
     return h.p
 
 
+def get_ro(h: H) -> readonly[P]:
+    return h.p
+
+
 def get_tp(h: H) -> tuple[P, int32]:
     return (h.p, 1)
 
@@ -398,6 +402,10 @@ def new_p(h: H) -> Own[P]:
 
 
 def c_get(f: Callable[[H], P], h: H) -> int32:
+    return f(h).v
+
+
+def c_own(f: Callable[[H], Own[P]], h: H) -> int32:
     return f(h).v
 
 
@@ -658,14 +666,15 @@ def via_it(f: Fn[[int32], int32], n: int32) -> None:
      r"'t32' cannot be passed as Fn\[\[tuple\[int, int32\]\], int32\]: "
      r"its parameter 't' is tuple\[int32, int32\] and would receive "
      r"tuple\[int, int32\]"),
-    # A std::function holds its result by value: a return handed out by
-    # reference or as a tuple of borrows would be copied into it. A lambda
-    # calling the function copies too, so no hint is given. The documented
-    # restriction: BUGS.md#callable-borrow-return-copied.
-    ("print(c_get(get_p, H()))",
-     r"^'get_p' cannot be passed as Callable\[\[H\], P\]: it returns a "
-     r"borrow of P where the Callable keeps its own P \(return Own\[P\] if "
-     r"it builds a new one\)$"),
+    # A Callable's return reads as a def's: a bare reference type is a
+    # borrow, which an owning function does not hand back, and an `Own`
+    # return the value the std::function holds, which a borrow (a reference
+    # or a tuple of borrows) would be copied into. A lambda calling the
+    # function converts neither, so no hint is given.
+    ("print(c_get(new_p, H()))",
+     r"^'new_p' cannot be passed as Callable\[\[H\], P\]: it returns "
+     r"Own\[P\], but Callable\[\[H\], P\] returns a borrow; declare "
+     r"Callable\[\[H\], Own\[P\]\]$"),
     ("print(c_gett(get_tp, H()))",
      r"^'get_tp' cannot be passed as Callable\[\[H\], tuple\[P, "
      r"int32\]\]: it returns a borrow of tuple\[P, int32\] where the "
@@ -677,16 +686,31 @@ def via_it(f: Fn[[int32], int32], n: int32) -> None:
      r"returns a borrow of P \| None where the Callable keeps its own "
      r"P \| None"),
     # A callable object's one `__call__` is refused as a function is.
+    ("print(c_own(GetCall(), H()))",
+     r"^'GetCall' cannot be passed as Callable\[\[H\], Own\[P\]\] in "
+     r"argument 'f': it returns a borrow of P where the Callable keeps its "
+     r"own P \(return Own\[P\] if it builds a new one\)$"),
+    # An object is state its `__call__`'s signature says nothing about, so
+    # it does not stand at a Callable slot returning a borrow, whatever
+    # its body returns.
     ("print(c_get(GetCall(), H()))",
      r"^'GetCall' cannot be passed as Callable\[\[H\], P\] in argument "
-     r"'f': it returns a borrow of P where the Callable keeps its own P "
-     r"\(return Own\[P\] if it builds a new one\)$"),
+     r"'f': it is an object, so the signature of its '__call__' cannot "
+     r"promise that the borrow it returns points only into its arguments\. "
+     r"Take it as an Fn parameter, or make it a module function or a "
+     r"lambda$"),
     # One `__call__` whose parameter a direct call converts into: the hint
     # calls the object by its name.
     ("c = NarrowCall()\n    print(call64(c, 1))",
      r"^'NarrowCall' cannot be passed as Fn\[\[int64\], int64\] in argument "
      r"'f': its parameter 'x' is int32 and would receive int64 \(write "
      r"'lambda x0: c\(x0\)' to convert each call\)$"),
+    # A readonly borrow at an owning slot differs from the value in form
+    # alone: the message names the borrow, not the qualifier.
+    ("print(c_own(get_ro, H()))",
+     r"^'get_ro' cannot be passed as Callable\[\[H\], Own\[P\]\]: it "
+     r"returns a borrow of readonly\[P\] where the Callable keeps its own "
+     r"P \(return Own\[P\] if it builds a new one\)$"),
     # An Own return at an Fn slot says the result is owned, as a
     # Callable's does: a borrow returned there would be copied.
     ("print(fn_own(get_p, H()))",
@@ -744,9 +768,11 @@ def via_it(f: Fn[[int32], int32], n: int32) -> None:
         "optional-element-union", "tuple-str-widened",
         "tuple-element-optional", "tuple-element-union",
         "fn-return-widened", "tuple-bigint-narrowed",
-        "borrow-return-at-callable", "borrow-tuple-return-at-callable",
+        "own-return-at-borrow-callable", "borrow-tuple-return-at-callable",
         "borrow-optional-return-at-callable", "borrow-return-object",
-        "object-hint-by-name", "borrow-return-at-own-fn",
+        "object-at-borrow-callable",
+        "object-hint-by-name", "readonly-borrow-at-own-callable",
+        "borrow-return-at-own-fn",
         "generator-function-at-callable", "generator-function-at-fn",
         "generator-object-at-callable", "generator-object-at-fn",
         "generator-at-overloaded-callee", "object-hint-skips-own-name", "object-hint-no-arity-match"])
@@ -785,11 +811,14 @@ def test_by_value_union_takes_own_value_element() -> None:
 
 
 def test_owned_return_at_callable() -> None:
-    """An owned return is the value a Callable slot holds, and an Fn slot
-    returning `Own`; at a plain Fn slot a borrowing return is the
-    callable's own."""
+    """An owned return is the value a Callable slot returning `Own` holds,
+    and an Fn slot returning `Own`; at a plain Callable or Fn slot a
+    borrowing return is the callable's own, and an object's at an Fn
+    slot."""
     _compile(_PRELUDE + "\n\ndef main() -> None:\n"
-             "    print(c_get(new_p, H()))\n"
+             "    print(c_own(new_p, H()))\n"
+             "    print(c_get(get_p, H()))\n"
+             "    print(callh(GetCall(), H()))\n"
              "    print(callh(get_p, H()))\n"
              "    print(fn_own(new_p, H()))\n"
              "\n\ndef callh(f: Fn[[H], P], h: H) -> int32:\n"
@@ -810,16 +839,29 @@ def test_zero_parameter_lambda_hint() -> None:
 
 def test_fn_value_at_callable() -> None:
     """An `Fn` parameter's callable returns its own form, which may be a
-    borrow (`get_p` fits there): passed on to a `Callable` it would be
-    copied, and the remedy is the parameter's own spelling."""
+    borrow (`get_p` fits there): passed on to an owning `Callable` it would
+    be copied, and the remedy is the parameter's own spelling."""
     source = (_PRELUDE + "\n\ndef fn_to_c(f: Fn[[H], P], h: H) -> int32:\n"
-              "    return c_get(f, h)\n\n\n"
+              "    return c_own(f, h)\n\n\n"
               "def main() -> None:\n    print(fn_to_c(get_p, H()))\n")
     with pytest.raises(SemanticError, match=(
-            r"^Type mismatch in argument 'f': expected Callable\[\[H\], P\], "
-            r"got Fn\[\[H\], P\]: it returns a borrow of P where the "
+            r"^Type mismatch in argument 'f': expected Callable\[\[H\], "
+            r"Own\[P\]\], got Fn\[\[H\], P\]: it returns a borrow of P where the "
             r"Callable keeps its own P \(spell the parameter "
             r"Fn\[\[H\], Own\[P\]\]\)$")):
+        _compile(source)
+
+
+def test_owning_callable_value_at_borrow_callable() -> None:
+    """A `Callable` VALUE returning `Own[P]` at a `Callable[[H], P]`
+    parameter, whose return is a borrow, is refused as an owning function
+    is: two erased callables fit only with the same signature."""
+    source = (_PRELUDE + "\n\ndef main() -> None:\n"
+              "    g: Callable[[H], Own[P]] = new_p\n"
+              "    print(c_get(g, H()))\n")
+    with pytest.raises(SemanticError, match=(
+            r"^Type mismatch in argument 'f': expected Callable\[\[H\], P\], "
+            r"got Callable\[\[H\], Own\[P\]\]")):
         _compile(source)
 
 

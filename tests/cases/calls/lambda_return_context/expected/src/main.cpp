@@ -8,7 +8,7 @@ namespace tpyapp::main {
 
 std::function<std::vector<std::string>()> MOD;
 
-// def take(f: Callable[[], list[int]]) -> int:
+// def take(f: Callable[[], Own[list[int]]]) -> int:
 //     xs = f()
 //     xs.append(7)
 //     return len(xs)
@@ -54,7 +54,7 @@ __coro_co co() {
 }
 
 // def free() -> None:
-//     empty: Callable[[], list[int]] = lambda: []  # tpyc: ok
+//     empty: Callable[[], Own[list[int]]] = lambda: []  # tpyc: ok
 //     xs = empty()
 //     xs.append(1)
 //     print("free", xs, take(lambda: []), take(lambda: list()), take_fn(lambda: []))  # tpyc: ok
@@ -166,7 +166,7 @@ void comprehension() {
 
 // def closure() -> None:
 //     def inner() -> int:
-//         f: Callable[[], list[str]] = lambda: list[str]()  # tpyc: ok
+//         f: Callable[[], Own[list[str]]] = lambda: list[str]()  # tpyc: ok
 //         xs = f()
 //         xs.append("a")
 //         return len(xs)
@@ -209,7 +209,7 @@ void main() {
 // # inside it resolves, and its params shadow same-named enclosing params.
 // import asyncio
 //
-// MOD: Callable[[], list[str]] = lambda: []  # tpyc: ok
+// MOD: Callable[[], Own[list[str]]] = lambda: []  # tpyc: ok
 //
 // main()
 void __tpy_init() {

@@ -391,7 +391,7 @@ def new_p(h: Hp) -> Own[P]:
 
 
 @dispatch
-def via(f: Callable[[Hp], P], h: Hp) -> str:
+def via(f: Callable[[Hp], Own[P]], h: Hp) -> str:
     return "callable " + str(f(h).v)
 
 
@@ -524,7 +524,7 @@ def main() -> None:
     # A Callable value at an equal Callable parameter of an overloaded
     # receiver is its exact match, ahead of a widened Fn variant; so is a
     # named function of that signature.
-    cp: Callable[[Hp], P] = new_p
+    cp: Callable[[Hp], Own[P]] = new_p
     print("callable-exact", via(cp, Hp()))  # tpyc: ok
     print("callable-exact-named", via(new_p, Hp()))  # tpyc: ok
     # An async def at an Fn slot taking the owned coroutine handle.

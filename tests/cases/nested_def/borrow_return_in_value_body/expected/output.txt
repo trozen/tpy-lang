@@ -1,0 +1,7 @@
+free 7 4 [1, 2, 9]
+method 2 11
+ctor 101
+make 2
+callable 5 4
+gen 1002
+lend 6

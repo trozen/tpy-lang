@@ -1,0 +1,1 @@
+main.py:20: error: this lambda's result points into 'local', which it captures, not into an argument: a borrow returned through Callable[[], P] must point into its arguments. Take the value as a parameter, pass the lambda to an Fn parameter, or declare Callable[[], Own[P]] to return a copy

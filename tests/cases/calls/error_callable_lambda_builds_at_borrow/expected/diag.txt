@@ -1,0 +1,1 @@
+main.py:18: error: this lambda builds a new P, but Callable[[int32], P] returns a borrow; declare Callable[[int32], Own[P]] to return it by value

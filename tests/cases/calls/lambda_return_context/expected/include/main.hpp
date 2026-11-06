@@ -19,12 +19,13 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 struct __coro_co;
 
-// def take(f: Callable[[], list[int]]) -> int:
+// def take(f: Callable[[], Own[list[int]]]) -> int:
 ::tpy::BigInt take(const std::function<std::vector<::tpy::BigInt>()>& f);
-// def take_fn(f: Fn[[], list[int]]) -> int:
+// def take_fn(f: Fn[[], Own[list[int]]]) -> int:
 template<typename __F0>
   requires requires(__F0& __fn) {
       { __fn() } -> std::convertible_to<std::vector<::tpy::BigInt>>;
+      requires !std::is_reference_v<decltype(__fn())>;
   }
 ::tpy::BigInt take_fn(__F0&& f);
 // def later(s: str) -> Callable[[], str]:
@@ -69,13 +70,13 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
 
 // class Holder:
 struct Holder {
-    // make: Callable[[], list[int]]
+    // make: Callable[[], Own[list[int]]]
     std::function<std::vector<::tpy::BigInt>()> make;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def fill(self, f: Callable[[], dict[str, int]]) -> int:
+    // def fill(self, f: Callable[[], Own[dict[str, int]]]) -> int:
     ::tpy::BigInt fill(std::function<::tpy::ordered_map<std::string, ::tpy::BigInt>()> f) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -90,7 +91,7 @@ struct Seeded {
     // count: int
     ::tpy::BigInt count;
 
-    // def __init__(self, f: Callable[[], list[int]]) -> None:
+    // def __init__(self, f: Callable[[], Own[list[int]]]) -> None:
     Seeded() = default;
     explicit Seeded(std::function<std::vector<::tpy::BigInt>()> f);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Seeded";
@@ -154,7 +155,7 @@ inline Pt::Pt() : x(0) {}
 //     self.make = lambda: list[int]()  # tpyc: ok
 inline Holder::Holder() : make([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }) {}
 
-// def fill(self, f: Callable[[], dict[str, int]]) -> int:
+// def fill(self, f: Callable[[], Own[dict[str, int]]]) -> int:
 //     d = f()
 //     d["k"] = 1
 //     return len(d)
@@ -164,7 +165,7 @@ inline ::tpy::BigInt Holder::fill(std::function<::tpy::ordered_map<std::string, 
     return ::tpy::BigInt(::tpy::__len__(d));
 }
 
-// def __init__(self, f: Callable[[], list[int]]) -> None:
+// def __init__(self, f: Callable[[], Own[list[int]]]) -> None:
 //     xs = f()
 //     xs.append(1)
 //     self.count = len(xs)
@@ -173,13 +174,14 @@ inline Seeded::Seeded(std::function<std::vector<::tpy::BigInt>()> f) {
     xs.push_back(1);
     this->count = ::tpy::BigInt(::tpy::__len__(xs));
 }
-// def take_fn(f: Fn[[], list[int]]) -> int:
+// def take_fn(f: Fn[[], Own[list[int]]]) -> int:
 //     xs = f()
 //     xs.append(7)
 //     return len(xs)
 template<typename __F0>
   requires requires(__F0& __fn) {
       { __fn() } -> std::convertible_to<std::vector<::tpy::BigInt>>;
+      requires !std::is_reference_v<decltype(__fn())>;
   }
 ::tpy::BigInt take_fn(__F0&& f) {
     std::vector<::tpy::BigInt> xs = f();

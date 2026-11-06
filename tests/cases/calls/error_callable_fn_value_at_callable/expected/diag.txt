@@ -1,0 +1,1 @@
+main.py:29: error: Type mismatch in variable 'g': expected Callable[[], P], got Fn[[], P]: an Fn may return a borrow of its own state, and a borrow returned through Callable[[], P] must point into its arguments; declare the parameter Callable[[], P], or return Own[P] from both

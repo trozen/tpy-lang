@@ -46,7 +46,7 @@ namespace tpyapp::main {
 
 std::function<std::vector<std::string>()> MOD;
 
-// def fresh(f: Callable[[], list[int]]) -> Own[list[int]]:
+// def fresh(f: Callable[[], Own[list[int]]]) -> Own[list[int]]:
 //     xs = f()
 //     xs.append(1)
 //     return xs
@@ -87,7 +87,7 @@ std::string conv__Callable_int_str__int(const std::function<std::string(const ::
     return f(s);
 }
 
-// def ret_factory() -> Callable[[], Pt]:
+// def ret_factory() -> Callable[[], Own[Pt]]:
 //     return Pt  # tpyc: ok
 std::function<Pt()> ret_factory() {
     return []() -> Pt { return Pt(); };
@@ -134,7 +134,7 @@ void params() {
 }
 
 // def locals_() -> None:
-//     p: Callable[[], Pt] = Pt  # tpyc: ok
+//     p: Callable[[], Own[Pt]] = Pt  # tpyc: ok
 //     a = p()
 //     b = p()
 //     a.x = 5
@@ -143,11 +143,11 @@ void params() {
 //     n: Callable[[], int32] = int  # tpyc: ok
 //     fl: Callable[[str], float] = float  # tpyc: ok
 //     print("local value", len(s()), n(), fl("2.5"))
-//     q: Callable[[int32], Q] = Q  # tpyc: ok
+//     q: Callable[[int32], Own[Q]] = Q  # tpyc: ok
 //     print("local ctor arg", q(6).v)
 //     c: Callable[[int], Color] = Color  # tpyc: ok
 //     print("local enum", c(2).name)
-//     bx: Callable[[int32], Box[int32]] = Box  # tpyc: ok
+//     bx: Callable[[int32], Own[Box[int32]]] = Box  # tpyc: ok
 //     print("local generic", bx(4).v)
 //     # An Optional or union result slot takes the construction as a member.
 //     # Not called: its result is read in the wrong form,
@@ -180,7 +180,7 @@ void locals_() {
 
 // def ref_arg() -> None:
 //     # The constructor mutates the caller's list: the factory passes it through.
-//     f: Callable[[list[int]], Appender] = Appender  # tpyc: ok
+//     f: Callable[[list[int]], Own[Appender]] = Appender  # tpyc: ok
 //     xs = [1]
 //     print("ref arg", f(xs).n, xs)
 //     lol: list[list[int]] = [[1], [2]]
@@ -264,8 +264,8 @@ void method_field_ctor() {
 }
 
 // def imported() -> None:
-//     mk: Callable[[int32], Cell] = Cell  # tpyc: ok
-//     al: Callable[[int32], Cell] = Aliased  # tpyc: ok
+//     mk: Callable[[int32], Own[Cell]] = Cell  # tpyc: ok
+//     al: Callable[[int32], Own[Cell]] = Aliased  # tpyc: ok
 //     print("imported", mk(1).n, al(2).n)
 void imported() {
     std::function<::tpyapp::shapes::Cell(int32_t)> mk = [](int32_t __tpy_fa0) -> ::tpyapp::shapes::Cell { return ::tpyapp::shapes::Cell(__tpy_fa0); };
@@ -275,7 +275,7 @@ void imported() {
 
 // def container() -> None:
 //     # A class name as a container element takes the element's callable type.
-//     fs: list[Callable[[], list[int]]] = [list, list]  # tpyc: ok
+//     fs: list[Callable[[], Own[list[int]]]] = [list, list]  # tpyc: ok
 //     a = fs[0]()
 //     a.append(1)
 //     print("container", a, fs[1]())
@@ -382,7 +382,7 @@ void main() {
 //
 // from shapes import Cell, Cell as Aliased
 //
-// MOD: Callable[[], list[str]] = list  # tpyc: ok
+// MOD: Callable[[], Own[list[str]]] = list  # tpyc: ok
 //
 // main()
 void __tpy_init() {

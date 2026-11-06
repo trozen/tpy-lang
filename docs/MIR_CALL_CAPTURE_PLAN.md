@@ -250,9 +250,8 @@ metadata absence cannot become a source diagnostic.
 
 Known boundaries already tracked: BUGS.md#nesteddef-copy-capture-uncheckable,
 BUGS.md#escaping-capture-of-narrowed-subject,
-BUGS.md#nested-lambda-no-transitive-capture,
-BUGS.md#fn-slot-closure-stored-by-callee and
-BUGS.md#callable-value-borrow-return-copies-unwarned. Preserve them as separate
+BUGS.md#nested-lambda-no-transitive-capture and
+BUGS.md#fn-slot-closure-stored-by-callee. Preserve them as separate
 work; this survey established no new defect. Function import identity is
 distinct from M2.10's imported scalar binding-snapshot defect.
 

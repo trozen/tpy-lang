@@ -14,13 +14,13 @@ class Pt:
         self.x = 0
 
 
-def take(f: Callable[[], list[int]]) -> int:
+def take(f: Callable[[], Own[list[int]]]) -> int:
     xs = f()
     xs.append(7)
     return len(xs)
 
 
-def take_fn(f: Fn[[], list[int]]) -> int:
+def take_fn(f: Fn[[], Own[list[int]]]) -> int:
     xs = f()
     xs.append(7)
     return len(xs)
@@ -32,13 +32,13 @@ def later(s: str) -> Callable[[], str]:
 
 
 class Holder:
-    make: Callable[[], list[int]]
+    make: Callable[[], Own[list[int]]]
 
     def __init__(self) -> None:
         # A type spelled inside a lambda body.
         self.make = lambda: list[int]()  # tpyc: ok
 
-    def fill(self, f: Callable[[], dict[str, int]]) -> int:
+    def fill(self, f: Callable[[], Own[dict[str, int]]]) -> int:
         d = f()
         d["k"] = 1
         return len(d)
@@ -47,13 +47,13 @@ class Holder:
 class Seeded:
     count: int
 
-    def __init__(self, f: Callable[[], list[int]]) -> None:
+    def __init__(self, f: Callable[[], Own[list[int]]]) -> None:
         xs = f()
         xs.append(1)
         self.count = len(xs)
 
 
-MOD: Callable[[], list[str]] = lambda: []  # tpyc: ok
+MOD: Callable[[], Own[list[str]]] = lambda: []  # tpyc: ok
 
 
 def gen() -> Iterator[int32]:
@@ -66,7 +66,7 @@ async def co() -> int:
 
 
 def free() -> None:
-    empty: Callable[[], list[int]] = lambda: []  # tpyc: ok
+    empty: Callable[[], Own[list[int]]] = lambda: []  # tpyc: ok
     xs = empty()
     xs.append(1)
     print("free", xs, take(lambda: []), take(lambda: list()), take_fn(lambda: []))  # tpyc: ok
@@ -132,7 +132,7 @@ def comprehension() -> None:
 
 def closure() -> None:
     def inner() -> int:
-        f: Callable[[], list[str]] = lambda: list[str]()  # tpyc: ok
+        f: Callable[[], Own[list[str]]] = lambda: list[str]()  # tpyc: ok
         xs = f()
         xs.append("a")
         return len(xs)

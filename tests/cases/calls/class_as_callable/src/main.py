@@ -46,13 +46,13 @@ def apply(f: Fn[[str], int], s: str) -> int:
     return f(s)
 
 
-def fresh(f: Callable[[], list[int]]) -> Own[list[int]]:
+def fresh(f: Callable[[], Own[list[int]]]) -> Own[list[int]]:
     xs = f()
     xs.append(1)
     return xs
 
 
-def make_all(f: Fn[[int32], Q], n: int32) -> int32:
+def make_all(f: Fn[[int32], Own[Q]], n: int32) -> int32:
     total = 0
     for i in range(n):
         total += f(i).v
@@ -79,17 +79,17 @@ def conv(f: Callable[[int], str], s: int) -> str:
     return f(s)
 
 
-def ret_factory() -> Callable[[], Pt]:
+def ret_factory() -> Callable[[], Own[Pt]]:
     return Pt  # tpyc: ok
 
 
 class Registry:
-    make: Callable[[], dict[str, list[int]]]
+    make: Callable[[], Own[dict[str, list[int]]]]
 
     def __init__(self) -> None:
         self.make = dict  # tpyc: ok
 
-    def run(self, f: Callable[[], set[str]]) -> int:
+    def run(self, f: Callable[[], Own[set[str]]]) -> int:
         s = f()
         s.add("a")
         return len(s)
@@ -102,7 +102,7 @@ class Counter:
         self.n = f() + 1
 
 
-MOD: Callable[[], list[str]] = list  # tpyc: ok
+MOD: Callable[[], Own[list[str]]] = list  # tpyc: ok
 
 
 def gen() -> Iterator[int]:
@@ -122,7 +122,7 @@ def params() -> None:
 
 
 def locals_() -> None:
-    p: Callable[[], Pt] = Pt  # tpyc: ok
+    p: Callable[[], Own[Pt]] = Pt  # tpyc: ok
     a = p()
     b = p()
     a.x = 5
@@ -131,11 +131,11 @@ def locals_() -> None:
     n: Callable[[], int32] = int  # tpyc: ok
     fl: Callable[[str], float] = float  # tpyc: ok
     print("local value", len(s()), n(), fl("2.5"))
-    q: Callable[[int32], Q] = Q  # tpyc: ok
+    q: Callable[[int32], Own[Q]] = Q  # tpyc: ok
     print("local ctor arg", q(6).v)
     c: Callable[[int], Color] = Color  # tpyc: ok
     print("local enum", c(2).name)
-    bx: Callable[[int32], Box[int32]] = Box  # tpyc: ok
+    bx: Callable[[int32], Own[Box[int32]]] = Box  # tpyc: ok
     print("local generic", bx(4).v)
     # An Optional or union result slot takes the construction as a member.
     # Not called: its result is read in the wrong form,
@@ -148,7 +148,7 @@ def locals_() -> None:
 
 def ref_arg() -> None:
     # The constructor mutates the caller's list: the factory passes it through.
-    f: Callable[[list[int]], Appender] = Appender  # tpyc: ok
+    f: Callable[[list[int]], Own[Appender]] = Appender  # tpyc: ok
     xs = [1]
     print("ref arg", f(xs).n, xs)
     lol: list[list[int]] = [[1], [2]]
@@ -178,14 +178,14 @@ def method_field_ctor() -> None:
 
 
 def imported() -> None:
-    mk: Callable[[int32], Cell] = Cell  # tpyc: ok
-    al: Callable[[int32], Cell] = Aliased  # tpyc: ok
+    mk: Callable[[int32], Own[Cell]] = Cell  # tpyc: ok
+    al: Callable[[int32], Own[Cell]] = Aliased  # tpyc: ok
     print("imported", mk(1).n, al(2).n)
 
 
 def container() -> None:
     # A class name as a container element takes the element's callable type.
-    fs: list[Callable[[], list[int]]] = [list, list]  # tpyc: ok
+    fs: list[Callable[[], Own[list[int]]]] = [list, list]  # tpyc: ok
     a = fs[0]()
     a.append(1)
     print("container", a, fs[1]())

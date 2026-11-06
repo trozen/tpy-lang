@@ -132,7 +132,7 @@ void global_slot(int32_t a);
 __gen_gen_body gen_body(const std::vector<double>& fs);
 // async def async_body(fs: list[float]) -> float:
 __coro_async_body async_body(const std::vector<double>& fs);
-// def structural(a: int32, c: bool, h: Callable[[], list[float]]) -> None:
+// def structural(a: int32, c: bool, h: Callable[[], Own[list[float]]]) -> None:
 void structural(int32_t a, bool c, const std::function<std::vector<double>()>& h);
 // def int_width(c: bool, v: float, n: int32) -> None:
 void int_width(bool c, double v, int32_t n);

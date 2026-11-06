@@ -1,0 +1,1 @@
+main.py:30: error: Type mismatch in argument 'f': expected Callable[[P], Own[P]], got Callable[[P], P]: it returns a borrow of P where the Callable keeps its own P (to copy each result, bind 'lambda x0: copy(g(x0))' to a Callable[[P], Own[P]] and use that)

@@ -15,7 +15,7 @@ from ..sema.context import FunctionTrackingState
 from ..sema.reach_analysis import _iter_typed_children
 from ..type_def_registry import ParamPassing
 from ..typesys import (
-    BOOL, INT32, MutationCallEdge, NominalType, OwnType, ReadonlyType, Representation, TupleType, unwrap_ref_type,
+    BOOL, INT32, VOID, CallableType, MutationCallEdge, NominalType, OwnType, ReadonlyType, Representation, TupleType, unwrap_ref_type,
 )
 from . import nodes as th
 from .lower.callables import resolved_callee
@@ -176,7 +176,7 @@ def use(a: Cell) -> int32:
 @pytest.mark.parametrize("flag,value", [
     ("declaration", None), ("is_async", True), ("is_generator", True),
     ("is_method", True), ("is_staticmethod", True), ("is_classmethod", True),
-    ("is_constructor", True), ("is_callable_value", True),
+    ("is_constructor", True), ("callable_type", CallableType((), VOID)),
     ("is_builtin_function", True), ("special_handling", True),
     ("native_name", "foreign"), ("cpp_template", "foreign({0})"),
     ("error_return_type", "Error"),

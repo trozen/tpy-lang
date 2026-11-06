@@ -1,0 +1,1 @@
+main.py:27: error: 'middle' cannot be passed as Callable[[P], P]: it captures 'get', which captures 'h', so its signature cannot promise that the borrow it returns points only into its arguments. Take it as an Fn parameter, or make it a module function or a lambda

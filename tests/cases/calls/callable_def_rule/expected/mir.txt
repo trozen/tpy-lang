@@ -1,0 +1,84 @@
+cdr_helpers::__tpy_init: uncovered (module initialization)
+cdr_helpers::same_q@12:0: certified, summary: known
+cdr_helpers::Q.__init__@8:4: covered (storage: no_proof_required), summary: known
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::ident@59:0: certified, summary: known
+fixtures::mk@63:0: covered (storage: no_proof_required), summary: known
+fixtures::make_cb@67:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+fixtures::via@73:0: uncovered (unsupported parameter type)
+fixtures::via_c@78:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+fixtures::ret@83:0: uncovered (unsupported parameter type)
+fixtures::own@87:0: uncovered (unsupported parameter type)
+fixtures::own_slot@91:0: uncovered (unsupported parameter type)
+fixtures::via0@95:0: uncovered (unsupported parameter type)
+fixtures::Echo.__call__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+fixtures::Lender.__call__@35:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+fixtures::P.__init__@9:4: covered (storage: no_proof_required), summary: known
+fixtures::Pin.__init__@17:4: covered (storage: no_proof_required), summary: known
+fixtures::Echo.__init__@22:4: covered (storage: no_proof_required), summary: known
+fixtures::Lender.__init__@32:4: covered (storage: no_proof_required), summary: known
+fixtures::Holder.__init__@42:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+fixtures::Pair.__init__@50:4: uncovered (missing record layout)
+main::__tpy_init: uncovered (module initialization)
+main::sec_free@15:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::sec_lambda@31:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::global_p@64:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::bigger_of@68:0: certified, summary: known
+main::sec_receivers@72:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+main::main@88:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Util.same@53:4: covered (storage: no_proof_required)
+main::Util.same_c@57:4: covered (storage: no_proof_required)
+part_capture::__tpy_init: uncovered (module initialization)
+part_capture::sec_order@10:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_capture::sec_siblings@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_capture::tup_of@56:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_capture::sec_nested_locals@63:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_capture::main@166:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_capture::later_ident@172:0: certified, summary: known
+part_generic::__tpy_init: uncovered (module initialization)
+part_generic::fill@9:0: uncovered (generic body)
+part_generic::fill2@14:0: uncovered (generic body)
+part_generic::build@18:0: uncovered (generic body)
+part_generic::consume@22:0: uncovered (generic body)
+part_generic::forward@26:0: uncovered (unsupported parameter type)
+part_generic::sec_generic@33:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_generic::pick_cb@60:0: uncovered (generic body)
+part_generic::sec_generic_lambda@64:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generic::own_fn_to_callable@72:0: uncovered (unsupported parameter type)
+part_generic::sec_map@77:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generic::pick0@87:0: uncovered (generic body)
+part_generic::one@91:0: covered (storage: no_proof_required), summary: known
+part_generic::mk_pair@95:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_generic::mk_opt@99:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_generic::sec_identity@103:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generic::lend_owned@122:0: uncovered (generic body)
+part_generic::mk0@127:0: covered (storage: no_proof_required), summary: known
+part_generic::sec_hatches@131:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generic::main@143:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::sec_method@24:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::sec_ctor@43:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::gen@50:0: uncovered (unsupported parameter type)
+part_positions::sec_gen@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::bump_async@63:0: uncovered (async body)
+part_positions::sec_async@69:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_positions::sec_comp@76:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_positions::sec_closure@86:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_positions::sec_match_try@98:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_positions::checked@117:0: uncovered (error-return body)
+part_positions::sec_error_return@125:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::through_field@135:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_positions::sec_callees@140:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_positions::sec_rebind@151:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_positions::main@162:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::Box.bump@17:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_positions::Box.__init__@14:4: covered (storage: no_proof_required), summary: known
+part_positions::Keep.__init__@37:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_readonly::__tpy_init: uncovered (module initialization)
+part_readonly::ro_ident@9:0: certified, summary: known
+part_readonly::apply_ro@13:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_readonly::sec_readonly@18:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_readonly::touch@36:0: uncovered (unsupported parameter type)
+part_readonly::keep_pin@41:0: certified, summary: known
+part_readonly::sec_nocopy@45:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_readonly::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

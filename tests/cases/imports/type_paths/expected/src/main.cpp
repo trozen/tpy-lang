@@ -622,7 +622,7 @@ void bare_generic_isinstance(Holds4& h) {
 }
 
 // # a dotted class at a Callable slot is its constructor
-// def build(f: Callable[[int], m.Outer.Inner], v: int) -> int:
+// def build(f: Callable[[int], Own[m.Outer.Inner]], v: int) -> int:
 //     i = f(v)
 //     i.v += 1
 //     return i.v
@@ -656,7 +656,7 @@ std::string local_defaults(std::string_view s, int32_t n) {
 }
 
 // # a bare builtin class at a Callable slot is its constructor
-// def mk(f: Callable[[str], ValueError], s: str) -> str:
+// def mk(f: Callable[[str], Own[ValueError]], s: str) -> str:
 //     e = f(s)
 //     return "made " + s
 std::string mk(const std::function<::tpy::ValueError(std::string_view)>& f, std::string_view s) {

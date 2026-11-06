@@ -56,12 +56,13 @@ template<typename __F0>
       { __fn(__a0) } -> std::convertible_to<::tpy::BigInt>;
   }
 ::tpy::BigInt apply(__F0&& f, std::string_view s);
-// def fresh(f: Callable[[], list[int]]) -> Own[list[int]]:
+// def fresh(f: Callable[[], Own[list[int]]]) -> Own[list[int]]:
 std::vector<::tpy::BigInt> fresh(const std::function<std::vector<::tpy::BigInt>()>& f);
-// def make_all(f: Fn[[int32], Q], n: int32) -> int32:
+// def make_all(f: Fn[[int32], Own[Q]], n: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Q>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 int32_t make_all(__F0&& f, int32_t n);
 // def maybe(f: Callable[[], int] | None) -> int:
@@ -74,7 +75,7 @@ int32_t make_all(__F0&& f, int32_t n);
 // @dispatch
 // def conv(f: Callable[[int], str], s: int) -> str:
 std::string conv__Callable_int_str__int(const std::function<std::string(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& s);
-// def ret_factory() -> Callable[[], Pt]:
+// def ret_factory() -> Callable[[], Own[Pt]]:
 std::function<Pt()> ret_factory();
 // def gen() -> Iterator[int]:
 __gen_gen gen();
@@ -174,13 +175,13 @@ inline std::ostream& operator<<(std::ostream& os, const Appender& obj) {
 
 // class Registry:
 struct Registry {
-    // make: Callable[[], dict[str, list[int]]]
+    // make: Callable[[], Own[dict[str, list[int]]]]
     std::function<::tpy::ordered_map<std::string, std::vector<::tpy::BigInt>>()> make;
 
     // def __init__(self) -> None:
     Registry();
 
-    // def run(self, f: Callable[[], set[str]]) -> int:
+    // def run(self, f: Callable[[], Own[set[str]]]) -> int:
     ::tpy::BigInt run(std::function<::tpy::ordered_set<std::string>()> f) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
 };
@@ -270,7 +271,7 @@ inline Appender::Appender(std::vector<::tpy::BigInt>& xs) {
 //     self.make = dict  # tpyc: ok
 inline Registry::Registry() : make([]() -> ::tpy::ordered_map<std::string, std::vector<::tpy::BigInt>> { return ::tpy::ordered_map<std::string, std::vector<::tpy::BigInt>>(); }) {}
 
-// def run(self, f: Callable[[], set[str]]) -> int:
+// def run(self, f: Callable[[], Own[set[str]]]) -> int:
 //     s = f()
 //     s.add("a")
 //     return len(s)
@@ -298,7 +299,7 @@ template<typename __F0>
 ::tpy::BigInt apply(__F0&& f, std::string_view s) {
     return f(s);
 }
-// def make_all(f: Fn[[int32], Q], n: int32) -> int32:
+// def make_all(f: Fn[[int32], Own[Q]], n: int32) -> int32:
 //     total = 0
 //     for i in range(n):
 //         total += f(i).v
@@ -306,6 +307,7 @@ template<typename __F0>
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Q>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 int32_t make_all(__F0&& f, int32_t n) {
     int32_t total = 0;

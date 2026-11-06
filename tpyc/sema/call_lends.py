@@ -50,8 +50,9 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 from ..parse import (
     ResultForm, TpyArrayLiteral, TpyAwait, TpyBinOp, TpyBytesLiteral,
     TpyCall, TpyCallLike, TpyCoerce, TpyDictLiteral, TpyExpr, TpyFieldAccess,
-    TpyFString, TpyGeneratorExpression, TpyListRepeat, TpyMethodCall,
-    TpyName, TpyNoneLiteral, TpySetLiteral, TpySlice, TpyStrLiteral,
+    TpyFString, TpyGeneratorExpression, TpyLambda, TpyListRepeat,
+    TpyMethodCall, TpyName, TpyNoneLiteral, TpySetLiteral, TpySlice,
+    TpyStrLiteral,
     TpySubscript, TpyUnaryOp, TpyVarargPack, is_property_getter_read,
 )
 from ..type_def_registry import (
@@ -426,8 +427,9 @@ class CalleeFact(Enum):
     into (`callee_lend_fact`), most decisive first."""
     # A call-shaped expression with no resolved callee.
     UNRESOLVED = "unresolved"
-    # A callable value: no body to read a fact off; its operands are its
-    # contract.
+    # A callable value, read by its contract as a body-less stub is: its
+    # result may point into any operand it holds (`_contract_sources`), and
+    # that answer is durable whichever body was analyzed first.
     CALLABLE = "callable"
     # A callee whose body is not analyzed yet (`return_borrow_fact_pending`).
     PENDING = "pending"
@@ -514,19 +516,51 @@ def callee_lend_fact(call: TpyExpr) -> CalleeLend:
 _RECORDS_A_FACT = frozenset({CalleeFact.RECORDED, CalleeFact.KNOWN_EMPTY})
 # No callee body to read a fact off: no callee, or a callable value.
 _NO_CALLEE_BODY = frozenset({CalleeFact.UNRESOLVED, CalleeFact.CALLABLE})
-# The callee facts a durability reading cannot trust: no callee body, or a
-# body not analyzed yet.
-_NO_DURABLE_FACT = _NO_CALLEE_BODY | {CalleeFact.PENDING}
+# The callee facts a durability reading cannot trust: no callee, or a body
+# not analyzed yet. A callable value's contract is durable.
+_NO_DURABLE_FACT = frozenset({CalleeFact.UNRESOLVED, CalleeFact.PENDING})
+# The callee facts that name which operands the result may point into:
+# recorded sources, or a callable value's contract (every operand).
+_NAMES_OPERANDS = _RECORDS_A_FACT | {CalleeFact.CALLABLE}
+
+
+def _opaque_callee(lend: CalleeLend) -> bool:
+    """A call through a callee expression whose result no contract
+    describes (`make()(s)` of a resolved function); a callable value's
+    result is its contract's however the call reaches it."""
+    return (lend.access is CalleeAccess.EXPRESSION
+            and lend.kind is not CalleeFact.CALLABLE)
+
+
+def _proof_sources(lend: CalleeLend, srcs: list[LendSource]) -> bool:
+    """Whether `srcs` name every operand the call's result may point into,
+    as a proof reading needs: a body's recorded sources, or the contract
+    of a callable value returning a rule-R borrow, whose result roots only
+    in its arguments (`CallableType.returns_borrow`)."""
+    if all(s.how is Lent.RECORDED for s in srcs):
+        return True
+    return (lend.kind is CalleeFact.CALLABLE
+            and lend.ops.fi.callable_type.returns_borrow()
+            and all(s.how is Lent.CONTRACT for s in srcs))
+
+
+def _named_sources(lend: CalleeLend) -> frozenset[int] | None:
+    """The operand positions a `_NAMES_OPERANDS` fact names: the recorded
+    ones, None (every operand) for a contract."""
+    return None if lend.kind is CalleeFact.CALLABLE else lend.sources
 
 
 def _view_names_operands(lend: CalleeLend) -> bool:
     """Whether a view-returning call's callee fact says which operands its
     view reads: recorded sources (a fresh stamp's included) or a callable
-    value's contract through a name. Any other says nothing: the view is
-    the callee's storage."""
+    value's contract through a name or a field (never the field's
+    holder). Any other says nothing: the view is the callee's storage."""
+    # A view a callee expression hands back may read that temporary
+    # callee's own copied state (a std::function's capture), which no
+    # operand holds.
     return lend.kind is CalleeFact.RECORDED or (
         lend.kind is CalleeFact.CALLABLE
-        and lend.access is CalleeAccess.NAME)
+        and lend.access is not CalleeAccess.EXPRESSION)
 
 
 def borrow_declared_sources(call: TpyCallLike,
@@ -568,6 +602,27 @@ def _declared_own(t: TpyType | None) -> bool:
         unwrap_readonly(unwrap_send_sync(t)), OwnType)
 
 
+def _carries_nothing(lend: CalleeLend) -> bool:
+    """Whether a call's result points into nothing under its contract: a
+    fresh one, or one declared owned whole that can carry no pointer
+    (`_owned_result_carries` of any operand)."""
+    ops = lend.ops
+    return lend.fresh or (
+        ops is not None and _declared_own(ops.fi.root.return_type)
+        and not _owned_result_carries(ops.fi.return_type, None))
+
+
+def _contract_result_points(ctx: 'SemanticContext', call: TpyExpr,
+                            lend: CalleeLend) -> bool:
+    """Whether a resolved call's result may point into existing storage
+    under its signature alone: it is a reference or holds a pointer, and
+    the contract does not make it fresh (`_carries_nothing`)."""
+    rt = ctx.get_expr_type(call)
+    return ((_result_points(lend.ops.fi)
+             or (rt is not None and may_hold_pointer(rt)))
+            and not _carries_nothing(lend))
+
+
 def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
                       analyzer: 'ValueCategoryAnalyzer | None',
                       declared_of: 'DeclaredOf | None', *,
@@ -584,14 +639,11 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
     callee resolves. `lend` is the call's `callee_lend_fact`; `analyzer`
     and `temp_backing` are `call_lend_sources`'; a temp-backed element
     stays whatever its type, as the storage dying with the statement."""
-    if lend.fresh:
+    if _carries_nothing(lend):
         return []
     ops = lend.ops
     owned = ops is not None and _declared_own(ops.fi.root.return_type)
     result = ops.fi.return_type if ops is not None else None
-    # No operand (None: any) when the owned result can carry no pointer.
-    if owned and not _owned_result_carries(result, None):
-        return []
     if ops is None:
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return []
@@ -612,6 +664,26 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
             if s.temp_backed or (t := type_of(s.expr)) is None
             or (_owned_result_carries(result, t) if owned
                 else not holds_no_pointer(t))]
+
+
+def contract_lend_sources(ctx: 'SemanticContext', call: TpyExpr,
+                          lend: CalleeLend,
+                          analyzer: 'ValueCategoryAnalyzer | None'
+                          ) -> list[LendSource] | None:
+    """THE reading of a call's result by its callee's signature alone, as
+    a body-less stub's: nothing when the result neither is a reference nor
+    holds a pointer, else every operand its contract names
+    (`_contract_sources`), flagged `Lent.CONTRACT`; None when no callee
+    resolves. `lend` is the call's `callee_lend_fact`, `analyzer`
+    `call_lend_sources`'."""
+    if lend.kind is CalleeFact.UNRESOLVED:
+        return None
+    if not _contract_result_points(ctx, call, lend):
+        return []
+    return [s._replace(how=Lent.CONTRACT)
+            for s in _contract_sources(call, lend, ctx.get_expr_type,
+                                       analyzer, declared_reader(ctx),
+                                       temp_backing=True)]
 
 
 def _component_may_point(t: TpyType | None) -> bool:
@@ -994,18 +1066,13 @@ class MayLend(CallPolicy):
             return [_ctor_lend(ctor_arg, ctx.get_expr_type(call))]
         typed = ctx if ask is not Ask.LIFETIME else None
         if kind in _NO_CALLEE_BODY:
-            # No resolved callee (a callable value): its contract. A callable
-            # returns by value, so only a result that holds a pointer lends;
-            # an open `T` is left out until instantiation-time facts exist
+            # A callable value: its contract (`contract_lend_sources`); an
+            # open `T` is left out until instantiation-time facts exist
             # (`acc = func(acc, x)` in `functools.reduce` would keep `acc`).
             rt = ctx.get_expr_type(call)
-            if (kind is CalleeFact.UNRESOLVED or rt is None
-                    or contains_type_param(rt) or not may_hold_pointer(rt)):
+            if rt is None or contains_type_param(rt):
                 return []
-            return [s._replace(how=Lent.CONTRACT)
-                    for s in _contract_sources(call, lend, ctx.get_expr_type,
-                                               typed, declared_reader(ctx),
-                                               temp_backing=True)]
+            return contract_lend_sources(ctx, call, lend, typed) or []
         ops = lend.ops
         fi = ops.fi
         declared = (ops.obj is not None and ask is not Ask.LIFETIME
@@ -1175,10 +1242,13 @@ class ViewLend(CallPolicy):
                     for i, a in enumerate(call.args)]
         operands += [LendSource(-2, a, None, how=Lent.CONTRACT)
                      for a in (call.kwargs or {}).values()]
-        if (isinstance(call, TpyMethodCall)
-                and self.ctx.get_expr_type(call.obj) is not None):
-            operands.append(LendSource(-1, call.obj, None,
-                                       how=Lent.CONTRACT))
+        # A callable value's receiver operand is its callee held by
+        # reference, never a field's holder (`call_operands`); a method
+        # call's is the receiver as spelled, a base-part call's too.
+        recv = (lend.ops.obj if lend.kind is CalleeFact.CALLABLE
+                else call.obj if isinstance(call, TpyMethodCall) else None)
+        if recv is not None and self.ctx.get_expr_type(recv) is not None:
+            operands.append(LendSource(-1, recv, None, how=Lent.CONTRACT))
         out = []
         for src in operands:
             at = self.ctx.get_expr_type(src.expr)
@@ -1275,8 +1345,7 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
     object the call proves fresh (`origin`). Without `proof`, also what a
     borrow of the result may not outlive though the call proves nothing
     else about it: an owned `str` / `String` / `bytes` / `bytearray`
-    buffer, a borrowing view constructed from nothing, and a `Callable`'s
-    by-value record result (no C++ reference crosses a `Callable`).
+    buffer and a borrowing view constructed from nothing.
 
     With `gen_yield` (a generator's lending yield slot), a callable value
     declared to return an open type parameter is fresh too: at an owning
@@ -1302,15 +1371,7 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
             or is_bytearray_type(unwrap_own(unwrap_readonly(
                 ctx.get_expr_type(call))))):
         return True
-    callable_value = lend.kind is CalleeFact.CALLABLE
-    if (gen_yield and callable_value
-            and is_open_type_param_return(fi.root.return_type)):
-        return True
-    ret = unwrap_readonly(fi.return_type) if fi.return_type else None
-    return (callable_value
-            and isinstance(ret, NominalType) and not ret.is_value_type()
-            and not is_open_type_param_return(fi.root.return_type)
-            and not (is_protocol_type(ret) or is_dyn_protocol(ret)))
+    return gen_yield and lend.kind is CalleeFact.CALLABLE and fi.returns_open()
 
 
 def _is_null_ptr(call: TpyExpr) -> bool:
@@ -1337,7 +1398,11 @@ def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     if not isinstance(call, (TpyCall, TpyMethodCall)):
         return False
     fi = call.resolved_function_info
-    if fi is None or not isinstance(fi.return_type, OwnType):
+    # A callable value's name is no function the registry knows, which the
+    # free-call test below would read as a builtin's; its `Own[R]` is a
+    # def's.
+    if (fi is None or not isinstance(fi.return_type, OwnType)
+            or fi.is_callable_value):
         return False
     if isinstance(call, TpyMethodCall):
         # The receiver the method resolved on: a `Ptr`, `Box` or `Rc`
@@ -1368,9 +1433,8 @@ class ReturnLend(CallPolicy):
       asked -- an `Own[T]` result of a callee no user function or record
       method answers excepted (`_builtin_own_result`) -- a `Ptr[T]()` NULL;
     - a call through a callee expression (`CalleeAccess.EXPRESSION`) is a
-      TEMPORARY, a callable value through a name or read off a receiver
-      UNNAMED (its contract is not read: following it drops the view rule
-      and admits a copied local);
+      TEMPORARY; a callable value's call, whatever reaches the callee,
+      lends its contract's sources as a body-less stub's (`MayLend`);
     - a callee whose body is not analyzed yet (`return_borrow_fact_pending`)
       is UNNAMED, and so is a call MAY names no source of;
     - a borrow-returning await lends the awaited call's recorded sources,
@@ -1452,6 +1516,15 @@ class ReturnLend(CallPolicy):
                 and is_borrowing_view_type(unwrap_readonly(t))
                 else LeafKind.UNPLACEABLE)
 
+    def end_places(self, node: TpyExpr) -> list[str] | None:
+        # A closure capturing by reference (one handed to an `Fn`
+        # parameter) holds the names it captures; a call through it may
+        # hand back a borrow of any of them.
+        if (not self.proof and isinstance(node, TpyLambda)
+                and not node.captures_by_value):
+            return list(node.captured_names)
+        return None
+
     def at_call(self, call: TpyExpr, path: tuple,
                 ask: Ask) -> list[LendSource] | None:
         if ((self.proof or self.gen_yield
@@ -1464,13 +1537,12 @@ class ReturnLend(CallPolicy):
         if borrowing_ctor_arg(call) is not None:
             return None if self.proof else self.may.at_call(call, path, ask)
         lend = callee_lend_fact(call)
-        if (lend.access is CalleeAccess.EXPRESSION
-                or lend.kind in _NO_DURABLE_FACT):
+        if _opaque_callee(lend) or lend.kind in _NO_DURABLE_FACT:
             return None
         srcs = self.may.at_call(call, path, ask)
         if not srcs or any(s.assumed for s in srcs):
             return None
-        if self.proof and any(s.how is not Lent.RECORDED for s in srcs):
+        if self.proof and not _proof_sources(lend, srcs):
             return None
         return srcs
 
@@ -1479,8 +1551,7 @@ class ReturnLend(CallPolicy):
         if srcs is not None:
             return (LeafKind.NULL if _is_null_ptr(call)
                     else LeafKind.TEMPORARY)
-        if (not self.proof and callee_lend_fact(call).access
-                is CalleeAccess.EXPRESSION):
+        if not self.proof and _opaque_callee(callee_lend_fact(call)):
             return LeafKind.TEMPORARY
         return LeafKind.UNNAMED
 
@@ -1501,6 +1572,42 @@ class ReturnLend(CallPolicy):
                            how=Lent.AWAITED_ALL)
                 for i, e in enumerate(([obj] if obj is not None else [])
                                       + list(op.args))]
+
+
+class ContractReturnLend(ReturnLend):
+    """RETURN read off each call's signature alone, so the answer
+    does not depend on which body was analyzed first -- a resolved
+    callee's result may point into every operand its contract names
+    (`_contract_sources`, the body-less stub rule), never only into the
+    ones its body is proven to return. A fresh result is a TEMPORARY, a
+    result that may point but names no operand UNNAMED: storage the
+    contract does not name (a closure's captures, a module variable). A
+    call through a callable value whose result may point outside rule R
+    (`unrooted_callable_result`) is not climbed: the leaf is the call."""
+
+    def at_call(self, call: TpyExpr, path: tuple,
+                ask: Ask) -> list[LendSource] | None:
+        ctx = self.ctx
+        if ((not _builtin_own_result(ctx, call)
+                and call_result_is_fresh(ctx, call)) or _is_null_ptr(call)):
+            return []
+        if borrowing_ctor_arg(call) is not None:
+            return self.may.at_call(call, path, ask)
+        if unrooted_callable_result(ctx, call):
+            return None
+        srcs = contract_lend_sources(ctx, call, callee_lend_fact(call), ctx)
+        return None if srcs is None else srcs or None
+
+
+def unrooted_callable_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
+    """Whether `call` is a call through a `Callable` or `Fn` value whose
+    result may point (`_contract_result_points`) but is no rule-R borrow (a
+    bare reference type or `readonly`): a `Ptr[P]` or a view, which its
+    signature cannot promise points only into its arguments."""
+    lend = callee_lend_fact(call)
+    return (lend.kind is CalleeFact.CALLABLE
+            and not lend.ops.fi.callable_type.returns_borrow()
+            and _contract_result_points(ctx, call, lend))
 
 
 class TempLend(CallPolicy):
@@ -1686,8 +1793,8 @@ class MustLend(CallPolicy):
     """MUST: the operands a call's result points into when its FORM proves
     that storage outlives the statement (`proven_lend_roots`): a call sema
     stamped a borrow (`ResultForm.BORROW`), or a call whose borrow facts are
-    known and whose result is a C++ reference, a borrowing view or a
-    borrow-form tuple. It climbs a plain field read, a container subscript
+    known -- recorded, or a callable value's contract -- and whose result
+    is a C++ reference, a borrowing view or a borrow-form tuple. It climbs a plain field read, a container subscript
     and a coercion that renders its inner through, and refuses everything
     else: a select, a walrus, an await, a getter, a `__getattr__` hop, a
     subscript through a dunder or an Optional check, a fresh-building
@@ -1722,12 +1829,12 @@ class MustLend(CallPolicy):
                 return None
         elif not isinstance(call, (TpyCall, TpyMethodCall)):
             return None
-        elif (lend.kind not in _RECORDS_A_FACT
+        elif (lend.kind not in _NAMES_OPERANDS
                 or not _result_points(lend.ops.fi)):
             return None
         if lend.kind is CalleeFact.UNRESOLVED:
             return None
-        return call_lend_sources(lend.ops, lend.sources,
+        return call_lend_sources(lend.ops, _named_sources(lend),
                                  analyzer=self.ctx,
                                  declared_of=declared_reader(self.ctx))
 

@@ -1,0 +1,2 @@
+main.py:31: warning: lambda at line 31 may keep its own copy of 'cw'; changes made after it is created may not be seen
+main.py:31: error: Cannot return a borrow of a temporary from this lambda: its result points into 'Wrap(...)', a value created in the lambda body, which is destroyed when the lambda returns. Use a def returning 'Own[P]' instead: bind the value to a local there and return tpy.copy(...) of the part you need

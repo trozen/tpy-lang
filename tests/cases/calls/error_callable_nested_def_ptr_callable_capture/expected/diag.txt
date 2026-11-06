@@ -1,0 +1,1 @@
+main.py:35: error: 'get' cannot be passed as Callable[[P], P]: it captures 'lend', so its signature cannot promise that the borrow it returns points only into its arguments. Take it as an Fn parameter, or make it a module function or a lambda

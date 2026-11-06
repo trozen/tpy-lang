@@ -1240,10 +1240,12 @@ class TypeOperations:
                     return True
                 # Ref[T] matches bare T: the same type param can be inferred
                 # as bare T (from iterables) and Ref[T] (from function returns).
-                # Accept both directions without conflict.
+                # The bare one wins whichever comes first, so the verdict
+                # does not depend on argument order.
                 if isinstance(arg_type, RefType) and arg_type.wrapped == existing:
                     return True
                 if isinstance(existing, RefType) and existing.wrapped == arg_type:
+                    inferred[param_type.name] = arg_type
                     return True
                 return self.types_match_for_inference(existing, arg_type)
             inferred[param_type.name] = arg_type
@@ -1335,8 +1337,15 @@ class TypeOperations:
                 return False
             # Positions naming a type parameter bind it -- this inference
             # is the call at hand's -- and the rest must fit.
+            # A std::function's return is DECLARED, so it binds what a call
+            # through it hands back, read as a def's declared return
+            # (`contract_return`) -- a named function's signature already
+            # carries that form. A template callable's return may be a
+            # lambda body's expression type, which says no such thing.
+            arg_return = (arg_type.return_type if arg_type.is_template
+                          else arg_type.contract_return())
             pairs = [*zip(param_type.param_types, arg_type.param_types),
-                     (param_type.return_type, arg_type.return_type)]
+                     (param_type.return_type, arg_return)]
             return (all(self.match_type_with_inference(pp, ap, inferred)
                         for pp, ap in pairs if contains_type_param(pp))
                     and callable_value_fits(

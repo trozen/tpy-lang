@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::sec_free@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::make@62:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::gen@77:0: uncovered (nested def)
+main::lend@85:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@91:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::C.direct@34:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::C.at_slot@41:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+main::D.__init__@54:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

@@ -12,11 +12,12 @@ from dataclasses import dataclass, fields as dc_fields, replace as dc_replace
 from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, TYPE_CHECKING
 
 from ..holders import IterHolder
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..typesys import canonical_readonly, make_readonly
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
+from ..typesys import contains_reference_type, loan_class, Loan, classify_result_representation, ResultPosition, ResultRepresentation, bound_as_spelled, is_void_like_type
 from ..typesys import answers_as_call, element_access_getitem, store_slot_type, store_takes_elements
 from ..typesys import (
     same_class,
@@ -76,6 +77,7 @@ from ..type_def_registry import (
 from ..namespace import BindingKind, Blocked, NameBinding
 from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
+from .capture_copies import capture_type, closure_bindings
 from ..coercions import CoercionContext, resolve_coercion, callable_fit, CallableFit
 from ..prescan import (
     expr_to_narrowing_key, bound_names_of, fold_int_constant,
@@ -83,11 +85,11 @@ from ..prescan import (
     walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ConsumeCause, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source
+from .context import AnalysisRecord, ConsumeCause, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source, LambdaResultCheck
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, peel_coerce, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
-                             lent_operands, origin_shared)
+                             lent_operands, origin_shared, call_operands)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import step_handover_paths
 from .compatibility import TupleSink
@@ -108,7 +110,7 @@ from .pending_num import (ContainerCells, PendingNumCell, PendingNums,
                           leaves_as_numbers,
                           value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
-                        peel_value,
+                        expression_spelling, peel_value,
                         find_int_float_mix, flipped,
                         float_left_open, join_inferred_value_types,
                         literal_mix_message,
@@ -129,7 +131,9 @@ from .scope_tracker import lend_places
 from .receiver_calls import (check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, receiver_is_readonly,
                              record_protocol_arg_calls, record_truth_calls)
-from .storage_walk import StorageKey
+from .storage_walk import Leaf, LeafKind, StorageKey, leaves
+from ..storage_trace import StepKind
+from .call_lends import ContractReturnLend, unrooted_callable_result
 from .nonlocal_binding import enclosing_scope_facts
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
                          register_iteration_loans)
@@ -416,6 +420,91 @@ def _expr_has_error_return_call(expr: TpyExpr) -> bool:
         if _expr_has_error_return_call(child):
             return True
     return False
+
+
+def _sibling_calls(leaf: Leaf) -> list[str]:
+    """The names called directly by the calls a leaf of a closure's result
+    is the result of, or climbed through (`Leaf.path`): the nested defs of
+    the body among them are siblings the result reaches."""
+    calls = [step.node for step in leaf.path if step.kind is StepKind.CALL]
+    if leaf.at_call:
+        calls.append(leaf.node)
+    return [c.func.name for c in calls
+            if isinstance(c, TpyCall) and isinstance(c.func, TpyName)]
+
+
+def _captured_state(ctx: 'SemanticContext', closure: 'TpyNestedDef | TpyLambda',
+                    seen: IdentitySet | None = None) -> str | None:
+    """How a diagnostic names the first capture of `closure` that is state
+    its signature says nothing about, None when it captures none: a capture
+    whose type is state (`_is_state`), or a nested def that captures state
+    in turn. `seen` breaks a cycle of nested defs capturing each other, so
+    the verdict does not depend on which is asked first."""
+    seen = IdentitySet() if seen is None else seen
+    if closure in seen:
+        return None
+    seen.add(closure)
+    bindings = closure_bindings(ctx, closure).bindings
+    siblings = ctx.func.closure_captured_defs.get(closure) or {}
+    for name in closure.captured_names:
+        sibling = siblings.get(name)
+        if isinstance(sibling, TpyNestedDef):
+            inner = _captured_state(ctx, sibling, seen)
+            if inner is not None:
+                return f"'{name}', which captures {inner}"
+            continue
+        t = capture_type(closure, name, bindings.get(name))
+        if t is None or _is_state(t):
+            return f"'{name}'"
+    return None
+
+
+def _is_state(t: TpyType, owned: bool = False) -> bool:
+    """Whether a value of type `t` held by a callable is state a borrow
+    result could point into: a part that may hold a pointer, view or
+    reference (`loan_class`), or that holds a reference type by value
+    (`contains_reference_type`) -- unless `owned`, an `Own[T]` result the
+    caller takes over. A `Callable` part is judged by its return
+    (`_callable_is_state`) rather than by `loan_class`'s UNKNOWN for every
+    std::function; the walk mirrors `_storage_loan_class`'s aggregates only
+    to reach such parts. A pending literal counts as the type its
+    default form spells."""
+    if isinstance(t, PendingViewType):
+        t = t.family.owned_type
+    t = bound_as_spelled(leaves_as_numbers(t), lists=True)
+    bare = unwrap_readonly(unwrap_send_sync(t))
+    if isinstance(bare, OwnType):
+        return _is_state(bare.wrapped, owned)
+    if isinstance(bare, CallableType):
+        return bare.is_template or _callable_is_state(bare)
+    if isinstance(bare, TupleType):
+        return any(_is_state(e, owned) for e in bare.element_types)
+    if isinstance(bare, (OptionalType, UnionType)):
+        return any(_is_state(m, owned) for m in bare.inner_types()
+                   if not is_void_like_type(m))
+    td = type_def_of(bare) if isinstance(bare, NominalType) else None
+    if td is not None and td.owns_elements and bare.type_args:
+        return any(_is_state(a, owned) for a in bare.type_args
+                   if isinstance(a, TpyType))
+    return (loan_class(bare).holds is not Loan.NO
+            or (not owned and contains_reference_type(bare, held_only=True)))
+
+
+def _callable_is_state(c: CallableType) -> bool:
+    """Whether a `Callable` value may hand back storage of its own target.
+    Rule R roots a bare reference-type or `readonly` result in the
+    arguments. Every other result the std::function hands back by value,
+    as the caller's own (`Own[T]` or not): it is state only when it may
+    hold a pointer, view or reference (`Ptr[P]`, `Span[P]`, an open type
+    parameter)."""
+    if c.returns_borrow():
+        return False
+    ret = c.return_type
+    if (classify_result_representation(
+            ret, position=ResultPosition.ERASED_CALLABLE)
+            is ResultRepresentation.ERASED_VOID):
+        return False
+    return _is_state(ret, owned=True)
 
 
 def _temp_root_spelling(root: TpyExpr) -> str | None:
@@ -7440,11 +7529,15 @@ class ExpressionAnalyzer:
 
     def _analyze_lambda_with_fn_hint(self, expr: TpyLambda,
                                      fn_hint: SlotHint | CallableType,
-                                     *, as_class: str | None = None) -> CallableType:
+                                     *, as_class: str | None = None,
+                                     factory_of: str | None = None
+                                     ) -> CallableType:
         """Analyze a lambda with a Fn/Callable type hint providing parameter types.
 
         `as_class` names the class a synthesized factory lambda stands for,
-        so its diagnostics speak of the class name the user wrote. Where the
+        so its diagnostics speak of the class name the user wrote;
+        `factory_of` is that name inside the wrapped analysis, for the
+        deferred borrow-result check (`LambdaResultCheck`). Where the
         hint's return is inferred (`SlotHint`), the parameters still type the
         lambda's, but a body that returns an int where the hint returns a
         float keeps its int return.
@@ -7454,7 +7547,8 @@ class ExpressionAnalyzer:
         if as_class is not None:
             origin = f"'{as_class}' used as a '{fn_type}'"
             try:
-                return self._analyze_lambda_with_fn_hint(expr, fn_slot)
+                return self._analyze_lambda_with_fn_hint(
+                    expr, fn_slot, factory_of=as_class)
             except _LambdaResultMismatch as e:
                 raise SemanticError(
                     f"{origin} constructs a '{e.body_type}', which is not "
@@ -7545,12 +7639,13 @@ class ExpressionAnalyzer:
                                                      ret_slot)))
             expr.inferred_return_type = body_type
             self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
-            self._queue_lambda_borrow_check(expr, body_type)
+            self._queue_lambda_borrow_check(expr, body_type, None,
+                                            factory_of)
             self._lambda_result_sink(expr, body_type)
-            concrete_params = tuple(fn_type.param_types)
-            if fn_type.is_template:
-                return make_fn_type(concrete_params, body_type)
-            return CallableType(concrete_params, body_type)
+            # The slot's return stays declared open: each instantiation's
+            # convention answers it, not the def rule.
+            return CallableType(tuple(fn_type.param_types), body_type,
+                                fn_type.is_template, fn_type.returns_open())
         if body_type != fn_type.return_type:
             try:
                 self.compat.check_type_compatible(
@@ -7567,15 +7662,132 @@ class ExpressionAnalyzer:
                     expr)
                 raise _LambdaResultMismatch(err.message, err.loc, shown)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
-        self._queue_lambda_borrow_check(expr, fn_type.return_type)
-        self._lambda_result_sink(expr, fn_type.return_type)
+        # The lambda's result is the slot's contract, read as a def's
+        # declared return: a bare reference type is a borrow.
+        contract = fn_type.closure_return()
+        if (not fn_type.is_template and fn_type.returns_borrow()
+                and self.ctx.slot_step_commits()):
+            self._check_callable_result_roots(expr, fn_type, expr)
+        self._queue_lambda_borrow_check(expr, contract, fn_type, factory_of)
+        self._lambda_result_sink(expr, contract)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",
                 coercion_ctx=CoercionContext.RETURN, is_return=True)
 
-        expr.inferred_return_type = fn_type.return_type
+        expr.inferred_return_type = contract
         return fn_type
+
+    def _check_callable_result_roots(
+            self, closure: 'TpyLambda | TpyNestedDef',
+            slot: CallableType, site: TpyExpr) -> None:
+        """A lambda or nested def at a `Callable` slot whose result is a
+        borrow: only its signature decides, and the borrow may point into
+        its arguments only (a global or static storage aside). A nested def
+        that captures state (`_captured_state`) has a signature that cannot
+        promise that, nor has a lambda whose result is such a def's result;
+        a capture-free one is judged by its signature as a module function
+        is. A lambda's body names only its parameters and captures, and
+        each call in it is read off its callee's signature
+        (`ContractReturnLend`), never its body, so the verdict does not
+        depend on which body was analyzed first. A call through a callable
+        value is read so only under rule R: any other result that may point
+        (`unrooted_callable_result`) is refused. A capture -- copied into
+        the std::function, or held by reference (`self`, a reference-type
+        parameter) -- is storage the caller never handed it."""
+        if not isinstance(closure, TpyLambda):
+            state = _captured_state(self.ctx, closure)
+            if state is not None:
+                raise self._stateful_callable_error(
+                    f"'{closure.func.name}'", f"it captures {state}",
+                    "its signature", "Take it as an Fn parameter, or make "
+                    "it a module function or a lambda", slot, site)
+            return
+        params = set(closure.param_names)
+        captured = set(closure.captured_names) - params
+        own_siblings = self.ctx.func.closure_captured_defs.get(closure) or {}
+        for leaf in leaves(closure.body, ContractReturnLend(self.ctx)):
+            for name in _sibling_calls(leaf):
+                node = own_siblings.get(name)
+                state = (_captured_state(self.ctx, node)
+                         if node is not None else None)
+                if state is not None:
+                    raise self._stateful_callable_error(
+                        "this lambda", f"its result is the result of "
+                        f"'{name}', which captures {state}",
+                        f"the signature of '{name}'", f"Take the lambda as an "
+                        f"Fn parameter, or make '{name}' a module function",
+                        slot, site)
+            if leaf.at_call and unrooted_callable_result(self.ctx, leaf.node):
+                raise self._unrooted_callable_error(leaf.node, slot, site)
+            where = self._callable_leaf_escape(leaf, params, captured)
+            if where is not None:
+                raise self._callable_root_error("this lambda's result", where,
+                                                slot, site)
+
+    def _stateful_callable_error(self, what: str, why: str, whose: str,
+                                 fix: str, slot: CallableType,
+                                 site: TpyExpr) -> SemanticError:
+        return self.ctx.error(
+            f"{what} cannot be passed as {slot}: {why}, so {whose} cannot "
+            f"promise that the borrow it returns points only into its "
+            f"arguments. {fix}", site)
+
+    def _unrooted_callable_error(self, call: TpyExpr, slot: CallableType,
+                                 site: TpyExpr) -> SemanticError:
+        callee = (call.func if isinstance(call, TpyCall)
+                  else call.obj if isinstance(call, TpyMethodCall) else None)
+        spelled = None if callee is None else (
+            expression_spelling(callee) or _temp_root_spelling(callee))
+        # A call of a callable value the receiver reaches (`h.cbs[0](q)`)
+        # is spelled as written, not as its `__call__`.
+        if (isinstance(call, TpyMethodCall) and spelled is not None
+                and call.method != "__call__"):
+            spelled = f"{spelled}.{call.method}"
+        through = f"'{spelled}'" if spelled is not None else "a callable value"
+        owned = dc_replace(slot, return_type=OwnType(
+            unwrap_readonly(slot.return_type)))
+        return self.ctx.error(
+            f"this lambda's result comes from a call through {through}, "
+            f"whose signature cannot promise it points only into its "
+            f"arguments: a borrow returned through {slot} must point into "
+            f"its arguments. Pass the lambda to an Fn parameter, or declare "
+            f"{owned} to return a copy", site)
+
+    def _callable_root_error(self, what: str, where: str,
+                             slot: CallableType,
+                             site: TpyExpr) -> SemanticError:
+        owned = dc_replace(slot, return_type=OwnType(
+            unwrap_readonly(slot.return_type)))
+        return self.ctx.error(
+            f"{what} points into {where}, not into an argument: a borrow "
+            f"returned through {slot} must point into its arguments. Take "
+            f"the value as a parameter, pass the lambda to an Fn "
+            f"parameter, or declare {owned} to return a copy", site)
+
+    def _callable_leaf_escape(self, leaf: Leaf, params: set[str],
+                              captured: set[str]) -> str | None:
+        """Where a leaf of a `Callable` lambda's borrowed result points
+        when that is not one of its arguments (`_check_callable_result_roots`),
+        None when it is, or is storage no frame owns. A temporary is the
+        deferred temporary check's (`resolve_pending_lambda_borrow_checks`)."""
+        kind = leaf.kind
+        if kind in (LeafKind.STATIC, LeafKind.NULL, LeafKind.CONSTANT,
+                    LeafKind.GLOBAL, LeafKind.TEMPORARY):
+            return None
+        if kind is LeafKind.PLACE:
+            name = leaf.name
+            if name in captured:
+                return f"'{name}', which it captures"
+            if name in params or self.ctx.reads_module_slot(name):
+                return None
+            return f"'{name}', which is none of its arguments"
+        if kind is LeafKind.UNNAMED and leaf.at_call:
+            # A resolved callee whose contract names no operand hands back
+            # storage none of its operands holds: a module variable's.
+            if call_operands(leaf.node) is not None:
+                return None
+        return "storage none of its arguments holds"
 
     def _lambda_result_sink(self, expr: TpyLambda, result: TpyType) -> None:
         """The lambda's result as the owning sink of its body, whether the
@@ -7626,9 +7838,12 @@ class ExpressionAnalyzer:
         self.compat.check_own_lvalue_into_own(slot, expr.body, "return type")
 
     def _queue_lambda_borrow_check(self, expr: TpyLambda,
-                                   result: TpyType | None) -> None:
+                                   result: TpyType | None,
+                                   slot: CallableType | None,
+                                   factory_of: str | None) -> None:
         if isinstance(result, RefType):
-            self.ctx.pending_lambda_borrow_checks.append(expr)
+            self.ctx.pending_lambda_borrow_checks.append(
+                LambdaResultCheck(expr, slot, factory_of))
 
     def resolve_pending_lambda_borrow_checks(self) -> None:
         """Reject a lambda whose borrow result points into a value its own
@@ -7639,22 +7854,43 @@ class ExpressionAnalyzer:
         by-value result since it was queued is judged by its final result."""
         pending = self.ctx.pending_lambda_borrow_checks[:]
         self.ctx.pending_lambda_borrow_checks.clear()
-        for lam in pending:
-            result = lam.inferred_return_type
-            if not isinstance(result, RefType):
-                continue
-            root = self.compat.borrow_temp_root(lam.body)
-            if root is None:
-                continue
-            what = _temp_root_spelling(root)
-            into = f"'{what}', a value" if what else "a value"
+        for check in pending:
+            self._resolve_lambda_result_check(check)
+
+    def _resolve_lambda_result_check(self, check: LambdaResultCheck) -> None:
+        lam = check.lam
+        result = lam.inferred_return_type
+        if not isinstance(result, RefType):
+            return
+        root = self.compat.borrow_temp_root(lam.body)
+        # A class used as a callable constructs whatever path names it.
+        if check.factory_of is not None:
+            root = peel_value_wrappers(lam.body)
+        if root is None:
+            return
+        slot = check.slot
+        if peel_value_wrappers(lam.body) is root and slot is not None:
+            # The whole result is a new value: the def twin's refusal of a
+            # temporary at a reference return, naming the owning spelling
+            # of the slot.
+            owned = dc_replace(slot, return_type=OwnType(
+                unwrap_readonly(slot.return_type)))
+            what = (f"'{check.factory_of}' builds" if check.factory_of
+                    else "this lambda builds")
             raise self.ctx.error(
-                f"Cannot return a borrow of a temporary from this lambda: "
-                f"its result points into {into} created in the lambda body, "
-                f"which is destroyed when the lambda returns. Use a def "
-                f"returning 'Own[{result.wrapped}]' instead: bind the value "
-                f"to a local there and return tpy.copy(...) of the part you "
-                f"need", lam)
+                f"{what} a new {unwrap_readonly(result.wrapped)}, but "
+                f"{slot} returns a "
+                f"borrow; declare {owned} to return it by value", lam)
+        what = _temp_root_spelling(root)
+        into = f"'{what}', a value" if what else "a value"
+        raise self.ctx.error(
+            f"Cannot return a borrow of a temporary from this lambda: "
+            f"its result points into {into} created in the lambda body, "
+            f"which is destroyed when the lambda returns. Use a def "
+            f"returning 'Own[{unwrap_readonly(result.wrapped)}]' instead: "
+            f"bind the value "
+            f"to a local there and return tpy.copy(...) of the part you "
+            f"need", lam)
 
     # --- Class names as callables ---
 
@@ -7763,6 +7999,9 @@ class ExpressionAnalyzer:
             # The committed slot's mark.
             if not hint.is_template and self.ctx.slot_step_commits():
                 self.ctx.mark_nested_def_escape(expr.name)
+                node = self.ctx.visible_nested_def(expr.name)
+                if node is not None and hint.returns_borrow():
+                    self._check_callable_result_roots(node, hint, expr)
         if self.ctx.slot_step_commits():
             self.compat.warn_callable_upcasts(
                 matched_data.fit.upcasts,

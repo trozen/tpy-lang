@@ -1,0 +1,1 @@
+main.py:29: error: 'ident' cannot be passed as Callable[[P], Own[P]]: it returns a borrow of P where the Callable keeps its own P (return Own[P] if it builds a new one)

@@ -33,10 +33,11 @@ template<typename T, typename K, typename __F0>
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 void apply_generic(std::vector<T>& xs, __F0&& f, std::vector<K>& out);
-// def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
+// def apply_twin(xs: list[int32], f: Fn[[int32], Own[Cell]], out: list[Cell]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 void apply_twin(const std::vector<int32_t>& xs, __F0&& f, std::vector<Cell>& out);
 // def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
@@ -45,10 +46,11 @@ template<typename T, typename K, typename __F0>
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 ::tpy::own_return_t<K> ret_generic(::tpy::param_val_or_ref_t<T> x, __F0&& f);
-// def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
+// def ret_twin(x: int32, f: Fn[[int32], Own[Cell]]) -> Own[Cell]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 Cell ret_twin(int32_t x, __F0&& f);
 // def sec_callable_value() -> None:
@@ -202,14 +204,11 @@ template<::tpy::ValueType T>
 ::tpy::own_return_t<T> dup_bounded(const VHolder<T>& h) {
     return h.borrow();
 }
-// # inverse: a call through a callable VALUE is an rvalue whatever K resolves
-// # to -- the Fn type is not a declaration whose return convention was checked,
-// # and the body that runs builds a fresh value. The generic must stay as silent
-// # as the monomorphic twin below it. This pins ONLY the absence of a false
-// # positive for a FRESH-value callable; a callable bound to a borrow-returning
-// # function copies here with no diagnostic either, which is a real defect
-// # (BUGS.md#callable-value-borrow-return-copies-unwarned), not what this
-// # section asserts.
+// # inverse: a call through a callable VALUE declared to return an open K reads
+// # as an rvalue whatever K resolves to, and the body that runs builds a fresh
+// # value. The generic must stay as silent as the monomorphic twin below it,
+// # which spells the fresh value `Own[Cell]`. This pins ONLY the absence of a
+// # false positive for a FRESH-value callable.
 // def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
 //     for x in xs:
 //         out.append(f(x))  # tpyc: ok
@@ -226,12 +225,13 @@ void apply_generic(std::vector<T>& xs, __F0&& f, std::vector<K>& out) {
         out.push_back(f(x));
     }
 }
-// def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
+// def apply_twin(xs: list[int32], f: Fn[[int32], Own[Cell]], out: list[Cell]) -> None:
 //     for x in xs:
 //         out.append(f(x))  # tpyc: ok
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 void apply_twin(const std::vector<int32_t>& xs, __F0&& f, std::vector<Cell>& out) {
     auto& __obj_0 = xs;
@@ -251,11 +251,12 @@ template<typename T, typename K, typename __F0>
 ::tpy::own_return_t<K> ret_generic(::tpy::param_val_or_ref_t<T> x, __F0&& f) {
     return f(x);
 }
-// def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
+// def ret_twin(x: int32, f: Fn[[int32], Own[Cell]]) -> Own[Cell]:
 //     return f(x)  # tpyc: ok
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 Cell ret_twin(int32_t x, __F0&& f) {
     return f(x);

@@ -83,6 +83,7 @@ A& param_named_self(A& self);
 template<typename __F0>
   requires requires(__F0& __fn, A& __a0) {
       { __fn(__a0) } -> std::convertible_to<A>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 int32_t through(__F0&& f, A& a);
 // def none_any(ok: bool) -> Any:
@@ -864,6 +865,7 @@ struct Json {
 template<typename __F0>
   requires requires(__F0& __fn, A& __a0) {
       { __fn(__a0) } -> std::convertible_to<A>;
+      requires !std::is_reference_v<decltype(__fn(__a0))>;
   }
 int32_t through(__F0&& f, A& a) {
     return f(a).x;

@@ -4,6 +4,35 @@ This document owns rules 1-8, 24, 26, 27, 30-32 and 37 of the shared callable-ru
 numbering and the admission layer A1-A12; `docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`
 owns 9-23, 25, 28, 29 and 33-36. A rule number never moves between the two.
 
+**Status (2026-11-05).** The concrete contract has landed: a callable's
+return reads as a `def`'s at `Callable`, `Fn`, lambdas, `__call__` objects and
+classes used as callables, the `std::function` and `Fn` requires clause spell
+that form (rule 31), a lambda takes its slot's contract (rule 32), and the fit
+pairs a borrow slot with a borrowing callee only (`docs/LANGUAGE_FEATURES.md`,
+"A callable's return reads as a def's"). The admission layer A1-A12 below is
+superseded by the 2026-10-29 lifetime policy -- lifetime problems are detected
+by MIR and warned, with no new sema lifetime machinery: the existing return and
+yield checks read a callable call's contract sources, and a `Callable` slot
+admits a borrow result rooted in its arguments only. Rules 26 and 27 (a
+form-neutral result of an open type parameter) are deferred to unit 2 (TODO.md
+"Callable contract unit 2"); MIR coverage of calls through a callable value is
+unit 3. The sections below are kept as the design record.
+
+**Re-plan (2026-11-05, user decision "A": only signatures decide).** This
+supersedes the unit-1 design's "`__call__(self, x) -> P: return x` fits" and
+its tracing of the nested defs a closure's result reaches. At a `Callable`
+slot whose return is a bare reference type or `readonly[...]`: a lambda is
+checked as before, each call in it read off its callee's signature; a
+capture-free nested def (a value-type capture such as `int32` or `str` counts
+as none) is judged by its signature as a module function is; a STATEFUL
+callable is refused whatever its body returns -- a nested def capturing a
+reference-type local or parameter, `self` or another nested def, a lambda
+whose result is such a def's, any `__call__` object, an `Fn` value. An `Fn`
+slot accepts all of them. The replay of a nested def's returns under its
+parked state is gone; the gaps a capture-free def shares with a module
+function are `BUGS.md#plain-return-loop-back-edge-local` and
+`BUGS.md#return-temp-arg-pending-callee`.
+
 ## Purpose
 
 This document describes the result-contract half of the callable result design:
@@ -19,8 +48,8 @@ analysis-only MIR first; A1-A12 remain a proposed interim policy, not rules to
 ship ahead of analysis. Without a result contract, a call
 through a callable value reads as an rvalue at every owning slot, so an `Fn`
 bound to a borrow-returning function
-copies where CPython aliases, silently
-(`BUGS.md#callable-value-borrow-return-copies-unwarned`).
+copies where CPython aliases, silently (fixed by the concrete contract,
+2026-11-05).
 
 What it deliberately does NOT decide is PROVENANCE: which of the caller's places
 a particular borrow roots in, how those roots survive aliases, helpers and
@@ -664,7 +693,7 @@ ref-qualified parameter overloads. And the RETURN is `q.get()`, not `q`: returni
 the slot deduces `result_slot_t<Node&>`, making the caller's slot a `Ptr`-payload
 slot with no deref and losing the borrow marker one frame up. The render this
 replaces is a value slot that copies the borrow AND turns the rebind into an
-assign-through (`BUGS.md#callable-value-borrow-return-copies-unwarned`).
+assign-through.
 
 The `requires` rows, per form, with `__a0` a `Node&`:
 

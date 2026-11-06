@@ -2582,12 +2582,15 @@ def returns_storage_form(typ: 'TpyType') -> bool:
     (`to_cpp`), read from the `return_passing` it spells and walked as
     `return_types_held_by_value` walks it: by value; a tuple (or an
     Optional one) whose every part is returned so; a pointer whose return
-    render is its storage render (`Ptr[T]` is `T*` in both). A reference,
-    a borrow pointer into storage of another form, a view or a trait is
-    not."""
+    render is its storage render (`Ptr[T]` is `T*` in both); an `Own`
+    whatever its payload (`own_return_t<T>` is `Own[T]`'s storage form at
+    every instantiation). A reference, a borrow pointer into storage of
+    another form, a view or another trait is not."""
     passing = typ.return_passing()
     if passing is ReturnPassing.VALUE:
         return True
+    if passing is ReturnPassing.TRAIT:
+        return isinstance(unwrap_readonly(typ), OwnType)
     if passing is ReturnPassing.ELEMENTS:
         return all(returns_storage_form(part) for part in typ.inner_types())
     return (passing is ReturnPassing.POINTER
@@ -3164,7 +3167,7 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
 
 
 def _sync_result_is_reference(ret_type: TpyType | None,
-                              fi: FunctionInfo) -> bool:
+                              fi: FunctionInfo | None) -> bool:
     """The sync call convention past the callee-kind exits: the type shape,
     corrected where a declared result renders otherwise. A void result is no
     reference; an open `T` under any access or marker wrapper is
@@ -3179,10 +3182,14 @@ def _sync_result_is_reference(ret_type: TpyType | None,
     if is_void_like_type(peeled) or isinstance(repr_shape(ret_type),
                                                TypeParamRef):
         return False
+    if fi is not None and fi.callable_type is not None:
+        # A std::function of an open return hands its instantiation's
+        # value back as declared (`std::function<U(...)>`): by value.
+        return fi.callable_type.returns_borrow()
     if returns_cpp_reference_shape(ret_type):
         return True
     if dyn_protocol_borrow_result(peeled) is not None:
-        return not (fi.is_async or fi.is_generator)
+        return fi is None or not (fi.is_async or fi.is_generator)
     return isinstance(peeled, UnionType) and peeled.needs_wrapper()
 
 
@@ -6623,6 +6630,23 @@ class CallableType(TpyType):
     param_types: tuple[TpyType, ...]
     return_type: TpyType
     is_template: bool = False
+    # The return is DECLARED as an open type parameter: each
+    # instantiation's own convention answers it, not the def rule
+    # (`contract_return`). An `Fn`'s stays set once substituted
+    # (`Fn[[T], U]` at `U = P`): its requires clause takes either form of
+    # `P`, which no decided spelling does. A std::function's is settled on
+    # substitution (`_settled_open_return`).
+    open_return: bool = False
+
+    def __post_init__(self) -> None:
+        if is_open_type_param_return(self.return_type):
+            object.__setattr__(self, "open_return", True)
+        elif self.open_return and not self.is_template:
+            # Equal C++ is one type: a substituted `Callable[[], T]` is the
+            # declared `Callable[[], Own[P]]` at `T = P`.
+            object.__setattr__(self, "return_type",
+                               _settled_open_return(self.return_type))
+            object.__setattr__(self, "open_return", False)
 
     @staticmethod
     def _callable_param_cpp(t: 'TpyType') -> str:
@@ -6646,11 +6670,53 @@ class CallableType(TpyType):
             return f"{t.to_cpp()}&"
         return cpp
 
+    def contract_return(self) -> TpyType:
+        """The return a call through this callable hands back, read as a
+        `def`'s declared return: a bare reference type is a borrow
+        (`Ref`), `readonly[R]` a const one, `Own[R]` a fresh value. A
+        return that is an open type parameter keeps its spelling: each
+        instantiation's own convention answers it."""
+        if self.returns_open():
+            return self.return_type
+        return make_ref(self.return_type)
+
+    def closure_return(self) -> TpyType:
+        """The result a closure implementing this contract (a lambda at
+        the slot) hands back: `contract_return`, with a const borrow
+        (`readonly[R]`) as the borrow it is (`Ref[readonly[R]]`)."""
+        contract = self.contract_return()
+        if isinstance(contract, ReadonlyType) and self.returns_borrow():
+            return RefType(contract)
+        return contract
+
+    def returns_open(self) -> bool:
+        """THE question whether this callable's return is declared as an
+        open type parameter (`is_open_type_param_return`), substituted
+        since or not (`open_return`): an `Own[T]` is not one, its form
+        is decided."""
+        return self.open_return or is_open_type_param_return(self.return_type)
+
+    def returns_borrow(self) -> bool:
+        """A call through this callable hands back a C++ reference, as a
+        call to a def declaring its `contract_return` does (the sync call
+        convention, `_sync_result_is_reference`)."""
+        return (not self.returns_open()
+                and _sync_result_is_reference(self.contract_return(), None))
+
+    def returns_owned_object(self) -> bool:
+        """A call through this callable hands back a fresh object of a
+        reference type by value (`Own[R]`)."""
+        ret = unwrap_readonly(self.return_type)
+        return (not self.returns_open() and isinstance(ret, OwnType)
+                and not ret.wrapped.is_value_type()
+                and not contains_type_param(ret))
+
     def _std_function_sig(self) -> str:
         representation = classify_result_representation(
             self.return_type, position=ResultPosition.ERASED_CALLABLE)
         ret = ("void" if representation is ResultRepresentation.ERASED_VOID
-               else self.return_type.to_cpp())
+               else self.contract_return().to_cpp_return()
+               if self.returns_borrow() else self.return_type.to_cpp())
         params = ", ".join(self._callable_param_cpp(t) for t in self.param_types)
         return f"std::function<{ret}({params})>"
 
@@ -6690,7 +6756,8 @@ class CallableType(TpyType):
         return self.param_types + (self.return_type,)
 
     def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
-        return CallableType(types[:-1], types[-1], self.is_template)
+        return CallableType(types[:-1], types[-1], self.is_template,
+                            self.returns_open())
 
     def __str__(self) -> str:
         params = ", ".join(str(t) for t in self.param_types)
@@ -6699,6 +6766,20 @@ class CallableType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return None
+
+
+def _settled_open_return(ret: TpyType) -> TpyType:
+    """The decided spelling of a std::function's open return substituted
+    with `ret`: such a std::function hands its result back by value
+    (`std::function<U(...)>`), so a type whose return form is not its
+    storage form (`returns_storage_form`: a class, a tuple holding one, an
+    Optional or union of one) is `Own[R]`, any other itself."""
+    while True:
+        peeled = unwrap_ref_type(unwrap_readonly(ret))
+        if peeled is ret:
+            break
+        ret = peeled
+    return ret if returns_storage_form(ret) else OwnType(ret)
 
 
 def make_fn_type(param_types: tuple['TpyType', ...], return_type: 'TpyType') -> CallableType:
@@ -8932,13 +9013,13 @@ class FunctionInfo:
     # (`variant_cpp_name_of`).
     variant_decl: TpyFunction | None = field(default=None, repr=False, compare=False)
     # Synthesized for a call through a callable VALUE (an Fn/Callable-typed
-    # param, local or field). The signature comes from the Fn type, not from
-    # a declaration the compiler has checked, so nothing about the callee's
-    # conventions may be read off it -- the body that runs is a lambda or any
-    # other conforming callable. Readers that would otherwise trust the
-    # declared return (does it borrow? is it consuming?) must treat it as
-    # opaque.
-    is_callable_value: bool = False
+    # param, local or field): that value's type. The signature is the
+    # callable type's, read as a body-less declaration's: its return as a
+    # def's (`contract_return`), and the borrow a result may be as a
+    # stub's, of its operands; an `Fn` value is reached by reference, so it
+    # is an operand too. No body stands behind it, so no body fact
+    # (mutation, recorded borrow sources) does either.
+    callable_type: 'CallableType | None' = field(default=None, compare=False)
     kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
     # Defining module name. Set when this FunctionInfo is registered
     # during the current module's signature finalization sub-phase,
@@ -8989,6 +9070,20 @@ class FunctionInfo:
     # run user code, decided by sema/frame_close.py once every body of the
     # defining module is analyzed; None until then (read as yes).
     frame_close_runs_user_code: bool | None = None
+
+    @property
+    def is_callable_value(self) -> bool:
+        """A call through a callable value (`callable_type`)."""
+        return self.callable_type is not None
+
+    def returns_open(self) -> bool:
+        """THE question whether a call's return is DECLARED an open type
+        parameter, substituted since or not, whoever the callee: a callable
+        value's slot (`CallableType.returns_open`), else the declaration's
+        (`is_open_type_param_return` of its `root`)."""
+        if self.callable_type is not None:
+            return self.callable_type.returns_open()
+        return is_open_type_param_return(self.root.return_type)
 
     @property
     def root(self) -> 'FunctionInfo':

@@ -285,7 +285,7 @@ def bare_generic_isinstance(h: Holds4) -> None:
 
 
 # a dotted class at a Callable slot is its constructor
-def build(f: Callable[[int], m.Outer.Inner], v: int) -> int:
+def build(f: Callable[[int], Own[m.Outer.Inner]], v: int) -> int:
     i = f(v)
     i.v += 1
     return i.v
@@ -336,7 +336,7 @@ class Config:
 
 
 # a bare builtin class at a Callable slot is its constructor
-def mk(f: Callable[[str], ValueError], s: str) -> str:
+def mk(f: Callable[[str], Own[ValueError]], s: str) -> str:
     e = f(s)
     return "made " + s
 

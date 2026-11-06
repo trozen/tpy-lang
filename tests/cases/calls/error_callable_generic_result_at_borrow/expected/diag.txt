@@ -1,0 +1,1 @@
+main.py:28: error: Type mismatch in variable 'h': expected Callable[[], P], got Callable[[], Own[P]]: it returns Own[P], but Callable[[], P] returns a borrow; declare Callable[[], Own[P]]

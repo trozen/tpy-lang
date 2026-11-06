@@ -274,9 +274,9 @@ P new_p(const Hp& h) {
 }
 
 // @dispatch
-// def via(f: Callable[[Hp], P], h: Hp) -> str:
+// def via(f: Callable[[Hp], Own[P]], h: Hp) -> str:
 //     return "callable " + str(f(h).v)
-std::string via__Callable_Hp_P__Hp(const std::function<P(Hp&)>& f, Hp& h) {
+std::string via__Callable_Hp_Own_P__Hp(const std::function<P(Hp&)>& f, Hp& h) {
     return (::tpy::str_concat("callable ", ::tpy::fixed_to_str<int32_t>(f(h).v)));
 }
 
@@ -423,7 +423,7 @@ __coro_double_ double_(int32_t n) {
 //     # A Callable value at an equal Callable parameter of an overloaded
 //     # receiver is its exact match, ahead of a widened Fn variant; so is a
 //     # named function of that signature.
-//     cp: Callable[[Hp], P] = new_p
+//     cp: Callable[[Hp], Own[P]] = new_p
 //     print("callable-exact", via(cp, Hp()))  # tpyc: ok
 //     print("callable-exact-named", via(new_p, Hp()))  # tpyc: ok
 //     # An async def at an Fn slot taking the owned coroutine handle.
@@ -503,9 +503,9 @@ void main() {
     std::cout << "ptr-return" << " " << p.v << "\n" << ::tpy::check_signals;
     std::function<P(Hp&)> cp = new_p;
     Hp __tmp_4 = Hp();
-    std::cout << "callable-exact" << " " << ::tpyapp::main::via__Callable_Hp_P__Hp(cp, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "callable-exact" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(cp, __tmp_4) << "\n" << ::tpy::check_signals;
     Hp __tmp_5 = Hp();
-    std::cout << "callable-exact-named" << " " << ::tpyapp::main::via__Callable_Hp_P__Hp(new_p, __tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "callable-exact-named" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(new_p, __tmp_5) << "\n" << ::tpy::check_signals;
     std::cout << "async-fn-own" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::run_fn([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::double_(__a0)); }))) << "\n" << ::tpy::check_signals;
 }
 

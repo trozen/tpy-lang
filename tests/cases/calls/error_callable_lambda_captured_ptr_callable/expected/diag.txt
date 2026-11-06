@@ -1,0 +1,1 @@
+main.py:31: error: this lambda's result comes from a call through 'lend', whose signature cannot promise it points only into its arguments: a borrow returned through Callable[[P], P] must point into its arguments. Pass the lambda to an Fn parameter, or declare Callable[[P], Own[P]] to return a copy

@@ -1756,6 +1756,18 @@ class ReadonlyReceiverCheck(NamedTuple):
     message: str | None = None
 
 
+class LambdaResultCheck(NamedTuple):
+    """A lambda whose result is a borrow: refused once every body is
+    analyzed if the borrow roots in a temporary its body creates
+    (`SemanticContext.pending_lambda_borrow_checks`). `slot`: the callable
+    slot whose contract typed the result, None for a result inferred from
+    the body; `factory_of`: the class a synthesized factory lambda stands
+    for."""
+    lam: 'TpyLambda'
+    slot: 'CallableType | None'
+    factory_of: str | None
+
+
 class ClimbNode(NamedTuple):
     """One storage a write climbs through (`storage_climb`). `site` is the
     binding site the root name resolves to (None: a parameter, a local or
@@ -3421,11 +3433,13 @@ class SemanticContext:
     # a top-level record/function name in the synthesized module.
     builder_trace_fresh_counters: dict[str, int] = field(default_factory=dict)
 
-    # Lambdas whose result is a borrow: whether the borrow roots in a
-    # temporary the body creates reads callee borrow facts, which are
-    # complete only in the workspace-wide finalize pass.
+    # The deferred checks of a lambda's borrow result
+    # (`LambdaResultCheck`): whether the borrow roots in a temporary the
+    # body creates reads callee borrow facts, which are complete only in
+    # the workspace-wide finalize pass.
     # Rolled back by `trial_scope`, so a candidate trial queues nothing.
-    pending_lambda_borrow_checks: list = field(default_factory=list)
+    pending_lambda_borrow_checks: list[LambdaResultCheck] = field(
+        default_factory=list)
 
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
@@ -4791,7 +4805,12 @@ class SemanticContext:
         parameters, not a binding site shadowing one."""
         name = node.key.as_name()
         return (name is not None and node.site is None
-                and name in self.func.current_param_names
+                and self.is_unrebound_param(name))
+
+    def is_unrebound_param(self, name: str) -> bool:
+        """Whether `name` is one of this body's parameters, never rebound
+        in it."""
+        return (name in self.func.current_param_names
                 and name not in self.func.current_rebound_params)
 
     def mark_binding_written(self, key: StorageKey | SitedKey) -> None:

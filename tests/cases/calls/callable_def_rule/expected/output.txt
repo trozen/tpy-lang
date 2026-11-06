@@ -1,0 +1,31 @@
+free: 6
+free own: 6 6 107
+lambda: 6 71 3
+lambda captured callable: 11
+method: 12 71
+ctor: 2 2
+gen: 11 12
+async: 2 2
+comp: 1 1 2
+closure: 2
+match/try: 2 12
+error_return: 2 2
+callees: 1112
+rebind: 2 1
+readonly lambda: 3 3
+readonly: 6 6
+nocopy: 3
+generic: 1 12 11 21 2 5
+generic own: 1 102 11 11
+generic lambda: 1
+map: 1 1 2
+identity: 1 1 2 4 7
+hatches: 1 6 3 3
+order: 12
+siblings: 41 11114
+nested locals: 101 110015 1009
+nested locals captured callable: 3 9 7
+nested locals values: 1011 102
+nested locals by-value callable: 11
+receivers: 2 111
+receivers global: 111 1500

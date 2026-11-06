@@ -1674,69 +1674,70 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
 - **[thir] The validator's plain-non-value BORROW exemption is unscoped -- key it on a positive marker instead.** `tpyc/thir/validate.py:133-142` exempts a same-form same-type `THIRFormConvert` from the no-op rule whenever the form is BORROW and the result type is plain non-value, because BORROW spells both `T&` and reseatable `T*` for such a type and the node cannot tell the address-of lift from a dead node. Keyed on form + type ALONE, with no per-node marker (unlike `addr_of`, a real field on the arg/ctor nodes), so it exempts ANY such convert anywhere -- the resumable address-of lift it was written for, and equally a genuinely dead one an ordinary body might grow. Harmless today only by accident of lowering: `tpyc/thir/lower/statements.py:3690-3699` refuses to construct the shape outside resumable-leaf mode, so nothing else reaches the exemption. Fix shape: mint the lift with an explicit flag on `THIRFormConvert` (the `materialize` precedent) and narrow the exemption to nodes carrying it, so the rule reads the DECISION rather than re-deriving it from the shape. Surfaced by the review of the resumable/simple-gen validator wiring.
 - **[thir] The validator matches `coercion_name` STRINGS where a structural field belongs.** `tpyc/thir/validate.py:184-201` exempts the coerce form-passthrough check by testing `node.coercion_name in ("async_ret_addr_of", "async_ret_val_or_ptr")` -- the async return slot's borrow/trait lifts, which materialize a pointer or trait-selected prvalue out of any source form while deliberately keeping the SOURCE's type spelling, so the result-type rows structurally cannot see them. Sound today: exactly two sites mint those names and both are pinned. But it pattern-matches a symptom -- a `value_wrap: bool` alongside `wrap` (mirroring how `THIRFormConvert.materialize` carries its own decision) would let the check read the "this wrap materializes a new representation" fact directly, and would not silently miss the third such coercion the moment one is minted under a different name. Surfaced by the review of the resumable/simple-gen validator wiring.
 - **[thir] Two lowering fences now reject on a rationale that no longer holds -- ablate them.** `decl.ptr_alias_borrow` (`tpyc/thir/lower/statements.py:3690-3699`) and `decl.reseat_param_source` (`:8753-8764`) both refuse the `T&` -> reseatable `T*` alias because the resulting same-form same-type `THIRFormConvert` was the no-op node the validator hard-rejected. That is no longer true: the `ref_to_ptr_lift` exemption added with the resumable/simple-gen wiring lives in the SHARED `_check_node` (`tpyc/thir/validate.py:133-142`), so it admits the shape for every body kind, not just resumable leaves. Neither fence was re-checked after the exemption landed, so both may be blocking bodies that would now validate clean. Cheap probe: delete each fence in turn, re-run the corpus, and read the routed count and any divergence -- a rotted fence is the class this repo has paid for repeatedly. Surfaced by the readiness second opinion on the validator wiring.
-- **Callable contract (designed; compatibility gate before coupled implementation).** Design:
-  `docs/CALLABLE_CONTRACT_DESIGN.md`. A callable's result FORM is read off its
-  spelled return by the rule a `def` return obeys (bare reference = borrow,
-  `Own[R]` = fresh, type parameter = form-neutral), in `Fn`, `Callable` and
-  `def -> R` alike, and erasure into `Callable` does not change it. That half is
-  decidable from types and declarations. The PROVENANCE half -- which of the
-  caller's places a returned borrow roots in, and what later invalidates it --
-  is a requirement on the analysis-only MIR (see the MIR track below); until it
-  exists this half stands on a conservative ADMISSION LAYER (A1-A12) that admits
-  a borrow-returning binding only when every root is proved an admissible
-  argument and rejects everything else with a located error: capture-rooted
-  results, stored or returned closures with borrowed environments (`self`
-  included), global-rooted borrows, escaping temporary roots, borrow-bearing
-  aggregates, unsupported helper compositions, and any call with unknown effects
-  under a live loan. Hard errors, not warnings. Closes
-  BUGS.md#callable-value-borrow-return-copies-unwarned, and is the prerequisite a
-  TPy-source `map` waits on (TODO.md "Builtin combinators in TPy source"; builtin
-  `map` stays in C++ until this lands).
-  The implementation plan (steps in landing order, files and lines, the five
-  independently mergeable steps first) lives in the design document only.
-  Its shared-reader checkpoint extracts existing representation decisions only;
-  designing permission and contained-borrow analysis remains part of the
-  feasibility checkpoint, and the complete semantic result descriptor lands
-  with the coupled implementation. A storage representation is not proof that
-  its payload contains no borrows.
-  The initial checkpoint-3 findings are in
-  `docs/CALLABLE_CONTRACT_FEASIBILITY.md`: generic forms are feasible but need a
-  new channel, and the proposed admission layer needs substantial provenance /
-  effect propagation while rejecting ordinary safe callbacks. Analysis-only MIR
-  first was approved on 2026-09-17; `docs/MIR_ANALYSIS_PLAN.md` records the scalar
-  foundation and remaining increments. The coupled contract remains gated.
-  Its "Compatibility gate" first measures programs newly rejected by A1-A12,
-  separating actual lifetime violations from safe false positives, including
-  scalar callbacks under ordinary loans. Contract-first is conditional on an
-  explicit decision that this compatibility cost is acceptable. If the admission
-  layer needs substantial new flow analysis or rejects common safe callback
-  idioms, reconsider sequencing and bring analysis-only MIR forward.
-
-  **Incomplete subtotal: ~49 engineer-days, not a release estimate** (the
-  contract-half rows of the
-  implementation dry run's table: P0.1 1, P0.2 2, P0.3 4, classifier 4, runtime
-  traits 1.5, reader unification 3, `borrows=` / `element_of=` 3, conversion legality 7,
-  codegen/THIR 8, rejects 6, stubs 2.5, tests+docs 7). That EXCLUDES the four
-  dataflow steps of the original 79-day estimate -- places and summaries,
-  environment loans, effects, and the provenance half of the lambda stamp, 30
-  days between them -- which move to the MIR track; the admission layer is a
-  conservative subset of them whose cost is not in that table.
-
-  Later slices, additive on this half: **D1** the hedged owning-slot obligation
-  with a FORM dimension (lifts the neutral-into-owning-slot reject AND the
-  open-type-parameter over-reject, closes the callable leg of
-  BUGS.md#generic-own-slot-borrow-call-unwarned); **D2** the consuming fold
-  `Fn[[Own[U], T], Own[U]]` with a Python-compatible `reduce` designed
-  SEPARATELY (BUGS.md#reduce-accumulator-copied stays open until then). **D3**
-  (stored-`Callable` capture lifetimes) and **D4** (a neutral result at a `yield`,
-  callable loans across a frame) are provenance work and live under the MIR
-  track. Out of scope either way: method / constructor / staticmethod references
-  at a callable slot (current errors stand); `Optional` and union callable results
-  (BUGS.md#fn-contract-reference-optional-result); form-carrying `U`, rejected
-  outright (it would make `list[U]` a container of borrows -- recorded in the
-  design's Alternatives list, so it needs no entry of its own). NOT deferrals: a
-  C++ `T&&` stub result (a stub-author obligation, which `borrows=` / `element_of=` makes
-  unspellable anyway) and the three rollout preconditions above.
+- **Callable contract (the concrete contract LANDED 2026-11-05; open: unit 2 the generic twin, unit 3 MIR,
+  the lifting below).** What landed: a `Callable` / `Fn` / lambda / `__call__` / class-as-callable return reads
+  as a `def`'s (bare reference = borrow of the arguments, `Own[R]` = fresh), spelled in the `std::function` and
+  the `Fn` requires clause, checked by the existing return / yield checks against the contract sources; a
+  `Callable` slot admits a borrow rooted in its arguments only, read off each call's signature
+  (`docs/LANGUAGE_FEATURES.md` "A callable's return reads as a def's" and the Restriction after it). Open:
+  unit 2 and unit 3 below, the low-priority lifting of the environment-borrow refusal below. Design record:
+  `docs/CALLABLE_CONTRACT_DESIGN.md`; a TPy-source `map` still waits on unit 2 (TODO.md "Builtin combinators
+  in TPy source").
+- **[sema] Callable contract unit 2: the generic twin (filed 2026-11-05 with the concrete contract).** The concrete
+  contract (a `Callable` / `Fn` / lambda `-> P` lends like a `def`'s) leaves a slot whose declared return is an
+  open type parameter (`Fn[[T], U]`, `Fn[[T, T], T]`, `functools.reduce`, `map`) on today's path, because one
+  `U` serves both a borrow position (`-> U` of the callable) and a value position (`list[U]`): `fill[T, U](f:
+  Fn[[T], U], x: T, out: list[U])` takes `mk -> Own[P]` and `ident -> P` alike today. The unit: a spelled type
+  argument behaves as the inferred one (`BUGS.md#generic-spelled-type-args-copy-where-inferred-lend`), the C++
+  encoding of a borrow vs owned `U` (`::tpy::val_or_ref<P>` is broken as a template argument,
+  `BUGS.md#generic-fn-slot-reference-return-cxx-error`; an owned-side marker has no storage readers -- both
+  directions risk a missed reader, so this is a design decision), deleting the `gen_yield=` open-`U` fresh
+  reading (`call_result_is_fresh`, `tpyc/sema/call_lends.py`), and flipping
+  `iterators/error_gen_yield_callable_result{,_readonly}` to happy cases. The generic-slot refusals the unit
+  revisits: `calls/error_callable_generic_slot_lending_value`, `calls/error_callable_generic_slot_lending_def`,
+  `calls/error_callable_generic_fn_value_at_callable` and `calls/error_callable_generic_result_at_borrow` (a
+  substituted open `Callable` return is `Own[R]`, `CallableType.__post_init__`). User rule (2026-11-04): a
+  generic behaves as the user's manual concrete lowering, with every type argument spellable. A substituted `Fn[[T], U]` keeps
+  `open_return=True`, a real field of the frozen type, so it is unequal to a declared `Fn[[P], P]` that prints and
+  renders the same; the unit removes that provenance from the type's identity.
+- **[sema][low] An inline lambda at an `Fn` argument lends only what its result points into (filed 2026-11-06,
+  user review of Callable unit 1).** A call `ret(lambda p: ..., x)` through `ret(f: Fn[[P], P], x: P) -> P` lends
+  every argument, the lambda included, and the lambda captures `local_h` by reference, so returning the call's
+  result from a `-> P` function is the local-borrow error even when the lambda returns its parameter:
+  `return ret(lambda p: p if local_h.p.n > 0 else p, x)` is refused (*Cannot return local or temporary as
+  reference*; probe /tmp/agents/callable/rc/safe.py), though only `x` is returned. Lift: read the inline lambda's
+  result roots by its calls' signatures (the order-free walk `_check_callable_result_roots` already does at a
+  `Callable` slot); when they are only its parameters, the lambda argument adds no source. The real dangle stays
+  refused (`lambda p: local_h.p`, `calls/error_callable_fn_lambda_local_capture`).
+- **[sema] `loan_class` classifies a `Callable` part by its return (filed 2026-11-06, Callable unit 1 readiness).**
+  `loan_class` answers UNKNOWN for every `std::function`, so the borrow-`Callable` capture-state check
+  (`_is_state` / `_callable_is_state`, tpyc/sema/expressions.py) walks the capture's aggregates itself, mirroring
+  `_storage_loan_class`. A `Callable` family in `loan_class` -- holds nothing iff its return is a rule-R borrow or a
+  by-value result holding nothing -- deletes that second walk; check `loan_class`'s other callers (THIR scalar
+  leaves, MIR view fields), which today read a captured `std::function` as UNKNOWN.
+- **[MIR] Callable contract unit 3: MIR sees calls through a callable value (filed 2026-11-05; for the MIR line).**
+  MIR lowering needs a resolved callee (`tpyc/mir/lower.py`), so a body with an `Fn` / `Callable` parameter, or a
+  call through any callable value, is uncovered, and the concrete contract's borrow results are checked only by
+  sema's return / yield checks against the contract sources. Needed: callable-typed parameters as MIR values and
+  a worst-case summary for an unknown callee (the result may root in every pointer-holding argument, the callee
+  included at an `Fn` slot); `stub_summary` (`tpyc/mir/call_contract.py`) is not that shape. Closes
+  `BUGS.md#callable-borrow-kept-across-source-write`.
+- **[design][low] Lift the Callable environment-borrow refusal (filed 2026-11-05; user: "file the lifting for
+  future (with lower prio)").** A `Callable` slot refuses a callee whose borrow result roots in anything but its
+  arguments: `cb: Callable[[], P] = g` with `g.__call__` returning `self.p`, `lambda: h`, `lambda: self.p`.
+  Since 2026-11-05 (rule A, only signatures decide) the refusal also covers every STATEMENT-BODIED closure that
+  holds state, whatever its body returns: a nested def capturing a reference-type local, a parameter, `self` or
+  another nested def, a lambda whose result is such a def's, and any `__call__` object. Lifting covers them too,
+  and needs per-local facts of their bodies (which local a `return` reads, across loop back edges and pending
+  callees) that only MIR has; sema's round-3 replay of a nested def's returns was deleted for that reason.
+  Routes, each its own decision: (1) the `Callable` holds its state by reference (`std::ref(g)`, `[&h]`), which
+  aliases as CPython does but makes the callable value a borrow of what it captures -- needs an escape fact for
+  it (the transitive closure escape, or MIR unit 3) and reverses "a Callable copies its captures" for every
+  capture; (2) shared ownership in the signature, `Callable[[], Own[Rc[P]]]` returning `self.p.clone()` -- no
+  new rule, blocked by `BUGS.md#lambda-capture-rc-unlowered`, `BUGS.md#move-only-closure-in-callable-slot` (a
+  `@nocopy` `__call__` object) and `BUGS.md#rc-local-aug-assign-unlowered`; (3) state MOVED into the Callable
+  (last use), with the callable counted as a borrow source of its own call, so `return cb()` of a local `cb`
+  is refused by the existing return check.
 - **[diagnostics] A located envelope for unexpected internal errors.** The CLI catch-all (`tpyc/cli.py`, `except Exception` -> `Internal error: {e}`) prints `str(e)`, which for a `KeyError` is only the key -- `Internal error: 't'` gave a user no file, line or construct (the finally first-bind crash, fixed 2026-09-28). Print the exception type, and wrap an unexpected exception at the per-body lowering attempt (`_thir_resumable_attempt` in `tpyc/codegen_cpp/gen_async.py`, and the `_thir_callables` loop in `tpyc/codegen_cpp/generator.py` for plain functions) into a located "internal compiler error in function 'f' (line N)". Separate branch.
 
 ## Deferred to THIR/MIR & workload-gated

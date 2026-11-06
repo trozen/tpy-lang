@@ -1,0 +1,1 @@
+main.py:27: error: 'mk' cannot be passed as Fn[[P], P]: it returns Own[P], but Fn[[P], P] returns a borrow; declare Fn[[P], Own[P]]

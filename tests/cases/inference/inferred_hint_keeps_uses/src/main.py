@@ -287,7 +287,7 @@ async def async_body(fs: list[float]) -> float:
     return e["k"] + fs[0]
 
 
-def structural(a: int32, c: bool, h: Callable[[], list[float]]) -> None:
+def structural(a: int32, c: bool, h: Callable[[], Own[list[float]]]) -> None:
     y = 0
     # Only T in tuple[T, float] is the local's: the declared float converts a.
     y = tuple_t_float((1, a if c else 2.5))  # tpyc: ok

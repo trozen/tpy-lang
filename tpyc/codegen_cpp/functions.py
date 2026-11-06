@@ -292,11 +292,23 @@ class FunctionGenerator:
                     f"}}"
                 )
             else:
+                # A borrow contract asks the callable for an lvalue, an
+                # owning one with a reference payload for a value: either
+                # other form would convert into the slot by a copy.
+                call = f"__fn({call_args})"
                 ret_cpp = fn_type.return_type.to_cpp()
+                form = ""
+                if fn_type.returns_borrow():
+                    ret_cpp = fn_type.contract_return().to_cpp_return()
+                    form = (f"\n    requires std::is_lvalue_reference_v"
+                            f"<decltype({call})>;")
+                elif fn_type.returns_owned_object():
+                    form = (f"\n    requires !std::is_reference_v"
+                            f"<decltype({call})>;")
                 requires_parts.append(
                     f"requires({', '.join(req_params_list)}) {{\n"
-                    f"    {{ __fn({call_args}) }}"
-                    f" -> std::convertible_to<{ret_cpp}>;\n"
+                    f"    {{ {call} }}"
+                    f" -> std::convertible_to<{ret_cpp}>;{form}\n"
                     f"}}"
                 )
         return template_parts, requires_parts

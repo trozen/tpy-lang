@@ -786,10 +786,15 @@ GENERATOR_AT_CALLABLE = ("a generator cannot be passed as a callable yet "
                          "(BUGS.md#generator-at-callable-slot-unlowered)")
 
 
-def _lambda_calling(callee: str, names: Sequence[str]) -> str:
-    """The lambda that calls `callee` with its own parameters `names`."""
+def _lambda_calling(callee: str, names: Sequence[str],
+                    wrap: str | None = None) -> str:
+    """The lambda that calls `callee` with its own parameters `names`, its
+    result passed to `wrap` when one is named."""
     args = ", ".join(names)
-    return f"lambda {args}: {callee}({args})" if args else f"lambda: {callee}()"
+    call = f"{callee}({args})"
+    if wrap is not None:
+        call = f"{wrap}({call})"
+    return f"lambda {args}: {call}" if args else f"lambda: {call}"
 
 
 class TypeCompatibility:
@@ -1576,10 +1581,20 @@ class TypeCompatibility:
                         fit.upcasts, lambda i: f"'arg{i + 1}'", source_expr,
                         loc)
                 return None
-            erased_both = not actual.is_template and not expected.is_template
+            # Between two std::functions only an unchanged signature fits,
+            # which the bare mismatch says -- unless their returns differ
+            # in form alone (a borrow, an owned value), which the reason
+            # names the remedy of.
+            erased_both = (not actual.is_template
+                           and not expected.is_template
+                           and not (fit is not None and fit.misfit is not None
+                                    and (fit.misfit.borrowed
+                                         or fit.misfit.fresh)))
             misfit = (None if erased_both or fit is None
-                      else self.callable_misfit_reason(actual, expected,
-                                                       None, fit))
+                      else self.callable_misfit_reason(
+                          actual, expected, None, fit,
+                          source_expr.name
+                          if isinstance(source_expr, TpyName) else None))
             if misfit is not None:
                 reason, lambda_converts = misfit
                 hint = (" (wrap it in a lambda to convert each call)"
@@ -4991,6 +5006,7 @@ class TypeCompatibility:
         self, actual: CallableType, expected: CallableType,
         called: FunctionInfo | None,
         fit: CallableFit | None,
+        callee: str | None = None,
     ) -> tuple[str, bool] | None:
         """Why a callable of type `actual` does not fit `expected` -- its
         `fit` there (`callable_fit`), None when there is none to read (the
@@ -5000,7 +5016,9 @@ class TypeCompatibility:
         call returns, so it never converts a return that differs only by
         `Own`. `called` is the named function or `__call__` whose
         signature `actual` is, None for a callable value; a generator one
-        never fits (BUGS.md#generator-at-callable-slot-unlowered)."""
+        never fits (BUGS.md#generator-at-callable-slot-unlowered). `callee`
+        is how the source names the callable, for the lambda a remedy
+        spells."""
         if called is not None and called.is_generator:
             return GENERATOR_AT_CALLABLE, False
         if fit is None:
@@ -5012,9 +5030,23 @@ class TypeCompatibility:
             return None
         if misfit.borrowed:
             kept = self.shown_type(unwrap_own(misfit.expected))
-            # A callable value (no `param_names`) has no body to change;
-            # the parameter it came through spells its type.
-            if param_names is not None:
+            # A callable value has no body to change: a parameter it came
+            # through spells its type, any other is copied call by call.
+            via_param = (param_names is None and callee is not None
+                         and self.ctx.is_unrebound_param(callee))
+            if ((not expected.is_template and expected.returns_open()
+                    and not (param_names is None and actual.is_template))
+                    or (param_names is None and not via_param)):
+                # A generic slot keeps what each call hands back whatever
+                # the instantiation, so a borrow reaches it only copied.
+                names = param_names or [
+                    f"x{i}" for i in range(len(expected.param_types))]
+                lam = _lambda_calling(callee or "f", names, wrap="copy")
+                holder = CallableType(expected.param_types, OwnType(
+                    unwrap_own(misfit.expected)))
+                remedy = (f"to copy each result, bind '{lam}' to a "
+                          f"{self.shown_type(holder)} and use that")
+            elif param_names is not None:
                 remedy = f"return Own[{kept}] if it builds a new one"
             else:
                 owned = dc_replace(actual, return_type=OwnType(
@@ -5023,6 +5055,21 @@ class TypeCompatibility:
             return (f"it returns a borrow of {self.shown_type(misfit.actual)} "
                     f"where the Callable keeps its own {kept} ({remedy})",
                     False)
+        if misfit.lends_state:
+            erased = dc_replace(actual, is_template=False)
+            owned = dc_replace(expected, return_type=OwnType(
+                unwrap_readonly(misfit.expected)))
+            return (f"an Fn may return a borrow of its own state, and a "
+                    f"borrow returned through {self.shown_type(expected)} "
+                    f"must point into its arguments; declare the parameter "
+                    f"{self.shown_type(erased)}, or return "
+                    f"{self.shown_type(owned.return_type)} from both", False)
+        if misfit.fresh:
+            owned = dc_replace(expected, return_type=OwnType(
+                unwrap_readonly(misfit.expected)))
+            return (f"it returns {self.shown_type(misfit.actual)}, but "
+                    f"{self.shown_type(expected)} returns a borrow; declare "
+                    f"{self.shown_type(owned)}", False)
         context = "param" if misfit.index is not None else "return"
         source, target = ((misfit.expected, misfit.actual)
                           if misfit.index is not None
@@ -5052,7 +5099,8 @@ class TypeCompatibility:
         passed, of type `actual` at `expected` with `fit` there
         (`callable_misfit_reason`), with the lambda that converts each call
         where a direct call converts; None when it fits."""
-        misfit = self.callable_misfit_reason(actual, expected, called, fit)
+        misfit = self.callable_misfit_reason(actual, expected, called, fit,
+                                             name)
         if misfit is None:
             return None
         reason, lambda_converts = misfit
@@ -5111,8 +5159,9 @@ class TypeCompatibility:
                             inherits=self.type_ops.inherits_in_cpp)
                if len(signature.param_types) == len(expected.param_types)
                else None)
-        misfit = self.callable_misfit_reason(signature, expected, called,
-                                             fit)
+        misfit = self.callable_misfit_reason(
+            signature, expected, called, fit,
+            source_expr.name if isinstance(source_expr, TpyName) else None)
         if misfit is not None:
             reason, lambda_converts = misfit
             return CompatError(
@@ -5125,6 +5174,17 @@ class TypeCompatibility:
                 lambda i: self.methods.calls.param_label(
                     called, called.params[i].name),
                 source_expr, loc)
+            if (not expected.is_template and expected.returns_borrow()
+                    and self.ctx.slot_step_commits()):
+                # An object is state its `__call__`'s signature says
+                # nothing about, whatever its body returns.
+                return CompatError(
+                    f"'{obj}' cannot be passed as {shown_expected} in "
+                    f"{context}: it is an object, so the signature of its "
+                    f"'__call__' cannot promise that the borrow it returns "
+                    f"points only into its arguments. Take it as an Fn "
+                    f"parameter, or make it a module function or a lambda",
+                    loc)
             if (readonly_receiver and call_mutates_receiver(called)
                     and self.ctx.slot_step_commits()):
                 # Const inference settles an undecorated `__call__` only
@@ -5371,11 +5431,13 @@ class TypeCompatibility:
         at the return, so a view of it dangles. Under `gen_yield` (the value
         of a generator's `yield`) a frame-resident local is stable
         frame-slot storage. `view_source` holds only at a leaf the value
-        reaches through no call; `gen_yield` also through recorded sources,
-        whose provenance the climb follows the whole way down."""
+        reaches through no call; `gen_yield` also through recorded sources
+        and a callable value's contract sources, whose provenance the climb
+        follows the whole way down."""
         calls = leaf.calls
         vs = view_source and not calls
-        gy = gen_yield and all(c.how in (Lent.RECORDED, Lent.AWAITED)
+        gy = gen_yield and all(c.how in (Lent.RECORDED, Lent.AWAITED,
+                                         Lent.CONTRACT)
                                for c in calls)
         name = leaf.name
         if self._name_is_param_or_global(name):

@@ -378,6 +378,12 @@ class CallPolicy:
         call and no select."""
         return LeafKind.UNPLACEABLE
 
+    def end_places(self, node: TpyExpr) -> 'list[str] | None':
+        """The names a node the climb ends at holds by reference -- each a
+        PLACE leaf in its stead -- or None for no such node (`end_kind`
+        names it)."""
+        return None
+
     def at_await(self, step: Step) -> 'list[LendSource] | LeafKind | None':
         """The operands a borrow-returning await's value lends -- climbed
         through a CALL step on the awaited call -- or the leaf kind the
@@ -866,6 +872,9 @@ class _Leaves(_Roots):
             self._call(t.end)
         elif isinstance(t.end, TpyName):
             self._leaf(LeafKind.PLACE, t.end, t.end.name, elem=elem)
+        elif places := self.policy.end_places(t.end):
+            for name in places:
+                self._leaf(LeafKind.PLACE, t.end, name)
         else:
             self._leaf(self.policy.end_kind(t.end), t.end)
         self.trail = trail

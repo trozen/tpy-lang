@@ -1,0 +1,1 @@
+main.py:32: error: this lambda's result comes from a call through 'h.cbs[0]', whose signature cannot promise it points only into its arguments: a borrow returned through Callable[[Holder, P], P] must point into its arguments. Pass the lambda to an Fn parameter, or declare Callable[[Holder, P], Own[P]] to return a copy

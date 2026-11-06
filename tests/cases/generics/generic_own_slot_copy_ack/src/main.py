@@ -73,20 +73,17 @@ def sec_value_bound() -> None:
     print("value-bound:", dup_bounded(b), dup_bounded_twin(t))
 
 
-# inverse: a call through a callable VALUE is an rvalue whatever K resolves
-# to -- the Fn type is not a declaration whose return convention was checked,
-# and the body that runs builds a fresh value. The generic must stay as silent
-# as the monomorphic twin below it. This pins ONLY the absence of a false
-# positive for a FRESH-value callable; a callable bound to a borrow-returning
-# function copies here with no diagnostic either, which is a real defect
-# (BUGS.md#callable-value-borrow-return-copies-unwarned), not what this
-# section asserts.
+# inverse: a call through a callable VALUE declared to return an open K reads
+# as an rvalue whatever K resolves to, and the body that runs builds a fresh
+# value. The generic must stay as silent as the monomorphic twin below it,
+# which spells the fresh value `Own[Cell]`. This pins ONLY the absence of a
+# false positive for a FRESH-value callable.
 def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
     for x in xs:
         out.append(f(x))  # tpyc: ok
 
 
-def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
+def apply_twin(xs: list[int32], f: Fn[[int32], Own[Cell]], out: list[Cell]) -> None:
     for x in xs:
         out.append(f(x))  # tpyc: ok
 
@@ -95,7 +92,7 @@ def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
     return f(x)  # tpyc: ok
 
 
-def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
+def ret_twin(x: int32, f: Fn[[int32], Own[Cell]]) -> Own[Cell]:
     return f(x)  # tpyc: ok
 
 

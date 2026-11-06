@@ -1327,6 +1327,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         if node.value is not None:
             _walk(owner, node.value, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRNestedDef):
+        # Its returns are the nested def's, not the enclosing body's; the
+        # node does not carry that return type, so they go unchecked, as a
+        # lambda body's do.
+        for child in node.body:
+            _walk(owner, child, None)
+        return
     if isinstance(node, THIRResumableReturn):
         _walk_resumable_return(owner, node)
         return

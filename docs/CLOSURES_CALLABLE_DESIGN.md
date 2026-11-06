@@ -10,7 +10,7 @@
 | 3 | Nested `def` with captures, `nonlocal` keyword | Done |
 | 4 | Generator functions (`yield`) | Done |
 | 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
-| 6a | Callable contract: result form, conversions, erasure (`docs/CALLABLE_CONTRACT_DESIGN.md`) | Designed / Not started |
+| 6a | Callable contract: result form, conversions, erasure (`docs/CALLABLE_CONTRACT_DESIGN.md`) | Concrete half landed 2026-11-05; the generic twin is TODO.md "Callable contract unit 2" |
 | 6b | Callable provenance: loans, summaries, effects (`docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`) | Requirements on the analysis-only MIR |
 
 ### Future Extensions
@@ -987,8 +987,8 @@ FORM -- does the call hand back a borrow of storage the caller can name, or a
 fresh value the caller owns? -- and its PROVENANCE -- which of the caller's
 places that borrow roots in. Without them a call through a callable value reads
 as an rvalue at every owning slot, so an `Fn` bound to a borrow-returning
-function copies where CPython aliases, silently
-(`BUGS.md#callable-value-borrow-return-copies-unwarned`).
+function copied where CPython aliases, silently, until the concrete callable
+contract landed (2026-11-05).
 
 One rule reads the form off a spelled return type, and it is the rule a `def`
 return already obeys: a bare reference type `R` is a **BORROW** (`R&` in C++),

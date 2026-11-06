@@ -1,0 +1,1 @@
+main.py:10: error: this lambda builds a new list[int], but Callable[[], list[int]] returns a borrow; declare Callable[[], Own[list[int]]] to return it by value
