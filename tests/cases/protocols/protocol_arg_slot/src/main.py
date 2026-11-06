@@ -178,11 +178,6 @@ class ReadsW(Protocol):
     def width(self) -> int32: ...
 
 
-class WritesW(ReadsW, Protocol):
-    # Redeclares the parent's @readonly method without it.
-    def width(self) -> int32: ...
-
-
 class PeeksW(Protocol):
     def width(self) -> int32: ...
 
@@ -216,10 +211,6 @@ class OvReader:
     def w_of(self, x: ReadsW, n: int32) -> int32: ...
     def w_of(self, x: ReadsW, n: int32 = 0) -> int32:
         return x.width() + n
-
-
-def through_writes(x: WritesW) -> int32:
-    return x.width()
 
 
 def through_sees(x: SeesW) -> int32:
@@ -345,7 +336,7 @@ def s_declared() -> None:
 def s_redeclared() -> None:
     # A child protocol redeclaring its parent's method decides the const.
     w = Wide(6)
-    print("redeclared", through_writes(w), through_sees(w), through_sees(Wide(7)))  # tpyc: ok
+    print("redeclared", through_sees(w), through_sees(Wide(7)))  # tpyc: ok
 
 
 def s_method() -> None:

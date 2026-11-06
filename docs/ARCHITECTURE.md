@@ -926,7 +926,13 @@ closures over `implemented_protocols` and the protocol closures already
 in the registry). All record-implements-protocol and protocol-inherits-
 protocol queries route through `is_subtype`; per-call filters such as
 `is_dynamic` on the matching protocol or `is_native` on the record live
-at the call site, not in the cache.
+at the call site, not in the cache. Protocol-to-protocol conformance asks more than
+membership: a protocol is its ancestor only at the type arguments its
+declarations name, so the conformance arm and `dyn_forward_ok` ask
+`protocol_ancestor_at` / `protocol_is_ancestor_at`
+(`type_def_registry.py`), which read the protocol's method resolution order
+(`protocol_mro`, C3 through `c3_over_parents`, the one builder records use
+too) and are memoized on the compiler until a protocol registers.
 
 Static entries (primitives, builtin generics, `tpy.Ptr` under
 `TypeCategory.STRUCTURAL_WRAPPER`) are populated once at module load

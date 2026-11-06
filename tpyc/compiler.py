@@ -769,6 +769,10 @@ class Compiler:
         # so cross-module lookups see every peer's contribution.
         from .typesys import ModuleInfo as _ModuleInfo
         self._shared_modules: dict[str, _ModuleInfo] = {}
+        # Protocol method resolution orders and ancestor answers, by kind
+        # (`type_def_registry.protocol_mro`); cleared whenever a protocol
+        # registers, since a cycle peer's skeleton completes late.
+        self.protocol_caches: dict[str, dict] = {}
         # Per-module map of cycle peers (populated by
         # `_compute_compile_order` from Tarjan SCC output). Codegen
         # consults this to swap full <peer>.hpp includes for

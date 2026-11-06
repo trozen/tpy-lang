@@ -1,0 +1,88 @@
+main::__tpy_init: uncovered (module initialization)
+main::use_getter@45:0: uncovered (unsupported parameter type)
+main::fwd_same@49:0: uncovered (unsupported parameter type)
+main::use_namer@70:0: uncovered (unsupported parameter type)
+main::fwd_wide@74:0: uncovered (unsupported parameter type)
+main::use_peeks@99:0: uncovered (unsupported parameter type)
+main::fwd_sees@103:0: uncovered (unsupported parameter type)
+main::look@107:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::use_scaler@128:0: uncovered (unsupported parameter type)
+main::fwd_offset@132:0: uncovered (unsupported parameter type)
+main::use_chain@160:0: uncovered (unsupported parameter type)
+main::fwd_chain@164:0: uncovered (unsupported parameter type)
+main::use_source@193:0: uncovered (unsupported parameter type)
+main::fwd_int_source@197:0: uncovered (unsupported parameter type)
+main::fwd_leaf@201:0: uncovered (unsupported parameter type)
+main::use_kw@222:0: uncovered (unsupported parameter type)
+main::fwd_kw@226:0: uncovered (unsupported parameter type)
+main::add_twice@251:0: uncovered (unsupported parameter type)
+main::use_holder@276:0: uncovered (unsupported parameter type)
+main::fwd_holders@282:0: uncovered (unsupported parameter type)
+main::use_dyn@305:0: uncovered (unsupported parameter type)
+main::fwd_dyn@309:0: uncovered (unsupported parameter type)
+main::use_right@340:0: uncovered (unsupported parameter type)
+main::fwd_diamond@344:0: uncovered (unsupported parameter type)
+main::use_iterable@369:0: uncovered (unsupported parameter type)
+main::fwd_sub_iter@376:0: uncovered (unsupported parameter type)
+main::sum_gen_sub_iter@388:0: uncovered (unsupported parameter type)
+main::bump_lent@420:0: uncovered (unsupported parameter type)
+main::sum_owned@425:0: uncovered (unsupported parameter type)
+main::fwd_lent_owned@432:0: uncovered (unsupported parameter type)
+main::bump_bag@459:0: uncovered (unsupported parameter type)
+main::first_big@485:0: uncovered (unsupported parameter type)
+main::use_named@534:0: uncovered (unsupported parameter type)
+main::use_posonly@538:0: uncovered (unsupported parameter type)
+main::keep_tokens@571:0: uncovered (unsupported parameter type)
+main::main@578:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Seven.get@41:4: covered (storage: no_proof_required), summary: known
+main::Shouter.rename@66:4: covered (storage: no_proof_required), summary: known
+main::Wide.width@95:4: covered (storage: no_proof_required), summary: known
+main::Tens.f@124:4: covered (storage: no_proof_required), summary: known
+main::Link.chain@152:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Link.val@156:4: covered (storage: no_proof_required), summary: known
+main::Nine.take@189:4: covered (storage: no_proof_required), summary: known
+main::KwImpl.g@218:4: covered (storage: no_proof_required), summary: known
+main::Meters.__add__@235:4: uncovered (unsupported return type)
+main::Meters.val@238:4: uncovered (missing receiver fact)
+main::Meters.__eq__: uncovered (unsupported reference parameter passing)
+main::Meters.__repr__: uncovered (unsupported owned-leaf expression)
+main::DynNine.take@301:4: covered (storage: no_proof_required)
+main::Fixed.f@336:4: covered (storage: no_proof_required), summary: known
+main::Count.__iter__@359:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Count.__next__@362:4: uncovered (error-return body)
+main::Cells.__iter__@410:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Cells.__next__@413:4: uncovered (error-return body)
+main::CellBag.__iter__@449:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::CellBag.__next__@452:4: uncovered (error-return body)
+main::Big.__iter__@475:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Big.__next__@478:4: uncovered (error-return body)
+main::Renamed.f@506:4: covered (storage: no_proof_required), summary: known
+main::PosOnlyMember.f@514:4: covered (storage: no_proof_required), summary: known
+main::RenamedPosOnly.h@522:4: covered (storage: no_proof_required), summary: known
+main::ExtraOptKw.f@530:4: covered (storage: no_proof_required), summary: known
+main::Tokens.__iter__@561:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Tokens.__next__@564:4: uncovered (error-return body)
+main::Animal.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::Dog.__init__@17:4: covered (storage: no_proof_required), summary: known
+main::Cell.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::Seven.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::Shouter.__init__@63:4: covered (storage: no_proof_required), summary: known
+main::Wide.__init__@91:4: covered (storage: no_proof_required), summary: known
+main::Tens.__init__@121:4: covered (storage: no_proof_required), summary: known
+main::Link.__init__@149:4: covered (storage: no_proof_required), summary: known
+main::Nine.__init__@186:4: covered (storage: no_proof_required), summary: known
+main::KwImpl.__init__@215:4: covered (storage: no_proof_required), summary: known
+main::Meters.__init__: uncovered (missing record layout)
+main::Box.__init__@272:4: covered (storage: no_proof_required), summary: known
+main::DynNine.__init__@298:4: covered (storage: no_proof_required), summary: known
+main::Fixed.__init__@332:4: covered (storage: no_proof_required), summary: known
+main::Count.__init__@356:4: covered (storage: no_proof_required), summary: known
+main::Cells.__init__@406:4: covered (storage: no_proof_required), summary: known
+main::CellBag.__init__@445:4: covered (storage: no_proof_required), summary: known
+main::Big.__init__@472:4: covered (storage: no_proof_required), summary: known
+main::Renamed.__init__@503:4: covered (storage: no_proof_required), summary: known
+main::PosOnlyMember.__init__@511:4: covered (storage: no_proof_required), summary: known
+main::RenamedPosOnly.__init__@519:4: covered (storage: no_proof_required), summary: known
+main::ExtraOptKw.__init__@527:4: covered (storage: no_proof_required), summary: known
+main::Token.__init__@547:4: covered (storage: no_proof_required), summary: known
+main::Tokens.__init__@558:4: covered (storage: no_proof_required), summary: known

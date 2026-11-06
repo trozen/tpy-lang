@@ -1,0 +1,1 @@
+main.py:11: error: Protocol 'Bad' does not conform to protocol 'Base': method 'get' has wrong signature: expected 'def get(self) -> int32', got 'def get(self) -> str'

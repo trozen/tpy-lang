@@ -19,11 +19,14 @@ from tpyc.typesys import (
     canonical_readonly, make_readonly,
     TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
-    bound_as_spelled, is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
-    unwrap_send_sync,
+    bound_as_spelled, is_any_str_type, is_protocol_type, substitute_type_params_structural,
+    unwrap_ref_type, unwrap_qualifiers, unwrap_readonly, unwrap_send_sync,
 )
 from tpyc import qnames
-from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
+from tpyc.type_def_registry import (is_span, is_span_iter, is_copy_iter, is_own_iter,
+                                   is_iterator_adapter, protocol_info_of, protocol_mro,
+                                   protocol_effective_methods, type_param_subst,
+                                   methods_at_reference)
 from tpyc.modules.defs import ParamDef, MethodDef
 
 
@@ -347,52 +350,59 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
 
 
 def _ancestor_iter_element(
-    proto: "NominalType", visited: "set[str] | None" = None,
+    proto: "NominalType", visited: "frozenset[str]" = frozenset(),
 ) -> "TpyType | None":
-    """Walk parent protocols looking for an ancestor whose qname is in
-    ITERABLE_PROTOCOL_QNAMES; return the inherited element type with the
-    inheritance binding chain applied.
+    """The element a sub-protocol of an iteration protocol (an ancestor in
+    ITERABLE_PROTOCOL_QNAMES) yields, read off its effective members
+    (`protocol_effective_methods`) at `proto`'s type arguments: a
+    sub-protocol of `Iterator` yields what its effective `__next__`
+    returns, one of `Iterable` the element of what its effective
+    `__iter__` returns -- each as declared, `Own[...]` included, and
+    callable with no argument; otherwise (`Spannable`) the first such
+    ancestor's element argument.
 
     For `class Counted[T](Iterable[T], Protocol)` instantiated as
-    `Counted[int32]`, the element type is `int32` -- read off Iterable's
-    type_args after substituting Counted's own T->int32 binding.
-    """
-    if visited is None:
-        visited = set()
+    `Counted[int32]`, the element type is `int32`."""
     info = protocol_info_of(proto)
-    if info is None:
+    if info is None or info.qualified_name() in visited:
         return None
-    qname = proto.qualified_name() or proto.name
-    if qname in visited:
+    visited = visited | {info.qualified_name()}
+    iteration = [a for a in protocol_mro(info)
+                 if a.qualified_name() in ITERABLE_PROTOCOL_QNAMES]
+    if not iteration:
         return None
-    visited.add(qname)
+    self_subst = type_param_subst(proto, info)
 
-    self_subst: dict[str, TpyType] = {}
-    if info.type_params and proto.type_args:
-        for name, arg in zip(info.type_params, proto.type_args):
-            if isinstance(arg, TpyType):
-                self_subst[name] = arg
+    def at_self(t: "TpyType") -> "TpyType":
+        return substitute_type_params_structural(t, self_subst) if self_subst else t
 
-    for parent in info.parent_protocols:
-        resolved_args = tuple(
-            self_subst.get(arg.name, arg) if isinstance(arg, TypeParamRef) else arg
-            for arg in parent.type_args
-        )
-        resolved_parent = NominalType(
-            name=parent.name,
-            type_args=resolved_args,
-            is_protocol=True,
-            _module_qname=parent._module_qname,
-        )
-        if resolved_parent.qualified_name() in ITERABLE_PROTOCOL_QNAMES:
-            if resolved_args:
-                first = resolved_args[0]
+    def member_return(name: str) -> "TpyType | None":
+        for sig in protocol_effective_methods(info, _structural_at_reference):
+            if sig.name == name:
+                bare = all(p.has_default for p in sig.param_infos())
+                return at_self(sig.return_type) if bare else None
+        return None
+
+    if any(a.qualified_name() == "typing.Iterator" for a in iteration):
+        elem = member_return("__next__")
+        if elem is not None:
+            return elem
+    else:
+        it = member_return("__iter__")
+        it = unwrap_qualifiers(it) if it is not None else None
+        if isinstance(it, NominalType) and is_protocol_type(it):
+            if it.qualified_name() in ITERABLE_PROTOCOL_QNAMES:
+                first = it.type_args[0] if it.type_args else None
                 return first if isinstance(first, TpyType) else None
-            return None
-        result = _ancestor_iter_element(resolved_parent, visited)
-        if result is not None:
-            return result
-    return None
+            elem = _ancestor_iter_element(it, visited)
+            if elem is not None:
+                return elem
+    first_arg = iteration[0].type_args[0] if iteration[0].type_args else None
+    return at_self(first_arg) if isinstance(first_arg, TpyType) else None
+
+
+def _structural_at_reference(methods: "list", ancestor: "NominalType", info) -> "list":
+    return methods_at_reference(methods, ancestor, info, substitute_type_params_structural)
 
 
 def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,

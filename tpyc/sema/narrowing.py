@@ -35,7 +35,7 @@ from ..prescan import (
 )
 from ..namespace import BindingKind, NameBinding
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
-from ..type_def_registry import protocol_info_of
+from ..type_def_registry import protocol_ancestor_at, protocol_info_of
 from .context import binds_value_copy
 from .flow_facts import GuardFacts
 from .dead_arms import decided_truth, truthy_operands
@@ -324,8 +324,7 @@ class NarrowingTracker:
             # in the C++ `if constexpr` branch).
             if (expr.isinstance_is_protocol
                     and is_protocol_type(effective) and is_protocol_type(check_type)
-                    and self.protocols.protocol_inherits_from(
-                        check_type, effective)):
+                    and protocol_ancestor_at(check_type, effective) is not None):
                 return {name: check_type}, {}, frozenset()
 
         # is None / is not None on union or optional types

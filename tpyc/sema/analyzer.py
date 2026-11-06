@@ -29,7 +29,7 @@ from ..typesys import (
     PendingNumType,
 )
 from ..coercions import CoercionContext
-from ..type_def_registry import is_span, is_varargs
+from ..type_def_registry import is_span, is_varargs, protocol_mro
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -136,7 +136,8 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     protocol_info_of,
 )
-from ..typesys import RefType, ProtocolInfo, ReadonlyCause, protocol_param_alternatives
+from ..typesys import (RefType, ProtocolInfo, ReadonlyCause, protocol_param_alternatives,
+                      C3LinearizationError)
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -1045,6 +1046,7 @@ class SemanticAnalyzer:
         # Every member of the component has registered its declarations.
         self.protocols.declarations_settled = True
         self._check_dynamic_slot_conflicts(module)
+        self._check_subprotocol_substitutes(module)
         # Runs after `_analyze_top_level` so module-level Final globals are
         # in scope, and before the method bodies so they see typed constants.
         for record in module.all_records():
@@ -1383,6 +1385,29 @@ class SemanticAnalyzer:
             if conflict is not None:
                 raise SemanticError(_slot_conflict_message(record.name, conflict),
                                     record.loc)
+
+    def _check_subprotocol_substitutes(self, module: TpyModule) -> None:
+        """A protocol naming parent protocols must be usable wherever each
+        of them is (`ProtocolChecker.subprotocol_conformance_issues`).
+        Asked once `declarations_settled`, so an import-cycle peer parent is
+        whole, and after the @dynamic slot check, whose message is the more
+        specific one for a slot."""
+        for protocol in module.protocols:
+            info = self.ctx.registry.scan_by_short_name(protocol.name)
+            if info is None or not info.parent_protocols:
+                continue
+            try:
+                protocol_mro(info, strict=True)
+            except C3LinearizationError as exc:
+                raise SemanticError(
+                    f"Inconsistent base-class ordering in '{protocol.name}': {exc}",
+                    protocol.loc) from exc
+            found = self.protocols.subprotocol_conformance_issues(info)
+            if found is not None:
+                parent, issues = found
+                raise SemanticError(
+                    f"Protocol '{protocol.name}' does not conform to protocol "
+                    f"'{parent}': {'; '.join(issues)}", protocol.loc)
 
     def _check_dynamic_slot_agreement(self, module: TpyModule) -> None:
         """Each receiver form a method emits must be the form of the

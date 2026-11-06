@@ -1871,6 +1871,16 @@ def c3_linearize(bases_with_mros: list[tuple['TpyType', list['TpyType']]]) -> li
     return result
 
 
+def c3_over_parents(parents: 'list[TpyType]',
+                    ancestors_of: Callable[['TpyType'], list['TpyType']],
+                    ) -> list['TpyType']:
+    """The C3 linearization of a class's or a protocol's ancestors (self
+    excluded) from its direct `parents` and `ancestors_of(parent)`, that
+    parent's own linearization restated through the edge. Raises
+    C3LinearizationError when none exists."""
+    return c3_linearize([(p, list(ancestors_of(p))) for p in parents])
+
+
 @dataclass(frozen=True)
 class SelfType(TpyType):
     """Self type for method signatures.
@@ -8563,6 +8573,22 @@ class ParamInfo:
         yield self.type
 
 
+def protocol_param_infos(params: 'list[tuple[str, TpyType]]',
+                         param_defaults: 'list | None',
+                         num_posonly: int = 0,
+                         keyword_only_start: 'int | None' = None,
+                         ) -> list[ParamInfo]:
+    """A protocol method's parameters as `ParamInfo`, its `/` and `*`
+    markers and defaults as declared (`MethodSignature` keeps them as
+    parallel lists)."""
+    defaults = param_defaults or ()
+    return [ParamInfo(n, t, default_expr=defaults[i] if i < len(defaults) else None,
+                      positional_only=i < num_posonly,
+                      keyword_only=(keyword_only_start is not None
+                                    and i >= keyword_only_start))
+            for i, (n, t) in enumerate(params)]
+
+
 @dataclass
 class MutationCallEdge:
     """Records parameter flow through a function call (for mutation propagation)."""
@@ -9628,6 +9654,15 @@ class MethodSignature:
     num_posonly_params: int = 0  # leading params before a '/' separator (self excluded)
     keyword_only_start: int | None = None  # index into params where keyword-only begins
 
+    def param_infos(self, subst: 'Callable[[TpyType], TpyType] | None' = None,
+                    ) -> list[ParamInfo]:
+        """The parameters as `ParamInfo` (`protocol_param_infos`), each
+        type through `subst`."""
+        params = (self.params if subst is None
+                  else [(n, subst(t)) for n, t in self.params])
+        return protocol_param_infos(params, self.param_defaults,
+                                    self.num_posonly_params, self.keyword_only_start)
+
 
 @dataclass
 class ProtocolInfo:
@@ -10367,17 +10402,11 @@ class TypeRegistry:
         Callers are responsible for storing the result on record_info.mro_ancestors
         and for surfacing C3LinearizationError as a user-facing diagnostic.
         """
-        if not record.parents:
-            return []
-        bases_with_mros: list[tuple[TpyType, list[TpyType]]] = []
-        for p in record.parents:
+        def ancestors_of(p: TpyType) -> list[TpyType]:
             parent_info = self.get_record_for_type(p) if isinstance(p, NominalType) else None
-            if parent_info is not None:
-                bases_with_mros.append(
-                    (p, compose(p, parent_info, list(parent_info.mro_ancestors))))
-            else:
-                bases_with_mros.append((p, []))
-        return c3_linearize(bases_with_mros)
+            return ([] if parent_info is None
+                    else compose(p, parent_info, list(parent_info.mro_ancestors)))
+        return c3_over_parents(record.parents, ancestors_of)
 
     def detect_diamond(self, record: RecordInfo) -> Optional[tuple[str, str, str]]:
         """Return (shared_ancestor_name, first_parent_name, second_parent_name) if a

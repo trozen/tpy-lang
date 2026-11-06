@@ -3743,6 +3743,15 @@ class Container:
 
 All call patterns work: concrete values (`Container(nums)` -> `&nums`), explicit `None` (`Container(None)` -> typed nullptr), and omitted optional args (`Container()` -> delegates to template ctor with nullptr). This applies to constructors, methods, and free functions.
 
+**Protocol method declarations (restriction).** A protocol method takes no
+decorator other than `@readonly` (*Unknown decorator 'property' on protocol
+method 'v'*), is not `async` (*async methods are not allowed in protocols*),
+and declares no `*args` / `**kwargs`: a call through the protocol packs nothing
+into them, so `def f(self, x: int32, *rest: int32) -> int32: ...` is refused
+where it is written (*variadic parameters are not allowed in protocols
+(parameter '\*rest' of method 'f' on protocol 'ChildArgs')*). A class member
+with `*args` / `**kwargs` does not meet a protocol requirement either.
+
 #### Working: Protocol Inheritance
 
 Protocols can inherit from other protocols, creating combined protocols that require all methods from parent protocols:
@@ -3811,6 +3820,72 @@ struct Container {
   inherits the parent's methods/fields with the parent's type parameters
   substituted by the child's. The arity of the parent reference must match
   the parent's declared type parameters.
+
+**A protocol that names parent protocols must be usable wherever each parent
+is.** Its members are resolved by Python's method resolution order (C3): a
+redeclaration shadows what it inherits, and in a diamond
+`class Diamond(Left, Right, Protocol)` over `Left(Root)` and `Right(Root)` a
+member `Right` redeclares is `Right`'s, as in CPython. At its declaration every
+member and field is held to each parent's, at the arguments the child names,
+by the rule a class naming that parent is held to:
+
+```python
+class Base(Protocol):
+    def get(self) -> int32: ...
+class Bad(Base, Protocol):
+    def get(self) -> str: ...      # error: Protocol 'Bad' does not conform to protocol 'Base':
+                                   #   method 'get' has wrong signature: expected 'def get(self) -> int32',
+                                   #   got 'def get(self) -> str'
+class C(A, B, Protocol): pass      # A.get -> int32, B.get -> str: the member is A's, which is no B's: error
+```
+
+- Accepted: an equal redeclaration, a parameter widened to a superclass, an
+  added `@readonly`, an extra parameter with a default, `-> Self` kept as
+  `-> Self`, `Own[...]` dropped around a returned value type.
+- Refused: a different return, a narrowed parameter, a dropped default (a call
+  the parent admits would fail), a positional parameter made keyword-only, a
+  new required keyword-only parameter, a renamed or reordered keyword-only
+  parameter, an optional parameter ahead of a required keyword-only one
+  (`f(self, a, b=5, *, x)` for `f(self, a, *, x)`: the call passes `x` into
+  `b`), a member taking `*args` or `**kwargs` anywhere (the call packs
+  nothing into them), a
+  `-> Self` narrowed to the child's own name (another conformer of the child
+  is no `Self`), a field of another type, and parents with no consistent
+  method resolution order (*Inconsistent base-class ordering in 'Z'*, as for a
+  class).
+- The call-shape part of the rule -- a member accepts every call the
+  requirement admits, and a call through a protocol passes its arguments in
+  the requirement's order: so parameter by parameter, a positional one stays
+  passable positionally (renamed or positional-only is fine), a keyword-only
+  one keeps its name and its place, a requirement's default stays a default,
+  a member with `*args` / `**kwargs` meets none, and any added parameter is
+  optional -- holds for a class conforming to a protocol too: a class
+  `Impl(Base)` whose `f(self, x)` drops `Base.f`'s `x = 7` is refused
+  (*... -- the default of parameter 'x' is required by 'Base'*).
+- A parameter typed at a bounded type parameter is compared through its
+  bound: `Child[T: HasN](Base[T])` may widen `f(self, x: T)` to
+  `f(self, x: HasN)`. (Calling such a member through the protocol still fails
+  the C++ build: BUGS.md#protocol-param-structural-protocol-concept.)
+- `@readonly` cannot be dropped: `Writes(Reads, Protocol)` redeclaring
+  `Reads`' `@readonly def width` without it is refused, since a call through a
+  `readonly[Reads]` runs only a readonly method.
+- Owning steps cannot become lending ones: `class Lent(Iterator[Own[Cell]],
+  Protocol)` with `def __next__(self) -> Cell` is refused (the parent's loop
+  takes each element over); the lending spelling is `Lent(Iterator[Cell])`,
+  which, forwarded to an `Iterator[Own[Cell]]` parameter, copies its elements
+  with the warning a lending class gets there.
+- A member reaching an inherited `@dynamic` slot is held to that slot exactly
+  (see "One name, one slot"), under a plain child too.
+- Marker and concrete-type parents (`ValueType`, `ReferenceType`, `Default`)
+  are inherited, not checked against the protocol.
+- A sub-protocol is its parent only at the arguments it names: a
+  `Child[int32]` (`class Child[T](Base[T], Protocol)`) is a `Base[int32]`,
+  through any number of generic hops, and is refused as a `Base[float]`.
+- Known limits: the member relation itself still has two unsound arms (a
+  superclass return meets a subclass requirement, and a subclass return is
+  refused; BUGS.md#protocol-member-relation-unsound-arms), and a sub-protocol of
+  `Iterator` loses its parent's loop-borrow check
+  (BUGS.md#subprotocol-iterator-loop-borrow-exact-qname).
 
 #### Working: Protocol Fields
 
@@ -4361,7 +4436,7 @@ class Dog(Pet):                    # -> struct Dog : Pet {
         return "Woof"
 ```
 
-**One name, one slot (restriction).** In the `@dynamic` protocols a class or protocol combines -- its own declarations and every `@dynamic` parent's, merged -- a method name is one slot: one C++ virtual with one receiver form, const for a `@readonly` slot, mutable otherwise. Every `@dynamic` declaration of that name must agree in parameter types, return type and readonly-ness, compared as the language sees them: after generic substitution, and with one `Own[...]` at a return not counting when it wraps a value type: `Own[int32]` agrees with `int32`, `Own[str]` with `str`, and `Own[T]` with `T` for a class type parameter bounded `ValueType`, while `Own[list[int32]]` against `list[int32]` or `Own[T]` against an unbounded `T` disagree, and a protocol's own `T: ValueType` bound counts as a class's does; at a parameter `Own[...]` always counts. Parameter names, kinds and defaults are not compared: a call through the combiner binds the first parent's declaration, as CPython binds the first base's method, and the C++ virtual is the same either way. An `Own[...]` result of a method called through a protocol or type-parameter receiver is a temporary, as a concrete method's is, so returning a `StrView` of it is the usual *Cannot return StrView referencing a local or temporary* error whichever declaration the call sees. A structural plain `-> str` filler of a combiner with no members of its own is refused in either order, because it must also conform to the `Own[str]` parent alone (BUGS.md#protocol-own-return-one-sided-unwrap). Known limits: a slot returning a reference type returns it by value, so a write to the call result changes a copy (BUGS.md#dynamic-slot-reference-return-copies), and a filler returning a field fails the C++ build (BUGS.md#dynamic-override-borrow-return-conflicting). A disagreement is a compile error at the protocol or class that combines the declarations, even when no class implements the protocol: *'Mat' combines @dynamic declarations of 'bounce' that disagree in readonly-ness: 'Surface.bounce(self, ray: Ray) -> float' and @readonly 'ReadSurface.bounce(self, ray: readonly[Ray]) -> float' -- in the @dynamic protocols a class or protocol combines, a method name is one slot* (likewise *... disagree in parameter types* / *... in return type*). So a child protocol cannot redeclare an inherited slot with another signature or receiver form, two `@dynamic` parents cannot declare one name differently, and no class can implement a mutable and a `@readonly` slot of one name. A plain (non-`@dynamic`) parent declares no slot: its methods become the protocol's own, and a `@dynamic` child may redeclare one with its own form. A plain protocol passes on the slots its `@dynamic` ancestors declare, through plain intermediates too, so `class Both(Left, Right, Protocol)` over plain `Left(A)` and `Right(B)` is held to `A`'s and `B`'s agreement. A redeclaration that agrees names the inherited slot, and a protocol inheriting one slot from two or more `@dynamic` parents declares it once more in its C++ class (`virtual int32_t f() override = 0;`), so a call through it names one member.
+**One name, one slot (restriction).** In the `@dynamic` protocols a class or protocol combines -- its own declarations and every `@dynamic` parent's, merged -- a method name is one slot: one C++ virtual with one receiver form, const for a `@readonly` slot, mutable otherwise. Every `@dynamic` declaration of that name must agree in parameter types, return type and readonly-ness, compared as the language sees them: after generic substitution, and with one `Own[...]` at a return not counting when it wraps a value type: `Own[int32]` agrees with `int32`, `Own[str]` with `str`, and `Own[T]` with `T` for a class type parameter bounded `ValueType`, while `Own[list[int32]]` against `list[int32]` or `Own[T]` against an unbounded `T` disagree, and a protocol's own `T: ValueType` bound counts as a class's does; at a parameter `Own[...]` always counts. Parameter names, kinds and defaults are not compared: a call through the combiner binds the first declaration along its C3 method resolution order, as CPython binds the method its MRO finds first, and the C++ virtual is the same either way. An `Own[...]` result of a method called through a protocol or type-parameter receiver is a temporary, as a concrete method's is, so returning a `StrView` of it is the usual *Cannot return StrView referencing a local or temporary* error whichever declaration the call sees. A structural plain `-> str` filler of a combiner with no members of its own conforms in either order: `Own[...]` around a returned value type asks nothing of a member. Known limits: a slot returning a reference type returns it by value, so a write to the call result changes a copy (BUGS.md#dynamic-slot-reference-return-copies), and a filler returning a field fails the C++ build (BUGS.md#dynamic-override-borrow-return-conflicting). A disagreement is a compile error at the protocol or class that combines the declarations, even when no class implements the protocol: *'Mat' combines @dynamic declarations of 'bounce' that disagree in readonly-ness: 'Surface.bounce(self, ray: Ray) -> float' and @readonly 'ReadSurface.bounce(self, ray: readonly[Ray]) -> float' -- in the @dynamic protocols a class or protocol combines, a method name is one slot* (likewise *... disagree in parameter types* / *... in return type*). So a child protocol cannot redeclare an inherited slot with another signature or receiver form, two `@dynamic` parents cannot declare one name differently, and no class can implement a mutable and a `@readonly` slot of one name. A plain (non-`@dynamic`) parent declares no slot: its methods become the protocol's own, and a `@dynamic` child may redeclare one with its own form -- except a name a `@dynamic` parent's slot also has, which runs through that slot's virtual and so must agree with it. Likewise a plain protocol's redeclaration of an inherited slot must agree with the slot. A plain protocol passes on the slots its `@dynamic` ancestors declare, through plain intermediates too, so `class Both(Left, Right, Protocol)` over plain `Left(A)` and `Right(B)` is held to `A`'s and `B`'s agreement. A redeclaration that agrees names the inherited slot, and a protocol inheriting one slot from two or more `@dynamic` parents declares it once more in its C++ class (`virtual int32_t f() override = 0;`), so a call through it names one member.
 
 **Receiver forms must match the slots (restriction).** A method filling a slot -- in the class that inherits the protocol or in any subclass override -- must emit exactly the slot's receiver form, so every call dispatches. An `@overload` method's forms are its stubs': each stub is emitted with its own const-ness, except in a group whose stubs differ from the implementation only by `Literal` parameters, which is emitted with the implementation's; the receiver is always the implementation's (an `Own[Self]` stub over a plain `self` implementation fills a plain slot). A compile error names the method, the slot and its protocol when it does not:
 - an `@auto_readonly` pair (the decorator, a property getter, `self: auto_readonly[Self]`, a per-parameter `auto_readonly[T]`) has a second form no slot takes, so it never fills an inherited slot: on a mutable slot *'Mat.bounce' has a readonly form, but the 'bounce' it fills in @dynamic protocol 'Surface' is not readonly -- drop auto_readonly* (*-- drop @pure and auto_readonly* beside `@pure`, which alone would keep the method readonly), on a `@readonly` one *... has a mutable form, but ... is @readonly -- drop auto_readonly*. This holds for a leaf class with no overriding subclass too: its readonly twin would not dispatch. A property getter or a reference-returning `__getitem__` / `__deref__` / `__span__` gets the pair whatever is spelled, so its error offers no remedy;

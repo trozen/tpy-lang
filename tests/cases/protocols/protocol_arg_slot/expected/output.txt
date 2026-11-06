@@ -11,7 +11,7 @@ async elem 3 4
 overload 1 5 1 3
 overload method 4 7
 overload const 4 6
-redeclared 6 6 7
+redeclared 6 7
 span 2 3 5 7
 declared 0 2
 method area 20 2 30

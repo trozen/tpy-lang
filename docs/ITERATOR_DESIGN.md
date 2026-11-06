@@ -83,7 +83,7 @@ def sum_fast(it: Iterable[T]) -> T:
 
 Because `NativeIterable[T]` extends `Iterable[T]`, sema threads the source's element type through `parent_protocols` to produce the narrowed `NativeIterable[int32]`; codegen emits `if constexpr (::tpy::NativeIterable<T_it, int32_t>)` with both template args. The older `Iterable[T] | NativeIterable[T]` union form still works but is no longer required. Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
 
-The narrowing only fires when the check protocol inherits from the declared one (via `ProtocolChecker.protocol_inherits_from`); cross-protocol checks against an unrelated multi-arg protocol are rejected at sema with a clear error rather than silently emitting a wrong-arity C++ concept.
+The narrowing only fires when the check protocol inherits from the declared one (via `protocol_ancestor_at`, `tpyc/type_def_registry.py`, which reads the protocol's method resolution order); cross-protocol checks against an unrelated multi-arg protocol are rejected at sema with a clear error rather than silently emitting a wrong-arity C++ concept.
 
 Automatic dispatch (emitting both branches inside every `Iterable[T]` template, gated by `if constexpr (NativeIterable<T>)`) is a planned follow-up; benchmark-gated since modern inlining often erases the difference.
 

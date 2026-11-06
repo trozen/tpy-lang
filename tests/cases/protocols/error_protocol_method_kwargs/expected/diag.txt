@@ -1,0 +1,1 @@
+main.py:16: error: variadic parameters are not allowed in protocols (parameter '**rest' of method 'f' on protocol 'ChildKwargs')

@@ -84,6 +84,7 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     get_type_def, NativeMembers, latch_native_members, TypeDef,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
+    protocol_registered,
     is_str_type, is_borrowing_view_type,
 )
 from ..diagnostics import SemanticError
@@ -4344,6 +4345,7 @@ class TypeRegistrar:
             TypeCategory.PROTOCOL,
             protocol=info,
         )
+        protocol_registered()
 
     def finalize_protocol_closure(self, protocol: TpyProtocol) -> None:
         """Populate ``ProtocolInfo.transitive_supertypes`` for one protocol.

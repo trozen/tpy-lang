@@ -525,7 +525,10 @@ vtables, substituted at the parent reference, and its own declarations
 redeclaration, only where no `@dynamic` parent has the name. Every declaration of a
 name must agree in parameter types, return type (one `Own[...]` around a value
 type at a return not counting, `_return_modulo_own`) and readonly-ness; the first pair that does not is
-the level's `SlotConflict`. A name only the protocol declares is its own slot, one a
+the level's `SlotConflict`. An effective member that reaches an inherited slot
+without declaring one -- a plain protocol's redeclaration, a plain parent's
+method ahead of a `@dynamic` one in the MRO -- runs through that slot's virtual
+and is held to it the same way. A name only the protocol declares is its own slot, one a
 single parent has is that parent's (a redeclaration names it), and one two or more
 parents have is declared again in the protocol's class (`VtableSlot.combined`,
 rendered `virtual ... override = 0;`), so member lookup through it is not ambiguous.
@@ -608,8 +611,9 @@ over the reference one, so the two declarations disagree. Parameter names,
 kinds and defaults are not compared (`_slot_disagreement`). Where they agree the
 merged vtable slot keeps the plain side (`_plain_side`), whose C++ virtual is
 the same as the `Own` one's. A protocol's method list (`protocol_methods`),
-plain or `@dynamic`, keeps the first parent's declaration of a name it only
-inherits, which is what a call binds to, as in CPython. The two may differ in
+plain or `@dynamic`, keeps the first declaration of a name along its method
+resolution order (C3, `protocol_mro`), which is what a call binds to, as in
+CPython. The two may differ in
 `Own` at the return without a dangle: an `Own[...]` result of a call through a
 protocol or type-parameter receiver is a temporary (`_builtin_own_result`), as a
 concrete method's is, so a `StrView` of it is rejected either way. Known limits at a reference type: the

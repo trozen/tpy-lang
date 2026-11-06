@@ -1,0 +1,1 @@
+main.py:11: error: Protocol 'Child' does not conform to protocol 'Base': method 'f' has wrong signature: expected 'def f(self, int32 = ...) -> int32', got 'def f(self, int32) -> int32' -- the default of parameter 'x' is required by 'Base'

@@ -28,7 +28,7 @@ from .. import qnames
 from ..parse.nodes import TpyCall, TpyCoerce, TpyMethodCall, TpyName
 from ..coercions import (DYN_ERASURES, INTO_DYN_ADAPTER, INTO_DYN_FACTORY,
                          INTO_DYN_HANDLE, INTO_DYN_INHERIT, Coercion)
-from ..type_def_registry import protocol_info_of, is_subtype
+from ..type_def_registry import protocol_info_of, is_subtype, protocol_is_ancestor_at
 from ..value_category import binds_owned_value, is_rvalue_source
 from ..typesys import (
     ConcreteCoroType, NominalType, OwnType, TpyType, TypeParamRef,
@@ -193,15 +193,16 @@ def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
     """True if `source` (@dynamic protocol) can be forwarded as `target`
     (@dynamic protocol) without an Adapter wrap -- same protocol (joint
     qualified_name + type_args check, so generic instantiations like
-    `Container[int]` and `Container[str]` stay distinct) or inheriting
-    peer. Module-level (analyzer-pure) so every caller shares one
-    verdict."""
+    `Container[int]` and `Container[str]` stay distinct) or a protocol
+    inheriting it at the same arguments (`protocol_is_ancestor_at`, the
+    conformance check's verdict). Module-level (analyzer-pure) so every
+    caller shares one verdict."""
     if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
         return False
     if (source.qualified_name() == target.qualified_name()
             and source.type_args == target.type_args):
         return True
-    return is_subtype(protocol_info_of(source), protocol_info_of(target))
+    return protocol_is_ancestor_at(source, target) is True
 
 
 def resolve_own_source_type(arg: 'TpyExpr', declared: 'TpyType | None',

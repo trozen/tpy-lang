@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 from .. import qnames
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingSetType,
-    SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
+    SuperType, TypeParamRef, FunctionInfo, protocol_param_infos, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
     unwrap_own, ConcreteCoroType, receiver_lends_handle,
@@ -2208,14 +2208,8 @@ class MethodAnalyzer:
         and `*` markers as declared."""
         # param_defaults is parallel to raw_params (None for required, TpyExpr for optional);
         # empty list means no defaults declared at protocol method level.
-        defaults = param_defaults if param_defaults else [None] * len(raw_params)
-        params = [
-            ParamInfo(n, t, default_expr=default,
-                      positional_only=i < num_posonly,
-                      keyword_only=(keyword_only_start is not None
-                                    and i >= keyword_only_start))
-            for i, ((n, t), default) in enumerate(zip(raw_params, defaults))
-        ]
+        params = protocol_param_infos(raw_params, param_defaults, num_posonly,
+                                      keyword_only_start)
         # __next__ on Iterator protocol has implicit @error_return(StopIteration)
         error_return_type = None
         if method_name == "__next__":

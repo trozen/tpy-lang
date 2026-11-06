@@ -621,7 +621,7 @@ def _plain_fold_visits(depth: int) -> int:
     entry = next(m for m in modules if m.is_entry_point)
     checker = entry.analyzer.protocols
     checker._protocol_vtables.clear()
-    checker._protocol_method_lists.clear()
+    compiler.protocol_caches.clear()
     count = [0]
     original = protocols_mod.protocol_methods
 
@@ -975,14 +975,11 @@ class B(Protocol):
 
 
 @pytest.mark.parametrize("order", ["A, B", "B, A"])
-def test_plain_filler_of_combined_value_slot_refused(order: str) -> None:
-    # A combiner with no members of its own conforms as its parents do, and
-    # `A.f -> Own[str]` refuses a `-> str` method on its own
-    # (BUGS.md#protocol-own-return-one-sided-unwrap); this row passes in
-    # both orders once that is fixed.
-    with pytest.raises(SemanticError,
-                       match=r"Type Z does not conform to protocol Comb"):
-        _compile(HEADER + _OWN_STR_PARENTS + f"""
+def test_plain_filler_of_combined_value_slot_accepted(order: str) -> None:
+    # A combiner with no members of its own conforms as its parents do;
+    # `A.f -> Own[str]` takes a `-> str` method, a returned value type
+    # being the caller's either way.
+    _compile(HEADER + _OWN_STR_PARENTS + f"""
 @dynamic
 class Comb({order}, Protocol):
     pass
@@ -1085,10 +1082,14 @@ def main() -> None:
 """)
 
 
-def test_redeclared_combined_slot_return_is_the_redeclarations() -> None:
-    # A plain combiner's `-> float` over two `-> int32` slots is what a
-    # call through it returns, so a `-> float` conformer fills it.
-    _compile(HEADER + """
+def test_redeclared_combined_slot_return_refused() -> None:
+    # A plain combiner's `-> float` over two `-> int32` slots would run
+    # through their one `int32` virtual, so the redeclaration is held to
+    # the slot.
+    with pytest.raises(SemanticError,
+                       match=r"'AB' combines @dynamic declarations of 'f' that "
+                             r"disagree in return type: .*" + _ONE_SLOT):
+        _compile(HEADER + """
 @dynamic
 class A(Protocol):
     def f(self) -> int32: ...
@@ -1476,10 +1477,14 @@ class B(Protocol):
 """ + _READONLY_STR_CASE)
 
 
-def test_later_parents_readonly_requirement_is_not_gained() -> None:
-    # `B.f` @readonly second: the first, mutable `A.f` is kept, so the
-    # mutating `C.f` conforms.
-    _compile(HEADER + """
+def test_later_parents_readonly_requirement_is_refused() -> None:
+    # `B.f` @readonly second: the first, mutable `A.f` is the combiner's
+    # member, so the combiner is no substitute for `B`.
+    with pytest.raises(SemanticError,
+                       match=r"Protocol 'AB' does not conform to protocol 'B': "
+                             r"method 'f' has wrong signature: expected "
+                             r"'@readonly def f\(self\) -> str'"):
+        _compile(HEADER + """
 from tpy import readonly
 class A(Protocol):
     def f(self) -> Own[str]: ...

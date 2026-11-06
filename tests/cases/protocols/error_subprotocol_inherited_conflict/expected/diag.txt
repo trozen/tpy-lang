@@ -1,0 +1,1 @@
+main.py:15: error: Protocol 'C' does not conform to protocol 'B': method 'get' has wrong signature: expected 'def get(self) -> str', got 'def get(self) -> int32'

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 import struct
+import dataclasses
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
@@ -25,7 +26,7 @@ from . import qnames
 from .compilation_context import get_current_compiler, require_current_compiler
 
 if TYPE_CHECKING:
-    from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo, TypeParamKind
+    from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo, TypeParamKind, MethodSignature, NominalType
 
 
 class TypeCategory(Enum):
@@ -1229,6 +1230,182 @@ def is_subtype(sub: "RecordInfo | ProtocolInfo | None",
     if sub is None or supertype is None:
         return False
     return supertype.qualified_name() in sub.transitive_supertypes
+
+
+def type_param_subst(reference: "NominalType",
+                     info: "ProtocolInfo | RecordInfo | None",
+                     ) -> "dict[str, TpyType]":
+    """`info`'s type parameters bound to the type arguments `reference`
+    names: for `class Foo[U](Iterable[U])`, the reference `Iterable[U]`
+    gives {Iterable.T -> U}. Empty when `info` is unknown (a forward ref)
+    or not generic. INT-kind arguments (`Array[T, N=8]`) are skipped: only
+    `TpyType` substitution reads the map."""
+    from tpyc.typesys import TpyType
+    if info is None or not info.type_params or not reference.type_args:
+        return {}
+    return {name: arg for name, arg in zip(info.type_params, reference.type_args)
+            if isinstance(arg, TpyType)}
+
+
+def protocol_mro(info: "ProtocolInfo", *, strict: bool = False,
+                 _visiting: "frozenset[str]" = frozenset(),
+                 ) -> "list[NominalType]":
+    """The protocol ancestors of `info` in Python's method resolution order
+    (C3, self excluded), each spelled in `info`'s own type parameters:
+    `class Leaf[V](Mid[V])` over `class Mid[U](Base[U])` gives
+    `[Mid[V], Base[V]]`. A member is the first declaration along
+    `[info] + protocol_mro(info)`. Read at query time, not from
+    `transitive_supertypes`, which misses an import-cycle peer's parents
+    (BUGS.md#protocol-closure-misses-cycle-peer-parents), and memoized on
+    the compiler until a protocol registers (`protocol_registered`). Where
+    no C3 order exists (the protocol's declaration is refused for it) it is
+    the direct parents alone, unless `strict`, which raises
+    C3LinearizationError."""
+    from tpyc.typesys import C3LinearizationError
+    cache = protocol_cache("mro")
+    qname = info.qualified_name()
+    if not strict and cache is not None and qname in cache:
+        return cache[qname]
+    # A malformed parent cycle (rejected elsewhere) must terminate.
+    if qname in _visiting:
+        return []
+    visiting = _visiting | {qname}
+    try:
+        order = _protocol_c3(info, visiting)
+    except C3LinearizationError:
+        if strict:
+            raise
+        # The declaration is refused for it (`_check_subprotocol_substitutes`);
+        # until then the direct parents stand in, unmerged.
+        order = list(info.parent_protocols)
+    if cache is not None:
+        cache[qname] = order
+    return order
+
+
+def _protocol_c3(info: "ProtocolInfo", visiting: "frozenset[str]") -> "list[NominalType]":
+    from tpyc.typesys import NominalType, TpyType, c3_over_parents, substitute_type_params_structural
+
+    def ancestors_of(parent: TpyType) -> list[TpyType]:
+        parent_info = protocol_info_of(parent)
+        if parent_info is None or not isinstance(parent, NominalType):
+            return []
+        subst = type_param_subst(parent, parent_info)
+        return [substitute_type_params_structural(e, subst) if subst else e
+                for e in protocol_mro(parent_info, _visiting=visiting)]
+    return [e for e in c3_over_parents(info.parent_protocols, ancestors_of)
+            if isinstance(e, NominalType)]
+
+
+def protocol_cache(kind: str) -> "dict | None":
+    """The compiler's memo of protocol answers of one `kind`, keyed as its
+    reader chooses, cleared whenever a protocol registers
+    (`protocol_registered`); None outside a compilation."""
+    compiler = get_current_compiler()
+    caches = getattr(compiler, "protocol_caches", None)
+    return None if caches is None else caches.setdefault(kind, {})
+
+
+def protocol_registered() -> None:
+    """A protocol's declaration was registered or completed (an
+    import-cycle peer's skeleton filled in): every protocol order and
+    ancestor answer computed so far may have changed."""
+    caches = getattr(get_current_compiler(), "protocol_caches", None)
+    if caches is not None:
+        caches.clear()
+
+
+def restate_signature(method: "MethodSignature", subst: "dict[str, TpyType]",
+                      substitute: "Callable[[TpyType, dict[str, TpyType]], TpyType]",
+                      ) -> "MethodSignature":
+    """`method` with `subst` applied to its parameter and return types by
+    `substitute` (a structural walk, or sema's `substitute_types`)."""
+    if not subst:
+        return method
+    return dataclasses.replace(
+        method,
+        params=[(n, substitute(t, subst)) for n, t in method.params],
+        return_type=substitute(method.return_type, subst))
+
+
+def methods_at_reference(
+    methods: "list[MethodSignature]", reference: "NominalType",
+    info: "ProtocolInfo | RecordInfo",
+    substitute: "Callable[[TpyType, dict[str, TpyType]], TpyType]",
+) -> "list[MethodSignature]":
+    """`info`'s own `methods`, in its type-parameter scope, restated at its
+    inheritance reference `reference`: `Base[int32]` turns
+    `get(self) -> T` into `get(self) -> int32`."""
+    subst = type_param_subst(reference, info)
+    if not subst:
+        return methods
+    return [restate_signature(m, subst, substitute) for m in methods]
+
+
+def protocol_effective_methods(
+    info: "ProtocolInfo",
+    at: "Callable[[list[MethodSignature], NominalType, ProtocolInfo], list[MethodSignature]] | None" = None,
+) -> "list[MethodSignature]":
+    """The members of protocol `info`: per name the first declaration
+    along `[info] + protocol_mro(info)`, so a redeclaration shadows what it
+    inherits and a diamond resolves as CPython resolves it. ``at`` restates
+    an ancestor's own methods at its entry (its type parameters bound to
+    the entry's arguments, spelled in `info`'s parameters)."""
+    by_name = {m.name: m for m in info.methods}
+    for ancestor in protocol_mro(info):
+        ancestor_info = protocol_info_of(ancestor)
+        if ancestor_info is None:
+            continue
+        methods = (ancestor_info.methods if at is None
+                   else at(ancestor_info.methods, ancestor, ancestor_info))
+        for method in methods:
+            by_name.setdefault(method.name, method)
+    return list(by_name.values())
+
+
+def protocol_ancestor_at(protocol: "NominalType", ancestor: "NominalType",
+                         ) -> "NominalType | None":
+    """`ancestor`'s class as protocol `protocol` (itself included) inherits
+    it, at the type arguments `protocol`'s declarations instantiate it with
+    at `protocol`'s own arguments: `class Child[T](Base[list[T]], Protocol)`
+    makes `Child[int32]` a `Base[list[int32]]`. None when it does not
+    inherit it. Memoized as `protocol_mro` is."""
+    from tpyc.typesys import NominalType, same_class, substitute_type_params_structural
+    if same_class(protocol, ancestor):
+        return protocol
+    cache = protocol_cache("ancestor")
+    key = (protocol, ancestor.qualified_name())
+    if cache is not None and key in cache:
+        return cache[key]
+    found: "NominalType | None" = None
+    info = protocol_info_of(protocol)
+    if info is not None:
+        for entry in protocol_mro(info):
+            if same_class(entry, ancestor):
+                subst = type_param_subst(protocol, info)
+                at = substitute_type_params_structural(entry, subst) if subst else entry
+                found = at if isinstance(at, NominalType) else None
+                break
+    if cache is not None:
+        cache[key] = found
+    return found
+
+
+def protocol_is_ancestor_at(protocol: "NominalType", ancestor: "NominalType",
+                            ) -> "bool | None":
+    """Whether protocol `protocol` is an `ancestor` at `ancestor`'s type
+    arguments (`protocol_ancestor_at`), compared modulo one `Own[...]` per
+    argument: an owning slot's call site asks with the `Own` stripped. A
+    bare `ancestor` asks for its class at any arguments. None when it does
+    not inherit `ancestor`'s class at all."""
+    from tpyc.typesys import OwnType
+    found = protocol_ancestor_at(protocol, ancestor)
+    if found is None:
+        return None
+
+    def peeled(args: tuple) -> tuple:
+        return tuple(a.wrapped if isinstance(a, OwnType) else a for a in args)
+    return not ancestor.type_args or peeled(found.type_args) == peeled(ancestor.type_args)
 
 
 def enum_info_of(t: "TpyType") -> Optional[EnumInfo]:

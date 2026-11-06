@@ -2074,6 +2074,15 @@ class Parser:
                         dec_name = self._decorator_local_name(dec) or "?"
                         raise ParseError(f"Unknown decorator '{dec_name}' on protocol method '{item.name}'", dec)
 
+                # A call through a protocol packs nothing into `*args` /
+                # `**kwargs`, so a protocol cannot require one.
+                for packed, star in ((item.args.vararg, "*"), (item.args.kwarg, "**")):
+                    if packed is not None:
+                        raise ParseError(
+                            f"variadic parameters are not allowed in protocols "
+                            f"(parameter '{star}{packed.arg}' of method '{item.name}' "
+                            f"on protocol '{node.name}')", packed)
+
                 # Parse method signature (body should be ... or pass)
                 params = []
                 for i, arg in enumerate(_positional_ast_args(item)):

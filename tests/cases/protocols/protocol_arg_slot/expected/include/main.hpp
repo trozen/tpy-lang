@@ -27,12 +27,6 @@ concept ReadsW = requires(const T& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
-// class WritesW(ReadsW, Protocol):
-template<typename T>
-concept WritesW = requires(T& t) {
-    { t.width() } -> std::convertible_to<int32_t>;
-};
-
 // class PeeksW(Protocol):
 template<typename T>
 concept PeeksW = requires(T& t) {
@@ -96,9 +90,6 @@ int32_t ov_grow__Growable(T_x&& x);
 // def ov_grow(x: Growable, n: int32) -> int32: ...
 template<Growable T_x>
 int32_t ov_grow__Growable__int32(T_x&& x, int32_t n);
-// def through_writes(x: WritesW) -> int32:
-template<WritesW T_x>
-int32_t through_writes(T_x&& x);
 // def through_sees(x: SeesW) -> int32:
 template<SeesW T_x>
 int32_t through_sees(const T_x& x);
@@ -879,12 +870,6 @@ template<Growable T_x>
 int32_t ov_grow__Growable__int32(T_x&& x, int32_t n) {
     x.grow();
     return n;
-}
-// def through_writes(x: WritesW) -> int32:
-//     return x.width()
-template<WritesW T_x>
-int32_t through_writes(T_x&& x) {
-    return x.width();
 }
 // def through_sees(x: SeesW) -> int32:
 //     return x.width()

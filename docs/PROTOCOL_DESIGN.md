@@ -123,6 +123,9 @@ and a value type" -- since a marker parent (`ValueType`) and a rule-based one
 structural walk over the inherited methods would skip them. A protocol that
 declares members of its own keeps the structural check over its own and its
 inherited members.
+Either way the protocol itself is checked at its declaration
+(`subprotocol_conformance_issues`): its effective members and fields must meet
+each parent's, at the arguments it names, by the member rule a class is held to.
 
 **Marker protocols.** A member-less protocol with a C++ concept is a marker:
 conformance is a compiler fact, not a method walk. `ValueType` admits the

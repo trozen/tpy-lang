@@ -1,8 +1,7 @@
 # isinstance(xs, NativeIterable) narrows xs from Iterable[T] to
 # NativeIterable[T] (which extends Iterable[T]). Exercises
-# sema/narrowing.py:292's parent-protocol -> child-protocol path,
-# which now routes through the unified is_subtype kernel via
-# ProtocolChecker.protocol_inherits_from.
+# the narrowing's parent-protocol -> child-protocol path, which asks
+# `protocol_ancestor_at` whether the check protocol inherits the declared one.
 from typing import Iterable
 from tpy import int32, NativeIterable
 

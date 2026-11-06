@@ -1,0 +1,21 @@
+same 7
+wide rex!
+sees 6 8
+offset 42
+self 2 2
+generic 9 9
+keyword 13
+operator 4
+fields 2
+dynamic 9
+diamond 4
+subiter 6 6
+lent 11 12
+lent owned 3
+bag 15 16
+fallback 1000000000000
+shapes renamed 2
+shapes posonly 11
+shapes renamed posonly 102
+shapes extra optional keyword 3
+owning 3 3

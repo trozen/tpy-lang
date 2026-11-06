@@ -128,11 +128,11 @@ void s_declared() {
 // def s_redeclared() -> None:
 //     # A child protocol redeclaring its parent's method decides the const.
 //     w = Wide(6)
-//     print("redeclared", through_writes(w), through_sees(w), through_sees(Wide(7)))  # tpyc: ok
+//     print("redeclared", through_sees(w), through_sees(Wide(7)))  # tpyc: ok
 void s_redeclared() {
     Wide w = Wide(6);
     Wide __tmp_1 = Wide(7);
-    std::cout << "redeclared" << " " << ::tpyapp::main::through_writes(w) << " " << ::tpyapp::main::through_sees(w) << " " << ::tpyapp::main::through_sees(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "redeclared" << " " << ::tpyapp::main::through_sees(w) << " " << ::tpyapp::main::through_sees(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // def s_method() -> None:

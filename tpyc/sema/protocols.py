@@ -35,7 +35,10 @@ from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
-    is_enum_type, protocol_info_of, is_subtype,
+    is_enum_type, protocol_info_of, protocol_mro, protocol_ancestor_at,
+    protocol_is_ancestor_at, protocol_effective_methods, type_param_subst,
+    protocol_cache, restate_signature,
+    methods_at_reference,
 )
 from ..typesys import is_numeric_type
 from .bound_check import find_method_class_param_bound_violation
@@ -91,61 +94,20 @@ def handle_payload_may_be(
     return False
 
 
-def _build_parent_protocol_subst(
-    parent: NominalType, parent_info: 'ProtocolInfo | RecordInfo | None',
-) -> dict[str, TpyType]:
-    """Build a substitution map from a parent protocol's type parameters
-    to the type arguments supplied in the inheritance reference.
-
-    For `class Foo[U](Iterable[U])`, walking from Foo and recursing into
-    Iterable yields {Iterable.T -> U} so inherited methods render with U.
-    Returns an empty map when parent_info is unknown (forward ref) or the
-    parent is non-generic.
-    """
-    if parent_info is None or not parent_info.type_params or not parent.type_args:
-        return {}
-    subst: dict[str, TpyType] = {}
-    # INT-kind args (e.g. Array[T, N=8]) don't appear in protocol method
-    # signatures, so they're skipped here -- the substitution map is only
-    # consumed by `substitute_types`, which works on TpyType.
-    for name, arg in zip(parent_info.type_params, parent.type_args):
-        if isinstance(arg, TpyType):
-            subst[name] = arg
-    return subst
-
-
 def protocol_methods(protocol_info: 'ProtocolInfo | None',
                      type_ops: 'TypeOperations | None' = None,
-                     visited: set[str] | None = None,
-                     parent_methods: 'Callable[[ProtocolInfo], list[MethodSignature]] | None' = None,
                      ) -> list[MethodSignature]:
-    """The methods a protocol requires, its parents' included; a method
-    shadows a same-named one it inherits. With `type_ops`, an inherited
-    method's parent type parameters are substituted with the parent
-    reference's type arguments, so a child of `Iterable[T]` sees
-    `__iter__(self) -> Iterator[T]` in its own type-parameter scope.
-    ``parent_methods`` answers for a parent instead of the recursion, so a
-    caller memoizing per protocol walks each one once."""
+    """The methods a protocol requires, its parents' included
+    (`protocol_effective_methods`, Python's method resolution order). With
+    `type_ops`, an inherited method's parent type parameters are
+    substituted with the ancestor's type arguments, so a child of
+    `Iterable[T]` sees `__iter__(self) -> Iterator[T]` in its own
+    type-parameter scope."""
     if protocol_info is None:
         return []
-    if visited is None:
-        visited = set()
-    if protocol_info.qualified_name() in visited:
-        return []
-    visited.add(protocol_info.qualified_name())
-    methods_by_name: dict[str, MethodSignature] = {
-        m.name: m for m in protocol_info.methods}
-    for parent in protocol_info.parent_protocols:
-        parent_info = protocol_info_of(parent)
-        inherited = (parent_methods(parent_info)
-                     if parent_methods is not None and parent_info is not None
-                     else protocol_methods(parent_info, type_ops, visited))
-        if type_ops is not None and parent_info is not None:
-            inherited = at_reference(inherited, parent, parent_info, type_ops)
-        for method in inherited:
-            if method.name not in methods_by_name:
-                methods_by_name[method.name] = method
-    return list(methods_by_name.values())
+    at = (None if type_ops is None else
+          lambda methods, ancestor, info: at_reference(methods, ancestor, info, type_ops))
+    return protocol_effective_methods(protocol_info, at)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -189,18 +151,18 @@ def _slot_disagreement(a: VtableSlot, b: VtableSlot) -> str | None:
         return "readonly-ness"
     if [t for _, t in a.sig.params] != [t for _, t in b.sig.params]:
         return "parameter types"
-    if _return_modulo_own(a.sig) != _return_modulo_own(b.sig):
+    if _return_modulo_own(a.sig.return_type) != _return_modulo_own(b.sig.return_type):
         return "return type"
     return None
 
 
-def _return_modulo_own(sig: MethodSignature) -> TpyType:
+def _return_modulo_own(ret: TpyType) -> TpyType:
     """A declaration's return type without one `Own[...]` around a value
     type: a returned value is the caller's either way. Around a reference
     type, or a type parameter not known to be a value type, `Own` selects
     the by-value virtual over the reference one, so it stays and the two
     declarations disagree."""
-    ret = unwrap_ref_type(sig.return_type)
+    ret = unwrap_ref_type(ret)
     if isinstance(ret, OwnType) and ret.wrapped.is_value_type():
         return ret.wrapped
     return ret
@@ -262,14 +224,15 @@ def at_reference(members: 'Vtable | list[MethodSignature]', parent: NominalType,
     parent's type-parameter scope -- substituted at its inheritance
     reference ``parent``: `Base[int32]` turns `get(self) -> T` into
     `get(self) -> int32`."""
-    subst = _build_parent_protocol_subst(parent, parent_info)
-    if not subst or not members:
+    if not isinstance(members, dict):
+        return methods_at_reference(members, parent, parent_info,
+                                    type_ops.substitute_types)
+    subst = type_param_subst(parent, parent_info)
+    if not subst:
         return members
-    if isinstance(members, dict):
-        return {name: dataclasses.replace(
-                    slot, sig=_substitute_method_signature(slot.sig, subst, type_ops))
-                for name, slot in members.items()}
-    return [_substitute_method_signature(m, subst, type_ops) for m in members]
+    return {name: dataclasses.replace(
+                slot, sig=restate_signature(slot.sig, subst, type_ops.substitute_types))
+            for name, slot in members.items()}
 
 
 def dynamic_vtable(protocol_info: 'ProtocolInfo',
@@ -287,7 +250,9 @@ def dynamic_vtable(protocol_info: 'ProtocolInfo',
     @dynamic parent has the name; a plain child passes on only the slots
     its @dynamic ancestors declare. Either way every @dynamic declaration
     of a name the protocol combines must agree in parameter types, return
-    type and readonly-ness."""
+    type and readonly-ness, and so must every effective member reaching
+    one of those slots without declaring one (a plain protocol's
+    redeclaration, a plain parent's method ahead in the MRO)."""
     own: Vtable = {}
     for sig in (protocol_info.methods if protocol_info.is_dynamic else ()):
         own[sig.name] = VtableSlot(sig, sig.is_readonly or protocol_info.is_readonly,
@@ -305,12 +270,30 @@ def dynamic_vtable(protocol_info: 'ProtocolInfo',
             folded.extend(at_reference(
                 parent_methods(parent_info), parent, parent_info, type_ops))
     dynamic_names = {name for source in sources for name in source}
+    declared = set(own)
     for sig in folded:
         if sig.name not in own and sig.name not in dynamic_names:
             own[sig.name] = VtableSlot(sig, sig.is_readonly or protocol_info.is_readonly,
                                        protocol_info)
-    return merge_vtables(sources, own,
-                         protocol_info if protocol_info.is_dynamic else None)
+    out, conflict = merge_vtables(sources, own,
+                                  protocol_info if protocol_info.is_dynamic else None)
+    # An effective member reaching an inherited slot without declaring one
+    # -- a plain protocol's redeclaration, a plain parent's method ahead of
+    # a @dynamic one in the MRO -- runs through that slot's virtual, so it
+    # is held to the slot exactly too.
+    for sig in parent_methods(protocol_info):
+        if sig.name in declared:
+            continue
+        slot = out.get(sig.name) if sig.name in dynamic_names else None
+        # The slot's own declaration carries its owner's readonly-ness.
+        if conflict is not None or slot is None or sig == slot.sig:
+            continue
+        candidate = VtableSlot(sig, sig.is_readonly or protocol_info.is_readonly,
+                               protocol_info)
+        aspect = _slot_disagreement(slot, candidate)
+        if aspect is not None:
+            conflict = SlotConflict(slot, candidate, aspect)
+    return out, conflict
 
 
 def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
@@ -346,22 +329,6 @@ def is_runtime_checkable(protocol_info: 'ProtocolInfo') -> bool:
             if parent_info is not None:
                 stack.append(parent_info)
     return False
-
-
-def _substitute_method_signature(
-    method: MethodSignature, subst: dict[str, TpyType], type_ops: 'TypeOperations',
-) -> MethodSignature:
-    """Apply `subst` to a method signature's params and return type.
-
-    Returns the original signature unchanged when subst is empty.
-    """
-    if not subst:
-        return method
-    return dataclasses.replace(
-        method,
-        params=[(n, type_ops.substitute_types(t, subst)) for n, t in method.params],
-        return_type=type_ops.substitute_types(method.return_type, subst),
-    )
 
 
 def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegistry') -> bool:
@@ -466,9 +433,9 @@ def text_leaves(t: TpyType) -> Iterator[TpyType]:
 
 class _MethodRequirement(NamedTuple):
     """One method a structural protocol requires of a type, substituted at
-    it: name, parameter types, return type, whether it must be readonly."""
+    it: name, parameters, return type, whether it must be readonly."""
     name: str
-    params: list[TpyType]
+    params: list[ParamInfo]
     return_type: TpyType
     readonly: bool
 
@@ -507,24 +474,17 @@ class ProtocolChecker:
         self.declarations_settled = False
         self._protocol_vtables: dict[str, tuple[Vtable, SlotConflict | None]] = {}
         self._vtables_in_progress: set[str] = set()
-        self._protocol_method_lists: dict[str, list[MethodSignature]] = {}
-        self._method_lists_in_progress: set[str] = set()
         self._record_vtables: IdentityMap[
             RecordInfo, tuple[Vtable, SlotConflict | None]] = IdentityMap()
 
     def is_all_readonly(self, proto_info: 'ProtocolInfo') -> bool:
-        """Check if all methods (including inherited) are readonly."""
+        """Every method the protocol requires is readonly, judged on its
+        effective members as `protocol_is_const` judges them -- a
+        redeclaration adding @readonly shadows its parent's -- though a
+        protocol requiring no method is all-readonly here."""
         if proto_info.is_readonly:
             return True
-        if not all(m.is_readonly for m in proto_info.methods):
-            return False
-        for parent in proto_info.parent_protocols:
-            parent_info = protocol_info_of(parent)
-            if parent_info is None:
-                return False  # unknown parent -- conservatively non-readonly
-            if not self.is_all_readonly(parent_info):
-                return False
-        return True  # all methods (if any) are readonly, all parents (if any) are readonly
+        return all(m.is_readonly for m in self.protocol_method_list(proto_info))
 
     def type_conforms_to_protocol(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if actual type conforms to a protocol.
@@ -823,9 +783,11 @@ class ProtocolChecker:
             if same_class(actual, protocol):
                 return (ProtocolConformanceKind.EXPLICIT
                         if actual.type_args == protocol.type_args else None)
-            # Check if actual protocol inherits from the required protocol
-            if self.protocol_inherits_from(actual, protocol):
-                return ProtocolConformanceKind.EXPLICIT
+            # An ancestor protocol conforms at the arguments the inheritance
+            # names, and only there: no structural walk second-guesses it.
+            at_args = protocol_is_ancestor_at(actual, protocol)
+            if at_args is not None:
+                return ProtocolConformanceKind.EXPLICIT if at_args else None
 
         # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
@@ -872,10 +834,7 @@ class ProtocolChecker:
         if requirements is None:
             return None
         for req in requirements:
-            if not self.type_has_method_with_signature(
-                actual, req.name, req.params, req.return_type,
-                require_readonly=req.readonly,
-            ):
+            if not self.type_has_method_with_signature(actual, req):
                 return None
         type_subst = self._requirement_subst(actual, protocol, protocol_info)
 
@@ -1071,64 +1030,114 @@ class ProtocolChecker:
         return False
 
     def type_has_method_with_signature(
-        self,
-        actual: TpyType,
-        method_name: str,
-        expected_params: list[TpyType],
-        expected_return: TpyType,
-        require_readonly: bool = False,
+        self, actual: TpyType, req: '_MethodRequirement', *,
+        bind_self: bool = True,
     ) -> bool:
-        """Check if a type has a method with the expected signature.
-
-        Works for user records (via RecordInfo), protocol types, and builtin types (via module system).
-
-        Note: For builtin types with generic methods (e.g., list.append(value: T)), the type
-        parameter comparison uses direct equality, which doesn't resolve type variables.
-        This is fine for Phase 1 protocols (only Sized with __len__() -> int32), but would
-        need type parameter resolution for generic protocols like Iterable[T].
-        """
+        """Whether `actual` has a member meeting requirement `req`
+        (`_member_meets`): a record's or builtin's overloads, or a
+        protocol's effective member (`protocol_method_list`) at `actual`'s
+        type arguments, its `Self` bound to `actual` unless `bind_self` is
+        False (a sub-protocol's declaration check, where `Self` is met only
+        by `Self`)."""
         if is_protocol_type(actual):
-            protocol_info = protocol_info_of(actual)
-            if protocol_info is None:
-                return False
+            member = self._protocol_member_at(actual, req.name, bind_self)
+            return member is not None and self._member_meets(*member, req)
+        return bool(self._matching_overloads(actual, req))
 
-            # Build type substitution map for generic protocols.
-            # Include Self so that methods returning Self (e.g. Iterator.__iter__)
-            # resolve to the concrete protocol type (e.g. Iterator[int32]).
-            type_subst: dict[str, TpyType] = {"Self": actual}
-            if protocol_info.type_params and actual.type_args:
-                type_subst.update(dict(zip(protocol_info.type_params, actual.type_args)))
+    def _protocol_member_at(
+        self, actual: NominalType, name: str, bind_self: bool,
+    ) -> tuple[list[ParamInfo], TpyType, bool] | None:
+        """Protocol `actual`'s effective member `name` as `_member_meets`
+        reads it -- parameters, return type, readonly -- substituted at
+        `actual`, or None."""
+        protocol_info = protocol_info_of(actual)
+        if protocol_info is None:
+            return None
+        type_subst: dict[str, TpyType] = {"Self": actual} if bind_self else {}
+        type_subst.update(type_param_subst(actual, protocol_info))
 
-            for method_sig in protocol_info.methods:
-                if method_sig.name == method_name:
-                    if require_readonly and not (method_sig.is_readonly or protocol_info.is_readonly):
-                        return False
-                    # Resolve types with substitution
-                    resolved_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
-                    if not self._protocol_type_matches(resolved_return, expected_return):
-                        return False
-                    if len(method_sig.params) != len(expected_params):
-                        return False
-                    for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
-                        resolved_ptype = self.type_ops.substitute_types(actual_ptype, type_subst)
-                        # Params use equality (not _protocol_type_matches which is
-                        # covariant). Only unwrap Own/Readonly/Ref wrappers.
-                        cmp_actual = resolved_ptype.wrapped if isinstance(resolved_ptype, (OwnType, ReadonlyType, RefType)) else resolved_ptype
-                        cmp_expected = expected_ptype.wrapped if isinstance(expected_ptype, (OwnType, ReadonlyType, RefType)) else expected_ptype
-                        if cmp_actual != cmp_expected:
-                            return False
-                    return True
+        def subst(t: TpyType) -> TpyType:
+            return self.type_ops.substitute_types(t, type_subst) if type_subst else t
+        for sig in self.protocol_method_list(protocol_info):
+            if sig.name == name:
+                return (sig.param_infos(subst), subst(sig.return_type),
+                        sig.is_readonly or protocol_info.is_readonly)
+        return None
+
+    def _member_meets(self, params: list[ParamInfo], return_type: TpyType,
+                      readonly: bool, req: '_MethodRequirement') -> bool:
+        """The one member relation of structural conformance: a member
+        meets a requirement when it is readonly where it must be (a call
+        through a readonly receiver runs only a readonly member, whatever
+        its return converts to), its return matches (`_protocol_type_matches`,
+        `Own[...]` around a returned value type asking nothing), and it
+        takes every call the requirement admits (`_call_shape_mismatch`)."""
+        if req.readonly and not readonly:
             return False
-        return bool(self._matching_overloads(
-            actual, method_name, expected_params, expected_return,
-            require_readonly))
+        if not self._protocol_type_matches(
+                return_type, _return_modulo_own(req.return_type)):
+            return False
+        return self._call_shape_mismatch(params, req.params) is None
+
+    def _call_shape_mismatch(
+        self, member: list[ParamInfo], required: list[ParamInfo],
+    ) -> tuple[str, ParamInfo] | None:
+        """The first reason `member` does not take every call `required`
+        admits, with the parameter it is about, or None. A call through a
+        protocol passes its arguments in the requirement's order, by
+        position, so the two lists are matched position by position: a
+        positional requirement takes a member parameter still passable
+        positionally, a keyword-only one the same name, a default stays a
+        default, each type takes the required one (`_param_meets`), and
+        every member parameter past the requirement's is optional. A
+        member with `*args` or `**kwargs` meets none: the call through the
+        protocol does not pack arguments into them.
+
+        Reasons: "variadic", "missing", "keyword_only", "renamed",
+        "default", "type", "extra"."""
+        packed = next((p for p in member if p.is_variadic or p.is_kwargs), None)
+        if packed is not None:
+            return "variadic", packed
+        for i, rp in enumerate(required):
+            if i >= len(member):
+                return "missing", rp
+            mp = member[i]
+            if rp.keyword_only:
+                if mp.name != rp.name or mp.positional_only:
+                    return "renamed", mp
+            elif mp.keyword_only:
+                return "keyword_only", mp
+            if rp.has_default and not mp.has_default:
+                return "default", mp
+            if not self._param_meets(mp, rp):
+                return "type", mp
+        for mp in member[len(required):]:
+            if not mp.has_default:
+                return "extra", mp
+        return None
+
+    def _param_meets(self, member: ParamInfo, required: ParamInfo) -> bool:
+        """`member`'s type takes every argument `required`'s does
+        (`_protocol_type_matches`), or the required type is a type
+        parameter whose bound `member` takes (`f(x: HasN)` for `f(x: T)`
+        with `T: HasN`)."""
+        if self._protocol_type_matches(member.type, required.type):
+            return True
+        bound = (required.type.bound
+                 if isinstance(required.type, TypeParamRef) else None)
+        # Every T is a bound value, so the bound must fit the member's
+        # parameter, not the other way round: `f(x: A)` for one conformer
+        # `A` would refuse the other conformers T may be.
+        return bound is not None and self._protocol_type_matches(bound, member.type)
 
     def _requirement_subst(self, actual: TpyType, protocol: NominalType,
                            protocol_info: 'ProtocolInfo',
+                           bind_self: bool = True,
                            ) -> dict[str, TpyType] | None:
-        """`Self` and the protocol's type parameters at `actual`; None when
-        the protocol's type arguments do not fit its parameters."""
-        type_subst: dict[str, TpyType] = {"Self": actual}
+        """`Self` (unless `bind_self` is False) and the protocol's type
+        parameters at `actual`; None when the protocol's type arguments do
+        not fit its parameters."""
+        type_subst: dict[str, TpyType] = {"Self": actual} if bind_self else {}
         if protocol_info.type_params and protocol.type_args:
             if len(protocol_info.type_params) != len(protocol.type_args):
                 return None
@@ -1138,18 +1147,20 @@ class ProtocolChecker:
 
     def _method_requirements(self, actual: TpyType, protocol: NominalType,
                              protocol_info: 'ProtocolInfo',
+                             bind_self: bool = True,
                              ) -> 'list[_MethodRequirement] | None':
         """Every method `protocol` requires of `actual` (inherited ones
         included), substituted at it -- the structural conformance walk's
-        list, read by the conformance check and by `protocol_members_on`."""
-        type_subst = self._requirement_subst(actual, protocol, protocol_info)
+        list, read by the conformance check, its diagnostic and
+        `protocol_members_on`."""
+        type_subst = self._requirement_subst(actual, protocol, protocol_info,
+                                             bind_self)
         if type_subst is None:
             return None
+        def subst(t: TpyType) -> TpyType:
+            return self.type_ops.substitute_types(t, type_subst)
         return [_MethodRequirement(
-            sig.name,
-            [self.type_ops.substitute_types(t, type_subst)
-             for _, t in sig.params],
-            self.type_ops.substitute_types(sig.return_type, type_subst),
+            sig.name, sig.param_infos(subst), subst(sig.return_type),
             sig.is_readonly or protocol_info.is_readonly)
             for sig in self.collect_protocol_methods(protocol_info)]
 
@@ -1199,38 +1210,17 @@ class ProtocolChecker:
                 self._substituted_overloads(actual, method_name)
                 if not resolved.is_consuming]
 
-    def _matching_overloads(
-        self,
-        actual: TpyType,
-        method_name: str,
-        expected_params: list[TpyType],
-        expected_return: TpyType,
-        require_readonly: bool = False,
-    ) -> list[FunctionInfo]:
-        """The overloads of record or builtin `actual`'s method
-        `method_name` (inherited ones included, substituted at `actual`)
-        matching the expected signature -- the structural conformance
-        check's member match."""
-        matched: list[FunctionInfo] = []
-        for _method, resolved in self._substituted_overloads(actual,
-                                                             method_name):
-            # A readonly requirement takes a readonly method whatever its
-            # return converts to: a call through a readonly receiver runs
-            # only that one.
-            if require_readonly and not resolved.is_readonly:
-                continue
-            # Check return type (Own[T] in impl matches T in protocol)
-            if not self._protocol_type_matches(resolved.return_type, expected_return):
-                continue
-            # Check parameter count and types (account for defaults)
-            required_count = resolved.min_args
-            if not (required_count <= len(expected_params) <= len(resolved.params)):
-                continue
-            if all(self._protocol_type_matches(actual_ptype, expected_ptype)
-                   for (_, actual_ptype), expected_ptype
-                   in zip(resolved.params, expected_params)):
-                matched.append(resolved)
-        return matched
+    def _matching_overloads(self, actual: TpyType,
+                            req: '_MethodRequirement') -> list[FunctionInfo]:
+        """The overloads of record or builtin `actual`'s method `req.name`
+        (inherited ones included, substituted at `actual`) meeting `req`
+        (`_member_meets`) -- the structural conformance check's member
+        match."""
+        return [resolved for _method, resolved
+                in self._substituted_overloads(actual, req.name)
+                if self._member_meets(resolved.params,
+                                      resolved.return_type,
+                                      resolved.is_readonly, req)]
 
     def _substituted_overloads(
         self, actual: TpyType, method_name: str,
@@ -1290,7 +1280,17 @@ class ProtocolChecker:
                 ) is not None)]
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
-        """Check if a type has a field with the expected type."""
+        """Check if a type has a field with the expected type: a record's
+        own, or a protocol's effective one (`collect_protocol_fields`) at
+        its type arguments."""
+        if is_protocol_type(actual) and isinstance(actual, NominalType):
+            protocol_info = protocol_info_of(actual)
+            type_subst = type_param_subst(actual, protocol_info)
+            for name, field_type in self.collect_protocol_fields(protocol_info):
+                if name == field_name:
+                    return (self.type_ops.substitute_types(field_type, type_subst)
+                            if type_subst else field_type) == expected_type
+            return False
         if isinstance(actual, NominalType) and actual.is_record:
             record = self.ctx.registry.get_record_for_type(actual)
             if record:
@@ -1352,55 +1352,30 @@ class ProtocolChecker:
     def collect_protocol_methods(self, protocol_info: 'ProtocolInfo | None'
                                  ) -> list[MethodSignature]:
         """The protocol's methods, its parents' included, in its own
-        type-parameter scope (`protocol_methods`)."""
-        return protocol_methods(protocol_info, self.type_ops)
+        type-parameter scope (`protocol_method_list`)."""
+        return ([] if protocol_info is None
+                else self.protocol_method_list(protocol_info))
 
     def collect_protocol_fields(self, protocol_info: 'ProtocolInfo | None',
-                                visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
-        """Collect fields from a protocol and all its parents.
-
-        Avoids duplicates by name (direct fields take precedence over inherited).
-        Substitutes parent type parameters as in `collect_protocol_methods`.
-        """
+                                ) -> list[tuple[str, TpyType]]:
+        """The protocol's fields, its parents' included: per name the first
+        declaration along its method resolution order, substituted as in
+        `collect_protocol_methods`."""
         if protocol_info is None:
             return []
-        if visited is None:
-            visited = set()
-        if protocol_info.qualified_name() in visited:
-            return []  # Prevent cycles
-        visited.add(protocol_info.qualified_name())
-
-        # Start with direct fields
-        fields_by_name: dict[str, tuple[str, TpyType]] = {}
-        for field_name, field_type in protocol_info.fields:
-            fields_by_name[field_name] = (field_name, field_type)
-
-        # Add inherited fields (only if not already defined directly)
-        for parent in protocol_info.parent_protocols:
-            parent_info = protocol_info_of(parent)
-            # The substitution `at_reference` makes, on bare field types
-            # rather than on method signatures and vtable slots.
-            type_subst = _build_parent_protocol_subst(parent, parent_info)
-            for field_name, field_type in self.collect_protocol_fields(parent_info, visited):
-                if field_name not in fields_by_name:
-                    resolved_type = (self.type_ops.substitute_types(field_type, type_subst)
-                                     if type_subst else field_type)
-                    fields_by_name[field_name] = (field_name, resolved_type)
-
+        fields_by_name: dict[str, tuple[str, TpyType]] = {
+            name: (name, t) for name, t in protocol_info.fields}
+        for ancestor in protocol_mro(protocol_info):
+            ancestor_info = protocol_info_of(ancestor)
+            if ancestor_info is None:
+                continue
+            type_subst = type_param_subst(ancestor, ancestor_info)
+            for name, t in ancestor_info.fields:
+                if name not in fields_by_name:
+                    fields_by_name[name] = (
+                        name, self.type_ops.substitute_types(t, type_subst)
+                        if type_subst else t)
         return list(fields_by_name.values())
-
-    def protocol_inherits_from(self, protocol: NominalType,
-                               ancestor: NominalType) -> bool:
-        """Check if a protocol inherits from another protocol (directly or
-        indirectly), or is the same protocol.
-
-        Thin reflexive layer over the registry-level ``is_subtype`` kernel;
-        ``is_subtype`` itself is strict (ancestor-only), and conformance
-        callers want ``P inherits P`` to be true.
-        """
-        if same_class(protocol, ancestor):
-            return True
-        return is_subtype(protocol_info_of(protocol), protocol_info_of(ancestor))
 
     def get_protocol_method_signature(
         self,
@@ -1480,7 +1455,7 @@ class ProtocolChecker:
         if protocol_info.type_params and protocol.type_args:
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
-        for method_sig in protocol_info.methods:
+        for method_sig in self.protocol_method_list(protocol_info):
             if method_sig.name == method_name:
                 # Check argument count
                 if len(method_sig.params) != len(arg_types):
@@ -1663,25 +1638,16 @@ class ProtocolChecker:
         return result
 
     def protocol_method_list(self, protocol_info: 'ProtocolInfo') -> list[MethodSignature]:
-        """`protocol_methods(protocol_info, type_ops)`, each parent's answer
-        memoized, so folding plain parents into the vtables of a deep
-        hierarchy walks each protocol once. Memoized once
-        `declarations_settled`."""
+        """The protocol's effective members (`protocol_methods`) in its own
+        type-parameter scope, memoized on the compiler (`protocol_cache`)
+        until a protocol registers."""
+        cache = protocol_cache("methods")
         qname = protocol_info.qualified_name()
-        cached = self._protocol_method_lists.get(qname)
-        if cached is not None:
-            return cached
-        # A malformed parent cycle (rejected elsewhere) must terminate.
-        if qname in self._method_lists_in_progress:
-            return []
-        self._method_lists_in_progress.add(qname)
-        try:
-            result = protocol_methods(protocol_info, self.type_ops,
-                                      parent_methods=self.protocol_method_list)
-        finally:
-            self._method_lists_in_progress.discard(qname)
-        if self.declarations_settled:
-            self._protocol_method_lists[qname] = result
+        if cache is not None and qname in cache:
+            return cache[qname]
+        result = protocol_methods(protocol_info, self.type_ops)
+        if cache is not None:
+            cache[qname] = result
         return result
 
     def record_vtable(self, record_info: RecordInfo) -> Vtable:
@@ -1808,99 +1774,148 @@ class ProtocolChecker:
                     if isinstance(v, TpyType) else v)
                 for k, v in ancestor_subst.items()}
 
-    def get_protocol_conformance_issues(self, record_type: NominalType, protocol: NominalType) -> list[str]:
-        """Get human-readable list of conformance issues for a record against a protocol.
+    def subprotocol_conformance_issues(
+        self, protocol_info: 'ProtocolInfo',
+    ) -> tuple[NominalType, list[str]] | None:
+        """The first parent protocol `protocol_info` names that it is no
+        substitute for, with why: a protocol is usable wherever each protocol
+        it names is, so its effective members and fields are held to each
+        parent's at the arguments it names, by the member rule a class
+        naming that parent is held to -- `Self` there met only by `Self`.
+        Marker and concrete-type predicates (`ValueType`, `Default`, ...)
+        are inherited, not checked. None when it substitutes for each."""
+        subject = NominalType(
+            protocol_info.name,
+            # Keep each param's declared bound: a member typed `T` meets a
+            # parent's `HasN` only through `T: HasN`.
+            tuple(TypeParamRef(p, bound=protocol_info.type_param_bounds.get(p),
+                               **({"kind": protocol_info.type_param_kinds[i]}
+                                  if i < len(protocol_info.type_param_kinds) else {}))
+                  for i, p in enumerate(protocol_info.type_params)),
+            is_protocol=True, _module_qname=protocol_info.qualified_name(),
+            is_dynamic_protocol=protocol_info.is_dynamic)
+        for parent in protocol_info.parent_protocols:
+            issues = self.get_protocol_conformance_issues(subject, parent,
+                                                          bind_self=False)
+            if issues:
+                return parent, issues
+        return None
+
+    def get_protocol_conformance_issues(self, actual: NominalType, protocol: NominalType,
+                                        *, bind_self: bool = True) -> list[str]:
+        """Human-readable list of conformance issues of a record, or of a
+        protocol (`bind_self` False for a sub-protocol's declaration
+        check), against a protocol.
 
         Distinguishes genuinely-absent methods from methods that exist with a
         wrong signature (wrong return type, wrong params, or missing @readonly).
-        Each entry is a short phrase describing one reason the record does not
-        conform.
+        Each entry is a short phrase describing one reason the subject does
+        not conform.
         """
-        record_info = self.ctx.registry.get_record_for_type(record_type)
-        if record_info is None:
+        if (not is_protocol_type(actual)
+                and self.ctx.registry.get_record_for_type(actual) is None):
             return []
-
         protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
             return []
+        type_subst = self._requirement_subst(actual, protocol, protocol_info,
+                                             bind_self)
+        if type_subst is None:
+            return []
 
         issues: list[str] = []
-        # Build type substitution map
-        type_subst: dict[str, TpyType] = {"Self": record_type}
-        if protocol_info.type_params and protocol.type_args:
-            type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
-
-        # Collect all required methods (including inherited)
-        all_methods = self.collect_protocol_methods(protocol_info)
-        for method_sig in all_methods:
-            expected_params = [
-                self.type_ops.substitute_types(ptype, type_subst)
-                for _, ptype in method_sig.params
-            ]
-            expected_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
-            method_readonly = method_sig.is_readonly or protocol_info.is_readonly
-
-            if self.type_has_method_with_signature(
-                record_type, method_sig.name, expected_params, expected_return,
-                require_readonly=method_readonly,
-            ):
-                continue
-            issues.append(self._describe_method_mismatch(
-                record_type, method_sig.name, expected_params, expected_return,
-                method_readonly,
-            ))
-
-        # Check fields
-        all_fields = self.collect_protocol_fields(protocol_info)
-        for field_name, field_type in all_fields:
+        for req in self._method_requirements(actual, protocol, protocol_info,
+                                             bind_self) or ():
+            if not self.type_has_method_with_signature(actual, req,
+                                                       bind_self=bind_self):
+                issues.append(self._describe_method_mismatch(
+                    actual, req, bind_self, protocol))
+        for field_name, field_type in self.collect_protocol_fields(protocol_info):
             expected_type = self.type_ops.substitute_types(field_type, type_subst)
-            if not self.type_has_field_with_type(record_type, field_name, expected_type):
+            if not self.type_has_field_with_type(actual, field_name, expected_type):
                 issues.append(f"field '{field_name}: {expected_type}' missing or has wrong type")
-
         return issues
 
-    def _describe_method_mismatch(
-        self, actual: TpyType, method_name: str,
-        expected_params: list[TpyType], expected_return: TpyType,
-        require_readonly: bool,
-    ) -> str:
+    def _describe_method_mismatch(self, actual: TpyType,
+                                  req: '_MethodRequirement',
+                                  bind_self: bool = True,
+                                  protocol: 'NominalType | None' = None) -> str:
         """Explain why type_has_method_with_signature returned False for one method."""
+        method_name = req.name
         expected_sig = self._format_method_signature(
-            method_name, expected_params, expected_return, require_readonly)
+            method_name, req.params, req.return_type, req.readonly)
 
-        record_info = self.ctx.registry.get_record_for_type(actual)
-        if record_info is None:
-            return f"missing method '{expected_sig}'"
-        overloads, inherited_subst = self.lookup_record_method_overloads(record_info, method_name)
-        if not overloads:
-            return f"missing method '{expected_sig}'"
+        if is_protocol_type(actual):
+            member = self._protocol_member_at(actual, method_name, bind_self)
+            if member is None:
+                return f"missing method '{expected_sig}'"
+            members = [member]
+        else:
+            record_info = self.ctx.registry.get_record_for_type(actual)
+            if record_info is None:
+                return f"missing method '{expected_sig}'"
+            overloads, inherited_subst = self.lookup_record_method_overloads(
+                record_info, method_name)
+            if not overloads:
+                return f"missing method '{expected_sig}'"
 
-        # Apply inherited-method substitution so that overloads inherited
-        # from a generic parent (e.g. `Container[int32]` giving a method
-        # returning `T`) render the concrete `int32` rather than the raw
-        # `T` placeholder in the diagnostic.
-        def _render(m: 'FunctionInfo') -> str:
-            params = [
-                self.type_ops.substitute_types(p.type, inherited_subst)
-                if inherited_subst else p.type
-                for p in m.params
-            ]
-            ret = (self.type_ops.substitute_types(m.return_type, inherited_subst)
-                   if inherited_subst else m.return_type)
-            return self._format_method_signature(method_name, params, ret, m.is_readonly)
+            # Apply inherited-method substitution so that overloads inherited
+            # from a generic parent (e.g. `Container[int32]` giving a method
+            # returning `T`) render the concrete `int32` rather than the raw
+            # `T` placeholder in the diagnostic.
+            def subst(t: TpyType) -> TpyType:
+                return (self.type_ops.substitute_types(t, inherited_subst)
+                        if inherited_subst else t)
+            members = [([dataclasses.replace(p, type=subst(p.type)) for p in m.params],
+                        subst(m.return_type), m.is_readonly) for m in overloads]
 
-        actual_sigs = [_render(m) for m in overloads]
-        actual_desc = " / ".join(f"'{s}'" for s in actual_sigs)
+        actual_desc = " / ".join(
+            f"'{self._format_method_signature(method_name, params, ret, ro)}'"
+            for params, ret, ro in members)
+        reason = self._mismatch_hint(members, req, protocol)
         return (
             f"method '{method_name}' has wrong signature: expected '{expected_sig}', "
-            f"got {actual_desc}"
+            f"got {actual_desc}" + (f" -- {reason}" if reason else "")
         )
 
+    def _mismatch_hint(self, members: list[tuple[list[ParamInfo], TpyType, bool]],
+                       req: '_MethodRequirement',
+                       protocol: 'NominalType | None') -> str | None:
+        """Why a single member fails `req` where its rendering does not say
+        it: a `-> Self` narrowed to a named type, or the call shape's
+        dropped default (`_call_shape_mismatch`)."""
+        if len(members) != 1:
+            return None
+        params, ret, _readonly = members[0]
+        if (isinstance(unwrap_ref_type(req.return_type), SelfType)
+                and not isinstance(unwrap_ref_type(ret), SelfType)):
+            return "keep '-> Self'"
+        found = self._call_shape_mismatch(params, req.params)
+        if found is not None and found[0] == "default":
+            owner = f" by '{protocol}'" if protocol is not None else ""
+            return f"the default of parameter '{found[1].name}' is required{owner}"
+        return None
+
     def _format_method_signature(
-        self, name: str, params: list[TpyType], return_type: TpyType, readonly: bool,
+        self, name: str, params: list[ParamInfo], return_type: TpyType, readonly: bool,
     ) -> str:
-        """Short signature string for diagnostic messages."""
+        """Short signature string for diagnostic messages: a defaulted
+        parameter shows `= ...`, keyword-only ones follow a `*`."""
         prefix = "@readonly " if readonly else ""
-        param_strs = ", ".join(str(p) for p in params)
-        param_part = f"self, {param_strs}" if params else "self"
+        parts: list[str] = []
+        star = False
+        for p in params:
+            if p.is_variadic:
+                parts.append(f"*{p.type}")
+                star = True
+                continue
+            if p.is_kwargs:
+                parts.append(f"**{p.type}")
+                continue
+            if p.keyword_only and not star:
+                parts.append("*")
+                star = True
+            text = f"{p.name}: {p.type}" if p.keyword_only else str(p.type)
+            parts.append(f"{text} = ..." if p.has_default else text)
+        param_part = ", ".join(["self", *parts])
         return f"{prefix}def {name}({param_part}) -> {return_type}"
