@@ -815,24 +815,11 @@ class CompileResult:
     # `snapshot_lib_modules`), resolved against what actually compiled. Kept
     # apart from is_local on purpose.
     snapshot_lib_modules: frozenset[str] = frozenset()
-    # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
-    ptr_deref_facts: dict[tuple[int, str], bool] | None = None
-    # Subscript bounds facts (from sema), for # tpyc: bounds_safe/bounds_checked validation
-    subscript_bounds_facts: dict[tuple[int, str], bool] | None = None
-    # Division non-zero facts (from sema), for # tpyc: div_safe/div_checked validation
-    div_zero_facts: dict[tuple[int, str], bool] | None = None
-    # Cast safety facts (from sema), for # tpyc: cast_safe/cast_checked validation
-    cast_safe_facts: dict[tuple[int, str], bool] | None = None
-    # (is_send, is_sync) per declared variable, for # tpyc: is_send/is_sync validation
-    send_sync_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
-    # (frame is_send, is_sync) per async/generator def, for # tpyc: frame_send/frame_sync
-    frame_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
-    # Failures of the annotations checked against compiler objects -- # tpyc:
-    # type(...), mir(...) / mir_summary(...), and the per-line MIR facts --
-    # which stay with the compile (a forked one returns plain data only).
-    type_annotation_errors: list[str] = field(default_factory=list)
-    mir_annotation_errors: list[str] = field(default_factory=list)
-    mir_fact_annotation_errors: list[str] = field(default_factory=list)
+    # Failures of the comp-only annotations (# tpyc: type(...), non_null,
+    # bounds_safe, is_send, frame_send, mir(...), the per-line MIR facts, ...)
+    # of every local module, checked against compiler objects where the
+    # compile runs (a forked one returns plain data only).
+    annotation_errors: list[str] = field(default_factory=list)
     # Linker flags from `__tpy__` "links"
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
@@ -1053,10 +1040,12 @@ def _failed(compiler, error_line: str) -> CompileResult:
     return CompileResult(success=False, diagnostics="\n".join(lines) + "\n")
 
 
-def _mir_verdicts(compiler, local_contexts, lib_contexts, entry_module) -> tuple[
-        dict[tuple[int, str], tuple[MIRBodyVerdict, ...]], dict[MIRBodyId, MIRLineFacts | None], str]:
+def _mir_verdicts(compiler, local_contexts, lib_contexts) -> tuple[
+        dict[str, tuple[dict[tuple[int, str], tuple[MIRBodyVerdict, ...]],
+                        dict[MIRBodyId, MIRLineFacts | None]]], str]:
     """MIR over the case's own modules, the program `--dump-mir` sees, with
-    the entry module's per-line facts and the `expected/mir.txt` text; the
+    each local module's keyed verdicts and per-line facts (by module name)
+    and the `expected/mir.txt` text; the
     MIR warnings join the modules' diagnostics. The library modules the case
     snapshots get verdicts in a workspace of their own, so snapshotting one
     changes neither the case's verdicts nor its warnings.
@@ -1066,8 +1055,8 @@ def _mir_verdicts(compiler, local_contexts, lib_contexts, entry_module) -> tuple
     never as a compile diagnostic: a MIR defect is not a warning the compiler
     reports. Refusal, incompleteness and conflicts are
     verdicts, checked only where an annotation asks."""
-    verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
-    facts: dict[MIRBodyId, MIRLineFacts | None] = {}
+    local: dict[str, tuple[dict[tuple[int, str], tuple[MIRBodyVerdict, ...]],
+                           dict[MIRBodyId, MIRLineFacts | None]]] = {}
     per_module: dict[str, tuple[MIRBodyVerdict, ...]] = {}
     try:
         analyzed = IdentityMap()
@@ -1077,10 +1066,9 @@ def _mir_verdicts(compiler, local_contexts, lib_contexts, entry_module) -> tuple
                     mod.ast, mod.analyzer, ctx, mod.name, mir.definitions, compiler.thir_reject_by_node,
                     mir.workspace)
                 analyzed[mod.ast] = [(v.function, v.analyses) for v in bodies if v.analyses is not None]
-                if mod is entry_module:
-                    verdicts = key_mir_verdicts(bodies)
-                    # Field kinds read this compilation's TypeDefs, so the facts are taken here.
-                    facts = {verdict.body: line_facts(verdict) for verdict in bodies}
+                # Field kinds read this compilation's TypeDefs, so the facts are taken here.
+                local[mod.name] = (key_mir_verdicts(bodies),
+                                   {verdict.body: line_facts(verdict) for verdict in bodies})
             # The warnings the CLI reports after codegen, read off these
             # verdicts' analyses. Strict: a MIR exception fails the case
             # instead of silently dropping the warnings.
@@ -1095,7 +1083,7 @@ def _mir_verdicts(compiler, local_contexts, lib_contexts, entry_module) -> tuple
         # The caller's handlers turn these four into a failed compile with a
         # diagnostic; a MIR failure must stay a test failure.
         raise AssertionError(f"MIR raised a compiler error: {e!r}") from e
-    return verdicts, facts, render_mir_text(per_module)
+    return local, render_mir_text(per_module)
 
 
 def render_mir_text(per_module: Mapping[str, Iterable[MIRBodyVerdict]]) -> str:
@@ -1415,46 +1403,28 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         # Read after the library emit so a library module's faces count too.
         thir_faces = dict(compiler._thir_face_witnesses)
 
-        mir_verdicts, mir_line_facts, mir_text = _mir_verdicts(
-            compiler, local_contexts, lib_contexts, entry_module)
+        mir_by_module, mir_text = _mir_verdicts(compiler, local_contexts, lib_contexts)
         # MIR's warnings joined sema's: the diagnostics are read again.
         diagnostics = "".join(f"{line}\n" for _, line in format_diagnostics(compiler, compiled_modules))
 
         # Return paths for the entry point module
         hpp_path = layout.hpp_path(entry_module.name)
         cpp_path = layout.cpp_path(entry_module.name)
-        ctx = entry_module.analyzer.ctx if entry_module.analyzer else None
-        declared_var_types = ctx.declared_var_types if ctx else None
-        # is_send()/is_sync() consult the active compiler's dynamic TypeDef
-        # view, so the walk must run inside the compiler context.
-        send_sync_facts = None
-        frame_facts = None
-        if ctx is not None:
-            from tpyc.sema.frame_traits import frame_traits_of_function
-            with activate_compiler(compiler):
-                if declared_var_types is not None:
-                    send_sync_facts = {
-                        key: (t.is_send(), t.is_sync())
-                        for key, t in declared_var_types.items()
-                    }
-                frame_facts = {
-                    key: frame_traits_of_function(fi)
-                    for key, fi in ctx.frame_fact_fns.items()
-                }
         # The checks over facts held by compiler objects run here, where the
-        # objects are; they feed no snapshot, so update mode skips them.
-        type_errors: list[str] = []
-        mir_errors: list[str] = []
-        mir_fact_errors: list[str] = []
+        # objects are; they feed no snapshot, so update mode skips them. Every
+        # local module is checked against its own facts, as the ok/error/
+        # warning annotations are checked in every file.
+        annotation_errors: list[str] = []
         if not req.update:
-            if declared_var_types is not None:
-                type_errors = validate_type_annotations(src_file, declared_var_types)
-            mir_errors = validate_mir_annotations(src_file, mir_verdicts)
-            mir_fact_errors = validate_mir_fact_annotations(src_file, mir_verdicts, mir_line_facts)
-        ptr_deref_facts = ctx.ptr_deref_facts if ctx else None
-        subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
-        div_zero_facts = ctx.div_zero_facts if ctx else None
-        cast_safe_facts = ctx.cast_safe_facts if ctx else None
+            # is_send()/is_sync() consult the active compiler's dynamic
+            # TypeDef view, so the walk must run inside the compiler context.
+            with activate_compiler(compiler):
+                for mod in local_mods:
+                    verdicts, line_facts_ = mir_by_module.get(mod.name, ({}, {}))
+                    annotation_errors.extend(validate_module_annotations(
+                        mod.path.resolve(), src_dir,
+                        mod.analyzer.ctx if mod.analyzer else None,
+                        verdicts, line_facts_))
         link_flags = compiler.collect_link_flags(CPP_CONFIG.target_platform)
         # Resolve third-party deps for this case's own imports; modes come
         # from --dep-mode (default: bundled).
@@ -1466,15 +1436,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              snapshot_lib_modules=frozenset(snapshot_lib),
                              all_modules=all_modules,
-                             ptr_deref_facts=ptr_deref_facts,
-                             subscript_bounds_facts=subscript_bounds_facts,
-                             div_zero_facts=div_zero_facts,
-                             cast_safe_facts=cast_safe_facts,
-                             send_sync_facts=send_sync_facts,
-                             frame_facts=frame_facts,
-                             type_annotation_errors=type_errors,
-                             mir_annotation_errors=mir_errors,
-                             mir_fact_annotation_errors=mir_fact_errors,
+                             annotation_errors=annotation_errors,
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
@@ -1934,9 +1896,11 @@ def find_force_includes(case_dir: Path) -> list[Path]:
 #   - extra_src  -- hash of hand-written case_dir/src/*.{cpp,hpp,h} files
 #                   (native-interop companion sources; omitted when there are none)
 #   - main       -- hash of main.py
+#   - cpy_src    -- hash of the case's other *.py under src/ (recursively) and
+#                   src/input.txt (omitted when there are none)
 #
 # Skip exec when: runtime + libtpy + extra_src all match recorded AND output exists.
-# Skip cpy  when: cpy_stubs + main both match recorded AND output.txt exists.
+# Skip cpy  when: cpy_stubs + main + cpy_src all match recorded AND output.txt exists.
 # Generated code is verified to match expected/include + expected/src in the
 # comp phase, so the binary derived from those would be identical too.
 
@@ -2019,9 +1983,20 @@ def compute_extra_src_fingerprint(case_dir: Path) -> str | None:
     return hash_files(inputs, PROJECT_ROOT)
 
 
-def compute_main_fingerprint(main_src: Path) -> str:
-    """Hash of main.py content alone."""
-    return hashlib.sha256(main_src.read_bytes()).hexdigest()
+def compute_cpy_fingerprints(main_src: Path) -> dict[str, str]:
+    """The per-case keys of every source the CPython run reads: `main` is the
+    sha256 of the entry module; `cpy_src` hashes the case's other `*.py`
+    modules under src/ (recursively) and the `src/input.txt` stdin fixture,
+    and is omitted when there are none (most cases)."""
+    src_dir = main_src.parent
+    others = sorted(set(src_dir.rglob("*.py")) - {main_src})
+    stdin_fixture = src_dir / "input.txt"
+    if stdin_fixture.exists():
+        others.append(stdin_fixture)
+    fps = {"main": hashlib.sha256(main_src.read_bytes()).hexdigest()}
+    if others:
+        fps["cpy_src"] = hash_files(others, src_dir)
+    return fps
 
 
 def read_fingerprints(case_dir: Path) -> dict[str, str]:
@@ -3576,6 +3551,39 @@ def _mir_fact_problem(ann: MirFactAnnotation, facts: MIRLineFacts) -> str | None
                 return None
             return "; ".join(f"{name} borrows {{{'|'.join(sorted(s.referents))}}} after line {line} in bb{s.block}"
                              for s in wrong)
+
+
+def validate_module_annotations(
+    src_file: Path,
+    src_dir: Path,
+    ctx,
+    verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]],
+    facts: dict[MIRBodyId, MIRLineFacts | None],
+) -> list[str]:
+    """Every comp-only annotation kind of one local module, against that
+    module's own sema facts (`ctx`, None for a module with no analyzer) and
+    MIR verdicts. Each error names the file, since line numbers alone are
+    ambiguous across a case's modules. Runs inside `activate_compiler`."""
+    from tpyc.sema.frame_traits import frame_traits_of_function
+    errors: list[str] = []
+    if ctx is not None:
+        declared = ctx.declared_var_types
+        errors += validate_type_annotations(src_file, declared)
+        errors += validate_non_null_annotations(src_file, ctx.ptr_deref_facts)
+        errors += validate_bounds_annotations(src_file, ctx.subscript_bounds_facts)
+        errors += validate_div_annotations(src_file, ctx.div_zero_facts)
+        errors += validate_cast_annotations(src_file, ctx.cast_safe_facts)
+        errors += validate_send_sync_annotations(
+            src_file, {key: (t.is_send(), t.is_sync()) for key, t in declared.items()})
+        errors += validate_frame_annotations(
+            src_file, {key: frame_traits_of_function(fi) for key, fi in ctx.frame_fact_fns.items()})
+    errors += validate_mir_annotations(src_file, verdicts)
+    errors += validate_mir_fact_annotations(src_file, verdicts, facts)
+    try:
+        label = src_file.relative_to(src_dir).as_posix()
+    except ValueError:
+        label = src_file.name
+    return [f"{label}: {e}" for e in errors]
 
 
 def validate_mir_fact_annotations(

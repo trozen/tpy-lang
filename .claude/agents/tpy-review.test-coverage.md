@@ -57,7 +57,7 @@ You may NOT run any test suite or `tests/update_snapshots.py`. Surface coverage 
 - A test pinning a known defect -- an error, warning or render that is wrong -- cites `BUGS.md#<slug>` in its comment.
 
 **Test integrity**
-- A pre-existing case's subject line is never simplified to keep a gate, ratchet or snapshot green (`git diff <BASE> -- 'tests/cases/*/src/main.py'` over cases that existed at `<BASE>`; every hunk on a subject line needs a reason in the change-set).
+- A pre-existing case's subject line is never simplified to keep a gate, ratchet or snapshot green (`git diff <BASE> -- 'tests/cases/*/src/*.py'` -- every source module of the case, not only `main.py` -- over cases that existed at `<BASE>`; every hunk on a subject line needs a reason in the change-set).
 - A line spelled unusually to dodge a known defect (`copy()` to silence a false warning, `Own[str]` to force a temporary) says so in a comment and cites the `BUGS.md#<slug>`; a case pinning a known-wrong render carries the slug.
 - A warning in a non-`error_` case's `diag.txt` sits on an annotated line with a comment saying why the warning is right, or cites a slug. A comment that explains the warning as expected is not evidence that it is (`docs/PITFALLS.md#no-warning-on-valid-code`).
 - On a follow-up round, every fix the previous round applied has a test section for the shape the finding named and one for its nearest neighbour shape (the shape the fix could trade away); a fix without both is a Warning (`docs/PITFALLS.md#review-fix-probed`).

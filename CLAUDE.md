@@ -107,7 +107,7 @@ Each folder under `tests/cases/` becomes one parametrized item of `test_case` wi
 The cpy phase (CPython run) still auto-skips via **committed** fingerprints -- CPython output is toolchain-independent, so a committed key is portable:
 
 - **Session-level** (`tests/.session_fingerprints.json`, single file): `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run.
-- **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional): hash of the case's `main.py` (`main`). Cases without a CPython phase end up with no file.
+- **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional): hash of `main.py` (`main`) and, when the case has more, of the other sources the CPython run reads -- the other `*.py` under `src/` plus `src/input.txt` (`cpy_src`). Cases without a CPython phase end up with no file.
 
 Parallel execution (`-n auto --dist worksteal`) is configured in `pyproject.toml` via `addopts`; worksteal lets idle workers take a slow worker's backlog (the async cases would otherwise leave a long tail). Worker count auto-caps to the cgroup v2 CPU quota. C++ compiles run from the checkout root with `CCACHE_BASEDIR` set to it, so worktrees at different paths share ccache entries. Case binaries link with `lld` (else `mold`) when one passes a trial link with the configured compiler -- on a warm ccache the link is most of a case's build; without either, the toolchain's default linker is used. The exec phase also reuses a persistent content-addressed cache of compiled stdlib object files (see `tpyc/` code for the cache-key derivation). On Linux a case's compile is forked from a per-worker compile server that has the stdlib analyzed (`--no-fork-compile` compiles in-process; `tests/README.md` "Forked compiles").
 
@@ -174,6 +174,9 @@ Per-case structure:
 tests/cases/<group>/<case>/
 ├── src/
 │   ├── main.py
+│   ├── part_<topic>.py    # (optional, name is an example) sibling module with its own main(), called from main.py
+│   ├── fixtures.py        # (optional, name is an example) what main.py and siblings share
+│   ├── input.txt          # (optional) stdin fixture for the exec and cpy runs
 │   ├── native_types.hpp   # (optional) C++ type defs for native interop tests
 │   └── native_types.cpp   # (optional) C++ stubs for native interop tests
 ├── no_cpython.txt         # (optional) Skip CPython compatibility test
@@ -184,7 +187,7 @@ tests/cases/<group>/<case>/
     ├── include/main.hpp   # Generated header (if compiles)
     ├── src/main.cpp       # Generated source (if compiles)
     ├── output.txt         # Runtime output (or panic.txt)
-    └── .fingerprints      # (optional) per-case `main.py` hash gating the cpy-phase skip
+    └── .fingerprints      # (optional) cpy-phase skip keys: `main.py` hash, plus the other src/*.py and input.txt (`cpy_src`)
 ```
 
 `diag.txt` holds every diagnostic the compile produced, warnings first and in
@@ -234,6 +237,8 @@ verdict changes is snapshot churn (`tests/README.md` "MIR verdict snapshot").
 5. Run `uv run pytest -k {name}` to verify.
 
 **Condensed cases.** The corpus is over 5000 cases and each one is a cost. One case per fix or feature, with one section per covered position (the `docs/PITFALLS.md` list: free function, method, constructor, module-level statement, generator, async, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) under a one-line comment naming the position and the `# tpyc:` annotation on the subject line; output lines prefixed with the section name so `output.txt` names the cell that diverged. `error_` cases take the one most representative position, since the compiler stops at the first error; the other positions are covered by the happy-path sections. A section that would need `no_cpython.txt`, a `@native` companion or a runtime panic goes in its own case, since either removes the cpy or exec phase for every section beside it. A divergence found in review becomes a section in the existing case, never a new case.
+
+**Case size: a core file and sibling modules.** A case stays reviewable: each source file preferably at most 200 lines, 300 where the test needs it, and at most about 7-10 files per case, `main.py` included. `main.py` tests the core of the feature; variants (further positions, shapes, review-found divergences) go to sibling modules in `src/`, each with its own `def main()` that `main.py` calls; name them after what they cover (e.g. `part_<topic>.py`; `fixtures.py` for code several modules share). A sibling cannot import from `main.py` (CPython runs it as `__main__`, so the import runs it a second time); shared code goes in a module of its own. What would mean something different outside the entry module stays in `main.py`: module-level statements and globals a section tests, a base and its subclass split across files, a generic whose header placement is under test, any section whose cross-module call changes the generated code under test. Every `# tpyc:` annotation is checked in every file the case compiles (a module nothing imports is not compiled, so its annotations are not checked), each against that module's own facts. An existing oversized case is split when a unit touches it, not in a sweep; splitting it may reorder `output.txt`, provided the multiset of output lines and every annotation stay the same -- anything beyond that is a pin change (see "Changing what an existing test pins").
 
 **CPython compatibility**: avoid adding `no_cpython.txt` unless absolutely necessary. Never add it to an `error_` or `panic_` case: the cpy phase only runs when a committed `output.txt` exists and skips panic cases outright, so the marker is inert there. Most tests can be made CPython-compatible by adding `__init__` methods (CPython doesn't create instance attributes from type annotations alone) and using the `lib/cpy/` stubs. The `lib/cpy/tpy/` package provides CPython implementations of TPy types (`Own`, `nocopy`, `UninitHeapStorage`, etc.). Only skip CPython when the test truly depends on C++-only behavior (e.g. `@native` interop).
 

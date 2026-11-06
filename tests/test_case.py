@@ -40,12 +40,6 @@ from conftest import (
     get_case_default_int,
     get_case_snapshot_lib_modules,
     validate_annotations,
-    validate_non_null_annotations,
-    validate_bounds_annotations,
-    validate_div_annotations,
-    validate_cast_annotations,
-    validate_send_sync_annotations,
-    validate_frame_annotations,
     error_case_annotation_problems,
     fail_annotations,
     check_or_update,
@@ -63,7 +57,7 @@ from conftest import (
     run_cpython,
     compute_session_fingerprints,
     read_session_fingerprints,
-    compute_main_fingerprint,
+    compute_cpy_fingerprints,
     read_fingerprints,
     write_fingerprints,
     compute_exec_fingerprint,
@@ -249,38 +243,8 @@ def test_case(case_dir, main_src, request):
     # Additional semantic annotations. These read compile facts and feed no
     # snapshot, so a wrong one cannot corrupt a regeneration; they keep the
     # update-mode exemption CLAUDE.md documents.
-    if not UPDATE_EXPECTED:
-        if result.type_annotation_errors:
-            pytest.fail("\n".join(result.type_annotation_errors), pytrace=False)
-        if result.ptr_deref_facts is not None:
-            errs = validate_non_null_annotations(main_src, result.ptr_deref_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        if result.subscript_bounds_facts is not None:
-            errs = validate_bounds_annotations(main_src, result.subscript_bounds_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        if result.div_zero_facts is not None:
-            errs = validate_div_annotations(main_src, result.div_zero_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        if result.cast_safe_facts is not None:
-            errs = validate_cast_annotations(main_src, result.cast_safe_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        if result.send_sync_facts is not None:
-            errs = validate_send_sync_annotations(main_src, result.send_sync_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        if result.frame_facts is not None:
-            errs = validate_frame_annotations(main_src, result.frame_facts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-        # Checked by the compile, against the compiler's MIR verdicts.
-        if result.mir_annotation_errors:
-            pytest.fail("\n".join(result.mir_annotation_errors), pytrace=False)
-        if result.mir_fact_annotation_errors:
-            pytest.fail("\n".join(result.mir_fact_annotation_errors), pytrace=False)
+    if not UPDATE_EXPECTED and result.annotation_errors:
+        pytest.fail("\n".join(result.annotation_errors), pytrace=False)
 
     # ----- EXEC PHASE ---------------------------------------------------------
 
@@ -415,7 +379,7 @@ def test_case(case_dir, main_src, request):
     # ----- CPY PHASE ----------------------------------------------------------
 
     ran_cpy = False
-    current_main_fp: str | None = None
+    current_cpy_fps: dict[str, str] | None = None
     cpy_applicable = cpy_phase_applicable(
         build_only=build_only,
         no_cpy=request.config.getoption("--no-cpy"),
@@ -424,12 +388,14 @@ def test_case(case_dir, main_src, request):
         output_exists=(expected_dir / "output.txt").exists(),
     )
     if cpy_applicable:
-        current_main_fp = compute_main_fingerprint(main_src)
-        main_unchanged = case_fps.get("main") == current_main_fp
+        current_cpy_fps = compute_cpy_fingerprints(main_src)
+        sources_unchanged = all(
+            case_fps.get(key) == current_cpy_fps.get(key) for key in ("main", "cpy_src")
+        )
         can_skip_cpy = (
             not force_exec
             and cpy_stubs_unchanged
-            and main_unchanged
+            and sources_unchanged
         )
         if not can_skip_cpy:
             ran_cpy = True
@@ -444,7 +410,7 @@ def test_case(case_dir, main_src, request):
                 compare_only=True,
             )
 
-        # Warn when the per-case main fingerprint is stale. The next non-
+        # Warn when the per-case CPython-run fingerprint is stale. The next non-
         # forced run will re-execute cpy until it's refreshed.
         # Skip the warning when only the session-level cpy_stubs hash was stale --
         # that's already surfaced once at session start, no need to repeat per case.
@@ -452,25 +418,25 @@ def test_case(case_dir, main_src, request):
             ran_cpy
             and not UPDATE_EXPECTED
             and cpy_stubs_unchanged
-            and not main_unchanged
+            and not sources_unchanged
         ):
             record_stale_fingerprint(case_dir.name)
             warnings.warn(
-                f"Test '{case_dir.name}': main fingerprint stale -- "
+                f"Test '{case_dir.name}': CPython-run fingerprint stale -- "
                 f"the next non-forced run will re-execute cpy. "
                 f"Refresh via update_snapshots.py -k {case_dir.name}",
                 stacklevel=1,
             )
 
     # ----- Record per-case fingerprint in update mode ------------------------
-    # The only committed per-case fingerprint left is `main`, which gates the
-    # (toolchain-independent) cpy phase. Exec inputs are tracked by the local
-    # exec cache instead, so they're no longer recorded here. Session-level
+    # The only committed per-case fingerprints left are `main` and `cpy_src`,
+    # which gate the (toolchain-independent) cpy phase. Exec inputs are
+    # tracked by the local exec cache instead, so they're no longer recorded here. Session-level
     # fingerprints are written once on master by pytest_configure.
     if UPDATE_EXPECTED:
         new_fps: dict[str, str] = {}
-        if ran_cpy and current_main_fp is not None:
-            new_fps["main"] = current_main_fp
+        if ran_cpy and current_cpy_fps is not None:
+            new_fps.update(current_cpy_fps)
         # write_fingerprints removes the file when new_fps is empty, so cases
         # with no cpy phase end up with no per-case fingerprint file.
         write_fingerprints(case_dir, new_fps)

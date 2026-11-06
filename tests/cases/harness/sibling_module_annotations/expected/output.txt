@@ -1,0 +1,16 @@
+main: entry
+part_a: sibling
+part_a xs: 1
+part_a xs: 2
+part_a xs: 3
+part_a div: 4
+part_a show: 4
+part_a maybe: 4
+part_a send: 3
+part_a frame: 0
+part_a frame: 1
+part_a bounds: 2
+part_a cast: 100
+part_b: 7 6 3
+part_b rec: new
+part_b summary: global 4

@@ -28,6 +28,16 @@ re-key and can skip stale-green; run `--force-exec` after such an upgrade
 
 The ext-exec phase of `tests/test_interop_exec.py` is gated by the same cache.
 
+## CPython-run fingerprint
+
+The cpy phase skips when the session-level `cpy_stubs` hash and the case's
+committed keys in `expected/.fingerprints` all match
+(`compute_cpy_fingerprints`): `main` is the sha256 of `main.py`, and
+`cpy_src` hashes every other source the CPython run reads -- the other
+`*.py` under `src/` (recursively, so sibling modules and packages count)
+and the `src/input.txt` stdin fixture. `cpy_src` is omitted when `src/`
+holds `main.py` alone.
+
 ## Program runs
 
 The exec and cpy phases run the program in a fresh empty cwd
@@ -125,8 +135,12 @@ in-process path runs, and returns its result as plain data over a pipe.
 Two clients use it:
 
 - `test_case`: `conftest.compile_case` -- diagnostics, codegen into the
-  case's `__tpyc__`, MIR and the annotation checks that read compiler
-  objects (`type()`, `mir()`, `mir_summary()`, the MIR line facts).
+  case's `__tpyc__`, MIR and every comp-only annotation check (`type()`,
+  `non_null()`, `bounds_safe()`, `is_send()`, `frame_send()`, `mir()`,
+  `mir_summary()`, the MIR line facts, ...). They run once per local
+  module, each against that module's own sema facts and MIR verdicts
+  (`conftest.validate_module_annotations`), so an annotation in a sibling
+  module is checked like one in `main.py`; an error names its file.
 - The sweeps (`test_ref_sink_sweep.py`, `test_arg_family_sweep.py`,
   `test_property_position_sweep.py`, `test_tuple_element_matrix.py`): their
   scripts compile through `program_compile.compile_program` in
