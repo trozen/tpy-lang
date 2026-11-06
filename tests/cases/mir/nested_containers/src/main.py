@@ -158,8 +158,8 @@ def clean_keys(t: dict[str, list[int32]]) -> None:  # tpyc: mir(covered)
         t[k].append(1)  # tpyc: ok
 
 
-# in-place element write under its walk: evidence, as for a flat list, with no warning
-def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
+# in-place element write under its walk: the cursor depends on the structure only, so no conflict
+def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(covered)
     for v in rows[0]:
         rows[0][0] = v + 1  # tpyc: ok
 
@@ -343,6 +343,17 @@ def value_kept(t: dict[str, list[int32]]) -> int32:  # tpyc: mir(conflict /repla
     return len(row)
 
 
+# may hazard, joined outer source: growing `a[0]` may move what the walk over `x[0]` walks
+def joined_inner(f: bool, a: list[list[int32]], b: list[list[int32]]) -> int32:
+    x = a if f else b
+    t = 0
+    for v in x[0]:
+        if v < 0:
+            a[0].append(1)  # tpyc: warning(/this call may move the elements of an element of 'a', and the iteration over 'x\[0\]' may still walk them/)
+        t += v
+    return t
+
+
 def main() -> None:
     # spelled: Span[list[int32]](rows) below needs the list typed
     rows: list[list[int32]] = [[1], [2]]
@@ -376,6 +387,7 @@ def main() -> None:
     print("gen", [n for n in gen_total(rows)])
     print("keep", keep([[1]], ["x", "y"]), len(pick(rows)))
     print("same_kept", same_kept(rows), rows, len(value_of(t)))
+    print("joined_inner", joined_inner(True, [[1, 2]], [[3]]), joined_inner(False, [[1, 2]], [[3]]))
 
 
 main()

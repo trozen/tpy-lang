@@ -24,7 +24,7 @@ from .nodes import (
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
-    loan_field, member_types, WRAPPER_CLASSES,
+    CONTAINER_CLASSES, loan_field, member_types, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
@@ -725,21 +725,25 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
                 refs = resolve_referents(MIRPlace(source), state, slots, layouts)
                 if slots[source].shape.container_view_holder:
                     refs = frozenset(_backing(r) for r in refs)
-                # A cursor depends on its container's shape and its elements; over
-                # a view, on those of the storage the view's elements region lies in.
-                # The [structure] sibling keeps an element write from reaching every
-                # referent of the cursor (an in-place `s[i] = x` stays evidence); for
-                # a Span parameter it lies on the view root, which nothing in-body writes.
-                # A leaf's cursor depends on the leaf's whole storage: its buffer has no member places.
+                # A cursor depends on its container's shape only (over a view, on that
+                # of the storage the view's elements region lies in): an in-place
+                # element write leaves the walk valid. The elements it lends are the
+                # item read's. A leaf's cursor depends on the leaf's whole storage:
+                # its buffer has no member places.
                 result[target] = (refs if slots[target.root].shape.leaf_cursor
-                                  else _project(refs, MIRContainerStructure(), MIRContainerElements()))
+                                  else _project(refs, MIRContainerStructure()))
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):
                 if slots[target.root].shape.is_pointer:
-                    result[target] = frozenset(r for r in state.get(MIRPlace(source), empty)
-                                               if r.place.projections
-                                               and isinstance(r.place.projections[-1], MIRContainerElements))
+                    # The cursor depends on its containers' shapes; the item refers to their elements.
+                    walked = frozenset(MIRReferent(MIRPlace(r.place.root, r.place.projections[:-1]), r.external)
+                                       for r in state.get(MIRPlace(source), empty)
+                                       if r.place.projections
+                                       and isinstance(r.place.projections[-1], MIRContainerStructure))
+                    assert all(referent_walk(r.place, slots, layouts).end.cls in CONTAINER_CLASSES for r in walked), \
+                        "a cursor's [structure] referent lies on a container"
+                    result[target] = _project(walked, MIRContainerElements())
             case MIRAlias(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRBorrow(source=source):

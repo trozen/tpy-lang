@@ -33,7 +33,7 @@ int32_t ring_first(const ::ProbeRing<Rec>& r);
 void ring_grow(::ProbeRing<int32_t>& r);
 // def ring_push_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag);
-// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(covered)
 int32_t ring_put_in_loop(::ProbeRing<int32_t>& r, bool flag);
 // def main() -> None:
 void main();

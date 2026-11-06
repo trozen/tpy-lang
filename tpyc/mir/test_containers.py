@@ -501,18 +501,17 @@ def test_an_element_write_replaces_the_region_in_place(active) -> None:
     assert execute(record, ContainerValue((Reference(1),)), heap=heap) == 1 and heap[1][cell] == 3
 
 
-def test_a_scalar_element_write_under_a_live_iterator_is_a_replacement(active) -> None:
+def test_a_scalar_element_write_under_a_live_iterator_is_no_conflict(active) -> None:
     # `xs[0] = 1` in `for x in xs`: the storage-destination write is a
-    # retention event whatever the element type, and the cursor retains the region.
+    # retention event whatever the element type; the cursor depends on the
+    # structure only and the int loop variable is a copy, so nothing it keeps is written.
     fn = _fn(active, "set_under_iterator")
     point, write = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
                         if _elements(s.target))
     assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, _slot(fn, "xs").id)
     events = analyze_storage(prepared(fn))
     assert point in events.writes
-    retention = analyze_retention(prepared(fn))
-    assert [c.point for c in retention.conflicts] == [point]
-    assert retention.conflicts[0].affected.place == MIRPlace(_slot(fn, "xs").id, (MIRContainerElements(),))
+    assert not analyze_retention(prepared(fn)).conflicts
 
 
 def test_an_element_write_without_a_reference_preserving_stub_is_the_call(active) -> None:

@@ -10,7 +10,7 @@ main::test_sort@49:0: covered (storage: no_proof_required), conflicts: replaceme
 main::test_del@54:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::test_nested_loops@59:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::test_conditional_mutation@67:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::test_subscript_assign_ok@73:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::test_subscript_assign_ok@73:0: covered (storage: no_proof_required), summary: known
 main::test_element_source_method_mutation@91:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::test_element_source_sibling_index@96:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::test_element_source_distinct_literals@102:0: covered (storage: no_proof_required), conflicts: replacement, summary: known

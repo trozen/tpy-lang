@@ -239,8 +239,8 @@ void clean_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     }
 }
 
-// # in-place element write under its walk: evidence, as for a flat list, with no warning
-// def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
+// # in-place element write under its walk: the cursor depends on the structure only, so no conflict
+// def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(covered)
 //     for v in rows[0]:
 //         rows[0][0] = v + 1  # tpyc: ok
 void set_inner(std::vector<std::vector<int32_t>>& rows) {
@@ -557,6 +557,31 @@ int32_t value_kept(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
     return ::tpy::__len__(row);
 }
 
+// # may hazard, joined outer source: growing `a[0]` may move what the walk over `x[0]` walks
+// def joined_inner(f: bool, a: list[list[int32]], b: list[list[int32]]) -> int32:
+//     x = a if f else b
+//     t = 0
+//     for v in x[0]:
+//         if v < 0:
+//             a[0].append(1)  # tpyc: warning(/this call may move the elements of an element of 'a', and the iteration over 'x\[0\]' may still walk them/)
+//         t += v
+//     return t
+int32_t joined_inner(bool f, std::vector<std::vector<int32_t>>& a, const std::vector<std::vector<int32_t>>& b) {
+    const std::vector<std::vector<int32_t>>& x = ((f) ? (a) : (b));
+    int32_t t = 0;
+    auto& __obj_0 = ::tpy::__getitem__(x, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        if ((v < 0)) {
+            ::tpy::__getitem__(a, 0).push_back(1);
+        }
+        t = ::tpy::add_check<int32_t>(t, v);
+    }
+    return t;
+}
+
 // def main() -> None:
 //     # spelled: Span[list[int32]](rows) below needs the list typed
 //     rows: list[list[int32]] = [[1], [2]]
@@ -590,6 +615,7 @@ int32_t value_kept(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
 //     print("gen", [n for n in gen_total(rows)])
 //     print("keep", keep([[1]], ["x", "y"]), len(pick(rows)))
 //     print("same_kept", same_kept(rows), rows, len(value_of(t)))
+//     print("joined_inner", joined_inner(True, [[1, 2]], [[3]]), joined_inner(False, [[1, 2]], [[3]]))
 void main() {
     std::vector<std::vector<int32_t>> rows = {{1}, {2}};
     ::tpy::ordered_map<std::string, std::vector<int32_t>> t = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1}}, {"b", {2, 3}}});
@@ -634,6 +660,11 @@ void main() {
     std::vector<std::string> __tmp_2 = {"x", "y"};
     std::cout << "keep" << " " << ::tpyapp::main::keep(__tmp_1, __tmp_2) << " " << ::tpy::__len__(::tpyapp::main::pick(rows)) << "\n" << ::tpy::check_signals;
     std::cout << "same_kept" << " " << ::tpyapp::main::same_kept(rows) << " " << ::tpy::ListPrinter(rows) << " " << ::tpy::__len__(::tpyapp::main::value_of(t)) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<int32_t>> __tmp_3 = {{1, 2}};
+    std::vector<std::vector<int32_t>> __tmp_4 = {{3}};
+    std::vector<std::vector<int32_t>> __tmp_5 = {{1, 2}};
+    std::vector<std::vector<int32_t>> __tmp_6 = {{3}};
+    std::cout << "joined_inner" << " " << ::tpyapp::main::joined_inner(true, __tmp_3, __tmp_4) << " " << ::tpyapp::main::joined_inner(false, __tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
 }
 
 // main()

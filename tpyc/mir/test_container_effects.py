@@ -359,15 +359,15 @@ def test_a_view_of_a_view_is_the_same_region() -> None:
     state = deps.referents[MIRPoint(bid(0), 3)]
     # `u = t[...]` holds exactly what `t` holds, never `xs[elements][elements]`.
     assert state[place(1)] == state[place(2)] == {ref(0, ELEMENTS)}
-    # A cursor over a view depends on the shape and elements of the storage it views.
-    assert state[place(3)] == {ref(0, STRUCTURE), ref(0, ELEMENTS)}
+    # A cursor over a view depends on the shape of the storage it views, not on its elements.
+    assert state[place(3)] == {ref(0, STRUCTURE)}
 
 
 def test_a_span_parameter_names_the_elements_region_it_views() -> None:
     fn = span_body(source_param=True)
     deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 0)][place(0)] == {ref(0, ELEMENTS)}
-    assert deps.referents[MIRPoint(bid(0), 2)][place(3)] == {ref(0, STRUCTURE), ref(0, ELEMENTS)}
+    assert deps.referents[MIRPoint(bid(0), 2)][place(3)] == {ref(0, STRUCTURE)}
 
 
 def test_a_cursor_over_a_view_needs_the_same_has_next_proof() -> None:
@@ -386,8 +386,7 @@ def test_a_cursor_over_owned_container_storage_depends_on_its_regions() -> None:
     fn = body(slots, MIRBlock(bid(0), (built, assign(1, MIRIteratorInit(sid(0))), assign(2, MIRIteratorHasNext(sid(1))),
                                        assign(3, MIRConstant(0))), MIRReturn(sid(3))), records=())
     deps = prepared(fn).dependencies
-    assert deps.referents[MIRPoint(bid(0), 2)][place(1)] == {ref(0, STRUCTURE, external=False),
-                                                              ref(0, ELEMENTS, external=False)}
+    assert deps.referents[MIRPoint(bid(0), 2)][place(1)] == {ref(0, STRUCTURE, external=False)}
 
 
 def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True, path: tuple = ()) -> MIRFunction:
@@ -483,28 +482,26 @@ INT_SETITEM = (assign(3, MIRConstant(1)),
 
 def test_shape_write_inside_a_loop_reaches_the_live_iterator() -> None:
     fn = iterate(*INT_APPEND)
-    found = conflicts(fn)
-    assert (place(5), place(0, STRUCTURE)) in found and (place(5), place(0, ELEMENTS)) in found
-    # The loop variable is dead at the write: only the cursor retains the list.
-    assert {holder for holder, _ in found} == {place(5)}
+    # The loop variable is dead at the write: only the cursor retains the list, through its shape.
+    assert conflicts(fn) == {(place(5), place(0, STRUCTURE))}
 
 
-def test_elements_write_inside_a_loop_reaches_the_live_iterator() -> None:
-    # Conservative: an element write leaves the cursor valid in C++, but the
-    # iterator retains `[elements]`, so the write is reported.
+def test_an_elements_write_inside_a_loop_leaves_the_live_iterator_valid() -> None:
+    # The cursor depends on the structure only; the int loop variable is a copy.
     fn = iterate(*INT_SETITEM)
-    assert conflicts(fn) == {(place(5), place(0, ELEMENTS))}
+    assert prepared(fn).dependencies.referents[MIRPoint(bid(1), 1)][place(5)] == {ref(0, STRUCTURE)}
+    assert not conflicts(fn)
 
 
-def test_an_elements_write_through_a_span_reaches_the_live_iterator() -> None:
+def test_an_elements_write_through_a_span_leaves_the_live_iterator_valid() -> None:
     # `s = xs[0:2]; for x in xs: s[0] = 1`: the write lands in the region
-    # the Span views, which the cursor over `xs` retains.
+    # the Span views, not in the shape the cursor over `xs` depends on.
     fn = iterate(assign(3, MIRConstant(1)),
                  assign(7, MIRRead(place(3)), ELEMENTS, write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, sid(7))))
     view = assign(7, MIRBorrow(place(0, DEREF, ELEMENTS)))
     fn = replace(fn, slots=(*fn.slots, holder(7, SPAN, name="s")),
                  blocks=(replace(fn.blocks[0], statements=(view, *fn.blocks[0].statements)), *fn.blocks[1:]))
-    assert conflicts(fn) == {(place(5), place(0, ELEMENTS))}
+    assert not conflicts(fn)
 
 
 def bag_body(*, sibling: bool) -> MIRFunction:

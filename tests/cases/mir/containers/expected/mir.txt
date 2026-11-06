@@ -14,7 +14,7 @@ main::replace_after_use@171:0: certified, summary: known
 main::str_elem_aug@181:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::str_elem_aug_after_use@187:0: covered (storage: no_proof_required), summary: known
 main::int_elem_aug@194:0: covered (storage: no_proof_required), summary: known
-main::dict_write_in_loop@200:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::dict_write_in_loop@200:0: covered (storage: no_proof_required), summary: known
 main::dict_write_after_loop@210:0: covered (storage: no_proof_required), summary: known
 main::alias_iter_grow@220:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::alias_iter_then_grow@231:0: covered (storage: no_proof_required), summary: known
@@ -31,7 +31,7 @@ main::span_first@316:0: covered (storage: no_proof_required), summary: known
 main::span_sum@321:0: covered (storage: no_proof_required), summary: known
 main::span_pass@329:0: covered (storage: no_proof_required), summary: known
 main::span_write@336:0: covered (storage: no_proof_required), summary: known
-main::span_write_in_loop@346:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::span_write_in_loop@346:0: covered (storage: no_proof_required), summary: known
 main::arr_write@358:0: covered (storage: no_proof_required), summary: known
 main::make@364:0: covered (storage: no_proof_required), summary: known
 main::items_of@371:0: covered (storage: no_proof_required), summary: known

@@ -15,7 +15,7 @@ main::distinct_keys@137:0: covered (storage: no_proof_required), conflicts: repl
 main::distinct_rows@144:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::clean_outer@150:0: covered (storage: no_proof_required), summary: known
 main::clean_keys@156:0: covered (storage: no_proof_required), summary: known
-main::set_inner@162:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::set_inner@162:0: covered (storage: no_proof_required), summary: known
 main::walk_rows@168:0: covered (storage: no_proof_required), summary: known
 main::walk_keys@176:0: covered (storage: no_proof_required), summary: known
 main::array_rows@184:0: covered (storage: no_proof_required), summary: known
@@ -39,7 +39,8 @@ main::same_rows@322:0: covered (storage: no_proof_required), summary: known
 main::same_kept@327:0: certified, summary: known
 main::value_of@333:0: certified, summary: known
 main::value_kept@339:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-main::main@346:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::joined_inner@347:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
+main::main@357:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::Grid.widen@277:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Node.__init__@20:4: uncovered (recursive container element), summary: opaque (recursive container element)

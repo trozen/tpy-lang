@@ -13,7 +13,7 @@ from ..typesys import INT32, NominalType
 from .call_contract import (
     MIRAliasObligation, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, summary_problem,
 )
-from .shapes import MIRContainerElements, MIRContainerStructure
+from .shapes import MIRContainerStructure
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, call_return_problem
@@ -265,11 +265,11 @@ def test_an_aliased_record_argument_is_an_obligation_of_the_callers(program: _Pr
     # Growing `self.items` while iterating `other.items` conflicts only when
     # the two records alias: the body publishes that as a no-alias
     # obligation and keeps it as an `alias_obligation` conflict, and a
-    # caller passing two of its own parameters publishes it again.
+    # caller passing two of its own parameters publishes it again. The
+    # cursor over `other.items` depends on its structure only.
     items = _field(program, "Counter", "items", INTS)
     grown = MIRParameterWrite(0, (items, MIRContainerStructure()))
-    expected = frozenset({MIRAliasObligation(1, (items, MIRContainerElements()), grown),
-                          MIRAliasObligation(1, (items, MIRContainerStructure()), grown)})
+    expected = frozenset({MIRAliasObligation(1, (items, MIRContainerStructure()), grown)})
     assert program.verdicts["Counter.merge_from"].conflicts == ("alias_obligation",)
     assert _known(program, "Counter.merge_from").obligations == expected
     caller = program.verdicts["call_merge"]

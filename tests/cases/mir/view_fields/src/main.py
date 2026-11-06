@@ -214,7 +214,7 @@ def detached_view(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacem
     if flag:
         t = Tok(a, 1)
         v = t.s  # tpyc: mir_borrows(v, a)
-    a = mk(k + 1)
+    a = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'a', and 'v' may still view it/)
     print("detached_view", v)
 
 

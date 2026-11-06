@@ -51,7 +51,7 @@ void distinct_rows(std::vector<std::vector<int32_t>>& rows);
 void clean_outer(std::vector<std::vector<int32_t>>& rows);
 // def clean_keys(t: dict[str, list[int32]]) -> None:  # tpyc: mir(covered)
 void clean_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t);
-// def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(conflict /replacement/)
+// def set_inner(rows: list[list[int32]]) -> None:  # tpyc: mir(covered)
 void set_inner(std::vector<std::vector<int32_t>>& rows);
 // def walk_rows(xs: list[list[int32]]) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t walk_rows(const std::vector<std::vector<int32_t>>& xs);
@@ -99,6 +99,8 @@ int32_t same_kept(std::vector<std::vector<int32_t>>& rows);
 std::vector<int32_t>& value_of(::tpy::ordered_map<std::string, std::vector<int32_t>>& t);
 // def value_kept(t: dict[str, list[int32]]) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t value_kept(::tpy::ordered_map<std::string, std::vector<int32_t>>& t);
+// def joined_inner(f: bool, a: list[list[int32]], b: list[list[int32]]) -> int32:
+int32_t joined_inner(bool f, std::vector<std::vector<int32_t>>& a, const std::vector<std::vector<int32_t>>& b);
 // def main() -> None:
 void main();
 

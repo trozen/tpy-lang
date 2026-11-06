@@ -109,8 +109,8 @@ int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag) {
 }
 
 // # user container: `mutates="elements"` replaces in place, so sema does not warn;
-// # MIR still reports the element write under the cursor (index-blind)
-// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// # the cursor depends on the structure only, so MIR finds no conflict either
+// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(covered)
 //     t = 0
 //     for v in r:
 //         if flag:

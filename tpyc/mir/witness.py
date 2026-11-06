@@ -4,31 +4,38 @@ witness that decides it.
 
 A conflict is evidence: MIR's analyses over-approximate (referents join
 over paths, external places may alias, element identity is not tracked,
-liveness is per slot). A hazard is definite -- a warning a user sees --
-only when MIR proves it on the hazard's own facts:
+liveness is per slot). A hazard warns -- DEFINITE or MAY -- only when MIR
+shows it on the hazard's own facts:
 
-1. strict reach over the full sets: every place the write may land on
-   reaches every referent the holder may retain, with no caller-seeded
+1. reach over the full sets (`_all_pairs`): every place the write may land
+   on reaches every referent the holder may retain, with no caller-seeded
    loan and no may-alias step between two external origins
-   (`reach.reaches_definitely`); a payload's end needs its selection
-   proven, a return escape exactly one body origin. Element identity is
-   not tracked, so a pair with an element region on both sides reaches
-   only maybe: the hazard warns as a MAY;
+   (`reach.reaches_definitely`) -- DEFINITE; a pair with an element region
+   on both sides reaches only maybe (element identity is not tracked) --
+   MAY, cause ELEMENT; only some pair reaching (the holder only may keep
+   the written storage) -- MAY, cause PARTIAL. A payload's end needs its
+   selection proven, and is DEFINITE only for the payload retained by
+   name, otherwise at most a PARTIAL MAY; a return escape needs exactly
+   one body origin;
 2. the use is reached (replacement, scope end, payload end): every feasible
    path from the kill reads the holder's member (a non-call operand, a
    branch condition or a returned value at the holder or under it,
    directly or through an alias with exactly one referent) before every
    holder carrying it is rebound or the body exits; a cycle with no read
-   refutes;
+   refutes. When that strict walk refutes, the same walk in MAY mode
+   (`MIRWalkMode`) reads through a base with several referents, ends a
+   holder only at a rebind through a single-referent base, and chains any
+   copy of a tracked view: reached there, the hazard is MAY, cause
+   PARTIAL, citing that walk's reads;
 3. the escape is reached (store escape): from a statement that freshly
    stores the body loan, every path reaches a normal return with no
    rewrite of the stored place, the body loan being the entry's only
    non-seeded loan there. A store into an `Own[R]` parameter's object is no
    escape when the body neither returns nor hands on that object.
 
-Anything else stays evidence; a witness that exceeds its node cap does too,
-and says so (`capped`). A hazard that passes is DEFINITE, or MAY when rule 1
-reached it only through two element regions."""
+A hazard rule 2 reaches strictly keeps rule 1's verdict. Anything else
+stays evidence; a witness that exceeds its node cap does too, and says so
+(`capped`)."""
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
@@ -59,6 +66,15 @@ class MIRVerdict(Enum):
     @property
     def strength(self) -> int:
         return self.value
+
+
+class MIRMayCause(Enum):
+    """Why a hazard is only MAY: ELEMENT -- element identity is not tracked
+    (an index may name another element); PARTIAL -- the holder only may keep
+    the written storage (some written x retained pairs reach) or is read
+    through a base with several referents."""
+    ELEMENT = auto()
+    PARTIAL = auto()
 
 
 class MIREffect(Enum):
@@ -114,6 +130,8 @@ class MIRWitness:
     capped: bool = False
     # A warned replacement's effect (`replacement_effect`); None otherwise.
     effect: MIREffect | None = None
+    # Why a MAY verdict is MAY; None for any other verdict.
+    cause: MIRMayCause | None = None
 
     @property
     def warns(self) -> bool:
@@ -160,33 +178,21 @@ def _target_effect(target: MIRPlace, holder: MIRPlace) -> str | None:
     return None
 
 
-def _rebased(place: MIRPlace, state: MIRReferents, strict: bool) -> list[MIRPlace]:
+def _bases(place: MIRPlace, state: MIRReferents, strict: bool) -> list[tuple[MIRPlace, MIRVerdict]]:
     """`place`, and `place` re-rooted at the body storage each holder prefix
     of it refers to (an alias or a borrowed record local reaches its
-    object's members); `strict` (a write) only through a proper prefix."""
-    out = [place]
+    object's members); `strict` (a write) only through a proper prefix.
+    A re-rooting is DEFINITE through a prefix with exactly one referent,
+    MAY through one of several."""
+    out = [(place, MIRVerdict.DEFINITE)]
     for n in range(len(place.projections) + (0 if strict else 1)):
-        for ref in state.get(MIRPlace(place.root, place.projections[:n]), ()):
+        refs = state.get(MIRPlace(place.root, place.projections[:n]), ())
+        strength = MIRVerdict.DEFINITE if len(refs) == 1 else MIRVerdict.MAY
+        for ref in refs:
             if ref.held or ref.static:
                 continue
             rest = tuple(p for p in place.projections[n:] if not isinstance(p, MIRDeref))
-            out.append(MIRPlace(ref.place.root, (*ref.place.projections, *rest)))
-    return out
-
-
-def _definite_bases(place: MIRPlace, state: MIRReferents) -> list[MIRPlace]:
-    """`place`, and `place` re-rooted through a holder prefix whose referent
-    set is exactly one object: no may-alias enumeration."""
-    out = [place]
-    for n in range(len(place.projections) + 1):
-        refs = state.get(MIRPlace(place.root, place.projections[:n]))
-        if not refs or len(refs) != 1:
-            continue
-        ref = next(iter(refs))
-        if ref.held or ref.static:
-            continue
-        rest = tuple(p for p in place.projections[n:] if not isinstance(p, MIRDeref))
-        out.append(MIRPlace(ref.place.root, (*ref.place.projections, *rest)))
+            out.append((MIRPlace(ref.place.root, (*ref.place.projections, *rest)), strength))
     return out
 
 
@@ -209,6 +215,9 @@ class _Body:
                 if t is not None and e in self.presence.edges]
 
     def rewrites(self, point: MIRPoint, *, transfers: bool = True) -> list[MIRPlace]:
+        return [p for p, _ in self.rewrite_bases(point, transfers=transfers)]
+
+    def rewrite_bases(self, point: MIRPoint, *, transfers: bool = True) -> list[tuple[MIRPlace, MIRVerdict]]:
         """Every place the statement at `point` rebinds, re-rooted through
         the holders it writes through: its target, the storage its call
         writes (`storage_events`, over the call as presence sees it) and,
@@ -227,7 +236,7 @@ class _Body:
                     record, member = transfer_member(called.call, t, self.slots)
                     places.append(MIRPlace(record.root, (*record.projections, member)))
         pre = self.state(point)
-        return [p for place in places for p in _rebased(place, pre, True)]
+        return [b for place in places for b in _bases(place, pre, True)]
 
 
 def _all_paths(start: object, step: Callable[[object], object]) -> tuple[bool | None, list[object]]:
@@ -264,12 +273,36 @@ def _all_paths(start: object, step: Callable[[object], object]) -> tuple[bool | 
 _POINTER_ONLY = (MIRIsAlternative, MIRBorrow, MIRAlias, MIRUnionExtract, MIRWrap, MIRIteratorInit)
 
 
-def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace) -> tuple[bool | None, tuple[MIRPoint, ...]]:
+class MIRWalkMode(Enum):
+    """How rule 2 treats a base with several referents. STRICT reads only
+    through a single-referent base, ends a holder at any rebind that may
+    land on it (through any base), and chains a copy only when it holds one
+    referent. MAY reads through any base, ends a holder only at a rebind
+    through a single-referent base, and chains a copy of a tracked view
+    whatever its count, at every storage the copy lands in."""
+    STRICT = auto()
+    MAY = auto()
+
+
+def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace,
+                 mode: MIRWalkMode = MIRWalkMode.STRICT) -> tuple[bool | None, tuple[MIRPoint, ...]]:
     """Rule 2 from `start`: every feasible path reaches a non-call read of
     `holder`'s member before every tracked holder is rebound or the body
-    exits. A whole block is one step: its statements run in order."""
+    exits, `mode` saying how a base with several referents counts
+    (`MIRWalkMode`). A whole block is one step: its statements run in order."""
+    may = mode is MIRWalkMode.MAY
+
     def reads_member(place: MIRPlace, tracked: frozenset[MIRPlace], state: MIRReferents) -> bool:
-        return any(_member_under(x, k) for x in _definite_bases(place, state) for k in tracked)
+        return any(_member_under(x, k) for x, strength in _bases(place, state, False)
+                   if may or strength is MIRVerdict.DEFINITE for k in tracked)
+
+    def rebinds(point: MIRPoint) -> list[MIRPlace]:
+        if may:
+            return [t for t, strength in body.rewrite_bases(point) if strength is MIRVerdict.DEFINITE]
+        return body.rewrites(point)
+
+    def definite_storage(place: MIRPlace, state: MIRReferents) -> list[MIRPlace]:
+        return [b for b, strength in _bases(place, state, True) if strength is MIRVerdict.DEFINITE]
 
     def step(node: tuple) -> object:
         bid, index, tracked = node
@@ -294,9 +327,20 @@ def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace) -> tuple[bool |
                     if reads_member(source, tracked, pre):
                         post = body.state(MIRPoint(bid, i + 1))
                         leaf = MIRPlace(target.root, target.projections)
-                        if len(post.get(leaf, ())) == 1:
+                        if may:
+                            # A copy into a field through an alias (`a.s = v`) is read back through
+                            # the object's other names, so chain it at the storage it lands in too.
+                            chained |= {b for b, _ in _bases(leaf, post, True)}
+                        elif len(post.get(leaf, ())) == 1:
                             chained.add(leaf)
-            kept = {k for k in tracked if not any(_target_effect(t, k) == "rebind" for t in body.rewrites(point))}
+            kept = {k for k in tracked if not any(_target_effect(t, k) == "rebind" for t in rebinds(point))}
+            if may and target is not None:
+                # A MAY walk tracks a copy under every name it reached (`(*y).s` and the object's own `a.s`),
+                # so the body's own store ends a holder whose name re-roots to the same storage. A callee's
+                # published store only may run, so it ends only the holder it is spelled at.
+                own = definite_storage(target, pre)
+                kept = {k for k in kept
+                        if not any(_target_effect(t, b) == "rebind" for t in own for b in definite_storage(k, pre))}
             tracked = frozenset(kept | chained)
         if not tracked:
             return "F"
@@ -366,30 +410,47 @@ def _escape_reached(body: _Body, key: MIRPlace, origin: MIRReferent,
 
 # --- the rules --------------------------------------------------------------------
 
-def _all_pairs(written: Iterable[MIRReferent], retained: Iterable[MIRReferent]) -> MIRVerdict:
-    """Every pair reaches: DEFINITE, or MAY when some pair has both places
-    in an element region (an index may name another element)."""
+_Reach = tuple[MIRVerdict, MIRMayCause | None]
+
+
+def _all_pairs(written: Iterable[MIRReferent], retained: Iterable[MIRReferent]) -> _Reach:
+    """Every pair reaches: DEFINITE, or MAY (ELEMENT) when some pair has
+    both places in an element region; some pair reaches: MAY (PARTIAL)."""
     written, retained = frozenset(written), frozenset(retained)
-    if not written or not retained or not all(reaches_definitely(w, r) for w in written for r in retained):
-        return MIRVerdict.EVIDENCE
+    if not written or not retained:
+        return MIRVerdict.EVIDENCE, None
+    if not all(reaches_definitely(w, r) for w in written for r in retained):
+        if any(reaches_definitely(w, r) for w in written for r in retained):
+            return MIRVerdict.MAY, MIRMayCause.PARTIAL
+        return MIRVerdict.EVIDENCE, None
     if any(reaches_element(w.place) and reaches_element(r.place) for w in written for r in retained):
-        return MIRVerdict.MAY
-    return MIRVerdict.DEFINITE
+        return MIRVerdict.MAY, MIRMayCause.ELEMENT
+    return MIRVerdict.DEFINITE, None
 
 
-def _weakest(verdicts: Iterable[MIRVerdict]) -> MIRVerdict:
-    return min(verdicts, key=lambda v: v.strength, default=MIRVerdict.DEFINITE)
+def _rank(reach: _Reach) -> int:
+    """One order over reaches: EVIDENCE < MAY (PARTIAL) < MAY (ELEMENT) <
+    DEFINITE. Every pair reaching (ELEMENT) is stronger than some pair
+    reaching (PARTIAL)."""
+    verdict, cause = reach
+    return 2 * verdict.strength - (verdict is MIRVerdict.MAY and cause is MIRMayCause.PARTIAL)
 
 
-def _strongest(verdicts: Iterable[MIRVerdict]) -> MIRVerdict:
-    return max(verdicts, key=lambda v: v.strength, default=MIRVerdict.EVIDENCE)
+def _any_set(reaches: Iterable[_Reach]) -> _Reach:
+    """Some retained set's reach (a replacement's states before and after)."""
+    return max(reaches, key=_rank, default=(MIRVerdict.EVIDENCE, None))
 
 
-def _strict_reach(body: _Body, hazard: MIRHazard) -> MIRVerdict:
-    """Rule 1 on the hazard's full sets."""
+def _every_set(reaches: Iterable[_Reach]) -> _Reach:
+    """Every retained set's reach."""
+    return min(reaches, key=_rank, default=(MIRVerdict.DEFINITE, None))
+
+
+def _strict_reach(body: _Body, hazard: MIRHazard) -> _Reach:
+    """Rule 1 on the hazard's full sets, and why a MAY is MAY."""
     match hazard.kind:
         case MIRHazardKind.REPLACEMENT:
-            return _strongest(_all_pairs(hazard.written, retained) for retained in hazard.retained)
+            return _any_set(_all_pairs(hazard.written, retained) for retained in hazard.retained)
         case MIRHazardKind.SCOPE_END:
             ended = hazard.target
             if ended.projections:
@@ -397,8 +458,8 @@ def _strict_reach(body: _Body, hazard: MIRHazard) -> MIRVerdict:
                 wrapper = MIRPlace(ended.root)
                 selected = dict(body.presence.edges[hazard.site]).get(wrapper, body.presence.domains[wrapper])
                 if len(selected) != 1:
-                    return MIRVerdict.EVIDENCE
-            return _weakest(_all_pairs(hazard.written, retained) for retained in hazard.retained)
+                    return MIRVerdict.EVIDENCE, None
+            return _every_set(_all_pairs(hazard.written, retained) for retained in hazard.retained)
         case MIRHazardKind.PAYLOAD_END:
             assert isinstance(hazard.site, MIRPoint)
             payload = hazard.target
@@ -406,12 +467,19 @@ def _strict_reach(body: _Body, hazard: MIRHazard) -> MIRVerdict:
             alternative = payload.projections[-1]
             assert isinstance(alternative, MIRUnionPayload)
             if facts.get(MIRPlace(payload.root, payload.projections[:-1])) != frozenset({alternative.alternative}):
-                return MIRVerdict.EVIDENCE
-            return _proven(all(bool(retained) and all(r.place == payload and not r.external for r in retained)
-                               for retained in hazard.retained))
+                return MIRVerdict.EVIDENCE, None
+            # The ended payload itself, retained by name: proven whatever region it lies in.
+            if all(bool(retained) and all(r.place == payload and not r.external for r in retained)
+                   for retained in hazard.retained):
+                return MIRVerdict.DEFINITE, None
+            # Anything else is not proven to be the payload, so it warns at most as a PARTIAL MAY.
+            verdict, _ = _every_set(_all_pairs(hazard.written, retained) for retained in hazard.retained)
+            if verdict is MIRVerdict.EVIDENCE:
+                return verdict, None
+            return MIRVerdict.MAY, MIRMayCause.PARTIAL
         case MIRHazardKind.RETURN_ESCAPE:
-            return _proven(len(hazard.written) == 1 and not next(iter(hazard.written)).external)
-    return MIRVerdict.DEFINITE
+            return _proven(len(hazard.written) == 1 and not next(iter(hazard.written)).external), None
+    return MIRVerdict.DEFINITE, None
 
 
 def _proven(proven: bool) -> MIRVerdict:
@@ -509,11 +577,11 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
     witness runs once per kill point and holder, the escape witness once per
     stored place and origin."""
     body = _Body(prepared)
-    uses: dict[tuple[MIRPoint, MIRPlace], tuple[bool | None, tuple[MIRPoint, ...]]] = {}
+    uses: dict[tuple[MIRPoint, MIRPlace, MIRWalkMode], tuple[bool | None, tuple[MIRPoint, ...]]] = {}
     reached: Reached = {}
     found: list[MIRWitness] = []
     for hazard in hazards:
-        reach = _strict_reach(body, hazard)
+        reach, cause = _strict_reach(body, hazard)
         if reach is MIRVerdict.EVIDENCE:
             found.append(MIRWitness(hazard, reach))
             continue
@@ -527,14 +595,25 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
                 found.append(_store_reached(body, hazard, reached))
                 continue
         start = _use_start(body, hazard)
-        key = (start, hazard.holder)
-        if key not in uses:
-            uses[key] = _use_reached(body, start, hazard.holder)
-        verdict, reads = uses[key]
+
+        def use(mode: MIRWalkMode) -> tuple[bool | None, tuple[MIRPoint, ...]]:
+            key = (start, hazard.holder, mode)
+            if key not in uses:
+                uses[key] = _use_reached(body, start, hazard.holder, mode)
+            return uses[key]
+
+        answered, reads = use(MIRWalkMode.STRICT)
+        verdict = reach if answered else MIRVerdict.EVIDENCE
+        if answered is False:
+            # Only a MAY walk reaches the use: the holder only may be read.
+            answered, reads = use(MIRWalkMode.MAY)
+            if answered:
+                verdict, cause = MIRVerdict.MAY, MIRMayCause.PARTIAL
+        warns = verdict is not MIRVerdict.EVIDENCE
         effect = (replacement_effect(hazard, body.slots, body.fn.record_layouts)
-                  if verdict and hazard.kind is MIRHazardKind.REPLACEMENT else None)
-        found.append(MIRWitness(hazard, reach if verdict else MIRVerdict.EVIDENCE, reads if verdict else (),
-                                capped=verdict is None, effect=effect))
+                  if warns and hazard.kind is MIRHazardKind.REPLACEMENT else None)
+        found.append(MIRWitness(hazard, verdict, reads if warns else (), capped=answered is None, effect=effect,
+                                cause=cause if verdict is MIRVerdict.MAY else None))
     return tuple(_escape_decides(found))
 
 

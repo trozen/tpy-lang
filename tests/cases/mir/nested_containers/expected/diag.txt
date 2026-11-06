@@ -17,3 +17,4 @@ main.py:95: warning: Mutation of 'rows[...]' while iterating over it (element as
 main.py:101: warning: Mutation of 't[...]' while iterating over it (element assignment invalidates the iterator)
 main.py:130: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)
 main.py:243: warning: Passing borrowed container 'rows' to non-readonly parameter 'rows' (function may invalidate references)
+main.py:352: warning: this call may move the elements of an element of 'a', and the iteration over 'x[0]' may still walk them and continues on line 350; iterate over a copy ('copy(x[0])'), or make the changes after the loop

@@ -42,3 +42,23 @@ main.py:527: warning: this call may move the element 'p' still refers to, and 'p
 main.py:535: warning: this call may move the element 'p' still refers to, and 'p' is used on line 536; copy what 'p' refers to first, or use 'p' before this call
 main.py:668: warning: Mutation of 'h.items' while borrowed ('append' may invalidate references)
 main.py:668: warning: this call may move the elements of 'h.items', but 'p' still refers to them and is used on line 669; look it up again after this call, or copy what 'p' refers to first
+main.py:721: warning: 'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 723; create 'buf' before the block, or make 'Tok.s' an owned 'str'
+main.py:730: warning: 'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 734; create 'buf' before the block, or make 'Tok.s' an owned 'str'
+main.py:742: warning: 'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 744; create 'buf' before the block, or make 'Hs.s' an owned 'str'
+main.py:755: warning: 'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 757; create 'buf' before the block, or make 'Tok.s' an owned 'str'
+main.py:765: warning: 'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 767; create 'buf' before the block, or make 'Hs.s' an owned 'str'
+main.py:776: warning: 'buf' is freed when control leaves its block here, and 'h.s' may still view it and is read on line 778; create 'buf' before the block, or make 'Hs.s' an owned 'str'
+main.py:789: warning: this call may move the elements of 'a', and the iteration over 'v' may still walk them and continues on line 787; iterate over a copy ('copy(v)'), or make the changes after the loop
+main.py:801: warning: this assignment frees the old value of 'h.items', and the iteration over 'x.items' may still walk it and continues on line 800; make the change after the loop
+main.py:814: warning: this assignment frees the old value of 'buf', and the iteration over 't.s' may still walk it and continues on line 812; make the change after the loop, or iterate over a copy under another name
+main.py:827: warning: 'buf' is freed at the end of this block, and 'a.s' may still view it and is read on line 830; create 'buf' before the block, or make 'Hs.s' an owned 'str'
+main.py:840: warning: Mutation of 'a' while borrowed ('append' may invalidate references)
+main.py:840: warning: this call may move the elements of 'a', and 's' may still view them and is read on line 841; look it up again after this call, or copy what 's' views first
+main.py:851: warning: this assignment frees the old value of 'buf', and 'old.s' may still view it and is read on line 855; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:866: warning: this assignment frees the old value of 'buf', and 'old.s' may still view it and is read on line 870; give the new value its own name, or make 'Hs.s' an owned 'str'
+main.py:927: warning: this assignment frees the old value of 'buf', and 'a.s' may still view it and is read on line 929; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:927: warning: this assignment frees the old value of 'buf', and 'b.s' may still view it and is read on line 929; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:939: warning: this assignment frees the old value of 'buf', and 'a.s' may still view it and is read on line 942; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:939: warning: this assignment frees the old value of 'buf', and 'b.s' may still view it and is read on line 942; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:951: warning: 'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 954; create 'buf' before the block, or make 'Tok.s' an owned 'str'
+main.py:963: warning: 'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 965; create 'buf' before the block, or make 'Hs.s' an owned 'str'

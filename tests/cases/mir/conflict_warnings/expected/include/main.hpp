@@ -22,6 +22,9 @@ struct Hv;
 struct Rb;
 struct Rs;
 struct Box;
+struct Hs;
+struct Hl;
+struct Sites;
 
 extern std::string GS;
 inline constexpr std::string_view __name__ = "__main__";
@@ -105,7 +108,7 @@ void link(std::vector<std::vector<int32_t>>& adj, int32_t u);
 void other_row(std::vector<std::vector<int32_t>>& rows);
 // def str_view(names: list[str], i: int32) -> None:
 void str_view(std::vector<std::string>& names, int32_t i);
-// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
+// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(covered)
 void str_loop(std::vector<std::string>& names, int32_t i);
 // def scale(xs: list[int32]) -> None:
 void scale(std::vector<int32_t>& xs);
@@ -137,7 +140,7 @@ int32_t row_grow_then_store(std::vector<std::vector<P>>& rows, int32_t i, bool f
 void which_element();
 // def through_param(t: Tok, xs: list[str]) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t through_param(const Tok& t, std::vector<std::string>& xs);
-// def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(conflict /replacement/)
+// def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(covered)
 int32_t dict_insert(::tpy::ordered_map<int32_t, int32_t>& d);
 // def drop_and_read(xs: list[P], h: Hv) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
 bool drop_and_read(std::vector<P>& xs, const Hv& h);
@@ -157,6 +160,54 @@ int32_t one_object(Box& h, bool flag);
 int32_t grow_keep(std::vector<P>& xs, const P& p);
 // def summary_inverse_call() -> None:
 void summary_inverse_call();
+// def mk_list(n: int32) -> Own[list[int32]]:
+std::vector<int32_t> mk_list(int32_t n);
+// def b_ctor(f: bool) -> None:
+void b_ctor(bool f);
+// def b_ctor_else(f: bool) -> None:
+void b_ctor_else(bool f);
+// def h_field(f: bool) -> None:
+void h_field(bool f);
+// def store_break(xs: list[str]) -> None:
+void store_break(const std::vector<std::string>& xs);
+// def cursor_join(flag: bool) -> None:
+void cursor_join(bool flag);
+// def field_cursor(f: bool) -> None:
+void field_cursor(bool f);
+// def leaf_cursor(flag: bool) -> None:
+void leaf_cursor(bool flag);
+// def may_rebind(c: bool, f: bool) -> None:
+void may_rebind(bool c, bool f);
+// def span_join(c: bool) -> int32:
+int32_t span_join(bool c);
+// def restore_field(f: bool) -> None:
+void restore_field(bool f);
+// def callee_may_reset(flag: bool) -> None:
+void callee_may_reset(bool flag);
+// def g_notc(c: bool) -> None:
+void g_notc(bool c);
+// def g_rebind(f: bool) -> None:
+void g_rebind(bool f);
+// def g_rebind_field(f: bool) -> None:
+void g_rebind_field(bool f);
+// def value_element(a: list[str]) -> None:
+void value_element(std::vector<std::string>& a);
+// def values_existing_key(d: dict[str, str]) -> None:
+void values_existing_key(::tpy::ordered_map<std::string, std::string>& d);
+// def alias_reset_read(f: bool) -> None:
+void alias_reset_read(bool f);
+// def alias_copy_read(f: bool) -> None:
+void alias_copy_read(bool f);
+// def correlated_scope_rebind(f: bool) -> str:
+std::string correlated_scope_rebind(bool f);
+// def may_after_raise(flag: bool) -> None:
+void may_after_raise(bool flag);
+// def g_samef(f: bool) -> None:
+void g_samef(bool f);
+// def g_samef_ctor(f: bool) -> None:
+void g_samef_ctor(bool f);
+// def may_sections() -> None:
+void may_sections();
 // def main() -> None:
 void main();
 
@@ -425,6 +476,61 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Hs:
+struct Hs {
+    // s: StrView
+    std::string_view s;
+
+    // def __init__(self) -> None:
+    Hs();
+
+    // def maybe(self, s: StrView, flag: bool) -> None:
+    void maybe(std::string_view s, bool flag);
+
+    // def maybe_reset(self, flag: bool) -> None:
+    void maybe_reset(bool flag);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hs";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hs& obj) {
+    ::tpy::print_object_default(os, Hs::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Hl:
+struct Hl {
+    // items: list[int32]
+    std::vector<int32_t> items;
+
+    // def __init__(self) -> None:
+    Hl();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hl";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hl& obj) {
+    ::tpy::print_object_default(os, Hl::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Sites:
+struct Sites {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, f: bool) -> None:
+    Sites() = default;
+    explicit Sites(bool f);
+
+    // def run(self, f: bool) -> None:
+    void run(bool f) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sites";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Sites& obj) {
+    ::tpy::print_object_default(os, Sites::__tpy_class_name__, obj);
+    return os;
+}
+
 
 // def __init__(self, s: StrView, n: int32) -> None:
 //     self.s = s
@@ -601,5 +707,70 @@ inline Rs::Rs(std::string_view s) : s(s) {}
 // def __init__(self) -> None:
 //     self.items = [P(1)]
 inline Box::Box() : items(std::vector<P>{P(1)}) {}
+
+// def __init__(self) -> None:
+//     self.s = "-"
+inline Hs::Hs() : s("-") {}
+
+// def maybe(self, s: StrView, flag: bool) -> None:
+//     if flag:
+//         self.s = s
+inline void Hs::maybe(std::string_view s, bool flag) {
+    if (flag) {
+        this->s = s;
+    }
+}
+
+// def maybe_reset(self, flag: bool) -> None:
+//     if flag:
+//         self.s = "safe"
+inline void Hs::maybe_reset(bool flag) {
+    if (flag) {
+        this->s = "safe";
+    }
+}
+
+// def __init__(self) -> None:
+//     self.items = mk_list(1)
+inline Hl::Hl() : items(::tpyapp::main::mk_list(1)) {}
+
+// # may hazard, end of a block, constructor body with local holders
+// def __init__(self, f: bool) -> None:
+//     self.n = 0
+//     h = Hs()
+//     if f:
+//         buf = mk("c")
+//         h.s = buf  # tpyc: warning(/'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 767/)
+//     junk = mk("z")
+//     print("ctor", h.s[0], len(junk))
+inline Sites::Sites(bool f) : n(0) {
+    Hs h = Hs();
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("c");
+        h.s = buf;
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "ctor" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, end of a block, method body with local holders
+// def run(self, f: bool) -> None:
+//     tk = Tok("x", 0)
+//     if f:
+//         buf = mk("m")
+//         tk = Tok(buf, 1)  # tpyc: warning(/'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 757/)
+//     junk = mk("z")
+//     print("method", tk.s[0], len(junk))
+inline void Sites::run(bool f) const {
+    Tok __slot_1 = Tok("x", 0);
+    Tok* tk = &__slot_1;
+    std::optional<Tok> __slot_2;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("m");
+        tk = &*(__slot_2 = Tok(buf, 1));
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "method" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
 void __tpy_init();
 } // namespace tpyapp::main

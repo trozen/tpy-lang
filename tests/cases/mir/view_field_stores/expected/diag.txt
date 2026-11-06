@@ -1,8 +1,12 @@
+main.py:80: warning: this assignment frees the old value of 'b', and 't.s' may still view it and is read on line 81; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:91: warning: this assignment frees the old value of 'b', and 't.s' may still view it and is read on line 92; give the new value its own name, or make 'Tok.s' an owned 'str'
 main.py:112: warning: this assignment frees the old value of 'b', but 't.s' still views it and is read on line 113; give the new value its own name, or make 'Tok.s' an owned 'str'
 main.py:120: warning: 'buf' is freed when 'fill' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned 'str'
 main.py:171: warning: this assignment frees the old value of 'a', but 'o.inner.s' still views it and is read on line 172; give the new value its own name, or make 'Tok.s' an owned 'str'
 main.py:186: warning: this assignment frees the old value of 'b', but 't.s' still views it and is read on line 187; give the new value its own name, or make 'Tok.s' an owned 'str'
 main.py:194: warning: 'buf' is freed when 'make_local' returns, but 's' of the returned 'Tok' keeps a view of it; make 'Tok.s' an owned 'str'
+main.py:210: warning: this assignment frees the old value of 'b.text', and 't.s' may still view it and is read on line 212; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
+main.py:228: warning: this assignment frees the old value of 'b.text', and 'o.inner.s' may still view it and is read on line 229; copy what 'o.inner.s' views first, or use 'o.inner.s' before this assignment, or make 'Tok.s' an owned 'str'
 main.py:243: warning: this assignment frees the old value of 'b.text', but 't.s' still views it and is read on line 244; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
 main.py:260: warning: argument 'b.text' is what 'make_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
 main.py:260: warning: this call frees the old value of 'b.text', but 't.s' still views it and is read on line 261; copy what 't.s' views first, or use 't.s' before this call, or make 'Tok.s' an owned 'str'
@@ -15,8 +19,21 @@ main.py:323: warning: Own[Buf] param 'b' is never consumed (not stored in a fiel
 main.py:334: warning: copies Buf into owned storage; use copy() to make this explicit
 main.py:358: warning: this assignment frees the old value of 'b.text', but 'w.t.s' still views it and is read on line 359; copy what 'w.t.s' views first, or use 'w.t.s' before this assignment, or make 'Tok.s' an owned 'str'
 main.py:405: warning: argument 'b.text' is what 'store_and_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
+main.py:405: warning: this call frees the old value of 'b.text', and 't.s' may still view it and is read on line 406; copy what 't.s' views first, or use 't.s' before this call, or make 'Tok.s' an owned 'str'
+main.py:423: warning: this assignment frees the old value of 's', and 'u.s' may still view it and is read on line 424; give the new value its own name, or make 'Tok.s' an owned 'str'
 main.py:440: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
+main.py:442: warning: this assignment frees the old value of 'buf', and 'v' may still view it and is read on line 443; give the new value its own name
+main.py:480: warning: this assignment frees the old value of 'buf', and 't.s' may still view it and is read on line 481; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:490: warning: this assignment frees the old value of 'b.text', and 't.s' may still view it and is read on line 491; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
+main.py:510: warning: this statement frees the old value of 'r', and 'r.s' may still view it and is read on line 511; copy what 'r.s' views first, or use 'r.s' before this statement, or make 'R.s' an owned 'str'
+main.py:549: warning: this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it and is read on line 550; copy what 'o.inner.s' views first, or use 'o.inner.s' before this assignment, or make 'R.s' an owned 'str'
 main.py:566: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)
+main.py:566: warning: this assignment may overwrite what 'a' refers to in place, and 'a' would see the new value on line 567; copy what 'a' refers to first, or use 'a' before this assignment
+main.py:566: warning: this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it and is read on line 567; copy what 'o.inner.s' views first, or use 'o.inner.s' before this assignment, or make 'R.s' an owned 'str'
+main.py:589: warning: this assignment frees the old value of 's', and 'o.inner.s' may still view it and is read on line 590; give the new value its own name, or make 'R.s' an owned 'str'
 main.py:676: warning: 'buf' is freed when 'member_param_local' returns, but 'o.inner.s' keeps a view of it; make 'R.s' an owned 'str'
 main.py:682: warning: Own[Holder] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:697: warning: this assignment frees the old value of 'src', and 'a.inner.s' may still view it and is read on line 698; give the new value its own name, or make 'R.s' an owned 'str'
 main.py:712: warning: this assignment frees the old value of 'src', but 'o.inner.s' still views it and is read on line 713; give the new value its own name, or make 'R.s' an owned 'str'
+main.py:725: warning: this assignment frees the old value of 'src', and 'w.t.s' may still view it and is read on line 726; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:746: warning: this assignment frees an element of 'r.items', and 'r.s' may still view it and is read on line 747; copy what 'r.s' views first, or use 'r.s' before this assignment, or make 'Items.s' an owned 'str'

@@ -2037,9 +2037,30 @@ form facts, never on lists of accepted kinds.
   element places carry no index or key; a MAY passes rules 2 and 3 like a
   definite hazard and warns with a "may" text
   (`mir_diagnostics._replacement_text`). Distinct constants
-  (`rows[0]` vs `rows[1]`) warn too, by decision. A Span cursor depends on
-  its backing storage's `[structure]` and `[elements]`, like a list cursor,
-  so an in-place element write under it stays evidence. A hazard sema also warns is reported
+  (`rows[0]` vs `rows[1]`) warn too, by decision. **Holders that may keep
+  the storage (2026-11-05).** Rule 1 also gives MAY when only some written x
+  retained pair reaches (`witness.MIRMayCause.PARTIAL`; the element-identity
+  MAY is cause ELEMENT): a holder joined over a branch, a callee that may
+  have stored. A payload end keeps its DEFINITE check (the payload retained
+  by name) and falls back to at most a PARTIAL MAY. Rule 2 runs the walk
+  above first (`witness.MIRWalkMode.STRICT`); when it refutes, the same walk
+  runs in MAY mode: a read through a base with several referents counts, a
+  rewrite through such a base does not end the holder (so
+  `x.s = "safe"; print(x.s)` warns, a known false MAY), a rewrite through
+  a single-referent base ends every holder naming the same storage (`b = a;
+  ...; b.s = "safe"` ends a copy tracked as `a.s`), and a copy of a
+  tracked view is chained at every storage it lands in, whatever its
+  referent count. Reached
+  there, the hazard is a PARTIAL MAY citing that walk's reads; a STRICT
+  answer keeps rule 1's verdict and reads, so no DEFINITE weakens. The text
+  reads the cause: PARTIAL says "may still view / refer to / walk".
+  Branches are not correlated (BUGS.md#mir-may-warning-correlated-conditions).
+  **Cursor encoding.** A cursor depends on its container's `[structure]`
+  only (over a view, on that of the storage the view's elements region lies
+  in; a leaf cursor on the leaf's whole storage), and `MIRIteratorRead`
+  derives the item's `[elements]` from it: an in-place element write leaves
+  the walk valid and reaches the loop variable that holds the element, not
+  the cursor. A hazard sema also warns is reported
   by both (decided 2026-10-28): no code matches one analysis's warnings
   against the other's, and B6 removes the duplicate per family when it
   hands that family to MIR; this split still decides nothing

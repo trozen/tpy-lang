@@ -19,7 +19,7 @@ std::string mk(int32_t k) {
 //     t = Tok(a, 1)
 //     t.reset(b)  # tpyc: mir_borrows(t.s, a|b)
 //     if flag:
-//         b = mk(k + 2)
+//         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b', and 't.s' may still view it/)
 //     print("retained_by_callee", t.s)
 void retained_by_callee(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
@@ -39,7 +39,7 @@ void retained_by_callee(int32_t k, bool flag) {
 //     t = Tok(a, 1)
 //     t.maybe(b, flag)  # tpyc: mir_borrows(t.s, a|b)
 //     if flag:
-//         b = mk(k + 2)
+//         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b', and 't.s' may still view it/)
 //     print("maybe_retained", t.s)
 void maybe_retained(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
@@ -229,7 +229,7 @@ Tok maybe_own(Tok&& r, std::string_view s, bool f) {
 //     b = Buf(mk(k))
 //     t = maybe_own(Tok(b.text, 1), "lit", flag)
 //     if flag:
-//         b.text = mk(k + 1)
+//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 't.s' may still view it/)
 //     # the call binds t in a block after the call's own, so the loans are read here
 //     print("own_result_seed", t.s)  # tpyc: mir_borrows(t.s, b.text|static)
 void own_result_seed(int32_t k, bool flag) {
@@ -259,7 +259,7 @@ Outer maybe_outer(Outer&& o, std::string_view s, bool f) {
 //     b = Buf(mk(k))
 //     o = maybe_outer(Outer(Tok(b.text, 1), 2), "lit", flag)
 //     if flag:
-//         b.text = mk(k + 1)
+//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 'o.inner.s' may still view it/)
 //     print("own_member_seed", o.inner.s)
 void own_member_seed(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -514,7 +514,7 @@ void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag) {
 // def transfer_replace(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     b = Buf(mk(2))
 //     t = Tok("static", 1)
-//     store_and_replace(t, b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'store_and_replace' modifies/)
+//     store_and_replace(t, b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'store_and_replace' modifies/) warning(/this call frees the old value of 'b.text', and 't.s' may still view it/)
 //     print("transfer_replace", t.s)
 void transfer_replace(bool flag) {
     Buf b = Buf(::tpyapp::main::mk(2));
@@ -540,7 +540,7 @@ Tok write_copy(Tok& a, const Tok& b, std::string_view s) {
 //     u = write_copy(t, t, s)  # tpyc: mir_borrows(u.s, static|s)
 //     t.s = "static"
 //     if flag:
-//         s = mk(6)
+//         s = mk(6)  # tpyc: warning(/this assignment frees the old value of 's', and 'u.s' may still view it/)
 //     print("alias_result", u.s)
 void alias_result(bool flag) {
     Tok t = Tok("static", 1);
@@ -571,7 +571,7 @@ std::string_view put_read(Tok& a, const Tok& b, std::string_view s) {
 //     # sema keys v's loan on t, so the rebind warns although v views buf (BUGS.md#view-member-rebind-warns-while-borrowed)
 //     t.s = "static"  # tpyc: warning(/while borrowed/)
 //     if flag:
-//         buf = mk(8)
+//         buf = mk(8)  # tpyc: warning(/this assignment frees the old value of 'buf', and 'v' may still view it/)
 //     print("borrowed_result", v)
 void borrowed_result(bool flag) {
     Tok t = Tok("static", 1);
@@ -633,7 +633,7 @@ std::string keep_return(const Tok& t, std::string_view s) {
 //     buf = mk(11)
 //     t = Tok("static", 1)
 //     if flag:
-//         buf = store_return(t, buf)
+//         buf = store_return(t, buf)  # tpyc: warning(/this assignment frees the old value of 'buf', and 't.s' may still view it/)
 //     print("call_fill", t.s, len(buf))
 void call_fill(bool flag) {
     std::string buf = ::tpyapp::main::mk(11);
@@ -650,7 +650,7 @@ void call_fill(bool flag) {
 //     b = Buf(mk(k))
 //     t = Tok("static", 1)
 //     if flag:
-//         b.text = store_return(t, b.text)
+//         b.text = store_return(t, b.text)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 't.s' may still view it/)
 //     print("call_fill_other", t.s)
 void call_fill_other(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -682,7 +682,7 @@ void call_fill_control(int32_t k) {
 //     r = anchor
 //     for i in range(n):
 //         r = anchor
-//         r = R(mk(12), v)
+//         r = R(mk(12), v)  # tpyc: warning(/this statement frees the old value of 'r', and 'r.s' may still view it/)
 //         print("reused_construct", r.s)
 //         v = r.buf
 //         r.s = "static"
@@ -734,7 +734,7 @@ void reseat_self(int32_t k, bool flag) {
 // def member_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     o = Holder(R(mk(k), "static"))
 //     if flag:
-//         o.inner = R(mk(k + 1), o.inner.buf)
+//         o.inner = R(mk(k + 1), o.inner.buf)  # tpyc: warning(/this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it/)
 //     print("member_self", o.inner.s)
 void member_self(int32_t k, bool flag) {
     Holder o = Holder(R(::tpyapp::main::mk(k), "static"));
@@ -756,12 +756,12 @@ void member_fresh(int32_t k) {
 }
 
 // # free function: a reference to the member sees the new record, which views the buffer it replaced
-// # (BUGS.md#record-view-member-source-replaced); unlike the other conflict sections, sema warns here
+// # (BUGS.md#record-view-member-source-replaced); sema warns (mutation while borrowed), MIR warns "may"
 // def member_alias(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     o = Holder(R(mk(k), "static"))
 //     a = o.inner
 //     if flag:
-//         o.inner = R(mk(k + 1), a.buf)  # tpyc: warning(/while borrowed/)
+//         o.inner = R(mk(k + 1), a.buf)  # tpyc: warning(/while borrowed/) warning(/this assignment may overwrite what 'a' refers to in place/) warning(/this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it/)
 //     print("member_alias", a.s)
 void member_alias(int32_t k, bool flag) {
     Holder o = Holder(R(::tpyapp::main::mk(k), "static"));
@@ -795,7 +795,7 @@ void fill_inner(Holder& o, std::string_view s) {
 //     s = mk(k)
 //     fill_inner(o, s)
 //     if flag:
-//         s = mk(k + 1)
+//         s = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 's', and 'o.inner.s' may still view it/)
 //     print("fill_inner_replaced", o.inner.s)
 void fill_inner_replaced(int32_t k, bool flag) {
     Holder o = Holder(R("member", "static"));
@@ -900,8 +900,8 @@ int32_t member_own_local(Holder&& o, int32_t k) {
     return ::tpy::__len__(o.inner.s);
 }
 
-// # free function: a member replacement through a name that may reach either of two objects joins
-// # the new loan with what each stored, so a keeps its loan of src
+// # free function: a member replacement through a name that may reach either of two objects; known false
+// # warning (BUGS.md#mir-may-warning-correlated-conditions): `src` is replaced only when `x` is `a`
 // def member_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     src = mk(k)
 //     a = Holder(R("a", src))
@@ -909,7 +909,7 @@ int32_t member_own_local(Holder&& o, int32_t k) {
 //     x = a if flag else b
 //     x.inner = R("c", "lit")
 //     if flag:
-//         src = mk(k + 1)
+//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src', and 'a.inner.s' may still view it/)
 //     print("member_either", a.inner.s, b.inner.s)
 void member_either(int32_t k, bool flag) {
     std::string src = ::tpyapp::main::mk(k);
@@ -957,7 +957,7 @@ void member_from_call(int32_t k, bool flag) {
 //     t = a if flag else b
 //     w = Wrap(copy(t))
 //     if flag:
-//         src = mk(k + 1)
+//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src', and 'w.t.s' may still view it/)
 //     print("copy_either", w.t.s)
 void copy_either(int32_t k, bool flag) {
     std::string src = ::tpyapp::main::mk(k);
@@ -976,7 +976,7 @@ void copy_either(int32_t k, bool flag) {
 // def element_view_replaced(r: Items, k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     r.setv(r.items[0])
 //     if flag:
-//         r.items[0] = mk(k)  # tpyc: mir_borrows(r.s, r.items[elements]|r.s)
+//         r.items[0] = mk(k)  # tpyc: mir_borrows(r.s, r.items[elements]|r.s) warning(/this assignment frees an element of 'r.items', and 'r.s' may still view it/)
 //     print("element_view_replaced", r.s)
 void element_view_replaced(Items& r, int32_t k, bool flag) {
     r.setv(::tpy::__getitem__(r.items, 0));

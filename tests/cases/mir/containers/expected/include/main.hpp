@@ -47,7 +47,7 @@ int32_t replace_after_use(std::vector<Point>& ps);
 ::tpy::BigInt str_elem_aug_after_use(std::vector<std::string>& ys, std::string_view k);
 // def int_elem_aug(xs: list[int32]) -> int32:  # tpyc: mir(covered)
 int32_t int_elem_aug(std::vector<int32_t>& xs);
-// def dict_write_in_loop(d: dict[str, int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// def dict_write_in_loop(d: dict[str, int32], flag: bool) -> int32:  # tpyc: mir(covered)
 int32_t dict_write_in_loop(::tpy::ordered_map<std::string, int32_t>& d, bool flag);
 // def dict_write_after_loop(d: dict[str, int32]) -> int32:  # tpyc: mir(covered)
 int32_t dict_write_after_loop(::tpy::ordered_map<std::string, int32_t>& d);
@@ -81,7 +81,7 @@ int32_t span_sum(std::span<int32_t> s);
 int32_t span_pass(std::span<int32_t> s);
 // def span_write(xs: list[int32]) -> int32:  # tpyc: mir(covered)
 int32_t span_write(std::vector<int32_t>& xs);
-// def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(covered)
 int32_t span_write_in_loop(std::vector<int32_t>& xs, bool flag);
 // def arr_write(a: Array[int32, 3]) -> int32:  # tpyc: mir(covered)
 int32_t arr_write(std::array<int32_t, 3>& a);

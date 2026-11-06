@@ -547,9 +547,9 @@ void str_view(std::vector<std::string>& names, int32_t i) {
 }
 
 // # which element, str loop twin: the loop variable is an owned copy, so the element store under the loop
-// # frees nothing it holds and warns nothing; the conflict is the store against the walk's elements region,
-// # kept as evidence (the copy itself is unwarned: BUGS.md#str-loop-var-copied-when-list-written)
-// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
+// # frees nothing it holds, and the cursor depends on the structure only: no conflict
+// # (the copy itself is unwarned: BUGS.md#str-loop-var-copied-when-list-written)
+// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(covered)
 //     for s in names:
 //         names[i] = "y" + str(i)  # tpyc: ok
 //         print("str_loop", s)
@@ -815,8 +815,8 @@ int32_t through_param(const Tok& t, std::vector<std::string>& xs) {
     return (::tpy::add_check<int32_t>(t.n, ::tpy::__len__(t.s)));
 }
 
-// # dict insert as an element write -- silent by decision, filed: BUGS.md#dict-grows-during-own-iteration
-// def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(conflict /replacement/)
+// # dict insert under its own loop -- known gap, silent: BUGS.md#dict-grows-during-own-iteration
+// def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(covered)
 //     n = 0
 //     for k in d:
 //         if k > 100:
@@ -940,6 +940,580 @@ void summary_inverse_call() {
     std::cout << "summary_inverse" << " " << n << " " << m << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
+// def mk_list(n: int32) -> Own[list[int32]]:
+//     xs: list[int32] = []
+//     for i in range(24):
+//         xs.append(n)
+//     return xs
+std::vector<int32_t> mk_list(int32_t n) {
+    std::vector<int32_t> xs = std::vector<int32_t>{};
+    for (int32_t i = 0; i < 24; ++i) {
+        xs.push_back(n);
+    }
+    return xs;
+}
+
+// # may hazard, end of a block, constructor: the record rebuilt in the block views its buffer on one path
+// def b_ctor(f: bool) -> None:
+//     tk = Tok("x", 0)
+//     if f:
+//         buf = mk("g")
+//         tk = Tok(buf, 1)  # tpyc: warning(/'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 723/)
+//     junk = mk("z")
+//     print("b_ctor", tk.s[0], len(junk))
+void b_ctor(bool f) {
+    Tok __slot_1 = Tok("x", 0);
+    Tok* tk = &__slot_1;
+    std::optional<Tok> __slot_2;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("g");
+        tk = &*(__slot_2 = Tok(buf, 1));
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "b_ctor" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, end of a block, constructor in both arms: only the `if` arm views a block-local buffer
+// def b_ctor_else(f: bool) -> None:
+//     if f:
+//         buf = mk("h")
+//         tk = Tok(buf, 1)  # tpyc: warning(/'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 734/)
+//     else:
+//         tk = Tok("x", 0)
+//     junk = mk("z")
+//     print("b_ctor_else", tk.s[0], len(junk))
+void b_ctor_else(bool f) {
+    std::optional<Tok> __slot_1;
+    std::optional<Tok> __slot_2;
+    Tok* tk;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("h");
+        tk = &*(__slot_1 = Tok(buf, 1));
+    } else {
+        tk = &*(__slot_2 = Tok("x", 0));
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "b_ctor_else" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, end of a block, field store: the view member keeps a block-local buffer on one path
+// def h_field(f: bool) -> None:
+//     h = Hs()
+//     if f:
+//         buf = mk("b")
+//         h.s = buf  # tpyc: warning(/'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 744/)
+//     junk = mk("z")
+//     print("h_field", h.s[0], len(junk))
+void h_field(bool f) {
+    Hs h = Hs();
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("b");
+        h.s = buf;
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "h_field" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, end of a loop body left by `break`: the view member keeps the body's buffer
+// def store_break(xs: list[str]) -> None:
+//     h = Hs()
+//     for x in xs:
+//         buf = mk(x)
+//         h.s = buf
+//         break  # tpyc: warning(/'buf' is freed when control leaves its block here, and 'h.s' may still view it and is read on line 778/)
+//     junk = mk("z")
+//     print("store_break", h.s[0], len(junk))
+void store_break(const std::vector<std::string>& xs) {
+    Hs h = Hs();
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string x = *__beg_0;
+        std::string buf = ::tpyapp::main::mk(x);
+        h.s = buf;
+        break;
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "store_break" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, iteration over a joined source: growing `a` may move what the walk over `v` walks
+// def cursor_join(flag: bool) -> None:
+//     a = [1, 2, 3]
+//     b = [4, 5, 6]
+//     v = a if flag else b
+//     n = 0
+//     for x in v:
+//         if n == 0:
+//             a.append(7)  # tpyc: warning(/this call may move the elements of 'a', and the iteration over 'v' may still walk them and continues on line 787/)
+//         n += 1
+//         print("cursor_join", x)
+void cursor_join(bool flag) {
+    std::vector<int32_t> a = {1, 2, 3};
+    std::vector<int32_t> b = {4, 5, 6};
+    std::vector<int32_t>& v = ((flag) ? (a) : (b));
+    int32_t n = 0;
+    auto& __obj_0 = v;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        if ((n == 0)) {
+            a.push_back(7);
+        }
+        n = ::tpy::add_check<int32_t>(n, 1);
+        std::cout << "cursor_join" << " " << x << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # may hazard, iteration over a joined record's field: replacing `h.items` may free the walked list
+// def field_cursor(f: bool) -> None:
+//     h = Hl()
+//     g = Hl()
+//     x = h if f else g
+//     t = 0
+//     for i in x.items:
+//         h.items = mk_list(2)  # tpyc: warning(/this assignment frees the old value of 'h.items', and the iteration over 'x.items' may still walk it and continues on line 800/)
+//         t += i
+//     print("field_cursor", t)
+void field_cursor(bool f) {
+    Hl h = Hl();
+    Hl g = Hl();
+    Hl& x = ((f) ? (h) : (g));
+    int32_t t = 0;
+    auto& __obj_0 = x.items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t i = *__beg_0;
+        h.items = ::tpyapp::main::mk_list(2);
+        t = ::tpy::add_check<int32_t>(t, i);
+    }
+    std::cout << "field_cursor" << " " << t << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, leaf cursor: a callee may have stored `buf` in `t.s`, whose characters the loop walks
+// def leaf_cursor(flag: bool) -> None:
+//     buf = mk("a")
+//     t = Hs()
+//     t.maybe(buf, flag)
+//     n = 0
+//     for c in t.s:
+//         if n == 0:
+//             buf = mk("z")  # tpyc: warning(/this assignment frees the old value of 'buf', and the iteration over 't.s' may still walk it and continues on line 812/)
+//         if c == "z":
+//             n += 1
+//     print("leaf_cursor", n, len(buf))
+void leaf_cursor(bool flag) {
+    std::string buf = ::tpyapp::main::mk("a");
+    Hs t = Hs();
+    t.maybe(buf, flag);
+    int32_t n = 0;
+    auto& __obj_0 = t.s;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        char c = *__beg_0;
+        if ((n == 0)) {
+            buf = ::tpyapp::main::mk("z");
+        }
+        if ((c == 'z')) {
+            n = ::tpy::add_check<int32_t>(n, 1);
+        }
+    }
+    std::cout << "leaf_cursor" << " " << n << " " << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, a rewrite through a joined name after the block: `x.s = ...` may not rebind `a.s`
+// def may_rebind(c: bool, f: bool) -> None:
+//     a = Hs()
+//     b = Hs()
+//     x = a if c else b
+//     if f:
+//         buf = mk("b")
+//         a.s = buf  # tpyc: warning(/'buf' is freed at the end of this block, and 'a.s' may still view it and is read on line 830/)
+//     x.s = "safe"
+//     junk = mk("z")
+//     print("may_rebind", a.s[0], len(junk))
+void may_rebind(bool c, bool f) {
+    Hs a = Hs();
+    Hs b = Hs();
+    Hs& x = ((c) ? (a) : (b));
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("b");
+        a.s = buf;
+    }
+    x.s = "safe";
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "may_rebind" << " " << ::tpy::__getitem__(a.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, a Span over a joined slice: growing `a` may move what `s` views
+// def span_join(c: bool) -> int32:
+//     a = [1, 2]
+//     b = [3, 4]
+//     s: Span[int32] = b[0:]
+//     if c:
+//         s = a[0:]
+//     a.append(5)  # tpyc: warning(/Mutation of 'a' while borrowed \('append' may invalidate references\)/) warning(/this call may move the elements of 'a', and 's' may still view them and is read on line 841/)
+//     return s[0]
+int32_t span_join(bool c) {
+    std::vector<int32_t> a = {1, 2};
+    std::array<int32_t, 2> b = {3, 4};
+    std::span<int32_t> s = ::tpy::list_slice(b, ::tpy::BasicSlice{0, std::nullopt});
+    if (c) {
+        s = ::tpy::list_slice(a, ::tpy::BasicSlice{0, std::nullopt});
+    }
+    a.push_back(5);
+    return ::tpy::__getitem__(s, 0);
+}
+
+// # may hazard, a view copied back into a field: `a.s = v` restores the freed buffer, read through `x`
+// def restore_field(f: bool) -> None:
+//     buf = mk("a")
+//     old = Tok(buf, 0)
+//     a = Tok(buf, 1)
+//     b = Tok("safe", 2)
+//     x = a if f else b
+//     buf = mk("z")  # tpyc: warning(/this assignment frees the old value of 'buf', and 'old.s' may still view it and is read on line 855/)
+//     x.s = "safe"
+//     v: StrView = old.s
+//     a.s = v
+//     print("restore_field", x.s[0])
+void restore_field(bool f) {
+    std::string buf = ::tpyapp::main::mk("a");
+    Tok old = Tok(buf, 0);
+    Tok a = Tok(buf, 1);
+    Tok b = Tok("safe", 2);
+    Tok& x = ((f) ? (a) : (b));
+    buf = ::tpyapp::main::mk("z");
+    x.s = "safe";
+    std::string_view v = old.s;
+    a.s = v;
+    std::cout << "restore_field" << " " << ::tpy::__getitem__(x.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # may hazard, a callee that only may reset: `a.maybe_reset(flag)` leaves the copy in `y.s` viewing the
+// # freed buffer when flag is False (called with True only)
+// def callee_may_reset(flag: bool) -> None:
+//     buf = mk("a")
+//     old = Hs()
+//     old.s = buf
+//     a = Hs()
+//     y = a
+//     buf = mk("z")  # tpyc: warning(/this assignment frees the old value of 'buf', and 'old.s' may still view it and is read on line 870/)
+//     v: StrView = old.s
+//     y.s = v
+//     a.maybe_reset(flag)
+//     print("callee_may_reset", y.s[0])
+void callee_may_reset(bool flag) {
+    std::string buf = ::tpyapp::main::mk("a");
+    Hs old = Hs();
+    old.s = buf;
+    Hs a = Hs();
+    Hs& y = a;
+    buf = ::tpyapp::main::mk("z");
+    std::string_view v = old.s;
+    y.s = v;
+    a.maybe_reset(flag);
+    std::cout << "callee_may_reset" << " " << ::tpy::__getitem__(y.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # guard, safe: the read runs only on the path that stored nothing
+// def g_notc(c: bool) -> None:
+//     h = Hs()
+//     if c:
+//         buf = mk("a")
+//         h.s = buf  # tpyc: ok
+//     junk = mk("z")
+//     if not c:
+//         print("g_notc", h.s[0], len(junk))
+void g_notc(bool c) {
+    Hs h = Hs();
+    if (c) {
+        std::string buf = ::tpyapp::main::mk("a");
+        h.s = buf;
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    if ((!(c))) {
+        std::cout << "g_notc" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # guard, safe: the record is rebuilt from a literal before the block ends
+// def g_rebind(f: bool) -> None:
+//     tk = Tok("x", 0)
+//     if f:
+//         buf = mk("d")
+//         tk = Tok(buf, 1)
+//         tk = Tok("y", 2)  # tpyc: ok
+//     junk = mk("z")
+//     print("g_rebind", tk.s[0], len(junk))
+void g_rebind(bool f) {
+    Tok __slot_1 = Tok("x", 0);
+    Tok* tk = &__slot_1;
+    std::optional<Tok> __slot_2;
+    std::optional<Tok> __slot_3;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("d");
+        tk = &*(__slot_2 = Tok(buf, 1));
+        tk = &*(__slot_3 = Tok("y", 2));
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "g_rebind" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # guard, safe: the view member is rebound to a literal before the block ends
+// def g_rebind_field(f: bool) -> None:
+//     h = Hs()
+//     if f:
+//         buf = mk("e")
+//         h.s = buf
+//         h.s = "y"  # tpyc: ok
+//     junk = mk("z")
+//     print("g_rebind_field", h.s[0], len(junk))
+void g_rebind_field(bool f) {
+    Hs h = Hs();
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("e");
+        h.s = buf;
+        h.s = "y";
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    std::cout << "g_rebind_field" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// # value element, safe: the str loop variable owns its copy, so a store of an element under the loop frees nothing it holds
+// def value_element(a: list[str]) -> None:
+//     for s in a:
+//         a[0] = mk("w")  # tpyc: ok
+//         print("value_element", s)
+void value_element(std::vector<std::string>& a) {
+    auto& __obj_0 = a;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string s = *__beg_0;
+        ::tpy::__setitem__(a, 0, ::tpyapp::main::mk("w"));
+        std::cout << "value_element" << " " << s << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # dict values, safe: storing an existing key under a walk of the values replaces in place, inserting nothing
+// def values_existing_key(d: dict[str, str]) -> None:
+//     for v in d.values():
+//         d["a"] = mk("v")  # tpyc: ok
+//         print("values_existing_key", v)
+void values_existing_key(::tpy::ordered_map<std::string, std::string>& d) {
+    auto __obj_0 = ::tpy::dict_values(d);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string v = *__beg_0;
+        ::tpy::__setitem__(d, "a", ::tpyapp::main::mk("v"));
+        std::cout << "values_existing_key" << " " << v << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # known false warning: BUGS.md#mir-may-warning-correlated-conditions -- a write and a later read through
+// # the same joined name: `x.s = "safe"` may rewrite either object, so the read of `x.s` may see the old buffer
+// def alias_reset_read(f: bool) -> None:
+//     buf = mk("a")
+//     a = Tok(buf, 1)
+//     b = Tok(buf, 2)
+//     x = a if f else b
+//     buf = mk("z")  # tpyc: warning(/this assignment frees the old value of 'buf', and 'a.s' may still view it and is read on line 929/) warning(/this assignment frees the old value of 'buf', and 'b.s' may still view it and is read on line 929/)
+//     x.s = "safe"
+//     print("alias_reset_read", x.s[0])
+void alias_reset_read(bool f) {
+    std::string buf = ::tpyapp::main::mk("a");
+    Tok a = Tok(buf, 1);
+    Tok b = Tok(buf, 2);
+    Tok& x = ((f) ? (a) : (b));
+    buf = ::tpyapp::main::mk("z");
+    x.s = "safe";
+    std::cout << "alias_reset_read" << " " << ::tpy::__getitem__(x.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # known false warning: BUGS.md#mir-may-warning-correlated-conditions -- the copy twin of alias_reset_read:
+// # `y = x` after the write reads the new value whichever object `x` is
+// def alias_copy_read(f: bool) -> None:
+//     buf = mk("a")
+//     a = Tok(buf, 1)
+//     b = Tok(buf, 2)
+//     x = a if f else b
+//     buf = mk("z")  # tpyc: warning(/this assignment frees the old value of 'buf', and 'a.s' may still view it and is read on line 942/) warning(/this assignment frees the old value of 'buf', and 'b.s' may still view it and is read on line 942/)
+//     x.s = "safe"
+//     y = x
+//     print("alias_copy_read", y.s[0])
+void alias_copy_read(bool f) {
+    std::string buf = ::tpyapp::main::mk("a");
+    Tok a = Tok(buf, 1);
+    Tok b = Tok(buf, 2);
+    Tok& x = ((f) ? (a) : (b));
+    buf = ::tpyapp::main::mk("z");
+    x.s = "safe";
+    Tok& y = x;
+    std::cout << "alias_copy_read" << " " << ::tpy::__getitem__(y.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # known false warning: BUGS.md#mir-may-warning-correlated-conditions -- the second `if f:` rebuilds the
+// # record whenever the first one made it view `buf`, but paths are not correlated
+// def correlated_scope_rebind(f: bool) -> str:
+//     tk = Tok("x", 0)
+//     if f:
+//         buf = mk("g")
+//         tk = Tok(buf, 1)  # tpyc: warning(/'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 954/)
+//     if f:
+//         tk = Tok("y", 2)
+//     return str(tk.s[0])
+std::string correlated_scope_rebind(bool f) {
+    Tok __slot_1 = Tok("x", 0);
+    Tok* tk = &__slot_1;
+    std::optional<Tok> __slot_2;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("g");
+        tk = &*(__slot_2 = Tok(buf, 1));
+    }
+    std::optional<Tok> __slot_3;
+    if (f) {
+        tk = &*(__slot_3 = Tok("y", 2));
+    }
+    return std::string(::tpy::char_to_str(::tpy::__getitem__(tk->s, 0)));
+}
+
+// # known false warning: BUGS.md#mir-warning-after-always-raising-call -- fail() raises on every path,
+// # so the read after it never runs
+// def may_after_raise(flag: bool) -> None:
+//     h = Hs()
+//     if flag:
+//         buf = mk("a")
+//         h.s = buf  # tpyc: warning(/'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 965/)
+//     fail()
+//     print("may_after_raise", h.s[0])
+void may_after_raise(bool flag) {
+    Hs h = Hs();
+    if (flag) {
+        std::string buf = ::tpyapp::main::mk("a");
+        h.s = buf;
+    }
+    ::tpyapp::main::fail();
+    std::cout << "may_after_raise" << " " << ::tpy::__getitem__(h.s, 0) << "\n" << ::tpy::check_signals;
+}
+
+// # known silent dangle: BUGS.md#mir-hazard-read-on-some-paths-silent -- the read runs under the store's own
+// # condition, so not every path from the block's end reads `h.s` (called with False only)
+// def g_samef(f: bool) -> None:
+//     h = Hs()
+//     if f:
+//         buf = mk("b")
+//         h.s = buf  # tpyc: ok
+//     junk = mk("z")
+//     if f:
+//         print("g_samef", h.s[0], len(junk))
+void g_samef(bool f) {
+    Hs h = Hs();
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("b");
+        h.s = buf;
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    if (f) {
+        std::cout << "g_samef" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    }
+}
+
+// # known silent dangle: BUGS.md#mir-hazard-read-on-some-paths-silent -- the constructor twin of g_samef
+// def g_samef_ctor(f: bool) -> None:
+//     tk = Tok("x", 0)
+//     if f:
+//         buf = mk("c")
+//         tk = Tok(buf, 1)  # tpyc: ok
+//     junk = mk("z")
+//     if f:
+//         print("g_samef_ctor", tk.s[0], len(junk))
+void g_samef_ctor(bool f) {
+    Tok __slot_1 = Tok("x", 0);
+    Tok* tk = &__slot_1;
+    std::optional<Tok> __slot_2;
+    if (f) {
+        std::string buf = ::tpyapp::main::mk("c");
+        tk = &*(__slot_2 = Tok(buf, 1));
+    }
+    std::string junk = ::tpyapp::main::mk("z");
+    if (f) {
+        std::cout << "g_samef_ctor" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    }
+}
+
+// def may_sections() -> None:
+//     # each warned section with the argument that keeps it safe
+//     b_ctor(False)
+//     b_ctor_else(False)
+//     h_field(False)
+//     Sites(False).run(False)
+//     store_break([])
+//     cursor_join(False)
+//     field_cursor(False)
+//     leaf_cursor(False)
+//     may_rebind(True, True)
+//     print("span_join", span_join(False))
+//     restore_field(False)
+//     callee_may_reset(True)
+//     g_notc(True)
+//     g_samef(False)
+//     g_samef_ctor(False)
+//     g_rebind(True)
+//     g_rebind_field(True)
+//     value_element(["one", "two"])
+//     values_existing_key({"a": "x", "b": "y"})
+//     alias_reset_read(True)
+//     alias_reset_read(False)
+//     alias_copy_read(True)
+//     alias_copy_read(False)
+//     print("correlated_scope_rebind", correlated_scope_rebind(True), correlated_scope_rebind(False))
+//     try:
+//         may_after_raise(True)
+//     except IndexError:
+//         print("may_after_raise raised")
+void may_sections() {
+    ::tpyapp::main::b_ctor(false);
+    ::tpyapp::main::b_ctor_else(false);
+    ::tpyapp::main::h_field(false);
+    Sites(false).run(false);
+    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
+    ::tpyapp::main::store_break(__tmp_1);
+    ::tpyapp::main::cursor_join(false);
+    ::tpyapp::main::field_cursor(false);
+    ::tpyapp::main::leaf_cursor(false);
+    ::tpyapp::main::may_rebind(true, true);
+    std::cout << "span_join" << " " << ::tpyapp::main::span_join(false) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::restore_field(false);
+    ::tpyapp::main::callee_may_reset(true);
+    ::tpyapp::main::g_notc(true);
+    ::tpyapp::main::g_samef(false);
+    ::tpyapp::main::g_samef_ctor(false);
+    ::tpyapp::main::g_rebind(true);
+    ::tpyapp::main::g_rebind_field(true);
+    std::vector<std::string> __tmp_2 = {"one", "two"};
+    ::tpyapp::main::value_element(__tmp_2);
+    ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>({{"a", "x"}, {"b", "y"}});
+    ::tpyapp::main::values_existing_key(__tmp_3);
+    ::tpyapp::main::alias_reset_read(true);
+    ::tpyapp::main::alias_reset_read(false);
+    ::tpyapp::main::alias_copy_read(true);
+    ::tpyapp::main::alias_copy_read(false);
+    std::cout << "correlated_scope_rebind" << " " << ::tpyapp::main::correlated_scope_rebind(true) << " " << ::tpyapp::main::correlated_scope_rebind(false) << "\n" << ::tpy::check_signals;
+    {
+        try {
+            ::tpyapp::main::may_after_raise(true);
+        } catch (const ::tpy::IndexError&) {
+            std::cout << "may_after_raise raised" << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
 // def main() -> None:
 //     local_buf(False)
 //     local_buf_named(True)
@@ -979,6 +1553,7 @@ void summary_inverse_call() {
 //     replace_and_read_call()
 //     replace_then_read_global_call()
 //     summary_inverse_call()
+//     may_sections()
 void main() {
     ::tpyapp::main::local_buf(false);
     ::tpyapp::main::local_buf_named(true);
@@ -1035,6 +1610,7 @@ void main() {
     ::tpyapp::main::replace_and_read_call();
     ::tpyapp::main::replace_then_read_global_call();
     ::tpyapp::main::summary_inverse_call();
+    ::tpyapp::main::may_sections();
 }
 
 // GS: str = "keep"

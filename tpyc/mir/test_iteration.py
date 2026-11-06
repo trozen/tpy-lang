@@ -77,7 +77,9 @@ def test_cursor_advance_and_source_reseat_do_not_retarget_saved_element() -> Non
     deps = prepared(fn).dependencies
     elements = MIRReferent(MIRPlace(P, (MIRContainerElements(),)), external=True)
     structure = MIRReferent(MIRPlace(P, (MIRContainerStructure(),)), external=True)
-    assert deps.referents[MIRPoint(FIRST_BODY, 0)][MIRPlace(ITER)] == {elements, structure}
+    # The cursor depends on the structure only; the item it reads refers to the elements.
+    assert deps.referents[MIRPoint(FIRST_BODY, 0)][MIRPlace(ITER)] == {structure}
+    assert deps.referents[MIRPoint(FIRST_BODY, 1)][MIRPlace(FIRST)] == {elements}
     assert deps.active[MIRPoint(DONE, 0)] == {MIRPlace(FIRST): {elements}}
     assert SOURCE not in live.points[MIRPoint(FIRST_BODY, 0)]
     assert not analyze_storage(prepared(fn)).writes

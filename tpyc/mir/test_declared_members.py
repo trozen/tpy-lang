@@ -298,11 +298,15 @@ def test_bodies_over_declared_members_are_covered(program, name) -> None:
     assert _covered(verdict), verdict.describe()
 
 
-@pytest.mark.parametrize("name", ["grow_in_loop", "put_in_loop"])
-def test_a_live_cursor_conflicts_with_any_write_of_its_container(program, name) -> None:
-    # A structure write, and an element write by the index-blind rule.
-    verdict = program[1][name]
+def test_a_live_cursor_conflicts_with_a_structure_write_of_its_container(program) -> None:
+    verdict = program[1]["grow_in_loop"]
     assert verdict.function is not None and any("replacement" in c for c in verdict.conflicts), verdict.describe()
+
+
+def test_an_element_write_under_a_live_cursor_is_no_conflict(program) -> None:
+    # The cursor depends on the structure only, and the int loop variable is a copy.
+    verdict = program[1]["put_in_loop"]
+    assert verdict.function is not None and not verdict.conflicts, verdict.describe()
 
 
 @pytest.mark.parametrize("name, region", [("grow", "r[structure]"), ("store", "r[elements]")])

@@ -15,7 +15,7 @@ main::ring_total@96:0: covered (storage: no_proof_required), summary: known
 main::ring_first@104:0: covered (storage: no_proof_required), summary: known
 main::ring_grow@109:0: covered (storage: no_proof_required), summary: known
 main::ring_push_in_loop@114:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::ring_put_in_loop@125:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::ring_put_in_loop@125:0: covered (storage: no_proof_required), summary: known
 main::main@134:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::Ring.__iter__@50:4: uncovered (no body to lower)
 main::Ring.__getitem__@55:4: uncovered (no body to lower)

@@ -39,3 +39,30 @@ drop_and_read True 2
 replace_and_read True r
 replace_then_read_global True r
 summary_inverse 1 4 2
+b_ctor x 40
+b_ctor_else x 40
+h_field - 40
+ctor - 40
+method x 40
+store_break - 40
+cursor_join 4
+cursor_join 5
+cursor_join 6
+field_cursor 24
+leaf_cursor 0 40
+may_rebind s 40
+span_join 3
+restore_field s
+callee_may_reset s
+g_rebind y 40
+g_rebind_field y 40
+value_element one
+value_element two
+values_existing_key x
+values_existing_key y
+alias_reset_read s
+alias_reset_read s
+alias_copy_read s
+alias_copy_read s
+correlated_scope_rebind y x
+may_after_raise raised

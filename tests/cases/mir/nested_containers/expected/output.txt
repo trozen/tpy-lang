@@ -13,3 +13,4 @@ ctor [[1, 0, 5]]
 gen [10]
 keep 2 6
 same_kept 2 [[8, 9], [2, 1, 4, 4]] 2
+joined_inner 3 3

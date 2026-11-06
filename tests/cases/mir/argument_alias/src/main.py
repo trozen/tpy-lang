@@ -263,7 +263,7 @@ class Cell:
 def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
     v = a if c else b
     r = v[0]
-    a.append(Cell(5))
+    a.append(Cell(5))  # tpyc: warning(/this call may move the elements of 'a', and 'r' may still refer to them/)
     return r.x
 
 

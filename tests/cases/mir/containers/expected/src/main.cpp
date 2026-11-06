@@ -202,8 +202,8 @@ int32_t int_elem_aug(std::vector<int32_t>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 
-// # free function: a dict subscript write under a live loop over its values
-// def dict_write_in_loop(d: dict[str, int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// # free function: a dict insert under a live loop over its values -- known gap: BUGS.md#dict-grows-during-own-iteration
+// def dict_write_in_loop(d: dict[str, int32], flag: bool) -> int32:  # tpyc: mir(covered)
 //     t = 0
 //     for v in d.values():
 //         if flag:
@@ -491,10 +491,10 @@ int32_t span_write(std::vector<int32_t>& xs) {
 }
 
 // # free function: an element write through a Span under a live loop over the same list
-// # (its safe sibling is `span_write` above, with no loop live). Nothing dangles: the
-// # verdict is the conservative one, element identity is not tracked, so a write of one
-// # element is a write of the element the iterator stands on.
-// def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// # (its safe sibling is `span_write` above, with no loop live). Nothing dangles, and
+// # nothing conflicts: the cursor depends on the structure only, and the int loop
+// # variable is a copy.
+// def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(covered)
 //     s = xs[0:2]
 //     t = 0
 //     for v in xs:

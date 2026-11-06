@@ -33,7 +33,7 @@ from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
     MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call, statement_target, view_member,
 )
-from .mir.witness import MIREffect, MIRHazardKind, MIRVerdict, MIRWitness, holder_views
+from .mir.witness import MIREffect, MIRHazardKind, MIRMayCause, MIRVerdict, MIRWitness, holder_views
 from .typesys import contains_reference_type, unwrap_readonly, view_owned_leaf
 from .mir.value import MIRValidationError
 from .mir.definitions import MIRDefinitions, body_calls, constructor_record_qname
@@ -423,15 +423,20 @@ class _Words:
             return MIRSpokenPlace("a temporary value", "fallback")
         return spoken
 
+    # The bare form of each verb `holder` picks, for a "may still ..." clause.
+    BARE = {"walks": "walk", "views": "view", "refers to": "refer to"}
+
     def holder(self, place: MIRPlace) -> tuple[str, str]:
-        """How a warning names a holder, and the verb of what it keeps."""
+        """How a warning names a holder, and the verb of what it keeps (its
+        bare form in `BARE`)."""
         spoken = self.place(place)
         if spoken.origin == "iteration":
             return f"the iteration over {spoken.quoted}", "walks"
         if spoken.origin == "fallback":
             return spoken.name, "refers to"
-        views = holder_views(place, self.names.slots)
-        return spoken.quoted, "views" if views else "refers to"
+        if holder_views(place, self.names.slots):
+            return spoken.quoted, "views"
+        return spoken.quoted, "refers to"
 
     def storage(self, place: MIRPlace) -> str:
         """Storage that ends or escapes, by where it comes from."""
@@ -453,6 +458,14 @@ class _Words:
 def _point_loc(fn: MIRFunction, point: MIRPoint) -> SourceLocation | None:
     block = next(b for b in fn.blocks if b.id == point.block)
     return block.statements[point.index].loc if point.index < len(block.statements) else block.terminator.loc
+
+
+def _still(witness: MIRWitness, holder: str, verb: str) -> str:
+    """The clause joining the kill to what the holder keeps: certain, or --
+    the holder only may keep it (cause PARTIAL) -- "may still"."""
+    if witness.cause is MIRMayCause.PARTIAL:
+        return f"and {holder} may still {_Words.BARE[verb]}"
+    return f"but {holder} still {verb}"
 
 
 def _first_read(fn: MIRFunction, reads: tuple[MIRPoint, ...]) -> int | None:
@@ -505,6 +518,10 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
     if target.region == "structure":
         what = f"this {action} may move the elements of {target.quoted}"
         kept = "them"
+    elif target.region == "elements" and witness.effect is MIREffect.MOVES and witness.cause is MIRMayCause.PARTIAL:
+        # A shape write under an element: the spoken place stops at the outer region.
+        what = f"this {action} may move the elements of an element of {target.quoted}"
+        kept = "them"
     elif target.region == "elements":
         what = f"this {action} frees an element of {target.quoted}"
         kept = "it"
@@ -533,12 +550,12 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         fix = "give the new value its own name"
     else:
         fix = f"copy what {holder} {verb} first, or use {holder} before this {action}"
-    if may:
+    if may and witness.cause is not MIRMayCause.PARTIAL:
         moves = witness.effect is MIREffect.MOVES
         later = "the loop continues" if verb == "walks" else f"{holder} {use}"
         return (f"this {action} may {'move' if moves else 'free'} the element {holder} still {verb}, and {later} "
                 f"on line {line}; {fix}{owned}", stmt.loc)
-    return (f"{what}, but {holder} still {verb} {kept} and {use} on line {line}; {fix}{owned}",
+    return (f"{what}, {_still(witness, holder, verb)} {kept} and {use} on line {line}; {fix}{owned}",
             stmt.loc)
 
 
@@ -569,7 +586,7 @@ def _scope_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation
             fix = f"create {ended.quoted} before the block"
     if (owned := _owned_view_fix(fn, hazard.holder)) is not None:
         fix += f", or {owned}"
-    return f"{what}, but {holder} still {verb} it and {use} on line {line}; {fix}", loc
+    return f"{what}, {_still(witness, holder, verb)} it and {use} on line {line}; {fix}", loc
 
 
 def _payload_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation | None]:
@@ -578,8 +595,8 @@ def _payload_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocati
     wrapper = MIRPlace(hazard.target.root, hazard.target.projections[:-1])
     holder, verb = words.holder(hazard.holder)
     line = _first_read(fn, witness.reads)
-    return (f"this assignment frees the value held in {words.place(wrapper).quoted}, but {holder} still "
-            f"{verb} it and is used on line {line}; copy it first", _point_loc(fn, hazard.site))
+    return (f"this assignment frees the value held in {words.place(wrapper).quoted}, {_still(witness, holder, verb)} "
+            f"it and is used on line {line}; copy it first", _point_loc(fn, hazard.site))
 
 
 def _return_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation | None]:
