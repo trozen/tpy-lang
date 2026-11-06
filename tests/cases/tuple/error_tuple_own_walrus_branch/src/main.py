@@ -1,6 +1,5 @@
-# Walrus REASSIGNMENT of a borrow-form tuple local (a second `t :=` after the
-# local already exists) is rejected -- the walrus path can't rebind a borrow
-# tuple in place; use a separate assignment statement.
+# A borrow tuple local first bound by a walrus inside a branch is refused at
+# that walrus (BUGS.md#branch-walrus-borrow-tuple-declaration-rejects).
 from tpy import int32, Own
 
 
@@ -22,10 +21,10 @@ def make_pair(n: int32) -> Own[tuple[int32, Box]]:
 
 def use(h: Holder, c: bool) -> int32:
     if c:
-        if (t := h.pair)[0] > 0:
+        if (t := h.pair)[0] > 0:  # tpyc: error(/this construct is not yet supported by C\+\+ code generation \(expr.walrus\)/)
             return t[0]
     else:
-        if (t := make_pair(9))[0] > 0:  # tpyc: error(/walrus reassignment of non-value local/)
+        if (t := make_pair(9))[0] > 0:
             return t[0]
     return 0
 

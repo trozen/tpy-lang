@@ -147,7 +147,7 @@ from .checks import (
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
-                      SlotPlacement, _walrus_nodes,
+                      SlotPlacement, StmtEntry, _walrus_nodes,
                       async_payload_slot, result_hosts_temps, yield_slot,
                       _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_FRAME_FACTORY,
@@ -1915,10 +1915,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 frame_setup.append(
                     (decl.name, declared[decl.name], "first_decl"))
 
-    def _walrus_decls(exprs: Iterable[TpyExpr]) -> list[BindingSource]:
+    def _walrus_decls(exprs: Iterable[TpyExpr]
+                      ) -> list[TpyVarDecl | BindingSource]:
         # A walrus is its target's declaration from its value, as on the
-        # sync path.
-        return [BindingSource(w.target, w.value, w.loc)
+        # sync path; a rebinding one is its binding statement.
+        return [w.binding if w.binding is not None
+                else BindingSource(w.target, w.value, w.loc)
                 for e in exprs for w in _walrus_nodes(e)]
 
     def _own_exprs(src: object) -> list[TpyExpr]:
@@ -2050,6 +2052,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             pointer_sources.add(slot)
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
+        entry = lc.stmt_entry
+        lc.stmt_entry = StmtEntry(stmt, leaf=_lower_nested_leaf)
         try:
             leaf = _lower_leaf_inner(stmt)
             stamp_bindings(leaf, _bb_cursor_key(stmt), lc)
@@ -2060,6 +2064,18 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if ex.loc is None:
                 ex.loc = getattr(stmt, "loc", None)
             raise
+        finally:
+            lc.stmt_entry = entry
+
+    def _lower_nested_leaf(stmt: TpyStmt) -> THIRStmt:
+        # A statement inside a leaf's own (a rebinding walrus's binding)
+        # enters its scope as `_lower_stmt` does, then lowers as a leaf.
+        cursor = lc.cursor
+        _bindings.enter(lc, stmt)
+        try:
+            return _lower_leaf(stmt)
+        finally:
+            lc.cursor = cursor
 
     def _lower_leaf_inner(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
@@ -2261,6 +2277,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         return THIRStmtSeq(stmts=(leaf, *post))
 
     def _lower_bb(bb: 'THIRBlock') -> None:
+        # What a block lowers outside its leaves (a branch condition, a
+        # yielded or returned value, an awaited operand) is lowered as a
+        # leaf too: a rebinding walrus's binding there is a frame leaf.
+        entry = lc.stmt_entry
+        lc.stmt_entry = StmtEntry(None, leaf=_lower_nested_leaf)
+        try:
+            _lower_bb_inner(bb)
+        finally:
+            lc.stmt_entry = entry
+
+    def _lower_bb_inner(bb: 'THIRBlock') -> None:
         for slot in bb.stmts:
             stmt = slot.source if isinstance(slot, THIRLeafSlot) else slot
             if _bb_cursor_key(slot) is not None:

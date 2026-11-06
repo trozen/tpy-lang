@@ -3,7 +3,7 @@
 # the closure (CPython captures by reference and sees it). The sections after
 # the first are the spellings of "used after" that are not a plain statement:
 # a sibling `def` written after the closure, one written before it and called
-# after, one in an `if` arm, a lambda, a `nonlocal` rebind, a sibling reached
+# after, one in an `if` arm, a lambda, a sibling reached
 # only through another sibling, and one of two same-named defs in an
 # `if`/`else`. The last two sections are the rule's deliberate
 # over-approximations: a sibling that is never called, and a lambda parameter
@@ -77,21 +77,6 @@ def make_lambda_reader() -> Callable[[], int32]:
     print("lambda:", read())
     return size
 
-def make_nonlocal_sibling() -> Callable[[], int32]:
-    data = [11]
-    # the rebind is also a REASSIGNMENT of the captured name, so the stale
-    # value-capture warning fires beside the cost one
-    def size() -> int32:  # tpyc: warning(/copies local 'data'.*used after closure/) warning(/'data' is reassigned after the closure is created/)
-        return len(data)
-    # `nonlocal` names the enclosing binding instead of shadowing it, so the
-    # rebind under it writes to the very local the closure captured
-    def replace() -> None:  # tpyc: ok
-        nonlocal data
-        data = [12, 13, 14]
-        print("nonlocal:", len(data))
-    replace()
-    return size
-
 def make_transitive_sibling() -> Callable[[], int32]:
     data = [15]
     # `reader` is written before the closure and named by nobody after it --
@@ -163,8 +148,6 @@ def main() -> None:
     print("if_arm_sibling:", arm)
     lam = make_lambda_reader()()
     print("lambda_sibling:", lam)
-    nl = make_nonlocal_sibling()()
-    print("nonlocal_sibling:", nl)
     chain = make_transitive_sibling()()
     print("transitive_sibling:", chain)
     arms = make_two_arms_same_name()()

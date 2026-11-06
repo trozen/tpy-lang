@@ -55,7 +55,7 @@ from ..parse import (
 )
 from ..parse.nodes import (RebindStorage, read_names,
                            value_capture_lambdas, walk_body_stmts,
-                           walk_expr_tree)
+                           walk_expr_tree, walrus_bindings)
 from ..storage_trace import StepKind, is_unbound_field, trace
 from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
@@ -396,11 +396,15 @@ def tuple_name_bindings(ctx: 'SemanticContext', func: TpyFunction,
                         name: str) -> 'list[TpyVarDecl | TpyAssign] | None':
     """Every binding of `name` in a function body, nested blocks included
     and nested defs not; None when something other than a plain name
-    binding binds it (an unpack, a loop, a `with`, a walrus). Read off the
-    syntax alone, so it answers the same whenever it is asked: one walk per
-    function, shared by every name and both layers. An `except` target is
-    no binding of the name -- the handler declares one of its own -- and a
-    match capture writing the binding is refused where it is lowered."""
+    binding binds it (an unpack, a loop, a `with`, a walrus that is not a
+    rebind). Read off the syntax plus one sema decision: a walrus counts as
+    its binding statement once sema has found it rebinds
+    (`TpyNamedExpr.binding`), and the table is dropped and rebuilt when it
+    does, so before that point a walrus answers None for its name. One
+    walk per function otherwise, shared by every name and both layers. An
+    `except` target is no binding of the name -- the handler declares one
+    of its own -- and a match capture writing the binding is refused where
+    it is lowered."""
     table = ctx.tuple_bindings_by_func.get(func)
     if table is None:
         table = _name_bindings(func.body)
@@ -430,8 +434,12 @@ def _name_bindings(body: list[TpyStmt]
             elif not isinstance(s, TpyDelVar):
                 for n in bound_names_of(s):
                     out[n] = None
-            for n in walrus_names_of(s):
-                out[n] = None
+            for w in walrus_bindings(s):
+                if w.binding is not None:
+                    # A rebinding walrus is its binding statement.
+                    add(w.target, w.binding)
+                else:
+                    out[w.target] = None
             for sub in s.sub_bodies():
                 walk(sub)
 
@@ -934,7 +942,6 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
         for rebind in ctx.pending_pointer_tuple_rebinds.pop(fn, ()):
             if rebind.name not in c.names:
                 compat.run_repointed_tuple_check(rebind)
-    _refuse_nonlocal_rebinds(ctx, func, final, defs)
     for _, c in sets:
         _refuse_mixed_bindings(ctx, c)
     _refuse_outliving_captures(ctx, [(fn, c.names) for fn, c in sets], defs)
@@ -961,31 +968,6 @@ def _keeps(name: str, owner: PointerTupleOwner, *,
 def _holds(name: str, owner: PointerTupleOwner, *,
            itself: bool = True) -> str:
     return f"which {_keeps(name, owner, itself=itself)}"
-
-
-def _refuse_nonlocal_rebinds(ctx: 'SemanticContext', func: TpyFunction,
-                             names: 'Mapping[str, PointerTupleOwner]',
-                             defs: 'list[TpyNestedDef]') -> None:
-    """A nested def rebinding a pointer tuple or one of its aliases through
-    `nonlocal` is a binding of the enclosing name that the enclosing body's
-    pointer-tuple facts never see -- the roots its bindings point into, so
-    `q = h.pair` in the closure would aim a mutable pointer tuple into a
-    parameter left `const` -- so it is a located error at the closure's
-    binding."""
-    for nd in defs:
-        for n in sorted(set(nd.nonlocal_names) & set(names)):
-            found: list[TpyStmt] = []
-            walk_body_stmts(
-                nd.func.body, lambda e: None,
-                lambda s: found.append(s)
-                if n in bound_names_of(s) | walrus_names_of(s) else None)
-            if found:
-                ctx.emit_error(
-                    f"'{n}' is rebound here through 'nonlocal', and it "
-                    f"{_keeps(n, names[n])}; "
-                    f"rebinding it from a nested function is not yet "
-                    f"supported here; rebind it in '{func.name}' itself",
-                    found[0])
 
 
 def _root_refusal_message(r: _RootRefusal,
@@ -1968,6 +1950,11 @@ class _Replay:
         if top_is_bind:
             bound = _bound_nodes(self.ctx, e)
         inner = peel_coerce(e)
+        if isinstance(inner, TpyNamedExpr) and inner.binding is not None:
+            # A rebinding walrus is its binding statement.
+            b = inner.binding
+            self.bind(b, b.name, b.init, self.bind_kinds.get(b), st, b)
+            return
         if isinstance(inner, TpyNamedExpr):
             self.bind(stmt, inner.target, inner.value,
                       self.bind_kinds.get(inner), st, inner)

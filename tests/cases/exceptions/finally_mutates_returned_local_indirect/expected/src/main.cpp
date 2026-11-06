@@ -62,42 +62,6 @@ Box via_closure() {
     }
 }
 
-// def via_closure_rebind() -> Own[Box]:
-//     # A closure REBIND keeps the eager capture: the pending return holds the
-//     # pre-rebind copy (nested-def rebinds have no slot model -- BUGS.md).
-//     b = Box()
-//
-//     def swap() -> None:
-//         nonlocal b
-//         b = Box()
-//         b.n = 99
-//
-//     try:
-//         return b
-//     finally:
-//         swap()
-Box via_closure_rebind() {
-    Box b = Box();
-    auto swap = [&b]() {
-        b = Box();
-        b.n = 99;
-    };
-    {
-        bool __fin_ran_3 = false;
-        try {
-            Box __tpy_ret_0 = Box(b);
-            __fin_ran_3 = true;
-            swap();
-            return __tpy_ret_0;
-        } catch (...) {
-            if (!__fin_ran_3) {
-                swap();
-            }
-            throw;
-        }
-    }
-}
-
 // def opt_via_closure(flag: bool) -> Own[Box] | None:
 //     b: Box | None = None
 //     if flag:
@@ -124,14 +88,14 @@ std::optional<Box> opt_via_closure(bool flag) {
         }
     };
     {
-        bool __fin_ran_4 = false;
+        bool __fin_ran_3 = false;
         try {
             auto* __tpy_retp_0 = b;
-            __fin_ran_4 = true;
+            __fin_ran_3 = true;
             bump();
             return ::tpy::ptr_to_optional_move(__tpy_retp_0);
         } catch (...) {
-            if (!__fin_ran_4) {
+            if (!__fin_ran_3) {
                 bump();
             }
             throw;
@@ -160,15 +124,15 @@ Box closure_dels_other() {
         { auto __del_sink = std::move(c); }
     };
     {
-        bool __fin_ran_5 = false;
+        bool __fin_ran_4 = false;
         try {
             auto* __tpy_retp_0 = &(b);
-            __fin_ran_5 = true;
+            __fin_ran_4 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
             drop_c();
             return std::move(*__tpy_retp_0);
         } catch (...) {
-            if (!__fin_ran_5) {
+            if (!__fin_ran_4) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
                 drop_c();
             }
@@ -186,14 +150,14 @@ Box closure_dels_other() {
 Box untouched() {
     Box b = Box();
     {
-        bool __fin_ran_6 = false;
+        bool __fin_ran_5 = false;
         try {
             auto* __tpy_retp_0 = &(b);
-            __fin_ran_6 = true;
+            __fin_ran_5 = true;
             std::cout << "cleanup" << "\n" << ::tpy::check_signals;
             return std::move(*__tpy_retp_0);
         } catch (...) {
-            if (!__fin_ran_6) {
+            if (!__fin_ran_5) {
                 std::cout << "cleanup" << "\n" << ::tpy::check_signals;
             }
             throw;
@@ -213,15 +177,15 @@ Box del_other_local() {
     Box b = Box();
     Box c = Box();
     {
-        bool __fin_ran_7 = false;
+        bool __fin_ran_6 = false;
         try {
             auto* __tpy_retp_0 = &(b);
-            __fin_ran_7 = true;
+            __fin_ran_6 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
             { auto __del_sink = std::move(c); }
             return std::move(*__tpy_retp_0);
         } catch (...) {
-            if (!__fin_ran_7) {
+            if (!__fin_ran_6) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
                 { auto __del_sink = std::move(c); }
             }
@@ -233,7 +197,6 @@ Box del_other_local() {
 // def main() -> None:
 //     print(via_alias().n)
 //     print(via_closure().n)
-//     print(via_closure_rebind().n)
 //     r = opt_via_closure(True)
 //     if r is not None:
 //         print(r.n)
@@ -243,7 +206,6 @@ Box del_other_local() {
 void main() {
     std::cout << ::tpyapp::main::via_alias().n << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::via_closure().n << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::via_closure_rebind().n << "\n" << ::tpy::check_signals;
     std::optional<Box> r = ::tpyapp::main::opt_via_closure(true);
     if ((r.has_value())) {
         std::cout << (*r).n << "\n" << ::tpy::check_signals;

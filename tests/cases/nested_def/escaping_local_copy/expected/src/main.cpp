@@ -124,33 +124,6 @@ std::function<int32_t()> make_lambda_reader() {
     return size;
 }
 
-// def make_nonlocal_sibling() -> Callable[[], int32]:
-//     data = [11]
-//     # the rebind is also a REASSIGNMENT of the captured name, so the stale
-//     # value-capture warning fires beside the cost one
-//     def size() -> int32:  # tpyc: warning(/copies local 'data'.*used after closure/) warning(/'data' is reassigned after the closure is created/)
-//         return len(data)
-//     # `nonlocal` names the enclosing binding instead of shadowing it, so the
-//     # rebind under it writes to the very local the closure captured
-//     def replace() -> None:  # tpyc: ok
-//         nonlocal data
-//         data = [12, 13, 14]
-//         print("nonlocal:", len(data))
-//     replace()
-//     return size
-std::function<int32_t()> make_nonlocal_sibling() {
-    std::vector<int32_t> data = {11};
-    auto size = [data]() -> int32_t {
-        return ::tpy::__len__(data);
-    };
-    auto replace = [&data]() {
-        data = {12, 13, 14};
-        std::cout << "nonlocal:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
-    };
-    replace();
-    return size;
-}
-
 // def make_transitive_sibling() -> Callable[[], int32]:
 //     data = [15]
 //     # `reader` is written before the closure and named by nobody after it --
@@ -275,8 +248,6 @@ std::function<int32_t()> make_lambda_param_shadow() {
 //     print("if_arm_sibling:", arm)
 //     lam = make_lambda_reader()()
 //     print("lambda_sibling:", lam)
-//     nl = make_nonlocal_sibling()()
-//     print("nonlocal_sibling:", nl)
 //     chain = make_transitive_sibling()()
 //     print("transitive_sibling:", chain)
 //     arms = make_two_arms_same_name()()
@@ -296,8 +267,6 @@ void main() {
     std::cout << "if_arm_sibling:" << " " << arm << "\n" << ::tpy::check_signals;
     int32_t lam = (::tpyapp::main::make_lambda_reader())();
     std::cout << "lambda_sibling:" << " " << lam << "\n" << ::tpy::check_signals;
-    int32_t nl = (::tpyapp::main::make_nonlocal_sibling())();
-    std::cout << "nonlocal_sibling:" << " " << nl << "\n" << ::tpy::check_signals;
     int32_t chain = (::tpyapp::main::make_transitive_sibling())();
     std::cout << "transitive_sibling:" << " " << chain << "\n" << ::tpy::check_signals;
     int32_t arms = (::tpyapp::main::make_two_arms_same_name())();

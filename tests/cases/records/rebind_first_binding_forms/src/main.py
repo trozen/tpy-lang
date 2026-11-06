@@ -308,14 +308,18 @@ def own_param(p: Own[P]) -> Own[P]:
 
 
 def nonlocal_rebind() -> None:
-    p = P(1)
+    p: P | None = P(1)
+    q = p
 
     def reset() -> None:
         nonlocal p
-        p = P(2)
+        # Only `None` rebinds a reference local through `nonlocal`
+        # (BUGS.md#nonlocal-reference-rebind-copies); the alias keeps the
+        # object.
+        p = None  # tpyc: ok
 
     reset()
-    print("inverse", "nonlocal", p.n)
+    print("inverse", "nonlocal", p is None, q.n if q is not None else -1)
 
 
 class Pm:

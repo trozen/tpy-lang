@@ -1,0 +1,2 @@
+main.py:17: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:31: error: in function 'use': this construct is not yet supported by C++ code generation (expr.walrus)

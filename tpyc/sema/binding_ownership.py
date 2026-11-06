@@ -67,7 +67,7 @@ from ..typesys import (FunctionInfo, NominalType, OptionalType, OwnType,
                        unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
-from ..value_category import peel_coerce, peel_value_wrappers
+from ..value_category import peel_coerce, peel_value_wrappers, peeled_read
 from .alias_rebind import tuple_name_bindings
 from .elem_paths import ElemPath, bare_tuple, leaf_paths, owned_leaf_paths
 from .iter_loans import IterElementSource, declared_class, iter_element_source
@@ -206,7 +206,8 @@ def step_handover_paths(ctx: 'SemanticContext', iterable: TpyExpr,
             bare, ctx.registry) is IterElementSource.CONTAINER:
         return frozenset()
     if declared is None:
-        e = peel_coerce(iterable)
+        # A rebinding walrus iterates the read of its name.
+        e = peeled_read(iterable)
         if isinstance(e, TpyIfExpr):
             return (step_handover_paths(ctx, e.then_expr, step)
                     & step_handover_paths(ctx, e.else_expr, step))
@@ -709,7 +710,9 @@ class _BodyWalk:
     def expr(self, e: TpyExpr) -> bool:
         self.within[e] = self.loops
         if isinstance(e, TpyNamedExpr):
-            self._bind_site(e, e.target, e.value)
+            # A rebinding walrus is its binding statement's site.
+            self._bind_site(e.binding if e.binding is not None else e,
+                            e.target, e.value)
         if isinstance(e, TpyGeneratorExpression):
             # A function of its own: only its first source is this body's.
             if e.generators:

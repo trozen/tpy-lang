@@ -20,6 +20,7 @@ from .parse import (
     TpyStarUnpack, TpySubscript, TpyUnaryOp, TpyVarargPack,
     is_property_getter_read, past_cast,
 )
+from .parse.nodes import as_name_read
 
 
 class StepKind(Enum):
@@ -129,6 +130,9 @@ def trace(expr: TpyExpr) -> Trace:
         elif is_property_getter_read(expr):
             steps.append(Step(StepKind.GETTER, expr))
             expr = expr.obj
+        elif as_name_read(expr) is not expr:
+            # A rebinding walrus is the read of its name.
+            expr = as_name_read(expr)
         elif isinstance(expr, TpyNamedExpr):
             steps.append(Step(StepKind.WALRUS, expr))
             expr = expr.value

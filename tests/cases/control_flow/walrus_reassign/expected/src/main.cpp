@@ -506,7 +506,7 @@ void main() {
         std::cout << "none" << "\n" << ::tpy::check_signals;
     }
     std::string s = "asd";
-    if ((!(s = (::tpy::str_concat(s, "!"))).empty())) {
+    if ((!(s += "!", s).empty())) {
         std::cout << s << "\n" << ::tpy::check_signals;
     }
     std::cout << s << "\n" << ::tpy::check_signals;

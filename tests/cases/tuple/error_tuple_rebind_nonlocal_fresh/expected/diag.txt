@@ -1,0 +1,1 @@
+main.py:24: error: rebinding nonlocal 'q' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it

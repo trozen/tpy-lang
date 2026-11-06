@@ -8463,6 +8463,10 @@ def _select_operands_bare(recv: TpyExpr, locals_: dict[str, TpyType],
     if isinstance(recv, TpyIfExpr):
         return (_select_operands_bare(recv.then_expr, locals_, pointers)
                 and _select_operands_bare(recv.else_expr, locals_, pointers))
+    if isinstance(recv, TpyNamedExpr) and recv.binding is not None:
+        # A rebinding walrus's value is the read of its name, which the name
+        # read's own lowering spells (through its pointer, too).
+        return True
     if isinstance(recv, TpyNamedExpr):
         return _select_operands_bare(recv.value, locals_, pointers)
     if isinstance(recv, TpyName):

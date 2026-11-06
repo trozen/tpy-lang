@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 Box via_alias();
 // def via_closure() -> Own[Box]:
 Box via_closure();
-// def via_closure_rebind() -> Own[Box]:
-Box via_closure_rebind();
 // def opt_via_closure(flag: bool) -> Own[Box] | None:
 std::optional<Box> opt_via_closure(bool flag);
 // def closure_dels_other() -> Own[Box]:

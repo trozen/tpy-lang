@@ -32,22 +32,6 @@ def via_closure() -> Own[Box]:
         bump()
 
 
-def via_closure_rebind() -> Own[Box]:
-    # A closure REBIND keeps the eager capture: the pending return holds the
-    # pre-rebind copy (nested-def rebinds have no slot model -- BUGS.md).
-    b = Box()
-
-    def swap() -> None:
-        nonlocal b
-        b = Box()
-        b.n = 99
-
-    try:
-        return b
-    finally:
-        swap()
-
-
 def opt_via_closure(flag: bool) -> Own[Box] | None:
     b: Box | None = None
     if flag:
@@ -101,7 +85,6 @@ def del_other_local() -> Own[Box]:
 def main() -> None:
     print(via_alias().n)
     print(via_closure().n)
-    print(via_closure_rebind().n)
     r = opt_via_closure(True)
     if r is not None:
         print(r.n)

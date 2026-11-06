@@ -1438,14 +1438,23 @@ def _rvalue_reseat(out: TextIO, indent: str, name: str, val_cpp: str,
     out.write(f"{indent}{write};\n")
 
 
-def binding_write_parts(stmt: 'THIRPtrLocalRebind | THIRAssign',
-                        state: '_EmitState') -> list[str]:
+def binding_write_parts(
+        stmt: 'THIRPtrLocalRebind | THIRAssign | THIRStrAppend',
+        state: '_EmitState') -> list[str]:
     """The write of a binding (`p = src`, re-pointing, refilling a slot) as
     the expressions it evaluates in order: one statement each in a body, the
     comma-joined operands of a walrus that is the same write
     (`THIRWalrus.write`). Its value renders, with any temporaries it
     registers, before the caller flushes them. Only a write that declares a
     local of its own (`declares_local`) has no expression form."""
+    if isinstance(stmt, THIRStrAppend):
+        # `t += v` -- the str in-place append (the `+=` statement and the
+        # `x = x + y` peephole share it); a str-FIELD append writes its
+        # lowered lvalue (`recv.field += v`).
+        tgt = (_emit_expr(stmt.target_expr, state)
+               if stmt.target_expr is not None
+               else escape_cpp_name(stmt.target))
+        return [f"{tgt} += {_emit_expr(stmt.value, state)}"]
     if isinstance(stmt, THIRPtrLocalRebind):
         name = escape_cpp_name(stmt.name)
         if stmt.kind is PtrSlotKind.OPT_NONE:
@@ -1755,7 +1764,14 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # The plain assignment's write, as the operands of a comma
         # expression, then the value read back out.
         parts = binding_write_parts(e.write, state)
-        parts.append(f"*{e.cpp_name}" if e.tail == "deref" else e.cpp_name)
+        if e.write_is_read and len(parts) == 1:
+            # The assignment expression already evaluates to the read.
+            return f"({parts[0]})"
+        if e.read is not None:
+            parts.append(_emit_expr(e.read, state))
+        else:
+            parts.append(f"*{e.cpp_name}" if e.tail == "deref"
+                         else e.cpp_name)
         return "(" + ", ".join(parts) + ")"
     if isinstance(e, THIRWalrus):
         # The per-class walrus render (see the node doc); the first binding
@@ -4317,7 +4333,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}{stmt.cpp_type} {name}{{&({init_cpp})}};\n")
-    elif isinstance(stmt, (THIRPtrLocalRebind, THIRAssign)):
+    elif isinstance(stmt, (THIRPtrLocalRebind, THIRAssign, THIRStrAppend)):
         parts = binding_write_parts(stmt, state)
         state.temps.flush(out, indent)
         for part in parts:
@@ -4358,16 +4374,6 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         state.temps.flush(out, indent)
         out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
                   f"({recv_cpp}, {slice_arg}, {value_cpp});\n")
-    elif isinstance(stmt, THIRStrAppend):
-        # `t += v;` -- the str in-place append (the `+=` statement and the
-        # `x = x + y` peephole share the emit). A str-FIELD append renders its
-        # lowered lvalue (`recv.field += v;`).
-        tgt = (_emit_expr(stmt.target_expr, state)
-               if stmt.target_expr is not None
-               else escape_cpp_name(stmt.target))
-        value_cpp = _emit_expr(stmt.value, state)
-        state.temps.flush(out, indent)
-        out.write(f"{indent}{tgt} += {value_cpp};\n")
     elif isinstance(stmt, THIRFrameSlotWrite):
         # `name.emplace(value);` -- a resumable frame_slot local write (R1c).
         # Render the value first so its arg temps flush before the line

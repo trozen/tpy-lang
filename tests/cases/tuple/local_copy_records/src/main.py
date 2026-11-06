@@ -61,17 +61,18 @@ class Box:
         print("method", t[0].v, q[0].v)
 
 
-# closure: a nonlocal rebind to a literal of a borrowed name and a live
-# local; the local's elements are warned copies, the borrowed name aliases
+# closure: a nested def's binding of a literal of a borrowed name and a live
+# local; the local's elements are warned copies, the borrowed name aliases (a
+# `nonlocal` rebind of a reference local is refused,
+# BUGS.md#nonlocal-reference-rebind-copies)
 def closure(b: A) -> None:
     t = make_mixed(b)
     u = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
-    def inner() -> None:
-        nonlocal u
-        u = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
-    inner()
-    b.v = 11
-    print("closure", u[0].v)
+    def inner() -> int32:
+        w = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
+        b.v = 11
+        return w[0].v
+    print("closure", inner(), u[0].v)
 
 
 # loop: a local rebound to a copy() each iteration

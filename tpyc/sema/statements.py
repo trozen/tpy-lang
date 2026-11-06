@@ -86,9 +86,9 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import (
-    NarrowFacts, is_property_getter_read,
+    NarrowFacts, as_name_read, is_property_getter_read,
     SourceLocation, VarLinkage, op_spelling, name_path, DeferredCapture,
-    method_call_through,
+    method_call_through, walrus_bindings, written_names,
 )
 from .arg_binding import source_view
 from .calls import class_callee, filled_default
@@ -125,7 +125,8 @@ from .receiver_calls import (
     record_implicit_call, record_receiver_edges,
 )
 from .aug_hold import aug_hold_parts
-from .loop_frames import decide_copies_var, for_live_region, worth_const_ref
+from .loop_frames import (binding_value, decide_copies_var, for_live_region,
+                          worth_const_ref)
 from .binding_ownership import step_handover_paths
 from .iter_loans import (
     IterElementSource, iter_element_source, record_iteration_pull,
@@ -175,6 +176,7 @@ from .context import (
     SitedKey,
 )
 from ..value_category import (
+    peeled_read,
     frame_factory_callee,
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     owned_payload_spelling,
@@ -217,6 +219,23 @@ from ..type_def_registry import (
 
 # Replaces a recorded type by a function of its value at that point.
 _Rewrite = Callable[[Callable[[TpyType], TpyType]], None]
+
+
+def _nonlocal_rebinds(stmt: TpyStmt, name: str) -> bool:
+    """Whether `stmt` binds `name` to anything but the `None` literal: any
+    binder of it (`written_names`) but an augmented assignment's own target
+    update, which updates the object, and `del`, which unbinds -- a walrus
+    in either still binds."""
+    walruses = [w for w in walrus_bindings(stmt) if w.target == name]
+    binders: list[TpyExpr | TpyStmt] = list(walruses)
+    if (not isinstance(stmt, (TpyAugAssign, TpyDelVar, TpyNestedDef))
+            and name in written_names(stmt, walrus=False)):
+        if not isinstance(stmt, (TpyVarDecl, TpyAssign)):
+            return True
+        binders.append(stmt)
+    return any(not isinstance(peel_coerce(v), TpyNoneLiteral)
+               if (v := binding_value(b)) is not None else True
+               for b in binders)
 
 
 def _converts(value: TpyExpr, written: TpyExpr) -> bool:
@@ -1538,6 +1557,9 @@ class StatementAnalyzer:
             written = stmt.value
             stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                   coercion_ctx=CoercionContext.RETURN, is_return=True)
+            # A rebinding walrus is returned as the read of its name: the
+            # value side below classifies that read.
+            value = as_name_read(stmt.value)
             self._mark_finally_deferred_return(stmt, written, ret_type,
                                                expected)
             # Track return-type context for pending list/dict/set deduction
@@ -1558,7 +1580,7 @@ class StatementAnalyzer:
                     stmt)
             # A returned generator or coroutine keeps what its frame
             # borrows, whatever slot the return fills.
-            ret_call = peel_coerce(stmt.value)
+            ret_call = peel_coerce(value)
             for src in frame_operand_keys(ret_call, self.ctx,
                                           self.ctx.declared_type):
                 sited = self.ctx.sited_here(src)
@@ -1575,7 +1597,7 @@ class StatementAnalyzer:
                     and isinstance(unwrap_readonly(own_expected.inner), OwnType)
                     and own_tuple_target(own_expected.inner) is None):
                 own_expected = unwrap_readonly(own_expected.inner)
-            returned_name = peel_coerce(stmt.value)
+            returned_name = peeled_read(value)
             # A closure's return of a tuple it captured is decided per leaf
             # (`check_name_borrow_into_own`), never as a whole. Only a return
             # would move a whole name out; an `Own` argument copies a
@@ -1589,9 +1611,9 @@ class StatementAnalyzer:
                 # A result owning a leaf is an owning sink, `Own` spelled
                 # or not (an Optional of an `Own`-element tuple).
                 self.compat.register_owned_result(
-                    erased_source(stmt.value), own_expected, TupleSink.RETURN)
+                    erased_source(value), own_expected, TupleSink.RETURN)
             if isinstance(own_expected, OwnType) and not captured_tuple:
-                own_source = erased_source(stmt.value)
+                own_source = erased_source(value)
                 if self.compat.is_copy_call(own_source):
                     self._warn_unnecessary_return_copy(own_source)
                 else:
@@ -1600,8 +1622,8 @@ class StatementAnalyzer:
             # `-> X | None` returns its non-None value exactly as `-> X` does.
             tuple_slot = (expected.inner if isinstance(expected, OptionalType)
                           else expected)
-            returned = peel_coerce(stmt.value)
-            self.compat.check_tuple_result(stmt.value, expected,
+            returned = peeled_read(value)
+            self.compat.check_tuple_result(value, expected,
                                            TupleSink.RETURN)
             tuple_target = own_tuple_target(tuple_slot)
             if (isinstance(returned, TpyTupleLiteral)
@@ -1618,31 +1640,32 @@ class StatementAnalyzer:
             # whole-value copy, at an `Own[tuple[...]]` slot too.
             if (not isinstance(own_expected, OwnType)
                     or own_tuple_target(own_expected) is not None):
-                self._warn_live_name_return(stmt.value, own_expected)
+                self._warn_live_name_return(value, own_expected)
             # Returning an ephemeral generator/iterator borrow lets it escape
             # its iteration step -- reject with the copy-out fix (before the
             # generic dangling check so the specific message wins).
-            self._reject_ephemeral_escape(stmt.value, "return")
+            self._reject_ephemeral_escape(value, "return")
             # Check for dangling reference (returning local/temporary as reference)
-            self.compat.check_dangling_reference(stmt.value, expected, stmt.loc, ret_type)
+            self.compat.check_dangling_reference(value, expected, stmt.loc, ret_type)
             # Returning a non-value type by reference takes the source's address.
             # Mark both loop vars and params so they keep T& (not const T&/const T*).
-            if isinstance(stmt.value, TpyName):
-                mark_roots(self.ctx, [StorageKey.of_name(stmt.value.name)],
+            if isinstance(value, TpyName):
+                mark_roots(self.ctx, [StorageKey.of_name(value.name)],
                            MarkRequest(params=False, loop_vars=True))
                 # Escape tracking: returning a nested def marks it as escaping
-                if stmt.value.name in self.ctx.func.nested_def_nodes:
+                if value.name in self.ctx.func.nested_def_nodes:
                     self.ctx.reject_resumable_nested_def_escape(
-                        stmt.value.name, stmt)
-                    self.ctx.mark_nested_def_escape(stmt.value.name)
+                        value.name, stmt)
+                    self.ctx.mark_nested_def_escape(value.name)
             # A returned borrow -- a reference, a borrowing view, a borrow
             # tuple's element pointers -- records its provenance and, unless
             # the slot is readonly or a view, keeps its roots writable.
             if expected is not None:
-                self.ctx.escape_marks(stmt.value, expected,
+                self.ctx.escape_marks(value, expected,
                                       position=EscapePosition.RETURN)
 
-    def _mark_finally_deferred_return(self, stmt: TpyReturn, value: TpyExpr,
+    def _mark_finally_deferred_return(self, stmt: TpyReturn,
+                                      written: TpyExpr,
                                       ret_type: TpyType,
                                       expected: TpyType) -> None:
         """`return <name>` under a non-suspending finally: for eligible
@@ -1669,9 +1692,12 @@ class StatementAnalyzer:
         tuple. Declared union locals, and a local no member of an Optional
         / union result holds, keep the eager capture.
         """
+        # A rebinding walrus returns the read of its name.
+        value = as_name_read(written)
         # A returned Own param is consumed by the return whatever capture
         # takes it (a finally that rebinds it keeps an eager one).
         for _, leaf in tuple_literal_leaves(value):
+            leaf = as_name_read(leaf)
             if isinstance(leaf, TpyName):
                 self.ctx.mark_own_param_consumed(leaf.name)
                 # The last-use mark does not see a finally's reads through an
@@ -1684,7 +1710,7 @@ class StatementAnalyzer:
             return
         # The capture moves the local itself out after the chain, so a name
         # the return converts (other than an identity coercion) stays eager.
-        if not isinstance(value, TpyName) or _converts(stmt.value, value):
+        if not isinstance(value, TpyName) or _converts(stmt.value, written):
             return
         if self._mark_finally_deferred_tuple_name(stmt, value, expected):
             return
@@ -1852,7 +1878,9 @@ class StatementAnalyzer:
         if not isinstance(exp, TupleType):
             return
         paths: list[tuple[int, ...]] = []
-        leaves_all = tuple_literal_leaves(value)
+        # A rebinding walrus member is the read of its name.
+        leaves_all = [(p, as_name_read(leaf))
+                      for p, leaf in tuple_literal_leaves(value)]
         # A name the tuple holds twice cannot be one pending alias per slot:
         # it keeps the eager capture, where the explicit-copy rule applies
         # exactly as it does without a finally.
@@ -1885,7 +1913,7 @@ class StatementAnalyzer:
                 paths.append(path)
         if not paths:
             return
-        leaves = dict(tuple_literal_leaves(value))
+        leaves = dict(leaves_all)
         for path in paths:
             restored = leaves[path] not in self.ctx.all_last_uses
             self.ctx.all_last_uses.add(leaves[path])
@@ -2007,7 +2035,8 @@ class StatementAnalyzer:
             # The declared element type is the contract of a returned element:
             # only a `readonly[...]` element hands out a const borrow.
             elem_declared_readonly = isinstance(unwrap_ref_type(et), ReadonlyType)
-            elem = literal.elements[i]
+            # A rebinding walrus element is the read of its name.
+            elem = as_name_read(literal.elements[i])
 
             # Value types, Own[T], and TypeParamRef are always VALUE.
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
@@ -4705,6 +4734,40 @@ class StatementAnalyzer:
                     f"No binding for nonlocal '{name}' found in enclosing scope",
                     stmt)
             self.ctx.func.current_nonlocal_names.add(name)
+            self._refuse_nonlocal_reference_rebinds(name)
+
+    def _refuse_nonlocal_reference_rebinds(self, name: str) -> None:
+        """Every binding of `nonlocal` reference local `name` in this body --
+        whatever binds it (`written_names`: `=`, a walrus, an unpack, a
+        `for` / `with` / `except` target, a `match` capture): the nested
+        body cannot re-point the enclosing variable, so the write would
+        replace the object it refers to (or copy into it) rather than rebind
+        the name (BUGS.md#nonlocal-reference-rebind-copies,
+        BUGS.md#nonlocal-rebind-overwrites-in-place). Binding `None` replaces
+        no object -- the null pointer is written, an alias keeps the old one
+        -- so it compiles. An augmented assignment updates the object (its
+        fallback rebind is `_check_fallback_rebinds_owner`'s) and `del`
+        unbinds (`_nonlocal_rebinds`). Recorded, not raised, so the body's
+        other refusals report too."""
+        fs = self.ctx.func
+        t = fs.current_scope.bound_type(name)
+        if t is None or not _local_points_into_source(
+                unwrap_own(unwrap_readonly(t))):
+            return
+        fn = fs.current_function
+        if fn is None:
+            return
+
+        def on_stmt(s: TpyStmt) -> None:
+            if not _nonlocal_rebinds(s, name):
+                return
+            self.ctx.emit_error(
+                f"rebinding nonlocal '{name}' is not supported yet: the "
+                f"write would replace the existing object rather than "
+                f"rebind the name; rebind it in the function that binds it",
+                s)
+
+        walk_body_stmts(fn.body, lambda e: None, on_stmt)
 
     def _prescan_and_analyze_body(
         self,
@@ -5822,9 +5885,9 @@ class StatementAnalyzer:
         imethod = (builtin_modules.AUGOP_TO_IMETHOD.get(stmt.op)
                    or "__i" + builtin_modules.BINOP_TO_METHOD[stmt.op][2:])
         value = expression_spelling(stmt.value) or "..."
-        # Through `nonlocal`, the plain rebind `w = w + v` writes into the
-        # borrowed object too (BUGS.md#nonlocal-rebind-overwrites-in-place),
-        # so steer to a fresh local instead.
+        # Through `nonlocal`, the plain rebind `w = w + v` of a reference
+        # local is refused too (`_reject_nonlocal_reference_rebind`), so
+        # steer to a new name instead.
         hint = (f"bind the result to a new name, e.g. "
                 f"'{name}2 = {name} {op} {value}'" if is_nonlocal
                 else f"write '{name} = {name} {op} {value}'")

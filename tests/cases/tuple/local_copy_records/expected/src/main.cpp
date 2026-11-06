@@ -62,26 +62,27 @@ void unpack(const std::tuple<const A*, int32_t>& t) {
     std::cout << "unpack" << " " << std::get<0>(t)->v << " " << a.v << " " << n << "\n" << ::tpy::check_signals;
 }
 
-// # closure: a nonlocal rebind to a literal of a borrowed name and a live
-// # local; the local's elements are warned copies, the borrowed name aliases
+// # closure: a nested def's binding of a literal of a borrowed name and a live
+// # local; the local's elements are warned copies, the borrowed name aliases (a
+// # `nonlocal` rebind of a reference local is refused,
+// # BUGS.md#nonlocal-reference-rebind-copies)
 // def closure(b: A) -> None:
 //     t = make_mixed(b)
 //     u = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
-//     def inner() -> None:
-//         nonlocal u
-//         u = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
-//     inner()
-//     b.v = 11
-//     print("closure", u[0].v)
+//     def inner() -> int32:
+//         w = (b, t)  # tpyc: warning(/tuple element 1.0/) warning(/tuple element 1.1/)
+//         b.v = 11
+//         return w[0].v
+//     print("closure", inner(), u[0].v)
 void closure(A& b) {
     auto t = ::tpyapp::main::make_mixed(b);
     auto u = std::tuple<A*, std::tuple<A, A>>{&(b), std::tuple<A, A>{std::get<0>(t), (*std::get<1>(t))}};
-    auto inner = [&b, &t, &u]() {
-        u = std::tuple<A*, std::tuple<A, A>>{&(b), std::tuple<A, A>{std::get<0>(t), (*std::get<1>(t))}};
+    auto inner = [&b, &t]() -> int32_t {
+        auto w = std::tuple<A*, std::tuple<A, A>>{&(b), std::tuple<A, A>{std::get<0>(t), (*std::get<1>(t))}};
+        b.v = 11;
+        return std::get<0>(w)->v;
     };
-    inner();
-    b.v = 11;
-    std::cout << "closure" << " " << std::get<0>(u)->v << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << inner() << " " << std::get<0>(u)->v << "\n" << ::tpy::check_signals;
 }
 
 // # loop: a local rebound to a copy() each iteration

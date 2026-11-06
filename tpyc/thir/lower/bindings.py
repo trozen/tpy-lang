@@ -3242,6 +3242,11 @@ class _Planner:
         if isinstance(s, TpyTupleUnpack) and not s.is_loop_head:
             node = node.child(self._unpack_promotions(s, node))
         self.table.scope_at[s] = node
+        for w in walrus_bindings(s):
+            if w.binding is not None:
+                # A rebinding walrus is its binding statement, written at
+                # its statement's scope.
+                self.table.scope_at[w.binding] = node
         for e in _statement_level_exprs(s):
             self.table.stmt_expr_scope[e] = node
             self.expr(e, node)
@@ -3889,7 +3894,9 @@ def _non_fresh_names(func: TpyFunction, an: 'SemanticAnalyzer'
         elif not isinstance(s, TpyDelVar):
             out.update(written_names(s, walrus=False))
         for w in walrus_bindings(s):
-            if not fresh(w, w.value):
+            # A rebinding walrus's bind kind is its binding statement's.
+            if not fresh(w.binding if w.binding is not None else w,
+                         w.value):
                 out.add(w.target)
 
     walk_body_stmts(func.body, lambda e: None, on_stmt)

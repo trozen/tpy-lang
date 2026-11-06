@@ -8,8 +8,6 @@ if_arm: 2
 if_arm_sibling: 1
 lambda: 3
 lambda_sibling: 3
-nonlocal: 3
-nonlocal_sibling: 1
 transitive: 2
 transitive_sibling: 1
 arms: 2

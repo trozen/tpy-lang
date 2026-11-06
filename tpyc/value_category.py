@@ -47,6 +47,7 @@ from .parse import (
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
     SubscriptDunder, is_property_getter_read, const_tuple_index, past_cast,
 )
+from .parse.nodes import as_name_read
 from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_owned_in_coro_frame, is_str_type,
@@ -1304,6 +1305,12 @@ def peel_coerce(e: TpyExpr) -> TpyExpr:
         e = under
 
 
+def peeled_read(e: TpyExpr) -> TpyExpr:
+    """`peel_coerce(e)`, a rebinding walrus there being the read of its name
+    (`as_name_read`): the value a reader classifying `e` sees."""
+    return as_name_read(peel_coerce(e))
+
+
 def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
                 const_node: Callable[[TpyExpr, bool], bool],
                 const_referent: Callable[[TpyExpr], bool] = lambda _h: False) -> bool:
@@ -2156,11 +2163,15 @@ def peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
     """Unwrap coercions and walrus wrappers to the value expression a
     return/yield actually hands out -- `return (t := items[0])` hands out
     the subscript read, so provenance checks must see through the binding.
+    A walrus rebinding a bound name hands out the read of the name its
+    binding statement wrote (`TpyNamedExpr.read`).
     """
     while True:
         if isinstance(expr, TpyCoerce):
             expr = expr.expr
         elif isinstance(expr, TpyNamedExpr):
+            if as_name_read(expr) is not expr:
+                return as_name_read(expr)
             expr = expr.value
         elif past_cast(expr) is not expr:
             expr = past_cast(expr)

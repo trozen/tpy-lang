@@ -1,0 +1,1 @@
+main.py:20: error: rebinding nonlocal 'a' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it

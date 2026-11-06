@@ -4217,13 +4217,13 @@ def row6(h: H) -> int32:
         return 1
     return inner()
 def row7(b: P) -> int32:
-    r = b
+    r: P | None = P(b.v)
     q = P(80)
     def inner() -> None:
         nonlocal r
-        r = q
+        r = None
     inner()
-    return r.v + b.v
+    return q.v + b.v
 def row8(h: H) -> None:
     another: A | B | None = A(1)
     h.u = another
@@ -4405,9 +4405,6 @@ def test_blocker_rows_are_recorded() -> None:
         30: None,                     # `lambda q: q` at a borrow result
         22: ("TpyName", P.WARNED),    # captured `Own[P | None]` returned
                                          # (BUGS.md#nested-def-captured-own-return-copies)
-        46: ("TpyName", P.PASS),        # `nonlocal` rebind: the binding
-                                         # aliases `q`, owning nothing
-                                         # (BUGS.md#nonlocal-rebind-overwrites-in-place)
         73: ("TpyName", P.WARNED),    # a tuple local into `Any`
         131: ("TpyName", P.MOVE),        # a `@dynamic` local
     }

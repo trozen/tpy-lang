@@ -1227,6 +1227,22 @@ class TpyNamedExpr(TpyExpr):
     """Walrus operator: (x := expr)."""
     target: str
     value: TpyExpr
+    # A walrus rebinding a name already bound is its binding statement
+    # `target = value` (`walrus_binding_statement`), built by sema once.
+    binding: 'TpyVarDecl | None' = field(default=None, repr=False,
+                                         compare=False)
+    # The read of `target` the walrus evaluates to after its binding
+    # statement (`walrus_binding_read`).
+    read: 'TpyName | None' = field(default=None, repr=False, compare=False)
+    # Stamped by liveness: its statement reads `target` more than once, so
+    # the binding is not the only reader of the old value in that
+    # full expression.
+    target_read_elsewhere: bool = field(default=False, repr=False,
+                                        compare=False)
+    # Stamped by liveness: names live where the walrus binds (after its
+    # statement, and on entry to it for a compound one's body reads).
+    live_names_after: 'frozenset[Holder] | None' = field(
+        default=None, repr=False, compare=False)
 
     def children(self) -> list[TpyExpr]:
         return [self.value]
@@ -1325,6 +1341,12 @@ class TpyStmt:
         """Return direct child expressions for generic tree walking."""
         return []
 
+    def surely_evaluated_exprs(self) -> list[TpyExpr]:
+        """Those of `exprs()` evaluated whenever the statement runs: all of
+        them, but where a statement kind says otherwise (an `assert`, a
+        `match`)."""
+        return self.exprs()
+
     def sub_bodies(self) -> list[list[TpyStmt]]:
         """Return sub-statement bodies for recursive walking."""
         return []
@@ -1377,6 +1399,9 @@ class TpyVarDecl(TpyStmt):
     # sites the alias-rebind storage pass decides (see RebindStorage); read
     # by the lowering and the frame layout.
     rebind_storage: RebindStorage | None = field(default=None, repr=False)
+    # The rebinding walrus this statement is the binding of, if any.
+    walrus: 'TpyNamedExpr | None' = field(default=None, repr=False,
+                                          compare=False, kw_only=True)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.init] if self.init else []
@@ -1569,6 +1594,10 @@ class TpyAssert(TpyStmt):
     # Set by sema: the value its test always has (`sema.dead_arms`), None
     # when it varies; the arm it rules out is neither analyzed nor kept.
     decided: bool | None = None
+
+    def surely_evaluated_exprs(self) -> list[TpyExpr]:
+        # The message runs only when the test fails.
+        return [self.condition]
 
     def exprs(self) -> list[TpyExpr]:
         result = [self.condition]
@@ -2039,6 +2068,10 @@ class TpyMatch(TpyStmt):
     # fact the frame (which suspends on an awaited such subject ahead of the
     # match) and the match lowering read, so the await runs exactly once.
     subject_effect_only: bool = False
+
+    def surely_evaluated_exprs(self) -> list[TpyExpr]:
+        # A guard runs only when its pattern matches.
+        return [self.subject]
 
     def exprs(self) -> list[TpyExpr]:
         result: list[TpyExpr] = [self.subject]
@@ -3121,6 +3154,55 @@ def written_names(stmt: TpyStmt, *, match_binds: bool = True,
     return out
 
 
+def is_conditional_region(e: TpyExpr) -> bool:
+    """`e` runs some of its parts conditionally, repeatedly or later: a
+    ternary, `and` / `or`, a chained comparison, a comprehension, a
+    generator expression or a lambda."""
+    return isinstance(e, (TpyIfExpr, TpyListComprehension,
+                          TpySetComprehension, TpyDictComprehension,
+                          TpyGeneratorExpression, TpyLambda,
+                          TpyChainedCompare)) or (
+        isinstance(e, TpyBinOp) and e.op in ("&&", "||"))
+
+
+def surely_evaluated_children(e: TpyExpr) -> list[TpyExpr]:
+    """The children of `e` evaluated whenever `e` is: every child, but of a
+    conditional region (`is_conditional_region`) only the part that runs
+    first -- a ternary's condition, the left operand of `and` / `or`, a
+    chained comparison's first link, a comprehension's first iterable, and
+    nothing of a lambda; of a membership test over a tuple literal, the
+    needle and the first element (the C++ test compares the elements in
+    turn, BUGS.md#tuple-literal-membership-needle-and-order)."""
+    if (isinstance(e, TpyBinOp) and e.op in ("in", "not in")
+            and isinstance(e.right, TpyTupleLiteral)):
+        return [e.left] + e.right.elements[:1]
+    if not is_conditional_region(e):
+        return e.children()
+    if isinstance(e, TpyIfExpr):
+        return [e.condition]
+    if isinstance(e, TpyBinOp):
+        return [e.left]
+    if isinstance(e, TpyChainedCompare):
+        return [e.left] + e.comparators[:1]
+    if isinstance(e, (TpyListComprehension, TpySetComprehension,
+                      TpyDictComprehension, TpyGeneratorExpression)):
+        return [e.generators[0].iterable] if e.generators else []
+    return []
+
+
+def sure_walrus_targets(exprs: list[TpyExpr]) -> set[str]:
+    """The names a walrus writes whenever `exprs` are evaluated: one reached
+    from them through `surely_evaluated_children` alone."""
+    out: set[str] = set()
+    stack: list[TpyExpr] = list(exprs)
+    while stack:
+        e = stack.pop()
+        if isinstance(e, TpyNamedExpr):
+            out.add(e.target)
+        stack.extend(surely_evaluated_children(e))
+    return out
+
+
 def walrus_bindings(stmt: TpyStmt) -> list['TpyNamedExpr']:
     """Every walrus node in `stmt`'s OWN expressions, outermost first.
 
@@ -3363,3 +3445,28 @@ def unshare(roots: object) -> None:
         return v
 
     rewrite_tree(roots, own, skip=frozenset(("subscript_callee",)))
+
+
+def walrus_binding_statement(expr: TpyNamedExpr) -> TpyVarDecl:
+    """The binding statement `target = value` a rebinding walrus carries,
+    built once per walrus node."""
+    if expr.binding is None:
+        expr.binding = TpyVarDecl(name=expr.target, type=None,
+                                  init=expr.value, loc=expr.loc, walrus=expr)
+    return expr.binding
+
+
+def walrus_binding_read(expr: TpyNamedExpr) -> TpyName:
+    """The read of the name a rebinding walrus evaluates to, after its
+    binding statement, built once per walrus node."""
+    if expr.read is None:
+        expr.read = TpyName(name=expr.target, loc=expr.loc)
+    return expr.read
+
+
+def as_name_read(expr: TpyExpr) -> TpyExpr:
+    """`expr`, or the read of its name a rebinding walrus evaluates to:
+    what a reader classifying a value sees of it."""
+    if isinstance(expr, TpyNamedExpr) and expr.binding is not None:
+        return walrus_binding_read(expr)
+    return expr

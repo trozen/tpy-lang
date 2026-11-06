@@ -199,7 +199,7 @@ def nonlocal_param(v: Box, t: tuple[Box, Box]) -> None:
 
     def reset() -> None:
         nonlocal t
-        t = (Box(60), Box(61))
+        t = (Box(60), Box(61))  # tpyc: error(/rebinding nonlocal 't' is not supported yet/)
 
     reset()
     print(p[0].n, p[1].n)
@@ -214,7 +214,7 @@ def nonlocal_root(v: Box) -> None:
         p = make_mixed(2, v)
         # nonlocal-root: 'w' is the enclosing body's local, not 'inner''s.
         p = w.bp  # tpyc: error(/'p' keeps objects of its own in storage of 'inner', so a binding of it that owns nothing may point only into a parameter's or self's storage for now; here it points into 'w', a name 'inner' captures; bind this value to a name of its own/)
-        w = HB(4)
+        w = HB(4)  # tpyc: error(/rebinding nonlocal 'w' is not supported yet/)
         return p[0].n
 
     print(inner())

@@ -25,7 +25,8 @@ from ..parse import (
     TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyAssign,
 )
 from ..value_category import peel_coerce
-from ..parse.nodes import TpyFunction, TpyGeneratorExpression, walk_expr_tree
+from ..parse.nodes import (TpyFunction, TpyGeneratorExpression, as_name_read,
+                           walk_expr_tree)
 from .literal_utils import (
     literal_value_from_expr, fixed_int_literal_value_from_expr,
 )
@@ -157,6 +158,8 @@ class NarrowingTracker:
 
     def declared_type_for_expr(self, expr: TpyExpr) -> TpyType | None:
         """Get declared type for identity-capable expressions without flow narrowing."""
+        # A rebinding walrus's value is a read of its name.
+        expr = as_name_read(expr)
         if isinstance(expr, TpyName):
             return self.declared_type_for_name(expr.name)
         if isinstance(expr, TpyFieldAccess):
@@ -438,7 +441,9 @@ class NarrowingTracker:
         out: set[str] = set()
         for i, operand in enumerate(operands):
             operand = peel_coerce(operand)
-            if (isinstance(operand, TpyNamedExpr) and not any(
+            # A declaring walrus; a rebinding one is a read of its name.
+            if (isinstance(operand, TpyNamedExpr) and operand.binding is None
+                    and not any(
                     self._condition_contains_call(later)
                     for later in operands[i + 1:])):
                 out.add(operand.target)

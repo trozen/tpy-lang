@@ -236,16 +236,16 @@ def del_tuple_elem(p: tuple[Box, int32], q: Box) -> None:
     print("del_tuple_elem", len(p[0].xs), len(q.xs))
 
 
-# del: rebound from a nested def through nonlocal -- a parity section only: a
-# nonlocal reference local is held by value today
+# del: rebound from a nested def through nonlocal -- a parity section only:
+# a reference local rebinds through nonlocal only to None
 # (BUGS.md#nonlocal-reference-rebind-copies), so it does not reach the
 # pointer arm
 def del_nonlocal(q: Box) -> None:
-    a = Box(1)
+    a: Box | None = Box(1)
 
     def g() -> None:
         nonlocal a
-        a = Box(3)
+        a = None
     g()
     del a
     print("del_nonlocal", len(q.xs))

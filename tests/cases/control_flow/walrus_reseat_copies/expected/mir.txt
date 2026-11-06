@@ -1,0 +1,13 @@
+main::__tpy_init: uncovered (module initialization)
+main::size@20:0: covered (storage: no_proof_required), summary: known
+main::take@24:0: covered (storage: no_proof_required), summary: known
+main::borrowed_sink@29:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::old_alias@38:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::guard_alias@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::guard_list@65:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::tuple_borrowed@78:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::tuple_finally_borrowed@85:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::tuple_append_live@94:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@103:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@16:4: covered (storage: no_proof_required), summary: known

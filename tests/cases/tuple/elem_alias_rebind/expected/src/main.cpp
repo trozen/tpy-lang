@@ -298,26 +298,26 @@ void del_tuple_elem(const std::tuple<Box*, int32_t>& p, Box& q) {
     std::cout << "del_tuple_elem" << " " << ::tpy::__len__(std::get<0>(p)->xs) << " " << ::tpy::__len__(q.xs) << "\n" << ::tpy::check_signals;
 }
 
-// # del: rebound from a nested def through nonlocal -- a parity section only: a
-// # nonlocal reference local is held by value today
+// # del: rebound from a nested def through nonlocal -- a parity section only:
+// # a reference local rebinds through nonlocal only to None
 // # (BUGS.md#nonlocal-reference-rebind-copies), so it does not reach the
 // # pointer arm
 // def del_nonlocal(q: Box) -> None:
-//     a = Box(1)
+//     a: Box | None = Box(1)
 //
 //     def g() -> None:
 //         nonlocal a
-//         a = Box(3)
+//         a = None
 //     g()
 //     del a
 //     print("del_nonlocal", len(q.xs))
 void del_nonlocal(const Box& q) {
-    Box a = Box(1);
+    Box __slot_1 = Box(1);
+    Box* a = &__slot_1;
     auto g = [&a]() {
-        a = Box(3);
+        a = nullptr;
     };
     g();
-    { auto __del_sink = std::move(a); }
     std::cout << "del_nonlocal" << " " << ::tpy::__len__(q.xs) << "\n" << ::tpy::check_signals;
 }
 

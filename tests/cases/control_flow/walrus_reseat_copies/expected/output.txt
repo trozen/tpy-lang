@@ -1,0 +1,8 @@
+borrowed_sink 1 50
+old_alias 70 7
+guard_alias 6 1 1
+guard_list 2 1
+tuple_borrowed 1
+tuple_borrowed 3 31
+tuple_finally_borrowed 99 3
+tuple_append_live 2 50

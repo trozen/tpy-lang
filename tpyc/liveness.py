@@ -30,7 +30,9 @@ from .parse import (
     TpyGeneratorExpression,
 )
 from .parse.nodes import (comp_clause_children, iter_capture_bindings,
-                          stmts_have_any_suspension,
+                          stmts_have_any_suspension, sure_walrus_targets,
+                          walrus_binding_read,
+                          walrus_bindings,
                           written_names)
 from .prescan import local_names_of
 
@@ -530,7 +532,24 @@ def _hide_new_aliases(names: Iterable[str | None], value: TpyExpr,
 
 
 def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
-    """Analyze a single statement for last uses."""
+    """Analyze a single statement for last uses; a walrus in its own
+    expressions binds where what is live after it or on entry to it may be
+    read again."""
+    walruses = walrus_bindings(stmt) if w.mark else ()
+    after = set(live) if walruses else set()
+    _analyze_stmt_kind(stmt, live, w)
+    if walruses:
+        # A name the statement reads may be read after the walrus binds,
+        # in the same statement (`check(y := x, (x := A(2)).n, y)`).
+        reads = [n for e in stmt.exprs() for n in _collect_reads_expr(e)]
+        same_stmt = _read_names(reads)
+        for wal in walruses:
+            wal.live_names_after = _holders(after | live | same_stmt)
+            wal.target_read_elsewhere = sum(
+                n.name == wal.target for n in reads) > 1
+
+
+def _analyze_stmt_kind(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
 
     if isinstance(stmt, TpyIf):
         _analyze_if(stmt, live, w)
@@ -651,7 +670,8 @@ def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
         # in one pass (a statement is one C++ full-expression for sequencing).
         # Routing through exprs() means a future read-bearing statement is
         # covered automatically rather than silently dropping its reads.
-        _process_reads_multi(list(stmt.exprs()), live, w)
+        _process_reads_multi(list(stmt.exprs()), live, w,
+                             stmt.surely_evaluated_exprs())
 
 
 def _jump(stmt: TpyBreak | TpyContinue, live: set[Holder],
@@ -718,7 +738,12 @@ def _analyze_match(stmt: TpyMatch, live: set[Holder], w: _Walk) -> None:
         _analyze_stmts_backward(case.body, arm_live, w)
         arm_live |= fall
         if case.guard is not None:
-            _process_reads(case.guard, arm_live, w)
+            # A guard hands over to the next arm when it fails, so what
+            # the match surely evaluates decides whether its walrus ran.
+            sure = stmt.surely_evaluated_exprs()
+            _process_reads(case.guard, arm_live, w,
+                           sure=[case.guard] if any(
+                               case.guard is x for x in sure) else [])
         if w.mark:
             case.live_names_after = _holders(arm_live)
         # The pattern binds its captures before the guard runs; a pattern
@@ -1031,6 +1056,10 @@ def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
                 # A returned tuple literal's name members are the same
                 # pending-return aliases, one per element.
                 for _, leaf in tuple_literal_leaves(stmt.value):
+                    if isinstance(leaf, TpyNamedExpr):
+                        # A walrus returns the read of its name (sema
+                        # analyzes it where the walrus rebinds).
+                        leaf = walrus_binding_read(leaf)
                     if not isinstance(leaf, TpyName):
                         continue
                     if leaf.name in rebound:
@@ -1287,13 +1316,16 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
     live.discard(name)
 
 
-def _process_reads(expr: TpyExpr, live: set[Holder], w: _Walk) -> None:
-    """Collect name reads in an expression, mark last uses, update live set."""
-    _process_reads_multi([expr], live, w)
+def _process_reads(expr: TpyExpr, live: set[Holder], w: _Walk,
+                   sure: 'list[TpyExpr] | None' = None) -> None:
+    """Collect name reads in an expression, mark last uses, update live set
+    (`sure`: as `_process_reads_multi`'s)."""
+    _process_reads_multi([expr], live, w, sure)
 
 
 def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
-                         w: _Walk) -> None:
+                         w: _Walk,
+                         sure: 'list[TpyExpr] | None' = None) -> None:
     """Like _process_reads, but over all of one statement's expressions at
     once. The multi-occurrence suppression below must see every read the
     statement emits into a single C++ full-expression -- splitting value and
@@ -1305,19 +1337,30 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
         for expr in exprs:
             live.update(_read_names(_collect_reads_expr(expr)))
         return
-    walrus_defs: set[str] = set()
+    walruses: list[TpyNamedExpr] = []
     reads: list[TpyName] = []
     repeated = IdentitySet()
     for expr in exprs:
-        reads.extend(_collect_reads_expr(expr, walrus_defs, repeated))
+        reads.extend(_collect_reads_expr(expr, None, repeated, walruses))
     if w.carry_loops:
         for node in reads:
             if any(LoopCarry(loop, node.name) in live
                    for loop in w.carry_loops):
                 repeated.add(node)
-    w.repeated_reads |= repeated
-    if not reads and not walrus_defs:
+    if not reads and not walruses:
         return
+    # A walrus evaluates to a read of its target, after its write: that read
+    # is classified as every other (sema analyzes it where the walrus
+    # rebinds), but keeps nothing live before the statement.
+    implied: list[TpyName] = []
+    for wal in walruses:
+        read = walrus_binding_read(wal)
+        implied.append(read)
+        if wal in repeated:
+            repeated.add(read)
+    w.repeated_reads |= repeated
+    written = reads
+    reads = reads + implied
 
     # Count occurrences per variable name in this expression.
     # If a variable appears multiple times, don't mark any as last use
@@ -1344,13 +1387,16 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
             _note_same_stmt_aliases(node, name_counts, w)
     _mark_distinct_field_reads(exprs, reads, name_counts, repeated, live, w)
 
-    live.update(_read_names(reads))
-
-    # Walrus targets are definitions. A pending `del` survives one: liveness
-    # runs before analysis, so it cannot tell whether a walrus surely runs.
-    for name in walrus_defs:
+    # The walrus targets the statement surely writes (`sure_walrus_targets`
+    # over `sure`, the expressions it always evaluates) are definitions, and
+    # the statement's reads are live before it whichever side of a walrus
+    # they sit on (`(x := x + "!")` reads the old `x`). A pending `del`
+    # survives one: liveness runs before analysis, so it cannot tell
+    # whether a walrus surely runs.
+    for name in sure_walrus_targets(exprs if sure is None else sure):
         live.discard(name)
         _kill_carry(name, live)
+    live.update(_read_names(written))
 
 
 def _read_names(reads: list[TpyName]) -> set[str]:
@@ -1407,17 +1453,19 @@ def _note_same_stmt_aliases(node: TpyName, name_counts: dict[str, int],
 
 def _collect_reads_expr(expr: TpyExpr,
                         walrus_defs: set[str] | None = None,
-                        repeat_reads: IdentitySet | None = None
+                        repeat_reads: IdentitySet | None = None,
+                        walruses: list[TpyNamedExpr] | None = None,
                         ) -> list[TpyName]:
     """Collect TpyName nodes read (not defined) in an expression.
 
     Uses TpyExpr.children() for iterative traversal.
     If walrus_defs is provided, also records walrus (:=) target names into it
     (those are definitions, not reads, and are excluded from the returned list).
+    `walruses`, when given, collects every walrus outside a lambda.
     A lambda's free-name reads are reads here too (`_lambda_free_reads`).
-    `repeat_reads`, when given, records the reads that may run more than
-    once per evaluation of `expr`, so none of them is a last use: a lambda's
-    free-name reads, and a comprehension's reads outside its first
+    `repeat_reads`, when given, records the reads (and walruses) that may run
+    more than once per evaluation of `expr`, so none of them is a last use: a
+    lambda's free-name reads, and a comprehension's reads outside its first
     iterable (the element, the filters and the later iterables run once per
     item) of any name but the clause variables bound once per that item.
     """
@@ -1433,8 +1481,13 @@ def _collect_reads_expr(expr: TpyExpr,
                     and repeat_reads is not None):
                 repeat_reads.add(node)
             continue
-        if isinstance(node, TpyNamedExpr) and walrus_defs is not None:
-            walrus_defs.add(node.target)
+        if isinstance(node, TpyNamedExpr):
+            if walrus_defs is not None:
+                walrus_defs.add(node.target)
+            if walruses is not None:
+                walruses.append(node)
+                if bound is not None and repeat_reads is not None:
+                    repeat_reads.add(node)
         if isinstance(node, TpyLambda):
             inner = _lambda_free_reads(node)
             result.extend(inner)

@@ -1,0 +1,13 @@
+part_positions.py:15: warning: 'prev' will not keep the object it was given -- 'x' is rebound here and both names share its storage; bind 'prev' with copy(x), or bind the new value to a name of its own
+part_sinks_returns.py:13: warning: copies A into owned storage; use copy() to make this explicit
+part_sinks_returns.py:15: warning: copies A into owned storage; use copy() to make this explicit
+part_sinks_returns.py:38: warning: copies A into owned storage; use copy() to make this explicit ('x' is bound to existing storage at line 38)
+part_sinks_returns.py:46: warning: copies A into owned storage; use copy() to make this explicit ('x' is bound to existing storage at line 46)
+part_truthy_cond.py:12: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'x')
+part_truthy_cond.py:19: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'm')
+part_truthy_cond.py:42: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_truthy_cond.py:45: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_truthy_cond.py:48: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_truthy_cond.py:57: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_truthy_cond.py:83: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_truthy_cond.py:97: warning: copies list[int32] into owned storage; use copy() to make this explicit

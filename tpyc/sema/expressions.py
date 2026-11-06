@@ -40,8 +40,8 @@ from ..typesys import (
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import (
-    GENEXPR_FUNC_PREFIX, NoneUse, NoneUseKind, op_spelling, name_path,
-    walk_expr_tree,
+    GENEXPR_FUNC_PREFIX, NoneUse, NoneUseKind, TpyVarDecl, op_spelling,
+    name_path, walk_expr_tree, walrus_binding_read, walrus_binding_statement,
 )
 from ..parse import (
     const_tuple_index,
@@ -147,6 +147,7 @@ if TYPE_CHECKING:
     from .operators import OperatorResolver
     from .protocols import ProtocolChecker
     from .compatibility import TypeCompatibility
+    from .statements import StatementAnalyzer
     from .calls import CallAnalyzer
     from .methods import MethodAnalyzer
     from .scope_tracker import ScopeTracker
@@ -693,6 +694,8 @@ class ExpressionAnalyzer:
         # Set after construction, as the statement analyzer is.
         self.pend: PendingNums
         self.init: InitTracker
+        # A rebinding walrus analyzes its binding statement here.
+        self.stmts: StatementAnalyzer
         # The expressions whose analysis is open, innermost last: what a
         # forced pending read is part of (`describe_pending_use`).
         self._expr_stack: list[TpyExpr] = []
@@ -5014,6 +5017,9 @@ class ExpressionAnalyzer:
     def _analyze_named_expr(self, expr: TpyNamedExpr) -> TpyType:
         """Analyze walrus operator: (x := expr)."""
         name = expr.target
+        binding = self._rebinding_statement(expr)
+        if binding is not None:
+            return self._analyze_rebinding_walrus(expr, binding)
         # A store into a local whose bindings decide its type takes a value
         # whose type is decided with it -- inside a comprehension too, whose
         # walrus binds the enclosing body's local (PEP 572).
@@ -5088,6 +5094,8 @@ class ExpressionAnalyzer:
         # the function's scope chain, so without this the binding below would
         # define a function-local shadow and the write would be lost.
         if is_global:
+            # A comprehension's or generator expression's write of a
+            # `global` (a bound one in the body is its binding statement).
             return self._analyze_global_walrus(expr, name, value_type)
 
         if (existing is not None and self._stepping is expr
@@ -5113,22 +5121,9 @@ class ExpressionAnalyzer:
             resolved = existing
             result_type = existing
         elif existing is not None:
-            # Reassignment via walrus. Non-value (and pointer-repr-tuple) locals
-            # use a storage form (T* / std::optional<T> / borrow slot) the walrus
-            # binding path can't rebind in place without the var-decl rebind
-            # machinery, so reject them rather than emit a conflicting
-            # redeclaration; value-typed locals route through the shared
-            # reassignment-compat check (view tracking + coerce).
-            # An owning for or with target (`Own[T]`) is the reference local
-            # it owns.
-            inner_existing = unwrap_own(unwrap_readonly(existing))
-            borrow_tuple_existing = (isinstance(inner_existing, TupleType)
-                                     and inner_existing.has_pointer_repr_element())
-            if not inner_existing.is_value_type() or borrow_tuple_existing:
-                raise self.ctx.error(
-                    f"walrus reassignment of non-value local '{name}' is not "
-                    f"supported yet; use a separate assignment statement",
-                    expr)
+            # A re-analysis of the walrus that introduced the binding, or a
+            # comprehension's walrus over the enclosing body's value local
+            # (a reference one is refused above): checked as a reassignment.
             var_type, expr.value = self.compat.coerce_reassignment(
                 name, existing, value_type, expr.value, expr)
             self.compat.deduction.join_rebind(
@@ -5196,16 +5191,6 @@ class ExpressionAnalyzer:
             from .statements import global_rebind_message
             raise self.ctx.error(
                 global_rebind_message(name, inner_global), expr)
-        # Same exclusion the walrus local-reassign arm makes: a borrow-form
-        # tuple needs the var-decl path's storage lift, which the inline
-        # assign has no place to put.
-        if (isinstance(inner_global, TupleType)
-                and (inner_global.has_pointer_repr_element()
-                     or inner_global.has_own_element())):
-            raise self.ctx.error(
-                f"walrus reassignment of global '{name}' of type "
-                f"'{collapse_tuple_own_elements(inner_global)}' is not "
-                f"supported yet; use a separate assignment statement", expr)
         _, expr.value = self.compat.coerce_reassignment(
             name, global_type, value_type, expr.value, expr)
         # Mirror the var-decl global arm: the global scope carries the write,
@@ -5227,6 +5212,51 @@ class ExpressionAnalyzer:
         bt.retarget_storage_borrows(name)
         bt.remove_borrower(name)
         return global_type
+
+    def _rebinding_statement(self, expr: TpyNamedExpr) -> TpyVarDecl | None:
+        """The binding statement a walrus whose target is already bound here
+        carries (`TpyNamedExpr.binding`), built once; None for a walrus that
+        binds its name first (or introduced the binding, re-analyzed)."""
+        if expr.binding is not None:
+            return expr.binding
+        name = expr.target
+        if (self.ctx.in_comprehension or self._walrus_binds_outside(name)
+                or expr in self.ctx.func.bind_kinds):
+            return None
+        if name in self.ctx.func.global_declarations:
+            bound = self.ctx.global_scope.lookup(name)
+        else:
+            bound = self.ctx.func.current_scope.bound_type(name)
+            if bound is not None and self.compat.write_binds_local(name):
+                bound = None
+        if bound is None:
+            return None
+        # The one place a walrus is decided to rebind. A tuple binding table
+        # of the body built before now did not see this binding.
+        self.ctx.tuple_bindings_by_func.pop(self.ctx.func.current_function,
+                                            None)
+        return walrus_binding_statement(expr)
+
+    def _analyze_rebinding_walrus(self, expr: TpyNamedExpr,
+                                  binding: TpyVarDecl) -> TpyType:
+        """A walrus rebinding a bound name is its binding statement `name =
+        value` (the statement's checks, conversion and records), evaluated
+        for its value: the name as the statement bound it."""
+        binding.init = expr.value
+        bt = self.ctx.func.borrow_tracker
+        enclosing = bt.current_stmt
+        # Liveness stamped the walrus; the binding's loans are filed under
+        # it.
+        binding.live_names_after = expr.live_names_after
+        bt.current_stmt = binding
+        try:
+            self.stmts._analyze_var_decl(binding)
+        finally:
+            bt.current_stmt = enclosing
+        expr.value = binding.init
+        # Its value is a read of the name the statement bound (which
+        # liveness classified as every name read).
+        return self.analyze_expr(walrus_binding_read(expr))
 
     def _analyze_if_expr(
         self, expr: TpyIfExpr, type_hint: SlotHint | None = None,

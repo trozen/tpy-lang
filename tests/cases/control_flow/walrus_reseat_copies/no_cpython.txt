@@ -1,0 +1,2 @@
+Pins the warned copies a rebinding walrus makes at an owning sink, as its
+`=` twin does: the output shows the copy (CPython aliases the object).

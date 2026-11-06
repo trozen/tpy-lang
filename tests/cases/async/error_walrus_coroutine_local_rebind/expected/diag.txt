@@ -1,0 +1,2 @@
+main.py:13: warning: rebinding 'x' drops the previous coroutine without running it
+main.py:13: error: in function 'run': this construct is not yet supported by C++ code generation (expr.walrus)

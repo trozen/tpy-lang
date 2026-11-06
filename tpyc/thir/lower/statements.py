@@ -18,6 +18,7 @@ from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
+    as_name_read,
     body_writes_name as _body_writes_name,
     is_none_return,
     written_names as _written_names,
@@ -283,6 +284,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _value_tuple_nested, _var_decl_type)
 from .context import (
     FrameLocalClass,
+    StmtEntry,
     lends_elements,
     async_payload_slot,
     result_hosts_temps,
@@ -372,6 +374,7 @@ from .expressions import (
     _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
     lower_copy_construct, _lower_container_elem,
     _lower_expr, _to_opt_ptr, lower_print_sink, _lower_field_source,
+    lower_through_read,
     _lower_lambda, _strip_slot_leaf_deref,
     _lower_truthy, _cond_mixed_walrus_temps, _lower_borrow_tuple_literal,
     _lower_generic_tuple_literal, _lower_ru_literal, _lower_tuple_literal,
@@ -5124,6 +5127,12 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                                  and lc.resumable_leaf_mode))
     cursor = lc.cursor
     _bindings.enter(lc, stmt)
+    entry = lc.stmt_entry
+    if entry is None or entry.stmt is not stmt:
+        # A frame leaf that delegates here keeps its own entry.
+        lc.stmt_entry = StmtEntry(stmt, in_branch=in_branch,
+                                  branch_decls_ok=branch_decls_ok,
+                                  loop_depth=loop_depth)
     try:
         try:
             result = _lower_stmt_dispatch(stmt, scope)
@@ -5148,6 +5157,7 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
         return result
     finally:
         lc.cursor = cursor
+        lc.stmt_entry = entry
 
 
 def _declared_record(name: 'str | None', key: object,
@@ -6574,6 +6584,8 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
         ok = len(v.elements) == len(ret_ost.element_types)
         if ok:
             for i, sub in enumerate(v.elements):
+                # A rebinding walrus member is the read of its name.
+                sub = as_name_read(sub)
                 mslot = _unwrap_own(ret_ost.element_types[i])
                 mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     mslot)))
@@ -6606,20 +6618,22 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
             note_detail("return.tuple_source")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         _witness("ret.own_storage_tuple")
+        def own_member(m: TpyExpr, i: int) -> THIRExpr:
+            if own_element_copy_member(
+                    m, own_element_payload(ret_ost.element_types[i]),
+                    analyzer) is not None:
+                return _lower_copy_special(
+                    m, "copy", _unwrap_own(ret_ost.element_types[i]), lc,
+                    declared, getattr(m, "loc", None))
+            return _lower_container_elem(
+                m, _unwrap_own(ret_ost.element_types[i]), lc, declared,
+                tuple_elem=True)
+
         return THIRTupleLiteral(
             result_type=ret_ost,
             elements=tuple(
-                _lower_copy_special(
-                    v.elements[i], "copy", _unwrap_own(
-                        ret_ost.element_types[i]), lc, declared,
-                    getattr(v.elements[i], "loc", None))
-                if own_element_copy_member(
-                    v.elements[i], own_element_payload(
-                        ret_ost.element_types[i]),
-                    analyzer) is not None
-                else _lower_container_elem(
-                    v.elements[i], _unwrap_own(ret_ost.element_types[i]),
-                    lc, declared, tuple_elem=True)
+                lower_through_read(v.elements[i], lc, declared,
+                                   lambda m, i=i: own_member(m, i))
                 for i in range(len(v.elements))),
             loc=loc)
     ret_sgt = _generic_value_tuple_return(rdecl, analyzer)
@@ -8227,6 +8241,11 @@ def _finally_deferred_recipe(
     if captured is None:
         return None
     base, indirect = captured
+    src = _peel_tpy_coerce(ret.value) if ret.value is not None else None
+    if src is not None and as_name_read(src) is not src:
+        # A rebinding walrus's write runs before the capture takes the name
+        # it reads.
+        base = _lower_expr(src, lc, declared).with_read(base)
     if shape is DeferredCapture.POINTER_OPTIONAL:
         # The capture is the local's pointer itself.
         if not indirect:
@@ -8315,7 +8334,8 @@ def _finally_deferred_tuple_recipe(
     order, and the tuple is rebuilt after it. None when the lowered literal
     is not a shape the parts can be read off."""
     src = _peel_tpy_coerce(ret.value)
-    leaf_names = {path: _peel_tpy_coerce(leaf)
+    # A rebinding walrus member is the read of its name.
+    leaf_names = {path: as_name_read(_peel_tpy_coerce(leaf))
                   for path, leaf in tuple_literal_leaves(src)}
     deferred = set(ret.finally_deferred_leaves)
     if () in deferred:
@@ -8370,7 +8390,9 @@ def _finally_deferred_tuple_recipe(
                 return None
             elif p in deferred:
                 inner = elem.value if isinstance(elem, THIRMove) else elem
-                if (not isinstance(inner, (THIRName, THIRSelf))
+                read = inner.as_read
+                read = read.value if isinstance(read, THIRMove) else read
+                if (not isinstance(read, (THIRName, THIRSelf))
                         or wraps[i] is not None):
                     return None
                 captured = _deferred_capture_base(leaf_names[p], lc,
@@ -8378,6 +8400,9 @@ def _finally_deferred_tuple_recipe(
                 if captured is None:
                     return None
                 base, indirect = captured
+                # A walrus member's write runs before the capture takes the
+                # name it reads, as the scalar's does.
+                base = inner.with_read(base)
                 parts.append(DeferredTuplePart(
                     kind=DeferredPartKind.CAPTURE, expr=base,
                     indirect=indirect))
@@ -9872,17 +9897,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                else stmt.target.name
                if isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName)
                else None)
-    if (rebound is not None and stmt.rebind_storage is not None
-            and rebound in lc.prescan.nonlocal_names
-            and (lc.binding(rebound).pointer
-                 or any(analyzer.ctx.tuple_elem_owned.get(stmt) or ()))):
-        # A `nonlocal` rebind of the enclosing function's POINTER-local, or
-        # of a tuple whose new value owns an element (the enclosing pointer
-        # tuple's element): an OWN slot would be declared in the lambda and
-        # die with it while the captured pointer lives on; the enclosing
-        # prologue is out of reach. A plain-storage enclosing local keeps
-        # its in-place assign (the nonlocal-rebind entry in BUGS.md).
-        raise ThirUnsupported("nested_def.rebind_slot_hoist")
     if (rebound is not None
             and (rebound in lc.prescan.nonlocal_names
                  or _written_ptr_tuple(rebound, lc) is None)):
@@ -10580,6 +10594,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # concat-assign renders there.
                 and stmt.name not in lc.prescan.global_seeded
                 and stmt.name not in lc.prescan.owned_viewfam_params
+                # A walrus's binding is not its full expression's only
+                # reader of the old value: in place, the other read sees
+                # the append.
+                and not (stmt.walrus is not None
+                         and stmt.walrus.target_read_elsewhere)
                 and _owned_str_append_target(vtype, analyzer)):
             rhs = _str_self_append_rhs(stmt.name, stmt.init)
             if rhs is not None:

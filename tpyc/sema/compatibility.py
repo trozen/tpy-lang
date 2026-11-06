@@ -42,6 +42,7 @@ from ..typesys import (
 from .. import qnames
 from ..identity_map import IdentityMap
 from ..value_category import (
+    peeled_read,
     async_result_aliases, call_operands, owned_payload_spelling,
     CONTAINER_LITERAL_NODES, getitem_call_of, is_iterator_protocol,
     is_rvalue_source,
@@ -81,7 +82,8 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyIf, TpyWhile, TpyMatch, SourceLocation, TpySlice
 )
 from .literal_utils import literal_admits
-from ..parse.nodes import program_names, walk_body_stmts, walk_expr_tree
+from ..parse.nodes import (as_name_read, program_names, walk_body_stmts,
+                           walk_expr_tree)
 from .dyn_erasure import dyn_erasure_coercion
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_fit, callable_value_fit, CallableFit, CallableUpcast
 from ..modules import get_span_return_type
@@ -1288,6 +1290,9 @@ class TypeCompatibility:
     ) -> Optional[Coercion]:
         """`check_type_compatible`, its writes made only where the slot
         step commits (`SemanticContext.slot_step_commits`)."""
+        # A rebinding walrus reaches its slot as the read of its name.
+        source_expr = (as_name_read(source_expr)
+                       if source_expr is not None else None)
         # Phase 20 Stage 5a: reject the slicing shape -- storing a borrow
         # of a polymorphic class into an owned slot of the same type would
         # silently drop the dynamic type. Fires before _check_compat so the
@@ -6445,7 +6450,9 @@ class TypeCompatibility:
         `Own`-marked one, an unmarked reference at a field or a container)
         the storage rule. A nested literal's members are checked at
         `nested_member_sink`; an `Own`-marked tuple member's other sources
-        lend per leaf. Returns whether the member copies."""
+        lend per leaf. Returns whether the member copies. A rebinding
+        walrus member is the read of its name, as a scalar's is."""
+        m = as_name_read(m)
         owned = unwrap_optional_own(et) is not None
         own: 'tuple[str, str] | None' = None
         self.note_place_read(m)
@@ -6916,6 +6923,8 @@ class TypeCompatibility:
         source, before or after it; otherwise the first registration -- the
         outermost slot, before the element slots it recurses into --
         stands."""
+        # A rebinding walrus is registered as the read of its name.
+        source = as_name_read(source) if source is not None else None
         if (slot is not None
                 and sink in (TupleSink.FIELD, TupleSink.CONTAINER, TupleSink.ANY)
                 and not isinstance(unwrap_ref_type(slot), OwnType)):
@@ -7002,7 +7011,7 @@ class TypeCompatibility:
         target = own_tuple_target(slot)
         if target is None:
             return
-        read = peel_coerce(value)
+        read = peeled_read(value)
         if isinstance(read, TpyTupleLiteral):
             self.check_owned_tuple_sink(read, slot, "owned storage", read,
                                         sink=sink, pname=pname)
@@ -7399,13 +7408,14 @@ class TypeCompatibility:
         path whose root dies at the read (`path_moves`) moves, borrowed;
         any other borrowed leaf the slot
         owns is copied, WARNED or HEDGED by its `payload` type
-        (`copy_permission`)."""
+        (`copy_permission`). A rebinding walrus is the read of its name."""
+        m = as_name_read(m)
         lends = self.member_lends(m)
         if not slot_owns:
             return TupleLeaf(lends, False, LeafPermission.PASS)
         if self.is_copy_call(m) or self._explicit_select(m):
             return TupleLeaf(True, True, LeafPermission.EXPLICIT)
-        inner = peel_coerce(m)
+        inner = peeled_read(m)
         copies = TupleLeaf(True, True, self.copy_permission(payload),
                            in_place=self.copies_in_place(inner))
         # A name read moves where its binding owns it and the read consumes

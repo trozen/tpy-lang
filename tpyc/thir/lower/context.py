@@ -12,7 +12,8 @@ from typing import NamedTuple
 from ..frame import FrameCaptureKind, THIRResumableFrame, classify_param_kind
 from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
-                            TpyNamedExpr, TpyTupleUnpack, TpyVarDecl,
+                            TpyNamedExpr, TpyStmt, TpyTupleUnpack,
+                            TpyVarDecl,
                             TpyWith,
                             iter_capture_bindings)
 from ...identity_map import IdentityMap
@@ -1926,7 +1927,8 @@ _SHADOWED_NARROW_FACTS = ("narrowed", "subject_union", "union_layouts",
 # nested def or lambda that rebinds the name.
 #
 # Shadowed by `shadow_scope` itself rather than through a table.
-_SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self")
+_SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self",
+                        "stmt_entry")
 _LC_NOT_NAME_KEYED = (
     "analyzer", "func", "frame", "prescan", "render_type", "render_type_stored",
     "render_resolve", "render_concept", "record_name", "self_cpp",
@@ -2023,6 +2025,18 @@ def names_with(binding: Callable[[str], BindingRepr], fact: str
     return NameFacts(lambda n: bool(getattr(binding(n), fact)))
 
 
+@dataclass(frozen=True)
+class StmtEntry:
+    """How a statement was entered: its `_lower_stmt` scope flags, or the
+    resumable frame leaf that lowers it (`stmt` None: a frame block's
+    position outside its leaves)."""
+    stmt: TpyStmt | None
+    in_branch: bool = False
+    branch_decls_ok: bool = False
+    loop_depth: int = 0
+    leaf: 'Callable[[TpyStmt], THIRStmt] | None' = None
+
+
 class _LowerCtx:
     """Per-function lowering state threaded through `_lower_stmt`.
 
@@ -2058,7 +2072,8 @@ class _LowerCtx:
                  "member_self", "_alias_taken_memo",
                  "table", "cursor", "shadow_report", "move_region",
                  "storage_slots", "lowered_capture", "signature",
-                 "staged_results", "prelowered", "temp_read_ids")
+                 "staged_results", "prelowered", "temp_read_ids",
+                 "stmt_entry")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -2181,6 +2196,9 @@ class _LowerCtx:
         # its first line (see `_SLOT_HOIST_STMTS`); off everywhere else, so
         # an unclassified position cannot place one after its use.
         self.slot_hoist_ok = False
+        # How the statement enclosing the current position was entered; a
+        # rebinding walrus's binding statement lowers the same way.
+        self.stmt_entry: StmtEntry | None = None
         # True anywhere inside a container-element subtree, sticky through
         # nesting: the Optional ternary carve-out is only CORRECT at the
         # immediate element (a pointer-form arm deeper in renders ill-formed
@@ -2534,6 +2552,7 @@ class _LowerCtx:
         saved_narrow = self.narrow
         saved_receiver = self.self_receiver
         saved_member_self = self.member_self
+        saved_stmt_entry = self.stmt_entry
         for a, v in zip(_SHADOWED_LC_STATE, saved_lc):
             setattr(self, a, _without_names(v, names))
         # Prescan facts are rebound, never mutated in place, once the walk
@@ -2552,6 +2571,8 @@ class _LowerCtx:
             self.self_receiver = None
         if "self" in names:
             self.member_self = False
+        # The inner scope's statements are its own (a lambda body has none).
+        self.stmt_entry = None
         try:
             yield (None if declared is None
                    else _without_names(declared, names))
@@ -2564,6 +2585,7 @@ class _LowerCtx:
             self.narrow = saved_narrow
             self.self_receiver = saved_receiver
             self.member_self = saved_member_self
+            self.stmt_entry = saved_stmt_entry
 
 
 def _walrus_nodes(expr):
@@ -2618,7 +2640,12 @@ def binding_source_sites(body, *, all_binders: bool = False,
                                             stmt)
         for e in stmt.exprs():
             for w in _walrus_nodes(e):
-                yield BindingSourceSite(w.target, w.value, stmt, True, w)
+                if w.binding is not None:
+                    # A rebinding walrus is its binding statement.
+                    yield BindingSourceSite(w.target, w.binding.init, stmt,
+                                            False, w.binding)
+                else:
+                    yield BindingSourceSite(w.target, w.value, stmt, True, w)
         if all_binders and isinstance(stmt, TpyMatch):
             for case in stmt.cases:
                 for cap in iter_capture_bindings(case.pattern):

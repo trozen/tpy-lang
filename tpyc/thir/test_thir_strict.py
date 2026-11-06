@@ -112,23 +112,23 @@ for i in range(2):
         print(v.x)
 '''
 
-# A walrus in a generator's yield value: the resumable-frame fold.
+# A walrus rebinding a pointer tuple in a generator's yield value: the
+# resumable-frame fold (BUGS.md#walrus-pointer-tuple-rebind-rejects).
 RESUMABLE_SRC = '''from typing import Iterator
 from tpy import int32
 
 
-def make_pair(i: int32) -> tuple[int32, int32]:
-    return (i, i * 2)
+class Box:
+    def __init__(self, n: int32) -> None:
+        self.n = n
 
 
 def pairs() -> Iterator[int32]:
     yield -1
-    i = 1
-    t = make_pair(0)
-    while i < 3:
-        yield (t := make_pair(i))[0]
-        print(t[1])
-        i += 1
+    t = (1, Box(1))
+    t = (2, Box(2))
+    yield (t := (3, Box(4)))[0]
+    print(t[1].n)
 
 
 def main() -> None:
@@ -257,7 +257,7 @@ _FRAME_PINS = [
         RESUMABLE_SRC,
         "in function 'pairs': this construct is not yet supported by C++ code "
         "generation (expr.walrus)",
-        9, "resumable:expr.walrus", id="resumable"),
+        10, "resumable:expr.walrus", id="resumable"),
 ]
 
 

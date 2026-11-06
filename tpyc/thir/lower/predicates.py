@@ -12,6 +12,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from ...parse.nodes import (
+    as_name_read,
     const_tuple_index,
     NarrowFacts,
     ResultForm,
@@ -8433,7 +8434,10 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
     right_none = isinstance(e.right, TpyNoneLiteral)
     if left_none == right_none:  # both or neither
         return None
-    operand = e.right if left_none else e.left
+    given = e.right if left_none else e.left
+    # A rebinding walrus is classified as the read of its name it evaluates
+    # to; the walrus itself is the operand.
+    operand = as_name_read(given)
     if isinstance(operand, TpyNamedExpr):
         # A walrus None-test operand: a ptr-Optional target wraps the
         # pointer compare (`((t = optional_to_ptr(...)) != nullptr)`), a
@@ -8446,7 +8450,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                 # same way -- has_value is repr-blind, so owned and view
                 # inners share the arm.
                 or _value_opt_view(wt, analyzer) is not None):
-            return operand
+            return given
         return None
     if is_property_getter_read(operand):
         # A @property read subject (`w.node is None`): the getter hands back
@@ -8463,7 +8467,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                if pt is not None else None)
         if (isinstance(ptu, OptionalType)
                 and not is_protocol_type(unwrap_readonly(ptu.inner))):
-            return operand
+            return given
         return None
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
             # The WIDE ptr-repr pointee class (a T/wrapper/dyn-protocol
@@ -8534,7 +8538,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                      and pointer_repr_optional(
                          analyzer.get_expr_type(operand)) is not None)):
         return None
-    return operand
+    return given
 
 def _union_none_name(e: TpyExpr, locals_: dict[str, TpyType],
                      analyzer) -> 'UnionType | None':

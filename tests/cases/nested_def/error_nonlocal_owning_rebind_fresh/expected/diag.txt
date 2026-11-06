@@ -1,0 +1,7 @@
+main.py:25: error: rebinding nonlocal 'a' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:27: error: rebinding nonlocal 'a' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:38: error: rebinding nonlocal 'a' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:29: error: rebinding nonlocal 'data' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:30: error: rebinding nonlocal 'd' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:32: error: rebinding nonlocal 'x' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it
+main.py:39: error: rebinding nonlocal 'y' is not supported yet: the write would replace the existing object rather than rebind the name; rebind it in the function that binds it

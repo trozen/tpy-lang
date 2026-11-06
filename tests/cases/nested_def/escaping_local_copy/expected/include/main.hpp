@@ -21,8 +21,6 @@ std::function<int32_t()> make_before_sibling();
 std::function<int32_t()> make_if_arm_sibling();
 // def make_lambda_reader() -> Callable[[], int32]:
 std::function<int32_t()> make_lambda_reader();
-// def make_nonlocal_sibling() -> Callable[[], int32]:
-std::function<int32_t()> make_nonlocal_sibling();
 // def make_transitive_sibling() -> Callable[[], int32]:
 std::function<int32_t()> make_transitive_sibling();
 // def make_two_arms_same_name() -> Callable[[], int32]:

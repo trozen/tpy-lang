@@ -2430,8 +2430,12 @@ class FrameBuilder:
                                 if elem_const:
                                     mark_frame_const(state, tname)
                 # A walrus binds in expression position, so it is invisible to
-                # the statement arms above; it takes the declaration's rule.
+                # the statement arms above; it takes the declaration's rule
+                # (a rebinding one is its binding statement).
                 for ne in walrus_bindings(s):
+                    if ne.binding is not None:
+                        walk([ne.binding])
+                        continue
                     ltype = frame_local_types.get(ne.target)
                     if ltype is None:
                         continue
@@ -3728,7 +3732,8 @@ class FrameBuilder:
                 # owning-call source is invisible here and the frame gets a
                 # borrow-form tuple field aliasing the dead result temporary.
                 for ne in walrus_bindings(stmt):
-                    record(ne.target, ne, stmt)
+                    # A rebinding walrus's facts are its binding statement's.
+                    record(ne.target, ne.binding or ne, stmt)
                 for body in stmt.sub_bodies():
                     visit(body)
 

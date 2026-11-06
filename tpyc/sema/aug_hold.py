@@ -44,7 +44,7 @@ from ..identity_map import IdentityMap, IdentitySet
 from ..parse import (TpyAugAssign, TpyAwait, TpyBinOp, TpyCall, TpyCoerce,
                      TpyFieldAccess, TpyFString, TpyMethodCall, TpyName,
                      TpySubscript, TpyUnaryOp)
-from ..parse.nodes import (AugHeldPart, SubscriptDunder, TpyArrayLiteral,
+from ..parse.nodes import (AugHeldPart, is_conditional_region, SubscriptDunder, TpyArrayLiteral,
                            TpyBoolLiteral, TpyBytesLiteral, TpyChainedCompare,
                            TpyDictComprehension, TpyDictLiteral,
                            TpyFloatLiteral,
@@ -70,9 +70,6 @@ if TYPE_CHECKING:
     from .context import SemanticContext
 
 
-_REGIONS = (TpyIfExpr, TpyListComprehension, TpySetComprehension,
-            TpyDictComprehension, TpyGeneratorExpression, TpyLambda,
-            TpyChainedCompare)
 # Regions whose value is a new container, generator or closure. One is held
 # by its reader: a held one read by name would leave the reader's
 # source-shaped render (an inline comprehension argument) evaluating it
@@ -84,12 +81,6 @@ _LITERALS = (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
 # Containers built from their elements, each element stored by value.
 _ELEMENT_STORES = (TpyTupleLiteral, TpyArrayLiteral, TpySetLiteral,
                    TpyDictLiteral, TpyListRepeat)
-
-
-def _is_region(e: 'TpyExpr') -> bool:
-    """`e` runs some of its parts conditionally, repeatedly or later."""
-    return isinstance(e, _REGIONS) or (isinstance(e, TpyBinOp)
-                                       and e.op in ("&&", "||"))
 
 
 def _takes_by_value(reader: 'TpyExpr', part: 'TpyExpr') -> bool:
@@ -281,7 +272,7 @@ class _HoldPlan:
         proof = self.proof
         if proof.passes(e, as_place):
             return
-        if _is_region(e):
+        if is_conditional_region(e):
             self.check_region(e, role)
             proof.held[e] = role
             return
@@ -308,7 +299,7 @@ class _HoldPlan:
     def fresh(self, e: 'TpyExpr') -> bool:
         """`e`'s value is one it creates and that points into nothing: a
         region on every arm."""
-        if _is_region(e):
+        if is_conditional_region(e):
             arms = _arms(e)
             return (all(self.fresh(a) for a in arms) if arms
                     else not isinstance(e, TpyChainedCompare))
@@ -382,7 +373,7 @@ class _HoldPlan:
     def holdable(self, e: 'TpyExpr') -> bool:
         """`check_value` admits a held non-receiver `e`."""
         t = self.type_of(e)
-        return (_scalar(t) or _view(t) or _is_region(e)
+        return (_scalar(t) or _view(t) or is_conditional_region(e)
                 or result_is_fresh(self.ctx, e))
 
     def lift(self, roots: 'list[tuple[TpyExpr, bool]]') -> None:
@@ -397,7 +388,7 @@ class _HoldPlan:
 
         def visit(e: 'TpyExpr', as_place: bool, parent: 'TpyExpr',
                   chain: 'list[TpyExpr]') -> None:
-            if e in held and _is_region(e):
+            if e in held and is_conditional_region(e):
                 return
             for op, op_place in self.proof.operands(e, as_place):
                 visit(op, op_place, e, chain + [e])
@@ -446,7 +437,7 @@ class _HoldPlan:
                 raise self.unkept_temp_error(role)
             if self.fresh(x):
                 return [] if _scalar(self.type_of(x)) else [TempRoot(x)]
-            if _is_region(x):
+            if is_conditional_region(x):
                 if any(self.compat.borrow_temp_roots(a, stop=stop)
                        for a in _arms(x)):
                     raise self.region_error(x, role)
@@ -481,7 +472,7 @@ class _HoldPlan:
 
         def visit(e: 'TpyExpr', as_place: bool, parent: 'TpyExpr') -> None:
             held = e in self.proof.held
-            if not (held and _is_region(e)):
+            if not (held and is_conditional_region(e)):
                 for op, op_place in self.proof.operands(e, as_place):
                     visit(op, op_place, e)
             if held:

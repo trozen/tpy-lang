@@ -35,7 +35,7 @@ inverse unpack_once 4 4 3
 inverse walrus_once 5 5
 inverse value_unpack 5 1 2
 inverse own_param 8
-inverse nonlocal 2
+inverse nonlocal True 1
 with lent_rvalue 11 2 11
 loop_hoist unpack_field 101 1
 loop_hoist walrus_if 101

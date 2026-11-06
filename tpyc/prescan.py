@@ -25,7 +25,8 @@ from .parse import (
     TpyLambda, TpyMatch, TpyWhile, TpyAwait, TpyIf,
     TpyPattern, TpyCapturePattern, TpyAsPattern, TpyOrPattern,
 )
-from .parse.nodes import (SourceLocation, is_property_getter_read,
+from .parse.nodes import (SourceLocation, as_name_read,
+                          is_property_getter_read,
                           iter_capture_bindings,
                           stmts_have_any_suspension, walk_body_stmts,
                           walk_expr_tree, walrus_bindings, written_names)
@@ -634,7 +635,10 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
     if isinstance(expr, TpyFieldAccess):
         return is_scan_rvalue(expr.obj)
     if isinstance(expr, TpyNamedExpr):
-        return is_scan_rvalue(expr.value)
+        # A rebinding walrus is a read of its name; a declaring one, its
+        # value.
+        return (as_name_read(expr) is expr
+                and is_scan_rvalue(expr.value))
     # These are the shapes the typed twin `value_category.is_rvalue_source`
     # admits too (the container/generator-shaped rvalues, comprehensions
     # included), so a comp-rebound name lands in `rvalue_reassigned` on both
@@ -648,6 +652,16 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
                              TpyIfExpr) + CONTAINER_LITERAL_NODES)
 
 
+def _note_rebind(result: ScanResult, name: str,
+                 value: TpyExpr | None) -> None:
+    """Record a rebind `name = value` of a declared name."""
+    result.reassigned.add(name)
+    if is_scan_rvalue(value):
+        result.rvalue_reassigned.add(name)
+    else:
+        result.lvalue_reassigned.add(name)
+
+
 def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
                          result: ScanResult) -> None:
     """Walk an expression tree to find walrus operator bindings.
@@ -659,8 +673,8 @@ def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
         return
     if isinstance(expr, TpyNamedExpr):
         if expr.target in declared:
-            result.reassigned.add(expr.target)
-            result.rvalue_reassigned.add(expr.target)
+            # A rebinding walrus is its binding statement `target = value`.
+            _note_rebind(result, expr.target, expr.value)
         else:
             _declare(expr.target, expr.loc, declared, result)
     if isinstance(expr, TpyLambda):
@@ -727,11 +741,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
         _scan_walrus_in_stmt(stmt, declared, result)
         if isinstance(stmt, TpyVarDecl):
             if stmt.name in declared:
-                result.reassigned.add(stmt.name)
-                if is_scan_rvalue(stmt.init):
-                    result.rvalue_reassigned.add(stmt.name)
-                else:
-                    result.lvalue_reassigned.add(stmt.name)
+                _note_rebind(result, stmt.name, stmt.init)
             else:
                 _declare(stmt.name, stmt.loc, declared, result)
                 if stmt.init is not None:
@@ -739,11 +749,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                                         element=False)
         elif isinstance(stmt, TpyAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
-                result.reassigned.add(stmt.target.name)
-                if is_scan_rvalue(stmt.value):
-                    result.rvalue_reassigned.add(stmt.target.name)
-                else:
-                    result.lvalue_reassigned.add(stmt.target.name)
+                _note_rebind(result, stmt.target.name, stmt.value)
         elif isinstance(stmt, TpyTupleUnpack):
             for name in stmt.targets:
                 if name is None:

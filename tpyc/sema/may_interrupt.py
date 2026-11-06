@@ -23,7 +23,7 @@ from ..parse import (TpyAssert, TpyAssign, TpyAugAssign, TpyBreak, TpyContinue,
                      TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry,
                      TpyTupleUnpack, TpyVarDecl, TpyWhile, TpyYield)
 from ..parse.nodes import (
-    SubscriptDunder, TpyArrayLiteral, TpyBinOp, TpyBoolLiteral, TpyBytesLiteral, TpyCall,
+    as_name_read, SubscriptDunder, TpyArrayLiteral, TpyBinOp, TpyBoolLiteral, TpyBytesLiteral, TpyCall,
     TpyChainedCompare, TpyCoerce, TpyDictComprehension, TpyDictLiteral,
     TpyExpr, TpyFieldAccess, TpyListComprehension, TpySetComprehension,
     TpyFloatLiteral, TpyFString, TpyIfExpr, TpyIntLiteral, TpyListRepeat,
@@ -375,6 +375,12 @@ class InertWalk:
             self.on_call(e)
             return True
         if isinstance(e, TpyFString):
+            return True
+        if isinstance(e, TpyNamedExpr) and e.binding is not None:
+            # A rebinding walrus is its binding statement, then a read of
+            # its name.
+            self.stmt(e.binding)
+            self.visit(as_name_read(e))
             return True
         if isinstance(e, TpyNamedExpr):
             self.typed(e)

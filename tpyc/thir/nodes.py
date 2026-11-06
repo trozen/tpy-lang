@@ -218,6 +218,16 @@ class THIRExpr(THIRNode):
         """The value under any passthrough coercions wrapping it."""
         return self
 
+    @property
+    def as_read(self) -> 'THIRExpr':
+        """What a reader classifying this value sees of it: the node itself;
+        for a rebinding walrus, the read of its name it evaluates to."""
+        return self
+
+    def with_read(self, read: 'THIRExpr') -> 'THIRExpr':
+        """This value with `as_read` replaced by `read`."""
+        return read
+
     def moved(self) -> 'THIRMove':
         """`std::move` of this value, in its own form."""
         return THIRMove(result_type=self.result_type, value=self,
@@ -473,11 +483,30 @@ class THIRWalrus(THIRExpr):
     # of this site's own (`own_slot`, holding `fill_cpp`) that the pointer
     # aims at (`(p = &*(__slot_N = v), *p)`), as its rebinds' objects do.
     fill_cpp: 'str | None' = None
-    # A write of a binding declared ahead of the walrus (a `try` hoist): the
-    # plain assignment's own write node, which renders as the walrus's
-    # operands (`(<write>, *p)`); `value` is that write's value.
-    write: 'THIRAssign | THIRPtrLocalRebind | None' = field(
+    # A write of a binding declared ahead of the walrus (a `try` hoist, or
+    # a rebinding walrus's binding statement): the plain assignment's own
+    # write node, which renders as the walrus's operands (`(<write>, *p)`);
+    # `value` is that write's value.
+    write: 'THIRAssign | THIRPtrLocalRebind | THIRStrAppend | None' = field(
         default=None, kw_only=True)
+    # A rebinding walrus's value: the read of the name after its write, as
+    # a name read lowers at the walrus's position (on every rebinding
+    # walrus, the plain `(x = v)` render included).
+    read: 'THIRExpr | None' = field(default=None, kw_only=True)
+    # The binding's form makes `write`'s assignment expression evaluate to
+    # `read` (`(x = v)`), when the write is that one assignment.
+    write_is_read: bool = field(default=False, kw_only=True)
+
+    @property
+    def as_read(self) -> 'THIRExpr':
+        return self.read if self.read is not None else self
+
+    def with_read(self, read: 'THIRExpr') -> 'THIRExpr':
+        if self.read is None:
+            return read
+        # A converted read is no longer what the assignment evaluates to.
+        return replace(self, read=read,
+                       write_is_read=self.write_is_read and read is self.read)
 
     @property
     def binding_slot_cpp(self) -> 'str | None':
@@ -2701,6 +2730,14 @@ class THIRPtrLocalDecl(THIRStmt):
         return self.name
 
 
+# The pointer-local reseats written as the single assignment of the name
+# (see `binding_write_parts`); the others write through a slot or the
+# pointee, or in several steps.
+_PTR_KINDS_ASSIGNING_THE_NAME = frozenset((
+    PtrSlotKind.OPT_NONE, PtrSlotKind.PTR_ADDR, PtrSlotKind.GLOBAL_NULL,
+    PtrSlotKind.GLOBAL_PTR_COPY, PtrSlotKind.DYN_PROTOCOL_ERASED))
+
+
 @dataclass(frozen=True)
 class THIRPtrLocalRebind(THIRStmt):
     """Reseat of a slot-hoist pointer-repr local for the shapes THIRAssign's
@@ -2738,6 +2775,12 @@ class THIRPtrLocalRebind(THIRStmt):
         reseat's value-variant slot), so it is statements, not one
         expression."""
         return self.kind is PtrSlotKind.UNION_INLINE_SLOT
+
+    @property
+    def assigns_the_name(self) -> bool:
+        """Whether the write is the one C++ assignment `name = <pointer>`,
+        which evaluates to the rebound name itself."""
+        return self.kind in _PTR_KINDS_ASSIGNING_THE_NAME
 
     @property
     def bound_name(self) -> str:

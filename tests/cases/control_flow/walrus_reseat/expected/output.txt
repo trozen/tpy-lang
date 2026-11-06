@@ -1,0 +1,131 @@
+field 1 12
+method_recv 1002
+method_recv 1 1003
+method_recv_ptr 1002
+method_recv_ptr 1 1003
+element 4
+element 1 14
+borrow_call 2
+borrow_call 1 12
+param 2
+param 1 12
+fresh 7
+fresh 1 17
+fresh_local 101 12
+opt_field 1 12
+opt_opt 2 16
+opt_none True
+opt_none True
+opt_narrowed 1 12
+while_cond 309 103 102
+union 5
+union 1
+union 15 11
+own_for 5
+own_for 1
+own_for 105 11
+own_for 6
+own_for 11
+own_for 106 21
+own_for 21
+own_for_fresh 5 12
+own_for_fresh 6 12
+global 1
+global 1
+value 2
+value 2
+value 5
+value 4
+str ab!
+str ab ab!
+read_elsewhere ab! ab!
+live_self take abc
+live_self abc!
+slot_hint 9
+slot_hint 0
+slot_hint [1] [5]
+nonlocal_none True
+nonlocal_none True 1
+loop_clobber 0 1
+loop_clobber 1 0
+method 2
+method 1 12 12
+ctor 2
+ctor 1 12 12
+closure 2
+closure 12 1 12
+with_body 2
+with_body 1 12
+try_finally 2
+try_finally 1 12
+error_return 2
+error_return 12 1 12
+match_arm 2
+match_arm 1 12
+gen 2
+gen yield 0
+gen 1 12
+gen 4
+gen yield 0
+gen 14
+gen yield 0
+gen 112
+gen 3
+gen yield 4
+gen yield 3
+gen 13
+gen_with 11 2
+gen_cond 0
+gen_cond 103
+gen_cond 104
+async 1 12 12
+async False 16
+async 4 14
+async 3
+arg_sink 2 2
+arg_sink 3 3
+arg_sink 2 15
+own_return 101 101
+own_return 3
+own_return_nocopy 1
+own_return_nocopy 2
+borrowed_sink 1 1
+borrowed_sink 0
+borrowed_sink 1
+finally_return 92
+finally_return_nocopy 99
+truthy 11
+truthy 12
+truthy 0
+truthy -1
+maybe_walrus and 2 False
+maybe_walrus ternary 2 0
+maybe_walrus chain 1 False
+assert_message 2
+value_opt_truthy no 0
+value_opt_truthy f 0
+value_opt_truthy yes 2
+value_opt_truthy f 0
+comprehension_walrus a!!! ['a!', 'a!!', 'a!!!']
+aug_membership 2 10 21
+guard_walrus 2
+membership_walrus False
+membership_walrus 1
+borrow_tuple 70
+borrow_tuple 1 17
+own_tuple 9 18
+own_tuple 8
+tuple_return 1
+tuple_return 12 1
+tuple_finally_return 99 7
+whole_tuple_return 1
+whole_tuple_return 12 7
+whole_tuple_finally 100 7
+tuple_append 1
+tuple_append 12
+once in True 1 1
+once or 2 2 2
+once chain True 3 3
+once aug [0, 100, 0, 0] 1
+module 2
+module 1 12

@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import NamedTuple, NoReturn, TypeVar
-from dataclasses import field, fields as dataclass_fields, replace
+from dataclasses import MISSING, field, fields as dataclass_fields, replace
 from enum import Enum, auto
 from .callables import (CallSignature, callable_signature, call_signature,
                         method_callees, method_signature,
@@ -19,7 +19,9 @@ from ... import qnames
 from ...parse.nodes import (
     RebindStorage,
     ResultForm,
+    as_name_read,
     lambda_of,
+    walrus_binding_read,
     is_property_getter_read, past_cast,
     FSTRING_CONV_NONE,
     FSTRING_CONV_REPR,
@@ -224,6 +226,8 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
 from ..nodes import (
     PtrSlotKind,
     THIRAssign,
+    THIRVarDecl,
+    THIRStrAppend,
     THIRPtrLocalRebind,
     THIRBorrowedRecord,
     THIROwnedRecord,
@@ -2467,7 +2471,9 @@ def _name_recv_is_arrow(obj: TpyExpr, lc: '_LowerCtx') -> bool:
     proven pointer-repr Optional borrow name (both pointer records), or the
     `self` receiver (a `this` pointer). A poly-narrowed `self` reads through
     the cast pointer's DEREF (`(*__self_ptr)`), so the access is `.`.
-    In one place so the arrow arms cannot disagree with each other."""
+    In one place so the arrow arms cannot disagree with each other. A
+    rebinding walrus receiver is the read of its name."""
+    obj = as_name_read(obj)
     return (isinstance(obj, TpyName)
             and (_ptr_read_derefs(obj.name, lc)
                  or (obj.name == lc.self_receiver and lc.self_is_pointer
@@ -4267,17 +4273,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 form=Form.VALUE,
                 loc=loc)
         operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
-        ut_none = _union_none_name(operand, declared, analyzer)
+        # A rebinding walrus is classified as the read of its name it
+        # evaluates to; the walrus itself lowers as the operand.
+        subj = as_name_read(operand)
+        ut_none = _union_none_name(subj, declared, analyzer)
         if ut_none is not None:
             # `v is None` on a union binding: the monostate holds test over
             # the bare variant read (identical for value/pointer reprs; the
             # arm is order-blind, so `None is v` lands here too). A
             # NARROWED subject's read is its extraction alias, not the
             # variant binding this test needs, so it rejects.
-            assert isinstance(operand, TpyName)
-            if (operand.name in lc.narrow.narrowed
-                    or operand.name in lc.inline_narrowed
-                    or operand.name in lc.narrow.spelled):
+            assert isinstance(subj, TpyName)
+            if (subj.name in lc.narrow.narrowed
+                    or subj.name in lc.inline_narrowed
+                    or subj.name in lc.narrow.spelled):
                 raise ThirUnsupported("binop.union_none_narrowed_subject")
             # A protocol-member union is no variant: it needs the protocol
             # ptr-compare (both polarities, every position), not the
@@ -4368,47 +4377,48 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             _witness("narrow.ptr_field_test" if ptr_field
                      else "narrow.opt_field_test")
         value_repr = (is_field and not ptr_field) or (
-            isinstance(operand, TpyName)
-            and (_value_opt_binding_kind(operand.name, lc) is not None
+            isinstance(subj, TpyName)
+            and (_value_opt_binding_kind(subj.name, lc) is not None
                  # A storage-opt loop var / unpack target: the bare
                  # `std::optional<P>` binding None-tests via has_value.
-                 or lc.binding(operand.name).storage_opt
+                 or lc.binding(subj.name).storage_opt
                  # A nullable borrow-form tuple local
                  # (`std::optional<std::tuple<.., T*>>`): has_value too.
-                 or lc.binding(operand.name).optional_borrow_tuple
-                 or (operand.name in declared
-                     and (_value_opt_scalar(declared[operand.name],
+                 or lc.binding(subj.name).optional_borrow_tuple
+                 or (subj.name in declared
+                     and (_value_opt_scalar(declared[subj.name],
                                             lc.analyzer) is not None
                           # A value-repr `Optional[ValueType record]`
                           # binding: the same has_value test.
-                          or _value_opt_record(declared[operand.name]) is not None
+                          or _value_opt_record(declared[subj.name]) is not None
                           # A value-repr `Optional[Span[...]]` binding:
                           # the same has_value test over the bare name.
-                          or _value_opt_span(declared[operand.name],
+                          or _value_opt_span(declared[subj.name],
                                              lc.analyzer) is not None
                           # A value-repr `Optional[value tuple]` binding:
                           # the same has_value test over the bare name.
-                          or _value_opt_tuple(declared[operand.name],
+                          or _value_opt_tuple(declared[subj.name],
                                               lc.analyzer) is not None
                           # A value-repr `Optional[str/bytes]` binding --
                           # including a VIEW-inner LOCAL, which carries no
                           # registered kind (its narrowed read differs from
                           # the owned twin's) but None-tests the same way.
-                          or _value_opt_view(declared[operand.name],
+                          or _value_opt_view(declared[subj.name],
                                              lc.analyzer) is not None
                           # A `Callable | None` param: the same has_value
                           # test over the `std::optional<std::function>`.
-                          or _value_opt_callable(declared[operand.name],
+                          or _value_opt_callable(declared[subj.name],
                                                  lc.analyzer)
                           is not None
                           # An `Own[P | None]` param (`std::optional<P>&&`):
                           # has_value over the bare name (an
                           # `optional_storage` binding, not the pointer
                           # compare).
-                          or _own_storage_opt_param(declared[operand.name],
+                          or _own_storage_opt_param(declared[subj.name],
                                                     lc.analyzer)
                           is not None)))) or (
-            isinstance(operand, TpyNamedExpr)
+            # A declaring walrus; a rebinding one is the read above.
+            isinstance(operand, TpyNamedExpr) and operand.binding is None
             and (_value_opt_scalar(analyzer.get_expr_type(operand),
                                    lc.analyzer) is not None
                  # The view family's walrus target: the same has_value test.
@@ -5665,7 +5675,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                        not kwargs.get("allow_whole_optional", False)
                        and not isinstance(unwrap_readonly(unwrap_ref_type(lowered.result_type)), OptionalType))
             lowered = replace(lowered, optional_read=THIROptionalRead(layout, extract))
-    if isinstance(lowered, (THIRName, THIRWalrus)):
+    if (isinstance(lowered, (THIRName, THIRWalrus))
+            # A rebinding walrus's write and read carry their own.
+            and lowered.as_read is lowered):
         fact = global_name_binding(lowered.name, lowered.result_type, lc)
         if fact is not None:
             lowered = replace(lowered, global_binding=fact)
@@ -5693,6 +5705,8 @@ def binding_of(e: TpyExpr, lc: '_LowerCtx',
     record in the binding table where the walk is. Asked before the source
     is lowered (a sink may lower a name whole when its binding is the slot's
     own type) and by the stamp, so both read one answer."""
+    # A rebinding walrus reads the binding its statement wrote.
+    e = as_name_read(e)
     if not isinstance(e, TpyName):
         return None
     if e.name not in declared:
@@ -5802,6 +5816,11 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
     rv = e is not None and not origin_shared(an, e)
     if isinstance(node, THIRSelf):
         return Held.BORROWED
+    if node.as_read is not node:
+        # A rebinding walrus is held as the read of its name it evaluates to.
+        return _held_from_facts(
+            as_name_read(e) if e is not None else None, node.as_read, lc,
+            declared)
     if isinstance(node, THIRName):
         whole, unwrapped = _name_held(e, node, lc)
         return unwrapped if node.deref else whole
@@ -6297,6 +6316,10 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     node's kind. A node an arm hands back from a nested `_lower_expr` (or
     copies from one) keeps the read facts that call stamped -- they are the
     node's, not the enclosing expression's."""
+    if (e is not None and lowered.as_read is not lowered
+            and lowered.as_read.source is not None):
+        # A rebinding walrus's value is the read of its name: its facts.
+        return lowered.as_read.source
     prior = lowered.source
     binding = binding_of(e, lc, declared) if e is not None else None
     if binding is None and prior is not None:
@@ -8501,6 +8524,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # for the binding.
         if not lc.may_hoist:
             _reject_no_statement()
+        if e.binding is not None:
+            return _lower_rebinding_walrus(
+                e, lc, declared, loc, use=use,
+                allow_whole_optional=allow_whole_optional)
         # The walrus that declares its target's record pre-declares the
         # binding as the record's kind says; any other walrus writes the
         # binding in scope, by the value's shape.
@@ -11308,15 +11335,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             method_targs_cpp=method_targs,
             is_arrow=(copy_recv is None and not deref_check
                       and enum_wrap is None) and (
-                (isinstance(e.obj, TpyName)
-                 and (_ptr_read_derefs(e.obj.name, lc)
-                      # A poly-narrowed `self` reads through the cast
-                      # pointer's deref (`(*__self_ptr)`), so the call is
-                      # `.` -- the `this->` spelling is the un-narrowed
-                      # receiver's.
-                      or (e.obj.name == lc.self_receiver
-                          and lc.self_is_pointer
-                          and e.obj.name not in lc.narrow.spelled)))
+                # The name receiver's rule (`this->` for an un-narrowed
+                # pointer `self`, `.` through a poly-narrowed cast).
+                _name_recv_is_arrow(e.obj, lc)
                 # A tuple-element record receiver: `std::get<N>(t)` is a
                 # bare `T*` where the tuple holds the element as one
                 # (`std::get<0>(t)->get()`); an inline element is a value
@@ -11678,6 +11699,100 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
             and not lc.binding(value.name).global_slot):
         return _lower_expr(value, lc, declared)
     return None
+
+
+# The binding forms whose C++ assignment `x = v` evaluates to the binding
+# itself, as a bare read of it would: a pointer's yields the pointer, not
+# the `*x` read, and `Union::operator=` its `std::variant` base.
+_ASSIGN_IS_THE_READ = frozenset((
+    BindingForm.NONE, BindingForm.VALUE, BindingForm.REFERENCE,
+    BindingForm.VALUE_OPT, BindingForm.STORAGE_OPT, BindingForm.BORROW_TUPLE,
+    BindingForm.OPT_BORROW_TUPLE, BindingForm.STORAGE_TUPLE))
+
+
+def _lower_rebinding_walrus(e: 'TpyNamedExpr', lc: '_LowerCtx',
+                            declared: dict[str, TpyType], loc, *,
+                            use: '_ExprUse',
+                            allow_whole_optional: bool) -> THIRWalrus:
+    """A walrus rebinding a bound name: its binding statement's one write,
+    then a read of the name as a name read lowers at the walrus's use."""
+    from .statements import _lower_stmt
+    # The binding statement enters as its enclosing statement did.
+    entry = lc.stmt_entry
+    # A walrus outside any statement (a lambda body) rejected above.
+    assert entry is not None
+    if entry.leaf is not None:
+        node = entry.leaf(e.binding)
+    else:
+        node = _lower_stmt(e.binding, lc, declared,
+                           in_branch=entry.in_branch,
+                           branch_decls_ok=entry.branch_decls_ok,
+                           loop_depth=entry.loop_depth)
+    if (isinstance(node, THIRVarDecl)
+            and node.cpp_local_representation is None
+            and node.storage_placement is None and node.init is not None):
+        # The statement declares the name here (a branch's first binding of
+        # a name sema found bound): a value declaration, which the walrus
+        # spells as its named pre-declaration and the assign.
+        cpp_type = node.cpp_type or lc.render_type(node.resolved_type)
+        _witness("expr.walrus_rebind")
+        return THIRWalrus(
+            result_type=lc.analyzer.get_expr_type(e), name=e.target,
+            cpp_name=escape_cpp_name(e.target), value=node.init,
+            cpp_type=cpp_type,
+            placeholder=emit_prims.placeholder_init(node.resolved_type,
+                                                    cpp_type),
+            loc=loc, binding=lc.binding(e.target),
+            read=_lower_expr(walrus_binding_read(e), lc, declared, use=use,
+                             allow_whole_optional=allow_whole_optional))
+    if (not isinstance(node, (THIRAssign, THIRPtrLocalRebind,
+                              THIRStrAppend))
+            or (isinstance(node, THIRPtrLocalRebind) and node.declares_local)
+            or (isinstance(node, THIRStrAppend)
+                and node.target_expr is not None)):
+        note_detail(f"walrus.rebind_write.{type(node).__name__}")
+        raise ThirUnsupported("expr.walrus")
+    read = _lower_expr(walrus_binding_read(e), lc, declared, use=use,
+                       allow_whole_optional=allow_whole_optional)
+    _witness("expr.walrus_rebind")
+    rec = lc.binding(e.target)
+    bare_read = ((isinstance(read, THIRName) and not read.deref)
+                 or isinstance(read, THIRModuleVar))
+    write_is_read = bare_read and (
+        (isinstance(node, THIRAssign) and rec.form in _ASSIGN_IS_THE_READ)
+        or (isinstance(node, THIRPtrLocalRebind) and node.assigns_the_name))
+    if write_is_read and _plain_assign(node):
+        # The plain assignment of a value: the walrus's own `(x = v)`,
+        # which evaluates to the read it keeps.
+        return THIRWalrus(
+            result_type=read.result_type, name=e.target,
+            cpp_name=node.target.cpp or escape_cpp_name(e.target),
+            value=node.value, global_binding=node.target.global_binding,
+            loc=loc, binding=rec, read=read)
+    return THIRWalrus(
+        result_type=read.result_type, name=e.target,
+        cpp_name=escape_cpp_name(e.target), value=node.value, write=node,
+        read=read, loc=loc, binding=rec, write_is_read=write_is_read)
+
+
+# What a `THIRAssign` carries besides its write of `value` to `target`
+# that is not part of the write: the target's representation and the
+# node's identity facts.
+_ASSIGN_NOT_THE_WRITE = frozenset((
+    "target", "value", "loc", "binding", "optional_layout",
+    "union_layout"))
+
+
+def _plain_assign(node: THIRAssign) -> bool:
+    """Whether `node` writes `value` to `target` and nothing else."""
+    for f in dataclass_fields(node):
+        if f.name in _ASSIGN_NOT_THE_WRITE:
+            continue
+        default = (f.default_factory() if f.default_factory is not MISSING
+                   else f.default)
+        if getattr(node, f.name) != default:
+            return False
+    return True
 
 
 def _walrus_existing_binding(e: 'TpyNamedExpr', vtu: TpyType,
@@ -13347,6 +13462,18 @@ def _copied_in_place(member: TpyExpr, payload: TpyType,
             and storage_type(lc.analyzer.get_expr_type(member)) == payload)
 
 
+def lower_through_read(e: TpyExpr, lc: '_LowerCtx',
+                       declared: dict[str, TpyType],
+                       lower: Callable[[TpyExpr], THIRExpr]) -> THIRExpr:
+    """`lower(e)`, a consumer's own lowering of a value; for a rebinding
+    walrus, that lowering of the read of its name (`as_name_read`), the
+    walrus's write running first (`THIRExpr.with_read`)."""
+    read = as_name_read(e)
+    if read is e:
+        return lower(e)
+    return _lower_expr(e, lc, declared).with_read(lower(read))
+
+
 def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType], *,
@@ -13366,9 +13493,13 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         raise ThirUnsupported("expr.tuple_literal")
 
     def lower_element(i: int) -> THIRExpr:
+        # A rebinding walrus member lowers as the read of its name.
+        return lower_through_read(e.elements[i], lc, declared,
+                                  lambda m: lower_member(m, i))
+
+    def lower_member(member: TpyExpr, i: int) -> THIRExpr:
         elem_slot = slot.element_types[i]
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_slot)))
-        member = e.elements[i]
         payload = tuple_elem_payload(elem_slot)
         if (own_element_copied(member, payload, lc.analyzer)
                 and not _copied_in_place(member, payload, lc)):
@@ -13422,7 +13553,7 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             else:
                 _witness("ret.tuple_opt_elem")
         return _lower_container_elem(
-            e.elements[i], elem_slot, lc, declared, tuple_elem=True,
+            member, elem_slot, lc, declared, tuple_elem=True,
             allow_temps=use.allow_temps)
 
     return THIRTupleLiteral(
@@ -13491,6 +13622,12 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     wraps: list['str | None'] = []
     captures: list[TupleElemCapture] = []
     frame_hoisted: set[int] = set()
+    if any(as_name_read(x) is not x for x in e.elements):
+        # A rebinding walrus element: its pointer write would land beside
+        # the other elements' address-takes, which C++ orders freely
+        # (BUGS.md#subexpression-right-to-left-eval).
+        note_detail("btuple.walrus_elem")
+        raise ThirUnsupported("expr.tuple_literal")
     for i in range(n):
         et = unwrap_ref_type(slot.element_types[i])
         et_bare = unwrap_readonly(unwrap_send_sync(et))
@@ -18510,7 +18647,10 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         _witness("truthy.numeric_literal_fold")
         return THIRLiteral(result_type=BOOL, value=lit,
                            loc=getattr(e, "loc", None))
-    if isinstance(e, TpyName) and e.name in lc.narrow.any_narrowed:
+    # A rebinding walrus is classified as the read of its name it evaluates
+    # to; the walrus itself is what lowers.
+    subj = as_name_read(e)
+    if isinstance(subj, TpyName) and subj.name in lc.narrow.any_narrowed:
         # A narrowed-Any subject read in truthy position: truthiness keys
         # on the DECLARED Any (`::tpy::to_bool(alias)`) even though sema
         # retyped the occurrence -- the declared-type dispatch, the truthy
@@ -18571,13 +18711,14 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 operand=operand, deref=False,
                 loc=getattr(e, "loc", None))
         raise ThirUnsupported("truthy.optional_field_narrow")
-    if _ptr_truthy_source(e, et, lc.analyzer, lc.names_with("storage_opt")):
+    if _ptr_truthy_source(subj, et, lc.analyzer,
+                          lc.names_with("storage_opt")):
         # Un-narrowed pointer-repr Optional[record]: `x is not None and
         # bool(x)` in one evaluation. Only the two source shapes with a
         # verified render admit -- anything else must keep rejecting here
         # rather than reach the ladder, whose bare render would drop the
         # dunder this position dispatches.
-        if not isinstance(e, (TpyName, TpyCall)):
+        if not isinstance(subj, (TpyName, TpyCall)):
             raise ThirUnsupported("truthy.ptr_record_shape")
         operand = _lower_expr(
             e, lc, declared,
@@ -18588,9 +18729,9 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             operand=operand, deref=False,
             pointee_mode=_truthiness_mode(_opt_record_inner(et), lc.analyzer),
             loc=getattr(e, "loc", None))
-    if isinstance(e, TpyName) and e.name in declared:
+    if isinstance(subj, TpyName) and subj.name in declared:
         du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            declared[e.name])))
+            declared[subj.name])))
         eu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
               if et is not None else None)
         if (isinstance(du, OptionalType) and not isinstance(eu, OptionalType)
@@ -18601,10 +18742,11 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             # value-opt binding takes the deref-stripped whole read.
             # Pointer-repr narrowed record optionals dispatch the narrowed
             # inner's __bool__/__len__ instead (the record-mode arms below).
-            if _value_opt_binding_kind(e.name, lc) is not None:
-                operand = replace(
-                    _lower_expr(e, lc, declared, allow_whole_optional=True),
-                    deref=False)
+            if _value_opt_binding_kind(subj.name, lc) is not None:
+                operand = _lower_expr(e, lc, declared,
+                                      allow_whole_optional=True)
+                operand = operand.with_read(
+                    replace(operand.as_read, deref=False))
                 _witness("truthy.value_opt_whole")
                 return THIRTruthy(
                     result_type=BOOL, mode=TruthinessMode.IS_TRUTHY,
@@ -18612,14 +18754,15 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                     loc=getattr(e, "loc", None))
             raise ThirUnsupported("truthy.optional_name_narrow")
     storage_opt_bare = _storage_opt_record_truthy(
-        e, et, lc.analyzer, lc.names_with("storage_opt"))
+        subj, et, lc.analyzer, lc.names_with("storage_opt"))
     if wrap is None:
         # The one question every modeless arm below asks: does an operand of
         # THIS type render its own boolean test? Computed once, so no arm can
         # answer it differently for its own syntactic shape.
         native_scalar = _native_cond_scalar(et, lc.analyzer)
-        ptr_opt = (_optional_ptr_borrow_name(e, declared, lc.analyzer)
-                   if isinstance(e, TpyName) and isinstance(et, OptionalType)
+        ptr_opt = (_optional_ptr_borrow_name(subj, declared, lc.analyzer)
+                   if isinstance(subj, TpyName)
+                   and isinstance(et, OptionalType)
                    else None)
         # The bare pointer test is the whole truth for a record pointee
         # (non-None is truthy) but only half of it for a container's: `if
@@ -18639,15 +18782,15 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("truthy.unary_operand")
         elif isinstance(e, TpyBoolLiteral):
             pass
-        elif isinstance(e, TpyName):
+        elif isinstance(subj, TpyName):
             unrouted = _unrouted_binding_read(
-                declared.get(e.name), lc.analyzer)
+                declared.get(subj.name), lc.analyzer)
             storage_optional = (
                 mode is TruthinessMode.IS_TRUTHY
                 and et is not None
                 and isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(et))), OptionalType))
-            if (e.name not in declared or et is None
+            if (subj.name not in declared or et is None
                     or (mode is None and not native_scalar)
                     or (unrouted is not None and not storage_optional)):
                 raise ThirUnsupported("truthy.name")
@@ -18772,36 +18915,41 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             allow_unrouted_name=mode is TruthinessMode.IS_TRUTHY,
         )
         if (mode is TruthinessMode.IS_TRUTHY
-                and isinstance(operand, THIRName)):
-            operand = replace(operand, deref=False)
+                and isinstance(operand.as_read, THIRName)):
+            operand = operand.with_read(
+                replace(operand.as_read, deref=False))
         if mode is None:
-            if (isinstance(e, TpyName) and isinstance(operand, THIRName)
-                    and lc.binding(e.name).global_slot
+            if (isinstance(subj, TpyName)
+                    and isinstance(operand.as_read, THIRName)
+                    and lc.binding(subj.name).global_slot
                     and isinstance(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(et))) if et is not None else None,
                         OptionalType)):
                 # A pointer-repr Optional global is truthy exactly when its
                 # slot pointer is non-null (`!(g)`), so this position opts
                 # out of the value-position deref like the None test does.
-                operand = replace(operand, deref=False)
+                operand = operand.with_read(
+                    replace(operand.as_read, deref=False))
                 _witness("truthy.global_slot")
             return operand
+        read = operand.as_read
         deref = (
             mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)
-            and isinstance(e, TpyName)
+            and isinstance(subj, TpyName)
             # The record __bool__/__len__ dispatch consumes the read at a
             # deref position, so ask the resolver for the indirect verdict.
             and _name_read_deref(
-                e.name,
-                _param_declared_type(e.name, lc) or declared.get(e.name),
+                subj.name,
+                _param_declared_type(subj.name, lc)
+                or declared.get(subj.name),
                 lc,
                 _ExprUse(result=_ExprResultUse.TRUTHY,
                          pos=SinkPos.OPERAND, forms=_ONLY_INDIRECT_READ))
             # A rebound CONTAINER local's name read already derefs `(*xs)`
             # (the F2d value-use deref in the name arm), as does the
             # receiver read -- the wrap must not stack a second one.
-            and not (isinstance(operand, (THIRName, THIRSelf))
-                     and operand.deref))
+            and not (isinstance(read, (THIRName, THIRSelf))
+                     and read.deref))
         _witness("truthy." + mode.name.lower())
         return THIRTruthy(
             result_type=BOOL,

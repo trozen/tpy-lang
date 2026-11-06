@@ -578,21 +578,27 @@ P own_param(P&& p) {
 }
 
 // def nonlocal_rebind() -> None:
-//     p = P(1)
+//     p: P | None = P(1)
+//     q = p
 //
 //     def reset() -> None:
 //         nonlocal p
-//         p = P(2)
+//         # Only `None` rebinds a reference local through `nonlocal`
+//         # (BUGS.md#nonlocal-reference-rebind-copies); the alias keeps the
+//         # object.
+//         p = None  # tpyc: ok
 //
 //     reset()
-//     print("inverse", "nonlocal", p.n)
+//     print("inverse", "nonlocal", p is None, q.n if q is not None else -1)
 void nonlocal_rebind() {
-    P p = P(1);
+    P __slot_1 = P(1);
+    P* p = &__slot_1;
+    P& q = (*p);
     auto reset = [&p]() {
-        p = P(2);
+        p = nullptr;
     };
     reset();
-    std::cout << "inverse" << " " << "nonlocal" << " " << p.n << "\n" << ::tpy::check_signals;
+    std::cout << "inverse" << " " << "nonlocal" << " " << ::tpy::print_bool((p == nullptr)) << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // def pair(i: int32) -> tuple[Own[Pm], int32]:

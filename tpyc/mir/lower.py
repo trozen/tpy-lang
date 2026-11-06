@@ -3984,7 +3984,9 @@ class _Lowering:
                 result = f.leaf(typ, MIRConstant(expr.expr.value), loc)
             case th.THIRWalrus():
                 _require(expr, expr.name not in self.range_counters, "range target write needs separate induction")
-                _plain(expr, {"name", "cpp_name", "value", "global_binding"})
+                # `read`: a rebinding walrus's value, the slot just written.
+                _plain(expr, {"name", "cpp_name", "value", "global_binding",
+                              "read"})
                 if expr.global_binding is not None:
                     self.global_binding(expr, write=True)
                 else:

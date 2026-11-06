@@ -1,7 +1,6 @@
 # The user-visible outcome of a body THIR cannot lower: a compile error naming
-# the blocking construct's tag. The shape here is a deliberate refusal -- a
-# local declared in the enclosing function and rebound to a fresh object inside
-# a nested def has no stable home to hoist its slot into.
+# the blocking construct's tag. The shape here is a filed gap -- a field read
+# off a record ternary (BUGS.md#reference-ternary-position-gaps).
 from tpy import int32
 
 
@@ -12,17 +11,10 @@ class Point:
         self.x = x
 
 
-def main() -> None:
-    p: Point | None = None
-    p = Point(1)
-
-    def reset() -> None:
-        nonlocal p
-        p = Point(2)  # tpyc: error(/not yet supported by C\+\+ code generation/)
-
-    reset()
-    if p is not None:
-        print(p.x)
+def main(c: bool) -> None:
+    a = Point(1)
+    b = Point(2)
+    print((a if c else b).x)  # tpyc: error(/not yet supported by C\+\+ code generation/)
 
 
-main()
+main(True)

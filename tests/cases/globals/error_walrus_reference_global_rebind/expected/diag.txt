@@ -1,0 +1,1 @@
+main.py:29: error: Cannot reassign global variable 'g' of non-value type 'A'

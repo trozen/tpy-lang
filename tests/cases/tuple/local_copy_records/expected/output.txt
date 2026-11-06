@@ -4,7 +4,7 @@ walrus 1
 walrus after 1 7
 unpack 1 8 2
 method 3 9
-closure 11
+closure 11 11
 loop 0 1 20
 loop 1 1 21
 arm 1 30

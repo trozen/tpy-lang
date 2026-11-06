@@ -1,0 +1,7 @@
+main.py:33: warning: copies A into owned storage; use copy() to make this explicit ('x' is bound to existing storage at line 33)
+main.py:44: warning: copies A into owned storage; use copy() to make this explicit
+main.py:56: warning: copies A into owned storage; use copy() to make this explicit
+main.py:74: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:82: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('b' is bound to existing storage at line 82)
+main.py:89: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('b' is bound to existing storage at line 89)
+main.py:98: warning: copies A into owned storage (argument 'object' tuple element 0); use copy() to make this explicit

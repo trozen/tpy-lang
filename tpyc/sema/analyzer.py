@@ -431,6 +431,7 @@ class SemanticAnalyzer:
             self.protocols, self.narrowing, self.expr,
         )
         self.stmts.pend = self.pend
+        self.expr.stmts = self.stmts
         self.compat.init = self.stmts.init
         self.expr.init = self.stmts.init
         self.expr.set_scopes(self.stmts.scopes)
