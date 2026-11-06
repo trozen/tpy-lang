@@ -173,6 +173,18 @@ def _owned_member(ctx: 'SemanticContext', m: TpyExpr) -> bool:
             and read_ownership(ctx, rb).acquired is Acquired.HANDED)
 
 
+def value_capture_holds(ctx: 'SemanticContext', slot: TpyType,
+                        member: TpyExpr | None) -> bool:
+    """Whether a tuple element captured by VALUE holds an object of its
+    own. An open `T` copies an existing object in at a reference
+    instantiation (`param_to_storage`), so it still lends -- unless the
+    member is fresh or handed over (`Own`)."""
+    return not (member is not None
+                and isinstance(unwrap_readonly(unwrap_ref_type(slot)),
+                               TypeParamRef)
+                and not _owned_member(ctx, member))
+
+
 def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
                          slot: TpyType | None, prefix: ElemPath = ()
                          ) -> frozenset[ElemPath] | None:
@@ -204,21 +216,13 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
         for i, et in enumerate(bare.element_types):
             path = prefix + (i,)
             m = init.elements[i] if i < len(init.elements) else None
-            # A captured open `T` copies an existing object in at a
-            # reference instantiation (`param_to_storage`), as the
-            # binding-borrow registry reads it: it lends, unless fresh
-            # or handed over (`Own`).
             # A literal no capture was decided for (a walrus's) holds a
             # value-typed element by value, the capture rule's first
             # answer.
             held_by_value = (caps[i] is TupleElemCapture.VALUE
                              if i < len(caps)
                              else not caps and et.is_value_type())
-            if (held_by_value
-                    and not (m is not None
-                             and isinstance(unwrap_readonly(
-                                 unwrap_ref_type(et)), TypeParamRef)
-                             and not _owned_member(ctx, m))):
+            if held_by_value and value_capture_holds(ctx, et, m):
                 continue
             if bare_tuple(et) is not None and m is not None:
                 out |= tuple_borrowed_paths(ctx, m, et, path) or frozenset()

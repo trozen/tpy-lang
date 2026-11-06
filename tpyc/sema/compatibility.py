@@ -5296,8 +5296,7 @@ class TypeCompatibility:
         return (f"Cannot return {display} referencing a local or temporary; "
                 + _view_keeping_hint(expr.name, display, info.stored_source))
 
-    def _name_is_param_or_global(self, name: str, *,
-                                 yield_slot: bool = False) -> bool:
+    def _name_is_param_or_global(self, name: str) -> bool:
         """True if the name refers to caller-owned storage that outlives the call.
 
         The one name rule of the durability readers (`_place_durable`,
@@ -5308,13 +5307,8 @@ class TypeCompatibility:
         NOT confer return-safety on borrows rooted in it; the same holds for
         `self` in a consuming method. (Returning the owned value itself moves
         by value through the OwnType return path, which never reaches the
-        dangling checks.) Generic `Own[...T...]` params keep the legacy
-        params-are-safe treatment: the body is analyzed pre-instantiation
-        where value-ness (by-value vs by-reference return) is unknown --
-        same TypeParamRef exemption the per-element tuple dangle check uses.
-        A generator's yield asks without it (`yield_slot`): its slot lends
-        at every instantiation, so the reference one decides, as at the
-        concrete twin.
+        dangling checks.) A generic `Own[...T...]` param is callee storage
+        too: the reference instantiation decides, as at the concrete twin.
         """
         func = self.ctx.func.current_function
         # Only a real receiver is durable by being `self`; in a free function
@@ -5326,9 +5320,7 @@ class TypeCompatibility:
             for pname, ptype in func.params:
                 if pname == name:
                     own_inner = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
-                    return (own_inner is None
-                            or (not yield_slot
-                                and contains_type_param(own_inner)))
+                    return own_inner is None
         return self._name_is_module_global(name)
 
     def _name_is_module_global(self, name: str) -> bool:
@@ -5386,7 +5378,7 @@ class TypeCompatibility:
         gy = gen_yield and all(c.how in (Lent.RECORDED, Lent.AWAITED)
                                for c in calls)
         name = leaf.name
-        if self._name_is_param_or_global(name, yield_slot=gen_yield):
+        if self._name_is_param_or_global(name):
             return True
         if not vs and self.ctx.func.bp_is_safe_to_return(name):
             return True
@@ -5844,8 +5836,12 @@ class TypeCompatibility:
             if not for_yield:
                 self._check_tuple_storage_return_root(tuple_rt, expr)
             return
+        # A ValueType-bounded `T` returns by value at every instantiation
+        # (TODO.md "A ValueType-bounded T lowers as its concrete value twin
+        # in bodies").
         if (return_type.is_value_type()
-                or isinstance(return_type, (VoidType, OwnType))):
+                or isinstance(return_type, (VoidType, OwnType))
+                or self._is_value_type_param(unwrap_readonly(return_type))):
             return
 
         # Every arm below returns a bare reference form (`T&` / `T*`), so one

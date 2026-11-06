@@ -58,9 +58,9 @@ template<::tpy::ValueType T>
 // def lam[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> lam(::tpy::param_val_or_ref_t<T> x);
-// def opt_back[T: ValueType](x: Own[T]) -> T | None:
+// def opt_back[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>
-T* opt_back(::tpy::own_param_t<T> x);
+::tpy::val_or_ref_t<T> opt_back(::tpy::own_param_t<T> x);
 // def pair_back[T: ValueType](x: T) -> tuple[T, int32]:
 template<::tpy::ValueType T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair_back(::tpy::param_val_or_ref_t<T> x);
@@ -559,12 +559,12 @@ template<::tpy::ValueType T>
     std::function<T()> f = [x]() -> T { return T(x); };
     return f();
 }
-// # bounded generic: an owned T handed back as an Optional result
-// def opt_back[T: ValueType](x: Own[T]) -> T | None:
+// # bounded generic: an owned T handed back by value
+// def opt_back[T: ValueType](x: Own[T]) -> T:
 //     return x
 template<::tpy::ValueType T>
-T* opt_back(::tpy::own_param_t<T> x) {
-    return &(x);
+::tpy::val_or_ref_t<T> opt_back(::tpy::own_param_t<T> x) {
+    return x;
 }
 // # bounded generic: a tuple result built from the parameter
 // def pair_back[T: ValueType](x: T) -> tuple[T, int32]:

@@ -1,2 +1,6 @@
-10
-7
+passthrough 7
+readonly 8
+method 6
+own value 5
+own class 4
+async 11

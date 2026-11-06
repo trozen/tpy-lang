@@ -4,30 +4,188 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
+struct P;
+template<::tpy::ValueType T> struct C;
+
 inline constexpr std::string_view __name__ = "__main__";
 
-// def first_val[T](items: Own[list[T]]) -> T:
-template<typename T>
-::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items);
+template <typename T>
+struct __coro_aback;
+struct __coro_run_async;
+
+// def churn() -> int32:
+int32_t churn();
 // def passthrough[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x);
+// def ro_back[T: ValueType](x: Own[T]) -> readonly[T]:
+template<::tpy::ValueType T>
+::tpy::val_or_cref_t<T> ro_back(::tpy::own_param_t<T> x);
+// def back[T](x: Own[T]) -> Own[T]:
+template<typename T>
+::tpy::own_return_t<T> back(::tpy::own_param_t<T> x);
+// async def aback[T: ValueType](x: Own[T]) -> T:
+template <typename T>
+__coro_aback<T> aback(T x);
+// async def run_async() -> None:
+__coro_run_async run_async();
 // def main() -> None:
 void main();
 
-// def first_val[T](items: Own[list[T]]) -> T:
-//     return items[0]  # tpyc: ok
-template<typename T>
-::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    return ::tpy::__getitem__(items, 0);
+// class P:
+struct P {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    P() = default;
+    explicit P(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.P";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const P& obj) {
+    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
+    return os;
 }
+
+// class C[T: ValueType]:
+template<::tpy::ValueType T>
+struct C {
+
+
+    // def opt(self, x: Own[T]) -> T | None:
+    std::optional<T> opt(T x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.C";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
+    ::tpy::print_object_default(os, C<T>::__tpy_class_name__, obj);
+    return os;
+}
+
+// async def aback[T: ValueType](x: Own[T]) -> T:
+template <typename T>
+struct __coro_aback {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    T x;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_aback(T&& x_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
+
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_aback<T>&) {
+        return os << "<coroutine aback>";
+    }
+};
+// # async: a ValueType-bounded owned T returned from a coroutine
+// async def aback[T: ValueType](x: Own[T]) -> T:
+//     await asyncio.sleep(0)                      # -> S_RESUME_0
+//     return x  # tpyc: ok
+template <typename T>
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_aback<T>::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def aback[T: ValueType](x: Own[T]) -> T:
+template <typename T>
+__coro_aback<T> aback(T x) {
+    return __coro_aback<T>(std::move(x));
+}
+
+// async def run_async() -> None:
+struct __coro_run_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t r;
+    std::optional<__coro_aback<int32_t>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_run_async()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_run_async&) {
+        return os << "<coroutine run_async>";
+    }
+};
+
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline P::P(int32_t v) : v(v) {}
+
+// def opt(self, x: Own[T]) -> T | None:
+//     return x  # tpyc: ok
+template<::tpy::ValueType T>
+inline std::optional<T> C<T>::opt(T x) const {
+    return x;
+}
+
+// # free function: a ValueType-bounded owned T returns by value
 // def passthrough[T: ValueType](x: Own[T]) -> T:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x) {
+    return x;
+}
+// # readonly: a ValueType-bounded owned T returned readonly is a value too
+// def ro_back[T: ValueType](x: Own[T]) -> readonly[T]:
+//     return x  # tpyc: ok
+template<::tpy::ValueType T>
+::tpy::val_or_cref_t<T> ro_back(::tpy::own_param_t<T> x) {
+    return x;
+}
+// # Own[T] return: the owned value moves out, at a value and a class T
+// def back[T](x: Own[T]) -> Own[T]:
+//     return x  # tpyc: ok
+template<typename T>
+::tpy::own_return_t<T> back(::tpy::own_param_t<T> x) {
     return x;
 }
 

@@ -9,21 +9,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def first[T](items: Own[Iterable[T]]) -> T:  # tpyc: warning(/never consumed/)
+// def first[T](items: Own[Iterable[T]]) -> Own[T]:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
-::tpy::val_or_ref_t<T> first(T_items&& items);
+::tpy::own_return_t<T> first(T_items&& items);
 // def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 std::vector<T> to_list(T_items&& items);
 // def main() -> None:
 void main();
 
-// def first[T](items: Own[Iterable[T]]) -> T:  # tpyc: warning(/never consumed/)
+// # Own[T]: an element of a source that dies here is copied out at a class T.
+// def first[T](items: Own[Iterable[T]]) -> Own[T]:  # tpyc: warning(/never consumed/)
 //     for x in items:
-//         return x
+//         return x  # tpyc: warning(/may copy T into owned storage/)
 //     assert False, "empty"
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
-::tpy::val_or_ref_t<T> first(T_items&& items) {
+::tpy::own_return_t<T> first(T_items&& items) {
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

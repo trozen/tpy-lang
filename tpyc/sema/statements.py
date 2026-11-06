@@ -155,6 +155,7 @@ from .capture_copies import warn_closure_captures
 from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, is_reference_local,
+                           value_capture_holds,
                            stamp_bind_kind, stamp_unpack_rebinds,
                            UnpackTarget, target_indices,
                            unpack_target_records)
@@ -621,7 +622,7 @@ def _register_tuple_binding_borrows(
             capture = (leaf.holder.elem_capture[index]
                        if index < len(leaf.holder.elem_capture) else None)
             if (capture is TupleElemCapture.VALUE
-                    and not isinstance(slot, TypeParamRef)):
+                    and value_capture_holds(ctx, leaf.slot, leaf.elem)):
                 continue
             register_binding_loans(ctx, borrower, BindingSource(leaf.elem),
                                    leaf.slot)

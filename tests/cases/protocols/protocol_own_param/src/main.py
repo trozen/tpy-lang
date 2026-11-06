@@ -3,9 +3,10 @@
 from tpy import Own, int32
 from typing import Iterable
 
-def first[T](items: Own[Iterable[T]]) -> T:  # tpyc: warning(/never consumed/)
+# Own[T]: an element of a source that dies here is copied out at a class T.
+def first[T](items: Own[Iterable[T]]) -> Own[T]:  # tpyc: warning(/never consumed/)
     for x in items:
-        return x
+        return x  # tpyc: warning(/may copy T into owned storage/)
     assert False, "empty"
 
 def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)

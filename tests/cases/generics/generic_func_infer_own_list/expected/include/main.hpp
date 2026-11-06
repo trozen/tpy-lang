@@ -11,9 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def first_val[T](items: Own[list[T]]) -> T:
+// def first_val[T](items: Own[list[T]]) -> Own[T]:
 template<typename T>
-::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items);
+::tpy::own_return_t<T> first_val(std::vector<T>&& items);
 // def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
 void consume_list(std::vector<T>&& items);
@@ -38,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// def first_val[T](items: Own[list[T]]) -> T:
-//     return items[0]
+// # Own[T]: an element of a list that dies here is copied out at a class T.
+// def first_val[T](items: Own[list[T]]) -> Own[T]:
+//     return items[0]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    return ::tpy::__getitem__(items, 0);
+::tpy::own_return_t<T> first_val(std::vector<T>&& items) {
+    return T(::tpy::__getitem__(items, 0));
 }
 // def consume_list[T](items: Own[list[T]]) -> None:
 //     pass

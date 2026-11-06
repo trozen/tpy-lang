@@ -553,7 +553,7 @@ void main() {
     }
     std::cout << "clone" << " " << ::tpyapp::main::clone<int32_t>(5) << "\n" << ::tpy::check_signals;
     std::cout << "lam" << " " << ::tpyapp::main::lam<int32_t>(8) << " " << ::tpyapp::main::lam<std::string>("s") << "\n" << ::tpy::check_signals;
-    std::cout << "opt_back" << " " << ::tpy::print_optional(::tpyapp::main::opt_back<int32_t>(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_back" << " " << ::tpyapp::main::opt_back<int32_t>(5) << "\n" << ::tpy::check_signals;
     std::cout << "pair_back" << " " << ::tpy::TuplePrinter(::tpyapp::main::pair_back<int32_t>(3)) << "\n" << ::tpy::check_signals;
     std::tuple<std::optional<int32_t>, int32_t> y = ::tpyapp::main::own_pair<int32_t>(std::tuple<std::optional<int32_t>, int32_t>{3, 2});
     std::cout << "own_pair" << " " << std::get<1>(y) << "\n" << ::tpy::check_signals;

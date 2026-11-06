@@ -154,8 +154,8 @@ def lam[T: ValueType](x: T) -> T:
     return f()
 
 
-# bounded generic: an owned T handed back as an Optional result
-def opt_back[T: ValueType](x: Own[T]) -> T | None:
+# bounded generic: an owned T handed back by value
+def opt_back[T: ValueType](x: Own[T]) -> T:
     return x
 
 

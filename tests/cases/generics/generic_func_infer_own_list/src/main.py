@@ -7,8 +7,9 @@ class Point:
     y: int32
 
 
-def first_val[T](items: Own[list[T]]) -> T:
-    return items[0]
+# Own[T]: an element of a list that dies here is copied out at a class T.
+def first_val[T](items: Own[list[T]]) -> Own[T]:
+    return items[0]  # tpyc: warning(/may copy T into owned storage/)
 
 
 def consume_list[T](items: Own[list[T]]) -> None:

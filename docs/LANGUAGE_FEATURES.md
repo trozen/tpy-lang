@@ -2425,6 +2425,27 @@ returns by value -- also when it is bound to a function returning its
 argument, which CPython hands back
 (`BUGS.md#callable-value-borrow-return-copies-unwarned`).
 
+An `Own[...]` parameter, generic or not, is the callee's storage and dies
+at the return: returning it, or a field or element of it, through a
+borrow-form return (`-> T`, `-> T | None`, `-> list[T]`) is the same
+dangling-reference error as for a local, and the fix is to return it as
+`Own[...]` (`def back[T](x: Own[T]) -> Own[T]: return x`). A generic body
+is checked before it is instantiated, so the reference instantiation
+decides: an unbounded `def first[T](items: Own[list[T]]) -> T: return
+items[0]` is refused even when every caller passes a value type. A
+`T` bounded `ValueType` returns by value at every instantiation, so
+`-> T` and `-> readonly[T]` of it stay accepted (`def passthrough[T:
+ValueType](x: Own[T]) -> T: return x`), and so does `-> T | None` in a
+method of a class that bounds `T` (it renders `std::optional<T>`). A free
+function's own `[T: ValueType]` does not reach its `-> T | None` return,
+which still renders a pointer and is refused
+(`BUGS.md#bounded-function-optional-return-pointer`). The by-value Optional spelling
+`-> Own[T | None]` does not lower yet at a value instantiation's caller
+(`BUGS.md#own-generic-param-optional-lever`), so a generic body handing an
+owned parameter back as an Optional has no working spelling today. A tuple
+return whose open-`T` element is the owned parameter is not checked yet
+(`BUGS.md#own-generic-tuple-element-return-dangles`).
+
 `readonly[Own[T]]` is the same owning return slot with a const view on top,
 so it takes the same check -- the spelling is not a way past it.
 

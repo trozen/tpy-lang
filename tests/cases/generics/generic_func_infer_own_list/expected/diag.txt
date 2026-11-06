@@ -1,4 +1,5 @@
-main.py:10: warning: Own[list[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:14: warning: Own[list[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:18: warning: Own[T] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:18: warning: Own[T] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:12: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:11: warning: Own[list[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:15: warning: Own[list[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:19: warning: Own[T] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:19: warning: Own[T] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
