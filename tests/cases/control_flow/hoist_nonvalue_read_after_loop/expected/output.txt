@@ -76,6 +76,12 @@ sib_readonly 2
 sib_container_elem 0
 sib_container_elem 1
 sib_container_elem [[0], [1, 9]]
+sib_method 0
+sib_method 1
+sib_method 101
+sib_ctor 22
+sib_closure 32
+sib_error_return 52
 two_loop_list_sibling [1, 9] [1, 9]
 two_loop_list_sibling [1, 1, 9] [1]
 two_loop_dict_arm [(1, 1), (7, 7)] [(1, 1), (7, 7)]
@@ -101,6 +107,8 @@ arm_empty_list [1, 2, 9]
 arm_empty_list [1, 2, 9]
 two_loop_none_then_record none
 two_loop_none_then_record 101 101
+blk_loop_then_arm a parameter long enough that a dangling view would show, trulytail
+blk_loop_then_arm  parameter long enough that a dangling view would show, truly
 gen_sibling 0
 gen_sibling 1
 gen_sibling 50
@@ -126,8 +134,6 @@ blk_if_mixed_rev 100
 blk_if_mixed_rev 72
 blk_pre_loop_arm 100
 blk_pre_loop_arm 2
-blk_loop_then_arm a parameter long enough that a dangling view would show, trulytail
-blk_loop_then_arm  parameter long enough that a dangling view would show, truly
 blk_read_in_both_arms 2
 blk_read_in_both_arms 3
 blk_loop_in_both_arms 102
@@ -138,10 +144,4 @@ blk_with 6
 blk_try 5
 blk_match 3
 blk_match 82
-sib_method 0
-sib_method 1
-sib_method 101
-sib_ctor 22
-sib_closure 32
-sib_error_return 52
 module_sibling 101
