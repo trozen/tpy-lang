@@ -1,4 +1,4 @@
-# TurboPython: a high-performance dialect of Python, compiled to C++
+# TurboPython: a Python-to-C++ compiler for a high-performance Python dialect
 
 **TurboPython** (TPy, package `tpy-lang`) is a high-performance dialect of
 Python: statically typed Python source compiles through C++ to a native
