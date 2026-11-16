@@ -8,16 +8,21 @@ re-exports the walk so every sema module has one import for it."""
 
 from __future__ import annotations
 
+from typing import Callable
+
 from ..typesys import TpyType, unwrap_ref_type
 from ..value_category import (
     ElemPath, bare_tuple, declared_borrowed, is_reference_leaf, leaves_at,
     paths_at, reference_paths,
 )
 
+PathsAt = Callable[[TpyType, ElemPath], frozenset[ElemPath]]
+
 __all__ = [
-    "ElemPath", "bare_tuple", "declared_borrowed", "declared_lent_paths",
-    "is_reference_leaf", "leaf_paths", "leaves_at", "owned_leaf_paths",
-    "owned_slot_paths", "paths_at", "reference_paths",
+    "ElemPath", "PathsAt", "bare_tuple", "declared_borrowed", "declared_lent_paths",
+    "handed_over_paths", "is_reference_leaf", "leaf_paths", "leaves_at",
+    "owned_leaf_paths", "owned_slot_paths", "paths_at", "reference_paths",
+    "step_hands_over_lent",
 ]
 
 
@@ -59,3 +64,26 @@ def declared_lent_paths(declared: TpyType) -> frozenset[ElemPath]:
     (`declared_borrowed`): none under an `Own` marker, every other
     reference leaf (`is_reference_leaf`)."""
     return declared_borrowed(declared, declared, ())
+
+
+def handed_over_paths(declared: TpyType, paths: PathsAt = paths_at,
+                      ) -> frozenset[ElemPath]:
+    """The reference leaf paths (`paths`, by default `paths_at`) a value
+    of declared type `declared` hands over: those its `Own` markers cover
+    (`declared_lent_paths`' rest)."""
+    return paths(declared, ()) - declared_borrowed(declared, declared, (),
+                                                   paths)
+
+
+def step_hands_over_lent(required: TpyType, declared: TpyType,
+                         paths: PathsAt = paths_at) -> bool:
+    """A step declared `declared` hands over a reference leaf a step
+    requirement `required` lends: the callee may keep a lent leaf for the
+    call, while a handed-over one lives only in its consumer's step. A
+    handed-over path covers every leaf under it: `Own[T]` at
+    `T = tuple[Cell, int32]` hands over the `Cell` at `(0,)`. `paths`
+    reads a type's reference leaf paths (`paths_at` by default)."""
+    handed = handed_over_paths(declared, paths)
+    return any(lent[:len(p)] == p
+               for lent in declared_borrowed(required, required, (), paths)
+               for p in handed)

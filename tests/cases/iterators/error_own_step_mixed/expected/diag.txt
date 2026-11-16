@@ -1,0 +1,1 @@
+main.py:53: error: Type Source does not conform to protocol Mixed[Own[int32]] in argument 'xs': 'Source' hands over its steps, where 'Mixed[Own[int32]]' lends them (its '__iter__' returns 'Iterator[Cell]')

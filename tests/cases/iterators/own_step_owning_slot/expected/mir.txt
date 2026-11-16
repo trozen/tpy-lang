@@ -1,0 +1,97 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::make@14:0: uncovered (loop across a suspension)
+fixtures::take@71:0: uncovered (unsupported parameter type)
+fixtures::take_tok@80:0: uncovered (unsupported parameter type)
+fixtures::sum_lent@87:0: uncovered (unsupported parameter type)
+fixtures::Counter.__iter__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+fixtures::Counter.__next__@28:4: uncovered (error-return body)
+fixtures::Bag.__iter__@36:4: uncovered (loop across a suspension)
+fixtures::TokBag.__iter__@50:4: uncovered (loop across a suspension)
+fixtures::TokCursor.__iter__@61:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+fixtures::TokCursor.__next__@64:4: uncovered (error-return body)
+fixtures::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known
+fixtures::Counter.__init__@22:4: covered (storage: no_proof_required), summary: known
+fixtures::Tok.__init__@45:4: covered (storage: no_proof_required), summary: known
+fixtures::TokCursor.__init__@58:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::keep@17:0: uncovered (unsupported parameter type)
+main::take_g@24:0: uncovered (generic body)
+main::doubled@42:0: uncovered (unsupported parameter type)
+main::atotal@47:0: uncovered (async body)
+main::main@54:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::Summer.add@37:4: uncovered (unsupported parameter type)
+main::Summer.__init__@34:4: covered (storage: no_proof_required), summary: known
+part_adapters::__tpy_init: uncovered (module initialization)
+part_adapters::keep_keys@19:0: uncovered (unsupported native container element)
+part_adapters::main@26:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_adapters::Key.__lt__@15:4: covered (storage: no_proof_required)
+part_adapters::Key.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_dispatch::__tpy_init: uncovered (module initialization)
+part_dispatch::next_at@64:0: uncovered (unsupported parameter type)
+part_dispatch::pick@72:0: uncovered (no body to lower)
+part_dispatch::pick@80:0: uncovered (no body to lower)
+part_dispatch::main@84:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_dispatch::ArgTokBag.__iter__@16:4: uncovered (no body to lower)
+part_dispatch::ArgTokBag.__iter__@20:4: uncovered (no body to lower)
+part_dispatch::KwTokBag.__iter__@26:4: uncovered (no body to lower)
+part_dispatch::KwTokBag.__iter__@30:4: uncovered (no body to lower)
+part_dispatch::KwTokBag.__iter__@34:4: uncovered (no body to lower)
+part_dispatch::KwDefaultTokBag.__iter__@39:4: uncovered (reference yield)
+part_dispatch::ArgCursor.__iter__@48:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+part_dispatch::ArgCursor.__next__@52:4: uncovered (no body to lower)
+part_dispatch::ArgCursor.__next__@58:4: uncovered (no body to lower)
+part_protocol_forward::__tpy_init: uncovered (module initialization)
+part_protocol_forward::take_sub@13:0: uncovered (unsupported parameter type)
+part_protocol_forward::sum_own@19:0: uncovered (unsupported parameter type)
+part_protocol_forward::sum_sub@26:0: uncovered (unsupported parameter type)
+part_protocol_forward::sum_cells@34:0: uncovered (unsupported parameter type)
+part_protocol_forward::fwd_cells@41:0: uncovered (unsupported parameter type)
+part_protocol_forward::take_owned@59:0: uncovered (unsupported parameter type)
+part_protocol_forward::forward_owned@66:0: uncovered (unsupported parameter type)
+part_protocol_forward::count_of@90:0: uncovered (unsupported parameter type)
+part_protocol_forward::forward_counted@97:0: uncovered (unsupported parameter type)
+part_protocol_forward::main@101:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_protocol_forward::Values.__iter__@86:4: covered (storage: no_facts: storage facts have not been published)
+part_protocol_forward::Values.__init__@83:4: covered (storage: no_proof_required), summary: known
+part_source_shapes::__tpy_init: uncovered (module initialization)
+part_source_shapes::take_whole@44:0: uncovered (unsupported parameter type)
+part_source_shapes::first_lent@113:0: uncovered (unsupported parameter type)
+part_source_shapes::main@119:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_source_shapes::TokSource.__iter__@16:4: uncovered (no body to lower)
+part_source_shapes::TokSource.__iter__@24:4: uncovered (no body to lower)
+part_source_shapes::Whole.__iter__@34:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_source_shapes::Whole.__next__@37:4: uncovered (error-return body)
+part_source_shapes::OwnCounter.__iter__@58:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_source_shapes::OwnCounter.__next__@61:4: uncovered (error-return body)
+part_source_shapes::Popper.__iter__@74:4: uncovered (generic body)
+part_source_shapes::Popper.__next__@77:4: uncovered (generic body)
+part_source_shapes::PopBag.__iter__@84:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_source_shapes::Holder.__iter__@98:4: uncovered (generic body)
+part_source_shapes::Holder.__next__@101:4: uncovered (generic body)
+part_source_shapes::HolderBag.__iter__@109:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_source_shapes::TokSource.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_source_shapes::Whole.__init__@31:4: covered (storage: no_proof_required), summary: known
+part_source_shapes::OwnCounter.__init__@55:4: covered (storage: no_proof_required), summary: known
+part_source_shapes::Popper.__init__@71:4: uncovered (generic constructor)
+part_source_shapes::Holder.__init__@94:4: uncovered (generic constructor)
+part_value_steps::__tpy_init: uncovered (module initialization)
+part_value_steps::text_of@42:0: uncovered (generic body)
+part_value_steps::run_it@71:0: uncovered (unsupported parameter type)
+part_value_steps::sum_value_steps@104:0: uncovered (unsupported parameter type)
+part_value_steps::first@122:0: uncovered (unsupported parameter type)
+part_value_steps::consume@128:0: uncovered (unsupported parameter type)
+part_value_steps::main@132:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_value_steps::TextR.f@30:4: covered (storage: no_proof_required), summary: known
+part_value_steps::TextQ.f@38:4: covered (storage: no_proof_required), summary: known
+part_value_steps::IntCounter.__iter__@52:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_value_steps::IntCounter.__next__@55:4: uncovered (error-return body)
+part_value_steps::Task.run@67:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_value_steps::CountIter.__iter__@81:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_value_steps::CountIter.__next__@84:4: uncovered (error-return body)
+part_value_steps::Holder.__iter__@92:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_value_steps::Lender.token@114:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_value_steps::Lender.__iter__@117:4: uncovered (reference yield)
+part_value_steps::TextR.__init__@27:4: covered (storage: no_proof_required), summary: known
+part_value_steps::TextQ.__init__@35:4: covered (storage: no_proof_required), summary: known
+part_value_steps::IntCounter.__init__@49:4: covered (storage: no_proof_required), summary: known
+part_value_steps::CountIter.__init__@78:4: covered (storage: no_proof_required), summary: known

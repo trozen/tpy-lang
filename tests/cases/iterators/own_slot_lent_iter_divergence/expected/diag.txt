@@ -1,36 +1,42 @@
-main.py:315: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:207: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:209: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:211: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:213: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:215: warning: copies list[int32] elements; use copy_iter() to make this explicit
+part_owned_storage.py:50: warning: copies list[int32] elements; use copy_iter() to make this explicit
+part_owned_storage.py:53: warning: copies list[int32] elements; use copy_iter() to make this explicit
+part_owned_storage.py:57: warning: copies list[int32] elements; use copy_iter() to make this explicit
+part_owned_storage.py:59: warning: copies list[int32] elements; use copy_iter() to make this explicit
+part_owned_storage.py:64: warning: copies Pt into owned storage; use copy() to make this explicit
+part_step_member.py:98: warning: copies Cell elements; use copy_iter() to make this explicit
+part_step_member.py:99: warning: copies Cell elements; use copy_iter() to make this explicit
+part_step_member.py:104: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_step_member.py:107: warning: copies Cell elements; use copy_iter() to make this explicit
+part_step_member.py:109: warning: copies Cell elements; use copy_iter() to make this explicit
+part_step_member.py:112: warning: copies tuple[Pt, int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:217: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:220: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:222: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:228: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:230: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:131: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:133: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:135: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:137: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:139: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:141: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:144: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:146: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:149: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:151: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:153: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:155: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:158: warning: copies Key elements; use copy_iter() to make this explicit
+main.py:164: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:167: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit
+main.py:170: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:172: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit
+main.py:173: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:176: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:179: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:187: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:191: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:194: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:197: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:199: warning: copies list[int32] elements; use copy_iter() to make this explicit
+main.py:202: warning: copies Pt elements; use copy_iter() to make this explicit
+main.py:205: warning: copies tuple[Tag, Pt] elements; use copy_iter() to make this explicit
+main.py:208: warning: copies tuple[Pt, Tag] elements; use copy_iter() to make this explicit
+main.py:224: warning: copies list[int32] elements; use copy_iter() to make this explicit
 main.py:232: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:234: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:236: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:239: warning: copies Key elements; use copy_iter() to make this explicit
-main.py:245: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:248: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit
-main.py:251: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:253: warning: copies tuple[int32, list[int32]] elements; use copy_iter() to make this explicit
-main.py:254: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:257: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:260: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:268: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:272: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:275: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:278: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:281: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:283: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:287: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:289: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:292: warning: copies Pt elements; use copy_iter() to make this explicit
-main.py:295: warning: copies tuple[Tag, Pt] elements; use copy_iter() to make this explicit
-main.py:298: warning: copies tuple[Pt, Tag] elements; use copy_iter() to make this explicit
-main.py:304: warning: copies Pt into owned storage; use copy() to make this explicit
-main.py:322: warning: copies list[int32] elements; use copy_iter() to make this explicit
-main.py:330: warning: copies list[int32] elements; use copy_iter() to make this explicit

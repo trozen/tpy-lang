@@ -1,0 +1,1 @@
+main.py:21: error: Protocol 'Owned' does not conform to protocol 'Lent': method '__iter__' hands over its step, where 'def __iter__(self) -> Own[Iterator[Cell]]' lends it

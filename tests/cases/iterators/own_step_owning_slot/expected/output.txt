@@ -1,0 +1,44 @@
+free make 33
+free counter 23
+free bag 31
+named bag 1 31
+named bag 2 31
+named counter 1 23
+named counter 2 0
+nocopy bag 1
+nocopy cursor 9
+list bag 6 6
+generic 2 2
+method 14
+generator [10, 12]
+async 3
+live list 23
+live list after 2
+live rows after [1, 5] [2] 2
+sub-protocol 31
+live list sub-protocol 3
+live list sub-protocol after 2 2
+generic protocol forward 4
+generic protocol forward after 3 2
+redeclared next forward 3
+field protocol forward 1
+overload set 9 9
+whole tuple 8
+explicit owning base 63
+returned generic owning 5
+returned generic substituted Own 3
+returned generic substituted Own at owning slot 13
+named own_iter 9
+named copy_iter 13 0 1 3
+merge owning [1, 2, 3]
+value-type own r q
+value step 6
+own result 1
+own iterator object 3
+mixed 47
+value-bound child 6
+dispatch owning 201
+next with argument 42
+iter with argument 8
+iter with keyword argument 8
+iter with defaulted keyword 7

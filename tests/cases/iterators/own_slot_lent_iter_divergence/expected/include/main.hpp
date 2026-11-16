@@ -7,12 +7,24 @@
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
 #include "tpystd/asyncio/_executor/_executor.hpp"
+#include "fixtures.hpp"
+#include "part_owned_storage.hpp"
+#include "part_step_member.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/array_list.hpp"
 
 namespace tpyapp::main {
 
+using ::tpyapp::fixtures::bump;
+using ::tpyapp::fixtures::bump_pairs;
+using ::tpyapp::fixtures::bump_pt;
+using ::tpyapp::fixtures::keep;
+using ::tpyapp::fixtures::passthru;
+using ::tpyapp::fixtures::take;
+
 using ::tpystd::tplib::array_list::ArrayList;
+using ::tpyapp::fixtures::Pt;
+using ::tpyapp::fixtures::Tag;
 
 struct View;
 struct Child;
@@ -20,16 +32,10 @@ template<typename T> struct GV;
 struct Cursor;
 struct It;
 struct Separate;
-struct Rows;
-struct PView;
-struct Own2;
-struct Tag;
-struct Pt;
 struct PtView;
 struct SpanView;
 struct Key;
 struct KeyView;
-struct PList;
 struct Driver;
 
 } // namespace tpyapp::main
@@ -41,13 +47,11 @@ template<> struct std::hash<::tpyapp::main::Key> {
 namespace tpyapp::main {
 
 extern std::vector<std::vector<int32_t>>* G;
-extern std::vector<Pt>* GP;
-extern ::tpystd::tplib::array_list::ArrayList<Pt, 4>* GA;
+extern std::vector<::tpyapp::fixtures::Pt>* GP;
+extern ::tpystd::tplib::array_list::ArrayList<::tpyapp::fixtures::Pt, 4>* GA;
 extern std::vector<Key>* GK;
 inline constexpr std::string_view __name__ = "__main__";
 
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-struct __gen_passthru;
 struct __gen_gen;
 struct __gen_nth;
 struct __gen_gen_l;
@@ -58,16 +62,11 @@ struct __coro_async_body;
 struct __gen_View___iter__;
 template <typename T>
 struct __gen_GV___iter__;
-struct __gen_PView___iter__;
-struct __gen_Own2___iter__;
 struct __gen_PtView___iter__;
 struct __gen_KeyView___iter__;
 
 // def reset() -> None:
 void reset();
-// def passthru[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-__gen_passthru<T, T_src> passthru(T_src&& src);
 // def gen() -> Iterator[list[int32]]:
 __gen_gen gen();
 // def nth(i: int32) -> Iterator[list[int32]]:
@@ -77,21 +76,6 @@ __gen_gen_l gen_l(const std::vector<int32_t>& xs);
 // def gen_gt[T](t: T) -> Iterator[list[int32]]:
 template <typename T>
 __gen_gen_gt<T> gen_gt(::tpy::param_val_or_ref_t<T> t);
-// def view_of(rows: Ptr[Rows]) -> Own[PView]:
-PView view_of(Rows* rows);
-// def bump(source: Iterable[Own[list[int32]]]) -> None:
-template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
-void bump(T_source&& source);
-// def bump_pt(source: Iterable[Own[Pt]]) -> None:
-template<::tpystd::typing::Iterable<Pt> T_source>
-void bump_pt(T_source&& source);
-// def bump_pairs(source: Iterable[Own[tuple[int32, list[int32]]]]) -> None:
-template<::tpystd::typing::Iterable<std::tuple<int32_t, std::vector<int32_t>>> T_source>
-void bump_pairs(T_source&& source);
-// def take(i: int32, x: Own[list[int32]]) -> Own[list[int32]]:
-std::vector<int32_t> take(int32_t i, std::vector<int32_t>&& x);
-// def keep(x: list[int32]) -> bool:
-bool keep(const std::vector<int32_t>& x);
 // def free_function(c: bool) -> None:
 void free_function(bool c);
 // def gen_body() -> Iterator[int32]:
@@ -184,94 +168,6 @@ inline std::ostream& operator<<(std::ostream& os, const Separate& obj) {
     return os;
 }
 
-// class Rows:
-struct Rows {
-    // items: list[list[int32]]
-    std::vector<std::vector<int32_t>> items;
-
-    // def __init__(self) -> None:
-    Rows();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Rows";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
-    ::tpy::print_object_default(os, Rows::__tpy_class_name__, obj);
-    return os;
-}
-
-// class PView:
-struct PView {
-    // rows: Ptr[Rows]
-    Rows* rows;
-
-    // def __init__(self, rows: Ptr[Rows]) -> None:
-    PView() = default;
-    explicit PView(Rows* rows);
-
-    __gen_PView___iter__ __iter__() const;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.PView";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const PView& obj) {
-    ::tpy::print_object_default(os, PView::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Own2:
-struct Own2 {
-    // items: list[list[int32]]
-    std::vector<std::vector<int32_t>> items;
-
-    // def __init__(self) -> None:
-    Own2();
-
-    __gen_Own2___iter__ __iter__();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Own2";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Own2& obj) {
-    ::tpy::print_object_default(os, Own2::__tpy_class_name__, obj);
-    return os;
-}
-
-// @nocopy
-// class Tag:
-struct Tag {
-    // v: int32
-    int32_t v;
-
-    // def __init__(self, v: int32) -> None:
-    Tag() = default;
-    explicit Tag(int32_t v);
-    // non-copyable (@nocopy)
-    Tag(const Tag&) = delete;
-    Tag& operator=(const Tag&) = delete;
-    Tag(Tag&&) = default;
-    Tag& operator=(Tag&&) = default;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
-    ::tpy::print_object_default(os, Tag::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Pt:
-struct Pt {
-    // v: int32
-    int32_t v;
-
-    // def __init__(self, v: int32) -> None:
-    Pt() = default;
-    explicit Pt(int32_t v);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
-    ::tpy::print_object_default(os, Pt::__tpy_class_name__, obj);
-    return os;
-}
-
 // class PtView:
 struct PtView {
 
@@ -290,7 +186,7 @@ struct SpanView {
 
 
     // def __iter__(self) -> SpanIter[Pt]:
-    ::tpy::SpanIter<Pt> __iter__() const;
+    ::tpy::SpanIter<::tpyapp::fixtures::Pt> __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SpanView";
 };
 
@@ -346,29 +242,6 @@ inline std::ostream& operator<<(std::ostream& os, const KeyView& obj) {
     return os;
 }
 
-// class PList(list[Pt]):
-struct PList : std::vector<Pt> {
-
-    using std::vector<Pt>::vector;
-    explicit PList(std::vector<Pt> __base) : std::vector<Pt>(std::move(__base)) {}
-
-    void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<Pt>>(os, "PList", *this);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream os;
-        __repr_into__(os);
-        return os.str();
-    }
-    static constexpr std::string_view __tpy_class_name__ = "__main__.PList";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const PList& obj) {
-    obj.__repr_into__(os);
-    return os;
-}
-
 // class Driver:
 struct Driver {
 
@@ -417,69 +290,6 @@ struct __coro_async_body {
         return os << "<coroutine async_body>";
     }
 };
-
-// def passthru[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-struct __gen_passthru : public ::tpy::next_iter_mixin<__gen_passthru<T, T_src>, ::tpy::yield_slot_t<T>> {
-    ::tpy::frame_state __state;
-    T_src src;
-    using __for_src_0_t = decltype((src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_JOIN_0 = 2,
-        S_DONE = 3,
-    };
-
-    __gen_passthru(T_src&& src_)
-        : __state(S_INITIAL),
-          src(std::forward<T_src>(src_)) {}
-
-    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
-    __gen_passthru& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __gen_passthru<T, T_src>&) {
-        return os << "<generator passthru>";
-    }
-};
-// def passthru[T](src: Iterable[T]) -> Iterator[T]:
-//     for x in src:
-//         yield x                                    # -> S_RESUME_0
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_passthru<T, T_src>::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::resumable_iter_init(__for_itr_0, src);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0:  // after: yield x
-    case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
-        if (!(*__for_r_0).has_value()) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        __state = S_RESUME_0;
-        return (*x);
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
-
-// def passthru[T](src: Iterable[T]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_src>
-__gen_passthru<T, T_src> passthru(T_src&& src) {
-    return __gen_passthru<T, T_src>(std::forward<T_src>(src));
-}
 
 // def gen() -> Iterator[list[int32]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<std::vector<int32_t>>> {
@@ -737,68 +547,8 @@ inline __gen_GV___iter__<T> GV<T>::__iter__() const {
     return __gen_GV___iter__<T>(*this);
 }
 
-// def __iter__(self) -> Iterator[list[int32]]:
-struct __gen_PView___iter__ : public ::tpy::next_iter_mixin<__gen_PView___iter__, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    ::tpy::frame_state __state;
-    const PView& __self;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_RESUME_1 = 2,
-        S_DONE = 3,
-    };
-
-    __gen_PView___iter__(const PView& __self)
-        : __state(S_INITIAL),
-          __self(__self) {}
-
-    std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
-    __gen_PView___iter__& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __gen_PView___iter__&) {
-        return os << "<generator PView.__iter__>";
-    }
-};
-
-inline __gen_PView___iter__ PView::__iter__() const {
-    return __gen_PView___iter__(*this);
-}
-
-// def __iter__(self) -> Iterator[list[int32]]:
-struct __gen_Own2___iter__ : public ::tpy::next_iter_mixin<__gen_Own2___iter__, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    ::tpy::frame_state __state;
-    Own2& __self;
-    using __for_src_0_t = decltype((__self.items));
-    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_JOIN_0 = 2,
-        S_DONE = 3,
-    };
-
-    __gen_Own2___iter__(Own2& __self)
-        : __state(S_INITIAL),
-          __self(__self) {}
-
-    std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
-    __gen_Own2___iter__& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __gen_Own2___iter__&) {
-        return os << "<generator Own2.__iter__>";
-    }
-};
-
-inline __gen_Own2___iter__ Own2::__iter__() {
-    return __gen_Own2___iter__(*this);
-}
-
 // def __iter__(self) -> Iterator[Pt]:
-struct __gen_PtView___iter__ : public ::tpy::next_iter_mixin<__gen_PtView___iter__, ::tpy::val_or_ref<Pt>> {
+struct __gen_PtView___iter__ : public ::tpy::next_iter_mixin<__gen_PtView___iter__, ::tpy::val_or_ref<::tpyapp::fixtures::Pt>> {
     ::tpy::frame_state __state;
     const PtView& __self;
     using __for_src_0_t = decltype(((*GP)));
@@ -817,7 +567,7 @@ struct __gen_PtView___iter__ : public ::tpy::next_iter_mixin<__gen_PtView___iter
         : __state(S_INITIAL),
           __self(__self) {}
 
-    std::expected<::tpy::val_or_ref<Pt>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<::tpyapp::fixtures::Pt>, ::tpy::StopIteration> __next__();
     __gen_PtView___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_PtView___iter__&) {
@@ -908,29 +658,9 @@ inline It Separate::__iter__() const {
     return It();
 }
 
-// def __init__(self) -> None:
-//     self.items = [[1], [2]]
-inline Rows::Rows() : items(std::vector<std::vector<int32_t>>{{1}, {2}}) {}
-
-// def __init__(self, rows: Ptr[Rows]) -> None:
-//     self.rows = rows
-inline PView::PView(Rows* rows) : rows(rows) {}
-
-// def __init__(self) -> None:
-//     self.items = [[1], [2]]
-inline Own2::Own2() : items(std::vector<std::vector<int32_t>>{{1}, {2}}) {}
-
-// def __init__(self, v: int32) -> None:
-//     self.v = v
-inline Tag::Tag(int32_t v) : v(v) {}
-
-// def __init__(self, v: int32) -> None:
-//     self.v = v
-inline Pt::Pt(int32_t v) : v(v) {}
-
 // def __iter__(self) -> SpanIter[Pt]:
 //     return GA.__iter__()
-inline ::tpy::SpanIter<Pt> SpanView::__iter__() const {
+inline ::tpy::SpanIter<::tpyapp::fixtures::Pt> SpanView::__iter__() const {
     return GA->__iter__();
 }
 
@@ -958,51 +688,8 @@ inline ::tpy::BigInt Key::__hash__() const {
 inline void Driver::run() const {
     ::tpyapp::main::reset();
     auto __tmp_1 = View();
-    ::tpyapp::main::bump(__tmp_1);
+    ::tpyapp::fixtures::bump(__tmp_1);
     std::cout << "method" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
 }
-// def bump(source: Iterable[Own[list[int32]]]) -> None:
-//     for x in source:
-//         x.append(99)
-template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
-void bump(T_source&& source) {
-    auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& x = ::tpy::own_bind(*__r_1);
-        x.push_back(99);
-    }
-}
-// def bump_pt(source: Iterable[Own[Pt]]) -> None:
-//     for p in source:
-//         p.v += 100
-template<::tpystd::typing::Iterable<Pt> T_source>
-void bump_pt(T_source&& source) {
-    auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& p = ::tpy::own_bind(*__r_1);
-        p.v = ::tpy::add_check<int32_t>(p.v, 100);
-    }
-}
-// def bump_pairs(source: Iterable[Own[tuple[int32, list[int32]]]]) -> None:
-//     for p in source:
-//         print("  pair", p[0])
-template<::tpystd::typing::Iterable<std::tuple<int32_t, std::vector<int32_t>>> T_source>
-void bump_pairs(T_source&& source) {
-    auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::tuple<int32_t, std::vector<int32_t>> p(::tpy::own_bind(*__r_1));
-        std::cout << "  pair" << " " << std::get<0>(p) << "\n" << ::tpy::check_signals;
-    }
-}
-
 void __tpy_init();
 } // namespace tpyapp::main

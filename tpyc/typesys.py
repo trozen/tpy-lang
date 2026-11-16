@@ -2289,6 +2289,11 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def without_own(t: 'TpyType') -> 'TpyType':
+    """`t` with every `Own` marker dropped at every depth."""
+    return unwrap_own(t).map_inner_types(without_own)
+
+
 def type_contains_own(typ: 'TpyType', _under_optional: bool = False,
                       allow_optional_own: bool = True) -> bool:
     """True if a *redundant* `OwnType` appears anywhere in the type tree.

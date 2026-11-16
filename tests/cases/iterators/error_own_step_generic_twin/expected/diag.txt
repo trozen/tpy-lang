@@ -1,0 +1,1 @@
+main.py:29: error: Type Iterator[Own[Cell]] does not conform to protocol Iterable[Cell] in argument 'xs': 'Iterator[Own[Cell]]' hands over its steps; declare the parameter 'Iterable[Own[Cell]]' to take them, or collect them first (list(...))

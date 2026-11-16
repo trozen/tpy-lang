@@ -637,14 +637,20 @@ def _classify_strict_match(
         # Unwrap Own[T] from arg -- copy()-wrapped return values should still match
         # plain protocol params (Own is a caller-side ownership marker, not a new type).
         check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
-        # Strip Own[T] wrappers from protocol type args so that e.g.
-        # list[Node] matches Iterable[Own[Node]] for protocol conformance.
+        # The slot is asked as declared, so an owning iterator meets an
+        # owning `Iterable[Own[Node]]` and no lending one; a lent
+        # `list[Node]` meets the owning slot without its `Own` too (the
+        # copy check copies its steps), and the closer of the two answers
+        # ranks. The widening cost reads its element types.
         check_param = param_inner
         if (isinstance(param_inner, NominalType) and param_inner.type_args
                 and any(isinstance(a, OwnType) for a in param_inner.type_args)):
             stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.type_args)
             check_param = dc_replace(param_inner, type_args=stripped)
-        kind = protocol_classifier(check_arg, check_param)
+        kind = protocol_classifier(check_arg, param_inner)
+        if (kind is not ProtocolConformanceKind.EXPLICIT
+                and check_param is not param_inner):
+            kind = protocol_classifier(check_arg, check_param) or kind
         if kind is ProtocolConformanceKind.EXPLICIT:
             return (MatchTier.PROTOCOL_EXPLICIT,
                     _type_args_widening_cost(check_arg, check_param, default_int_type,

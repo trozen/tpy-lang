@@ -1,9 +1,14 @@
 # A user iterator lending its step from storage the call does not name copies
 # each element into an owning element slot: warned; CPython aliases instead.
+# Core: sources over module globals. Variants: other backing storage, which
+# member declares the step.
 import asyncio
-from typing import Iterable, Iterator
-from tpy import Own, Ptr, SpanIter, int32, copy, nocopy
+from typing import Iterator
+from tpy import Own, SpanIter, int32, copy
 from tplib.array_list import ArrayList
+from fixtures import Pt, Tag, bump, bump_pairs, bump_pt, keep, passthru, take
+import part_owned_storage
+import part_step_member
 
 G = [[1], [2]]
 
@@ -28,11 +33,6 @@ class GV[T]:
     def __iter__(self) -> Iterator[list[int32]]:
         for x in G:
             yield x
-
-
-def passthru[T](src: Iterable[T]) -> Iterator[T]:
-    for x in src:
-        yield x
 
 
 def gen() -> Iterator[list[int32]]:
@@ -88,54 +88,6 @@ class Separate:
         return It()
 
 
-class Rows:
-    items: list[list[int32]]
-
-    def __init__(self) -> None:
-        self.items = [[1], [2]]
-
-
-class PView:
-    rows: Ptr[Rows]
-
-    def __init__(self, rows: Ptr[Rows]) -> None:
-        self.rows = rows
-
-    def __iter__(self) -> Iterator[list[int32]]:
-        yield self.rows.items[0]
-        yield self.rows.items[1]
-
-
-def view_of(rows: Ptr[Rows]) -> Own[PView]:
-    return PView(rows)
-
-
-class Own2:
-    items: list[list[int32]]
-
-    def __init__(self) -> None:
-        self.items = [[1], [2]]
-
-    def __iter__(self) -> Iterator[list[int32]]:
-        for x in self.items:
-            yield x
-
-
-@nocopy
-class Tag:
-    v: int32
-
-    def __init__(self, v: int32) -> None:
-        self.v = v
-
-
-class Pt:
-    v: int32
-
-    def __init__(self, v: int32) -> None:
-        self.v = v
-
-
 GP = [Pt(1)]
 GA = ArrayList[Pt, 4]()
 
@@ -173,34 +125,6 @@ class KeyView:
             yield k
 
 
-class PList(list[Pt]):
-    pass
-
-
-def bump(source: Iterable[Own[list[int32]]]) -> None:
-    for x in source:
-        x.append(99)
-
-
-def bump_pt(source: Iterable[Own[Pt]]) -> None:
-    for p in source:
-        p.v += 100
-
-
-def bump_pairs(source: Iterable[Own[tuple[int32, list[int32]]]]) -> None:
-    for p in source:
-        print("  pair", p[0])
-
-
-def take(i: int32, x: Own[list[int32]]) -> Own[list[int32]]:
-    x.append(i)
-    return x
-
-
-def keep(x: list[int32]) -> bool:
-    return True
-
-
 def free_function(c: bool) -> None:
     # free function: every lending source the owning slot copies from
     reset()
@@ -222,11 +146,6 @@ def free_function(c: bool) -> None:
     pt = list(passthru(View()))  # tpyc: warning(/copies list\[int32\] elements/)
     pt[0].append(7)
     print("free pass-through generic list()", G)
-    # a generic generator declared `Iterator[T]` lends (a copying body is an
-    # error there), so a named argument's elements copy at the owning slot
-    cg: list[list[int32]] = [[15]]
-    bump(passthru(cg))  # tpyc: warning(/copies list\[int32\] elements/)
-    print("free copying generic", cg)
     bump(Cursor())  # tpyc: warning(/copies list\[int32\] elements/)
     print("free next", G)
     bump(Separate())  # tpyc: warning(/copies list\[int32\] elements/)
@@ -274,20 +193,11 @@ def free_function(c: bool) -> None:
     ie = View() if c else View()
     bump(ie)  # tpyc: warning(/copies list\[int32\] elements/)
     print("free if-expression", G)
-    rows = Rows()
-    bump(view_of(rows))  # tpyc: warning(/copies list\[int32\] elements/)
-    print("free Own factory", rows.items)
     cv = View()
     bump(copy(cv))  # tpyc: warning(/copies list\[int32\] elements/)
     print("free copy()", G)
     bump(GV[Own[list[int32]]]())  # tpyc: warning(/copies list\[int32\] elements/)
     print("free Own type arg", G)
-    # a record iterating its own field, temporary or dead: the copy is real
-    # (the step is lent) though nothing can observe it
-    bump(Own2())  # tpyc: warning(/copies list\[int32\] elements/)
-    o = Own2()
-    bump(o)  # tpyc: warning(/copies list\[int32\] elements/)
-    print("free own field")
     GA.append(Pt(1))
     bump_pt(SpanView())  # tpyc: warning(/copies Pt elements/)
     print("free SpanIter", GA[0].v)
@@ -298,14 +208,6 @@ def free_function(c: bool) -> None:
     zm = list(zip(PtView(), [Tag(8)]))  # tpyc: warning(/copies tuple\[Pt, Tag\] elements/)
     zm[0][0].v += 100
     print("free zip nocopy half mirrored", zm[0][1].v, GP[0].v)
-    q = Pt(1)
-    pl = PList()
-    # q is read below, so the append rightly copies it (warned)
-    pl.append(q)
-    # a dead native-container subclass still copies silently
-    # (BUGS.md#dead-native-like-source-own-slot-copies)
-    bump_pt(pl)  # tpyc: ok
-    print("free PList", q.v)
 
 
 class Driver:
@@ -338,6 +240,8 @@ def main() -> None:
     for _ in gen_body():
         pass
     asyncio.run(async_body())
+    part_owned_storage.main()
+    part_step_member.main()
 
 
 main()

@@ -2818,8 +2818,9 @@ result, a `copy()` of the iterator object (it copies the object, not what
 it lends) and an `Own` type argument on the class alike. The escapes:
 `copy_iter(View())` makes the copy explicit (and copies under CPython too),
 and a generator declared `Iterator[Own[T]]` that yields `copy(x)` hands over
-owned elements (a class `__iter__` declared `Iterator[Own[T]]` is refused at
-that slot today: BUGS.md#own-yield-generator-refused-at-iterable-slot). A
+owned elements, as a class `__iter__` declared `Iterator[Own[T]]` or a
+self-iterator's `__next__ -> Own[T]` does: their steps move into the slot,
+with no warning, a `@nocopy` step included. A
 `@nocopy` element lent there is a compile error (*cannot copy non-copyable
 type 'N' into owned storage*), a documented restriction: without shared
 ownership the slot cannot take an element the iterator only lends. A `zip`
@@ -2830,6 +2831,58 @@ declared `Iterator[T]` forwards what its source lends, temporary or named
 says the step lends; declare `Iterator[Own[T]]` to hand it over). A generic
 producer over its own storage (`Bag[T]` popping its items) keeps the rule
 its instantiation gives it, and `for` loops and comprehensions are unaffected.
+**An owning iterator fits only an owning slot.** A source whose DECLARED
+step hands over a reference -- a generator declared `Iterator[Own[X]]`, a
+class whose `__next__` returns `Own[X]` or whose `__iter__` returns
+`Iterator[Own[X]]`, a value of a protocol declaring such a step (or of a
+sub-protocol of `Iterable[Own[X]]`, or a type parameter bounded by one) --
+cannot fill a lending slot
+(`Iterable[X]`, `Iterator[X]`, any protocol whose required step lends):
+the callee may keep a lent step past the iteration, while a handed-over one
+lives only in its consumer's step. The call is refused (*Type Counter does
+not conform to protocol Iterable[Cell] in argument 'xs': 'Counter' hands
+over its steps; declare the parameter 'Iterable[Own[Cell]]' to take them, or
+collect them first (list(...))*). The step is read off the declaration, per
+overload C++ may select: one handing over among `@dispatch` `__next__` or
+`__iter__` overloads refuses the source, an inherited `__iter__` returning
+the object runs the subclass's `__next__` override, and an `Own` substituted
+into a generic class (`Bag[Own[Cell]]` over `__next__ -> T`) hands nothing
+over (it lends its stored elements). The rule is per leaf: a
+`__next__ -> tuple[Own[Cell], Cell]` is refused at `Iterable[tuple[Cell,
+Cell]]` for its handed-over first member (and, partly owned, at the owning
+`Iterable[Own[tuple[Cell, Cell]]]` too), a whole `Own[tuple[Cell, int32]]`
+hands over every leaf inside it. A sub-protocol is held to the rule where
+it is declared, as a substitute for each parent: one redeclaring a lending
+parent's `__next__` as `-> Own[Cell]` or its `__iter__` as
+`-> Iterator[Own[Cell]]` is refused there (*Protocol 'OwnSteps' does not
+conform to protocol 'Iterator[Cell]': method '__next__' hands over its
+step, where 'def __next__(self) -> Cell' lends it*), as is a lending
+redeclaration under an owning parent (`Iterator[Own[Cell]]` with
+`__next__ -> Cell`); the step is the protocol's effective one, and an `Own`
+around the iterator object `__iter__` returns does not make its step
+owning. A protocol value's declared step and a type parameter's bound may
+refuse a source at a lending slot but never prove its steps handed over,
+since the value may be a live container: forwarding `xs: OwnCells` (a
+sub-protocol of `Iterable[Own[Cell]]`) or `xs: I` with
+`I: Iterable[Own[Cell]]` to an owning slot copies, warned. A called
+function's declared return does prove it: `heapq.merge` declares
+`Iterator[Own[T]]`, so `keep(merge(a, b))` at an owning slot moves its
+steps with no warning (the steps themselves are copies of the inputs'
+elements, heapq's documented divergence). A value step (`__next__ -> Own[int32]`, or
+`-> Own[T]` with `T: ValueType`) and an `Own` result of a non-step member (`run(self) -> Own[R]`, an
+`__iter__ -> Own[It]` returning the iterator object) are unaffected. The
+builtin combinators (`enumerate`, `zip`, `map`, `filter`, `iter`, `min`,
+`max`, `next`, `reversed`) take lending `Iterable[T]` parameters, so they
+refuse an owning source with *No matching overload* (TODO "Owning
+iteration"). Still open: an owning slot reached through inheritance or a
+bound (`class Rows(Iterable[Own[R]], Protocol)`, `I: Iterable[Own[R]]`) does
+not warn for the copies it makes of a live container's elements
+(BUGS.md#owning-slot-via-parent-or-bound-copies-silently), and a `@dynamic`
+override that hands over a step its base lends is not refused
+(BUGS.md#dynamic-next-override-hands-over). The `own_iter(xs)` / `copy_iter(xs)` adapters
+hand their steps over too, but stay accepted at a lending slot until
+`sorted` takes `Iterable[Own[T]]`, and a step the callee keeps from one
+dangles (BUGS.md#owning-adapter-at-lending-slot-dangles).
 The builtin collectors -- `list()`, `set()`, `dict()`, `extend` and slice
 assignment -- consume a handed-over source and a generator's fresh values the
 same way: each element is moved in, and only a lent one is copied (a set
@@ -7304,7 +7357,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
 - **Working**: `open(path)`, `open(path, mode)` -> `TextIO` or `BinaryIO` file handle. Text modes (`"r"`, `"w"`, `"a"`, `"x"` and variants) return `TextIO` with methods: `read(size=-1)`, `write()`, `readline()`, `readlines()`, `close()`. Binary modes (`"rb"`, `"wb"`, `"ab"`, `"xb"` and variants) return `BinaryIO` with methods: `read(size=-1)`, `readline()`, `readlines()`, `write()`, `close()`. `read(size)` returns at most `size` bytes (`size < 0` reads all remaining). Mode dispatch uses `Literal` string overloads -- binary vs text is resolved at compile time. Context manager (`with open(...) as f:`). Variable (non-literal) mode falls back to `TextIO`. Raises the errno-mapped `OSError` subclass (catchable) when the file cannot be opened -- `FileNotFoundError` for a missing path, `PermissionError` on EACCES, etc., via the shared PEP 3151 table, with `.errno`/`.strerror`/`.filename` populated and CPython-exact `str(e)` text -- `ValueError` (catchable) on an unsupported mode string, and `OSError` (catchable) when an operation does not match the file's mode (e.g. `f.read()` on a write-only handle; CPython raises `io.UnsupportedOperation`, which is `OSError + ValueError` via diamond MI -- TPy routes to `OSError` alone since diamond inheritance is not supported). One known hole in the errno mapping: opening a DIRECTORY succeeds instead of raising `IsADirectoryError` as CPython does (filed in `BUGS.md`), so a `try`/`except OSError` around `open()` does not catch that case. `readline()`/`readlines()` preserve trailing newlines (Python compat). TPy-specific alternatives: `open_text(path)` / `open_text(path, mode)` -> `TextIO` and `open_binary(path)` / `open_binary(path, mode)` -> `BinaryIO` -- explicit, non-overloaded functions that don't rely on Literal dispatch (`from tpy import open_text, open_binary`).
 - **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
-- **Working**: Element form through a lazy combinator (`enumerate` / `zip` / `map` / `filter` / `reversed`). A combinator hands each element on in the form its SOURCE steps it, deduced in C++ off the source and never named by the compiler: a container lends its element with its own const (a read-only `list[Cell]` parameter iterates through `enumerate`, the loop variable binds `const Cell&`; a mutable one lends `Cell&`), an iterator argument's lent element is lent on (`zip(filter(pos, ns), xs)`, `enumerate(gen(ns))`), a fresh value (an iterator that builds what it steps) is owned, `reversed` lends through `__getitem__`, and a value-typed element is carried by value. The one form the compiler does name is `map`'s: what the callable hands back is its declared return (a borrow return lends, a value is owned), the compiler's own fact. So a mutation through the loop variable reaches the source at every nesting and argument kind, as in CPython, and a loop variable bound off a combinator in a `for` demotes the parameter the combinator retains, through the nesting (`for i, c in enumerate(cells): c.bump()` makes `cells: list[Cell]` mutable; `for c, y in zip(self.cells, ys): c.v += y` mutates `self` and leaves `ys` const, since each unpack target borrows its own argument). A combinator's advance is not a mutation of what it lends from: `it = zip(xs, ys); next(it)` keeps `xs` and `ys` const. A collect (`list(enumerate(cells))`) copies each lent element into the storage-form tuple -- containers hold values -- so a write through the collected pair does not reach `cells`; that is the container storage rule, not the combinator's, the source is never moved out, and the copy warns (`copies tuple[int32, Cell] elements`) unless `copy_iter()` acknowledges it. Open edges (`BUGS.md`): a tuple step holding a record is handed on as a COPY of the stored tuple (`reversed(xs)` / `iter(xs)` over `list[tuple[A, int32]]`), so a write through it in a comprehension or an unpacking head is lost (`combinator-tuple-step-copies-record-element`); a tuple-typed loop variable (no unpack) over `enumerate`/`zip` of records, an explicit `readonly[list[T]]` argument at the `Iterable[T]` slot, a generator declared `Iterator[Own[T]]` at that slot, and `map` with a lambda (`generic-yield-fn-result-copies`).
+- **Working**: Element form through a lazy combinator (`enumerate` / `zip` / `map` / `filter` / `reversed`). A combinator hands each element on in the form its SOURCE steps it, deduced in C++ off the source and never named by the compiler: a container lends its element with its own const (a read-only `list[Cell]` parameter iterates through `enumerate`, the loop variable binds `const Cell&`; a mutable one lends `Cell&`), an iterator argument's lent element is lent on (`zip(filter(pos, ns), xs)`, `enumerate(gen(ns))`), a fresh value (an iterator that builds what it steps) is owned, `reversed` lends through `__getitem__`, and a value-typed element is carried by value. The one form the compiler does name is `map`'s: what the callable hands back is its declared return (a borrow return lends, a value is owned), the compiler's own fact. So a mutation through the loop variable reaches the source at every nesting and argument kind, as in CPython, and a loop variable bound off a combinator in a `for` demotes the parameter the combinator retains, through the nesting (`for i, c in enumerate(cells): c.bump()` makes `cells: list[Cell]` mutable; `for c, y in zip(self.cells, ys): c.v += y` mutates `self` and leaves `ys` const, since each unpack target borrows its own argument). A combinator's advance is not a mutation of what it lends from: `it = zip(xs, ys); next(it)` keeps `xs` and `ys` const. A collect (`list(enumerate(cells))`) copies each lent element into the storage-form tuple -- containers hold values -- so a write through the collected pair does not reach `cells`; that is the container storage rule, not the combinator's, the source is never moved out, and the copy warns (`copies tuple[int32, Cell] elements`) unless `copy_iter()` acknowledges it. Open edges (`BUGS.md`): a tuple step holding a record is handed on as a COPY of the stored tuple (`reversed(xs)` / `iter(xs)` over `list[tuple[A, int32]]`), so a write through it in a comprehension or an unpacking head is lost (`combinator-tuple-step-copies-record-element`); a tuple-typed loop variable (no unpack) over `enumerate`/`zip` of records, an explicit `readonly[list[T]]` argument at the `Iterable[T]` slot, and `map` with a lambda (`generic-yield-fn-result-copies`).
 - **Working**: Temporaries at a lazy combinator (`enumerate` / `zip` / `map` / `filter` / `reversed`). The combinator OWNS a temporary argument (a container-returning call, a literal, a dict view, a set, a generator call, another combinator) and stays movable until its first pull, so combinators nest and a genexpr over one can be handed to another (`enumerate(a + b for a, b in zip(gen(), gen()))`): a self-iterator source (a generator, a combinator, a class whose `__iter__` returns `self`) is pulled directly, a random-access container is walked by position, and any other container's cursor is made at the first pull. `__iter__` is user code: it runs once per source at the combinator call, in argument order, self-iterators included. An lvalue iterator is advanced in place by every combinator, never copied: a self-iterator (a generator object, a user iterator -- `zip(g, make())`, `enumerate(cur)`), and equally the iterator an `__iter__` returns BY REFERENCE (a member the class delegates to, an inherited `return self`); an iterator returned by value is built in place, so a `@nocopy` one works. One kind pins the combinator that owns it: a temporary of a user class whose `__iter__` returns a SEPARATE iterator object (`zip(Noisy(), xs)`; a fresh instance of its own class and a base-typed member it delegates to both count). Its iterator may point into the object, so the pair cannot move. Where the position has a statement-level slot and the temporary is a constructor or free-function call, the compiler binds it to a local instead and the combinator borrows it, which keeps it movable (a ternary arm banks the local in its region, a `while` head rebuilds it per iteration); everywhere else the combinator owns it in place. Either way the shape compiles at every position; only a pinned combinator moved into another owning consumer fails -- a located reject when it sits inside a genexpr, the C++ build otherwise (BUGS.md#separate-iter-temp-no-flush-slot).
 - **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables. Combinator composition: `zip(map(...), map(...))` works -- the owning variant holds each temporary source by value and pulls it directly.
 - **Working**: `map(fn, iterable, ...)` → `Iterator[U]`. Single and multi-iterable (up to 5). Accepts named functions, lambdas, generic functions, `Callable`-typed variables, and class names (`map(int, strs)`, `map(Box, xs)`; see "Class names as callable values"). Lazy evaluation. Supports lvalue and rvalue iterables. Reference preservation: when a named `fn` returns by reference, `map` lends it (the step is `val_or_ref<T>`), so mutations propagate to the original container; a lambda's inferred return carries no borrow fact yet, so `map(lambda z: z, cells)` copies (`BUGS.md#generic-yield-fn-result-copies`). Mixed `Ref`/`Own` params forwarded correctly via `fn_param_t` traits. Combinator composition: `enumerate(map(...))`, `filter(map(...))`, `map(filter(...))` work.

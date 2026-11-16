@@ -19,9 +19,10 @@ from ..typesys import (
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
-    is_dynamic_dispatch_inner, ptr_text_pointee,
+    is_dynamic_dispatch_inner, ptr_text_pointee, ConcreteGenType, peel_slot,
 )
 from ..identity_map import IdentityMap
+from ..parse import TpyCall, TpyCoerce, TpyExpr, TpyMethodCall
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
 if TYPE_CHECKING:
@@ -36,11 +37,14 @@ from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
     is_enum_type, protocol_info_of, protocol_mro, protocol_ancestor_at,
-    protocol_is_ancestor_at, protocol_effective_methods, type_param_subst,
+    protocol_effective_methods, type_param_subst,
     protocol_cache, restate_signature,
     methods_at_reference,
 )
-from ..typesys import is_numeric_type
+from ..typesys import is_numeric_type, unwrap_own, without_own
+from .elem_paths import (
+    ElemPath, declared_lent_paths, leaves_at, step_hands_over_lent,
+)
 from .bound_check import find_method_class_param_bound_violation
 from .dyn_erasure import declares_dynamic_base, record_inherits_dynamic
 
@@ -296,6 +300,24 @@ def dynamic_vtable(protocol_info: 'ProtocolInfo',
     return out, conflict
 
 
+def runs_as_step_member(fi: FunctionInfo) -> bool:
+    """An `__iter__` / `__next__` overload iteration may run on a borrowed
+    receiver: not consuming, callable with no argument (every parameter
+    defaulted, keyword-only ones included)."""
+    return not fi.is_consuming and all(
+        p.has_default or p.is_variadic or p.is_kwargs for p in fi.params)
+
+
+def _own_peeled_args(t: TpyType) -> TpyType:
+    """A returned record iterator `t` at its type arguments with their
+    `Own` peeled at every depth: only the iterator's own declaration hands
+    a step over, so `SpanIter[Own[Cell]]` and
+    `Holder[tuple[Own[Cell], int32]]` still lend their `Cell`."""
+    if not isinstance(t, NominalType) or is_protocol_type(t):
+        return t
+    return without_own(t)
+
+
 def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
     """Nothing called through the protocol writes the object: the protocol
     is `@readonly`, or every method it requires is."""
@@ -429,6 +451,27 @@ def text_leaves(t: TpyType) -> Iterator[TpyType]:
         return
     for part in part_wise[0]:
         yield from text_leaves(part)
+
+
+def _declared_call_return(expr: TpyExpr | None) -> TpyType | None:
+    """The return type the callee of call `expr` declares -- its
+    signature, the ABI contract, before any substitution at the call --
+    or None when `expr` is no call."""
+    call = expr.expr if isinstance(expr, TpyCoerce) else expr
+    if not isinstance(call, (TpyCall, TpyMethodCall)):
+        return None
+    fi = call.resolved_function_info
+    return fi.root.return_type if fi is not None else None
+
+
+def _conformance_reference_paths(et: TpyType, path: ElemPath
+                                 ) -> frozenset[ElemPath]:
+    """`paths_at` for the conformance step rule: a type parameter bounded
+    `ValueType` is a value leaf here, its copy being unobservable, though
+    the lowering reads every open parameter as a reference
+    (`is_reference_leaf`)."""
+    return frozenset(p for p, e in leaves_at(et, path)
+                     if not peel_slot(e).is_value_type())
 
 
 class _MethodRequirement(NamedTuple):
@@ -679,7 +722,8 @@ class ProtocolChecker:
         if isinstance(actual, GenExprType):
             if protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR):
                 if protocol.type_args and len(protocol.type_args) == 1:
-                    if self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0]):
+                    if self._adapter_step_fits(actual.element_type,
+                                               protocol.type_args[0]):
                         return ProtocolConformanceKind.EXPLICIT
                     return None
                 return ProtocolConformanceKind.EXPLICIT
@@ -691,7 +735,8 @@ class ProtocolChecker:
         if is_copy_iter(actual) or is_own_iter(actual):
             if protocol.qualified_name() == qnames.ITERABLE:
                 if protocol.type_args and len(protocol.type_args) == 1:
-                    if self.type_ops.types_match_for_inference(actual.type_args[0], protocol.type_args[0]):
+                    if self._adapter_step_fits(actual.type_args[0],
+                                               protocol.type_args[0]):
                         return ProtocolConformanceKind.EXPLICIT
                     return None
                 return ProtocolConformanceKind.EXPLICIT
@@ -778,16 +823,26 @@ class ProtocolChecker:
         if protocol_info is None:
             return None
 
-        # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
-        if is_protocol_type(actual):
-            if same_class(actual, protocol):
-                return (ProtocolConformanceKind.EXPLICIT
-                        if actual.type_args == protocol.type_args else None)
-            # An ancestor protocol conforms at the arguments the inheritance
-            # names, and only there: no structural walk second-guesses it.
-            at_args = protocol_is_ancestor_at(actual, protocol)
-            if at_args is not None:
-                return ProtocolConformanceKind.EXPLICIT if at_args else None
+        # Protocol-to-protocol: the same protocol, or one inheriting it, at
+        # the type arguments its declaration instantiates conforms as
+        # declared -- a sub-protocol's declaration is held to each parent's
+        # (`subprotocol_conformance_issues`). A bare ancestor asks for its
+        # class at any arguments. At arguments differing only in `Own`
+        # (`Iterator[Own[Cell]]` at `Iterator[Cell]`) the member walk
+        # decides, and a pass is still the declared relation; any other
+        # difference refuses, as the arguments' types differ.
+        explicit_walk = False
+        if is_protocol_type(actual) and isinstance(actual, NominalType):
+            at = protocol_ancestor_at(actual, protocol)
+            if at is not None:
+                if (at.type_args == protocol.type_args
+                        or (not protocol.type_args
+                            and not same_class(actual, protocol))):
+                    return ProtocolConformanceKind.EXPLICIT
+                if ([unwrap_own(a) for a in at.type_args]
+                        != [unwrap_own(a) for a in protocol.type_args]):
+                    return None
+                explicit_walk = True
 
         # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
@@ -845,7 +900,8 @@ class ProtocolChecker:
             if not self.type_has_field_with_type(actual, field_name, expected_type):
                 return None
 
-        return ProtocolConformanceKind.STRUCTURAL
+        return (ProtocolConformanceKind.EXPLICIT if explicit_walk
+                else ProtocolConformanceKind.STRUCTURAL)
 
     def _check_record_extends(self, actual: TpyType, protocol: NominalType) -> bool:
         """Check if a type extends a protocol via record-level declarations.
@@ -1041,7 +1097,8 @@ class ProtocolChecker:
         by `Self`)."""
         if is_protocol_type(actual):
             member = self._protocol_member_at(actual, req.name, bind_self)
-            return member is not None and self._member_meets(*member, req)
+            return (member is not None
+                    and self._member_meets(actual, *member, req))
         return bool(self._matching_overloads(actual, req))
 
     def _protocol_member_at(
@@ -1064,20 +1121,26 @@ class ProtocolChecker:
                         sig.is_readonly or protocol_info.is_readonly)
         return None
 
-    def _member_meets(self, params: list[ParamInfo], return_type: TpyType,
-                      readonly: bool, req: '_MethodRequirement') -> bool:
-        """The one member relation of structural conformance: a member
-        meets a requirement when it is readonly where it must be (a call
-        through a readonly receiver runs only a readonly member, whatever
-        its return converts to), its return matches (`_protocol_type_matches`,
-        `Own[...]` around a returned value type asking nothing), and it
-        takes every call the requirement admits (`_call_shape_mismatch`)."""
+    def _member_meets(self, actual: TpyType, params: list[ParamInfo],
+                      return_type: TpyType, readonly: bool,
+                      req: '_MethodRequirement') -> bool:
+        """The one member relation of structural conformance: a member of
+        `actual` meets a requirement when it is readonly where it must be
+        (a call through a readonly receiver runs only a readonly member,
+        whatever its return converts to), its return matches
+        (`_protocol_type_matches`, `Own[...]` around a returned value type
+        asking nothing), it takes every call the requirement admits
+        (`_call_shape_mismatch`), and -- for an iteration member -- no
+        overload of it hands over a step leaf the requirement lends
+        (`_hands_over_lent_step`)."""
         if req.readonly and not readonly:
             return False
         if not self._protocol_type_matches(
                 return_type, _return_modulo_own(req.return_type)):
             return False
-        return self._call_shape_mismatch(params, req.params) is None
+        if self._call_shape_mismatch(params, req.params) is not None:
+            return False
+        return not self._hands_over_lent_step(actual, req)
 
     def _call_shape_mismatch(
         self, member: list[ParamInfo], required: list[ParamInfo],
@@ -1193,8 +1256,7 @@ class ProtocolChecker:
                 return None
             members += [m.root for m in overloads]
             if req.name == "__iter__" and any(
-                    isinstance(unwrap_qualifiers(m.return_type), SelfType)
-                    or unwrap_qualifiers(m.return_type) == actual
+                    self._returns_self(actual, m.return_type)
                     for m in overloads):
                 nexts = self._member_overloads(actual, "__next__")
                 if not nexts:
@@ -1210,6 +1272,234 @@ class ProtocolChecker:
                 self._substituted_overloads(actual, method_name)
                 if not resolved.is_consuming]
 
+    def declared_steps(self, t: TpyType) -> list[TpyType] | None:
+        """THE step fact: what one step of iterating a value of type `t`
+        may produce, as declared -- `Own` markers kept -- one entry per
+        member C++ may select: each non-consuming `__iter__` overload
+        callable with no argument, its declared return as the declaring
+        class spells it (a substituted `Own` type argument hands nothing
+        over: `Bag[Own[Cell]]` over `__next__ -> T` lends) or at a protocol
+        value's type arguments; where it hands back the object itself
+        (`_returns_self`), the effective `__next__` overloads, else the
+        returned iterator's steps at the type arguments that return writes,
+        their `Own` peeled (`__iter__ -> SpanIter[Pt]` steps `Pt`,
+        `SpanIter[Own[Cell]]` a lent `Cell`). A type with
+        no such member answers through
+        `get_iterable_element_type(keep_own=True)`. None when nothing
+        declares it -- a type parameter's included: its bound may refuse
+        it at a lending slot, but never proves a handover."""
+        return self._declared_steps(t, frozenset(), False)
+
+    def _declared_steps(self, t: TpyType, active: frozenset[TpyType],
+                        written: bool) -> list[TpyType] | None:
+        """`declared_steps`; `written` reads a record's members at the type
+        arguments `t` spells -- a returned iterator, whose arguments its
+        declaration writes -- rather than as their declaring class does,
+        each argument's `Own` peeled (`_own_peeled_args`)."""
+        bare = peel_slot(t)
+        if written:
+            bare = _own_peeled_args(bare)
+        # `active` holds the types on the current path only, so sibling
+        # overloads returning the same iterator each read it.
+        if isinstance(bare, TypeParamRef) or bare in active:
+            return None
+        active = active | {bare}
+        iters = self._iteration_members(bare, "__iter__", written)
+        if not iters:
+            nexts = self._iteration_members(bare, "__next__", written)
+            if nexts:
+                return nexts
+            elem = builtin_modules.get_iterable_element_type(
+                bare, registry=self.ctx.registry, keep_own=True)
+            return [elem] if elem is not None else None
+        steps: list[TpyType] = []
+        for ret in iters:
+            found = self.iter_return_steps(bare, ret, active, written)
+            if found is None:
+                return None
+            steps += found
+        return steps
+
+    def _iteration_members(self, t: TpyType, name: str,
+                           written: bool = False) -> list[TpyType]:
+        """The declared returns of `t`'s non-consuming `name` overloads
+        callable with no argument (every parameter defaulted): a record's
+        as its declaring class spells them -- or, `written`, at `t`'s type
+        arguments (`_substituted_overloads`) -- a protocol's effective
+        member (`protocol_method_list`) at the protocol value's type
+        arguments."""
+        if is_protocol_type(t) and isinstance(t, NominalType):
+            info = protocol_info_of(t)
+            if info is None:
+                return []
+            subst = self._requirement_subst(t, t, info)
+            return [self.type_ops.substitute_types(sig.return_type, subst)
+                    if subst else sig.return_type
+                    for sig in self.protocol_method_list(info)
+                    if sig.name == name
+                    and all(p.has_default for p in sig.param_infos())]
+        # The `Ref` a borrow return carries is its C++ form, not the step.
+        return [unwrap_ref_type(resolved.return_type if written
+                                else method.return_type)
+                for method, resolved in self._substituted_overloads(t, name)
+                if runs_as_step_member(resolved)]
+
+    def iter_return_steps(self, actual: TpyType, ret: TpyType,
+                          active: frozenset[TpyType] = frozenset(),
+                          written: bool = False) -> list[TpyType] | None:
+        """The steps an `__iter__` of `actual` declared `-> ret` produces --
+        its entries of `declared_steps`: those of `actual`'s effective
+        `__next__` (an override included) where it hands back the object
+        itself, else the returned iterator's, read at the type arguments
+        `ret` writes."""
+        if self._returns_self(actual, ret):
+            return self._iteration_members(actual, "__next__", written) or None
+        return self._declared_steps(ret, active, True)
+
+    def _returns_self(self, actual: TpyType, ret: TpyType) -> bool:
+        """An `__iter__` of `actual` declared `-> ret` hands back the object
+        itself: `Self`, `actual`'s class, or -- what an inherited
+        `def __iter__(self) -> "Base": return self` spells -- one of its
+        ancestor classes."""
+        bare = peel_slot(ret)
+        if isinstance(bare, SelfType):
+            return True
+        if not isinstance(bare, NominalType) or not isinstance(actual, NominalType):
+            return False
+        if same_class(actual, bare):
+            return True
+        if bare.is_protocol or actual.is_protocol:
+            return False
+        rec = self.ctx.registry.get_record_for_type(actual)
+        return (rec is not None
+                and self.ctx.registry.ancestor_entry(rec, bare) is not None)
+
+    def _iteration_requirements(self, actual: TpyType, protocol: NominalType,
+                                info: 'ProtocolInfo',
+                                ) -> 'list[_MethodRequirement]':
+        """`protocol`'s required iteration members at `actual`: its
+        argument-less `__iter__` and its `__next__`."""
+        return [req for req in self._method_requirements(actual, protocol, info) or ()
+                if req.name == "__next__"
+                or (req.name == "__iter__"
+                    and all(p.has_default for p in req.params))]
+
+    def _required_step(self, actual: TpyType,
+                       req: '_MethodRequirement') -> list[TpyType] | None:
+        """The steps an iteration requirement `req` asks of `actual`: an
+        argument-less `__next__`'s return, the `declared_steps` of the
+        iterator an argument-less `__iter__` returns; None for any other
+        member and for an `__iter__` handing back `actual` itself, whose
+        `__next__` requirement asks for the step."""
+        if (req.name not in ("__iter__", "__next__")
+                or not all(p.has_default for p in req.params)):
+            return None
+        if req.name == "__next__":
+            return [req.return_type]
+        if self._returns_self(actual, req.return_type):
+            return None
+        return self.declared_steps(peel_slot(req.return_type))
+
+    def _hands_over_lent_step(self, actual: TpyType,
+                              req: '_MethodRequirement') -> bool:
+        """`actual`'s member `req.name` hands over a step leaf the
+        iteration requirement `req` lends: an owning iterator fits only an
+        owning slot, whose callee keeps nothing of a step past it. Every
+        overload C++ may select counts (`_iteration_members`), each as its
+        declaring class spells it, so one handing over fails the member
+        whichever one meets the rest of `req`."""
+        required = self._required_step(actual, req)
+        if not required:
+            return False
+        if req.name == "__next__":
+            steps: list[TpyType] = self._iteration_members(actual, "__next__")
+        else:
+            steps = []
+            for ret in self._iteration_members(actual, "__iter__"):
+                steps += self.iter_return_steps(actual, ret) or ()
+        return any(step_hands_over_lent(r, s, _conformance_reference_paths)
+                   for r in required for s in steps)
+
+    def steps_handed_over(self, t: TpyType, source: TpyExpr | None) -> bool:
+        """`source`, of type `t`, hands every reference leaf of each step
+        over (`declared_steps`), so its steps move into an owning slot.
+        Only a declaration of the source itself is evidence of that -- a
+        record, an adapter, a generator object, or the return type a
+        called function declares (`heapq.merge` -> `Iterator[Own[T]]`): a
+        protocol value's or a type parameter's declared steps are a
+        requirement, and the value may be a live container lending its
+        elements."""
+        bare = peel_slot(t)
+        if is_protocol_type(bare) and not isinstance(bare, ConcreteGenType):
+            declared = _declared_call_return(source)
+            if declared is None:
+                return False
+            t = declared
+        steps = self.declared_steps(t)
+        return bool(steps) and not any(declared_lent_paths(s) for s in steps)
+
+    def _adapter_step_fits(self, elem: TpyType, required: TpyType) -> bool:
+        """A compiler adapter (a generator expression, `copy_iter` /
+        `own_iter`) yielding `elem` meets a step requirement `required`:
+        the element matches modulo the slot's `Own`."""
+        # An owning adapter at a lending slot is still accepted: the
+        # stdlib's `sorted(own_iter(...))` needs it until `sorted` takes
+        # `Iterable[Own[T]]` (BUGS.md#owning-adapter-at-lending-slot-dangles).
+        return self.type_ops.types_match_for_inference(unwrap_own(elem),
+                                                       unwrap_own(required))
+
+    def step_handover_hint(self, actual: TpyType, protocol: TpyType,
+                           at_param: bool, spell: Callable[[TpyType], str],
+                           ) -> str | None:
+        """The remedy for a value of type `actual` refused at a lending
+        protocol `protocol` because its steps are handed over: an owning
+        element slot, or collecting the steps first -- at a protocol with
+        members beyond iteration, which an element slot would drop, the
+        lending iteration it declares. A type parameter answers by its
+        bound. None when the refusal has another cause."""
+        if not (isinstance(protocol, NominalType) and is_protocol_type(protocol)):
+            return None
+        source = actual
+        if isinstance(source, TypeParamRef):
+            bound = self.type_ops.get_type_param_bound(source)
+            if bound is None:
+                return None
+            source = bound
+        required = self.declared_steps(protocol)
+        steps = self.declared_steps(source)
+        if (not required or len(required) != 1 or not steps
+                or not any(step_hands_over_lent(required[0], s,
+                                                _conformance_reference_paths)
+                           for s in steps)):
+            return None
+        info = protocol_info_of(protocol)
+        if info is None:
+            return None
+        iteration = self._iteration_requirements(protocol, protocol, info)
+        if (self.collect_protocol_fields(info)
+                or len(iteration) != len(self._method_requirements(
+                    protocol, protocol, info) or ())):
+            # An owning element slot would drop the protocol's other
+            # members: name its own lending iteration instead.
+            if not iteration:
+                return None
+            return (f"'{spell(actual)}' hands over its steps, where "
+                    f"'{spell(protocol)}' lends them (its '{iteration[0].name}' "
+                    f"returns '{spell(iteration[0].return_type)}')")
+        if (protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR)
+                and len(protocol.type_args) == 1):
+            owning = dataclasses.replace(protocol,
+                                         type_args=(OwnType(required[0]),))
+        else:
+            owning = NominalType("Iterable", (OwnType(required[0]),), True,
+                                 qnames.ITERABLE)
+        if not self.type_conforms_to_protocol(source, owning):
+            return None
+        target = "the parameter" if at_param else "it"
+        return (f"'{spell(actual)}' hands over its steps; declare "
+                f"{target} '{spell(owning)}' to take them, or "
+                f"collect them first (list(...))")
+
     def _matching_overloads(self, actual: TpyType,
                             req: '_MethodRequirement') -> list[FunctionInfo]:
         """The overloads of record or builtin `actual`'s method `req.name`
@@ -1218,7 +1508,7 @@ class ProtocolChecker:
         match."""
         return [resolved for _method, resolved
                 in self._substituted_overloads(actual, req.name)
-                if self._member_meets(resolved.params,
+                if self._member_meets(actual, resolved.params,
                                       resolved.return_type,
                                       resolved.is_readonly, req)]
 
@@ -1844,6 +2134,9 @@ class ProtocolChecker:
         method_name = req.name
         expected_sig = self._format_method_signature(
             method_name, req.params, req.return_type, req.readonly)
+        if self._hands_over_lent_step(actual, req):
+            return (f"method '{method_name}' hands over its step, where "
+                    f"'{expected_sig}' lends it")
 
         if is_protocol_type(actual):
             member = self._protocol_member_at(actual, method_name, bind_self)

@@ -928,8 +928,9 @@ protocol queries route through `is_subtype`; per-call filters such as
 `is_dynamic` on the matching protocol or `is_native` on the record live
 at the call site, not in the cache. Protocol-to-protocol conformance asks more than
 membership: a protocol is its ancestor only at the type arguments its
-declarations name, so the conformance arm and `dyn_forward_ok` ask
-`protocol_ancestor_at` / `protocol_is_ancestor_at`
+declarations name, so the conformance arm asks `protocol_ancestor_at`
+(an `Own`-only difference in the arguments goes to the member walk) and
+`dyn_forward_ok` `protocol_is_ancestor_at` (exact arguments)
 (`type_def_registry.py`), which read the protocol's method resolution order
 (`protocol_mro`, C3 through `c3_over_parents`, the one builder records use
 too) and are memoized on the compiler until a protocol registers.

@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
     from .statements import StatementAnalyzer
     from .expressions import ExpressionAnalyzer
+    from .protocols import ProtocolChecker
 
 from ..typesys import (
     is_value_type_bound, LiteralValue, contains_type_kind_param,
@@ -3360,6 +3361,9 @@ class SemanticContext:
     # loop (`ExpressionAnalyzer._promote_pending_loop_var`), True when it
     # did -- the one way `resolve_name` answers a `Blocked` read.
     promote_pending_loop_var: 'Callable[[str, object], bool] | None' = None
+    # The analyzer's protocol checker: the declared-step fact lives there,
+    # and the loan reader needs it without an analyzer in hand.
+    protocols: 'ProtocolChecker | None' = None
     genexpr_counter: int = 0
     # genexpr function -> the function or method whose emitted body creates
     # its frame (through any nested def or genexpr between them); None at

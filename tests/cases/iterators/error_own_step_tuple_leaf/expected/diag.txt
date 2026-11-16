@@ -1,0 +1,1 @@
+main.py:45: error: Type Pairs does not conform to protocol Iterable[tuple[Cell, Cell]] in argument 'xs'

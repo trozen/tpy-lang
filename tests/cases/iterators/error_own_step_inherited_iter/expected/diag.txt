@@ -1,0 +1,3 @@
+main.py:30: warning: Method 'Child.__next__' hides 'Base.__next__' -- any 'Base' reference will call 'Base.__next__', not 'Child.__next__' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch
+main.py:30: warning: Method 'Child.__iter__' hides 'Base.__iter__' -- any 'Base' reference will call 'Base.__iter__', not 'Child.__iter__' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch
+main.py:42: error: Type Child does not conform to protocol Iterable[Cell] in argument 'xs': 'Child' hands over its steps; declare the parameter 'Iterable[Own[Cell]]' to take them, or collect them first (list(...))

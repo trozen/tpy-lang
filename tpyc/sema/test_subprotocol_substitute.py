@@ -13,7 +13,7 @@ from ..diagnostics import SemanticError
 from ..thir.testutil import _compile, _entry
 
 HEADER = """\
-from typing import Protocol, Self
+from typing import Iterable, Iterator, Protocol, Self
 from tpy import dynamic, readonly, Own, ValueType, ReferenceType, Default, int32
 
 class Animal:
@@ -187,6 +187,33 @@ class Leaf(PlainParent, DynBase, Protocol):
     pass
 """, r"'Leaf' combines @dynamic declarations of 'f' that disagree in "
      r"parameter types"),
+    # An owning step cannot stand in for a lending one: the parent's
+    # caller may keep a lent step past it.
+    "owning_step_child_of_lending_parent": ("""
+class OwnedCursor(Iterator[Animal], Protocol):
+    def __next__(self) -> Own[Animal]: ...
+""", _NOT_A_SUBSTITUTE.format(child="OwnedCursor", parent=r"Iterator\[Animal\]")
+     + r"method '__next__' hands over its step, where 'def __next__\(self\) "
+       r"-> Animal' lends it$"),
+    "owning_iterator_child_of_lending_parent": ("""
+class OwnedSource(Iterable[Animal], Protocol):
+    def __iter__(self) -> Iterator[Own[Animal]]: ...
+""", _NOT_A_SUBSTITUTE.format(child="OwnedSource", parent=r"Iterable\[Animal\]")
+     + r"method '__iter__' hands over its step"),
+    # Nor a lending step for an owning one: the parent's caller owns each.
+    "lending_step_child_of_owning_parent": ("""
+class Lent(Iterator[Own[Animal]], Protocol):
+    def __next__(self) -> Animal: ...
+""", _NOT_A_SUBSTITUTE.format(child="Lent", parent=r"Iterator\[Own\[Animal\]\]")
+     + r"method '__next__' has wrong signature"),
+    # An open `I` is no iterator of the parent's steps: nothing declares them.
+    "generic_iterator_child": ("""
+class Child[I](Iterable[Animal], Protocol):
+    def __iter__(self) -> I: ...
+""", _NOT_A_SUBSTITUTE.format(child="Child", parent=r"Iterable\[Animal\]")
+     + r"method '__iter__' has wrong signature: expected 'def "
+       r"__iter__\(self\) -> Iterator\[Animal\]', got 'def __iter__\(self\) "
+       r"-> I'$"),
 }
 
 
@@ -294,6 +321,27 @@ class Reference(ReferenceType, Protocol):
     pass
 class Construct(Default, Protocol):
     pass
+""",
+    # `Own` around a step whose every leaf is a value hands nothing
+    # observable over, a value-bound type parameter's included.
+    "value_step_child": """
+class Child(Iterator[int32], Protocol):
+    def __next__(self) -> Own[int32]: ...
+""",
+    "value_bound_step_child": """
+class Child[T: ValueType](Iterator[T], Protocol):
+    def __next__(self) -> Own[T]: ...
+""",
+    "owning_step_child_of_owning_parent": """
+class Child(Iterator[Own[Animal]], Protocol):
+    def __next__(self) -> Own[Animal]: ...
+""",
+    # `Own` on a member that is no iteration step is the plain member rule.
+    "non_step_own_return": """
+class Base(Protocol):
+    def run(self) -> Animal: ...
+class Child(Base, Protocol):
+    def run(self) -> Own[Animal]: ...
 """,
 }
 

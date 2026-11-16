@@ -1942,25 +1942,22 @@ class TypeCompatibility:
             stripped_expected = strip_own_type_args(expected)
             # Own[T] actual means caller acknowledged ownership transfer -- no warning.
             actual_inner = unwrap_own(actual)
-            # Symmetric with the expected-side strip: an actual that itself
-            # carries Own in its type args (e.g. Iterator[Own[T]]) already
-            # yields owned elements, so strip those too -- otherwise it would be
-            # compared element-wise (Own[T]) against the bare-T stripped
-            # expected and wrongly fail. Provides-Own means no implicit copy.
-            actual_provides_own = (
-                isinstance(actual_inner, NominalType)
-                and bool(actual_inner.inner_types())
-                and any(isinstance(a, OwnType) for a in actual_inner.inner_types())
-            )
-            if actual_provides_own:
-                actual_inner = strip_own_type_args(actual_inner)
             if is_protocol_type(expected):
+                # Asked as declared, a source handing its steps over meets
+                # the slot's `Own`; a lending one meets the slot without
+                # it, and the copy check below copies its steps.
                 structurally_ok = bool(
-                    self.protocols and self.protocols.type_conforms_to_protocol(actual_inner, stripped_expected)
+                    self.protocols and (
+                        self.protocols.type_conforms_to_protocol(actual_inner, expected)
+                        or self.protocols.type_conforms_to_protocol(
+                            actual_inner, stripped_expected))
                 )
             else:
                 # Concrete type: exact match after Own stripping
-                structurally_ok = (actual_inner == stripped_expected)
+                structurally_ok = (
+                    (strip_own_type_args(actual_inner)
+                     if isinstance(actual_inner, NominalType) else actual_inner)
+                    == stripped_expected)
             if structurally_ok:
                 # Own[T] from explicit return/param means caller acknowledged
                 # ownership -- skip warning.  Own[T] from name lookup (owned
@@ -1968,10 +1965,13 @@ class TypeCompatibility:
                 # An explicit Own handle, an Own type argument on it or a
                 # copy() / copy_iter() of it owns its elements -- unless user
                 # code lends its step: then the elements are still checked.
+                # So does a source whose declared step hands every
+                # reference leaf over (`steps_handed_over`): its steps move.
                 elements_owned = (source_expr is not None and (
                     (isinstance(actual, OwnType)
                      and not isinstance(source_expr, TpyName))
-                    or actual_provides_own
+                    or (self.protocols is not None
+                        and self.protocols.steps_handed_over(actual, source_expr))
                     or self.is_copy_call(source_expr))
                     and handle_owns_elements(self.ctx, source_expr, actual))
                 if (source_expr is not None
@@ -2070,7 +2070,9 @@ class TypeCompatibility:
                 return None
             if is_protocol_type(expected):
                 return CompatError(
-                    self.protocol_mismatch_text(actual_inner, stripped_expected, context),
+                    self.protocol_mismatch_text(
+                        actual_inner, expected, context,
+                        at_param=coercion_ctx is CoercionContext.ARG),
                     source_expr.loc if source_expr is not None else loc
                 )
             # Concrete type mismatch: fall through to generic error handling
@@ -2082,7 +2084,9 @@ class TypeCompatibility:
             if self.protocols and self.protocols.type_conforms_to_protocol(check_actual, expected):
                 return None  # No coercion needed, structural match
             return CompatError(
-                self.protocol_mismatch_text(check_actual, expected, context),
+                self.protocol_mismatch_text(
+                    check_actual, expected, context,
+                    at_param=coercion_ctx is CoercionContext.ARG),
                 loc
             )
 
@@ -3522,12 +3526,16 @@ class TypeCompatibility:
                 f"{' or '.join(e for e, _ in pairs)}, got {got}")
 
     def protocol_mismatch_text(self, actual: TpyType, protocol: TpyType,
-                               context: str) -> str:
+                               context: str, *, at_param: bool = False) -> str:
         """The message of a value of type `actual` that `protocol`
         does not take, both spelled as the user wrote them -- a literal
         still pending in either (a module-level list's element) included."""
-        return (f"Type {self.call_type_text(actual)} does not conform to "
+        text = (f"Type {self.call_type_text(actual)} does not conform to "
                 f"protocol {self.call_type_text(protocol)} in {context}")
+        hint = (self.protocols.step_handover_hint(
+                    actual, protocol, at_param, self.call_type_text)
+                if self.protocols else None)
+        return f"{text}: {hint}" if hint else text
 
     def call_type_text(self, t: TpyType) -> str:
         """How an overload diagnostic ("No matching overload", "Ambiguous

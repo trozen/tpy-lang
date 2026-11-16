@@ -110,8 +110,7 @@ __genexpr_free_function_1_frame __genexpr_free_function_1(std::vector<std::vecto
 //     bump("free generic step", bag)  # tpyc: warning(/copies list\[int32\] elements/)
 //     # an Own type argument on a generic step still lends the field's
 //     # elements, so they copy (handing them over needs a popping
-//     # `Iterator[Own[T]]` step, which an `Iterable` slot refuses today:
-//     # BUGS.md#own-yield-generator-refused-at-iterable-slot)
+//     # `Iterator[Own[T]]` step: BUGS.md#substituted-own-step-policy)
 //     ob = Bag[Own[list[int32]]]()
 //     e: list[int32] = [8]
 //     ob.push(e)

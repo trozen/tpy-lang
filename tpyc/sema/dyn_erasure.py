@@ -194,9 +194,8 @@ def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
     (@dynamic protocol) without an Adapter wrap -- same protocol (joint
     qualified_name + type_args check, so generic instantiations like
     `Container[int]` and `Container[str]` stay distinct) or a protocol
-    inheriting it at the same arguments (`protocol_is_ancestor_at`, the
-    conformance check's verdict). Module-level (analyzer-pure) so every
-    caller shares one verdict."""
+    inheriting it at the same arguments (`protocol_is_ancestor_at`).
+    Module-level (analyzer-pure) so every caller shares one verdict."""
     if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
         return False
     if (source.qualified_name() == target.qualified_name()

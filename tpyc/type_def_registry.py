@@ -1393,19 +1393,14 @@ def protocol_ancestor_at(protocol: "NominalType", ancestor: "NominalType",
 
 def protocol_is_ancestor_at(protocol: "NominalType", ancestor: "NominalType",
                             ) -> "bool | None":
-    """Whether protocol `protocol` is an `ancestor` at `ancestor`'s type
-    arguments (`protocol_ancestor_at`), compared modulo one `Own[...]` per
-    argument: an owning slot's call site asks with the `Own` stripped. A
-    bare `ancestor` asks for its class at any arguments. None when it does
-    not inherit `ancestor`'s class at all."""
-    from tpyc.typesys import OwnType
+    """Whether protocol `protocol` is an `ancestor` at exactly `ancestor`'s
+    type arguments (`protocol_ancestor_at`): `Cell` and `Own[Cell]` are
+    different arguments. A bare `ancestor` asks for its class at any
+    arguments. None when it does not inherit `ancestor`'s class at all."""
     found = protocol_ancestor_at(protocol, ancestor)
     if found is None:
         return None
-
-    def peeled(args: tuple) -> tuple:
-        return tuple(a.wrapped if isinstance(a, OwnType) else a for a in args)
-    return not ancestor.type_args or peeled(found.type_args) == peeled(ancestor.type_args)
+    return not ancestor.type_args or found.type_args == ancestor.type_args
 
 
 def enum_info_of(t: "TpyType") -> Optional[EnumInfo]:

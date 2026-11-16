@@ -24,7 +24,8 @@ from tpyc.typesys import (
 )
 from tpyc import qnames
 from tpyc.type_def_registry import (is_span, is_span_iter, is_copy_iter, is_own_iter,
-                                   is_iterator_adapter, protocol_info_of, protocol_mro,
+                                   is_iterator_adapter, iter_yields_owned_elements,
+                                   protocol_info_of, protocol_mro,
                                    protocol_effective_methods, type_param_subst,
                                    methods_at_reference)
 from tpyc.modules.defs import ParamDef, MethodDef
@@ -462,7 +463,14 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
 
     # Compiler-internal iterator adapters (no stubs) plus SpanIter
     if is_iterator_adapter(tpy_type) or isinstance(tpy_type, GenExprType):
-        return tpy_type.element_type if isinstance(tpy_type, GenExprType) else tpy_type.type_args[0]
+        if isinstance(tpy_type, GenExprType):
+            return tpy_type.element_type
+        elem = tpy_type.type_args[0]
+        # `own_iter` moves each element out and `copy_iter` hands over a
+        # copy: either way the step is owned.
+        if keep_own and iter_yields_owned_elements(tpy_type):
+            return OwnType(elem)
+        return elem
 
     # Protocol-typed iterables: single type_arg is T
     if is_protocol_type(tpy_type) and tpy_type.qualified_name() in ITERABLE_PROTOCOL_QNAMES:

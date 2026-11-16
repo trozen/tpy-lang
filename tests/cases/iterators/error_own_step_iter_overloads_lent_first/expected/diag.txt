@@ -1,0 +1,1 @@
+main.py:78: error: Type DualBag does not conform to protocol Iterable[Cell] in argument 'xs': 'DualBag' hands over its steps; declare the parameter 'Iterable[Own[Cell]]' to take them, or collect them first (list(...))

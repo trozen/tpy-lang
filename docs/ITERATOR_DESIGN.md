@@ -16,7 +16,7 @@
 | `__next__()` explicit calls | **Done** | Direct calls require `try/except StopIteration`. Inside a generator or `async def` that `try` must not also need frame states of its own (no `await`/`yield` in it, no `break`/`continue` leaving it) -- see the `ReturnException` row in Validation Rules |
 | Consuming iteration (`__iter__(self: Own[Self])`) | **Done** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
 | `OwnIter[T]` runtime type | **Done** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
-| `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** | Strips `Own` on each element |
+| `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** (value steps only) | Only a value step coerces; an owning iterator of a reference type fits only an owning slot `Iterable[Own[T]]` (LANGUAGE_FEATURES "An owning iterator fits only an owning slot") |
 | C++ `begin()`/`end()` on iterators | **Done** | `next_iter_mixin` CRTP adds begin/end from `__next__`; builtin containers native |
 | Iterator combinators | **Done** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()` |
 | `next()` builtin | **Done** | `next(it)` (value-type elements) and `next(it, default)` (any element; over class instances an in-place use acts on the step's element or the default itself, a binding holds a warned copy -- a step is valid only until the next one); `next(it, None)` is not supported |

@@ -1,0 +1,1 @@
+main.py:40: error: Type Pairs does not conform to protocol Iterable[tuple[Cell, int32]] in argument 'xs': 'Pairs' hands over its steps; declare the parameter 'Iterable[Own[tuple[Cell, int32]]]' to take them, or collect them first (list(...))

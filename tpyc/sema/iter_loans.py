@@ -56,7 +56,7 @@ from .receiver_calls import (
     check_implicit_readonly_receiver, implicit_call_mutates_receiver,
     check_receiver_call_loans, credit_implicit_receiver_call,
 )
-from .protocols import protocol_is_const
+from .protocols import ProtocolChecker, protocol_is_const, runs_as_step_member
 from .scope_tracker import lend_places
 
 if TYPE_CHECKING:
@@ -209,8 +209,9 @@ def declared_class(t: NominalType, record: RecordInfo) -> NominalType:
 
 class StepProducer(NamedTuple):
     """The user code a step of iterating a value runs (`step_producer`) and
-    the step it DECLARES (`Own` markers kept, type parameters
-    unsubstituted); `step` is None when no declaration says (a record
+    the step it DECLARES: its entry of the declared-step fact
+    (`ProtocolChecker.declared_steps`), `Own` markers kept, type parameters
+    unsubstituted; `step` is None when no declaration says (a record
     inheriting a native container's iteration)."""
     step: TpyType | None
 
@@ -221,9 +222,11 @@ def step_producer(ctx: 'SemanticContext', iterable: TpyExpr | None,
     `iterable_type`): a non-native user record whose own or inherited
     `__iter__` is user code, or -- for a call iterable -- a generator
     factory. None for anything else: a native container, view or
-    combinator, a protocol. The declared step is the iteration protocol's
-    element (`get_iterable_element_type`) of the class declaration or of
-    the generator's declared return."""
+    combinator, a protocol. The declared step is the first entry of what
+    the gated `__iter__` -- the first one iteration runs
+    (`runs_as_step_member`) -- produces (`ProtocolChecker.iter_return_steps`)
+    at the class declaration, or of the generator's declared return
+    (`ProtocolChecker.declared_steps`)."""
     t = (unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
          if iterable_type is not None else None)
     rec = user_record(ctx, t) if t is not None else None
@@ -236,23 +239,32 @@ def step_producer(ctx: 'SemanticContext', iterable: TpyExpr | None,
         # inherited `__iter__`'s `T` does not close its step.
         owner_t, owner = (t, found[1]) if found[0] is None else found
         iter_fi = next((fi for fi in owner.get_method_overloads("__iter__")
-                        if not fi.is_consuming), None)
+                        if runs_as_step_member(fi)), None)
         if iter_fi is None or not _is_user_code(iter_fi):
             return StepProducer(None)
         assert isinstance(owner_t, NominalType)
-        return StepProducer(builtin_modules.get_iterable_element_type(
-            declared_class(owner_t, owner), registry=ctx.registry,
-            keep_own=True))
+        ret = iter_fi.return_type
+        if ret is None:
+            return StepProducer(None)
+        steps = _protocols(ctx).iter_return_steps(
+            declared_class(owner_t, owner), ret)
+        return StepProducer(steps[0] if steps else None)
     call = iterable.expr if isinstance(iterable, TpyCoerce) else iterable
     if isinstance(call, (TpyCall, TpyMethodCall)):
         fi = call.resolved_function_info
         if fi is not None and frame_factory_callee(fi):
             ret = fi.root.return_type
-            return StepProducer(
-                builtin_modules.get_iterable_element_type(
-                    ret, registry=ctx.registry, keep_own=True)
-                if ret is not None else None)
+            if ret is None:
+                return StepProducer(None)
+            steps = _protocols(ctx).declared_steps(ret)
+            return StepProducer(steps[0] if steps else None)
     return None
+
+
+def _protocols(ctx: 'SemanticContext') -> ProtocolChecker:
+    protocols = ctx.protocols
+    assert protocols is not None
+    return protocols
 
 
 def _user_step(ctx: 'SemanticContext', iterable: TpyExpr | None,

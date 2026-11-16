@@ -1,0 +1,1 @@
+main.py:17: error: Class 'Counter' does not conform to protocol 'Iterable[Cell]': method '__iter__' hands over its step, where 'def __iter__(self) -> Iterator[Cell]' lends it

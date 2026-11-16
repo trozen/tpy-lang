@@ -380,6 +380,7 @@ class SemanticAnalyzer:
 
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
+        self.ctx.protocols = self.protocols
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols, self.compat)
         self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols,
                                           self.compat)
