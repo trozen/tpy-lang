@@ -1347,9 +1347,7 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if isinstance(t, TypeParamRef):
             if e.move:
                 return f"std::move({inner})"
-            helper = ("param_to_return" if e.generic_return
-                      else "param_to_storage")
-            return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
+            return e.open_t_sink.render(t.to_cpp(), inner)
         # A plain non-value record/container slot (a field write / MIL cell):
         # the storage sink consumes the source directly -- `std::move(v)` for
         # an owned source at its last use, the bare render (a copy) otherwise.

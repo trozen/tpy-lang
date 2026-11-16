@@ -29,6 +29,7 @@ from ...sema.dyn_erasure import dyn_forward_ok
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
+    by_value_optional_payload,
     contains_type_param,
     peel_slot,
     FloatLiteralType,
@@ -63,7 +64,7 @@ from ..nodes import (
     THIRCopy,
     THIRDecayCopy,
     THIRExpr,
-    THIRFormConvert,
+    THIRFormConvert, OpenTSink,
     THIRLiteral,
     THIRMove,
     THIROptionalPtrArg,
@@ -1016,30 +1017,58 @@ def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
 
 def _open_param_read(s: Source) -> bool:
     """The bare read of an open-`T` PARAM, spelled `param_val_or_ref_t<T>`:
-    a view, not `T`, at a view-family instantiation (`str`, `bytes`)."""
-    if not s.id_read:
+    a view, not `T`, at a view-family instantiation (`str`, `bytes`).
+    Held as the projection holds it: a resumable frame's copy is `T`
+    storage."""
+    if not s.id_read or s.held is not Held.BORROWED:
         return False
     pt = s.param_type
     return pt is not None and is_open_type_param_return(
         unwrap_ref_type(unwrap_send_sync(pt)))
 
 
-def open_param_result(expr: THIRExpr, slot: Slot) -> 'Plan | None':
-    """An open-`T` result (`val_or_ref_t<T>`) handed the bare read of an
-    open-`T` PARAM (`param_val_or_ref_t<T>`): the two differ at a
-    view-family instantiation, and `param_to_return<T>` owns at a
-    value-typed `T` and passes a reference-typed one through. Only a bare
-    open-`T` param (not `Own[T]`) is that read."""
-    s = expr.source
-    if (slot.holds is not SlotHolds.TRAIT
-            or slot.trait in (TraitAbi.YIELD_SLOT, TraitAbi.VAL_OR_PTR)
-            or slot.construct is SlotConstruct.PASS
-            or not _open_param_read(s)):
+def open_t_convert(expr: THIRExpr, t: TpyType, sink: OpenTSink
+                   ) -> THIRFormConvert:
+    """`expr` converted to the open-`T` storage `t` that `sink` builds."""
+    return THIRFormConvert(result_type=t, value=expr, form=Form.STORAGE,
+                           open_t_sink=sink, loc=expr.loc)
+
+
+def open_param_convert(expr: THIRExpr, t: TpyType, sink: OpenTSink
+                       ) -> 'THIRFormConvert | None':
+    """The bare read of an open-`T` PARAM, held in its parameter form,
+    converted to the `t` storage `sink` builds (`param_to_storage<T>`,
+    `param_to_return<T>`, `param_to_assign<T>`); None for any other read.
+    The one construction every open-`T` sink of a PARAMETER read takes (a
+    borrow of an existing `T`, a loop variable, takes `open_t_convert`
+    directly); a node with no source (a literal) is no such read."""
+    if expr.source is None or not _open_param_read(expr.source):
         return None
-    return Plan(THIRFormConvert(result_type=slot.type, value=expr,
-                                form=Form.STORAGE, generic_return=True,
-                                loc=expr.loc),
-                Effect.LIFT, row="open_tparam_param")
+    return open_t_convert(expr, t, sink)
+
+
+def open_param_result(expr: THIRExpr, slot: Slot,
+                      member: 'TpyType | None' = None) -> 'Plan | None':
+    """A result handed the bare read of an open-`T` PARAM, held in its
+    parameter form (`param_val_or_ref_t<T>`, a view at a view-family
+    instantiation) whatever `T`'s bound: an open-`T` result
+    (`val_or_ref_t<T>`) takes `param_to_return<T>`, which owns at a
+    value-typed `T` and passes a reference-typed one through; an open-`T`
+    member of a storage result (`T | None` as `std::optional<T>`) builds
+    its storage form, `param_to_storage<T>`. Only a bare open-`T` param
+    (not `Own[T]`) is that read."""
+    if slot.holds is SlotHolds.TRAIT:
+        if (slot.trait in (TraitAbi.YIELD_SLOT, TraitAbi.VAL_OR_PTR)
+                or slot.construct is SlotConstruct.PASS):
+            return None
+        node = open_param_convert(expr, slot.type, OpenTSink.RETURN)
+        return (Plan(node, Effect.LIFT, row="open_tparam_param")
+                if node is not None else None)
+    if isinstance(member, TypeParamRef):
+        node = open_param_convert(expr, member, OpenTSink.STORAGE)
+        return (Plan(node, Effect.COPY, copied=tuple(leaves_at(member, ())))
+                if node is not None else None)
+    return None
 
 
 # --- the slot side of a read --------------------------------------------------
@@ -1422,6 +1451,18 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         if owned is not None:
             return owned
         st_u = unwrap_readonly(st)
+        open_t = by_value_optional_payload(st_u) or st_u
+        if isinstance(open_t, TypeParamRef):
+            # A value-form open `T` slot (or its by-value Optional) takes a
+            # param-form read as the storage it builds
+            # (`param_to_storage<T>`), and a borrow of an existing `T` (a
+            # loop variable over a vararg pack) as its copy.
+            lifted = open_param_result(expr, slot, open_t)
+            if lifted is not None:
+                return lifted
+            if s.held is Held.BORROWED and not under.movable:
+                return Plan(open_t_convert(expr, open_t, OpenTSink.STORAGE),
+                            Effect.COPY, copied=tuple(leaves_at(open_t, ())))
         if (isinstance(st_u, PtrType)
                 and isinstance(storage_type(expr.result_type), OptionalType)):
             # A pointer parameter points at what an Optional holds: its
@@ -1780,16 +1821,23 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                                   loc=expr.loc),
                     Effect.MOVE if mv else Effect.COPY,
                     copied=() if mv else tuple(leaves_at(member, ())))
-    if isinstance(member, TypeParamRef) and (
-            slot.construct is SlotConstruct.RETURN or (direct and not mv)):
-        # A member-init constructs an open `T` from the param form itself;
-        # a result copy-initializes its storage form from the source as it
-        # renders, a movable read that is no id-expression moved out.
-        if mv and not implicit:
-            return Plan(THIRMove(value=expr, result_type=member,
-                                 form=Form.STORAGE, loc=expr.loc),
-                        Effect.MOVE)
-        return passes(member)
+    if isinstance(member, TypeParamRef):
+        if not mv and slot.construct is not SlotConstruct.DIRECT_INIT:
+            # A parameter-form read builds the member's storage; a
+            # member-init direct-initializes `T` from the param form itself.
+            lifted = open_param_result(expr, slot, member)
+            if lifted is not None:
+                return lifted
+        if slot.construct is SlotConstruct.RETURN or (direct and not mv):
+            # A member-init constructs an open `T` from the param form
+            # itself; a result copy-initializes its storage form from the
+            # source as it renders, a movable read that is no id-expression
+            # moved out.
+            if mv and not implicit:
+                return Plan(THIRMove(value=expr, result_type=member,
+                                     form=Form.STORAGE, loc=expr.loc),
+                            Effect.MOVE)
+            return passes(member)
     if not mv and isinstance(member, TupleType) and any(
             types.ctx.is_type_nocopy(storage_type(e))
             for e in member.element_types):

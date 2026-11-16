@@ -23,10 +23,13 @@ struct __coro_run_async;
 int32_t churn();
 // def passthrough[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x);
+T passthrough(T x);
 // def ro_back[T: ValueType](x: Own[T]) -> readonly[T]:
 template<::tpy::ValueType T>
-::tpy::val_or_cref_t<T> ro_back(::tpy::own_param_t<T> x);
+T ro_back(T x);
+// def opt_back[T: ValueType](x: Own[T]) -> T | None:
+template<::tpy::ValueType T>
+std::optional<T> opt_back(T x);
 // def back[T](x: Own[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> back(::tpy::own_param_t<T> x);
@@ -89,7 +92,7 @@ struct __coro_aback {
           __cancel_pending(false),
           x(std::move(x_)) {}
 
-    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_aback<T>&) {
@@ -101,7 +104,7 @@ struct __coro_aback {
 //     await asyncio.sleep(0)                      # -> S_RESUME_0
 //     return x  # tpyc: ok
 template <typename T>
-::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_aback<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<T> __coro_aback<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -111,12 +114,12 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
-        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
+        T __tpy_async_ret = x;
+        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -171,14 +174,21 @@ inline std::optional<T> C<T>::opt(T x) const {
 // def passthrough[T: ValueType](x: Own[T]) -> T:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x) {
+T passthrough(T x) {
     return x;
 }
 // # readonly: a ValueType-bounded owned T returned readonly is a value too
 // def ro_back[T: ValueType](x: Own[T]) -> readonly[T]:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-::tpy::val_or_cref_t<T> ro_back(::tpy::own_param_t<T> x) {
+T ro_back(T x) {
+    return x;
+}
+// # free function: a ValueType-bounded owned T into its own T | None return
+// def opt_back[T: ValueType](x: Own[T]) -> T | None:
+//     return x  # tpyc: ok
+template<::tpy::ValueType T>
+std::optional<T> opt_back(T x) {
     return x;
 }
 // # Own[T] return: the owned value moves out, at a value and a class T

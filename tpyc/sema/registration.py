@@ -7,6 +7,7 @@ Registers builtin types, records, protocols, and functions.
 from __future__ import annotations
 from dataclasses import dataclass, replace as dc_replace, fields as _dc_fields
 from enum import Enum
+from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING
 
 
@@ -900,15 +901,27 @@ def build_record_self_type(record: TpyRecord, qname: str | None = None) -> Nomin
     TypeDef-backed `is_user_record` resolves on `self`-typed references.
     """
     if record.type_params:
+        bounds = ref_bounds(getattr(record, "type_param_bounds", None))
         type_args = tuple(
             TypeParamRef(
                 name=tp,
+                bound=bounds.get(tp),
                 kind=record.type_param_kinds[i] if i < len(record.type_param_kinds) else TypeParamKind.TYPE,
             )
             for i, tp in enumerate(record.type_params)
         )
         return NominalType(record.name, type_args, _module_qname=qname)
     return NominalType(record.name, _module_qname=qname)
+
+
+def ref_bounds(bounds: 'Mapping[str, object] | None',
+               names: 'Iterable[str] | None' = None) -> 'dict[str, NominalType]':
+    """The type-parameter bounds a signature ref carries: the nominal ones
+    (a bound naming another type parameter is no fact a ref can hold),
+    restricted to `names` when given."""
+    keep = None if names is None else set(names)
+    return {n: b for n, b in (bounds or {}).items()
+            if isinstance(b, NominalType) and (keep is None or n in keep)}
 
 
 def declaration_bound_scope(type_params: 'list[str] | None',
@@ -938,9 +951,7 @@ def _unshadowed_bounds(class_bounds: 'dict[str, NominalType] | None',
     `class V[T: ValueType]`)."""
     own = set(method_type_params or ())
     out = {n: b for n, b in (class_bounds or {}).items() if n not in own}
-    out.update((n, b) for n, b in method_bounds.items()
-               if n in own and n in (class_bounds or {})
-               and isinstance(b, NominalType))
+    out.update(ref_bounds(method_bounds, own))
     return out
 
 
@@ -4933,6 +4944,15 @@ class TypeRegistrar:
                 f"Self is only valid in class or protocol method signatures",
                 func.loc
             )
+
+        own_bounds = ref_bounds(type_param_bounds)
+        if own_bounds:
+            resolved_params = [(n, attach_type_param_bounds(t, own_bounds))
+                               for n, t in resolved_params]
+            resolved_return = attach_type_param_bounds(resolved_return, own_bounds)
+            if resolved_vararg_type is not None:
+                resolved_vararg_type = attach_type_param_bounds(
+                    resolved_vararg_type, own_bounds)
 
         # Protocol types cannot be used as return types (but TypeParamRef is OK).
         # Exception: @dynamic protocols can be returned (lifetime-checked in sema).

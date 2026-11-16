@@ -151,7 +151,7 @@ def clone[T: ValueType](x: T) -> T:
 
 # bounded generic: a lambda returning copy() of T
 def lam[T: ValueType](x: T) -> T:
-    f: Callable[[], T] = lambda: copy(x)  # tpyc: warning(/may keep its own copy of .x./)
+    f: Callable[[], T] = lambda: copy(x)  # tpyc: ok
     return f()
 
 

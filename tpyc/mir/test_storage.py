@@ -183,7 +183,7 @@ def test_readonly_holder_can_be_reseated(functions: dict[str, th.THIRFunction], 
 
 
 @pytest.mark.parametrize("change", [{"move": True}, {"materialize": "copy"},
-                                    {"generic_return": True}])
+                                    {"open_t_sink": th.OpenTSink.RETURN}])
 def test_alias_conversions_cannot_acquire_ownership_effects(
     functions: dict[str, th.THIRFunction], change: dict[str, object],
 ) -> None:

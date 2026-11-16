@@ -8807,7 +8807,7 @@ class StatementAnalyzer:
         expr = stmt.value
         if target_type.is_value_type():
             return False
-        if self.compat._is_value_type_param(target_type):
+        if self.type_ops.is_value_type_param(target_type):
             return False
         if self.compat.is_copy_call(expr):
             return False

@@ -377,7 +377,7 @@ struct Tree {
 //     print("generic print:", p, o)  # tpyc: ok
 template<typename T>
 void generic_print(T* p, ::tpy::opt_cparam_t<T> o) {
-    std::cout << "generic print:" << " " << ::tpy::print_optional(p) << " " << ::tpy::print_optional(o) << "\n" << ::tpy::check_signals;
+    std::cout << "generic print:" << " " << ::tpy::print_optional<::tpy::ValuePrinter<T>, T>(p) << " " << ::tpy::print_optional<::tpy::ValuePrinter<T>, T>(o) << "\n" << ::tpy::check_signals;
 }
 // def generic[T](v: T) -> str:
 //     return f"{v}"

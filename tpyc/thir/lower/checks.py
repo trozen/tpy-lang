@@ -13459,7 +13459,27 @@ def _optional_print_formatter(inner: TpyType, inner_cpp: str) -> 'str | None':
     if (is_list(inner) or is_array(inner) or is_span(inner)
             or isinstance(inner, ListRepeatType)):
         return f"::tpy::ListPrinter<{inner_cpp}>"
+    if prints_through_value_printer(inner):
+        # An open payload prints as a bare read of it does.
+        return f"::tpy::ValuePrinter<{inner_cpp}>"
     return None
+
+
+def prints_through_value_printer(t: TpyType) -> bool:
+    """A value whose C++ type is an open template parameter -- a type
+    parameter (`Own` peeled) or a parameterless structural protocol's
+    `T_v` -- prints through `ValuePrinter`, which picks the instantiation's
+    Python formatting (a `bool` prints True/False, a tuple as a tuple).
+    A generic protocol is not yet: a str literal passed to it is still
+    held as a `const char*` temp (TODO.md "drop `__iter__(const char*)`"),
+    which ValuePrinter would print as one char."""
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType) and isinstance(unwrap_readonly(u.wrapped),
+                                             TypeParamRef):
+        u = unwrap_readonly(u.wrapped)
+    proto = structural_protocol(u)
+    return isinstance(u, TypeParamRef) or (proto is not None
+                                           and not proto.type_args)
 
 
 def _optional_print_inner_cpp(a: TpyExpr, inner: TpyType,
@@ -13761,26 +13781,15 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     t = declared.get(a.name)
     if t is None:
         return None
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(u, OwnType) and isinstance(unwrap_readonly(u.wrapped),
-                                             TypeParamRef):
-        # The print emit keys on the RESOLVED expression type, which sema already
-        # stripped `Own` from; this keys on the DECLARED binding, which keeps
-        # it. Peeled for the type-param payload only -- `_wrap_print_form`
-        # fans out to ~10 forms, and a blanket peel would newly admit
-        # Own[list] / Own[bytearray] / Own[tuple] against unwitnessed renders.
-        u = unwrap_readonly(u.wrapped)
-    proto = structural_protocol(u)
-    if isinstance(u, TypeParamRef) or (proto is not None
-                                       and not proto.type_args):
-        # An open type-param value streams via ValuePrinter, which dispatches
-        # the formatting at runtime -- a `bool` T must print True/False, not
-        # 1/0, which a raw `<<` would give (the print emit's TypeParamRef arm).
-        # A structural protocol parameter is the same open `T_v` in C++. A
-        # generic one is not yet: a str literal passed to it is still held
-        # as a `const char*` temp (TODO.md "drop `__iter__(const char*)`"),
-        # which ValuePrinter would print as one char.
+    # The print emit keys on the RESOLVED expression type, which sema
+    # already stripped `Own` from; this keys on the DECLARED binding, which
+    # keeps it -- the predicate peels it for the type-param payload only
+    # (`_wrap_print_form` fans out to ~10 forms, and a blanket peel would
+    # newly admit Own[list] / Own[bytearray] / Own[tuple] against
+    # unwitnessed renders).
+    if prints_through_value_printer(t):
         return PrintForm.VALUE_GENERIC
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if is_varargs(u):
         # A whole `*args` body view is a tuple in Python, so it streams via
         # VarargsPrinter (the print emit's is_varargs arm over the bare lvalue) --

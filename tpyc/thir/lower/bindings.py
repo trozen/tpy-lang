@@ -75,7 +75,7 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         NominalType, OptionalType, OwnType, PendingListType,
                         peel_binding, peel_slot,
                         PendingViewType, ReadonlyType, TpyType, TupleType,
-                        RecursiveAliasInstanceType, TypeParamRef, UnionType,
+                        RecursiveAliasInstanceType, TypeParamRef, TypeParamKind, UnionType,
                         collapse_tuple_own_elements,
                         contains_pending_leaf, is_dyn_protocol,
                         is_own_pointer_repr_optional,
@@ -477,7 +477,23 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
         # A borrow tuple whose type cannot say so (an open-T element's
         # borrow form is `val_or_ptr_t<T>`) holds the form its record took.
         return Held.BORROWED
+    if (name in param_names and _open_t_param_form(bt, rtype)
+            and (rec is None or rec.frame_class is None)):
+        # An open-`T` PARAM is held in its parameter form
+        # (`param_val_or_ref_t<T>`, a view at `str`), whatever its bound;
+        # a resumable frame holds its copy as `T` storage.
+        return Held.BORROWED
     return Held.BORROWED if _is_borrow_form_name(rtype) else Held.VALUE
+
+
+def _open_t_param_form(declared: TpyType | None, read: TpyType | None) -> bool:
+    """A parameter declared a bare open `T` (not `Own[T]`), read as it."""
+    def bare(t: TpyType | None) -> TpyType | None:
+        return (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+                if t is not None else None)
+    d, r = bare(declared), bare(read)
+    return (isinstance(d, TypeParamRef) and d.kind is TypeParamKind.TYPE
+            and isinstance(r, TypeParamRef))
 
 
 def form_of(held: Held):

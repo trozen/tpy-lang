@@ -2390,7 +2390,9 @@ def _call_whole(analyzer: ValueCategoryAnalyzer, e: TpyExpr) -> Origin:
             or lends_pointer_form_result(analyzer, e)):
         return _SHARED
     link = _borrow_link(e)
-    if returns_open_type_param(link[0] if link is not None else None):
+    if (returns_open_type_param(link[0] if link is not None else None)
+            and not unwrap_ref_type(unwrap_readonly(
+                link[0].return_type)).is_value_type()):
         return _OPEN
     if not is_rvalue_source(analyzer, e):
         return _SHARED

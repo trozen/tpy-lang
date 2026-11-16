@@ -54,23 +54,23 @@ __coro_coro coro(std::tuple<const A*, int32_t> t);
 std::expected<int32_t, Bad> er(const std::tuple<const A*, int32_t>& t);
 // def clone[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> clone(::tpy::param_val_or_ref_t<T> x);
+T clone(::tpy::param_val_or_ref_t<T> x);
 // def lam[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> lam(::tpy::param_val_or_ref_t<T> x);
+T lam(::tpy::param_val_or_ref_t<T> x);
 // def opt_back[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> opt_back(::tpy::own_param_t<T> x);
+T opt_back(T x);
 // def pair_back[T: ValueType](x: T) -> tuple[T, int32]:
 template<::tpy::ValueType T>
-std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair_back(::tpy::param_val_or_ref_t<T> x);
+std::tuple<T, int32_t> pair_back(::tpy::param_val_or_ref_t<T> x);
 // def own_pair[T: ValueType](x: Own[tuple[T | None, int32]]
 //                            ) -> Own[tuple[T | None, int32]]:
 template<::tpy::ValueType T>
 std::tuple<std::optional<T>, int32_t> own_pair(std::tuple<std::optional<T>, int32_t> x);
 // def take[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> take(::tpy::param_val_or_ref_t<T> x);
+T take(::tpy::param_val_or_ref_t<T> x);
 // def bounded_paths[T: ValueType](b: VBox[T], x: T) -> None:
 template<::tpy::ValueType T>
 void bounded_paths(VBox<T>& b, ::tpy::param_val_or_ref_t<T> x);
@@ -79,7 +79,7 @@ template<::tpy::ValueType T>
 std::tuple<::tpy::own_return_t<T>, A*> f_mix(std::tuple<::tpy::own_return_t<T>, A*>&& p);
 // def fin_vt[T: ValueType](x: Own[T]) -> Own[T]:
 template<::tpy::ValueType T>
-::tpy::own_return_t<T> fin_vt(::tpy::own_param_t<T> x);
+::tpy::own_return_t<T> fin_vt(T x);
 // def fin_open[T](x: Own[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> fin_open(::tpy::own_param_t<T> x);
@@ -445,7 +445,7 @@ inline Shadow<T>::Shadow(::tpy::readonly_form_t<T> v) : v(v) {}
 template<::tpy::ValueType T>
 inline std::optional<T> Shadow<T>::opt(::tpy::readonly_form_t<T> x) const
   requires ::tpy::ValueType<T> {
-    return x;
+    return ::tpy::param_to_storage<T>(x);
 }
 
 // # a ValueType T local stored at its last use moves into the field
@@ -546,16 +546,16 @@ inline void VHolder<T>::push(T x) {
 //     y = copy(x)  # tpyc: ok
 //     return y
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> clone(::tpy::param_val_or_ref_t<T> x) {
+T clone(::tpy::param_val_or_ref_t<T> x) {
     T y = T(x);
     return y;
 }
 // # bounded generic: a lambda returning copy() of T
 // def lam[T: ValueType](x: T) -> T:
-//     f: Callable[[], T] = lambda: copy(x)  # tpyc: warning(/may keep its own copy of .x./)
+//     f: Callable[[], T] = lambda: copy(x)  # tpyc: ok
 //     return f()
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> lam(::tpy::param_val_or_ref_t<T> x) {
+T lam(::tpy::param_val_or_ref_t<T> x) {
     std::function<T()> f = [x]() -> T { return T(x); };
     return f();
 }
@@ -563,15 +563,15 @@ template<::tpy::ValueType T>
 // def opt_back[T: ValueType](x: Own[T]) -> T:
 //     return x
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> opt_back(::tpy::own_param_t<T> x) {
+T opt_back(T x) {
     return x;
 }
 // # bounded generic: a tuple result built from the parameter
 // def pair_back[T: ValueType](x: T) -> tuple[T, int32]:
 //     return (x, 1)
 template<::tpy::ValueType T>
-std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair_back(::tpy::param_val_or_ref_t<T> x) {
-    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x), 1};
+std::tuple<T, int32_t> pair_back(::tpy::param_val_or_ref_t<T> x) {
+    return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(x), 1};
 }
 // # bounded generic: an owned tuple with an Optional T element passed through
 // def own_pair[T: ValueType](x: Own[tuple[T | None, int32]]
@@ -584,7 +584,7 @@ std::tuple<std::optional<T>, int32_t> own_pair(std::tuple<std::optional<T>, int3
 // def take[T: ValueType](x: T) -> T:
 //     return x
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> take(::tpy::param_val_or_ref_t<T> x) {
+T take(::tpy::param_val_or_ref_t<T> x) {
     return ::tpy::param_to_return<T>(x);
 }
 // # bounded generic: a field write and an argument
@@ -595,7 +595,7 @@ template<::tpy::ValueType T>
 template<::tpy::ValueType T>
 void bounded_paths(VBox<T>& b, ::tpy::param_val_or_ref_t<T> x) {
     b.v = ::tpy::param_to_storage<T>(x);
-    ::tpy::val_or_ref_t<T> y = ::tpyapp::main::take<T>(x);
+    T y = ::tpyapp::main::take<T>(x);
     std::cout << "bounded_paths" << " " << ::tpy::ValuePrinter(y) << "\n" << ::tpy::check_signals;
 }
 // # bounded generic: a mixed tuple parameter returned whole (its definition
@@ -613,7 +613,7 @@ std::tuple<::tpy::own_return_t<T>, A*> f_mix(std::tuple<::tpy::own_return_t<T>, 
 //     finally:
 //         print("fin_vt", x)
 template<::tpy::ValueType T>
-::tpy::own_return_t<T> fin_vt(::tpy::own_param_t<T> x) {
+::tpy::own_return_t<T> fin_vt(T x) {
     {
         bool __fin_ran_1 = false;
         try {

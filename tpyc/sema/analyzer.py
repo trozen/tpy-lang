@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
 from typing import Callable, Iterator, Optional, Sequence
 
-from ..typesys import is_value_type_bound, resolve_int_literals
+from ..typesys import resolve_int_literals
 from ..typesys import (
     make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, VoidType, VOID,
@@ -1656,8 +1656,7 @@ class SemanticAnalyzer:
         if payload.is_value_type():
             return True
         # Generic T bounded to ValueType: same as value type
-        if isinstance(payload, TypeParamRef) and is_value_type_bound(
-                self.type_ops.get_type_param_bound(payload)):
+        if self.type_ops.is_value_type_param(payload):
             return True
         # @nocopy types are lifetime-significant: taking Own[T] to
         # consume-by-drop (hand it off and let it drop) is a legitimate

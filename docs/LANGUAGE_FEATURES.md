@@ -2433,11 +2433,10 @@ decides: an unbounded `def first[T](items: Own[list[T]]) -> T: return
 items[0]` is refused even when every caller passes a value type. A
 `T` bounded `ValueType` returns by value at every instantiation, so
 `-> T` and `-> readonly[T]` of it stay accepted (`def passthrough[T:
-ValueType](x: Own[T]) -> T: return x`), and so does `-> T | None` in a
-method of a class that bounds `T` (it renders `std::optional<T>`). A free
-function's own `[T: ValueType]` does not reach its `-> T | None` return,
-which still renders a pointer and is refused
-(`BUGS.md#bounded-function-optional-return-pointer`). The by-value Optional spelling
+ValueType](x: Own[T]) -> T: return x`), and so does `-> T | None`, which
+renders `std::optional<T>` whether the bound is the function's own, a
+method's or the class's (`def opt_back[T: ValueType](x: Own[T]) -> T |
+None: return x`). The by-value Optional spelling
 `-> Own[T | None]` does not lower yet at a value instantiation's caller
 (`BUGS.md#own-generic-param-optional-lever`), so a generic body handing an
 owned parameter back as an Optional has no working spelling today. A tuple
@@ -4575,6 +4574,38 @@ class Box[T: ValueType]:
         self.value = value  # No warning: T is guaranteed to be a value type
 ```
 
+  A bounded `T` also renders as the function written for the concrete value
+  type, whether the bound is the class's, a method's own or a free
+  function's: a `-> T` return is `T` by value, `-> T | None` is
+  `std::optional<T>` (so `return x` of a `T` or `T | None` parameter
+  compiles; at a view instantiation the caller's `| None` slot is not
+  lifetime-checked, BUGS.md#view-return-wrapped-slot-unchecked, and a local
+  holding the result keeps the view, BUGS.md#optional-view-result-local-dangles), `x is None` on a `T | None` parameter is the optional's
+  has-value test, and an `async def` returns `Poll<T>`. A `T` parameter
+  itself keeps its parameter form (`param_val_or_ref_t<T>`, the view at
+  `str`), and a read of it converts to `T` storage through
+  `::tpy::param_to_storage<T>` / `::tpy::param_to_return<T>`, where the
+  concrete twin writes `std::string(x)`. Reassigning a bounded parameter
+  takes the concrete twin's mutable copy (`T x =
+  ::tpy::param_to_storage<T>(__param_x);`), and the assignment hands the
+  parameter form over as `T` assigns from it (`x =
+  ::tpy::param_to_assign<T>(y);`, in place at `str`, a built `Bytes` at
+  `bytes`); a `T | None` parameter takes the fallback the same way. An
+  unbounded `T` parameter is
+  still not reassignable (*Cannot reassign parameter 'x' of type 'T'*),
+  because its parameter form is a mutable reference at a reference
+  instantiation. A generator or `async def` frame holds its own `T` copy
+  of the parameter. Still refused: a `T | int32` return of a bounded `T`
+  (BUGS.md#bounded-tparam-union-return-rejects), a local bound to an
+  open-`T` parameter (BUGS.md#open-t-param-local-bind-rejects), a
+  `T | None` result bound from an owned or reassigned `str` local
+  (BUGS.md#bounded-optional-result-owned-str-local-rejects) or returned
+  where `str | None` is declared
+  (BUGS.md#bounded-optional-result-str-mismatch), a `tuple[T, int]` result
+  over a `str` local (BUGS.md#bounded-tuple-result-str-local-rejects), and
+  a method's own bounded `T | None` result over a `str` local
+  (BUGS.md#method-own-bounded-optional-result-rejects).
+
 - **`ReferenceType` is the mirror bound** (`from tpy import ReferenceType`, and the intersection `ComparableRef`): `T: ReferenceType` admits exactly the types a function returns as a reference to the object itself -- class instances that are not `ValueType`s, `list`, `dict`, `set`, `Array`, `bytearray`, readonly or not -- and refuses value types, tuples (even of class instances), `Optional` / unions, `Own[T]`, protocol-typed values and callables; an open `T` conforms when its own bound does. A class cannot opt in by declaring it. See `docs/PROTOCOL_DESIGN.md` "Marker protocols". A `readonly` argument conforms but does not build yet: its type argument is spelled as the borrow slot, and a use of the result fails the C++ build, as it does for any generic identity function today (`BUGS.md#generic-readonly-arg-result-unusable`); the builtin `min` / `max` deduce the element type in C++ and are not affected.
 
 **Validation rules:**
@@ -5320,7 +5351,7 @@ tuple element `(cast(Item, it), 2)` holds `it` by reference, `return cast(Item, 
 - **Working**: `T | None` in generic contexts -- the form is decided per instantiation
   - A generic PARAMETER slot is spelled `::tpy::opt_param_t<T>` (`opt_cparam_t<T>` where the slot is const): `std::optional<T>` at a value `T`, so the caller passes the value exactly as it would to the monomorphic twin, and `T*` / `const T*` at a reference `T`, so a mutation through the slot stays the caller's. A `ValueType`-bounded `T` takes the same trait: it is `std::optional<T>` at every instantiation but a `str` / `bytes` one, whose view only the trait knows (BUGS.md#generic-optional-param-owned-at-view-family).
   - Fields and container elements keep the storage form `std::optional<T>`; the lift from a parameter slot into one is `::tpy::to_opt_storage<...>`, which absorbs either form.
-  - A generic RETURN slot is still committed to `T*` for every instantiation (an optional return cannot alias the field it reads), so a `T | None` parameter cannot be returned directly from a `T | None` return -- see `BUGS.md`. A method of a record whose class bounds `T: ValueType` returns `std::optional<T>` and does return its parameter; a free function's `T: ValueType` return is still `T*` and fails the C++ build (BUGS.md#bounded-function-optional-return-pointer).
+  - For an UNBOUNDED `T`, a generic RETURN slot is still committed to `T*` for every instantiation (an optional return cannot alias the field it reads), so a `T | None` parameter cannot be returned directly from a `T | None` return -- see `BUGS.md`. A `T: ValueType` bound, the class's, a method's own or a free function's, returns `std::optional<T>` and does return its parameter.
   - The body's reads are form-neutral: `*o` and `o->x` read both forms, and `o is None` renders `::tpy::opt_has_value(o)`.
   - `None` literals in generic Optional positions emit `std::nullopt` at a value `T` and `nullptr` at a reference one
 - **Working**: `T | None` for value types (`int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`

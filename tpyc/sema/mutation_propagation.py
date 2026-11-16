@@ -12,9 +12,11 @@ from typing import Optional
 from ..identity_map import IdentitySet
 from ..typesys import (
     FunctionInfo, MutationCallEdge, CONST_PARAMS_METHODS,
-    view_is_inherently_const,
+    view_is_inherently_const, ReturnPassing, contains_type_kind_param,
+    unwrap_readonly,
     is_bodyless_binding,
 )
+from ..type_def_registry import is_borrowing_view_type
 
 # Methods that must never be inferred const regardless of body analysis.
 _NEVER_INFER_CONST = frozenset({"__init__", "__del__"}) | CONST_PARAMS_METHODS
@@ -288,7 +290,15 @@ def const_inferable(fi: FunctionInfo) -> bool:
         # Return value is self's storage -- auto-const would change
         # the return from T& to const T&, overriding the user's declared type.
         # Inherently-const views carry no mutable alias, so auto-const is safe.
-        return view_is_inherently_const(fi.return_type)
+        # A by-value result holding an open `T` (bare or as `T | None`) is
+        # marked lending only because its instantiation may be a view;
+        # returned by value, const changes no declared reference.
+        ret = unwrap_readonly(fi.return_type)
+        return (view_is_inherently_const(fi.return_type)
+                or (ret.is_value_type()
+                    and ret.return_passing() is ReturnPassing.VALUE
+                    and contains_type_kind_param(ret)
+                    and not is_borrowing_view_type(ret)))
     return True
 
 

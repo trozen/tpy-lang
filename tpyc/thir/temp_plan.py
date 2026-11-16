@@ -173,7 +173,7 @@ class _Planner:
                 self.expr(expr.value)
             case th.THIRFormConvert():
                 _plain(expr, {"value", "is_const", "move", "materialize",
-                              "generic_return"})
+                              "open_t_sink"})
                 self.expr(expr.value)
             case _:
                 raise _Unplanned()

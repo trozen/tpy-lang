@@ -328,6 +328,10 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
         // pointee (None when null), as the non-generic print does.
         if (p.value == nullptr) return os << "None";
         return os << ValuePrinter<std::remove_cv_t<std::remove_pointer_t<T>>>(*p.value);
+    } else if constexpr (detail::is_std_tuple<std::remove_cv_t<T>>) {
+        // A tuple at a type parameter prints as the tuple does elsewhere.
+        detail::print_element(os, p.value);
+        return os;
     } else if constexpr (std::ranges::range<T>
                          && !requires(std::ostream& o, const T& v) { o << v; }) {
         // A range with no text of its own prints as a list; one that writes

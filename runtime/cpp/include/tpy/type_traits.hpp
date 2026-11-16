@@ -437,6 +437,21 @@ T param_to_storage(Src&& s) {
     }
 }
 
+// param_to_storage at an assignment into existing `T` storage: a source the
+// storage assigns from as it is (a value, a `string_view` into
+// `std::string`) is handed over unchanged, so the assignment reuses the
+// storage; one it does not (a `BytesView` into `Bytes`) is built first.
+// The test is on `T&` also where the target is a `std::optional<T>` payload
+// slot: optional's converting assignment needs exactly that assignability.
+template <class T, class Src>
+decltype(auto) param_to_assign(Src&& s) {
+    if constexpr (std::is_assignable_v<T&, Src&&>) {
+        return std::forward<Src>(s);
+    } else {
+        return param_to_storage<T>(std::forward<Src>(s));
+    }
+}
+
 // param_to_storage at a by-value `T` return: a reference instantiation returns
 // the borrow unchanged (it must NOT start copying), a value one owns.
 template <class T, class Src>

@@ -206,6 +206,7 @@ from ..param_contract import (Adapts, Materializer, ParamContract, arg_retention
                               protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
 from ...sema.own_copy import contains_reference_type
+from ...typesys import contains_type_kind_param
 from ...sema.local_deduction import (leaf_is_temporary,
                                      view_slot_source_is_temporary,
                                      view_source_is_temporary)
@@ -224,6 +225,7 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       elem_borrow_form_differs, element_source, tuple_elems,
                       SelectResult, Source, TraitAbi)
 from ..nodes import (
+    OpenTSink,
     PtrSlotKind,
     THIRAssign,
     THIRVarDecl,
@@ -651,6 +653,7 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
 from .convert import (Effect, Refuse, _existing_object, _lendable, as_base,
+                      open_param_convert,
                       convert, held_object_type, landing, spelled)
 
 
@@ -13425,8 +13428,11 @@ def _copying_lift(el: THIRExpr) -> bool:
     st = storage_type(el.result_type)
     lift = ((isinstance(el, THIRFormConvert) and el.form is Form.STORAGE)
             or isinstance(el, THIRTupleLiteral))
+    # An open `T` builds through the helpers whatever its bound: its
+    # instantiation decides what the copy costs.
     return (lift and not _builds_by_move(el) and st is not None
-            and contains_reference_type(st))
+            and (contains_reference_type(st)
+                 or contains_type_kind_param(st)))
 
 
 _SIDE_EFFECT_FREE_LITERALS = (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -14181,6 +14187,13 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # lend (`to_val_or_ptr`), the instantiation deciding the
             # address-of or the value.
             elem_lowered = _lower_expr(elem, lc, declared)
+            built = (open_param_convert(elem_lowered, et, OpenTSink.STORAGE)
+                     if et.is_value_type() else None)
+            if built is not None:
+                # A value-bounded `T` element is held as its storage, and a
+                # `T` PARAM is read in its parameter form (a view at `str`).
+                lowered.append(built)
+                continue
             lowered.append(THIRFormConvert(
                 result_type=et, value=elem_lowered, form=Form.BORROW,
                 trait=TraitAbi.VAL_OR_PTR,

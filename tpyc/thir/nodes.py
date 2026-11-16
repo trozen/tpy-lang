@@ -2387,6 +2387,24 @@ class THIRNarrowedRead(THIRExpr):
     union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
 
+class OpenTSink(Enum):
+    """Which `T` storage an open-`T` parameter-form value is converted for
+    (`THIRFormConvert` over an open `T`): a store builds `T`
+    (`param_to_storage`), a return keeps a reference instantiation's
+    borrow (`param_to_return`), an assignment into existing `T` storage
+    hands over what the storage assigns from (`param_to_assign`)."""
+    STORAGE = auto()
+    RETURN = auto()
+    ASSIGN = auto()
+
+    def render(self, t_cpp: str, value_cpp: str) -> str:
+        """The runtime conversion of `value_cpp` for this sink."""
+        helper = {OpenTSink.STORAGE: "param_to_storage",
+                  OpenTSink.RETURN: "param_to_return",
+                  OpenTSink.ASSIGN: "param_to_assign"}[self]
+        return f"::tpy::{helper}<{t_cpp}>({value_cpp})"
+
+
 @dataclass(frozen=True)
 class THIRFormConvert(THIRExpr):
     """An explicit borrow<->storage form conversion (IR_DESIGN "THIRFormConvert").
@@ -2414,10 +2432,11 @@ class THIRFormConvert(THIRExpr):
     instantiation's PARAMETER form (`param_val_or_ref_t<T>`, a view for `str`
     and `bytes`) and the sink spells `T` storage, so the construction is
     explicit -- `::tpy::param_to_storage<T>` -- keyed on `T` alone.
-    `generic_return` picks the return sink's sibling
+    `open_t_sink` picks the return sink's sibling
     (`::tpy::param_to_return<T>`), which must NOT copy at a reference-typed
     instantiation: there `val_or_ref_t<T>` is `T&` and an owned temporary
-    would dangle.
+    would dangle; or the assignment's (`::tpy::param_to_assign<T>`), which
+    builds nothing where the storage assigns from the parameter form.
 
     A tuple never takes this node: a tuple converts element by element
     (`THIRTupleLiteral` over its element reads, `convert.per_element`)."""
@@ -2425,7 +2444,7 @@ class THIRFormConvert(THIRExpr):
     is_const: bool = False
     move: bool = False
     materialize: 'bool | None' = None
-    generic_return: bool = False
+    open_t_sink: OpenTSink = OpenTSink.STORAGE
     # An open-`T` BORROW into a slot that spells it through its trait (a
     # tuple element's `val_or_ptr_t<T>`): the instantiation decides the
     # address-of or the value (`::tpy::to_val_or_ptr`). None: the bare

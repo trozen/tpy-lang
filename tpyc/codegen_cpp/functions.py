@@ -1207,6 +1207,7 @@ class FunctionGenerator:
             ctp = class_type_params or None
             if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
+                                         reassigned_params=rp,
                                          mutated_params=mp,
                                          addr_escapes_params=ae,
                                          defaults=dfl, emit_defaults=emit_defaults,

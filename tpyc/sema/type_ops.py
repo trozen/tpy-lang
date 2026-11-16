@@ -16,6 +16,7 @@ from ..typesys import (
     bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, LiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
+    is_value_type_bound,
     NoneType, VoidType, SendType, SyncType, unwrap_send_sync,
     RecordInfo, FunctionInfo, ParamInfo, PropertyInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, unwrap_own, RefType, is_dyn_protocol,
@@ -1178,6 +1179,14 @@ class TypeOperations:
         if ref.bound is not None:
             return ref.bound
         return self.ctx.type_param_bound(ref.name)
+
+    def is_value_type_param(self, typ: TpyType) -> bool:
+        """Whether `typ` is an open TYPE parameter bounded `ValueType`: a
+        value at every instantiation. The bound on the ref answers it; a
+        body-written ref carries none yet, so the declaration in scope
+        does."""
+        return (isinstance(typ, TypeParamRef)
+                and is_value_type_bound(self.get_type_param_bound(typ)))
 
     def match_type_with_inference(
         self,

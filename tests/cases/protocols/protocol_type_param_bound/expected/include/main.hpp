@@ -701,7 +701,7 @@ template <typename T>
 struct __coro_bounded_async {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::val_or_ref_t<T> x;
+    T x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -713,7 +713,7 @@ struct __coro_bounded_async {
           __cancel_pending(false),
           x(x_) {}
 
-    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_bounded_async<T>&) {
@@ -723,14 +723,14 @@ struct __coro_bounded_async {
 // async def bounded_async[T: ValueType](x: T) -> T:  # tpyc: ok
 //     return x
 template <typename T>
-::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_bounded_async<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<T> __coro_bounded_async<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
-        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
+        T __tpy_async_ret = x;
+        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -791,9 +791,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def bounded_gen[T: ValueType](x: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, ::tpy::yield_slot_t<T>> {
+struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, T> {
     ::tpy::frame_state __state;
-    ::tpy::val_or_ref_t<T> x;
+    T x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -806,7 +806,7 @@ struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, :
         : __state(S_INITIAL),
           x(x_) {}
 
-    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    std::expected<T, ::tpy::StopIteration> __next__();
     __gen_bounded_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_bounded_gen<T>&) {
@@ -817,7 +817,7 @@ struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, :
 //     yield x                                                      # -> S_RESUME_0
 //     yield x                                                      # -> S_RESUME_1
 template <typename T>
-std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_bounded_gen<T>::__next__() {
+std::expected<T, ::tpy::StopIteration> __gen_bounded_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1026,7 +1026,7 @@ inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::op
 template<::tpy::ValueType T>
 inline void Slot<T>::show_other(Slot<T> s) const {
     if ((s.x.has_value())) {
-        std::cout << "slot method" << " " << ::tpy::print_optional_val(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << "slot method" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1134,7 +1134,7 @@ int32_t sub_top(T_r&& r) {
 template<::tpy::ValueType T>
 void show_slot(Slot<T> s) {
     if ((s.x.has_value())) {
-        std::cout << "slot function" << " " << ::tpy::print_optional_val(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << "slot function" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 // # an import cycle: a bounded protocol extends its peer's bounded protocol

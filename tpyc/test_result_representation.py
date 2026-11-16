@@ -55,9 +55,11 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(OwnType(GENERIC), False, STORAGE, "T", id="owned-generic"),
     pytest.param(RefType(GENERIC), False, TRAIT, "::tpy::val_or_ref_t<T>",
                  id="ref-generic"),
+    # A value-bounded `T` is a value at every instantiation: its async
+    # payload is the storage `T`, as a concrete value's.
     pytest.param(TypeParamRef("V", bound=NominalType(
         "ValueType", is_protocol=True, _module_qname="tpy.ValueType")),
-        False, TRAIT, "V", id="value-bounded-generic"),
+        False, STORAGE, "V", id="value-bounded-generic"),
     pytest.param(OptionalType(INT32), False, STORAGE, "std::optional<int32_t>",
                  id="optional-value"),
     pytest.param(OptionalType(CELL), False, BORROW, "std::optional<Cell>",

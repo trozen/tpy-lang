@@ -36,7 +36,8 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
 
 from ..typesys import (
-    is_value_type_bound, LiteralValue,
+    is_value_type_bound, LiteralValue, contains_type_kind_param,
+    nests_pending_view,
     global_tuple_binding_type, disambiguated_pair,
     TpyType, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewTypeFamily, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, TupleType,
@@ -4235,7 +4236,8 @@ class SemanticContext:
         # the recorded-composite completeness check in
         # _finalize_pending_in_bindings guards the composite half of that.
         # contains_pending_leaf fast-returns on leaves.
-        if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
+        if not isinstance(typ, PENDING_CONTAINER_TYPES) and (
+                contains_pending_leaf(typ) or nests_pending_view(typ)):
             self.func.pending_composite_exprs.append(expr)
         elif (isinstance(typ, PENDING_CONTAINER_TYPES)
               and (any(isinstance(p, UnknownElementType)
@@ -5731,7 +5733,12 @@ class SemanticContext:
         may = MayLend(self)
         borrow_tuple = escaping_borrow_tuple(slot)
         view = is_borrowing_view_type(slot)
-        if slot.is_value_type() and not view and borrow_tuple is None:
+        # A slot holding an open `T` may lend: whatever its bound, `T` may be
+        # instantiated at a view (`Span`, `StrView`). An `Own` slot holds
+        # what it was handed.
+        if (slot.is_value_type() and not view and borrow_tuple is None
+                and (isinstance(unwrap_readonly(slot), OwnType)
+                     or not contains_type_kind_param(slot))):
             return
         is_yield = position is EscapePosition.YIELD
         if is_yield and borrow_tuple is None and (

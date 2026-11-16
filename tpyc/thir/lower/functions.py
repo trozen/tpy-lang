@@ -72,6 +72,7 @@ from ..reject import ThirUnsupported, note
 from ..faces import witness as _witness
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
+    OpenTSink,
     THIRBaseInit,
     THIRCall,
     THIRInheritedConstructor,
@@ -236,7 +237,14 @@ def _param_reassign_copies(func: TpyFunction,
         opt_inner = pt.inner if isinstance(pt, OptionalType) else None
         fam = view_family_for_type(opt_inner if opt_inner is not None else pt)
         init_cpp = None
-        if fam is not None:
+        if isinstance(unwrap_readonly(pt), TypeParamRef):
+            # The parameter form converts to `T`'s storage through the
+            # generic trait (`std::string(view)` at `str`). The statement is
+            # built before the body's bindings, so it carries the render, not
+            # a conversion node over a read.
+            init_cpp = OpenTSink.STORAGE.render(
+                unwrap_readonly(pt).to_cpp(), f"__param_{escape_cpp_name(name)}")
+        elif fam is not None:
             # A view-family param's copy respells the LOCAL owned
             # (`std::string p = std::string(__param_p);` / the Optional
             # make_optional split). Body reads keep their view-form

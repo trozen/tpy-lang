@@ -96,7 +96,7 @@ from ...typesys import (
     ListRepeatType,
     NominalType,
     NoneType,
-    OptionalType,
+    OptionalType, by_value_optional_payload,
     OwnType,
     PendingListType,
     PendingViewType,
@@ -201,7 +201,7 @@ from ..reject import (
 from ..scalar_leaves import record_owner, storage_leaf
 from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     builds_assigned_record,
-    THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm,
+    THIRCtorCall, THIRBorrowTupleLiteral, Form, OpenTSink, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
     THIRBytesLiteral, THIRCoerce, THIRNoneCheck,
     THIRContainerLiteral, THIRContinue,
@@ -356,7 +356,7 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (
     ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
-    layout_tuple, spelled, to_local)
+    layout_tuple, open_param_convert, spelled, to_local)
 from .expressions import (
     _lower_into_dyn, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
@@ -10996,10 +10996,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # whole-optional copy, so strip the name arm's deref-on-narrow.
             # A plain-`T` target keeps the deref: the reassignment RHS
             # unwraps a proven-non-None value-Optional source to `(*p)`.
-            if (isinstance(stmt.init, TpyName) and isinstance(init, THIRName)
-                    and (_value_opt_scalar_binding(stmt.init.name, lc)
-                         or _value_opt_view_binding(stmt.init.name, lc))
-                    and _value_opt_target_binding(stmt.name, lc)):
+            whole_optional = (
+                isinstance(stmt.init, TpyName) and isinstance(init, THIRName)
+                and (_value_opt_scalar_binding(stmt.init.name, lc)
+                     or _value_opt_view_binding(stmt.init.name, lc))
+                and _value_opt_target_binding(stmt.name, lc))
+            if whole_optional:
                 init = _whole_optional_bare(init)
             # An owned-BYTES target fed a view source takes the family's
             # view->owned construction: `std::vector<uint8_t>` has no
@@ -11008,8 +11010,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # a view local arrives here as a plain value. `std::string` does
             # take a string_view, so the str twin stays the bare `t = s;` --
             # wrapping it would build a temporary the assignment does not need.
-            tgt_bytes = _resolved_bytes_value(declared[stmt.name], analyzer)
-            if tgt_bytes is not None and is_bytes_type(tgt_bytes):
+            # A by-value Optional target fed its payload (not the whole
+            # optional above, not `None`) assigns the payload as the bare
+            # target.
+            tgt_t = declared[stmt.name]
+            payload = by_value_optional_payload(tgt_t)
+            if (payload is not None and not whole_optional
+                    and not isinstance(unwrap_readonly(init.result_type),
+                                       (OptionalType, NoneType))):
+                tgt_t = payload
+            tgt_bytes = _resolved_bytes_value(tgt_t, analyzer)
+            # A value-bounded `T` target fed a `T` parameter's read: the
+            # parameter form converts through the generic trait, in place
+            # where `T` assigns from it, as the str twin's `t = s;` does.
+            tgt_u = unwrap_readonly(tgt_t)
+            assigned = (open_param_convert(init, tgt_u, OpenTSink.ASSIGN)
+                        if isinstance(tgt_u, TypeParamRef)
+                        and tgt_u.is_value_type() else None)
+            if assigned is not None:
+                init = assigned
+            elif tgt_bytes is not None and is_bytes_type(tgt_bytes):
                 init = _wrap_view_owned_sink(init, tgt_bytes, loc)
             elif isinstance(stmt.init, TpyName) and _node_moves(init):
                 # Sema's last-use move: the dead name hands its storage over.

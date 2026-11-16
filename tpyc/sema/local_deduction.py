@@ -17,7 +17,7 @@ from ..parse.nodes import (name_path, TpyStrLiteral, TpySubscript, TpyArrayLiter
                            TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral, TpySlice)
 from ..typesys import (
     PendingGenericInstanceInfo, RecordInfo, pending_view_of,
-    contains_pending_num,
+    contains_pending_num, nests_pending_view,
 
     collapse_tuple_own_elements,
     DictLiteralInfo,
@@ -2529,8 +2529,12 @@ class LocalTypeDeduction:
                 if binding.kind is BindingKind.VARIABLE and binding.type is not None:
                     # A module slot is read by bodies analyzed later, which
                     # need its settled storage type.
+                    # A view nested in a composite is another local's,
+                    # settled by now; a bare one is the binding's own.
                     binding.type = self._deep_resolve_pending(
-                        binding.type, settle_views=binding.module_slot)
+                        binding.type, settle_views=(
+                            binding.module_slot
+                            or nests_pending_view(binding.type)))
         # A pending number is bound in the function's own scope too (its
         # parents are the enclosing function's, settled on their own).
         scope = self.ctx.func.current_scope
@@ -2558,7 +2562,8 @@ class LocalTypeDeduction:
         for node in self.ctx.func.pending_composite_exprs:
             current = self.ctx.expr_types.get(node)
             if current is not None:
-                current = self._deep_resolve_pending(current)
+                current = self._deep_resolve_pending(
+                    current, settle_views=nests_pending_view(current))
                 self.ctx.expr_types[node] = current
                 # Completeness net for the recorded-composite half of the
                 # set_expr_type chokepoint: an explicit raise (like

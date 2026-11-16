@@ -81,7 +81,7 @@ template<::tpy::ValueType T>
 int32_t value_bound(::tpy::param_val_or_ref_t<T> v);
 // def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
 template<::tpy::ValueType T>
-int32_t value_bound_readonly(::tpy::readonly_form_t<T> v);
+int32_t value_bound_readonly(::tpy::param_val_or_ref_t<T> v);
 // def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v);
@@ -588,7 +588,7 @@ int32_t free_slot(::tpy::param_val_or_ref_t<T> v) {
 //     return v  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v) {
-    return v;
+    return ::tpy::param_to_storage<T>(v);
 }
 // # two distinct reference instantiations of ONE body: still ONE line, because
 // # the contract is the declaration's and not any call's
@@ -744,7 +744,7 @@ int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
 //     xs.append(v)  # tpyc: ok
 //     return len(xs)
 template<::tpy::ValueType T>
-int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
+int32_t value_bound_readonly(::tpy::param_val_or_ref_t<T> v) {
     std::vector<T> xs = std::vector<T>{};
     xs.push_back(::tpy::param_to_storage<T>(v));
     return ::tpy::__len__(xs);

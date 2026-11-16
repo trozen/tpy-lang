@@ -462,7 +462,7 @@ def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
     rerouted through this trait.
     """
     elem = unwrap_ref_type(elem_type) if elem_type is not None else None
-    if elem is None or isinstance(elem, (TypeParamRef, ReadonlyType)):
+    if elem is None or isinstance(unwrap_own(elem), (TypeParamRef, ReadonlyType)):
         return False
     if is_protocol_type(elem):
         return False

@@ -164,7 +164,7 @@ void show_slot(std::string_view tag, Slot<T> s) {
     if ((!s.x.has_value())) {
         std::cout << tag << " " << "none" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << tag << " " << ::tpy::print_optional_val(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << tag << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 

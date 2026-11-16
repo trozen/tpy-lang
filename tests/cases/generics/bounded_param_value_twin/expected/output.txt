@@ -1,0 +1,51 @@
+fopt 5 s b'b'
+tag 3 t
+opt 4 o
+getter g
+gen gs
+gen gs
+gen 3
+gen 3
+drain 10
+drain 20
+drain e1
+drain e2
+cap 9
+cap c
+ret_own r
+opt_back 6 ob
+show_t (1, 'a')
+show_any [1, 2]
+async 7 as
+adrain 1
+adrain 2
+adrain p
+adrain q
+adrain 2 2
+swap 3 b b'c'
+reassign 3 b b'y'
+nonlocal 4 m b'q'
+gen_reassign g1
+gen_reassign g2
+gen_reassign 5
+gen_reassign 6
+or_default 2 7 d s
+or_default b'r' b'q'
+or_default_bytes b'd' b'x'
+reassign_tuple (2, 'b')
+clear None 5 None None None
+take_other b'new'
+take 2 3 4 b c b'b'
+pick 4 5 d s
+method 1 2 d s
+match 1 3 d m
+first a 9
+via 5 s
+via_local live 5 b'byte' live
+show None
+show 5
+show t
+some 3
+some s
+some none done
+idt 234567812345678 zzzzzzzz

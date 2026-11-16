@@ -4232,12 +4232,19 @@ def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     seeding + the return/container move sinks). Str/bytes views are excluded
     (the `optional<string_view>` vs `optional<string>` ARG split needs the
     `_maybe_convert_opt_view_param` shim). Own-optional (`Own[X] | None`) rides
-    the Own axis in `_unrouted_binding_read`."""
+    the Own axis in `_unrouted_binding_read`. A ValueType-bounded open `T`
+    payload (`opt_param_t<T>`) also answers here: it is `std::optional<T>`
+    at every instantiation, `str` / `bytes` / a tuple / a `ValueType` record
+    included, so its reads copy exactly where the concrete twin's do."""
     if not isinstance(t, TpyType):
         return None
     t = unwrap_readonly(unwrap_send_sync(t))
     if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
         return None
+    if t.uses_generic_param_trait():
+        # A ValueType-bounded open `T`: `opt_param_t<T>` is
+        # `std::optional<T>` at every value instantiation, read as a scalar's.
+        return t
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
         return None

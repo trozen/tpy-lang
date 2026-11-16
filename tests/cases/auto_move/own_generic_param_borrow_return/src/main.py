@@ -1,7 +1,7 @@
 # An owned parameter, generic or not, dies at the return: a generic body
 # returns it by value only where every instantiation does (a ValueType-bounded
-# `-> T`, an `Own[...]` return); the lending shapes are refused as at the
-# concrete twin (see error_own_generic_param_return and
+# `-> T` or `-> T | None`, an `Own[...]` return); the lending shapes are
+# refused as at the concrete twin (see error_own_generic_param_return and
 # error_own_generic_param_borrow_return). Every result is read
 # after another call, so a dangling return would show.
 import asyncio
@@ -34,6 +34,11 @@ class C[T: ValueType]:
         return x  # tpyc: ok
 
 
+# free function: a ValueType-bounded owned T into its own T | None return
+def opt_back[T: ValueType](x: Own[T]) -> T | None:
+    return x  # tpyc: ok
+
+
 # Own[T] return: the owned value moves out, at a value and a class T
 def back[T](x: Own[T]) -> Own[T]:
     return x  # tpyc: ok
@@ -64,6 +69,10 @@ def main() -> None:
     o = c.opt(6)
     churn()
     print("method", o)
+
+    b = opt_back(4)
+    churn()
+    print("opt_back", b)
 
     v = back(5)
     churn()

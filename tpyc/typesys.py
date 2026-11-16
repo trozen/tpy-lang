@@ -1125,6 +1125,12 @@ class TypeParamRef(TpyType):
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
 
+    def param_needs_copy_for_reassign(self) -> bool:
+        # A value-bounded `T` parameter is held in its parameter form (a
+        # const reference, or a view at `str`): rebinding it needs the
+        # mutable owned local its concrete value twin gets.
+        return self.kind is TypeParamKind.TYPE and self.is_value_type()
+
     def drop_runs_user_code(self) -> bool:
         # Any instantiation, a value-bounded one included, may carry a class
         # with `__del__`; only an INT param is a plain number.
@@ -2649,6 +2655,17 @@ def pointer_repr_optional(typ: 'TpyType | None') -> 'OptionalType | None':
             else None)
 
 
+def by_value_optional_payload(typ: 'TpyType | None') -> 'TpyType | None':
+    """The payload a by-value Optional (`std::optional<T>`) holds, or None
+    for any other type."""
+    if not isinstance(typ, TpyType):
+        return None
+    u = unwrap_readonly(typ)
+    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
+        return unwrap_readonly(u.inner)
+    return None
+
+
 def pointer_variant_union(typ: 'TpyType | None') -> 'UnionType | None':
     """The non-value union lowered to `::tpy::Union<A*, B*>` at a borrow
     that `typ` has the shape of (`repr_shape`), or None. A recursive-union
@@ -3224,7 +3241,7 @@ def classify_result_representation(
               if ret_type is not None else None)
         if rt is None or isinstance(rt, (VoidType, OwnType)):
             return ResultRepresentation.STORAGE
-        if isinstance(rt, TypeParamRef):
+        if isinstance(rt, TypeParamRef) and not rt.is_value_type():
             return ResultRepresentation.ASYNC_TRAIT
         # A tuple holding a borrow is the sync tuple return's form.
         if isinstance(rt, TupleType) and rt.holds_result_form_payload():
@@ -4676,9 +4693,13 @@ class AnyType(TpyType):
 
 def contains_type_kind_param(t: TpyType) -> bool:
     """Like contains_type_param but counts only TYPE-kind params, not INT
-    (const) params. Movability never depends on a const N -- only on element
-    types -- so a field like `UninitArrayStorage[Item, N]` (element resolved,
-    N still a param) is movability-determinable and must NOT be skipped."""
+    (const) params: whether a type's answer is still the instantiation's.
+    Movability never depends on a const N -- only on element types -- so a
+    field like `UninitArrayStorage[Item, N]` (element resolved, N still a
+    param) is movability-determinable and must NOT be skipped. The same
+    question decides that a value holding an open `T` may lend (`T` may be
+    a view), that building its storage copies as the instantiation
+    decides, and that a getter returning one by value can still be const."""
     if isinstance(t, TypeParamRef):
         return t.kind != TypeParamKind.INT
     if isinstance(t, NominalType) and t.type_args:
@@ -7017,6 +7038,18 @@ def contains_pending_leaf(typ: 'TpyType') -> bool:
                         PendingNumType)):
         return True
     return any(contains_pending_leaf(t) for t in typ.inner_types())
+
+
+def nests_pending_view(typ: 'TpyType') -> bool:
+    """True if a pending view (a `str` / `bytes` local's view-or-owned type)
+    sits INSIDE typ (`T | None` inferred from a str local): unlike a bare
+    one, which the view resolution rebinds itself, a nested one is settled
+    with the composite's other pending leaves. It takes the verdict of the
+    local it was inferred from, which is safe only while a view of a local
+    whose backing may die stays refused
+    (BUGS.md#optional-view-result-local-dangles)."""
+    return any(isinstance(t, PendingViewType) or nests_pending_view(t)
+               for t in typ.inner_types())
 
 
 def literal_peer_children(

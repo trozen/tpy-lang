@@ -70,7 +70,7 @@ from .scalar_leaves import (
     holds_elements, leaf_constant, leaf_global, modeled_ancestors, native_container_subject, native_container_type,
     optional_record_field, owned_leaf, storage_leaf,
 )
-from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
+from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, THIRArgTemp, THIRAssign,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
     THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRErrorReturnUnwrap, THIRExprStmt,
@@ -789,7 +789,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
             source = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
             if isinstance(source, THIRFormConvert):
                 if (source.form is not Form.BORROW or source.move
-                        or source.materialize is not None or source.generic_return
+                        or source.materialize is not None or source.open_t_sink is not OpenTSink.STORAGE
                         or source.is_const != fact.reference.readonly
                         or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.reference.type):
                     _fail(owner, node, "alias binding has a non-borrow conversion")
@@ -812,7 +812,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
             source = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
             if isinstance(source, THIRFormConvert):
                 if (source.form is not Form.BORROW or source.move or source.materialize is not None
-                        or source.generic_return or source.is_const != fact.readonly
+                        or source.open_t_sink is not OpenTSink.STORAGE or source.is_const != fact.readonly
                         or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type):
                     _fail(owner, node, "storage borrow has a non-borrow conversion")
                 source = source.value

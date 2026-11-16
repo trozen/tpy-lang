@@ -61,6 +61,10 @@ __coro_run_async run_async() {
 //     churn()
 //     print("method", o)
 //
+//     b = opt_back(4)
+//     churn()
+//     print("opt_back", b)
+//
 //     v = back(5)
 //     churn()
 //     print("own value", v)
@@ -81,6 +85,9 @@ void main() {
     std::optional<int32_t> o = c.opt(6);
     ::tpyapp::main::churn();
     std::cout << "method" << " " << ::tpy::print_optional_val(o) << "\n" << ::tpy::check_signals;
+    std::optional<int32_t> b = ::tpyapp::main::opt_back<int32_t>(4);
+    ::tpyapp::main::churn();
+    std::cout << "opt_back" << " " << ::tpy::print_optional_val(b) << "\n" << ::tpy::check_signals;
     int32_t v = ::tpyapp::main::back<int32_t>(5);
     ::tpyapp::main::churn();
     std::cout << "own value" << " " << v << "\n" << ::tpy::check_signals;
@@ -93,8 +100,8 @@ void main() {
 
 // # An owned parameter, generic or not, dies at the return: a generic body
 // # returns it by value only where every instantiation does (a ValueType-bounded
-// # `-> T`, an `Own[...]` return); the lending shapes are refused as at the
-// # concrete twin (see error_own_generic_param_return and
+// # `-> T` or `-> T | None`, an `Own[...]` return); the lending shapes are
+// # refused as at the concrete twin (see error_own_generic_param_return and
 // # error_own_generic_param_borrow_return). Every result is read
 // # after another call, so a dangling return would show.
 // import asyncio

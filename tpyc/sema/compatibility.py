@@ -17,7 +17,7 @@ from ..type_def_registry import has_view_param_form
 from ..typesys import (lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type)
 from ..typesys import (
-    contains_reference_type, inner_type_param_names, is_value_type_bound,
+    contains_reference_type, inner_type_param_names,
     same_class, Representation, return_representation,
     make_readonly,
     ELEM,
@@ -2242,7 +2242,7 @@ class TypeCompatibility:
                 # included, a name's as any other's.
                 ptr_repr_tuple = (isinstance(ew, TupleType)
                                   and bool(reference_paths(ew)))
-                ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
+                ref_scalar = not ew.is_value_type() and not self.type_ops.is_value_type_param(ew)
                 # A call that hands back a borrow is copied into the owning slot
                 # exactly as a name or a field is, so it belongs to the same
                 # family. An open type-param payload is no exception: the copy is
@@ -4739,7 +4739,7 @@ class TypeCompatibility:
         # its element.
         where = "" if whole_slot else f" ({context})"
         payload = own_type.wrapped
-        if self._is_value_type_param(payload):
+        if self.type_ops.is_value_type_param(payload):
             # A `T: ValueType` bound proves the copy, so there is nothing
             # to declare -- the same exemption the insert slot applies.
             return
@@ -4774,7 +4774,7 @@ class TypeCompatibility:
         in its own words: the hedge of an open payload, the located error of
         a non-copyable one (`nocopy_hint` its remedy where given), else the
         warning."""
-        if self._is_value_type_param(sink.target):
+        if self.type_ops.is_value_type_param(sink.target):
             return
         if self.ctx.defer_own_copy_verdict(sink.display, sink.target,
                                            sink.dest, expr, kind=sink.kind,
@@ -4800,13 +4800,6 @@ class TypeCompatibility:
             level=(DiagnosticLevel.ERROR if non_copyable
                    else DiagnosticLevel.WARNING),
             note=self.binding_note(expr))
-
-    def _is_value_type_param(self, typ: TpyType) -> bool:
-        """Check if a TypeParamRef has a ValueType bound in the current context."""
-        if not isinstance(typ, TypeParamRef):
-            return False
-        return is_value_type_bound(
-            self.type_ops.get_type_param_bound(typ))
 
     def deep_convertible_to_union(self, actual: TpyType, union: TpyType) -> bool:
         """Whether a concrete list/dict's (possibly nested) leaves would each
@@ -5903,12 +5896,11 @@ class TypeCompatibility:
             if not for_yield:
                 self._check_tuple_storage_return_root(tuple_rt, expr)
             return
-        # A ValueType-bounded `T` returns by value at every instantiation
-        # (TODO.md "A ValueType-bounded T lowers as its concrete value twin
-        # in bodies").
+        # A ValueType-bounded `T` returns by value at every instantiation;
+        # a ref with no bound attached asks the declaration in scope.
         if (return_type.is_value_type()
                 or isinstance(return_type, (VoidType, OwnType))
-                or self._is_value_type_param(unwrap_readonly(return_type))):
+                or self.type_ops.is_value_type_param(unwrap_readonly(return_type))):
             return
 
         # Every arm below returns a bare reference form (`T&` / `T*`), so one

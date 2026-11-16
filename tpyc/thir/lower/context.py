@@ -998,6 +998,10 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
                                              TypeParamRef):
             # A tuple holds an open `T` element inline, as its own storage.
             return SlotHolds.OWNS
+        if isinstance(unwrap_readonly(st), TypeParamRef) and st.is_value_type():
+            # A value-bounded open `T` is a value at every instantiation:
+            # copy-initialized as the scalar it is at each.
+            return SlotHolds.VALUE
         # No conversion is known: only an owned value relocated whole
         # reaches the slot (BUGS.md#field-view-escape-needs-place keeps the
         # view-family receivers out of the families that would).
