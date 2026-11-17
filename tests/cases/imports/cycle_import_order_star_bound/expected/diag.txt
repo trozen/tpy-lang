@@ -1,0 +1,2 @@
+__init__.py:4: warning: __all__ lists 'a' which is not defined in this module
+__init__.py:4: warning: __all__ lists 'b' which is not defined in this module

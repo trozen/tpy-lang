@@ -684,7 +684,6 @@ class SemanticAnalyzer:
         # Convert parse warnings to diagnostics
         for warning in module.parse_warnings:
             self.ctx.warning_from_loc(warning.message, warning.loc)
-
         # Process imports
         self.ctx.imports = module.imports
         self.ctx.user_module_import_lines = module.user_module_imports

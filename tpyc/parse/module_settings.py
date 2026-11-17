@@ -42,19 +42,15 @@ def is_future_import(node: ast.AST) -> TypeGuard[ast.ImportFrom]:
     return isinstance(node, ast.ImportFrom) and node.module == "__future__" and node.level == 0
 
 
-def is_preamble_stmt(node: ast.stmt, index: int | None = None) -> bool:
-    """A statement that is not "code" for ordering rules. Without `index`
-    (imports must follow no other code): docstrings, `pass` and `from
-    __future__` imports. With the statement's `index` in the module body,
-    Python's own `from __future__` placement rule, which `__tpy__` follows:
-    only the docstring (statement 0) and `from __future__` imports."""
+def is_preamble_stmt(node: ast.stmt, index: int) -> bool:
+    """Whether the module body's statement `index` may precede `__tpy__`:
+    Python's own `from __future__` placement rule, which `__tpy__` follows
+    -- only the docstring (statement 0) and `from __future__` imports."""
     if is_future_import(node):
         return True
-    is_string = (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
-                 and isinstance(node.value.value, str))
-    if index is not None:
-        return is_string and index == 0
-    return is_string or isinstance(node, ast.Pass)
+    return (index == 0 and isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str))
 
 
 def is_settings_header(node: ast.AST) -> bool:

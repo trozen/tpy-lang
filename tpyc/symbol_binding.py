@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any, Collection, Protocol
 
 
 class ModuleTables(Protocol):
@@ -92,6 +92,21 @@ class BindingCell:
     stay frozen.
     """
     binding: SymbolBinding
+
+
+def star_exportable(name: str, module_all: Collection[str] | None,
+                    binding: SymbolBinding | None = None) -> bool:
+    """`from M import *` filter: True if `name` should land in the
+    consumer's namespace. Mirrors CPython: explicit `__all__` wins;
+    otherwise the leading-underscore rule applies. Parser keywords
+    (the few bootstrap decorator stubs in tpy.extern) never escape
+    a star import even when their `__all__` would include them;
+    `binding` is omitted where the kind isn't known."""
+    if binding is not None and binding.kind == SymbolKind.PARSER_KEYWORD:
+        return False
+    if module_all is not None:
+        return name in module_all
+    return not name.startswith("_")
 
 
 def make_binding(

@@ -33,13 +33,18 @@ from ..symbol_binding import is_macro_kind, walk_attribute_chain
 
 def _resolve_macro_through_attributes(
     ctx: 'SemanticContext', module_name: str, name: str,
+    read_at: 'SourceLocation | None' = None,
 ) -> tuple[str, str] | None:
     """Walk the binding chain to find the ultimate macro source for
     `(module_name, name)`. Returns None when no hop lands on a macro
     binding -- recovers the macro registry's canonical key when the
     macro flows through re-export chains (the parser stores the
-    *immediate* source on `record.pending_macros`).
+    *immediate* source on `record.pending_macros`). `read_at` places a
+    decorator spelled through the module (`@m.dataclass`), which reads
+    the name off it when the class is defined.
     """
+    if read_at is not None:
+        ctx.warn_import_time_read(None, [module_name, name], read_at)
     result = walk_attribute_chain(ctx.registry, module_name, name, is_macro_kind)
     if result is None:
         return None
@@ -47,7 +52,7 @@ def _resolve_macro_through_attributes(
     return (ult_mod, ult_name)
 
 if TYPE_CHECKING:
-    from ..parse.nodes import TpyRecord
+    from ..parse.nodes import SourceLocation, TpyRecord
     from ..typesys import TypeRegistry
     from .context import SemanticContext
 
@@ -87,7 +92,8 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
             # `dataclass` from `dataclasses`). Walk the binding chain
             # in `ctx.module_attributes` to find the ultimate macro
             # source.
-            ult = _resolve_macro_through_attributes(ctx, mod_name, func_name)
+            ult = _resolve_macro_through_attributes(
+                ctx, mod_name, func_name, record.module_macro_reads.get(qname))
             if ult is not None:
                 ult_mod, ult_name = ult
                 macro_fn = registry.get_macro(ult_mod, ult_name) if registry else None

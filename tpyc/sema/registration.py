@@ -387,6 +387,9 @@ def _check_member_default(
         loc: object, *, target_noun: str,
         compat: 'TypeCompatibility | None') -> bool:
     """`check_type_member_default` with the receiver's head resolved."""
+    if head.holder is None:
+        ctx.warn_import_time_read(head.module, [*path, expr.field],
+                                  _leaf_at(expr, loc))
     if head.holder is not None:
         if head.nested is None:
             raise SemanticError(

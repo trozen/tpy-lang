@@ -7,7 +7,7 @@ namespace tpyapp::a {
 
 // # Below Root so CPython, importing a first, has Root defined when b's
 // # top-level import of it runs.
-// from b import Mid, Lone  # noqa: E402  # tpyc: warning(/Import statement should be at the top/)
+// from b import Mid, Lone  # noqa: E402
 void __tpy_init() {
 }
 

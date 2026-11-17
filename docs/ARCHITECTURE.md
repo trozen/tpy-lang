@@ -451,6 +451,44 @@ peer's storage has no C++ spelling in the member's header, which sees
 the peer only through its forward declarations, so it is filled at
 each call (`Compiler.cycle_peer_defaults`).
 
+TPy pre-registers every name of every cycle member, so a cycle member
+can read a peer that CPython would still have partially initialized.
+`tpyc/import_order.py` is one interpreter of CPython's import run,
+set up by `Compiler._start_import_order` before the program layer is
+analyzed and run at its first `drain`, once every read is known. It
+runs each program module's top-level statements as CPython does
+(`TpyModule.run_statements`, recorded by the parser's one walk over
+`tree.body`: a span per statement and the node the parser built for
+it -- an `ImportRecord`, a definition, an `__all__` update, the
+statement's `TpyStmt`s): from the entry module, depth first, dotted
+parents first, a module already started returning at once. It keeps
+each module's namespace over time (a name bound at a step, a compound
+statement's names taken as bound from its step, a submodule bound on
+its package when it finishes, a bare declaration binding nothing) and
+the frame each module is suspended at. Imports are its own: a
+from-import loads the whole from-list, then binds it, and takes a
+started submodule not yet bound on its package from the modules being
+imported; a star import reads the source's `__all__` as it stands at
+the step (a package's listed submodules are imported first), and one
+run while that `__all__` is not a literal is not judged: TPy's star
+names are bound, with no warning. Library
+and plugin modules are opaque: complete at their first import, with
+TPy's surface as their namespace. The read sites that already resolve
+a peer read queue it on the module's `ReaderView` with its location
+and evaluation kind: `TypeResolver` for a dotted type path (eager for a
+base, annotation unless `from __future__ import annotations`, lazy for
+a quoted ref, a `type` alias value or a bound), and sema's default and
+macro-decorator resolution. A read is judged at the reader's own step,
+the run statement whose span holds it, and fails only when the module
+it misses the name in (or the submodule it needs) has started and not
+finished. `Compiler._warn_import_order` hands each failure to its
+module's analyzer as a warning; the remedy is checked against what the
+other cycle members read at import (reordering the entry module's
+imports is offered only where it provably helps). A star import binds
+the same names whatever the import order (`_expand_one_star_import`);
+one whose names CPython's copy lacks, where TPy's final binding of a
+name in the reader is the one that star brings, is warned.
+
 A native module (`"mod": "native"`) generates no header (at most a .cpp
 holding its init), so it is never a C++ cycle peer: the C++ cycle is an import SCC's regular members, and
 only when at least two remain (or one imports itself). A regular module

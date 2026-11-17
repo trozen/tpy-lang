@@ -1,0 +1,8 @@
+# `mb` holds other's E above the star import, but no F: under CPython a use of
+# E reads other's E and a use of F raises NameError.
+from other import E
+from ma import *  # tpyc: warning(/'ma' is still being imported -- .* before it defines 'E', 'F'; CPython's star import binds none of them here, so a use of them raises NameError or reads the binding it had before that import\. Define them above that import in ma\.py, or import 'mb' before 'ma' in main\.py\./)
+
+
+def main() -> None:
+    print("mixed:", E().v, F().w)

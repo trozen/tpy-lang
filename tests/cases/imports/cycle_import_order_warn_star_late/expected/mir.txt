@@ -1,0 +1,15 @@
+aua::__tpy_init: uncovered (module initialization)
+aua::F.__init__@17:4: covered (storage: no_proof_required), summary: known
+aub::__tpy_init: uncovered (module initialization)
+aub::f@4:0: covered (storage: no_proof_required), summary: known
+bsa::__tpy_init: uncovered (module initialization)
+bsb::__tpy_init: uncovered (module initialization)
+bsb::f@5:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+lpa::__tpy_init: uncovered (module initialization)
+lpb::__tpy_init: uncovered (module initialization)
+lpb::f@4:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+sra::__tpy_init: uncovered (module initialization)
+srb::__tpy_init: uncovered (module initialization)
+srb::f@4:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)

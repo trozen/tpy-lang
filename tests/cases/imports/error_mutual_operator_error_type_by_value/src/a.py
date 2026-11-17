@@ -5,7 +5,7 @@ class E(Exception, ReturnException):
     pass
 
 
-import b  # tpyc: warning(/Import statement should be at the top of the file/)
+import b
 
 
 def run() -> int32:

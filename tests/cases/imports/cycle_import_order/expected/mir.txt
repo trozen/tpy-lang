@@ -1,0 +1,23 @@
+a::__tpy_init: uncovered (module initialization)
+a::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+a::Item.__init__@9:4: covered (storage: no_proof_required), summary: known
+b::__tpy_init: uncovered (module initialization)
+b::quoted@10:0: covered (storage: no_proof_required), summary: known
+b::quoted_leaf@14:0: covered (storage: no_proof_required), summary: known
+b::bound_early@18:0: covered (storage: no_proof_required), summary: known
+b::show@29:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
+fb::__tpy_init: uncovered (module initialization)
+fb::show@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+fb::tag_value@20:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+fb::Tag.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+t1::__tpy_init: uncovered (module initialization)
+t1::main@12:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+t1::A.__init__@8:4: covered (storage: no_proof_required), summary: known
+t2::__tpy_init: uncovered (module initialization)
+t2::bump@11:0: covered (storage: no_proof_required), summary: known
+t2::main@15:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+t2::B.__init__@4:4: covered (storage: no_proof_required), summary: known
+t3::__tpy_init: uncovered (module initialization)
+t3::three@6:0: covered (storage: no_proof_required), summary: known

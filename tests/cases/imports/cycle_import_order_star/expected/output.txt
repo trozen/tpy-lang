@@ -1,0 +1,4 @@
+star: 2 9
+first binding: 2
+own names: 7 8
+late __all__: 1 2

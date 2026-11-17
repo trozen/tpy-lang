@@ -1,0 +1,23 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pa::__tpy_init: uncovered (module initialization)
+pa::main@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pa::F.__init__@10:4: covered (storage: no_proof_required), summary: known
+pb::__tpy_init: uncovered (module initialization)
+pb::use@6:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+pb::use2@13:0: covered (storage: no_proof_required), summary: known
+qa::__tpy_init: uncovered (module initialization)
+qa::main@12:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+qa::Q.__init__@8:4: covered (storage: no_proof_required), summary: known
+qb::__tpy_init: uncovered (module initialization)
+qb::make@5:0: covered (storage: no_proof_required), summary: known
+rc::__tpy_init: uncovered (module initialization)
+rc::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+rc::C1.__init__@5:4: covered (storage: no_proof_required), summary: known
+rc::C2.__init__@13:4: covered (storage: no_proof_required), summary: known
+rm::__tpy_init: uncovered (module initialization)
+rm::total@17:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+rm::M1.__init__@5:4: covered (storage: no_proof_required), summary: known
+rm::M2.__init__@13:4: covered (storage: no_proof_required), summary: known
+rn::__tpy_init: uncovered (module initialization)
+rn::grand_total@6:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)

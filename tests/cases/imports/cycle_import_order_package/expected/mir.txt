@@ -1,0 +1,21 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pkg::__tpy_init: uncovered (module initialization)
+pkg::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg::X.__init__@4:4: covered (storage: no_proof_required), summary: known
+pkg.sub::__tpy_init: uncovered (module initialization)
+pkg.sub::grow@4:0: covered (storage: no_proof_required), summary: known
+rpk::__tpy_init: uncovered (module initialization)
+rpk::main@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+rpk::X.__init__@3:4: covered (storage: no_proof_required), summary: known
+rpk.sub::__tpy_init: uncovered (module initialization)
+rpk.sub::grow@4:0: covered (storage: no_proof_required), summary: known
+sb::__tpy_init: uncovered (module initialization)
+sb::grow@6:0: covered (storage: no_proof_required), summary: known
+spk::__tpy_init: uncovered (module initialization)
+spk::main@6:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+spk.a::__tpy_init: uncovered (module initialization)
+spk.a::main@19:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+spk.a::E.__init__@11:4: covered (storage: no_proof_required), summary: known
+spk.c::__tpy_init: uncovered (module initialization)
+spk.c::Y.__init__@4:4: covered (storage: no_proof_required), summary: known

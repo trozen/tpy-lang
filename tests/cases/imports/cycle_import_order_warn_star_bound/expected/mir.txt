@@ -1,0 +1,18 @@
+da::__tpy_init: uncovered (module initialization)
+db::__tpy_init: uncovered (module initialization)
+db::main@5:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+ea::__tpy_init: uncovered (module initialization)
+ea::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+eb::__tpy_init: uncovered (module initialization)
+eb::main@7:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::__tpy_init: uncovered (module initialization)
+main::main@14:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+other::__tpy_init: uncovered (module initialization)
+other::E.__init__@5:4: covered (storage: no_proof_required), summary: known
+sa::__tpy_init: uncovered (module initialization)
+sa::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+sb::__tpy_init: uncovered (module initialization)
+sb::main@7:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+xa::__tpy_init: uncovered (module initialization)
+xb::__tpy_init: uncovered (module initialization)
+xb::main@6:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

@@ -1,0 +1,29 @@
+ea::__tpy_init: uncovered (module initialization)
+ea::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ea::Pt.__eq__: covered (storage: no_proof_required)
+ea::Pt.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+ea::Item.__init__@19:4: covered (storage: no_proof_required), summary: known
+ea::Pt.__init__: covered (storage: no_proof_required), summary: known
+eb::__tpy_init: uncovered (module initialization)
+eb::pick@12:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+eb::bump@33:0: covered (storage: no_proof_required), summary: known
+eb::first@45:0: certified, summary: known
+eb::maybe@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+eb::shift@54:0: covered (storage: no_proof_required), summary: known
+eb::main@58:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
+eb::C.f@7:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+eb::Holder.m@21:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
+eb::D.__eq__: covered (storage: no_proof_required)
+eb::D.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+eb::D.__init__: covered (storage: no_proof_required), summary: known
+fe::__tpy_init: uncovered (module initialization)
+fe::pick2@12:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+fe::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+fe::C2.f@8:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+ma::__tpy_init: uncovered (module initialization)
+ma::fa@12:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+ma::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mb::__tpy_init: uncovered (module initialization)
+mb::fb@9:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

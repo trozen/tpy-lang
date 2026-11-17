@@ -22,7 +22,7 @@ int32_t Left::run() const {
 // from tpy.extern import native
 //
 // # Late: hub imports Note back from this module, which must exist first.
-// from hub import Hub  # tpyc: warning(/Import statement should be at the top/)
+// from hub import Hub
 void __tpy_init() {
 }
 

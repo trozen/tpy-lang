@@ -1,2 +1,0 @@
-main.py:11: warning: Import statement should be at the top of the file
-main.py:12: warning: Import statement should be at the top of the file

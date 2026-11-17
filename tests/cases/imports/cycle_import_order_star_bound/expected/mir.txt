@@ -1,0 +1,18 @@
+abp::__tpy_init: uncovered (module initialization)
+abp.api::__tpy_init: uncovered (module initialization)
+abp.utils::__tpy_init: uncovered (module initialization)
+abp.utils::helper@3:0: covered (storage: no_proof_required), summary: known
+abp.utils::use@7:0: covered (storage: no_proof_required), summary: known
+apk::__tpy_init: uncovered (module initialization)
+apk.a::__tpy_init: uncovered (module initialization)
+apk.a::E.__init__@7:4: covered (storage: no_proof_required), summary: known
+apk.b::__tpy_init: uncovered (module initialization)
+apk.b::value@4:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::__tpy_init: uncovered (module initialization)
+main::main@11:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ola::__tpy_init: uncovered (module initialization)
+ola::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+olb::__tpy_init: uncovered (module initialization)
+olb::g@6:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+olb::main@17:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+olb::E.__init__@13:4: covered (storage: no_proof_required), summary: known

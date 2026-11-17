@@ -5,6 +5,9 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "helpers.hpp"
+#include "part_all_dynamic.hpp"
+#include "part_all_none.hpp"
+#include "part_overwritten.hpp"
 
 namespace tpyapp::main {
 

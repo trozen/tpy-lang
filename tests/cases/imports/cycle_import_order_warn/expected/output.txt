@@ -1,0 +1,5 @@
+item: 6
+decorated: 2
+eager: 2 1 2 1 3 3
+future: 4 1
+mutual: 2 1

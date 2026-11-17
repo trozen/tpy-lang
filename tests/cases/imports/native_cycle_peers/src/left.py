@@ -11,7 +11,7 @@ class Note:
     def __init__(self) -> None: ...
 
 # Late: hub imports Note back from this module, which must exist first.
-from hub import Hub  # tpyc: warning(/Import statement should be at the top/)
+from hub import Hub
 
 class Left:
     hub: Ptr[Hub]

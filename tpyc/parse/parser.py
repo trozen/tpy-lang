@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 from .nodes import (
     NON_CONSTANT_DEFAULT_MSG, name_path, ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
-    ResolverInputNode, TypeRefNode,
+    ResolverInputNode, TypeRefNode, quoted_ref,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII, FormatSpecFields,
     TpyBoolLiteral,
@@ -51,15 +51,15 @@ from .nodes import (
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
-    ModuleDirectives, stamp_stands_for,
+    AllUpdate, RunNode, RunStatement, ModuleDirectives, stamp_stands_for,
 )
 from .imports import (
     ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
-    get_builtins_exports, get_typing_exports, get_tpy_exports, read_module_all,
+    get_builtins_exports, get_typing_exports, get_tpy_exports, module_all_run,
     NonLiteralAllError,
 )
 from .module_settings import (
-    SETTINGS_NAME, find_settings_header, is_preamble_stmt, read_module_settings,
+    SETTINGS_NAME, find_settings_header, read_module_settings,
 )
 from .. import qnames
 
@@ -727,13 +727,13 @@ class Parser:
                 find_settings_header(tree))
         self._directives = settings
         try:
-            module_all_result = read_module_all(tree)
+            module_all_result, all_updates = module_all_run(tree)
         except NonLiteralAllError as exc:
             raise ParseError(str(exc) or (
                 "__all__ is not a compile-time literal (must be a "
                 "list / tuple / set of string literals)"),
                 exc.node)
-        module = self._parse_module(tree)
+        module = self._parse_module(tree, all_updates)
         if module_all_result is not None:
             module.module_all, module.module_all_loc = module_all_result
         module.directives = settings
@@ -885,7 +885,8 @@ class Parser:
             ref = self._parse_type_ref(type_node)
         type_aliases[name] = (ref, loc, type_params, type_param_kinds)
 
-    def _parse_module(self, tree: ast.Module) -> TpyModule:
+    def _parse_module(self, tree: ast.Module,
+                      all_updates: list[AllUpdate | None]) -> TpyModule:
         """Parse a module."""
         self._module_class_names = frozenset(
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
@@ -924,25 +925,24 @@ class Parser:
         self._bare_module_imports = bare_module_imports
         # Set imports reference early so _resolve_qualified_type_name can check it
         self._imports.imports = imports
-        seen_non_import = False
 
-        for node in tree.body:
-            is_import = isinstance(node, (ast.Import, ast.ImportFrom))
-
-            # Check for late imports (imports after non-import code)
-            if is_import and seen_non_import:
-                self._warn("Import statement should be at the top of the file", node)
-
+        run_statements: list[RunStatement] = []
+        for node, all_update in zip(tree.body, all_updates):
+            # What the statement binds when CPython runs it (`RunStatement`).
+            run_node: RunNode = None
             if isinstance(node, ast.ImportFrom):
+                recorded = len(self._imports.records)
                 self._imports.process_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
                 # Rebuild reverse alias mapping after each import
                 self._reverse_module_aliases = {v: k for k, v in module_aliases.items()}
+                if len(self._imports.records) > recorded:
+                    run_node = self._imports.records[-1]
             elif isinstance(node, ast.Import):
                 self._imports.process_import(node, imports, user_module_imports, top_level_stmts, module_aliases, bare_module_imports)
                 # Rebuild reverse alias mapping after each import
                 self._reverse_module_aliases = {v: k for k, v in module_aliases.items()}
+                run_node = self._imports.records[-1]
             elif isinstance(node, ast.ClassDef):
-                seen_non_import = True
                 # Warn if class shadows an imported parser keyword name
                 # (skip for @builtin_type classes -- shadow is intentional)
                 source = self._imports.get_import_source(node.name)
@@ -952,6 +952,7 @@ class Parser:
                 if source and source[0] in _PARSER_KEYWORD_MODULES and not has_builtin_type:
                     self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
+                run_node = result
                 if isinstance(result, TpyProtocol):
                     protocols.append(result)
                     # Register the protocol type
@@ -990,7 +991,6 @@ class Parser:
                     self._prefix_nested_names(result, result.name)
                     self._register_nested_types(result)
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                seen_non_import = True
                 # Warn if function shadows an imported parser keyword name
                 # (skip for @builtin_function/builtin_decorator -- shadow is intentional)
                 source = self._imports.get_import_source(node.name)
@@ -1003,6 +1003,7 @@ class Parser:
                     if not has_builtin_dec:
                         self._warn(f"def '{node.name}' shadows import from '{source[0]}'", node)
                 func = self._parse_function(node)
+                run_node = func
                 functions.append(func)
                 if func.builtin_decorator_key:
                     # @builtin_decorator stub signatures drive parse-time
@@ -1025,27 +1026,30 @@ class Parser:
                     if schema is not None:
                         self._decorator_schemas[func.builtin_decorator_key] = schema
             elif isinstance(node, ast.TypeAlias):
-                seen_non_import = True
                 tp_names, tp_kinds = self._parse_alias_type_params(node)
                 self._register_type_alias(
                     node.name.id, node.value, type_aliases,
                     type_params=tp_names, type_param_kinds=tp_kinds,
                 )
+                run_node = node.name.id
             elif isinstance(node, ast.Assign) and self._is_type_alias_assign(node):
-                seen_non_import = True
                 self._register_type_alias(node.targets[0].id, node.value, type_aliases)
+                run_node = node.targets[0].id
+            elif self._is_module_metadata_stmt(node):
+                run_node = all_update
             else:
-                if self._is_module_metadata_stmt(node):
-                    continue
-                # Skip docstrings and pass statements for late import detection
-                if not is_preamble_stmt(node):
-                    seen_non_import = True
                 # All other statements go through _parse_stmt (same as function bodies)
                 stmt = self._parse_stmt(node)
-                if isinstance(stmt, list):
-                    top_level_stmts.extend(stmt)
-                else:
-                    top_level_stmts.append(stmt)
+                stmts = stmt if isinstance(stmt, list) else [stmt]
+                top_level_stmts.extend(stmts)
+                run_node = stmts
+            decorators = getattr(node, "decorator_list", None)
+            run_statements.append(RunStatement(
+                SourceLocation(decorators[0].lineno, 0) if decorators
+                else SourceLocation(node.lineno, node.col_offset),
+                SourceLocation(node.end_lineno or node.lineno,
+                               node.end_col_offset or 0),
+                run_node))
 
         # Pre-sema: rewrite suspensions out of conditional / repeated
         # expression positions so evaluation order survives the
@@ -1056,7 +1060,7 @@ class Parser:
             for method in record.methods:
                 desugar_suspension_positions(method)
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, docstring=self._module_docstring, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names, has_header_genexpr=self._has_header_genexpr)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, docstring=self._module_docstring, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names, has_header_genexpr=self._has_header_genexpr, run_statements=run_statements, future_annotations=self._imports.future_annotations)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""
@@ -1633,6 +1637,7 @@ class Parser:
         move_override: bool | None = None
         exposed_to_host = False
         pending_macros: list[tuple[str, dict[str, Any]]] = []
+        module_macro_reads: dict[str, SourceLocation] = {}
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname == qnames.EXPORT:
@@ -1730,6 +1735,9 @@ class Parser:
                 # Treat as a macro decorator -- extract kwargs and store for later
                 macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
                 pending_macros.append((qname, macro_kwargs))
+                if isinstance(dec.func if isinstance(dec, ast.Call) else dec,
+                              ast.Attribute):
+                    module_macro_reads[qname] = self._loc(dec)
 
         # A conditional override (@unsafe_send with if_params_*) and an
         # unconditional one (bare @unsafe_send / @nosend) on the same trait
@@ -1947,7 +1955,7 @@ class Parser:
         # `clean=False` keeps the raw literal -- that is what CPython puts in
         # `__doc__` (dedenting is `inspect.getdoc`'s job, on both sides).
         docstring = ast.get_docstring(node, clean=False)
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, owns_elements=owns_elements, is_borrowing_view=is_borrowing_view, iter_yields_ref_tuple_proxies=iter_yields_ref_tuple_proxies, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, owns_elements=owns_elements, is_borrowing_view=is_borrowing_view, iter_yields_ref_tuple_proxies=iter_yields_ref_tuple_proxies, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, module_macro_reads=module_macro_reads, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -3470,7 +3478,7 @@ class Parser:
                     child.col_offset = node.col_offset
                     child.end_lineno = node.end_lineno
                     child.end_col_offset = node.end_col_offset
-            return self._parse_type_ref(inner, type_param_scope)
+            return quoted_ref(self._parse_type_ref(inner, type_param_scope))
 
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
             arms = _collect_bitor_arms(node)

@@ -1,0 +1,3 @@
+CPython cannot import this program: every warned read below raises
+ImportError or AttributeError there, a peer being still partially
+imported. TPy compiles and runs it, warning at each read.

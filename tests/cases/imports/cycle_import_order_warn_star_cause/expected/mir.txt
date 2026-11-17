@@ -1,0 +1,22 @@
+ja::__tpy_init: uncovered (module initialization)
+ja::z@8:0: covered (storage: no_proof_required), summary: known
+jb::__tpy_init: uncovered (module initialization)
+jb::main@6:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
+ma::__tpy_init: uncovered (module initialization)
+ma::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+ma::F.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@15:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+mb::__tpy_init: uncovered (module initialization)
+mb::main@7:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+na::__tpy_init: uncovered (module initialization)
+na::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+na::F.__init__@15:4: covered (storage: no_proof_required), summary: known
+nb::__tpy_init: uncovered (module initialization)
+nb::main@7:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+other::__tpy_init: uncovered (module initialization)
+other::E.__init__@5:4: covered (storage: no_proof_required), summary: known
+other::F.__init__@12:4: covered (storage: no_proof_required), summary: known
+ra::__tpy_init: uncovered (module initialization)
+rb::__tpy_init: uncovered (module initialization)
+rb::main@5:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)

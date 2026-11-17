@@ -16,7 +16,8 @@ in sema.
 """
 from __future__ import annotations
 import ast
-from typing import TYPE_CHECKING, Callable
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Callable, Iterator
 
 from ..typesys import (
     TpyType, NominalType, AliasRef, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
@@ -38,12 +39,13 @@ from .nodes import (
     ParseError, ResolutionFailure, SourceLocation,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, ResolverInputNode,
 )
-from .imports import _IMPLICIT_MODULES
+from .imports import _IMPLICIT_MODULES, EvalKind
 from ..symbol_binding import ModuleTables, SymbolKind, resolve_type_path
 
 if TYPE_CHECKING:
     from .parser import Parser
     from ..typesys import ProtocolInfo
+    from ..import_order import ReaderView
 
 
 # Map of fixed-int type names to their singleton instances.  Used by
@@ -130,6 +132,11 @@ class TypeResolver:
         # Set by `attach_module_tables`.
         self._module_tables = None
         self._current_module: str | None = None
+        # Set by `attach_import_order`: the peers still being imported
+        # while this module runs. `_eval_kind` is when CPython evaluates
+        # the position being resolved (`evaluated`).
+        self._import_view: ReaderView | None = None
+        self._eval_kind = EvalKind.LAZY
 
     @property
     def registry(self):
@@ -354,6 +361,8 @@ class TypeResolver:
         # TpyTypeRef
         assert isinstance(ref, TpyTypeRef), f"Unknown ref kind: {type(ref).__name__}"
         name = ref.name
+        if "." in name and self._import_view is not None:
+            self._note_import_time_read(name, ref)
 
         # "None" (void) -- emitted by walker for ast.Constant(None)
         if name == "None" and not ref.args:
@@ -1075,6 +1084,49 @@ class TypeResolver:
         module = self.module_head(head) if head else None
         return (module, attr) if module is not None else None
 
+    def _note_import_time_read(self, dotted: str, ref: TpyTypeRef) -> None:
+        """Hand the import-time read of the named ref `dotted` to the
+        import order (`attach_import_order`): the member of the longest
+        prefix naming a module, the split `_type_path_head` resolves by."""
+        assert self._import_view is not None
+        kind = EvalKind.LAZY if ref.quoted else self._eval_kind
+        if kind is EvalKind.LAZY:
+            return
+        parts = dotted.split(".")
+        split = self._module_prefix(parts)
+        if split is None:
+            return
+        k, module = split
+        # An unaliased dotted head reads each submodule off its package.
+        if ".".join(parts[:k]) == module:
+            start, *names = parts[:k]
+        else:
+            start, names = module, []
+        self._import_view.read(start, [*names, parts[k]], kind, ref.loc)
+
+    def _module_prefix(self, parts: list[str]) -> tuple[int, str] | None:
+        """`(k, module)` for the longest prefix `parts[:k]` naming a module
+        (`module_head`), else None."""
+        for k in range(len(parts) - 1, 0, -1):
+            module = self.module_head(".".join(parts[:k]))
+            if module is not None:
+                return (k, module)
+        return None
+
+    def attach_import_order(self, view: 'ReaderView | None') -> None:
+        """Give the resolver the peers still being imported while this
+        module runs (`ImportOrder.reader`), or None when there are none."""
+        self._import_view = view
+
+    @contextmanager
+    def evaluated(self, kind: EvalKind) -> Iterator[None]:
+        """Resolve the refs of a position CPython evaluates as `kind`."""
+        prev, self._eval_kind = self._eval_kind, kind
+        try:
+            yield
+        finally:
+            self._eval_kind = prev
+
     def attach_module_tables(self, modules: ModuleTables, current_module: str) -> None:
         """Give the resolver the workspace's per-module attribute tables
         (`modules.get_module(name).module_attributes`), which type paths
@@ -1089,10 +1141,10 @@ class TypeResolver:
         a module, else a class of this module or a from-imported name.
         Returns `(start_module, first_name, members)` for
         `resolve_type_path`."""
-        for k in range(len(parts) - 1, 0, -1):
-            module = self.module_head(".".join(parts[:k]))
-            if module is not None:
-                return (module, parts[k], parts[k + 1:])
+        split = self._module_prefix(parts)
+        if split is not None:
+            k, module = split
+            return (module, parts[k], parts[k + 1:])
         parser = self._parser
         head = parts[0]
         if head in parser._module_class_names:

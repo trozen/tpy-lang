@@ -37,6 +37,7 @@ from .nodes import (
     SourceLocation, TpyLambda, name_path,
 )
 from .type_resolver import _FIXED_INT_MAP
+from .imports import EvalKind
 from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -312,14 +313,25 @@ def resolve_refs(module: TpyModule) -> None:
             "(module was not produced by the current-phase Parser)"
         )
 
+    # When CPython evaluates each position at import: a base and a
+    # protocol parent always, an annotation before 3.14 unless the module
+    # defers them; `type` alias values, bounds and bodies never.
+    annotation_kind = (EvalKind.LAZY if module.future_annotations
+                       else EvalKind.ANNOTATION)
+
     # Resolver-bound thin wrappers so the internal callsites below stay
     # terse; the policy lives on the module-level helpers
     # `_resolve_value_position` / `_resolve_return_slot`.
     def _resolve(t, scope=None):
         return _resolve_value_position(resolver, t, scope)
 
+    def _annotation(t, scope=None):
+        with resolver.evaluated(annotation_kind):
+            return _resolve_value_position(resolver, t, scope)
+
     def _resolve_return_type(t, scope=None):
-        return _resolve_return_slot(resolver, t, scope)
+        with resolver.evaluated(annotation_kind):
+            return _resolve_return_slot(resolver, t, scope)
 
     # A bound may name a protocol (`T: Comparable`) or an enclosing/sibling
     # type param (`U: T` -- a subtype bound for representational coercion).
@@ -395,7 +407,8 @@ def resolve_refs(module: TpyModule) -> None:
     # below; nested defs with the body walk at the end).
     for func in module.functions:
         scope = _func_scope(func)
-        _resolve_signature(func, resolver, scope)
+        with resolver.evaluated(annotation_kind):
+            _resolve_signature(func, resolver, scope)
         func.type_param_bounds = _resolve_bounds(func.type_param_bounds, scope)
 
     # All records (including nested) -- fields, methods, bases.  Record
@@ -407,13 +420,16 @@ def resolve_refs(module: TpyModule) -> None:
     for record in module.all_records():
         scope = _record_scope(record)
         record.type_param_bounds = _resolve_bounds(record.type_param_bounds, scope)
-        record.bases = [_resolve(b, scope) for b in record.bases]
+        with resolver.evaluated(EvalKind.EAGER):
+            record.bases = [_resolve(b, scope) for b in record.bases]
         for fld in record.fields:
             if isinstance(fld.type, TpyInferFromDefaultRef):
                 # Parser emits this marker for bare `name = expr`
                 # class-body assignments; infer from the parsed default
                 # expression, raising only on genuine failure.
-                inferred = _infer_field_type_from_default(fld.default_expr, resolver)
+                # The default's read is checked where sema resolves it.
+                inferred = _infer_field_type_from_default(
+                    fld.default_expr, resolver)
                 if inferred is None:
                     raise SemanticError(
                         f"Cannot infer type for field '{fld.name}'",
@@ -421,17 +437,17 @@ def resolve_refs(module: TpyModule) -> None:
                     )
                 fld.type = inferred
             else:
-                fld.type = _resolve(fld.type, scope)
+                fld.type = _annotation(fld.type, scope)
         for method in record.methods:
             method_scope = _merged_method_scope(scope, method)
-            method.params = [(n, _resolve(t, method_scope)) for (n, t) in method.params]
+            method.params = [(n, _annotation(t, method_scope)) for (n, t) in method.params]
             method.return_type = _resolve_return_type(method.return_type, method_scope)
             if method.vararg_type is not None:
-                method.vararg_type = _resolve(method.vararg_type, method_scope)
+                method.vararg_type = _annotation(method.vararg_type, method_scope)
             if method.self_annotation is not None:
-                method.self_annotation = _resolve(method.self_annotation, method_scope)
+                method.self_annotation = _annotation(method.self_annotation, method_scope)
             if method.kwarg_type is not None:
-                method.kwarg_type = _resolve(method.kwarg_type, method_scope)
+                method.kwarg_type = _annotation(method.kwarg_type, method_scope)
             method.type_param_bounds = _resolve_bounds(method.type_param_bounds, method_scope)
 
     # Protocol MethodSignatures + field types: resolve under the
@@ -439,20 +455,21 @@ def resolve_refs(module: TpyModule) -> None:
     for protocol in module.protocols:
         scope = _record_scope(protocol)
         protocol.type_param_bounds = _resolve_bounds(protocol.type_param_bounds, scope)
-        protocol.parent_protocols = [
-            _resolve(p, scope) for p in protocol.parent_protocols
-        ]
+        with resolver.evaluated(EvalKind.EAGER):
+            protocol.parent_protocols = [
+                _resolve(p, scope) for p in protocol.parent_protocols
+            ]
         protocol.fields = [
-            (fname, _resolve(ftype, scope)) for fname, ftype in protocol.fields
+            (fname, _annotation(ftype, scope)) for fname, ftype in protocol.fields
         ]
         for msig in protocol.methods:
-            msig.params = [(n, _resolve(t, scope)) for (n, t) in msig.params]
+            msig.params = [(n, _annotation(t, scope)) for (n, t) in msig.params]
             msig.return_type = _resolve_return_type(msig.return_type, scope)
 
     # Top-level TpyVarDecls
     for stmt in module.top_level_stmts:
         if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
-            stmt.type = _resolve(stmt.type)
+            stmt.type = _annotation(stmt.type)
 
     # Resolve body-level type refs: in-body `TpyVarDecl.type`
     # annotations, `TpyCall.call_type`, `TpyCall.type_args`,

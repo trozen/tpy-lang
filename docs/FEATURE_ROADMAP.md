@@ -1900,6 +1900,11 @@ Accepted today: declaration-only cycles (types referenced by pointer / reference
 containers across the boundary), function and record re-exports through the cycle,
 dataclass/enum/protocol mutual references, three-module cycles, overload-method cycles.
 See `tests/cases/imports/mutual_*` for the happy-path coverage.
+An import-time read of a cycle peer that CPython still has partially
+initialized (a from-import, a star import, a base, a default, an annotation
+before 3.14)
+compiles with a warning naming the import chain and the remedy
+(`tests/cases/imports/cycle_import_order*`).
 
 Rejected today (with clear errors): top-level init cycles, by-value cross-cycle fields
 or in containers, by-value `__init__` params, by-value method params on inline

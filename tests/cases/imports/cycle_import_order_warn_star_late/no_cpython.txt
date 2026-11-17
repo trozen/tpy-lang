@@ -1,0 +1,4 @@
+CPython cannot import this program: each warned star import below binds
+fewer names under CPython, a peer being still partially imported, so a
+later use of one raises NameError or AttributeError there. TPy compiles
+and runs it.

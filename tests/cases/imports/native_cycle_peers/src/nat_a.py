@@ -12,7 +12,7 @@ class Inner:
 LIMIT: Final[int32] = native_global("pair::LIMIT")
 
 # Late: nat_b imports Inner back from this module, which must exist first.
-from nat_b import Outer  # tpyc: warning(/Import statement should be at the top/)
+from nat_b import Outer
 
 @native
 def peek(o: Outer) -> int32: ...

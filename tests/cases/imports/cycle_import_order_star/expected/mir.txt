@@ -1,0 +1,23 @@
+ka::__tpy_init: uncovered (module initialization)
+ka::main@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+kb::__tpy_init: uncovered (module initialization)
+kb::bump@4:0: covered (storage: no_proof_required), summary: known
+kc::__tpy_init: uncovered (module initialization)
+kc::K.__init__@2:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+sa::__tpy_init: uncovered (module initialization)
+sa::main@8:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+sa::Early.__init__@4:4: covered (storage: no_proof_required), summary: known
+sb::__tpy_init: uncovered (module initialization)
+sb::grow@7:0: covered (storage: no_proof_required), summary: known
+sb::fresh@11:0: covered (storage: no_proof_required), summary: known
+ua::__tpy_init: uncovered (module initialization)
+ub::__tpy_init: uncovered (module initialization)
+ub::helper@6:0: covered (storage: no_proof_required), summary: known
+ub::late@15:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+va::__tpy_init: uncovered (module initialization)
+va::A@6:0: covered (storage: no_proof_required), summary: known
+va::B@15:0: covered (storage: no_proof_required), summary: known
+vb::__tpy_init: uncovered (module initialization)
+vb::two@4:0: covered (storage: no_proof_required), summary: known

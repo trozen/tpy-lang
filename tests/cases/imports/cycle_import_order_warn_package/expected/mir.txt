@@ -1,0 +1,21 @@
+la::__tpy_init: uncovered (module initialization)
+la::main@6:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+main::__tpy_init: uncovered (module initialization)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+pkg::__tpy_init: uncovered (module initialization)
+pkg.a::__tpy_init: uncovered (module initialization)
+pkg.a::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg.a::Item.__init__@4:4: covered (storage: no_proof_required), summary: known
+pkg.b::__tpy_init: uncovered (module initialization)
+pkg.b::grow@4:0: covered (storage: no_proof_required), summary: known
+rp::__tpy_init: uncovered (module initialization)
+rp::X.__init__@6:4: covered (storage: no_proof_required), summary: known
+rp.a::__tpy_init: uncovered (module initialization)
+rp.a::main@10:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+rp.a::Item.__init__@6:4: covered (storage: no_proof_required), summary: known
+rp.b::__tpy_init: uncovered (module initialization)
+rp.b::f@4:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+rp.c::__tpy_init: uncovered (module initialization)
+rp.c::make@4:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+rp.y::__tpy_init: uncovered (module initialization)
+rp.y::f@4:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)

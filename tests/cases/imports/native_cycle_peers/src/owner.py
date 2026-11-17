@@ -12,7 +12,7 @@ def seven() -> int32:
     return 7
 
 # Both names are defined above; the aliases must not precede them in C++.
-from relay import Slot as RelaySlot, seven as relay_seven  # tpyc: warning(/Import statement should be at the top/)
+from relay import Slot as RelaySlot, seven as relay_seven
 
 def bump(s: RelaySlot) -> None:
     s.v += relay_seven()

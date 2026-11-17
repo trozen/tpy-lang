@@ -1,0 +1,2 @@
+started submodule: 1
+unattached submodule: 2

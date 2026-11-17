@@ -17,6 +17,7 @@ from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation, TryTier, bound_callee, name_path
+from ..parse.imports import EvalKind
 from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from .flow_facts import FlowFacts
     from .pending_num import DeferredIntOp, PendingNumCell
     from ..parse.type_resolver import TypeResolver
+    from ..import_order import ReaderView
     from .loop_frames import (PendingLoopFrameCall, PendingSourceWrite,
                               WithExitCheck)
     from .scope_tracker import DeferredEscape
@@ -3118,6 +3120,9 @@ class SemanticContext:
     # (ad-hoc analyzer construction in tests / REPL), in which case
     # `install_binding` no-ops.
     module_attributes: 'dict | None' = None
+    # The peers still being imported while this module runs at import
+    # (`ImportOrder.reader`); None when there are none.
+    import_view: 'ReaderView | None' = None
     top_level_decls: dict[str, int] = field(default_factory=dict)
     # The module's statements as the body of its generated `__tpy_init`:
     # sema analyzes them on the function-body path, and the lowering and
@@ -3559,6 +3564,22 @@ class SemanticContext:
         # pkg.sub` binds `pkg` to the submodule it imported.
         dotted = ".".join((root, *segments))
         return dotted if self.registry.get_module(dotted) is not None else None
+
+    def warn_import_time_read(self, binding: 'NameBinding | Blocked | None',
+                              path: 'list[str]',
+                              loc: 'SourceLocation | None') -> None:
+        """Warn when CPython cannot evaluate the dotted read `path` at
+        import: its head (`binding`, what `path[0]` binds where it is
+        read) is a module, and a module along it is still being imported
+        (`ImportOrder`). For a read every CPython evaluates when the module
+        runs -- a default, a decorator."""
+        if self.import_view is None or isinstance(binding, Blocked):
+            return
+        if binding is not None and binding.kind != BindingKind.MODULE:
+            return
+        start = (binding.import_source[0]
+                 if binding is not None and binding.import_source else path[0])
+        self.import_view.read(start, list(path[1:]), EvalKind.EAGER, loc)
 
     def module_named_by(self, expr: TpyExpr) -> str | None:
         """The module an expression names (`m`, `mm`, `pkg.sub.mod`), or

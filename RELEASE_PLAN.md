@@ -63,8 +63,6 @@ sema: one implementation per concept
   `BUGS.md#generic-spelled-type-args-copy-where-inferred-lend`
 - `@overload` stubs as `@dispatch` variants, the rest -- TODO:
   "`@overload` copies: the residue"
-- One import-time diagnostic for reading a cycle peer --
-  `BUGS.md#cycle-from-import-partially-initialized-accepted`
 - Fully qualified local type names in the C++ -- TODO: "Always
   fully-qualify local type references"
 - Two or three `[sema hygiene]` units, picked from a survey of sema's

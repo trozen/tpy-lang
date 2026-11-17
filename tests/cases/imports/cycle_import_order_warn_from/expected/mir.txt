@@ -1,0 +1,18 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+ra::__tpy_init: uncovered (module initialization)
+ra::main@6:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+rb::__tpy_init: uncovered (module initialization)
+rb::make@5:0: covered (storage: no_proof_required), summary: known
+rt::__tpy_init: uncovered (module initialization)
+rt::B.__init__@2:4: covered (storage: no_proof_required), summary: known
+wa::__tpy_init: uncovered (module initialization)
+wa::main@10:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+wb::__tpy_init: uncovered (module initialization)
+wb::catch@6:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+xa::__tpy_init: uncovered (module initialization)
+xa::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+xb::__tpy_init: uncovered (module initialization)
+xb::read@10:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+xd::__tpy_init: uncovered (module initialization)
+xd::Late.__init__@2:4: covered (storage: no_proof_required), summary: known

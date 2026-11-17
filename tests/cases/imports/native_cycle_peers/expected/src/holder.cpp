@@ -7,7 +7,7 @@ namespace tpyapp::holder {
 // from tpy.extern import native
 //
 // # Late: engine imports Msg back from this module, which must exist first.
-// from engine import Engine  # tpyc: warning(/Import statement should be at the top/)
+// from engine import Engine
 void __tpy_init() {
 }
 

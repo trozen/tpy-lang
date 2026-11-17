@@ -6,7 +6,9 @@ import pytest
 from .parse import RelativeImportKey, Parser, ParseError
 from .parse.imports import (
     get_tpy_exports, scan_star_exports, NonLiteralAllError, read_module_all,
+    module_all_run,
 )
+from .parse.nodes import AllUpdate
 from . import get_lib_dir
 from .parse.parser import _TEMPLATE_STRING_NODES, _validate_cpp_template
 
@@ -382,6 +384,60 @@ class TestReadModuleAll:
         # Pins this boundary; CPython evaluates it at import time.
         source = 'if True:\n    __all__ = ["x"]\n'
         assert read_module_all(self._parse(source)) is None
+
+    def test_run_updates_per_statement(self):
+        # A replaced non-literal value is an update with unknown names.
+        source = ('x = 1\n__all__ = list()\n__all__ = ["a"]\n'
+                  '__all__ += ["b"]\n')
+        result, updates = module_all_run(self._parse(source))
+        assert result is not None and result[0] == frozenset({"a", "b"})
+        assert updates == [None, AllUpdate(None, False),
+                           AllUpdate(("a",), False), AllUpdate(("b",), True)]
+
+
+# Master b4ca0ae5cd's `__all__` rule: only the final `=` value must be a
+# literal; each `+=` value must be, after some `=`; a method call never is.
+_ALL_LITERAL_MSG = ("__all__ is not a compile-time literal (must be a "
+                    "list / tuple / set of string literals)")
+_ALL_SHAPES = [
+    ('__all__ = None\n__all__ = ["f"]\n', frozenset({"f"})),
+    ('__all__ = list()\n__all__ += ["f"]\n__all__ = ["f"]\n', frozenset({"f"})),
+    ('__all__ = f()\n__all__ = ["a"]\n', frozenset({"a"})),
+    ('__all__: list[str] = f()\n__all__ = ["a"]\n', frozenset({"a"})),
+    ('__all__ = ["a"]\n__all__ += ["b"]\n', frozenset({"a", "b"})),
+    ('__all__ = ["a"]\n__all__ += ["b"]\n__all__ = ["c"]\n', frozenset({"c"})),
+    ('__all__ += ["b"]\n', "__all__ += without a prior __all__ assignment"),
+    ('__all__ -= ["a"]\n', "__all__ += without a prior __all__ assignment"),
+    ('__all__ = ["a"]\n__all__ -= ["a"]\n',
+     "__all__ only supports '+=' augmented assignment"),
+    ('__all__ = ["a"]\n__all__ += g()\n',
+     "__all__ += value is not a compile-time literal"),
+    ('__all__ = ["a"]\n__all__.append("b")\n',
+     "__all__ method mutation is not supported; use '__all__ += [...]'"),
+    ('__all__ = ["a"]\n__all__ = f()\n', _ALL_LITERAL_MSG),
+    ('__all__ = list()\n__all__ += ["f"]\n', _ALL_LITERAL_MSG),
+    ('__all__ = None\n', _ALL_LITERAL_MSG),
+]
+
+
+@pytest.mark.parametrize("source,expected", _ALL_SHAPES)
+def test_module_all_matches_master(source: str, expected) -> None:
+    if isinstance(expected, str):
+        with pytest.raises(NonLiteralAllError) as exc:
+            read_module_all(ast.parse(source))
+        assert str(exc.value) == expected
+    else:
+        result = read_module_all(ast.parse(source))
+        assert result is not None and result[0] == expected
+
+
+def test_module_all_replaced_values_are_unknown_updates() -> None:
+    # A replaced non-literal value, and a `+=` onto it, update `__all__`
+    # to an unknown value until the next literal `=`.
+    source = '__all__ = None\n__all__ += ["f"]\n__all__ = ["f"]\n'
+    _result, updates = module_all_run(ast.parse(source))
+    assert updates == [AllUpdate(None, False), AllUpdate(None, True),
+                       AllUpdate(("f",), False)]
 
 
 class TestUserModuleStarImport:

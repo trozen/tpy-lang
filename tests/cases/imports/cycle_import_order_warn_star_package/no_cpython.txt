@@ -1,0 +1,3 @@
+CPython cannot import this program: each warned star import below reads a
+submodule its package's `__all__` lists while that submodule is still being
+imported, and raises AttributeError there. TPy compiles and runs it.

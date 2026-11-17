@@ -8,15 +8,24 @@ namespace tpyapp::main {
 //     p = Pair(int32(10), int32(20))
 //     result = public_add(p.a, p.b)
 //     print(result)
+//     part_overwritten.main()
+//     part_all_none.main()
+//     part_all_dynamic.main()
 //     return int32(0)
 int32_t main() {
     ::tpyapp::helpers::Pair p = ::tpyapp::helpers::Pair(10, 20);
     int32_t result = ::tpyapp::helpers::public_add(p.a, p.b);
     std::cout << result << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_overwritten::main();
+    ::tpyapp::part_all_none::main();
+    ::tpyapp::part_all_dynamic::main();
     return 0;
 }
 
 // from helpers import *
+// import part_overwritten
+// import part_all_none
+// import part_all_dynamic
 //
 // main()
 void __tpy_init() {

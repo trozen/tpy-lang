@@ -1,0 +1,4 @@
+late __all__: 7
+late update: 3
+shadowed builtin: X
+late import: 2026

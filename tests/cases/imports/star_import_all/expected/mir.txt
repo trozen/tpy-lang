@@ -2,5 +2,17 @@ helpers::__tpy_init: uncovered (module initialization)
 helpers::public_add@5:0: covered (storage: no_proof_required), summary: known
 helpers::not_exported@8:0: covered (storage: no_proof_required), summary: known
 helpers::Pair.__init__@15:4: covered (storage: no_proof_required), summary: known
+lit::__tpy_init: uncovered (module initialization)
+lit::g@4:0: covered (storage: no_proof_required), summary: known
+lit::h@8:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_all_dynamic::__tpy_init: uncovered (module initialization)
+part_all_dynamic::f@8:0: covered (storage: no_proof_required), summary: known
+part_all_dynamic::main@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_all_none::__tpy_init: uncovered (module initialization)
+part_all_none::f@7:0: covered (storage: no_proof_required), summary: known
+part_all_none::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_overwritten::__tpy_init: uncovered (module initialization)
+part_overwritten::f@6:0: covered (storage: no_proof_required), summary: known
+part_overwritten::main@14:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

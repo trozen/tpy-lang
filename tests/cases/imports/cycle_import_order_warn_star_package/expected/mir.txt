@@ -1,0 +1,10 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@8:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+sp::__tpy_init: uncovered (module initialization)
+sp.sub::__tpy_init: uncovered (module initialization)
+sp.sub::E.__init__@5:4: covered (storage: no_proof_required), summary: known
+spb::__tpy_init: uncovered (module initialization)
+tp::__tpy_init: uncovered (module initialization)
+tp.sub::__tpy_init: uncovered (module initialization)
+tp.sub::E.__init__@5:4: covered (storage: no_proof_required), summary: known
+tpb::__tpy_init: uncovered (module initialization)

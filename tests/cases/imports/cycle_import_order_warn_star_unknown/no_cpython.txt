@@ -1,0 +1,4 @@
+CPython cannot import this program: each warned import below reads a name
+a peer still being imported has not bound yet, and the star import of
+`ka` copies nothing while `ka`'s `__all__` is empty. TPy compiles and runs
+it.

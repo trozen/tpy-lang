@@ -17,9 +17,13 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, is_module_declaration, runs_no_init_code
-from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
+from .parse.imports import (
+    _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, module_init_candidates,
+    route_stdlib_name,
+)
 from .parse.module_settings import NATIVE_MODULE as _NATIVE_MODULE, read_source_settings
 from .identity_map import IdentityMap, IdentitySet
+from .import_order import ImportOrder
 from .scc import strongly_connected_components
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -49,7 +53,7 @@ from .codegen_cpp.protocols import (
 from .emitted_members import MemberKind, signature_is_template
 from .codegen_cpp.context import (
     cpp_module_path, default_module_namespace, get_include_path,
-    import_init_targets, module_init_candidates, module_to_include_path,
+    import_init_targets, module_to_include_path,
     module_native_global_names, qualify_native_name,
 )
 from .compilation_context import activate_compiler
@@ -67,6 +71,7 @@ from .module_names import module_from_qname, public_module_name
 from .macro_loader import MacroImportSettingsError, MacroRegistry
 from .build_cache import capture_input
 from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init__ (light CLI import)
+from . import get_lib_dir
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
     list_compilers,
@@ -79,7 +84,7 @@ from .toolchain import (  # noqa: F401 -- re-exported: external callers import t
 )
 from .symbol_binding import (
     BindingCell, SymbolKind, install_binding, protocol_kind_for,
-    resolve_definer,
+    resolve_definer, star_exportable,
 )
 from .mir.collect import call_definitions
 from .mir.definitions import MIRDefinitions
@@ -118,6 +123,11 @@ def admitted_names(entries: list[tuple[str, str | None]],
     return list(dict.fromkeys(
         name for name, platform in entries
         if target is None or platform_matches(platform, target)))
+
+
+def _stdlib_root() -> Path:
+    """The TPy stdlib's root directory, `<install>/lib/tpy/`."""
+    return (get_lib_dir() / "tpy").resolve()
 
 
 def _cmake_system_condition(platform: str | None) -> str | None:
@@ -792,6 +802,9 @@ class Compiler:
         # member list in compile order; `compile_order` is their flattening.
         self.compile_components: list[list[str]] = []
         self.compile_order: list[str] = []
+        # The program's import run order and the peers suspended while each
+        # module runs: what a cycle member may read of a peer at import.
+        self.import_order: ImportOrder | None = None
         # Generated CPython extension glue .cpp paths (one per ext_module),
         # collected here during codegen for the build driver to add to the
         # link set after the per-module generation loop.
@@ -1076,9 +1089,49 @@ class Compiler:
                 if changed:
                     raise LayerReuseRefused(
                         f"the program changes the C++ namespace of {', '.join(changed)}")
+            self._start_import_order()
             self._analyze_layer([n for n in self.compile_order if n not in done])
             self._finalize_workspace()
             return [self.modules[name] for name in self.compile_order]
+
+    def _warn_import_order(self) -> None:
+        """Hand each import-time read CPython fails (`ImportOrder.drain`)
+        to its module's analyzer."""
+        if self.import_order is None:
+            return
+        for module, loc, message in self.import_order.drain():
+            analyzer = self.modules[module].analyzer
+            if analyzer is not None:
+                insert_in_source_order(
+                    analyzer.diagnostics,
+                    Diagnostic(DiagnosticLevel.WARNING, message, loc))
+
+    def _start_import_order(self) -> None:
+        """Set up the run of the program's imports in CPython's order
+        (`ImportOrder`), which collects the import-time reads and runs at
+        its first `drain`. Library and plugin modules are complete when a
+        program module reads them, so the run does not enter them."""
+        entry = next((name for name, compiled in self.modules.items()
+                      if compiled.is_entry_point), None)
+        if entry is None:
+            self.import_order = None
+            return
+        stdlib_root = _stdlib_root()
+
+        def walkable(name: str) -> bool:
+            compiled = self.modules.get(name)
+            if compiled is None or not compiled.path.is_absolute():
+                return compiled is not None and compiled.is_entry_point
+            if (self.frontend_registry is not None
+                    and self.frontend_registry.for_path(compiled.path) is not None):
+                return False
+            return not compiled.path.resolve().is_relative_to(stdlib_root)
+
+        self.import_order = ImportOrder(
+            self.modules, entry, walkable,
+            self.resolver.base_dir if self.resolver else None,
+            {member: frozenset(cycle)
+             for member, cycle in self._import_cycles().items()})
 
     def _retarget(self, entry: Path) -> None:
         """Point module and macro resolution at `entry`'s directory."""
@@ -1159,20 +1212,23 @@ class Compiler:
         # Its members run no top-level statement before that
         # (`is_module_declaration`), and a module depending on the cycle
         # comes after it.
-        cycles = {member: component for component in self.compile_components
-                  if self._is_import_cycle(component)
-                  for member in component}
-        for name in names:
-            compiled = self.modules[name]
-            self._expand_star_imports_for_module(compiled)
-            self._resolve_types_for_module(compiled)
-            cycle = cycles.get(name)
-            self._finalize_declarations(compiled,
-                                        resolve_defaults=cycle is None)
-            if cycle is not None and name == cycle[-1]:
-                for member in cycle:
-                    self._resolve_cycle_member_defaults(self.modules[member],
-                                                        cycle)
+        cycles = self._import_cycles()
+        try:
+            for name in names:
+                compiled = self.modules[name]
+                self._expand_star_imports_for_module(compiled)
+                self._resolve_types_for_module(compiled)
+                cycle = cycles.get(name)
+                self._finalize_declarations(compiled,
+                                            resolve_defaults=cycle is None)
+                if cycle is not None and name == cycle[-1]:
+                    for member in cycle:
+                        self._resolve_cycle_member_defaults(
+                            self.modules[member], cycle)
+        finally:
+            # Every import-time read is a declaration's, so all are known
+            # here -- also when one failed: the warnings before it stand.
+            self._warn_import_order()
         # Phantom-name check runs as a separate post-loop pass so SCC
         # cycle peers' module_attributes is fully populated before any
         # peer's __all__ is diffed against its surface.
@@ -1309,7 +1365,7 @@ class Compiler:
             imported, closure = scopes[name] = self.init_import_scope(name)
             for stmt in info.top_level_imports:
                 for target in module_init_candidates(
-                        stmt, module_name=name, user_module_imports=imported,
+                        stmt.module_name, module_name=name, user_module_imports=imported,
                         all_user_modules=closure):
                     callers.setdefault(target, []).append(name)
             if not info.is_native_module and not all(
@@ -1689,6 +1745,10 @@ class Compiler:
                 module_name, path, lineno=import_lineno
             )
 
+        for record in ast.import_records:
+            if record.from_module == imported_name:
+                record.from_module = resolved_name
+
         # Handle "from . import submod" case: each imported name might be a submodule
         all_converted_to_modules = False
         submod_imports: list[TpyImport] = []
@@ -1778,8 +1838,7 @@ class Compiler:
         # source-language imports against the user's project layout
         # filter this out so an unqualified Pascal `uses Math` can't
         # silently grab `tpy.math`.
-        from tpyc import get_lib_dir
-        stdlib_root = (get_lib_dir() / "tpy").resolve()
+        stdlib_root = _stdlib_root()
         stdlib_search_dirs = tuple(
             d for d in search_dirs if d.resolve() == stdlib_root
         )
@@ -3039,6 +3098,9 @@ class Compiler:
         from tpyc.parse.resolve_refs import resolve_refs
         if compiled.ast.resolver is not None:
             compiled.ast.resolver.attach_module_tables(self, compiled.name)
+            compiled.ast.resolver.attach_import_order(
+                self.import_order.reader(compiled.name)
+                if self.import_order is not None else None)
         try:
             resolve_refs(compiled.ast)
         except ParseError as e:
@@ -3063,6 +3125,12 @@ class Compiler:
         # inside `register_record` post-macro-application, because the
         # methods don't exist yet at this point.
         self._resolve_module_refs(compiled)
+
+    def _import_cycles(self) -> dict[str, list[str]]:
+        """Each import-cycle member's cycle (its Tarjan SCC)."""
+        return {member: component for component in self.compile_components
+                if self._is_import_cycle(component)
+                for member in component}
 
     def _is_import_cycle(self, component: list[str]) -> bool:
         """Whether an import component (a Tarjan SCC) is a cycle: several
@@ -3112,6 +3180,8 @@ class Compiler:
         # install bindings as they run; the canonical store lives on
         # the CompiledModule. See docs/MUTUAL_IMPORTS_DESIGN.md.
         analyzer.ctx.module_attributes = compiled.module_attributes
+        analyzer.ctx.import_view = (self.import_order.reader(compiled.name)
+                                    if self.import_order is not None else None)
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them
@@ -3631,7 +3701,7 @@ class Compiler:
     def _expand_star_imports_for_module(self, compiled: 'CompiledModule') -> None:
         """Expand each `from M import *` placeholder in `compiled.ast`
         by iterating `M`'s per-module attribute table. Filters via
-        `_star_exportable` (the `__all__` literal on `M.ast.module_all`
+        `star_exportable` (the `__all__` literal on `M.ast.module_all`
         when set, plus the leading-underscore rule).
 
         Runs once per consumer in topological compile order, before
@@ -3659,22 +3729,6 @@ class Compiler:
             if src_module in _IMPLICIT_MODULES:
                 continue
             self._expand_one_star_import(compiled, src_module)
-
-    @staticmethod
-    def _star_exportable(name: str, module_all: 'frozenset[str] | None',
-                         binding=None) -> bool:
-        """`from M import *` filter: True if `name` should land in the
-        consumer's namespace. Mirrors CPython: explicit `__all__` wins;
-        otherwise the leading-underscore rule applies. Parser keywords
-        (the few bootstrap decorator stubs in tpy.extern) never escape
-        a star import even when their `__all__` would include them;
-        the `binding` parameter is omitted at pass-2 callsites where
-        the kind isn't known."""
-        if binding is not None and binding.kind == SymbolKind.PARSER_KEYWORD:
-            return False
-        if module_all is not None:
-            return name in module_all
-        return not name.startswith("_")
 
     def _expand_one_star_import(
         self, compiled: 'CompiledModule', src_module: str,
@@ -3710,7 +3764,7 @@ class Compiler:
             if name in seen_locals:
                 continue
             binding = cell.binding
-            if not self._star_exportable(name, src_module_all, binding):
+            if not star_exportable(name, src_module_all, binding):
                 continue
             self._record_star_imported_name(
                 compiled, src_module, name, name, binding)
@@ -3721,7 +3775,7 @@ class Compiler:
             for orig, local in names:
                 if local in seen_locals:
                     continue
-                if not self._star_exportable(local, src_module_all):
+                if not star_exportable(local, src_module_all):
                     continue
                 self._record_star_imported_name(
                     compiled, other_src, orig, local, binding=None)

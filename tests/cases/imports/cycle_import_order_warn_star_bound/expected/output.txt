@@ -1,0 +1,4 @@
+earlier import: 2
+earlier star: 3
+declared: 0
+declared in __all__: 0

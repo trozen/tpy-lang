@@ -24,4 +24,4 @@ def use() -> int32:
 
 # At the bottom so CPython, importing ba first, has pick_ba defined when
 # bb's top-level import of it runs.
-from bb import pick_bb  # noqa: E402  # tpyc: warning(/Import statement should be at the top/)
+from bb import pick_bb  # noqa: E402

@@ -119,6 +119,9 @@ class TpyTypeRef:
     name: str
     args: tuple['ResolverInputNode | int', ...] = ()
     loc: SourceLocation | None = None
+    # Spelled inside a string annotation (`x: "m.Item"`): CPython does not
+    # evaluate it at import.
+    quoted: bool = field(default=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -157,6 +160,19 @@ class TpyInferFromDefaultRef:
     as a SemanticError only when base resolution has already succeeded.
     """
     loc: SourceLocation | None = None
+
+
+def quoted_ref(ref: 'ResolverInputNode') -> 'ResolverInputNode':
+    """`ref` with every named ref in it marked `quoted`."""
+    if isinstance(ref, TpyTypeRef):
+        return replace(ref, quoted=True, args=tuple(
+            a if isinstance(a, int) else quoted_ref(a) for a in ref.args))
+    if isinstance(ref, TpyUnionRef):
+        return replace(ref, members=tuple(quoted_ref(m) for m in ref.members))
+    if isinstance(ref, TpyCallableRef):
+        return replace(ref, params=tuple(quoted_ref(p) for p in ref.params),
+                       return_type=quoted_ref(ref.return_type))
+    return ref
 
 
 # ResolverInputNode is the subset of TypeRefNode that TypeResolver.resolve
@@ -2128,6 +2144,59 @@ class RelativeImportKey:
 
 
 @dataclass
+class ImportRecord:
+    """One top-level import statement, in source order: what CPython runs
+    at that point of the module's import. `TpyImport` drives `__tpy_init`
+    and is rewritten by discovery; this keeps the statement as written."""
+    loc: SourceLocation
+    # `from M import ...`: M, a relative placeholder until discovery
+    # resolves it (`resolve_relative`).
+    from_module: str | None = None
+    # (original, local) pairs a from-import binds; empty for a star import.
+    names: tuple[tuple[str, str], ...] = ()
+    star: bool = False
+    # `import X.Y [as Z], ...`: (dotted module, alias or None), in order.
+    modules: tuple[tuple[str, str | None], ...] = ()
+
+
+@dataclass(frozen=True)
+class AllUpdate:
+    """A top-level `__all__ = [...]` (`augment` False) or `__all__ +=
+    [...]` (True): the literal names it binds or adds, in source order;
+    None when `__all__` is then not a literal (a value a later `=`
+    replaces, or a `+=` onto one)."""
+    names: tuple[str, ...] | None
+    augment: bool
+
+
+@dataclass(frozen=True, eq=False)
+class RunStatement:
+    """One top-level statement as CPython runs it at import: its span (a
+    decorated def or class starts at its first decorator) and the node the
+    parser built for it -- an `ImportRecord`, a record / function /
+    protocol / enum, a type alias's name, an `AllUpdate`, the statement's
+    `TpyStmt`s, or None for one that binds nothing (a docstring, `__tpy__`,
+    a `__future__` import)."""
+    loc: SourceLocation
+    end: SourceLocation
+    node: RunNode
+
+    @property
+    def line(self) -> int:
+        """The line a message names: a decorated def's or class's own."""
+        node = self.node
+        if (isinstance(node, (ImportRecord, TpyFunction, TpyRecord,
+                              TpyProtocol, TpyEnum))
+                and node.loc is not None):
+            return node.loc.line
+        return self.loc.line
+
+    def contains(self, loc: SourceLocation) -> bool:
+        return ((self.loc.line, self.loc.column) <= (loc.line, loc.column)
+                <= (self.end.line, self.end.column))
+
+
+@dataclass
 class TpyImport(TpyStmt):
     """Import statement for user modules.
 
@@ -2568,6 +2637,9 @@ class TpyRecord:
     sync_override_when: tuple[str, ...] | None = None
     move_override: bool | None = None   # False from @nomove; None = structural
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    # The macro decorators spelled through a module (`@m.dataclass`), by
+    # qname, with where: CPython reads the name off that module there.
+    module_macro_reads: dict[str, SourceLocation] = field(default_factory=dict)
     # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.
     # Run after the eager macro pass so a macro can inspect the final
     # method set produced by composition (e.g. @total_ordering picking
@@ -2714,6 +2786,11 @@ class ModuleDirectives:
         return self.kind == "ext"
 
 
+# What a top-level statement is to CPython's run (`RunStatement.node`).
+RunNode = (ImportRecord | TpyRecord | TpyFunction | TpyProtocol | TpyEnum
+           | AllUpdate | str | list[TpyStmt] | None)
+
+
 @dataclass
 class TpyModule:
     """Top-level module."""
@@ -2750,6 +2827,11 @@ class TpyModule:
     # phantom-name warning when `__all__` lists a name the module does not
     # actually export. None whenever `module_all` is None.
     module_all_loc: SourceLocation | None = None
+    # Every top-level statement, in source order (`RunStatement`).
+    run_statements: list[RunStatement] = field(default_factory=list)
+    # `from __future__ import annotations`: no annotation is evaluated at
+    # import.
+    future_annotations: bool = False
     # Modules to resolve as files: {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
@@ -2768,7 +2850,7 @@ class TpyModule:
     # API so same-body self-refs become NominalType(name) placeholders,
     # then detects recursive unions post-resolution.
     type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None, list[str], list[TypeParamKind]]]' = field(default_factory=dict)
-    # Parser warnings (e.g., imports after non-import code)
+    # Parser warnings, and the warnings resolving its type refs adds
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level `__tpy__` settings
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
@@ -2788,6 +2870,12 @@ class TpyModule:
     # always None for parser-produced modules). The function-macro phase
     # exposes it as `ctx.module_data`.
     macro_data: 'Any' = None
+
+    @property
+    def import_records(self) -> list[ImportRecord]:
+        """Every top-level import statement, in source order."""
+        return [s.node for s in self.run_statements
+                if isinstance(s.node, ImportRecord)]
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""

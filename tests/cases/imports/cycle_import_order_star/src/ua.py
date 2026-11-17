@@ -1,0 +1,5 @@
+# `ua` star-imports `ub`, which star-imports `ua` back while `ua` has bound
+# nothing: every name `ua` ends up with is one of `ub`'s own.
+# `kc` is imported only for the C++ build: BUGS.md#cycle-reexported-global-missing-include.
+import kc  # noqa: F401
+from ub import *  # noqa: F403

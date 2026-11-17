@@ -29,7 +29,7 @@ int32_t Counter::get() const {
 }
 // # At the bottom so CPython, importing ry first, has Counter defined when
 // # rz's annotations evaluate it.
-// import rz  # noqa: E402  # tpyc: warning(/Import statement should be at the top/)
+// import rz  # noqa: E402
 void __tpy_init() {
 }
 

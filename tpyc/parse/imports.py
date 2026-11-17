@@ -6,11 +6,13 @@ Constants and logic for handling import statements during parsing.
 
 from __future__ import annotations
 import ast
+from enum import Enum
 from typing import Callable
 
 from .nodes import (
+    AllUpdate,
     ParseError, SourceLocation, RelativeImportKey,
-    TpyImport, ParseWarning,
+    TpyImport, ParseWarning, ImportRecord,
 )
 from ..module_names import public_module_name
 from ..modules.resolver import ModuleResolver
@@ -28,6 +30,37 @@ _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
 }
 
 
+def module_init_candidates(imported: str, *, module_name: str,
+                           user_module_imports,
+                           all_user_modules: 'set[str]') -> list[str]:
+    """The modules a top-level import of `imported` in `module_name` runs,
+    in run order: each parent package of the imported module first (Python
+    semantics: `import pkg.utils` runs pkg, then pkg.utils), then the
+    module itself. Whether running one does anything is
+    `ModuleInfo.has_runtime_init`'s question, not this one's."""
+    if imported not in user_module_imports:
+        return []
+    parts = imported.split('.')
+    out = [parent for parent in ('.'.join(parts[:i])
+                                 for i in range(1, len(parts)))
+           if parent in all_user_modules]
+    out.append(imported)
+    return [target for target in out if target != module_name]
+
+
+class EvalKind(Enum):
+    """When CPython evaluates the expression a name is read in, while the
+    module holding it is imported."""
+    # A base, a default, a decorator: evaluated by every CPython.
+    EAGER = "eager"
+    # An annotation of a def, a class body or the module: evaluated by
+    # CPython before 3.14, unless `from __future__ import annotations`.
+    ANNOTATION = "annotation"
+    # A function body, a quoted annotation, a `type` alias value, a type
+    # parameter bound: not evaluated at import.
+    LAZY = "lazy"
+
+
 class NonLiteralAllError(Exception):
     """Raised when __all__ is defined but not evaluable at compile time.
 
@@ -37,6 +70,46 @@ class NonLiteralAllError(Exception):
     def __init__(self, message: str, node: 'ast.AST | None' = None):
         super().__init__(message)
         self.node = node
+
+
+def _all_update_kind(node: ast.AST) -> str | None:
+    """How a top-level statement updates `__all__`: "assign" (`=`, or an
+    annotated `=` with a value), "augment" (an augmented assignment),
+    "method" (`__all__.method(...)`), or None."""
+    if isinstance(node, ast.Assign):
+        if any(isinstance(target, ast.Name) and target.id == "__all__"
+               for target in node.targets):
+            return "assign"
+        return None
+    if (isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "__all__" and node.value):
+        return "assign"
+    if (isinstance(node, ast.AugAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "__all__"):
+        return "augment"
+    if (isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and isinstance(node.value.func.value, ast.Name)
+            and node.value.func.value.id == "__all__"):
+        return "method"
+    return None
+
+
+def _literal_names(value: ast.expr) -> tuple | None:
+    """The names a literal `__all__` value lists, in source order (a set
+    literal has no order of its own); None when it is no literal
+    iterable of hashable values."""
+    try:
+        names = ast.literal_eval(value)
+        if isinstance(value, (ast.List, ast.Tuple, ast.Set)) and all(
+                isinstance(e, ast.Constant) for e in value.elts):
+            return tuple(dict.fromkeys(e.value for e in value.elts))
+        return tuple(dict.fromkeys(names))
+    except (ValueError, TypeError):
+        return None
 
 
 def read_module_all(tree: ast.Module) -> 'tuple[frozenset[str], SourceLocation] | None':
@@ -54,22 +127,27 @@ def read_module_all(tree: ast.Module) -> 'tuple[frozenset[str], SourceLocation] 
     Consumed by `Compiler._expand_star_imports_for_module` to filter
     `from M import *` against the source's per-attribute table.
     """
-    all_value = None
-    extra_names: set[str] = set()
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    all_value = node.value
-                    extra_names.clear()
-        elif (isinstance(node, ast.AnnAssign)
-              and isinstance(node.target, ast.Name)
-              and node.target.id == "__all__" and node.value):
+    return module_all_run(tree)[0]
+
+
+def module_all_run(tree: ast.Module) -> 'tuple[tuple[frozenset[str], SourceLocation] | None, list[AllUpdate | None]]':
+    """`read_module_all`'s result, and the `__all__` update each statement
+    of `tree.body` makes as CPython runs it (None for a statement that
+    makes none). Only the final `=` value has to be a literal: an update
+    whose names are not a literal set of strings -- a value a later `=`
+    replaces, or a `+=` onto one -- has `names` None."""
+    all_value: ast.expr | None = None
+    standing: tuple | None = None
+    extra_names: set = set()
+    updates: list[AllUpdate | None] = []
+    for node in tree.body:
+        kind = _all_update_kind(node)
+        if kind == "assign":
             all_value = node.value
+            standing = _literal_names(node.value)
             extra_names.clear()
-        elif (isinstance(node, ast.AugAssign)
-              and isinstance(node.target, ast.Name)
-              and node.target.id == "__all__"):
+            updates.append(AllUpdate(_string_names(standing), False))
+        elif kind == "augment":
             # `__all__ += [...]` extends the export set; anything dynamic
             # must be loud (silently dropping it surfaced as a misleading
             # unknown-name error at the import site).
@@ -79,28 +157,34 @@ def read_module_all(tree: ast.Module) -> 'tuple[frozenset[str], SourceLocation] 
             if not isinstance(node.op, ast.Add):
                 raise NonLiteralAllError(
                     "__all__ only supports '+=' augmented assignment", node.value)
-            try:
-                extra_names.update(ast.literal_eval(node.value))
-            except (ValueError, TypeError):
+            added = _literal_names(node.value)
+            if added is None:
                 raise NonLiteralAllError(
                     "__all__ += value is not a compile-time literal", node.value)
-        elif (isinstance(node, ast.Expr)
-              and isinstance(node.value, ast.Call)
-              and isinstance(node.value.func, ast.Attribute)
-              and isinstance(node.value.func.value, ast.Name)
-              and node.value.func.value.id == "__all__"):
+            extra_names.update(added)
+            updates.append(AllUpdate(
+                _string_names(added) if standing is not None else None, True))
+        elif kind == "method":
             raise NonLiteralAllError(
                 "__all__ method mutation is not supported; "
                 "use '__all__ += [...]'", node.value)
+        else:
+            updates.append(None)
     if all_value is None:
-        return None
-    try:
-        names = frozenset(ast.literal_eval(all_value)) | extra_names
-    except (ValueError, TypeError):
+        return None, updates
+    if standing is None:
         raise NonLiteralAllError(
             "__all__ is not a compile-time literal (must be a "
             "list / tuple / set of string literals)", all_value)
-    return names, SourceLocation(all_value.lineno, all_value.col_offset)
+    return ((frozenset(standing) | extra_names,
+             SourceLocation(all_value.lineno, all_value.col_offset)),
+            updates)
+
+
+def _string_names(names: tuple | None) -> tuple[str, ...] | None:
+    if names is None or not all(isinstance(n, str) for n in names):
+        return None
+    return names
 
 
 def scan_star_exports(source: str) -> frozenset[str]:
@@ -257,6 +341,8 @@ class ImportProcessor:
         # builtin-module lookups are NOT canonicalized and so stay as
         # bare `NominalType` without a qname.
         self._canonical_imports: set[str] = set()
+        self.records: list[ImportRecord] = []
+        self.future_annotations = False
 
     def _resolve_placeholder_module(self, key: str) -> str:
         """Resolve a relative import placeholder to a public module name.
@@ -394,6 +480,9 @@ class ImportProcessor:
                        top_level_stmts: list, module_aliases: dict,
                        bare_module_imports: set) -> None:
         """Process 'import X' or 'import X as Y' statement."""
+        self.records.append(ImportRecord(
+            loc=SourceLocation(node.lineno, node.col_offset),
+            modules=tuple((a.name, a.asname) for a in node.names)))
         for alias in node.names:
             module_name = alias.name
             local_name = alias.asname or module_name
@@ -433,11 +522,18 @@ class ImportProcessor:
         self.imports = imports
         module_name = node.module
         level = node.level
+        record_loc = SourceLocation(node.lineno, node.col_offset)
+        star = any(alias.name == "*" for alias in node.names)
+        record_names = () if star else tuple(
+            (alias.name, alias.asname or alias.name) for alias in node.names)
 
         # Handle relative imports (level > 0)
         if level > 0:
             key = RelativeImportKey(level=level, line=node.lineno, col=node.col_offset, partial=module_name or "")
             placeholder = key.encode()
+            self.records.append(ImportRecord(
+                loc=record_loc, from_module=placeholder,
+                names=record_names, star=star))
 
             # Track as user module import
             user_module_imports[placeholder] = node.lineno
@@ -473,9 +569,16 @@ class ImportProcessor:
         if module_name is None:
             raise ParseError("Invalid import: no module name", node)
 
-        # Skip __future__ imports -- CPython compatibility, no-op for TurboPython
+        # Skip __future__ imports -- CPython compatibility, no-op for
+        # TurboPython, except that `annotations` stops CPython evaluating
+        # annotations at import.
         if module_name == "__future__":
+            if any(alias.name == "annotations" for alias in node.names):
+                self.future_annotations = True
             return
+        self.records.append(ImportRecord(
+            loc=record_loc, from_module=module_name,
+            names=record_names, star=star))
 
         if module_name in _IMPLICIT_MODULES:
             self._check_implicit_module_names(module_name, node)

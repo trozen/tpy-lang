@@ -31,6 +31,7 @@ from ..parse import (
     TpyNamedExpr, SubscriptDunder,
 )
 from ..namespace import Namespace, BindingKind
+from ..parse.imports import module_init_candidates
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
     ParamPassing,
@@ -485,23 +486,6 @@ def module_variable_cpp(registry, module: str, name: str,
         registry, module, name, SymbolKind.VARIABLE)), var_info
 
 
-def module_init_candidates(stmt, *, module_name: str, user_module_imports,
-                           all_user_modules: 'set[str]') -> list[str]:
-    """The modules a top-level import of `module_name` runs, in run order:
-    each parent package of the imported module first (Python semantics:
-    `import pkg.utils` runs pkg, then pkg.utils), then the module itself.
-    Whether running one does anything is `ModuleInfo.has_runtime_init`'s
-    question, not this one's."""
-    if stmt.module_name not in user_module_imports:
-        return []
-    parts = stmt.module_name.split('.')
-    out = [parent for parent in ('.'.join(parts[:i])
-                                 for i in range(1, len(parts)))
-           if parent in all_user_modules]
-    out.append(stmt.module_name)
-    return [target for target in out if target != module_name]
-
-
 def module_init_targets(stmt, *, modules: 'Mapping[str, ModuleInfo]',
                         module_name: str, user_module_imports,
                         all_user_modules: 'set[str]',
@@ -512,7 +496,7 @@ def module_init_targets(stmt, *, modules: 'Mapping[str, ModuleInfo]',
     caller's own once-per-module dedup set, mutated in place."""
     out: list[str] = []
     for target in module_init_candidates(
-            stmt, module_name=module_name,
+            stmt.module_name, module_name=module_name,
             user_module_imports=user_module_imports,
             all_user_modules=all_user_modules):
         if target in emitted:
